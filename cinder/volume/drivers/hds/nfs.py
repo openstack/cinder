@@ -413,8 +413,8 @@ class HDSNFSDriver(nfs.NfsDriver):
         for line in lines:
             if 'Export' in line:
                 inf = line.split()
-                (export, path, fslabel, hdp, evs, ip1) = \
-                    inf[1], inf[3], inf[5], inf[7], inf[9], inf[11]
+                (export, path, fslabel, hdp, ip1) = \
+                    inf[1], inf[3], inf[5], inf[7], inf[11]
                 # 9, 10, etc are IP addrs
                 key = ip1 + ':' + export
                 conf[key] = {}

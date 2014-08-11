@@ -300,9 +300,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         self.driver.do_setup(None)
         self.driver.create_volume(MANAGED_VOLUME)
         existing_ref = {'source-name': MANAGED_VOLUME['name']}
-        has_volume = self.driver.manage_existing(
-            VOLUME,
-            existing_ref)
+        self.driver.manage_existing(VOLUME, existing_ref)
         self.assertEqual(VOLUME['size'], MANAGED_VOLUME['size'])
 
         # cover both case, whether driver renames the volume or not
