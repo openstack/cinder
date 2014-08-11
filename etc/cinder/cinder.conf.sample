@@ -409,6 +409,14 @@
 # Swift authentication mechanism (string value)
 #backup_swift_auth=per_user
 
+# Swift authentication version. Specify "1" for auth 1.0, or
+# "2" for auth 2.0 (string value)
+#backup_swift_auth_version=1
+
+# Swift tenant/account name. Required when connecting to an
+# auth 2.0 system (string value)
+#backup_swift_tenant=<None>
+
 # Swift user name (string value)
 #backup_swift_user=<None>
 
