@@ -171,12 +171,12 @@ class SolarisISCSIDriver(SanISCSIDriver):
                 luid = items[0].strip()
                 return luid
 
-        msg = _('LUID not found for %(zfs_poolname)s. '
-                'Output=%(out)s') % {'zfs_poolname': zfs_poolname, 'out': out}
-        raise exception.VolumeBackendAPIException(data=msg)
+        return None
 
     def _is_lu_created(self, volume):
         luid = self._get_luid(volume)
+        if luid is None:
+            return False
         return luid
 
     def delete_volume(self, volume):
@@ -246,10 +246,14 @@ class SolarisISCSIDriver(SanISCSIDriver):
     def remove_export(self, context, volume):
         """Removes an export for a logical volume."""
 
+        if not self._is_lu_created(volume):
+                    return
+
         # This is the reverse of _do_export
         luid = self._get_luid(volume)
         iscsi_name = self._build_iscsi_target_name(volume)
         target_group_name = 'tg-%s' % volume['name']
+
 
         if self._view_exists(luid):
             self._execute('/usr/sbin/stmfadm', 'remove-view', '-l', luid, '-a')
