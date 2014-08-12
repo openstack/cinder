@@ -98,8 +98,7 @@ class SanDriver(driver.VolumeDriver):
             return utils.execute(*cmd, **kwargs)
         else:
             check_exit_code = kwargs.pop('check_exit_code', None)
-            command = ' '.join(cmd)
-            return self._run_ssh(command, check_exit_code)
+            return self._run_ssh(cmd, check_exit_code)
 
     def _run_ssh(self, cmd_list, check_exit_code=True, attempts=1):
         utils.check_ssh_injection(cmd_list)
