@@ -27,11 +27,13 @@ import cinder.tests.volume.drivers.netapp.fakes as na_fakes
 from cinder.volume.drivers.netapp.dataontap import block_7mode
 from cinder.volume.drivers.netapp.dataontap.block_7mode import \
     NetAppBlockStorage7modeLibrary as block_lib_7mode
+from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.block_base import \
     NetAppBlockStorageLibrary as block_lib
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client.api import NaApiError
 from cinder.volume.drivers.netapp.dataontap.client import client_base
+from cinder.volume.drivers.netapp import utils as na_utils
 
 
 class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
@@ -352,3 +354,14 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.library.zapi_client.create_lun.assert_called_once_with(
             fake.VOLUME, fake.LUN, fake.SIZE, fake.METADATA, None)
         self.assertTrue(self.library.vol_refresh_voluntary)
+
+    @mock.patch.object(na_utils, 'get_volume_extra_specs')
+    def test_check_volume_type_for_lun_qos_not_supported(self, get_specs):
+        get_specs.return_value = {'specs': 's',
+                                  'netapp:qos_policy_group': 'qos'}
+        mock_lun = block_base.NetAppLun('handle', 'name', '1',
+                                        {'Volume': 'name', 'Path': '/vol/lun'})
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.library._check_volume_type_for_lun,
+                          {'vol': 'vol'}, mock_lun, {'ref': 'ref'})
+        get_specs.assert_called_once_with({'vol': 'vol'})
