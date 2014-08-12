@@ -1621,6 +1621,18 @@
 
 
 #
+# Options defined in cinder.volume.drivers.prophetstor.options
+#
+
+# DPL pool uuid in which DPL volumes are stored. (string
+# value)
+#dpl_pool=
+
+# DPL port number. (integer value)
+#dpl_port=8357
+
+
+#
 # Options defined in cinder.volume.drivers.pure
 #
 
