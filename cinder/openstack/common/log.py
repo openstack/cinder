@@ -33,6 +33,7 @@ import logging
 import logging.config
 import logging.handlers
 import os
+import socket
 import sys
 import traceback
 
@@ -126,7 +127,8 @@ DEFAULT_LOG_LEVELS = ['amqp=WARN', 'amqplib=WARN', 'boto=WARN',
                       'qpid=WARN', 'sqlalchemy=WARN', 'suds=INFO',
                       'oslo.messaging=INFO', 'iso8601=WARN',
                       'requests.packages.urllib3.connectionpool=WARN',
-                      'urllib3.connectionpool=WARN', 'websocket=WARN']
+                      'urllib3.connectionpool=WARN', 'websocket=WARN',
+                      "keystonemiddleware=WARN", "routes.middleware=WARN"]
 
 log_opts = [
     cfg.StrOpt('logging_context_format_string',
@@ -300,11 +302,10 @@ class ContextAdapter(BaseLoggerAdapter):
         self.warn(stdmsg, *args, **kwargs)
 
     def process(self, msg, kwargs):
-        # NOTE(mrodden): catch any Message/other object and
-        #                coerce to unicode before they can get
-        #                to the python logging and possibly
-        #                cause string encoding trouble
-        if not isinstance(msg, six.string_types):
+        # NOTE(jecarey): If msg is not unicode, coerce it into unicode
+        #                before it can get to the python logging and
+        #                possibly cause string encoding trouble
+        if not isinstance(msg, six.text_type):
             msg = six.text_type(msg)
 
         if 'extra' not in kwargs:
@@ -429,12 +430,12 @@ def set_defaults(logging_context_format_string=None,
     # later in a backwards in-compatible change
     if default_log_levels is not None:
         cfg.set_defaults(
-                log_opts,
-                default_log_levels=default_log_levels)
+            log_opts,
+            default_log_levels=default_log_levels)
     if logging_context_format_string is not None:
         cfg.set_defaults(
-                log_opts,
-                logging_context_format_string=logging_context_format_string)
+            log_opts,
+            logging_context_format_string=logging_context_format_string)
 
 
 def _find_facility_from_conf():
@@ -482,18 +483,6 @@ def _setup_logging_from_conf(project, version):
     log_root = getLogger(None).logger
     for handler in log_root.handlers:
         log_root.removeHandler(handler)
-
-    if CONF.use_syslog:
-        facility = _find_facility_from_conf()
-        # TODO(bogdando) use the format provided by RFCSysLogHandler
-        #   after existing syslog format deprecation in J
-        if CONF.use_syslog_rfc_format:
-            syslog = RFCSysLogHandler(address='/dev/log',
-                                      facility=facility)
-        else:
-            syslog = logging.handlers.SysLogHandler(address='/dev/log',
-                                                    facility=facility)
-        log_root.addHandler(syslog)
 
     logpath = _get_log_file_path()
     if logpath:
@@ -552,6 +541,20 @@ def _setup_logging_from_conf(project, version):
             logger.setLevel(level)
         else:
             logger.setLevel(level_name)
+
+    if CONF.use_syslog:
+        try:
+            facility = _find_facility_from_conf()
+            # TODO(bogdando) use the format provided by RFCSysLogHandler
+            #   after existing syslog format deprecation in J
+            if CONF.use_syslog_rfc_format:
+                syslog = RFCSysLogHandler(facility=facility)
+            else:
+                syslog = logging.handlers.SysLogHandler(facility=facility)
+            log_root.addHandler(syslog)
+        except socket.error:
+            log_root.error('Unable to add syslog handler. Verify that syslog'
+                           'is running.')
 
 
 _loggers = {}
@@ -621,6 +624,12 @@ class ContextFormatter(logging.Formatter):
 
     def format(self, record):
         """Uses contextstring if request_id is set, otherwise default."""
+
+        # NOTE(jecarey): If msg is not unicode, coerce it into unicode
+        #                before it can get to the python logging and
+        #                possibly cause string encoding trouble
+        if not isinstance(record.msg, six.text_type):
+            record.msg = six.text_type(record.msg)
 
         # store project info
         record.project = self.project
