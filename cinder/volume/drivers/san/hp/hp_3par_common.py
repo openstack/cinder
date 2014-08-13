@@ -412,16 +412,16 @@ class HP3PARCommon(object):
                 if (not _convert_to_base and
                     isinstance(ex, hpexceptions.HTTPForbidden) and
                         ex.get_code() == 150):
-                        # Error code 150 means 'invalid operation: Cannot grow
-                        # this type of volume'.
-                        # Suppress raising this exception because we can
-                        # resolve it by converting it into a base volume.
-                        # Afterwards, extending the volume should succeed, or
-                        # fail with a different exception/error code.
-                        ex_ctxt.reraise = False
-                        self._extend_volume(volume, volume_name,
-                                            growth_size_mib,
-                                            _convert_to_base=True)
+                    # Error code 150 means 'invalid operation: Cannot grow
+                    # this type of volume'.
+                    # Suppress raising this exception because we can
+                    # resolve it by converting it into a base volume.
+                    # Afterwards, extending the volume should succeed, or
+                    # fail with a different exception/error code.
+                    ex_ctxt.reraise = False
+                    self._extend_volume(volume, volume_name,
+                                        growth_size_mib,
+                                        _convert_to_base=True)
                 else:
                     LOG.error(_("Error extending volume: %(vol)s. "
                                 "Exception: %(ex)s") %

@@ -418,44 +418,44 @@ def refresh_cluster_stale_ssc(*args, **kwargs):
 
         @utils.synchronized(lock_pr)
         def refresh_stale_ssc():
-                stale_vols = backend._update_stale_vols(reset=True)
-                LOG.info(_('Running stale ssc refresh job for %(server)s'
-                           ' and vserver %(vs)s')
-                         % {'server': na_server, 'vs': vserver})
-                # refreshing single volumes can create inconsistency
-                # hence doing manipulations on copy
-                ssc_vols_copy = copy.deepcopy(backend.ssc_vols)
-                refresh_vols = set()
-                expired_vols = set()
-                for vol in stale_vols:
-                    name = vol.id['name']
-                    res = get_cluster_vols_with_ssc(na_server, vserver, name)
-                    if res:
-                        refresh_vols.add(res.pop())
-                    else:
-                        expired_vols.add(vol)
-                for vol in refresh_vols:
-                    for k in ssc_vols_copy:
-                        vol_set = ssc_vols_copy[k]
-                        vol_set.discard(vol)
-                        if k == "mirrored" and vol.mirror.get('mirrored'):
-                            vol_set.add(vol)
-                        if k == "dedup" and vol.sis.get('dedup'):
-                            vol_set.add(vol)
-                        if k == "compression" and vol.sis.get('compression'):
-                            vol_set.add(vol)
-                        if k == "thin" and vol.space.get('thin_provisioned'):
-                            vol_set.add(vol)
-                        if k == "all":
-                            vol_set.add(vol)
-                for vol in expired_vols:
-                    for k in ssc_vols_copy:
-                        vol_set = ssc_vols_copy[k]
-                        vol_set.discard(vol)
-                backend.refresh_ssc_vols(ssc_vols_copy)
-                LOG.info(_('Successfully completed stale refresh job for'
-                           ' %(server)s and vserver %(vs)s')
-                         % {'server': na_server, 'vs': vserver})
+            stale_vols = backend._update_stale_vols(reset=True)
+            LOG.info(_('Running stale ssc refresh job for %(server)s'
+                       ' and vserver %(vs)s')
+                     % {'server': na_server, 'vs': vserver})
+            # refreshing single volumes can create inconsistency
+            # hence doing manipulations on copy
+            ssc_vols_copy = copy.deepcopy(backend.ssc_vols)
+            refresh_vols = set()
+            expired_vols = set()
+            for vol in stale_vols:
+                name = vol.id['name']
+                res = get_cluster_vols_with_ssc(na_server, vserver, name)
+                if res:
+                    refresh_vols.add(res.pop())
+                else:
+                    expired_vols.add(vol)
+            for vol in refresh_vols:
+                for k in ssc_vols_copy:
+                    vol_set = ssc_vols_copy[k]
+                    vol_set.discard(vol)
+                    if k == "mirrored" and vol.mirror.get('mirrored'):
+                        vol_set.add(vol)
+                    if k == "dedup" and vol.sis.get('dedup'):
+                        vol_set.add(vol)
+                    if k == "compression" and vol.sis.get('compression'):
+                        vol_set.add(vol)
+                    if k == "thin" and vol.space.get('thin_provisioned'):
+                        vol_set.add(vol)
+                    if k == "all":
+                        vol_set.add(vol)
+            for vol in expired_vols:
+                for k in ssc_vols_copy:
+                    vol_set = ssc_vols_copy[k]
+                    vol_set.discard(vol)
+            backend.refresh_ssc_vols(ssc_vols_copy)
+            LOG.info(_('Successfully completed stale refresh job for'
+                       ' %(server)s and vserver %(vs)s')
+                     % {'server': na_server, 'vs': vserver})
 
         refresh_stale_ssc()
     finally:
@@ -503,8 +503,8 @@ def refresh_cluster_ssc(backend, na_server, vserver, synchronous=False):
         raise exception.InvalidInput(reason=_("Backend server not NaServer."))
     delta_secs = getattr(backend, 'ssc_run_delta_secs', 1800)
     if getattr(backend, 'ssc_job_running', None):
-            LOG.warn(_('ssc job in progress. Returning... '))
-            return
+        LOG.warn(_('ssc job in progress. Returning... '))
+        return
     elif (getattr(backend, 'ssc_run_time', None) is None or
           (backend.ssc_run_time and
            timeutils.is_newer_than(backend.ssc_run_time, delta_secs))):
@@ -515,8 +515,8 @@ def refresh_cluster_ssc(backend, na_server, vserver, synchronous=False):
                       args=[backend, na_server, vserver])
             t.start()
     elif getattr(backend, 'refresh_stale_running', None):
-            LOG.warn(_('refresh stale ssc job in progress. Returning... '))
-            return
+        LOG.warn(_('refresh stale ssc job in progress. Returning... '))
+        return
     else:
         if backend.stale_vols:
             if synchronous:

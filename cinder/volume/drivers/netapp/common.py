@@ -143,8 +143,8 @@ class NetAppDriverFactory(object):
     def check_netapp_driver(location):
         """Checks if the driver requested is a netapp driver."""
         if location.find(".netapp.") == -1:
-                raise exception.InvalidInput(
-                    reason=_("Only loading netapp drivers supported."))
+            raise exception.InvalidInput(
+                reason=_("Only loading netapp drivers supported."))
 
 
 class Deprecated(driver.VolumeDriver):

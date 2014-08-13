@@ -1223,7 +1223,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
                     if avl_vol['name'] in self.volume_list:
                         return avl_vol
                 elif self._get_vol_option(avl_vol['name'], 'root') != 'true':
-                        return avl_vol
+                    return avl_vol
         return None
 
     def _get_igroup_by_initiator(self, initiator):
