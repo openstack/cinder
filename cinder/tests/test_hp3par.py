@@ -17,6 +17,8 @@
 
 import mock
 
+import ast
+
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -46,6 +48,16 @@ CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
 
 
 class HP3PARBaseDriver(object):
+
+    class CommentMatcher(object):
+        def __init__(self, f, expect):
+            self.assertEqual = f
+            self.expect = expect
+
+        def __eq__(self, actual):
+            actual_as_dict = dict(ast.literal_eval(actual))
+            self.assertEqual(self.expect, actual_as_dict)
+            return True
 
     VOLUME_ID = 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'
     CLONE_ID = 'd03338a9-9115-48a3-8dfc-000000000000'
@@ -267,6 +279,13 @@ class HP3PARBaseDriver(object):
             'snap_cpg': 'bogus',
             'hp3par:persona': '1 - Generic'
         }
+    }
+
+    MANAGE_VOLUME_INFO = {
+        'userCPG': 'testUserCpg0',
+        'snapCPG': 'testSnapCpg0',
+        'provisioningType': 1,
+        'comment': "{'display_name': 'Foo Volume'}"
     }
 
     RETYPE_TEST_COMMENT = "{'retype_test': 'test comment'}"
@@ -1443,68 +1462,148 @@ class HP3PARBaseDriver(object):
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_manage_existing(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.volume_type
         mock_client = self.setup_driver()
 
-        _mock_volume_types.return_value = {
-            'name': 'gold',
-            'extra_specs': {
-                'cpg': HP3PAR_CPG,
-                'snap_cpg': HP3PAR_CPG_SNAP,
-                'vvs_name': self.VVS_NAME,
-                'qos': self.QOS,
-                'tpvv': True,
-                'volume_type': self.volume_type}}
-        comment = (
-            '{"display_name": "Foo Volume"}')
-        new_comment = (
-            '{"volume_type_name": "gold",'
-            ' "display_name": "Foo Volume",'
-            ' "name": "volume-007dbfce-7579-40bc-8f90-a20b3902283e",'
-            ' "volume_type_id": "acfa9fa4-54a0-4340-a3d8-bfcf19aea65e",'
-            ' "volume_id": "007dbfce-7579-40bc-8f90-a20b3902283e",'
-            ' "qos": {},'
-            ' "type": "OpenStack"}')
+        new_comment = {"display_name": "Foo Volume",
+                       "name": "volume-007dbfce-7579-40bc-8f90-a20b3902283e",
+                       "volume_id": "007dbfce-7579-40bc-8f90-a20b3902283e",
+                       "type": "OpenStack"}
+
         volume = {'display_name': None,
                   'volume_type': 'gold',
                   'volume_type_id': 'acfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
                   'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
 
-        mock_client.getVolume.return_value = {'comment': comment}
+        mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
+        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.getTask.return_value = self.STATUS_DONE
 
         unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
         osv_matcher = self.driver.common._get_3par_vol_name(volume['id'])
+        vvs_matcher = self.driver.common._get_3par_vvs_name(volume['id'])
         existing_ref = {'source-name': unm_matcher}
 
         obj = self.driver.manage_existing(volume, existing_ref)
 
         expected_obj = {'display_name': 'Foo Volume'}
-        expected = [
+
+        expected_manage = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
             mock.call.getVolume(existing_ref['source-name']),
             mock.call.modifyVolume(existing_ref['source-name'],
                                    {'newName': osv_matcher,
-                                    'comment': new_comment}),
+                                    'comment': self.CommentMatcher(
+                                        self.assertEqual, new_comment)}),
+        ]
+
+        retype_comment_qos = {
+            "display_name": "Foo Volume",
+            "volume_type_name": self.volume_type['name'],
+            "volume_type_id": self.volume_type['id'],
+            "qos": {
+                'maxIOPS': '1000',
+                'maxBWS': '50',
+                'minIOPS': '100',
+                'minBWS': '25',
+                'latency': '25',
+                'priority': 'low'
+            }
+        }
+
+        expected_retype_modify = [
+            mock.call.modifyVolume(osv_matcher,
+                                   {'comment': self.CommentMatcher(
+                                       self.assertEqual, retype_comment_qos),
+                                    'snapCPG': 'OpenStackCPGSnap'}),
+            mock.call.deleteVolumeSet(vvs_matcher),
+        ]
+
+        expected_retype_specs = [
+            mock.call.createVolumeSet(vvs_matcher, None),
+            mock.call.createQoSRules(
+                vvs_matcher,
+                {'ioMinGoal': 100, 'ioMaxLimit': 1000,
+                 'bwMinGoalKB': 25600, 'priority': 1, 'latencyGoal': 25,
+                 'bwMaxLimitKB': 51200}),
+            mock.call.addVolumeToVolumeSet(vvs_matcher, osv_matcher),
+            mock.call.modifyVolume(osv_matcher,
+                                   {'action': 6, 'userCPG': 'OpenStackCPG',
+                                    'conversionOperation': 1,
+                                    'tuneOperation': 1}),
+            mock.call.getTask(1),
             mock.call.logout()
         ]
 
-        mock_client.assert_has_calls(expected)
+        mock_client.assert_has_calls(expected_manage)
+        mock_client.assert_has_calls(expected_retype_modify)
+        mock_client.assert_has_calls(expected_retype_specs)
         self.assertEqual(expected_obj, obj)
 
-        volume['display_name'] = 'Test Volume'
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_manage_existing_vvs(self, _mock_volume_types):
+        test_volume_type = self.RETYPE_VOLUME_TYPE_2
+        vvs = test_volume_type['extra_specs']['vvs']
+        _mock_volume_types.return_value = test_volume_type
+        mock_client = self.setup_driver()
+
+        mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
+        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.getTask.return_value = self.STATUS_DONE
+
+        id = '007abcde-7579-40bc-8f90-a20b3902283e'
+        new_comment = {"display_name": "Test Volume",
+                       "name": ("volume-%s" % id),
+                       "volume_id": id,
+                       "type": "OpenStack"}
+
+        volume = {'display_name': 'Test Volume',
+                  'volume_type': 'gold',
+                  'volume_type_id': 'acfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': id}
+
+        unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
+        osv_matcher = self.driver.common._get_3par_vol_name(volume['id'])
+        vvs_matcher = self.driver.common._get_3par_vvs_name(volume['id'])
+
+        existing_ref = {'source-name': unm_matcher}
 
         obj = self.driver.manage_existing(volume, existing_ref)
 
         expected_obj = {'display_name': 'Test Volume'}
-        expected = [
+        expected_manage = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
             mock.call.getVolume(existing_ref['source-name']),
             mock.call.modifyVolume(existing_ref['source-name'],
                                    {'newName': osv_matcher,
-                                    'comment': new_comment}),
+                                    'comment': self.CommentMatcher(
+                                        self.assertEqual, new_comment)})
+        ]
+
+        retype_comment_vvs = {
+            "display_name": "Foo Volume",
+            "volume_type_name": test_volume_type['name'],
+            "volume_type_id": test_volume_type['id'],
+            "vvs": vvs
+        }
+
+        expected_retype = [
+            mock.call.modifyVolume(osv_matcher,
+                                   {'comment': self.CommentMatcher(
+                                       self.assertEqual, retype_comment_vvs),
+                                    'snapCPG': 'OpenStackCPGSnap'}),
+            mock.call.deleteVolumeSet(vvs_matcher),
+            mock.call.addVolumeToVolumeSet(vvs, osv_matcher),
+            mock.call.modifyVolume(osv_matcher,
+                                   {'action': 6, 'userCPG': 'OpenStackCPG',
+                                    'conversionOperation': 1,
+                                    'tuneOperation': 1}),
+            mock.call.getTask(1),
             mock.call.logout()
         ]
 
-        mock_client.assert_has_calls(expected)
+        mock_client.assert_has_calls(expected_manage)
+        mock_client.assert_has_calls(expected_retype)
         self.assertEqual(expected_obj, obj)
 
     def test_manage_existing_no_volume_type(self):
@@ -1519,6 +1618,7 @@ class HP3PARBaseDriver(object):
             ' "volume_id": "007dbfce-7579-40bc-8f90-a20b3902283e"}')
         volume = {'display_name': None,
                   'volume_type': None,
+                  'volume_type_id': None,
                   'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
 
         mock_client.getVolume.return_value = {'comment': comment}
@@ -1625,6 +1725,59 @@ class HP3PARBaseDriver(object):
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
             mock.call.getVolume(existing_ref['source-name']),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_manage_existing_retype_exception(self, _mock_volume_types):
+        mock_client = self.setup_driver()
+        _mock_volume_types.return_value = {
+            'name': 'gold',
+            'id': 'gold-id',
+            'extra_specs': {
+                'cpg': HP3PAR_CPG,
+                'snap_cpg': HP3PAR_CPG_SNAP,
+                'vvs_name': self.VVS_NAME,
+                'qos': self.QOS,
+                'tpvv': True,
+                'volume_type': self.volume_type}}
+
+        volume = {'display_name': None,
+                  'volume_type': 'gold',
+                  'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
+
+        mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
+        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.getTask.return_value = self.STATUS_DONE
+        mock_client.getCPG.side_effect = [
+            {'domain': 'domain1'},
+            {'domain': 'domain2'}
+        ]
+
+        unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
+        osv_matcher = self.driver.common._get_3par_vol_name(volume['id'])
+
+        existing_ref = {'source-name': unm_matcher}
+
+        self.assertRaises(exception.Invalid3PARDomain,
+                          self.driver.manage_existing,
+                          volume=volume,
+                          existing_ref=existing_ref)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(unm_matcher),
+            mock.call.modifyVolume(
+                unm_matcher, {'newName': osv_matcher, 'comment': mock.ANY}),
+            mock.call.getVolume(osv_matcher),
+            mock.call.getCPG('testUserCpg0'),
+            mock.call.getCPG('OpenStackCPG'),
+            mock.call.modifyVolume(
+                osv_matcher, {'newName': unm_matcher,
+                              'comment': self.MANAGE_VOLUME_INFO['comment']}),
             mock.call.logout()
         ]
 
