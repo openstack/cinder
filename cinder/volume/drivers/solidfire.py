@@ -129,8 +129,8 @@ class SolidFireDriver(SanISCSIDriver):
             if params is not None:
                 command['params'] = params
 
-            payload = json.dumps(command, ensure_ascii=False)
-            payload.encode('utf-8')
+            json_string = json.dumps(command,
+                                     ensure_ascii=False).encode('utf-8')
             header = {'Content-Type': 'application/json-rpc; charset=utf-8'}
 
             if cluster_password is not None:
@@ -140,12 +140,12 @@ class SolidFireDriver(SanISCSIDriver):
                                                cluster_password))[:-1]
                 header['Authorization'] = 'Basic %s' % auth_key
 
-            LOG.debug("Payload for SolidFire API call: %s", payload)
+            LOG.debug("Payload for SolidFire API call: %s", json_string)
 
             api_endpoint = '/json-rpc/%s' % version
             connection = httplib.HTTPSConnection(host, port)
             try:
-                connection.request('POST', api_endpoint, payload, header)
+                connection.request('POST', api_endpoint, json_string, header)
             except Exception as ex:
                 LOG.error(_('Failed to make httplib connection '
                             'SolidFire Cluster: %s (verify san_ip '
