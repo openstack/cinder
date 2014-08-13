@@ -21,6 +21,8 @@ import random
 import string
 import uuid
 
+import fixtures
+
 from cinder.openstack.common import log as logging
 from cinder import service
 from cinder import test  # For the flags
@@ -61,6 +63,9 @@ class _IntegratedTestBase(test.TestCase):
         f = self._get_flags()
         self.flags(**f)
         self.flags(verbose=True)
+
+        for var in ('http_proxy', 'HTTP_PROXY'):
+            self.useFixture(fixtures.EnvironmentVariable(var))
 
         # set up services
         self.volume = self.start_service('volume')
