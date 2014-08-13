@@ -124,13 +124,13 @@ class RestClient(WebserviceClient):
                   " verify: %(v)s, kwargs: %(k)s." % (params))
         url = self._get_resource_url(path, use_system, **kwargs)
         if self._content_type == 'json':
-                headers = {'Accept': 'application/json',
-                           'Content-Type': 'application/json'}
-                data = json.dumps(data) if data else None
-                res = self.invoke_service(method, url, data=data,
-                                          headers=headers,
-                                          timeout=timeout, verify=verify)
-                return res.json() if res.text else None
+            headers = {'Accept': 'application/json',
+                       'Content-Type': 'application/json'}
+            data = json.dumps(data) if data else None
+            res = self.invoke_service(method, url, data=data,
+                                      headers=headers,
+                                      timeout=timeout, verify=verify)
+            return res.json() if res.text else None
         else:
             raise exception.NetAppDriverException(
                 _("Content type not supported."))

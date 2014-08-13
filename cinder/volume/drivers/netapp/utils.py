@@ -194,32 +194,32 @@ def invoke_api(na_server, api_name, api_family='cm', query=None,
 def create_api_request(api_name, query=None, des_result=None,
                        additional_elems=None, is_iter=False,
                        record_step=50, tag=None):
-        """Creates a NetApp api request.
+    """Creates a NetApp api request.
 
-            :param api_name: api name string
-            :param query: api query as dict
-            :param des_result: desired result as dict
-            :param additional_elems: dict other than query and des_result
-            :param is_iter: is iterator api
-            :param record_step: records at a time for iter api
-            :param tag: next tag for iter api
-        """
-        api_el = NaElement(api_name)
-        if query:
-            query_el = NaElement('query')
-            query_el.translate_struct(query)
-            api_el.add_child_elem(query_el)
-        if des_result:
-            res_el = NaElement('desired-attributes')
-            res_el.translate_struct(des_result)
-            api_el.add_child_elem(res_el)
-        if additional_elems:
-            api_el.translate_struct(additional_elems)
-        if is_iter:
-            api_el.add_new_child('max-records', str(record_step))
-        if tag:
-            api_el.add_new_child('tag', tag, True)
-        return api_el
+        :param api_name: api name string
+        :param query: api query as dict
+        :param des_result: desired result as dict
+        :param additional_elems: dict other than query and des_result
+        :param is_iter: is iterator api
+        :param record_step: records at a time for iter api
+        :param tag: next tag for iter api
+    """
+    api_el = NaElement(api_name)
+    if query:
+        query_el = NaElement('query')
+        query_el.translate_struct(query)
+        api_el.add_child_elem(query_el)
+    if des_result:
+        res_el = NaElement('desired-attributes')
+        res_el.translate_struct(des_result)
+        api_el.add_child_elem(res_el)
+    if additional_elems:
+        api_el.translate_struct(additional_elems)
+    if is_iter:
+        api_el.add_new_child('max-records', str(record_step))
+    if tag:
+        api_el.add_new_child('tag', tag, True)
+    return api_el
 
 
 def to_bool(val):
@@ -229,7 +229,7 @@ def to_bool(val):
         if (strg == 'true' or strg == 'y'
             or strg == 'yes' or strg == 'enabled'
                 or strg == '1'):
-                    return True
+            return True
         else:
             return False
     else:
