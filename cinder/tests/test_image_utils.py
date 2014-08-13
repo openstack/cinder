@@ -16,6 +16,7 @@
 """Unit tests for image utils."""
 
 import contextlib
+import mock
 import mox
 import tempfile
 
@@ -77,7 +78,12 @@ class TestUtils(test.TestCase):
 
         mox.VerifyAll()
 
-    def test_convert_image(self):
+    @mock.patch('os.stat')
+    def test_convert_image(self, mock_stat):
+
+        class stat_result:
+            st_size = 1048576
+
         mox = self._mox
         mox.StubOutWithMock(utils, 'execute')
 
@@ -251,7 +257,9 @@ class TestUtils(test.TestCase):
 
         self._mox.ReplayAll()
 
-    def test_fetch_to_raw(self):
+    @mock.patch('os.stat')
+    def test_fetch_to_raw(self, mock_stat):
+
         SRC_INFO = ("image: qemu.qcow2\n"
                     "file_format: qcow2 \n"
                     "virtual_size: 50M (52428800 bytes)\n"
@@ -262,6 +270,9 @@ class TestUtils(test.TestCase):
                     "virtual_size: 50M (52428800 bytes)\n"
                     "cluster_size: 65536\n"
                     "disk_size: 196K (200704 bytes)\n")
+
+        class stat_result:
+            st_size = 1048576
 
         self._test_fetch_to_raw(src_inf=SRC_INFO, dest_inf=DST_INFO)
 
@@ -270,7 +281,8 @@ class TestUtils(test.TestCase):
                                  mox.IgnoreArg())
         self._mox.VerifyAll()
 
-    def test_fetch_to_raw_with_bps_limit(self):
+    @mock.patch('os.stat')
+    def test_fetch_to_raw_with_bps_limit(self, mock_stat):
         SRC_INFO = ("image: qemu.qcow2\n"
                     "file_format: qcow2 \n"
                     "virtual_size: 50M (52428800 bytes)\n"
@@ -281,6 +293,9 @@ class TestUtils(test.TestCase):
                     "virtual_size: 50M (52428800 bytes)\n"
                     "cluster_size: 65536\n"
                     "disk_size: 196K (200704 bytes)\n")
+
+        class stat_result:
+            st_size = 1048576
 
         self._test_fetch_to_raw(src_inf=SRC_INFO, dest_inf=DST_INFO,
                                 bps_limit=1048576)
@@ -333,12 +348,17 @@ class TestUtils(test.TestCase):
                           mox.IgnoreArg())
         self._mox.VerifyAll()
 
-    def test_fetch_to_raw_on_error_not_convert_to_raw(self):
+    @mock.patch('os.stat')
+    def test_fetch_to_raw_on_error_not_convert_to_raw(self, mock_stat):
+
         IMG_INFO = ("image: qemu.qcow2\n"
                     "file_format: qcow2 \n"
                     "virtual_size: 50M (52428800 bytes)\n"
                     "cluster_size: 65536\n"
                     "disk_size: 196K (200704 bytes)")
+
+        class stat_result:
+            st_size = 1048576
 
         self._test_fetch_to_raw(src_inf=IMG_INFO, dest_inf=IMG_INFO)
 
