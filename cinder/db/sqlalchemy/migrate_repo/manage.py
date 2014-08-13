@@ -15,19 +15,11 @@
 
 import os
 
-from oslo.config import cfg
-
-from cinder import i18n
-i18n.enable_lazy()
-
 from cinder.db.sqlalchemy import migrate_repo
-from cinder import version
 
 from migrate.versioning.shell import main
 
-CONF = cfg.CONF
 
 if __name__ == '__main__':
-    CONF([], project='cinder', version=version.version_string())
-    main(debug='False', url=CONF.database.connection,
+    main(debug='False',
          repository=os.path.abspath(os.path.dirname(migrate_repo.__file__)))
