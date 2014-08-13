@@ -107,7 +107,8 @@ def stub_max_volume_metadata():
 def return_volume(context, volume_id):
     return {'id': '0cc3346e-9fef-4445-abe6-5d2b2690ec64',
             'name': 'fake',
-            'metadata': {}}
+            'metadata': {},
+            'project_id': context.project_id}
 
 
 def return_volume_nonexistent(context, volume_id):

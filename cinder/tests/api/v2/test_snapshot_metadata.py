@@ -121,7 +121,8 @@ def return_volume(context, volume_id):
             'encryption_key_id': None,
             'volume_type_id': None,
             'migration_status': None,
-            'metadata': {}}
+            'metadata': {},
+            'project_id': context.project_id}
 
 
 def return_snapshot_nonexistent(context, snapshot_id):

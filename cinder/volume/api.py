@@ -262,9 +262,13 @@ class API(base.Base):
 
     def get(self, context, volume_id, viewable_admin_meta=False):
         if viewable_admin_meta:
-            context = context.elevated()
-        rv = self.db.volume_get(context, volume_id)
+            ctxt = context.elevated()
+        else:
+            ctxt = context
+        rv = self.db.volume_get(ctxt, volume_id)
         volume = dict(rv.iteritems())
+        if not context.is_admin and volume['project_id'] != context.project_id:
+            raise exception.VolumeNotFound(volume_id=volume_id)
         check_policy(context, 'get', volume)
         return volume
 
