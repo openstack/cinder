@@ -48,8 +48,8 @@ class VolumeMigStatusAttributeController(wsgi.Controller):
         context = req.environ['cinder.context']
         if authorize(context):
             resp_obj.attach(xml=VolumeListMigStatusAttributeTemplate())
-            for volume in list(resp_obj.obj['volumes']):
-                self._add_volume_mig_status_attribute(req, context, volume)
+            for vol in list(resp_obj.obj['volumes']):
+                self._add_volume_mig_status_attribute(req, context, vol)
 
 
 class Volume_mig_status_attribute(extensions.ExtensionDescriptor):
