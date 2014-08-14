@@ -24,9 +24,9 @@ from eventlet import event
 from eventlet import greenthread
 from eventlet import queue
 
-from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
+from cinder.volume.drivers.vmware import error_util
 
 LOG = logging.getLogger(__name__)
 IO_THREAD_SLEEP_TIME = .01
@@ -106,13 +106,15 @@ class GlanceWriteThread(object):
             LOG.debug("Initiating image service update on image: %(image)s "
                       "with meta: %(meta)s" % {'image': self.image_id,
                                                'meta': self.image_meta})
-            self.image_service.update(self.context,
-                                      self.image_id,
-                                      self.image_meta,
-                                      data=self.input_file)
-            self._running = True
-            while self._running:
-                try:
+
+            try:
+                self.image_service.update(self.context,
+                                          self.image_id,
+                                          self.image_meta,
+                                          data=self.input_file)
+
+                self._running = True
+                while self._running:
                     image_meta = self.image_service.show(self.context,
                                                          self.image_id)
                     image_status = image_meta.get('status')
@@ -127,7 +129,7 @@ class GlanceWriteThread(object):
                         msg = (_("Glance image: %s is in killed state.") %
                                self.image_id)
                         LOG.error(msg)
-                        excep = exception.CinderException(msg)
+                        excep = error_util.ImageTransferException(msg)
                         self.done.send_exception(excep)
                     elif image_status in ['saving', 'queued']:
                         greenthread.sleep(GLANCE_POLL_INTERVAL)
@@ -137,11 +139,15 @@ class GlanceWriteThread(object):
                                 "- %(state)s") % {'id': self.image_id,
                                                   'state': image_status}
                         LOG.error(msg)
-                        excep = exception.CinderException(msg)
+                        excep = error_util.ImageTransferException(msg)
                         self.done.send_exception(excep)
-                except Exception as exc:
-                    self.stop()
-                    self.done.send_exception(exc)
+            except Exception as ex:
+                self.stop()
+                msg = (_("Error occurred while writing to image: %s") %
+                       self.image_id)
+                LOG.exception(msg)
+                excep = error_util.ImageTransferException(ex)
+                self.done.send_exception(excep)
 
         greenthread.spawn(_inner)
         return self.done
