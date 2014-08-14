@@ -20,9 +20,8 @@
 """Unit tests for Brocade fc zone driver."""
 
 import mock
-import paramiko
-
 from oslo.config import cfg
+import paramiko
 
 from cinder import exception
 from cinder.i18n import _

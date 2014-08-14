@@ -18,9 +18,9 @@
 import BaseHTTPServer
 import copy
 import httplib
+
 from lxml import etree
 from mox import IgnoreArg
-
 import six
 
 from cinder import exception

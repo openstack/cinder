@@ -15,10 +15,10 @@
 
 """Tests For miscellaneous util methods used with volume."""
 
-import mock
 import os
 import re
 
+import mock
 from oslo.config import cfg
 
 from cinder import context

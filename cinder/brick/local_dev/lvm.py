@@ -17,10 +17,9 @@
 LVM class for performing LVM operations.
 """
 
+import itertools
 import math
 import re
-
-import itertools
 
 from cinder.brick import exception
 from cinder.brick import executor

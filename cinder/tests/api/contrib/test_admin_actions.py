@@ -12,9 +12,9 @@
 
 import ast
 import tempfile
-import webob
 
 from oslo.config import cfg
+import webob
 
 from cinder.api.contrib import admin_actions
 from cinder.brick.local_dev import lvm as brick_lvm

@@ -21,9 +21,9 @@ It supports VNX and VMAX arrays.
 """
 
 import time
+from xml.dom.minidom import parseString
 
 from oslo.config import cfg
-from xml.dom.minidom import parseString
 
 from cinder import exception
 from cinder.i18n import _

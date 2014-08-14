@@ -18,15 +18,15 @@
 Unit Tests for Huawei T and Dorado volume drivers.
 """
 
-import mox
 import os
 import shutil
 import socket
 import tempfile
 import time
-
 from xml.dom.minidom import Document
 from xml.etree import ElementTree as ET
+
+import mox
 
 from cinder import context
 from cinder import exception

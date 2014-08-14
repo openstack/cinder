@@ -15,8 +15,9 @@
 #
 """Fake HP client for testing LeftHand without installing the client."""
 
-import mock
 import sys
+
+import mock
 
 from cinder.tests import fake_hp_client_exceptions as hpexceptions
 

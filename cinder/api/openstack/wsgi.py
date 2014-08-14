@@ -17,12 +17,12 @@
 import inspect
 import math
 import time
+from xml.dom import minidom
+from xml.parsers import expat
 
 from lxml import etree
 import six
 import webob
-from xml.dom import minidom
-from xml.parsers import expat
 
 from cinder import exception
 from cinder import i18n

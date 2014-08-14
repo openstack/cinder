@@ -20,6 +20,7 @@
 """Unit tests for brcd fc zone client cli."""
 
 import mock
+from mock import patch
 
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -28,7 +29,6 @@ from cinder import test
 from cinder.zonemanager.drivers.brocade.brcd_fc_zone_client_cli \
     import BrcdFCZoneClientCLI
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
-from mock import patch
 
 LOG = logging.getLogger(__name__)
 

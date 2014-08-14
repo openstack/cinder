@@ -16,9 +16,8 @@
 #    under the License.
 
 from lxml import etree
-import webob
-
 import mock
+import webob
 
 from cinder.api.contrib import types_extra_specs
 from cinder import exception

@@ -18,10 +18,10 @@ Tests dealing with HTTP rate-limiting.
 """
 
 import httplib
-import six
 from xml.dom import minidom
 
 from lxml import etree
+import six
 import webob
 
 from cinder.api.v1 import limits

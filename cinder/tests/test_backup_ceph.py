@@ -16,11 +16,12 @@
 
 import contextlib
 import hashlib
-import mock
 import os
-import six
 import tempfile
 import uuid
+
+import mock
+import six
 
 from cinder.backup import driver
 from cinder.backup.drivers import ceph

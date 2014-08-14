@@ -17,9 +17,10 @@
 
 
 import math
-import mock
 import os
 import tempfile
+
+import mock
 
 from cinder import db
 from cinder import exception

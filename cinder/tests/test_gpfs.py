@@ -13,10 +13,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import mock
 import os
 import tempfile
 
+import mock
 from oslo.config import cfg
 
 from cinder import context

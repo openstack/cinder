@@ -14,8 +14,9 @@
 #    under the License.
 
 import json
-import mock
 import urllib2
+
+import mock
 
 from cinder import exception
 from cinder.openstack.common import processutils

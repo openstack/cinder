@@ -15,12 +15,13 @@
 
 """Base class for all backup drivers."""
 
+from oslo.config import cfg
+
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
-from oslo.config import cfg
 
 service_opts = [
     cfg.IntOpt('backup_metadata_version', default=1,

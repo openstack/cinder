@@ -16,10 +16,10 @@
 """Unit tests for image utils."""
 
 import contextlib
-import mock
-import mox
 import tempfile
 
+import mock
+import mox
 from oslo.config import cfg
 
 from cinder import context

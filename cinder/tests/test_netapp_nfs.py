@@ -15,12 +15,13 @@
 #    under the License.
 """Unit tests for the NetApp-specific NFS driver module."""
 
+import os
+
 from lxml import etree
 import mock
 import mox
 from mox import IgnoreArg
 from mox import IsA
-import os
 
 from cinder import context
 from cinder import exception

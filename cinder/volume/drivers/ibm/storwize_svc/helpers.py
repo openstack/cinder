@@ -16,10 +16,10 @@
 
 import random
 import re
-import six
 import unicodedata
 
 from eventlet import greenthread
+import six
 
 from cinder import context
 from cinder import exception

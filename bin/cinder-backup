@@ -25,10 +25,9 @@ import warnings
 warnings.simplefilter('once', DeprecationWarning)
 
 import eventlet
+from oslo.config import cfg
 
 eventlet.monkey_patch()
-
-from oslo.config import cfg
 
 # If ../cinder/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...

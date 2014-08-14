@@ -14,7 +14,6 @@
 
 import netaddr
 import requests
-
 import six.moves.urllib.parse as urlparse
 
 from cinder.i18n import _

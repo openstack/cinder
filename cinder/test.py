@@ -21,13 +21,13 @@ inline callbacks.
 
 """
 
+import logging
 import os
 import shutil
 import tempfile
 import uuid
 
 import fixtures
-import logging
 import mox
 from oslo.config import cfg
 from oslo.messaging import conffixture as messaging_conffixture

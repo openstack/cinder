@@ -18,9 +18,9 @@ Tests for Backup code.
 """
 
 import json
-import mock
 from xml.dom import minidom
 
+import mock
 import webob
 
 # needed for stubs to work

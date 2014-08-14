@@ -12,9 +12,10 @@
 
 import uuid
 
-from cinder.openstack.common import log as logging
 from migrate import ForeignKeyConstraint
 from sqlalchemy import Integer, MetaData, String, Table
+
+from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

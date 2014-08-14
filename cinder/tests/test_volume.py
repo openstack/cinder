@@ -20,7 +20,6 @@ Tests for Volume Code.
 
 import contextlib
 import datetime
-import mock
 import os
 import shutil
 import socket
@@ -28,6 +27,7 @@ from sys import platform
 import tempfile
 
 import eventlet
+import mock
 import mox
 from oslo.config import cfg
 from stevedore import extension

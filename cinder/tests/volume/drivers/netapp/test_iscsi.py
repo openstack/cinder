@@ -16,8 +16,9 @@
 Mock unit tests for the NetApp iSCSI driver
 """
 
-import mock
 import uuid
+
+import mock
 
 from cinder import test
 import cinder.volume.drivers.netapp.api as ntapi

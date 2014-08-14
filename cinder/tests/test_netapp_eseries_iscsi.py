@@ -17,8 +17,9 @@ Tests for NetApp e-series iscsi volume driver.
 """
 
 import json
-import mock
 import re
+
+import mock
 import requests
 
 from cinder import exception

@@ -14,9 +14,10 @@
 
 """Unit tests for OpenStack Cinder HP MSA driver."""
 
+import urllib2
+
 import lxml.etree as etree
 import mock
-import urllib2
 
 from cinder import exception
 from cinder import test

@@ -17,9 +17,9 @@ Tests for Backup code.
 
 """
 
-import mock
 import tempfile
 
+import mock
 from oslo.config import cfg
 
 from cinder import context

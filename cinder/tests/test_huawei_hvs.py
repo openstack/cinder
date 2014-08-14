@@ -19,13 +19,13 @@ Unit Tests for Huawei HVS volume drivers.
 """
 
 import json
-import mox
 import os
 import shutil
 import tempfile
 import time
-
 from xml.dom.minidom import Document
+
+import mox
 
 from cinder import exception
 from cinder import test

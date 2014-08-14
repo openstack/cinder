@@ -24,7 +24,6 @@ import re
 import socket
 import threading
 import time
-
 from xml.etree import ElementTree as ET
 
 from cinder import context

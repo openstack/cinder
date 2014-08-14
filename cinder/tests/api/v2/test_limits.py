@@ -18,11 +18,11 @@ Tests dealing with HTTP rate-limiting.
 """
 
 import httplib
+from xml.dom import minidom
 
 from lxml import etree
 import six
 import webob
-from xml.dom import minidom
 
 from cinder.api.v2 import limits
 from cinder.api import views

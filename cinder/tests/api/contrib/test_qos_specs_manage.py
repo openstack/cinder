@@ -14,9 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from lxml import etree
 from xml.dom import minidom
 
+from lxml import etree
 import webob
 
 from cinder.api.contrib import qos_specs_manage

@@ -17,8 +17,9 @@
 
 """Starter script for Cinder Volume."""
 
-import eventlet
 import os
+
+import eventlet
 
 if os.name == 'nt':
     # eventlet monkey patching the os module causes subprocess.Popen to fail

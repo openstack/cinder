@@ -17,7 +17,6 @@ Tests For Volume Number Weigher.
 """
 
 import mock
-
 from oslo.config import cfg
 
 from cinder import context

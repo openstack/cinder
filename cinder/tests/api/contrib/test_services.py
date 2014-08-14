@@ -14,6 +14,8 @@
 #    under the License.
 
 
+from datetime import datetime
+
 import webob.exc
 
 from cinder.api.contrib import services
@@ -25,7 +27,6 @@ from cinder.openstack.common import timeutils
 from cinder import policy
 from cinder import test
 from cinder.tests.api import fakes
-from datetime import datetime
 
 
 fake_services_list = [{'binary': 'cinder-scheduler',
