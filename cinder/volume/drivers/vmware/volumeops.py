@@ -937,6 +937,15 @@ class VMwareVolumeOps(object):
         for root in snapshot.rootSnapshotList:
             return VMwareVolumeOps._get_snapshot_from_tree(name, root)
 
+    def snapshot_exists(self, backing):
+        """Check if the given backing contains snapshots."""
+        snapshot = self._session.invoke_api(vim_util, 'get_object_property',
+                                            self._session.vim, backing,
+                                            'snapshot')
+        if snapshot is None or snapshot.rootSnapshotList is None:
+            return False
+        return len(snapshot.rootSnapshotList) != 0
+
     def delete_snapshot(self, backing, name):
         """Delete a given snapshot from volume backing.
 
@@ -1064,6 +1073,25 @@ class VMwareVolumeOps(object):
                   reconfig_task)
         self._session.wait_for_task(reconfig_task)
         LOG.debug("Backing VM: %s reconfigured with new disk.", backing)
+
+    def rename_backing(self, backing, new_name):
+        """Rename backing VM.
+
+        :param backing: VM to be renamed
+        :param new_name: new VM name
+        """
+        LOG.info(_("Renaming backing VM: %(backing)s to %(new_name)s."),
+                 {'backing': backing,
+                  'new_name': new_name})
+        rename_task = self._session.invoke_api(self._session.vim,
+                                               "Rename_Task",
+                                               backing,
+                                               newName=new_name)
+        LOG.debug("Task: %s created for renaming VM.", rename_task)
+        self._session.wait_for_task(rename_task)
+        LOG.info(_("Backing VM: %(backing)s renamed to %(new_name)s."),
+                 {'backing': backing,
+                  'new_name': new_name})
 
     def delete_file(self, file_path, datacenter=None):
         """Delete file or folder on the datastore.
