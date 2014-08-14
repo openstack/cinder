@@ -18,9 +18,11 @@
 
 """Utilities related to SSH connection management."""
 
-import os.path
+import os
+import string
 
 from eventlet import pools
+from oslo.config import cfg
 import paramiko
 
 from cinder import exception
@@ -28,6 +30,25 @@ from cinder.i18n import _
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
+
+ssh_opts = [
+    cfg.BoolOpt('strict_ssh_host_key_policy',
+                default=False,
+                help='Option to enable strict host key checking.  When '
+                     'set to "True" Cinder will only connect to systems '
+                     'with a host key present in the configured '
+                     '"ssh_hosts_key_file".  When set to "False" the host key '
+                     'will be saved upon first connection and used for '
+                     'subsequent connections.  Default=False'),
+    cfg.StrOpt('ssh_hosts_key_file',
+               default='$state_path/ssh_known_hosts',
+               help='File containing SSH host keys for the systems with which '
+                    'Cinder needs to communicate.  OPTIONAL: '
+                    'Default=$state_path/known_hosts'),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(ssh_opts)
 
 
 class SSHPool(pools.Pool):
@@ -41,24 +62,61 @@ class SSHPool(pools.Pool):
         self.password = password
         self.conn_timeout = conn_timeout if conn_timeout else None
         self.privatekey = privatekey
-        if 'missing_key_policy' in kwargs.keys():
-            self.missing_key_policy = kwargs.pop('missing_key_policy')
-        else:
-            self.missing_key_policy = paramiko.AutoAddPolicy()
+        self.hosts_key_file = None
+
+        # Validate good config setting here.
+        # Paramiko handles the case where the file is inaccessible.
+        if not CONF.ssh_hosts_key_file:
+            raise exception.ParameterNotFound(param='ssh_hosts_key_file')
+        elif not os.path.isfile(CONF.ssh_hosts_key_file):
+            # If using the default path, just create the file.
+            if CONF.state_path in CONF.ssh_hosts_key_file:
+                open(CONF.ssh_hosts_key_file, 'a').close()
+            else:
+                msg = (_("Unable to find ssh_hosts_key_file: %s") %
+                       CONF.ssh_hosts_key_file)
+                raise exception.InvalidInput(reason=msg)
+
         if 'hosts_key_file' in kwargs.keys():
             self.hosts_key_file = kwargs.pop('hosts_key_file')
+            LOG.info(_("Secondary ssh hosts key file %(kwargs)s will be "
+                       "loaded along with %(conf)s from /etc/cinder.conf.") %
+                     {'kwargs': self.hosts_key_file,
+                      'conf': CONF.ssh_hosts_key_file})
+
+        LOG.debug("Setting strict_ssh_host_key_policy to '%(policy)s' "
+                  "using ssh_hosts_key_file '%(key_file)s'." %
+                  {'policy': CONF.strict_ssh_host_key_policy,
+                   'key_file': CONF.ssh_hosts_key_file})
+
+        self.strict_ssh_host_key_policy = CONF.strict_ssh_host_key_policy
+
+        if not self.hosts_key_file:
+            self.hosts_key_file = CONF.ssh_hosts_key_file
         else:
-            self.hosts_key_file = None
+            self.hosts_key_file += ',' + CONF.ssh_hosts_key_file
+
         super(SSHPool, self).__init__(*args, **kwargs)
 
     def create(self):
         try:
             ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(self.missing_key_policy)
-            if not self.hosts_key_file:
-                ssh.load_system_host_keys()
+            if ',' in self.hosts_key_file:
+                files = string.split(self.hosts_key_file, ',')
+                for f in files:
+                    ssh.load_host_keys(f)
             else:
                 ssh.load_host_keys(self.hosts_key_file)
+            # If strict_ssh_host_key_policy is set we want to reject, by
+            # default if there is not entry in the known_hosts file.
+            # Otherwise we use AutoAddPolicy which accepts on the first
+            # Connect but fails if the keys change.  load_host_keys can
+            # handle hashed known_host entries.
+            if self.strict_ssh_host_key_policy:
+                ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
+            else:
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
             if self.password:
                 ssh.connect(self.ip,
                             port=self.port,
