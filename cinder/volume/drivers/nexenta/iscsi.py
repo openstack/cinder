@@ -23,6 +23,7 @@
 """
 
 from cinder import exception
+from cinder.image import image_utils
 from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
@@ -663,7 +664,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return '%(host)s:%(port)s,1 %(name)s 0' % {
             'host': self.restapi_host,
             'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': self.bucket_path + '/' + volume['name']
+            'name': self.configuration.nexenta_target_prefix + '.ccow'
         }
 
     def create_volume(self, volume):
@@ -675,10 +676,16 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: volume reference
         :return: model update dict for volume reference
         """
-        rsp = self.restapi.post('iscsi', {
+        try:
+            rsp = self.restapi.post('iscsi', {
                 'objectPath' : self.bucket_path + '/' + volume['name'],
                 'volSizeMB' : int(volume['size']) * 1024,
+                'blockSize' : 4096,
+                'chunkSize' : 4096
             })
+        except nexenta.NexentaException, e:
+            LOG.error(_('Error while creating volume: %s'), str(e))
+            pass
         return {'provider_location': self._get_provider_location(volume)}
 
     def delete_volume(self, volume):
@@ -757,17 +764,44 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """Disallow connection from connector."""
         pass
 
-    def detach_volume(self, context, volume):
-        """Callback for volume detached."""
-        pass
-
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
-        pass
+        #image_utils.fetch_to_raw(context,
+        #                         image_service,
+        #                         image_id,
+        #                         self.local_path(volume),
+        #                         self.configuration.volume_dd_blocksize,
+        #                         size=volume['size'])
+        #self.create_volume(volume)
+      
+        #image_id is vol.img  && must be our predefined name, else exc
+        #clone /cltest/test/bk1/vol.img -> clone_body.
+        vol_url = self.bucket_url + '/' + self.bucket  + '/objects/' + "vol.img" 
+        clone_body = { 'tenant_name' : self.tenant,
+                      'bucket_name' : self.bucket,
+                      'object_name' : volume['name']
+            }
+        try:
+            rsp = self.restapi.post(vol_url, clone_body)
+            rsp = self.restapi.post('iscsi/-1/resize', {
+                'objectPath' : self.bucket_path + '/' + volume['name'],
+                'newSizeMB' : int(volume['size']) * 1024,
+            })
+        except nexenta.NexentaException, e:
+            LOG.error(_('Error while creating Volume from Image: %s'), str(e))
+            pass
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-        pass
+        image_utils.upload_volume(context,
+                                  image_service,
+                                  image_meta,
+                                  self.local_path(volume))
+
+    def local_path(self, volume):
+        """Return local path to existing local volume.
+        """
+        return self.bucket_url + "/bk1/volumes/" + volume['name']
 
     def clone_image(self, volume, image_location, image_id, image_meta):
         """Create a volume efficiently from an existing image.
