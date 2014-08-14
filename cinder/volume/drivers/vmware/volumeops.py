@@ -17,6 +17,8 @@
 Implements operations on volumes residing on VMware datastores.
 """
 
+import urllib
+
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
@@ -536,9 +538,10 @@ class VMwareVolumeOps(object):
             if child_entity._type != 'Folder':
                 continue
             child_entity_name = self.get_entity_name(child_entity)
-            if child_entity_name == child_folder_name:
-                LOG.debug("Child folder already present: %s." %
-                          child_entity)
+            if child_entity_name and (urllib.unquote(child_entity_name) ==
+                                      child_folder_name):
+                LOG.debug("Child folder: %s already present.",
+                          child_folder_name)
                 return child_entity
 
         # Need to create the child folder

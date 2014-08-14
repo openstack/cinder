@@ -454,6 +454,47 @@ class VolumeOpsTestCase(test.TestCase):
         # Clear side effects.
         self.session.invoke_api.side_effect = None
 
+    def test_create_folder_with_special_characters(self):
+        """Test create_folder with names containing special characters."""
+        # Test folder already exists case.
+        child_entity_1 = mock.Mock(_type='Folder')
+        child_entity_1_name = 'cinder-volumes'
+
+        child_entity_2 = mock.Mock(_type='Folder')
+        child_entity_2_name = '%2fcinder-volumes'
+
+        prop_val = mock.Mock(ManagedObjectReference=[child_entity_1,
+                                                     child_entity_2])
+        self.session.invoke_api.side_effect = [prop_val,
+                                               child_entity_1_name,
+                                               child_entity_2_name]
+
+        parent_folder = mock.sentinel.parent_folder
+        child_name = '/cinder-volumes'
+        ret = self.vops.create_folder(parent_folder, child_name)
+
+        self.assertEqual(child_entity_2, ret)
+
+        # Test non-existing folder case.
+        child_entity_2_name = '%25%25cinder-volumes'
+        new_child_folder = mock.sentinel.new_child_folder
+        self.session.invoke_api.side_effect = [prop_val,
+                                               child_entity_1_name,
+                                               child_entity_2_name,
+                                               new_child_folder]
+
+        child_name = '%cinder-volumes'
+        ret = self.vops.create_folder(parent_folder, child_name)
+
+        self.assertEqual(new_child_folder, ret)
+        self.session.invoke_api.assert_called_with(self.session.vim,
+                                                   'CreateFolder',
+                                                   parent_folder,
+                                                   name=child_name)
+
+        # Reset side effects.
+        self.session.invoke_api.side_effect = None
+
     def test_create_disk_backing_thin(self):
         backing = mock.Mock()
         del backing.eagerlyScrub
