@@ -130,6 +130,21 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'iqn': test_name}]}}
             return result
 
+        elif method is 'ListActiveVolumes':
+            test_name = "existing_volume"
+            result = {'result': {
+                'volumes': [{'volumeID': 5,
+                             'name': test_name,
+                             'accountID': 8,
+                             'sliceCount': 1,
+                             'totalSize': 1 * units.Gi,
+                             'enable512e': True,
+                             'access': "readWrite",
+                             'status': "active",
+                             'attributes': {},
+                             'qos': None,
+                             'iqn': test_name}]}}
+            return result
         else:
             LOG.error('Crap, unimplemented API call in Fake:%s' % method)
 
@@ -572,3 +587,17 @@ class SolidFireVolumeTestCase(test.TestCase):
         sfv._update_cluster_status()
         self.assertEqual(sfv.cluster_stats['free_capacity_gb'], 99.0)
         self.assertEqual(sfv.cluster_stats['total_capacity_gb'], 100.0)
+
+    def test_manage_existing_volume(self):
+        external_ref = {'name': 'existing volume', 'source-id': 5}
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+        self.stubs.Set(SolidFireDriver, '_issue_api_request',
+                       self.fake_issue_api_request)
+        sfv = SolidFireDriver(configuration=self.configuration)
+        model_update = sfv.manage_existing(testvol, external_ref)
+        self.assertIsNotNone(model_update)
+        self.assertIsNone(model_update.get('provider_geometry', None))
