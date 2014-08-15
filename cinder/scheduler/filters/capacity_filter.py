@@ -54,11 +54,17 @@ class CapacityFilter(filters.BaseHostFilter):
             return True
         reserved = float(host_state.reserved_percentage) / 100
         free = math.floor(free_space * (1 - reserved))
+
+        msg_args = {"host": host_state.host,
+                    "requested": volume_size,
+                    "available": free}
         if free < volume_size:
             LOG.warning(_("Insufficient free space for volume creation "
-                          "(requested / avail): "
-                          "%(requested)s/%(available)s")
-                        % {'requested': volume_size,
-                           'available': free})
+                          "on host %(host)s (requested / avail): "
+                          "%(requested)s/%(available)s") % msg_args)
+        else:
+            LOG.debug("Sufficient free space for volume creation "
+                      "on host %(host)s (requested / avail): "
+                      "%(requested)s/%(available)s" % msg_args)
 
         return free >= volume_size

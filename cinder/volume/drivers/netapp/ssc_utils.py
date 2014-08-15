@@ -20,6 +20,8 @@ Storage service catalog utility functions and classes for NetApp systems.
 import copy
 from threading import Timer
 
+import six
+
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
@@ -240,7 +242,7 @@ def create_vol_list(vol_attrs):
             vols.add(vol)
         except KeyError as e:
             LOG.debug('Unexpected error while creating'
-                      ' ssc vol list. Message - %s' % (e.message))
+                      ' ssc vol list. Message - %s' % six.text_type(e))
             continue
     return vols
 

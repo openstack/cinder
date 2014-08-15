@@ -50,10 +50,11 @@ def create_configuration():
 
 
 class FakeVolume(object):
-    def __init__(self, size=0):
+    def __init__(self, host='', size=0):
         self.size = size
         self.id = hash(self)
         self.name = None
+        self.host = host
 
     def __getitem__(self, key):
         return self.__dict__[key]
@@ -110,10 +111,11 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         """Tests volume creation from snapshot."""
         drv = self._driver
         mox = self.mox
-        volume = FakeVolume(1)
+        location = '127.0.0.1:/nfs'
+        host = 'hostname@backend#' + location
+        volume = FakeVolume(host, 1)
         snapshot = FakeSnapshot(1)
 
-        location = '127.0.0.1:/nfs'
         expected_result = {'provider_location': location}
         mox.StubOutWithMock(drv, '_clone_volume')
         mox.StubOutWithMock(drv, '_get_volume_location')
@@ -797,6 +799,10 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         if location != "nfs://host/path/image-id":
             self.fail("Unexpected direct url.")
 
+    def test_get_pool(self):
+        pool = self._driver.get_pool({'provider_location': 'fake-share'})
+        self.assertEqual(pool, 'fake-share')
+
 
 class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
     """Test direct NetApp C Mode driver only and not inherit."""
@@ -820,37 +826,43 @@ class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
         extra_specs = {}
         mock_volume_extra_specs.return_value = extra_specs
         fake_share = 'localhost:myshare'
+        host = 'hostname@backend#' + fake_share
         with mock.patch.object(drv, '_ensure_shares_mounted'):
-            with mock.patch.object(drv, '_find_shares',
-                                   return_value=['localhost:myshare']):
-                with mock.patch.object(drv, '_do_create_volume'):
-                    volume_info = self._driver.create_volume(FakeVolume(1))
-                    self.assertEqual(volume_info.get('provider_location'),
-                                     fake_share)
+            with mock.patch.object(drv, '_do_create_volume'):
+                volume_info = self._driver.create_volume(FakeVolume(host, 1))
+                self.assertEqual(volume_info.get('provider_location'),
+                                 fake_share)
+
+    def test_create_volume_no_pool_specified(self):
+        drv = self._driver
+        drv.ssc_enabled = False
+        host = 'hostname@backend'  # missing pool
+        with mock.patch.object(drv, '_ensure_shares_mounted'):
+            self.assertRaises(exception.InvalidHost,
+                              self._driver.create_volume, FakeVolume(host, 1))
 
     @mock.patch.object(netapp_nfs, 'get_volume_extra_specs')
     def test_create_volume_with_qos_policy(self, mock_volume_extra_specs):
         drv = self._driver
         drv.ssc_enabled = False
         extra_specs = {'netapp:qos_policy_group': 'qos_policy_1'}
-        fake_volume = FakeVolume(1)
         fake_share = 'localhost:myshare'
+        host = 'hostname@backend#' + fake_share
+        fake_volume = FakeVolume(host, 1)
         fake_qos_policy = 'qos_policy_1'
         mock_volume_extra_specs.return_value = extra_specs
 
         with mock.patch.object(drv, '_ensure_shares_mounted'):
-            with mock.patch.object(drv, '_find_shares',
-                                   return_value=['localhost:myshare']):
-                with mock.patch.object(drv, '_do_create_volume'):
-                    with mock.patch.object(drv,
-                                           '_set_qos_policy_group_on_volume'
-                                           ) as mock_set_qos:
-                        volume_info = self._driver.create_volume(fake_volume)
-                        self.assertEqual(volume_info.get('provider_location'),
-                                         'localhost:myshare')
-                        mock_set_qos.assert_called_once_with(fake_volume,
-                                                             fake_share,
-                                                             fake_qos_policy)
+            with mock.patch.object(drv, '_do_create_volume'):
+                with mock.patch.object(drv,
+                                       '_set_qos_policy_group_on_volume'
+                                       ) as mock_set_qos:
+                    volume_info = self._driver.create_volume(fake_volume)
+                    self.assertEqual(volume_info.get('provider_location'),
+                                     'localhost:myshare')
+                    mock_set_qos.assert_called_once_with(fake_volume,
+                                                         fake_share,
+                                                         fake_qos_policy)
 
     def test_copy_img_to_vol_copyoffload_success(self):
         drv = self._driver
@@ -1089,6 +1101,14 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
 
         return mox
 
+    def test_create_volume_no_pool_specified(self):
+        drv = self._driver
+        drv.ssc_enabled = False
+        host = 'hostname@backend'  # missing pool
+        with mock.patch.object(drv, '_ensure_shares_mounted'):
+            self.assertRaises(exception.InvalidHost,
+                              self._driver.create_volume, FakeVolume(host, 1))
+
     def test_check_for_setup_error_version(self):
         drv = self._driver
         drv._client = api.NaServer("127.0.0.1")
@@ -1196,3 +1216,7 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
                 raise
 
         mox.VerifyAll()
+
+    def test_get_pool(self):
+        pool = self._driver.get_pool({'provider_location': 'fake-share'})
+        self.assertEqual(pool, 'fake-share')
