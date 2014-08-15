@@ -511,6 +511,22 @@ class SolidFireVolumeTestCase(test.TestCase):
                                              'new_user', 'new_project'),
                          expected)
 
+    def test_accept_transfer_volume_not_found_raises(self):
+        sfv = SolidFireDriver(configuration=self.configuration)
+        self.stubs.Set(SolidFireDriver, '_issue_api_request',
+                       self.fake_issue_api_request)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'test_volume',
+                   'size': 1,
+                   'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                   'created_at': timeutils.utcnow()}
+        self.assertRaises(exception.VolumeNotFound,
+                          sfv.accept_transfer,
+                          self.ctxt,
+                          testvol,
+                          'new_user',
+                          'new_project')
+
     def test_retype(self):
         sfv = SolidFireDriver(configuration=self.configuration)
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
