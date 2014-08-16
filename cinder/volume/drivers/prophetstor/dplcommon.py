@@ -610,16 +610,19 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             return None
 
     def _get_event_uuid(self, output):
+        ret = 0
         event_uuid = ""
-        if type(output) is not dict:
-            return -1, event_uuid
 
-        if output.get("metadata") and output["metadata"]:
+        if type(output) is dict and \
+                output.get("metadata") and output["metadata"]:
             if output["metadata"].get("event_uuid") and  \
                     output["metadata"]["event_uuid"]:
                 event_uuid = output["metadata"]["event_uuid"]
-                return 0, event_uuid
-        return -1, event_uuid
+            else:
+                ret = errno.EINVAL
+        else:
+            ret = errno.EINVAL
+        return ret, event_uuid
 
     def _wait_event(self, callFun, objuuid, eventid=None):
         nRetry = 30

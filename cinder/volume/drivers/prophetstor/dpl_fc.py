@@ -153,22 +153,27 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
             LOG.error(msg)
             ret = errno.EFAULT
 
-        if ret == 0:
-            ret, event_uuid = self._get_event_uuid(output)
-
         if ret == errno.EAGAIN:
-            status = self._wait_event(
-                self.dpl.get_vdev_status,
-                self._conver_uuid2hex(volumeid), event_uuid)
-            if status['state'] == 'error':
+            ret, event_uuid = self._get_event_uuid(output)
+            if len(event_uuid):
+                ret = 0
+                status = self._wait_event(
+                    self.dpl.get_vdev_status,
+                    self._conver_uuid2hex(volumeid), event_uuid)
+                if status['state'] == 'error':
+                    ret = errno.EFAULT
+                    msg = _('Flexvisor failed to assign volume %(id)s: '
+                            '%(status)s.') % {'id': volumeid,
+                                              'status': status}
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+            else:
                 ret = errno.EFAULT
-                msg = _('Flexvisor failed to assign volume %(id)s: '
-                        '%(status)s.') % {'id': volumeid,
-                                          'status': status}
+                msg = _('Flexvisor failed to assign volume %(id)s due to '
+                        'unable to query status by event '
+                        'id.') % {'id': volumeid}
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            else:
-                ret = 0
         elif ret != 0:
             msg = _('Flexvisor assign volume failed:%(id)s:'
                     '%(status)s.') % {'id': volumeid, 'status': ret}
@@ -185,17 +190,16 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
             targetwwpns, initiatorwwpns)
         if ret == errno.EAGAIN:
             ret, event_uuid = self._get_event_uuid(output)
-            if ret == 0:
+            if ret == 0 and len(event_uuid):
                 status = self._wait_event(
                     self.dpl.get_vdev_status, volumeid, event_uuid)
                 if status['state'] == 'error':
+                    ret = errno.EFAULT
                     msg = _('Flexvisor failed to unassign volume %(id)s:'
                             ' %(status)s.') % {'id': volumeid,
                                                'status': status}
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
-                else:
-                    ret = 0
             else:
                 msg = _('Flexvisor failed to unassign volume (get event) '
                         '%(id)s.') % {'id': volumeid}
