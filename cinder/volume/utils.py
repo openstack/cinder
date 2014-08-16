@@ -224,14 +224,14 @@ def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
     if duration < 1:
         duration = 1
     mbps = (size_in_m / duration)
-    LOG.debug(('Volume copy details: src %(src)s, dest %(dest)s, '
-               'size %(sz).2f MB, duration %(duration).2f sec'),
-              {'src': srcstr,
-               'dest': deststr,
-               'sz': size_in_m,
-               'duration': duration})
-    LOG.info(_('Volume copy %(sz).2f MB at %(mbps).2f MB/s'),
-             {'sz': size_in_m, 'duration': mbps})
+    mesg = ("Volume copy details: src %(src)s, dest %(dest)s, "
+            "size %(sz).2f MB, duration %(duration).2f sec")
+    LOG.debug(mesg % {"src": srcstr,
+                      "dest": deststr,
+                      "sz": size_in_m,
+                      "duration": duration})
+    mesg = _("Volume copy %(size_in_m).2f MB at %(mbps).2f MB/s")
+    LOG.info(mesg % {'size_in_m': size_in_m, 'mbps': mbps})
 
 
 def clear_volume(volume_size, volume_path, volume_clear=None,
