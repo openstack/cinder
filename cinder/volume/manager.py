@@ -1193,9 +1193,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                 return
 
         QUOTAS.commit(context, reservations)
-        self.db.volume_update(context, volume['id'], {'size': int(new_size),
-                                                      'status': 'available'})
+        volume = self.db.volume_update(context,
+                                       volume['id'],
+                                       {'size': int(new_size),
+                                        'status': 'available'})
         self.stats['allocated_capacity_gb'] += size_increase
+
         self._notify_about_volume_usage(
             context, volume, "resize.end",
             extra_usage_info={'size': int(new_size)})
