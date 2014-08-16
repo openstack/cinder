@@ -15,7 +15,10 @@
 
 """Base class for all backup drivers."""
 
+import abc
+
 from oslo.config import cfg
+import six
 
 from cinder.db import base
 from cinder import exception
@@ -241,6 +244,7 @@ class BackupMetadataAPI(base.Base):
                 LOG.debug(msg)
 
 
+@six.add_metaclass(abc.ABCMeta)
 class BackupDriver(base.Base):
 
     def __init__(self, context, db_driver=None):
@@ -254,17 +258,20 @@ class BackupDriver(base.Base):
     def put_metadata(self, volume_id, json_metadata):
         self.backup_meta_api.put(volume_id, json_metadata)
 
+    @abc.abstractmethod
     def backup(self, backup, volume_file, backup_metadata=False):
         """Start a backup of a specified volume."""
-        raise NotImplementedError()
+        return
 
+    @abc.abstractmethod
     def restore(self, backup, volume_id, volume_file):
         """Restore a saved backup."""
-        raise NotImplementedError()
+        return
 
+    @abc.abstractmethod
     def delete(self, backup):
         """Delete a saved backup."""
-        raise NotImplementedError()
+        return
 
     def export_record(self, backup):
         """Export backup record.
@@ -290,6 +297,10 @@ class BackupDriver(base.Base):
         """
         return jsonutils.loads(backup_url.decode("base64"))
 
+
+@six.add_metaclass(abc.ABCMeta)
+class BackupDriverWithVerify(BackupDriver):
+    @abc.abstractmethod
     def verify(self, backup):
         """Verify that the backup exists on the backend.
 
@@ -299,4 +310,4 @@ class BackupDriver(base.Base):
         :param backup: backup id of the backup to verify
         :raises: InvalidBackup, NotImplementedError
         """
-        raise NotImplementedError()
+        return
