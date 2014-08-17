@@ -1126,11 +1126,11 @@ class DBAPIIscsiTargetTestCase(BaseTest):
         self.assertEqual(db.iscsi_target_count_by_host(self.ctxt, 'fake_host'),
                          3)
 
-    @test.testtools.skip("bug 1187367")
     def test_integrity_error(self):
-        db.iscsi_target_create_safe(self.ctxt, self._get_base_values())
-        self.assertFalse(db.iscsi_target_create_safe(self.ctxt,
-                                                     self._get_base_values()))
+        values = self._get_base_values()
+        values['id'] = 1
+        db.iscsi_target_create_safe(self.ctxt, values)
+        self.assertFalse(db.iscsi_target_create_safe(self.ctxt, values))
 
 
 class DBAPIBackupTestCase(BaseTest):
