@@ -26,7 +26,7 @@ import re
 import six.moves.urllib.parse as urlparse
 
 from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import units
+from cinder import units
 
 
 def str2size(s, scale=1024):
