@@ -107,7 +107,7 @@ class DynamicLogListener(base_listener.ListenerBase):
                     self._logger.log(level,
                                      _("Task '%(task_name)s' (%(task_uuid)s)"
                                        " transitioned into state '%(state)s'"
-                                       " with result %(result)s") %
+                                       " with result '%(result)s'") %
                                      {'task_name': details['task_name'],
                                       'task_uuid': details['task_uuid'],
                                       'state': state, 'result': result})
