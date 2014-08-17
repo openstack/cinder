@@ -313,6 +313,11 @@ class StorwizeSSH(object):
         ssh_cmd += [vdisk]
         return self.run_ssh_info(ssh_cmd, with_header=with_header)
 
+    def lsvdisksyncprogress(self, vdisk, copy_id):
+        ssh_cmd = ['svcinfo', 'lsvdisksyncprogress', '-delim', '!',
+                   '-copy', copy_id, vdisk]
+        return self.run_ssh_info(ssh_cmd, with_header=True)[0]
+
     def rmvdiskcopy(self, vdisk, copy_id):
         ssh_cmd = ['svctask', 'rmvdiskcopy', '-copy', copy_id, vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)

@@ -378,6 +378,7 @@ class StorwizeHelpers(object):
         elif protocol.lower() == 'iscsi':
             protocol = 'iSCSI'
 
+        cluster_partner = config.storwize_svc_stretched_cluster_partner
         opt = {'rsize': config.storwize_svc_vol_rsize,
                'warning': config.storwize_svc_vol_warning,
                'autoexpand': config.storwize_svc_vol_autoexpand,
@@ -387,7 +388,9 @@ class StorwizeHelpers(object):
                'protocol': protocol,
                'multipath': config.storwize_svc_multipath_enabled,
                'iogrp': config.storwize_svc_vol_iogrp,
-               'qos': None}
+               'qos': None,
+               'stretched_cluster': cluster_partner,
+               'replication': False}
         return opt
 
     @staticmethod
@@ -467,6 +470,21 @@ class StorwizeHelpers(object):
                 del words[0]
                 value = words[0]
 
+            # We generally do not look at capabilities in the driver, but
+            # replication is a special case where the user asks for
+            # a volume to be replicated, and we want both the scheduler and
+            # the driver to act on the value.
+            if ((not scope or scope == 'capabilities') and
+               key == 'replication'):
+                scope = None
+                key = 'replication'
+                words = value.split()
+                if not (words and len(words) == 2 and words[0] == '<is>'):
+                    LOG.error(_('Replication must be specified as '
+                                '\'<is> True\' or \'<is> False\'.'))
+                del words[0]
+                value = words[0]
+
             # Add the QoS.
             if scope and scope == 'qos':
                 type_fn = self.svc_qos_keys[key]
@@ -528,6 +546,7 @@ class StorwizeHelpers(object):
         if volume_type:
             qos_specs_id = volume_type.get('qos_specs_id')
             specs = dict(volume_type).get('extra_specs')
+
             # NOTE(vhou): We prefer the qos_specs association
             # and over-ride any existing
             # extra-specs settings if present
@@ -543,6 +562,7 @@ class StorwizeHelpers(object):
             qos = self._get_qos_from_volume_metadata(volume_metadata)
             if len(qos) != 0:
                 opts['qos'] = qos
+
         self.check_vdisk_opts(state, opts)
         return opts
 
@@ -581,6 +601,62 @@ class StorwizeHelpers(object):
         """Check if vdisk is defined."""
         attrs = self.get_vdisk_attributes(vdisk_name)
         return attrs is not None
+
+    def find_vdisk_copy_id(self, vdisk, pool):
+        resp = self.ssh.lsvdiskcopy(vdisk)
+        for copy_id, mdisk_grp in resp.select('copy_id', 'mdisk_grp_name'):
+            if mdisk_grp == pool:
+                return copy_id
+        msg = _('Failed to find a vdisk copy in the expected pool.')
+        LOG.error(msg)
+        raise exception.VolumeDriverException(message=msg)
+
+    def get_vdisk_copy_attrs(self, vdisk, copy_id):
+        return self.ssh.lsvdiskcopy(vdisk, copy_id=copy_id)[0]
+
+    def get_vdisk_copies(self, vdisk):
+        copies = {'primary': None,
+                  'secondary': None}
+
+        resp = self.ssh.lsvdiskcopy(vdisk)
+        for copy_id, status, sync, primary, mdisk_grp in \
+            resp.select('copy_id', 'status', 'sync',
+                        'primary', 'mdisk_grp_name'):
+            copy = {'copy_id': copy_id,
+                    'status': status,
+                    'sync': sync,
+                    'primary': primary,
+                    'mdisk_grp_name': mdisk_grp,
+                    'sync_progress': None}
+            if copy['sync'] != 'yes':
+                progress_info = self.ssh.lsvdisksyncprogress(vdisk, copy_id)
+                copy['sync_progress'] = progress_info['progress']
+            if copy['primary'] == 'yes':
+                copies['primary'] = copy
+            else:
+                copies['secondary'] = copy
+        return copies
+
+    def check_copy_ok(self, vdisk, pool, copy_type):
+        try:
+            copy_id = self.find_vdisk_copy_id(vdisk, pool)
+            attrs = self.get_vdisk_copy_attrs(vdisk, copy_id)
+        except (exception.VolumeBackendAPIException,
+                exception.VolumeDriverException):
+            extended = ('No %(type)s copy in pool %(pool)s' %
+                        {'type': copy_type, 'pool': pool})
+            return ('error', extended)
+        if attrs['status'] != 'online':
+            extended = 'The %s copy is offline' % copy_type
+            return ('error', extended)
+        if copy_type == 'secondary':
+            if attrs['sync'] == 'yes':
+                return ('active', None)
+            else:
+                progress_info = self.ssh.lsvdisksyncprogress(vdisk, copy_id)
+                extended = 'progress: %s%%' % progress_info['progress']
+                return ('copying', extended)
+        return (None, None)
 
     def _prepare_fc_map(self, fc_map_id, timeout):
         self.ssh.prestartfcmap(fc_map_id)
@@ -720,7 +796,8 @@ class StorwizeHelpers(object):
         self.ssh.rmvdisk(vdisk, force=force)
         LOG.debug('leave: delete_vdisk: vdisk %s' % vdisk)
 
-    def create_copy(self, src, tgt, src_id, config, opts, full_copy):
+    def create_copy(self, src, tgt, src_id, config, opts,
+                    full_copy, pool=None):
         """Create a new snapshot using FlashCopy."""
         LOG.debug('enter: create_copy: snapshot %(src)s to %(tgt)s' %
                   {'tgt': tgt, 'src': src})
@@ -733,7 +810,9 @@ class StorwizeHelpers(object):
             raise exception.VolumeDriverException(message=msg)
 
         src_size = src_attrs['capacity']
-        pool = config.storwize_svc_volpool_name
+        # In case we need to use a specific pool
+        if not pool:
+            pool = config.storwize_svc_volpool_name
         self.create_vdisk(tgt, src_size, 'b', pool, opts)
         timeout = config.storwize_svc_flashcopy_timeout
         try:
@@ -850,3 +929,6 @@ class StorwizeHelpers(object):
 
     def rename_vdisk(self, vdisk, new_name):
         self.ssh.chvdisk(vdisk, ['-name', new_name])
+
+    def change_vdisk_primary_copy(self, vdisk, copy_id):
+        self.ssh.chvdisk(vdisk, ['-primary', copy_id])
