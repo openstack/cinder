@@ -269,7 +269,7 @@ class DPLVolume(object):
                              url, params,
                              [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
 
-    def delete_vdev(self, volumeID, force=False):
+    def delete_vdev(self, volumeID, force=True):
         method = 'DELETE'
         metadata = {}
         params = {}
