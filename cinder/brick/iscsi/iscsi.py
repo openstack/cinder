@@ -18,7 +18,6 @@ Helper code for the iSCSI volume driver.
 
 """
 
-import contextlib
 import os
 import re
 import stat
@@ -30,7 +29,7 @@ from cinder.i18n import _
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
-
+from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -346,28 +345,6 @@ class IetAdm(TargetAdmin):
         else:
             return self.iscsi_iotype
 
-    @contextlib.contextmanager
-    def temporary_chown(self, path, owner_uid=None):
-        """Temporarily chown a path.
-
-        :params path: The path to chown
-        :params owner_uid: UID of temporary owner (defaults to current user)
-        """
-        if owner_uid is None:
-            owner_uid = os.getuid()
-
-        orig_uid = os.stat(path).st_uid
-
-        if orig_uid != owner_uid:
-            putils.execute('chown', owner_uid, path,
-                           root_helper=self._root_helper, run_as_root=True)
-        try:
-            yield
-        finally:
-            if orig_uid != owner_uid:
-                putils.execute('chown', orig_uid, path,
-                               root_helper=self._root_helper, run_as_root=True)
-
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
 
@@ -389,7 +366,7 @@ class IetAdm(TargetAdmin):
                             Lun 0 Path=%s,Type=%s
                 """ % (name, chap_auth, path, self._iotype(path))
 
-                with self.temporary_chown(conf_file):
+                with utils.temporary_chown(conf_file):
                     f = open(conf_file, 'a+')
                     f.write(volume_conf)
                     f.close()
@@ -408,7 +385,7 @@ class IetAdm(TargetAdmin):
         vol_uuid_file = vol_name
         conf_file = self.iet_conf
         if os.path.exists(conf_file):
-            with self.temporary_chown(conf_file):
+            with utils.temporary_chown(conf_file):
                 try:
                     iet_conf_text = open(conf_file, 'r+')
                     full_txt = iet_conf_text.readlines()
