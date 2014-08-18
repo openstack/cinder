@@ -472,6 +472,18 @@ class TemplateTest(test.TestCase):
         self.assertEqual(len(siblings), 1)
         self.assertEqual(siblings[0], elem)
 
+    def test__splitTagName(self):
+        test_cases = [
+            ('a', ['a']),
+            ('a:b', ['a', 'b']),
+            ('{http://test.com}a:b', ['{http://test.com}a', 'b']),
+            ('a:b{http://test.com}:c', ['a', 'b{http://test.com}', 'c']),
+        ]
+
+        for test_case, expected in test_cases:
+            result = xmlutil.TemplateElement._splitTagName(test_case)
+            self.assertEqual(expected, result)
+
     def test__nsmap(self):
         # Set up a basic template
         elem = xmlutil.TemplateElement('test')

@@ -14,6 +14,7 @@
 #    under the License.
 
 import os.path
+import re
 
 from lxml import etree
 
@@ -28,6 +29,8 @@ XMLNS_ATOM = 'http://www.w3.org/2005/Atom'
 XMLNS_VOLUME_V1 = 'http://docs.openstack.org/volume/api/v1'
 XMLNS_VOLUME_V2 = ('http://docs.openstack.org/api/openstack-volume/2.0/'
                    'content')
+
+_split_pattern = re.compile(r'([^:{]*{[^}]*}[^:]*|[^:]+)')
 
 
 def validate_schema(xml, schema_name):
@@ -356,6 +359,10 @@ class TemplateElement(object):
                 pass
         return tmpattrib
 
+    @staticmethod
+    def _splitTagName(name):
+        return _split_pattern.findall(name)
+
     def _render(self, parent, datum, patches, nsmap):
         """Internal rendering.
 
@@ -382,7 +389,7 @@ class TemplateElement(object):
         else:
             tmpattrib = {}
 
-        tagnameList = tagname.split(':')
+        tagnameList = self._splitTagName(tagname)
         insertIndex = 0
 
         #If parent is not none and has same tagname
