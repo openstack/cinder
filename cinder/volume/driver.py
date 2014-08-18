@@ -165,13 +165,13 @@ class VolumeDriver(object):
        intended that these drivers ONLY implement Control Path
        details (create, delete, extend...), while transport or
        data path related implementation should be a *member object*
-       that we call a connector.  The point here is that for example
+       that we call a target.  The point here is that for example
        don't allow the LVM driver to implement iSCSI methods, instead
        call whatever connector it has configued via conf file
        (iSCSI{LIO, TGT, IET}, FC, etc).
 
        In the base class and for example the LVM driver we do this via a has-a
-       relationship and just provide an interface to the specific connector
+       relationship and just provide an interface to the specific target
        methods.  How you do this in your own driver is of course up to you.
     """
 
