@@ -79,14 +79,15 @@ def convert_image(source, dest, out_format, bps_limit=None):
         duration = 1
     fsz_mb = os.stat(source).st_size / units.Mi
     mbps = (fsz_mb / duration)
-    LOG.debug('Image conversion details: src %(src)s, size %(sz).2f MB, '
-              'duration %(duration).2f, destination %(dest)s',
-              {'src': source,
-               'sz': fsz_mb,
-               'duration': duration,
-               'dest': dest})
-    LOG.info(_('Converted %(sz).2f MB image at %(mbps).2f MB/s'),
-             {'sz': fsz_mb, 'mbps': mbps})
+    msg = ("Image conversion details: src %(src)s, size %(sz).2f MB, "
+           "duration %(duration).2f sec, destination %(dest)s")
+    LOG.debug(msg % {"src": source,
+                     "sz": fsz_mb,
+                     "duration": duration,
+                     "dest": dest})
+
+    msg = _("Converted %(sz).2f MB image at %(mbps).2f MB/s")
+    LOG.info(msg % {"sz": fsz_mb, "mbps": mbps})
 
 
 def resize_image(source, size, run_as_root=False):
@@ -112,11 +113,13 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
         duration = 1
     fsz_mb = os.stat(image_file.name).st_size / units.Mi
     mbps = (fsz_mb / duration)
-    LOG.debug('Image fetch details: dest %(dest)s, size %(sz).2f MB, '
-              'duration %(duration).2f sec',
-              {'dest:': image_file.name, 'sz': fsz_mb, 'duration': duration})
-    LOG.info(_('Image download %(sz).2f MB at %(mbps).2f MB/s'),
-             {'sz': fsz_mb, 'mbps': mbps})
+    msg = ("Image fetch details: dest %(dest)s, size %(sz).2f MB, "
+           "duration %(duration).2f sec")
+    LOG.debug(msg % {"dest": image_file.name,
+                     "sz": fsz_mb,
+                     "duration": duration})
+    msg = _("Image download %(sz).2f MB at %(mbps).2f MB/s")
+    LOG.info(msg % {"sz": fsz_mb, "mbps": mbps})
 
 
 def fetch_verify_image(context, image_service, image_id, dest,
