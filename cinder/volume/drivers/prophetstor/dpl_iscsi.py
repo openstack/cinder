@@ -44,18 +44,26 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
         ret, output = self.dpl.assign_vdev(self._conver_uuid2hex(
             volume['id']), connector['initiator'].lower(), volume['id'],
             '%s:%d' % (dpl_server, dpl_iscsi_port), 0)
-        if ret == 0:
-            ret, event_uuid = self._get_event_uuid(output)
 
         if ret == errno.EAGAIN:
-            status = self._wait_event(
-                self.dpl.get_vdev_status, self._conver_uuid2hex(
-                    volume['id']), event_uuid)
-            if status['state'] == 'error':
+            ret, event_uuid = self._get_event_uuid(output)
+            if len(event_uuid):
+                ret = 0
+                status = self._wait_event(
+                    self.dpl.get_vdev_status, self._conver_uuid2hex(
+                        volume['id']), event_uuid)
+                if status['state'] == 'error':
+                    ret = errno.EFAULT
+                    msg = _('Flexvisor failed to assign volume %(id)s: '
+                            '%(status)s.') % {'id': volume['id'],
+                                              'status': status}
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+            else:
                 ret = errno.EFAULT
-                msg = _('Flexvisor failed to assign volume %(id)s: '
-                        '%(status)s.') % {'id': volume['id'],
-                                          'status': status}
+                msg = _('Flexvisor failed to assign volume %(id)s due to '
+                        'unable to query status by event '
+                        'id.') % {'id': volume['id']}
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret != 0:
