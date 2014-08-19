@@ -4,7 +4,7 @@
     "admin_or_owner":  [["is_admin:True"], ["project_id:%(project_id)s"]],
 
     "volume:create": [],
-    "volume:get": [],
+    "volume:get": [["rule:admin_or_owner"]],
     "volume:get_all": [],
     "volume:get_volume_metadata": [],
     "volume:delete_volume_metadata": [],
