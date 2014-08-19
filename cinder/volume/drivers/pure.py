@@ -123,11 +123,11 @@ class PureISCSIDriver(san.SanISCSIDriver):
         try:
             self._array.destroy_volume(vol_name)
         except exception.PureAPIException as err:
-            with excutils.save_and_reraise_exception as ctxt:
+            with excutils.save_and_reraise_exception() as ctxt:
                 if err.kwargs["code"] == 400:
-                    # This happens if the volume does not exist.
+                    # Happens if the volume does not exist.
                     ctxt.reraise = False
-                    LOG.error(_("Disconnection failed with message: {}"
+                    LOG.error(_("Volume deletion failed with message: {0}"
                                 ).format(err.msg))
         LOG.debug("Leave PureISCSIDriver.delete_volume.")
 
@@ -145,11 +145,11 @@ class PureISCSIDriver(san.SanISCSIDriver):
         try:
             self._array.destroy_volume(snap_name)
         except exception.PureAPIException as err:
-            with excutils.save_and_reraise_exception as ctxt:
+            with excutils.save_and_reraise_exception() as ctxt:
                 if err.kwargs["code"] == 400:
-                    # This happens if the snapshot does not exist.
+                    # Happens if the snapshot does not exist.
                     ctxt.reraise = False
-                    LOG.error(_("Disconnection failed with message: {}"
+                    LOG.error(_("Snapshot deletion failed with message: {0}"
                                 ).format(err.msg))
         LOG.debug("Leave PureISCSIDriver.delete_snapshot.")
 
@@ -223,16 +223,21 @@ class PureISCSIDriver(san.SanISCSIDriver):
         """Terminate connection."""
         LOG.debug("Enter PureISCSIDriver.terminate_connection.")
         vol_name = _get_vol_name(volume)
+        message = _("Disconnection failed with message: {0}")
         try:
             host_name = self._get_host_name(connector)
-            self._array.disconnect_host(host_name, vol_name)
-        except exception.PureAPIException as err:
-            with excutils.save_and_reraise_exception as ctxt:
-                if err.kwargs["code"] == 400:
-                    # This happens if the host and volume are not connected
-                    ctxt.reraise = False
-                    LOG.error(_("Disconnection failed with message: {}"
-                                ).format(err.msg))
+        except exception.PureDriverException as err:
+            # Happens if the host object is missing.
+            LOG.error(message.format(err.msg))
+        else:
+            try:
+                self._array.disconnect_host(host_name, vol_name)
+            except exception.PureAPIException as err:
+                with excutils.save_and_reraise_exception() as ctxt:
+                    if err.kwargs["code"] == 400:
+                        # Happens if the host and volume are not connected.
+                        ctxt.reraise = False
+                        LOG.error(message.format(err.msg))
         LOG.debug("Leave PureISCSIDriver.terminate_connection.")
 
     def get_volume_stats(self, refresh=False):

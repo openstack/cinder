@@ -185,6 +185,10 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.driver.delete_volume(VOLUME)
         expected = [mock.call.destroy_volume(vol_name)]
         self.array.assert_has_calls(expected)
+        self.array.destroy_volume.side_effect = exception.PureAPIException(
+            code=400, reason="reason")
+        self.driver.delete_snapshot(SNAPSHOT)
+        self.array.destroy_volume.side_effect = None
         self.assert_error_propagates([self.array.destroy_volume],
                                      self.driver.delete_volume, VOLUME)
 
@@ -201,6 +205,10 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.driver.delete_snapshot(SNAPSHOT)
         expected = [mock.call.destroy_volume(snap_name)]
         self.array.assert_has_calls(expected)
+        self.array.destroy_volume.side_effect = exception.PureAPIException(
+            code=400, reason="reason")
+        self.driver.delete_snapshot(SNAPSHOT)
+        self.array.destroy_volume.side_effect = None
         self.assert_error_propagates([self.array.destroy_volume],
                                      self.driver.delete_snapshot, SNAPSHOT)
 
@@ -289,6 +297,15 @@ class PureISCSIDriverTestCase(test.TestCase):
         mock_host.return_value = HOST_NAME
         self.driver.terminate_connection(VOLUME, CONNECTOR)
         self.array.disconnect_host.assert_called_with(HOST_NAME, vol_name)
+        self.array.disconnect_host.side_effect = exception.PureAPIException(
+            code=400, reason="reason")
+        self.driver.terminate_connection(VOLUME, CONNECTOR)
+        self.array.disconnect_host.assert_called_with(HOST_NAME, vol_name)
+        self.array.disconnect_host.side_effect = None
+        self.array.disconnect_host.reset_mock()
+        mock_host.side_effect = exception.PureDriverException(reason="reason")
+        self.assertFalse(self.array.disconnect_host.called)
+        mock_host.side_effect = None
         self.assert_error_propagates(
             [self.array.disconnect_host],
             self.driver.terminate_connection, VOLUME, CONNECTOR)
