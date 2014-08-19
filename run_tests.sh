@@ -14,6 +14,7 @@ function usage {
   echo "  -f, --force                 Force a clean re-build of the virtual environment. Useful when dependencies have been added."
   echo "  -u, --update                Update the virtual environment with any newer package versions"
   echo "  -p, --pep8                  Just run PEP8 and HACKING compliance check"
+  echo "  -8, --pep8-only-changed Just run PEP8 and HACKING compliance check on files changed since HEAD~1"
   echo "  -P, --no-pep8               Don't run static code checks"
   echo "  -c, --coverage              Generate coverage report"
   echo "  -d, --debug                 Run tests with testtools instead of testr. This allows you to use the debugger."
@@ -47,6 +48,7 @@ function process_options {
       -f|--force) force=1;;
       -u|--update) update=1;;
       -p|--pep8) just_pep8=1;;
+      -8|--pep8-only-changed) just_pep8_changed=1;;
       -P|--no-pep8) no_pep8=1;;
       -c|--coverage) coverage=1;;
       -d|--debug) debug=1;;
@@ -86,6 +88,7 @@ testrargs=
 testropts=
 wrapper=""
 just_pep8=0
+just_pep8_changed=0
 no_pep8=0
 coverage=0
 debug=0
@@ -172,12 +175,16 @@ function copy_subunit_log {
   cp $LOGNAME subunit.log
 }
 
+function warn_on_flake8_without_venv {
+  if [ $never_venv -eq 1 ]; then
+    echo "**WARNING**:"
+    echo "Running flake8 without virtual env may miss OpenStack HACKING detection"
+  fi
+}
+
 function run_pep8 {
   echo "Running flake8 ..."
-  if [ $never_venv -eq 1 ]; then
-      echo "**WARNING**:"
-      echo "Running flake8 without virtual env may miss OpenStack HACKING detection"
-  fi
+  warn_on_flake8_without_venv
   bash -c "${wrapper} flake8 cinder* bin/*"
 }
 
@@ -227,6 +234,20 @@ fi
 
 if [ $recreate_db -eq 1 ]; then
     rm -f tests.sqlite
+fi
+
+if [ $just_pep8_changed -eq 1 ]; then
+    # NOTE(gilliard) We want to use flake8 to check the
+    # entirety of every file that has a change in it.
+    # Unfortunately the --filenames argument to flake8 only accepts
+    # file *names* and there are no files named (eg) "nova/compute/manager.py". The
+    # --diff argument behaves surprisingly as well, because although you feed it a
+    # diff, it actually checks the file on disk anyway.
+    files=$(git diff --name-only HEAD~1 | tr '\n' ' ')
+    echo "Running flake8 on ${files}"
+    warn_on_flake8_without_venv
+    bash -c "diff -u --from-file /dev/null ${files} | ${wrapper} flake8 --diff"
+    exit
 fi
 
 run_tests
