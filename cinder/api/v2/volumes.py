@@ -167,7 +167,7 @@ class VolumeController(wsgi.Controller):
 
         try:
             vol = self.volume_api.get(context, id, viewable_admin_meta=True)
-            req.cache_resource(vol)
+            req.cache_db_volume(vol)
         except exception.NotFound:
             msg = _("Volume could not be found")
             raise exc.HTTPNotFound(explanation=msg)
@@ -238,12 +238,12 @@ class VolumeController(wsgi.Controller):
             utils.add_visible_admin_metadata(volume)
 
         limited_list = common.limited(volumes, req)
+        req.cache_db_volumes(limited_list)
 
         if is_detail:
             volumes = self._view_builder.detail_list(req, limited_list)
         else:
             volumes = self._view_builder.summary_list(req, limited_list)
-        req.cache_resource(limited_list)
         return volumes
 
     def _image_uuid_from_href(self, image_href):

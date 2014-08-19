@@ -19,7 +19,6 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder.openstack.common import log as logging
-from cinder import volume
 
 
 LOG = logging.getLogger(__name__)
@@ -29,18 +28,8 @@ authorize = extensions.soft_extension_authorizer(
 
 
 class ExtendedSnapshotAttributesController(wsgi.Controller):
-    def __init__(self, *args, **kwargs):
-        super(ExtendedSnapshotAttributesController, self).__init__(*args,
-                                                                   **kwargs)
-        self.volume_api = volume.API()
-
-    def _get_snapshots(self, context):
-        snapshots = self.volume_api.get_all_snapshots(context)
-        rval = dict((snapshot['id'], snapshot) for snapshot in snapshots)
-        return rval
-
     def _extend_snapshot(self, req, resp_snap):
-        db_snap = req.cached_resource_by_id(resp_snap['id'])
+        db_snap = req.get_db_snapshot(resp_snap['id'])
         for attr in ['project_id', 'progress']:
             key = "%s:%s" % (Extended_snapshot_attributes.alias, attr)
             resp_snap[key] = db_snap[attr]

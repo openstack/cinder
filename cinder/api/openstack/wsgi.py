@@ -131,6 +131,86 @@ class Request(webob.Request):
             return None
         return resources.get(resource_id)
 
+    def cache_db_items(self, key, items, item_key='id'):
+        """Allow API methods to store objects from a DB query to be
+        used by API extensions within the same API request.
+
+        An instance of this class only lives for the lifetime of a
+        single API request, so there's no need to implement full
+        cache management.
+        """
+        self.cache_resource(items, item_key, key)
+
+    def get_db_items(self, key):
+        """Allow an API extension to get previously stored objects within
+        the same API request.
+
+        Note that the object data will be slightly stale.
+        """
+        return self.cached_resource(key)
+
+    def get_db_item(self, key, item_key):
+        """Allow an API extension to get a previously stored object
+        within the same API request.
+
+        Note that the object data will be slightly stale.
+        """
+        return self.get_db_items(key).get(item_key)
+
+    def cache_db_volumes(self, volumes):
+        # NOTE(mgagne) Cache it twice for backward compatibility reasons
+        self.cache_db_items('volumes', volumes, 'id')
+        self.cache_db_items(self.path, volumes, 'id')
+
+    def cache_db_volume(self, volume):
+        # NOTE(mgagne) Cache it twice for backward compatibility reasons
+        self.cache_db_items('volumes', [volume], 'id')
+        self.cache_db_items(self.path, [volume], 'id')
+
+    def get_db_volumes(self):
+        return (self.get_db_items('volumes') or
+                self.get_db_items(self.path))
+
+    def get_db_volume(self, volume_id):
+        return (self.get_db_item('volumes', volume_id) or
+                self.get_db_item(self.path, volume_id))
+
+    def cache_db_volume_types(self, volume_types):
+        self.cache_db_items('volume_types', volume_types, 'id')
+
+    def cache_db_volume_type(self, volume_type):
+        self.cache_db_items('volume_types', [volume_type], 'id')
+
+    def get_db_volume_types(self):
+        return self.get_db_items('volume_types')
+
+    def get_db_volume_type(self, volume_type_id):
+        return self.get_db_item('volume_types', volume_type_id)
+
+    def cache_db_snapshots(self, snapshots):
+        self.cache_db_items('snapshots', snapshots, 'id')
+
+    def cache_db_snapshot(self, snapshot):
+        self.cache_db_items('snapshots', [snapshot], 'id')
+
+    def get_db_snapshots(self):
+        return self.get_db_items('snapshots')
+
+    def get_db_snapshot(self, snapshot_id):
+        return self.get_db_item('snapshots', snapshot_id)
+
+    def cache_db_backups(self, backups):
+        self.cache_db_items('backups', backups, 'id')
+
+    def cache_db_backup(self, backup):
+        self.cache_db_items('backups', [backup], 'id')
+
+    def get_db_backups(self):
+        return self.get_db_items('backups')
+
+    def get_db_backup(self, backup_id):
+        return self.get_db_item('backups', backup_id)
+
     def best_match_content_type(self):
         """Determine the requested response content-type."""
         if 'cinder.best_content_type' not in self.environ:
