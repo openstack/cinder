@@ -107,6 +107,7 @@ class SnapshotsController(wsgi.Controller):
 
         try:
             vol = self.volume_api.get_snapshot(context, id)
+            req.cache_resource(vol)
         except exception.NotFound:
             msg = _("Snapshot could not be found")
             raise exc.HTTPNotFound(explanation=msg)
@@ -160,6 +161,7 @@ class SnapshotsController(wsgi.Controller):
         snapshots = self.volume_api.get_all_snapshots(context,
                                                       search_opts=search_opts)
         limited_list = common.limited(snapshots, req)
+        req.cache_resource(limited_list)
         res = [entity_maker(context, snapshot) for snapshot in limited_list]
         return {'snapshots': res}
 

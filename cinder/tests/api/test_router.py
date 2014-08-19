@@ -32,10 +32,12 @@ class FakeController(object):
         self.ext_mgr = ext_mgr
 
     def index(self, req):
-        return {}
+        obj_type = req.path.split("/")[3]
+        return {obj_type: []}
 
     def detail(self, req):
-        return {}
+        obj_type = req.path.split("/")[3]
+        return {obj_type: []}
 
 
 def create_resource(ext_mgr):
