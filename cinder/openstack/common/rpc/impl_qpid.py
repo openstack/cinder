@@ -407,6 +407,10 @@ class Connection(object):
         self.brokers = params['qpid_hosts']
         self.username = params['username']
         self.password = params['password']
+
+        brokers_count = len(self.brokers)
+        self.next_broker_indices = itertools.cycle(range(brokers_count))
+
         self.connection_create(self.brokers[0])
         self.reconnect()
 
@@ -434,7 +438,6 @@ class Connection(object):
 
     def reconnect(self):
         """Handles reconnecting and re-establishing sessions and queues"""
-        attempt = 0
         delay = 1
         while True:
             # Close the session if necessary
@@ -444,8 +447,7 @@ class Connection(object):
                 except qpid_exceptions.MessagingError:
                     pass
 
-            broker = self.brokers[attempt % len(self.brokers)]
-            attempt += 1
+            broker = self.brokers[next(self.next_broker_indices)]
 
             try:
                 self.connection_create(broker)
