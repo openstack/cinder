@@ -1062,6 +1062,31 @@ class VolumeOpsTestCase(test.TestCase):
         backing.__class__.__name__ = ' VirtualDiskSparseVer2BackingInfo'
         self.assertRaises(AssertionError, self.vops.get_vmdk_path, backing)
 
+        # Test with no disk device.
+        invoke_api.return_value = []
+        self.assertRaises(error_util.VirtualDiskNotFoundException,
+                          self.vops.get_vmdk_path,
+                          backing)
+
+    def test_get_disk_size(self):
+        # Test with valid disk device.
+        device = mock.Mock()
+        device.__class__.__name__ = 'VirtualDisk'
+        disk_size_bytes = 1024
+        device.capacityInKB = disk_size_bytes / units.Ki
+        invoke_api = self.session.invoke_api
+        invoke_api.return_value = [device]
+
+        self.assertEqual(disk_size_bytes,
+                         self.vops.get_disk_size(mock.sentinel.backing))
+
+        # Test with no disk device.
+        invoke_api.return_value = []
+
+        self.assertRaises(error_util.VirtualDiskNotFoundException,
+                          self.vops.get_disk_size,
+                          mock.sentinel.backing)
+
     def test_create_virtual_disk(self):
         task = mock.Mock()
         invoke_api = self.session.invoke_api
