@@ -54,7 +54,7 @@ class ContextTestCase(test.TestCase):
                           'read_deleted',
                           True)
 
-    def test_service_catalog_nova_only(self):
+    def test_service_catalog_nova_and_swift(self):
         service_catalog = [
             {u'type': u'compute', u'name': u'nova'},
             {u'type': u's3', u'name': u's3'},
@@ -67,9 +67,16 @@ class ContextTestCase(test.TestCase):
             {u'type': u'co', u'name': u'S_partofcompute'}]
 
         compute_catalog = [{u'type': u'compute', u'name': u'nova'}]
+        object_catalog = [{u'name': u'swift', u'type': u'object-store'}]
         ctxt = context.RequestContext('111', '222',
                                       service_catalog=service_catalog)
-        self.assertEqual(ctxt.service_catalog, compute_catalog)
+        self.assertEqual(len(ctxt.service_catalog), 2)
+        return_compute = [v for v in ctxt.service_catalog if
+                          v['type'] == u'compute']
+        return_object = [v for v in ctxt.service_catalog if
+                         v['type'] == u'object-store']
+        self.assertEqual(return_compute, compute_catalog)
+        self.assertEqual(return_object, object_catalog)
 
     def test_user_identity(self):
         ctx = context.RequestContext("user", "tenant",

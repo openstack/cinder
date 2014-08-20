@@ -404,7 +404,13 @@
 #
 
 # The URL of the Swift endpoint (string value)
-#backup_swift_url=http://localhost:8080/v1/AUTH_
+#backup_swift_url=<None>
+
+# Info to match when looking for swift in the service catalog.
+# Format is: separated values of the form:
+# <service_type>:<service_name>:<endpoint_type> - Only used if
+# backup_swift_url is unset (string value)
+#swift_catalog_info=object-store:swift:publicURL
 
 # Swift authentication mechanism (string value)
 #backup_swift_auth=per_user
