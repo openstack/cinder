@@ -106,12 +106,12 @@ class SnapshotsController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         try:
-            vol = self.volume_api.get_snapshot(context, id)
-            req.cache_resource(vol)
+            snapshot = self.volume_api.get_snapshot(context, id)
+            req.cache_resource(snapshot)
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
-        return {'snapshot': _translate_snapshot_detail_view(context, vol)}
+        return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
 
     def delete(self, req, id):
         """Delete a snapshot."""
