@@ -32,6 +32,8 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 import urllib
+import pprint
+import time
 
 LOG = logging.getLogger(__name__)
 
@@ -678,6 +680,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: volume reference
         :return: model update dict for volume reference
         """
+        LOG.info('create_volume - ENTER')
         try:
             rsp = self.restapi.post('iscsi', {
                 'objectPath' : self.bucket_path + '/' + volume['name'],
@@ -696,6 +699,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
+        LOG.info('delete_volume - ENTER')
         try:
             rsp = self.restapi.get('iscsi', {
                     'objectPath' : self.bucket_path + '/' + volume['name']
@@ -707,6 +711,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
+        LOG.info('create_volume_from_snapshot - ENTER')
         snap_url = self.bucket_url + '/' + self.bucket + \
             '/snapviews/' + snapshot['volume_name'] + \
             '.snapview/snapshots/' + snapshot['name']
@@ -714,12 +719,23 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                       'ss_bucket' : self.bucket,
                       'ss_object' : volume['name']
             }
-        LOG.info(_('create_volume_from_snapshot - enter %s'), snap_url)
         rsp = self.restapi.post(snap_url, snap_body)
+
+        try:
+            rsp = self.restapi.post('iscsi', {
+                'objectPath' : self.bucket_path + '/' + volume['name'],
+                'volSizeMB' : int(snapshot['volume_size']) * 1024,
+                'blockSize' : 4096,
+                'chunkSize' : 4096
+            })
+        except nexenta.NexentaException, e:
+            LOG.error(_('Error while creating volume: %s'), str(e))
+            return
+        LOG.info(_('create_volume_from_snapshot - ENTER %s'), snap_url)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        LOG.info(_('create_snapshot - enter %s, %s'), snapshot['volume_name'], snapshot['name'])
+        LOG.info(_('create_snapshot - ENTER %s, %s'), snapshot['volume_name'], snapshot['name'])
         snap_url = self.bucket_url + '/' + self.bucket + \
             '/snapviews/' + snapshot['volume_name'] + '.snapview'
         snap_body = { 'ss_bucket' : self.bucket,
@@ -730,8 +746,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
+        LOG.info('delete_snapshot - ENTER')
         try:
-            rsp = self.restapi.post(self.bucket_url + '/snapviews/' + \
+            rsp = self.restapi.post(self.bucket_url + '/' + self.bucket + '/snapviews/' + \
                 snapshot['volume_name'] + '.snapview/snapshots/' + snapshot['name'] \
                 )
         except nexenta.NexentaException, e:
@@ -760,6 +777,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
+        LOG.info('initialize_connection - ENTER')
+        time.sleep(5)
         rsp = self.restapi.get('iscsi', {
                 'objectPath' : self.bucket_path + '/' + volume['name']
             })
@@ -794,13 +813,18 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
       
         #image_id is vol.img  && must be our predefined name, else exc
         #clone /cltest/test/bk1/vol.img -> clone_body.
-        LOG.info('copy_image_to_volume - enter')
-        vol_url = self.bucket_url + '/' + self.bucket  + '/objects/' + "vol.img" 
+        image_meta = image_service.show(context, image_id)
+        LOG.info(_('copy_image_to_volume - ENTER %s, %s'), image_id, pprint.pformat(image_meta))
+        if image_meta['name'] != 'p_linux':
+            vol_img = image_meta['name']
+        else:
+            vol_img = "vol.img"
+        vol_url = self.bucket_url + '/' + self.bucket  + '/objects/' + vol_img 
         clone_body = { 'tenant_name' : self.tenant,
                       'bucket_name' : self.bucket,
                       'object_name' : volume['name']
             }
-        LOG.info(_('XXX size=%s newsize=%ld'), volume['size'], int(volume['size']) * 1024)
+        LOG.info(_('XXX vol_img %s size=%s newsize=%ld'), vol_img, volume['size'], int(volume['size']) * 1024)
         try:
             rsp = self.restapi.post(vol_url, clone_body)
             rsp = self.restapi.post('iscsi/-1/resize', {
@@ -814,6 +838,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
+        LOG.info('copy_volume_to_image - ENTER')
         image_utils.upload_volume(context,
                                   image_service,
                                   image_meta,
