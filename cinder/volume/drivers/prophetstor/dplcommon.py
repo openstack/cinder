@@ -138,7 +138,7 @@ class DPLCommand(object):
                         LOG.error(_('The Flexvisor service is unavailable.'))
                         time.sleep(1)
                         retry -= 1
-                        retcode = errno.ENAVAIL
+                        retcode = errno.ENOPROTOOPT
                         continue
                     else:
                         retcode = 0
@@ -156,7 +156,7 @@ class DPLCommand(object):
 
         if retcode == 0 and response.status in expected_status and\
                 response.status == httplib.NOT_FOUND:
-            retcode = errno.ENAVAIL
+            retcode = errno.ENODATA
         elif retcode == 0 and response.status not in expected_status:
             LOG.error(_('%(method)s %(url)s unexpected response status: '
                         '%(response)s (expects: %(expects)s).')
@@ -170,7 +170,7 @@ class DPLCommand(object):
             else:
                 retcode = errno.EIO
         elif retcode == 0 and response.status is httplib.NOT_FOUND:
-            retcode = errno.ENAVAIL
+            retcode = errno.ENODATA
         elif retcode == 0 and response.status is httplib.ACCEPTED:
             retcode = errno.EAGAIN
             try:
@@ -652,7 +652,7 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                         nsleep = random.randint(0, 10)
                         value = round(float(nsleep) / 10, 2)
                         time.sleep(value)
-                elif ret == errno.ENAVAIL:
+                elif ret == errno.ENODATA:
                     status['state'] = 'deleted'
                     fExit = True
                 else:
@@ -852,7 +852,7 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                         '%(status)s.') % {'id': volume['id'], 'status': ret}
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-        elif ret == errno.ENAVAIL:
+        elif ret == errno.ENODATA:
             ret = 0
             msg = _('Flexvisor volume %(id)s not '
                     'existed.') % {'id': volume['id']}
@@ -956,7 +956,7 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                         'get event) %(id)s.') % {'id': snapshot['id']}
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-        elif ret == errno.ENAVAIL:
+        elif ret == errno.ENODATA:
             msg = _('Flexvisor snapshot %(id)s not existed.') % \
                 {'id': snapshot['id']}
             LOG.info(msg)
