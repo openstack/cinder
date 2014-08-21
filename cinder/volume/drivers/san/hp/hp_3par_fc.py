@@ -66,16 +66,19 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.4 - Added support for managing/unmanaging of volumes
         2.0.5 - Only remove FC Zone on last volume detach
         2.0.6 - Added support for volume retype
+        2.0.7 - Only one FC port is used when a single FC path
+                is present.  bug #1360001
 
     """
 
-    VERSION = "2.0.6"
+    VERSION = "2.0.7"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
         self.common = None
         self.configuration.append_config_values(hpcommon.hp3par_opts)
         self.configuration.append_config_values(san.san_opts)
+        self.lookup_service = fczm_utils.create_lookup_service()
 
     def _init_common(self):
         return hpcommon.HP3PARCommon(self.configuration)
@@ -210,11 +213,20 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
             # we have to make sure we have a host
             host = self._create_host(volume, connector)
 
-            # now that we have a host, create the VLUN
-            vlun = self.common.create_vlun(volume, host)
+            target_wwns, init_targ_map, numPaths = \
+                self._build_initiator_target_map(connector)
 
-            target_wwns, init_targ_map = self._build_initiator_target_map(
-                connector)
+            # now that we have a host, create the VLUN
+            if self.lookup_service is not None and numPaths == 1:
+                nsp = None
+                active_fc_port_list = self.common.get_active_fc_target_ports()
+                for port in active_fc_port_list:
+                    if port['portWWN'].lower() == target_wwns[0].lower():
+                        nsp = port['nsp']
+                        break
+                vlun = self.common.create_vlun(volume, host, nsp)
+            else:
+                vlun = self.common.create_vlun(volume, host)
 
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {'target_lun': vlun['lun'],
@@ -244,8 +256,9 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                 # No more exports for this host.
                 LOG.info(_("Need to remove FC Zone, building initiator "
                          "target map"))
-                target_wwns, init_targ_map = self._build_initiator_target_map(
-                    connector)
+
+                target_wwns, init_targ_map, numPaths = \
+                    self._build_initiator_target_map(connector)
 
                 info['data'] = {'target_wwn': target_wwns,
                                 'initiator_target_map': init_targ_map}
@@ -258,18 +271,41 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         """Build the target_wwns and the initiator target map."""
 
         fc_ports = self.common.get_active_fc_target_ports()
+        all_target_wwns = []
         target_wwns = []
+        init_targ_map = {}
+        numPaths = 0
 
         for port in fc_ports:
-            target_wwns.append(port['portWWN'])
+            all_target_wwns.append(port['portWWN'])
 
-        initiator_wwns = connector['wwpns']
+        if self.lookup_service is not None:
+            # use FC san lookup to determine which NSPs to use
+            # for the new VLUN.
+            dev_map = self.lookup_service.get_device_mapping_from_network(
+                connector['wwpns'],
+                all_target_wwns)
 
-        init_targ_map = {}
-        for initiator in initiator_wwns:
-            init_targ_map[initiator] = target_wwns
+            for fabric_name in dev_map:
+                fabric = dev_map[fabric_name]
+                target_wwns += fabric['target_port_wwn_list']
+                for initiator in fabric['initiator_port_wwn_list']:
+                    if initiator not in init_targ_map:
+                        init_targ_map[initiator] = []
+                    init_targ_map[initiator] += fabric['target_port_wwn_list']
+                    init_targ_map[initiator] = list(set(
+                        init_targ_map[initiator]))
+                    for target in init_targ_map[initiator]:
+                        numPaths += 1
+            target_wwns = list(set(target_wwns))
+        else:
+            initiator_wwns = connector['wwpns']
+            target_wwns = all_target_wwns
 
-        return target_wwns, init_targ_map
+            for initiator in initiator_wwns:
+                init_targ_map[initiator] = target_wwns
+
+        return target_wwns, init_targ_map, numPaths
 
     def _create_3par_fibrechan_host(self, hostname, wwns, domain, persona_id):
         """Create a 3PAR host.
