@@ -548,6 +548,20 @@ class Transfer(BASE, CinderBase):
                           'Transfer.deleted == False)')
 
 
+class DriverInitiatorData(BASE, models.TimestampMixin, models.ModelBase):
+    """Represents private key-value pair specific an initiator for drivers"""
+    __tablename__ = 'driver_initiator_data'
+    __table_args__ = (
+        schema.UniqueConstraint("initiator", "namespace", "key"),
+        {'mysql_engine': 'InnoDB'}
+    )
+    id = Column(Integer, primary_key=True, nullable=False)
+    initiator = Column(String(255), index=True, nullable=False)
+    namespace = Column(String(255), nullable=False)
+    key = Column(String(255), nullable=False)
+    value = Column(String(255))
+
+
 def register_models():
     """Register Models and create metadata.
 
