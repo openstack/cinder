@@ -323,6 +323,9 @@ class VolumeOpsTestCase(test.TestCase):
                               self.vops.get_dss_rp,
                               host)
 
+            # Clear side effects.
+            self.session.invoke_api.side_effect = None
+
     def test_get_parent(self):
         # Not recursive
         child = mock.Mock(spec=object)
@@ -362,6 +365,9 @@ class VolumeOpsTestCase(test.TestCase):
         ret = self.vops.get_dc(o2)
         self.assertEqual(dc, ret)
 
+        # Clear side effects.
+        self.session.invoke_api.side_effect = None
+
     def test_get_vmfolder(self):
         self.session.invoke_api.return_value = mock.sentinel.ret
         ret = self.vops.get_vmfolder(mock.sentinel.dc)
@@ -390,6 +396,9 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(expected_invoke_api,
                          self.session.invoke_api.mock_calls)
 
+        # Clear side effects.
+        self.session.invoke_api.side_effect = None
+
     def test_create_folder_already_present(self):
         """Test create_folder when child already present."""
         parent_folder = mock.sentinel.parent_folder
@@ -417,6 +426,9 @@ class VolumeOpsTestCase(test.TestCase):
                                          'name')]
         self.assertEqual(expected_invoke_api,
                          self.session.invoke_api.mock_calls)
+
+        # Clear side effects.
+        self.session.invoke_api.side_effect = None
 
     def test_create_disk_backing_thin(self):
         backing = mock.Mock()
@@ -959,6 +971,9 @@ class VolumeOpsTestCase(test.TestCase):
                               folder=folder, name=name, spec=clone_spec)]
         self.assertEqual(expected, self.session.invoke_api.mock_calls)
 
+        # Clear side effects.
+        self.session.invoke_api.side_effect = None
+
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 '_create_specs_for_disk_add')
     def test_attach_disk_to_backing(self, create_spec):
@@ -1194,6 +1209,84 @@ class VolumeOpsTestCase(test.TestCase):
                                            newCapacityKb=fake_size_in_kb,
                                            eagerZero=False)
         self.session.wait_for_task.assert_called_once_with(task)
+
+    def test_get_all_profiles(self):
+        profile_ids = [1, 2]
+        methods = ['PbmQueryProfile', 'PbmRetrieveContent']
+
+        def invoke_api_side_effect(module, method, *args, **kwargs):
+            self.assertEqual(self.session.pbm, module)
+            self.assertEqual(methods.pop(0), method)
+            self.assertEqual(self.session.pbm.service_content.profileManager,
+                             args[0])
+            if method == 'PbmQueryProfile':
+                self.assertEqual('STORAGE',
+                                 kwargs['resourceType'].resourceType)
+                return profile_ids
+            self.assertEqual(profile_ids, kwargs['profileIds'])
+
+        self.session.invoke_api.side_effect = invoke_api_side_effect
+        self.vops.get_all_profiles()
+
+        self.assertEqual(2, self.session.invoke_api.call_count)
+
+        # Clear side effects.
+        self.session.invoke_api.side_effect = None
+
+    def test_get_all_profiles_with_no_profiles(self):
+        self.session.invoke_api.return_value = []
+        res_type = mock.sentinel.res_type
+        self.session.pbm.client.factory.create.return_value = res_type
+
+        profiles = self.vops.get_all_profiles()
+        self.session.invoke_api.assert_called_once_with(
+            self.session.pbm,
+            'PbmQueryProfile',
+            self.session.pbm.service_content.profileManager,
+            resourceType=res_type)
+        self.assertEqual([], profiles)
+
+    def _create_profile(self, profile_id, name):
+        profile = mock.Mock()
+        profile.profileId = profile_id
+        profile.name = name
+        return profile
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_all_profiles')
+    def test_retrieve_profile_id(self, get_all_profiles):
+        profiles = [self._create_profile(str(i), 'profile-%d' % i)
+                    for i in range(0, 10)]
+        get_all_profiles.return_value = profiles
+
+        exp_profile_id = '5'
+        profile_id = self.vops.retrieve_profile_id(
+            'profile-%s' % exp_profile_id)
+        self.assertEqual(exp_profile_id, profile_id)
+        get_all_profiles.assert_called_once_with()
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_all_profiles')
+    def test_retrieve_profile_id_with_invalid_profile(self, get_all_profiles):
+        profiles = [self._create_profile(str(i), 'profile-%d' % i)
+                    for i in range(0, 10)]
+        get_all_profiles.return_value = profiles
+
+        profile_id = self.vops.retrieve_profile_id('profile-%s' % (i + 1))
+        self.assertIsNone(profile_id)
+        get_all_profiles.assert_called_once_with()
+
+    def test_filter_matching_hubs(self):
+        hubs = mock.Mock()
+        profile_id = 'profile-0'
+
+        self.vops.filter_matching_hubs(hubs, profile_id)
+        self.session.invoke_api.assert_called_once_with(
+            self.session.pbm,
+            'PbmQueryMatchingHub',
+            self.session.pbm.service_content.placementSolver,
+            hubsToSearch=hubs,
+            profile=profile_id)
 
 
 class VirtualDiskPathTest(test.TestCase):
