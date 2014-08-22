@@ -1286,13 +1286,17 @@ class VMwareVolumeOps(object):
         profile_manager = pbm.service_content.profileManager
         res_type = pbm.client.factory.create('ns0:PbmProfileResourceType')
         res_type.resourceType = 'STORAGE'
+        profiles = []
         profileIds = self._session.invoke_api(pbm, 'PbmQueryProfile',
                                               profile_manager,
                                               resourceType=res_type)
         LOG.debug("Got profile IDs: %s", profileIds)
-        return self._session.invoke_api(pbm, 'PbmRetrieveContent',
-                                        profile_manager,
-                                        profileIds=profileIds)
+
+        if profileIds:
+            profiles = self._session.invoke_api(pbm, 'PbmRetrieveContent',
+                                                profile_manager,
+                                                profileIds=profileIds)
+        return profiles
 
     def retrieve_profile_id(self, profile_name):
         """Get the profile uuid from current VC for given profile name.
