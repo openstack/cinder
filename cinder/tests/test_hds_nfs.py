@@ -131,7 +131,6 @@ class HDSNFSDriverTest(test.TestCase):
     def _clean(self):
         os.remove(self.config_file)
         os.remove(self.shares_file)
-        super(HDSNFSDriverTest, self).tearDown()
 
     @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol')
     @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')
