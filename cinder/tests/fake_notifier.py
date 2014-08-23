@@ -34,13 +34,16 @@ FakeMessage = collections.namedtuple('Message',
 
 class FakeNotifier(object):
 
-    def __init__(self, transport, publisher_id, serializer=None):
+    def __init__(self, transport, publisher_id, serializer=None, driver=None,
+                 topic=None, retry=None):
         self.transport = transport
         self.publisher_id = publisher_id
         for priority in ['debug', 'info', 'warn', 'error', 'critical']:
             setattr(self, priority,
                     functools.partial(self._notify, priority.upper()))
         self._serializer = serializer or messaging.serializer.NoOpSerializer()
+        self._topic = topic
+        self.retry = retry
 
     def prepare(self, publisher_id=None):
         if publisher_id is None:

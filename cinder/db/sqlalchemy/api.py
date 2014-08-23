@@ -30,6 +30,8 @@ from oslo.config import cfg
 from oslo.db import exception as db_exc
 from oslo.db import options
 from oslo.db.sqlalchemy import session as db_session
+import osprofiler.sqlalchemy
+import sqlalchemy
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, joinedload_all
 from sqlalchemy.orm import RelationshipProperty
@@ -46,6 +48,7 @@ from cinder.openstack.common import uuidutils
 
 
 CONF = cfg.CONF
+CONF.import_group("profiler", "cinder.service")
 LOG = logging.getLogger(__name__)
 
 options.set_defaults(CONF, connection='sqlite:///$state_path/cinder.sqlite')
@@ -63,6 +66,13 @@ def _create_facade_lazily():
                 CONF.database.connection,
                 **dict(CONF.database.iteritems())
             )
+
+            if CONF.profiler.profiler_enabled:
+                if CONF.profiler.trace_sqlalchemy:
+                    osprofiler.sqlalchemy.add_tracing(sqlalchemy,
+                                                      _FACADE.get_engine(),
+                                                      "db")
+
         return _FACADE
 
 
