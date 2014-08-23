@@ -56,6 +56,7 @@ class VolumeTransferAPITestCase(test.TestCase):
                        size=1):
         """Create a volume object."""
         vol = {}
+        vol['host'] = 'fake_host'
         vol['size'] = size
         vol['user_id'] = 'fake'
         vol['project_id'] = 'fake'

@@ -360,27 +360,42 @@ class LVMVolumeDriver(driver.VolumeDriver):
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = self.protocol
+        data["pools"] = []
 
+        total_capacity = 0
+        free_capacity = 0
         if self.configuration.lvm_mirrors > 0:
-            data['total_capacity_gb'] =\
+            total_capacity = \
                 self.vg.vg_mirror_size(self.configuration.lvm_mirrors)
-            data['free_capacity_gb'] =\
+            free_capacity = \
                 self.vg.vg_mirror_free_space(self.configuration.lvm_mirrors)
         elif self.configuration.lvm_type == 'thin':
-            data['total_capacity_gb'] = self.vg.vg_thin_pool_size
-            data['free_capacity_gb'] = self.vg.vg_thin_pool_free_space
+            total_capacity = self.vg.vg_thin_pool_size
+            free_capacity = self.vg.vg_thin_pool_free_space
         else:
-            data['total_capacity_gb'] = self.vg.vg_size
-            data['free_capacity_gb'] = self.vg.vg_free_space
-        data['reserved_percentage'] = self.configuration.reserved_percentage
-        data['QoS_support'] = False
-        data['location_info'] =\
+            total_capacity = self.vg.vg_size
+            free_capacity = self.vg.vg_free_space
+
+        location_info = \
             ('LVMVolumeDriver:%(hostname)s:%(vg)s'
              ':%(lvm_type)s:%(lvm_mirrors)s' %
              {'hostname': self.hostname,
               'vg': self.configuration.volume_group,
               'lvm_type': self.configuration.lvm_type,
               'lvm_mirrors': self.configuration.lvm_mirrors})
+
+        # Skip enabled_pools setting, treat the whole backend as one pool
+        # XXX FIXME if multipool support is added to LVM driver.
+        single_pool = {}
+        single_pool.update(dict(
+            pool_name=data["volume_backend_name"],
+            total_capacity_gb=total_capacity,
+            free_capacity_gb=free_capacity,
+            reserved_percentage=self.configuration.reserved_percentage,
+            location_info=location_info,
+            QoS_support=False,
+        ))
+        data["pools"].append(single_pool)
 
         self._stats = data
 
@@ -443,6 +458,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
         return lv_size
+
+    def get_pool(self, volume):
+        return self.backend_name
 
 
 class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):

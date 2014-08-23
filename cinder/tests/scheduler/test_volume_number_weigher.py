@@ -25,11 +25,13 @@ from cinder.openstack.common.scheduler.weights import HostWeightHandler
 from cinder.scheduler.weights.volume_number import VolumeNumberWeigher
 from cinder import test
 from cinder.tests.scheduler import fakes
+from cinder.volume import utils
 
 CONF = cfg.CONF
 
 
 def fake_volume_data_get_for_host(context, host, count_only=False):
+    host = utils.extract_host(host)
     if host == 'host1':
         return 1
     elif host == 'host2':
@@ -38,8 +40,10 @@ def fake_volume_data_get_for_host(context, host, count_only=False):
         return 3
     elif host == 'host4':
         return 4
+    elif host == 'host5':
+        return 5
     else:
-        return 1
+        return 6
 
 
 class VolumeNumberWeigherTestCase(test.TestCase):
@@ -74,12 +78,14 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         # host2: 2 volumes
         # host3: 3 volumes
         # host4: 4 volumes
+        # host5: 5 volumes
         # so, host1 should win:
         with mock.patch.object(api, 'volume_data_get_for_host',
                                fake_volume_data_get_for_host):
             weighed_host = self._get_weighed_host(hostinfo_list)
             self.assertEqual(weighed_host.weight, -1.0)
-            self.assertEqual(weighed_host.obj.host, 'host1')
+            self.assertEqual(utils.extract_host(weighed_host.obj.host),
+                             'host1')
 
     def test_volume_number_weight_multiplier2(self):
         self.flags(volume_number_multiplier=1.0)
@@ -89,9 +95,11 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         # host2: 2 volumes
         # host3: 3 volumes
         # host4: 4 volumes
-        # so, host4 should win:
+        # host5: 5 volumes
+        # so, host5 should win:
         with mock.patch.object(api, 'volume_data_get_for_host',
                                fake_volume_data_get_for_host):
             weighed_host = self._get_weighed_host(hostinfo_list)
-            self.assertEqual(weighed_host.weight, 4.0)
-            self.assertEqual(weighed_host.obj.host, 'host4')
+            self.assertEqual(weighed_host.weight, 5.0)
+            self.assertEqual(utils.extract_host(weighed_host.obj.host),
+                             'host5')

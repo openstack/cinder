@@ -1219,7 +1219,23 @@ def volume_get_all(context, marker, limit, sort_key, sort_dir,
 
 @require_admin_context
 def volume_get_all_by_host(context, host):
-    return _volume_get_query(context).filter_by(host=host).all()
+    """Retrieves all volumes hosted on a host."""
+    # As a side effect of the introduction of pool-aware scheduler,
+    # newly created volumes will have pool information appended to
+    # 'host' field of a volume record. So a volume record in DB can
+    # now be either form below:
+    #     Host
+    #     Host#Pool
+    if host and isinstance(host, basestring):
+        session = get_session()
+        with session.begin():
+            host_attr = getattr(models.Volume, 'host')
+            conditions = [host_attr == host,
+                          host_attr.op('LIKE')(host + '#%')]
+            result = _volume_get_query(context).filter(or_(*conditions)).all()
+            return result
+    elif not host:
+        return []
 
 
 @require_admin_context

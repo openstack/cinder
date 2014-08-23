@@ -123,7 +123,8 @@ class BaseVolumeTestCase(test.TestCase):
         self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
         self.stubs.Set(os.path, 'exists', lambda x: True)
         self.volume.driver.set_initialized()
-        self.volume.stats = {'allocated_capacity_gb': 0}
+        self.volume.stats = {'allocated_capacity_gb': 0,
+                             'pools': {}}
         # keep ordered record of what we execute
         self.called = []
 
@@ -255,6 +256,40 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.init_host()
         self.assertRaises(exception.VolumeNotFound, db.volume_get,
                           context.get_admin_context(), volume_id)
+
+    def test_init_host_count_allocated_capacity(self):
+        vol0 = tests_utils.create_volume(
+            self.context, size=100, host=CONF.host)
+        vol1 = tests_utils.create_volume(
+            self.context, size=128,
+            host=volutils.append_host(CONF.host, 'pool0'))
+        vol2 = tests_utils.create_volume(
+            self.context, size=256,
+            host=volutils.append_host(CONF.host, 'pool0'))
+        vol3 = tests_utils.create_volume(
+            self.context, size=512,
+            host=volutils.append_host(CONF.host, 'pool1'))
+        vol4 = tests_utils.create_volume(
+            self.context, size=1024,
+            host=volutils.append_host(CONF.host, 'pool2'))
+        self.volume.init_host()
+        stats = self.volume.stats
+        self.assertEqual(stats['allocated_capacity_gb'], 2020)
+        self.assertEqual(
+            stats['pools']['pool0']['allocated_capacity_gb'], 384)
+        self.assertEqual(
+            stats['pools']['pool1']['allocated_capacity_gb'], 512)
+        self.assertEqual(
+            stats['pools']['pool2']['allocated_capacity_gb'], 1024)
+
+        vol0 = db.volume_get(context.get_admin_context(), vol0['id'])
+        self.assertEqual(vol0['host'],
+                         volutils.append_host(CONF.host, 'LVM_iSCSI'))
+        self.volume.delete_volume(self.context, vol0['id'])
+        self.volume.delete_volume(self.context, vol1['id'])
+        self.volume.delete_volume(self.context, vol2['id'])
+        self.volume.delete_volume(self.context, vol3['id'])
+        self.volume.delete_volume(self.context, vol4['id'])
 
     @mock.patch.object(QUOTAS, 'reserve')
     @mock.patch.object(QUOTAS, 'commit')
@@ -578,6 +613,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         with mock.patch.object(jsonutils, 'loads') as mock_loads:
             mock_loads.return_value = fake_capabilities
             manager = VolumeManager()
+            manager.stats = {'pools': {}}
             manager.driver.set_initialized()
             manager.publish_service_capabilities(self.context)
             self.assertTrue(mock_loads.called)
@@ -1063,6 +1099,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                                        'name',
                                        'description',
                                        volume_type=db_vol_type)
+
+        volume_src['host'] = 'fake_host'
         snapshot_ref = volume_api.create_snapshot_force(self.context,
                                                         volume_src,
                                                         'name',
@@ -3803,8 +3841,10 @@ class ISCSITestCase(DriverTestCase):
 
         stats = self.volume.driver._stats
 
-        self.assertEqual(stats['total_capacity_gb'], float('5.52'))
-        self.assertEqual(stats['free_capacity_gb'], float('0.52'))
+        self.assertEqual(
+            stats['pools'][0]['total_capacity_gb'], float('5.52'))
+        self.assertEqual(
+            stats['pools'][0]['free_capacity_gb'], float('0.52'))
 
     def test_validate_connector(self):
         iscsi_driver = self.base_driver(configuration=self.configuration)
@@ -3820,14 +3860,15 @@ class ISCSITestCase(DriverTestCase):
                           iscsi_driver.validate_connector, connector)
 
 
-class ISERTestCase(ISCSITestCase):
+class ISERTestCase(DriverTestCase):
     """Test Case for ISERDriver."""
     driver_name = "cinder.volume.drivers.lvm.LVMISERDriver"
     base_driver = driver.ISERDriver
 
     def setUp(self):
         super(ISERTestCase, self).setUp()
-        self.configuration = mox.MockObject(conf.Configuration)
+        self.configuration = mock.Mock(conf.Configuration)
+        self.configuration.safe_get.return_value = None
         self.configuration.num_iser_scan_tries = 3
         self.configuration.iser_num_targets = 100
         self.configuration.iser_target_prefix = 'iqn.2010-10.org.openstack:'
@@ -3856,8 +3897,10 @@ class ISERTestCase(ISCSITestCase):
 
         stats = self.volume.driver.get_volume_stats(refresh=True)
 
-        self.assertEqual(stats['total_capacity_gb'], float('5.52'))
-        self.assertEqual(stats['free_capacity_gb'], float('0.52'))
+        self.assertEqual(
+            stats['pools'][0]['total_capacity_gb'], float('5.52'))
+        self.assertEqual(
+            stats['pools'][0]['free_capacity_gb'], float('0.52'))
         self.assertEqual(stats['storage_protocol'], 'iSER')
 
     def test_get_volume_stats2(self):
@@ -3865,8 +3908,10 @@ class ISERTestCase(ISCSITestCase):
 
         stats = iser_driver.get_volume_stats(refresh=True)
 
-        self.assertEqual(stats['total_capacity_gb'], 'infinite')
-        self.assertEqual(stats['free_capacity_gb'], 'infinite')
+        self.assertEqual(
+            stats['pools'][0]['total_capacity_gb'], 0)
+        self.assertEqual(
+            stats['pools'][0]['free_capacity_gb'], 0)
         self.assertEqual(stats['storage_protocol'], 'iSER')
 
 

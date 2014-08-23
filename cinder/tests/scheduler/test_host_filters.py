@@ -57,6 +57,18 @@ class HostFiltersTestCase(test.TestCase):
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('cinder.utils.service_is_up')
+    def test_capacity_filter_current_host_passes(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100, 'vol_exists_on': 'host1'}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'free_capacity_gb': 10,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.utils.service_is_up')
     def test_capacity_filter_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -98,7 +110,26 @@ class HostFiltersTestCase(test.TestCase):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['DifferentBackendFilter']()
         service = {'disabled': False}
-        host = fakes.FakeHostState('host2',
+        host = fakes.FakeHostState('host1:pool0',
+                                   {'free_capacity_gb': '1000',
+                                    'updated_at': None,
+                                    'service': service})
+        volume = utils.create_volume(self.context, host='host1:pool1')
+        vol_id = volume.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'different_host': [vol_id], }}
+
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.utils.service_is_up')
+    def test_affinity_different_filter_legacy_volume_hint_passes(
+            self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['DifferentBackendFilter']()
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1:pool0',
                                    {'free_capacity_gb': '1000',
                                     'updated_at': None,
                                     'service': service})
@@ -111,7 +142,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_different_filter_no_list_passes(self):
+    def test_affinity_different_filter_non_list_fails(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
         host = fakes.FakeHostState('host2', {})
         volume = utils.create_volume(self.context, host='host2')
@@ -169,10 +200,10 @@ class HostFiltersTestCase(test.TestCase):
 
     def test_affinity_different_filter_handles_multiple_uuids(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
-        volume1 = utils.create_volume(self.context, host='host2')
+        host = fakes.FakeHostState('host1#pool0', {})
+        volume1 = utils.create_volume(self.context, host='host1:pool1')
         vol_id1 = volume1.id
-        volume2 = utils.create_volume(self.context, host='host3')
+        volume2 = utils.create_volume(self.context, host='host1:pool3')
         vol_id2 = volume2.id
 
         filter_properties = {'context': self.context.elevated(),
@@ -207,8 +238,8 @@ class HostFiltersTestCase(test.TestCase):
 
     def test_affinity_same_filter_passes(self):
         filt_cls = self.class_map['SameBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
-        volume = utils.create_volume(self.context, host='host1')
+        host = fakes.FakeHostState('host1#pool0', {})
+        volume = utils.create_volume(self.context, host='host1#pool0')
         vol_id = volume.id
 
         filter_properties = {'context': self.context.elevated(),
@@ -217,10 +248,10 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_same_filter_fails(self):
+    def test_affinity_same_filter_legacy_vol_fails(self):
         filt_cls = self.class_map['SameBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
-        volume = utils.create_volume(self.context, host='host2')
+        host = fakes.FakeHostState('host1#pool0', {})
+        volume = utils.create_volume(self.context, host='host1')
         vol_id = volume.id
 
         filter_properties = {'context': self.context.elevated(),
@@ -228,6 +259,32 @@ class HostFiltersTestCase(test.TestCase):
             'same_host': [vol_id], }}
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_same_filter_fails(self):
+        filt_cls = self.class_map['SameBackendFilter']()
+        host = fakes.FakeHostState('host1#pool0', {})
+        volume = utils.create_volume(self.context, host='host1#pool1')
+        vol_id = volume.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'same_host': [vol_id], }}
+
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_affinity_same_filter_vol_list_pass(self):
+        filt_cls = self.class_map['SameBackendFilter']()
+        host = fakes.FakeHostState('host1', {})
+        volume1 = utils.create_volume(self.context, host='host1')
+        vol_id1 = volume1.id
+        volume2 = utils.create_volume(self.context, host='host2')
+        vol_id2 = volume2.id
+
+        filter_properties = {'context': self.context.elevated(),
+                             'scheduler_hints': {
+            'same_host': [vol_id1, vol_id2], }}
+
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     def test_affinity_same_filter_handles_none(self):
         filt_cls = self.class_map['SameBackendFilter']()
