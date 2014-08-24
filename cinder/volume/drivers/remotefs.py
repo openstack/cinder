@@ -229,6 +229,10 @@ class RemoteFSDriver(driver.VolumeDriver):
         """Sets 666 permissions for the path."""
         self._execute('chmod', 'ugo+rw', path, run_as_root=True)
 
+    def _set_rw_permissions_for_owner(self, path):
+        """Sets read-write permissions to the owner for the path."""
+        self._execute('chmod', 'u+rw', path, run_as_root=True)
+
     def local_path(self, volume):
         """Get volume path (mounted locally fs path) for given volume
         :param volume: volume reference

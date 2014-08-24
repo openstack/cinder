@@ -343,7 +343,7 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
         volume['provider_location'] = self._find_share(volume['size'])
         volume_path = self.local_path(volume)
-        self._set_rw_permissions_for_all(volume_path)
+        self._set_rw_permissions_for_owner(volume_path)
 
         # Extend the volume if required
         self._resize_volume_file(volume_path, volume['size'])
@@ -365,8 +365,7 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
         volume['provider_location'] = self._find_share(volume['size'])
         volume_path = self.local_path(volume)
-
-        self._set_rw_permissions_for_all(volume_path)
+        self._set_rw_permissions_for_owner(volume_path)
 
         # Extend the volume if required
         self._resize_volume_file(volume_path, volume['size'])

@@ -196,7 +196,7 @@ class IBMNASDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_ssh_operation')
     @mock.patch('cinder.openstack.common.processutils.execute')
-    def test_create_ibmnas_snap_nas_gpfs(self, mock_ssh, mock_execute):
+    def test_create_ibmnas_snap_nas_gpfs(self, mock_execute, mock_ssh):
         """Create ibmnas snap if mount point is provided."""
 
         drv = self._driver
@@ -291,8 +291,8 @@ class IBMNASDriverTestCase(test.TestCase):
         """Extend volume to greater size test case."""
 
         drv = self._driver
-        mock_resize.return_value = True
         mock_local.return_value = self.TEST_LOCAL_PATH
+        mock_resize.return_value = True
         volume = FakeEnv()
         volume['name'] = 'vol-123'
 
@@ -301,7 +301,7 @@ class IBMNASDriverTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver._run_ssh')
     @mock.patch('cinder.openstack.common.processutils.execute')
-    def test_delete_snapfiles(self, mock_ssh, mock_execute):
+    def test_delete_snapfiles(self, mock_execute, mock_ssh):
         """Delete_snapfiles test case."""
 
         drv = self._driver
@@ -309,15 +309,15 @@ class IBMNASDriverTestCase(test.TestCase):
                     'File name\n yes    0 /ibm/gpfs0/gshare/\n'
                     'volume-123\n EFSSG1000I The command'
                     'completed successfully.', '')
-        mock_execute.return_value = expected
         mock_ssh.return_value = expected
+        mock_execute.return_value = expected
 
         drv._delete_snapfiles(self.TEST_VOLUME_PATH,
                               self.TEST_MNT_POINT)
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver._run_ssh')
     @mock.patch('cinder.openstack.common.processutils.execute')
-    def test_delete_snapfiles_nas_gpfs(self, mock_ssh, mock_execute):
+    def test_delete_snapfiles_nas_gpfs(self, mock_execute, mock_ssh):
         """Delete_snapfiles for gpfs-nas platform test case."""
 
         drv = self._driver
@@ -328,8 +328,8 @@ class IBMNASDriverTestCase(test.TestCase):
                     '-  ---------\n'
                     'yes      0\n'
                     '/ibm/gpfs0/gshare/volume-123', '')
-        mock_execute.return_value = expected
         mock_ssh.return_value = expected
+        mock_execute.return_value = expected
 
         drv._delete_snapfiles(self.TEST_VOLUME_PATH,
                               self.TEST_MNT_POINT)
@@ -350,7 +350,7 @@ class IBMNASDriverTestCase(test.TestCase):
                 '_get_export_path')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_delete_snapfiles')
-    def test_delete_volume(self, mock_export, mock_snap):
+    def test_delete_volume(self, mock_snap, mock_export):
         """Delete volume test case."""
 
         drv = self._driver
@@ -372,10 +372,8 @@ class IBMNASDriverTestCase(test.TestCase):
                 '_get_mount_point_for_share')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_create_ibmnas_snap')
-    def test_create_snapshot(self, mock_export,
-                             mock_provider,
-                             mock_mount,
-                             mock_snap):
+    def test_create_snapshot(self, mock_snap, mock_mount, mock_provider,
+                             mock_export):
         """Create snapshot simple test case."""
 
         drv = self._driver
@@ -400,12 +398,12 @@ class IBMNASDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_get_mount_point_for_share')
     @mock.patch('cinder.openstack.common.processutils.execute')
-    def test_delete_snapshot(self, mock_mount, mock_provider, mock_execute):
+    def test_delete_snapshot(self, mock_execute, mock_mount, mock_provider):
         """Delete snapshot simple test case."""
 
         drv = self._driver
-        mock_mount.return_value = self.TEST_LOCAL_PATH
         mock_provider.return_value = self.TEST_VOLUME_PATH
+        mock_mount.return_value = self.TEST_LOCAL_PATH
         mock_execute.return_value = True
 
         volume = FakeEnv()
@@ -424,20 +422,23 @@ class IBMNASDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_create_ibmnas_copy')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
-                '_resize_volume_file')
+                '_find_share')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.local_path')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
-                '_find_share')
+                '_set_rw_permissions_for_owner')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
-                '_set_rw_permissions_for_all')
-    def test_create_cloned_volume(self, mock_export, mock_copy,
-                                  mock_resize, mock_local,
-                                  mock_find, mock_rw):
+                '_resize_volume_file')
+    def test_create_cloned_volume(self, mock_resize, mock_rw, mock_local,
+                                  mock_find, mock_copy, mock_export):
         """Clone volume with equal size test case."""
 
         drv = self._driver
         mock_export.return_value = self.TEST_VOLUME_PATH
-        mock_copy.return_value = self.TEST_LOCAL_PATH
+        mock_copy.return_value = True
+        mock_find.return_value = self.TEST_LOCAL_PATH
+        mock_local.return_value = self.TEST_LOCAL_PATH
+        mock_rw.return_value = True
+        mock_resize.return_value = True
 
         volume_src = FakeEnv()
         volume_src['id'] = '123'
@@ -458,22 +459,24 @@ class IBMNASDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_create_ibmnas_snap')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
-                '_resize_volume_file')
+                '_find_share')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.local_path')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
-                '_find_share')
+                '_set_rw_permissions_for_owner')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
-                '_set_rw_permissions_for_all')
-    def test_create_volume_from_snapshot(self, mock_export, mock_snap,
-                                         mock_resize, mock_local,
-                                         mock_find, mock_rw):
+                '_resize_volume_file')
+    def test_create_volume_from_snapshot(self, mock_resize, mock_rw,
+                                         mock_local, mock_find, mock_snap,
+                                         mock_export):
         """Create volume from snapshot test case."""
 
         drv = self._driver
         mock_export.return_value = '/export'
         mock_snap.return_value = self.TEST_LOCAL_PATH
-        mock_local.return_value = self.TEST_VOLUME_PATH
         mock_find.return_value = self.TEST_LOCAL_PATH
+        mock_local.return_value = self.TEST_VOLUME_PATH
+        mock_rw.return_value = True
+        mock_resize.return_value = True
 
         volume = FakeEnv()
         volume['id'] = '123'
