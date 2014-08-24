@@ -152,7 +152,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.16'
+    RPC_API_VERSION = '1.17'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -275,7 +275,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def create_volume(self, context, volume_id, request_spec=None,
                       filter_properties=None, allow_reschedule=True,
-                      snapshot_id=None, image_id=None, source_volid=None):
+                      snapshot_id=None, image_id=None, source_volid=None,
+                      source_replicaid=None):
 
         """Creates the volume."""
         context_saved = context.deepcopy()
@@ -296,6 +297,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 snapshot_id=snapshot_id,
                 image_id=image_id,
                 source_volid=source_volid,
+                source_replicaid=source_replicaid,
                 allow_reschedule=allow_reschedule,
                 reschedule_context=context_saved,
                 request_spec=request_spec,
@@ -303,7 +305,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         except Exception:
             LOG.exception(_("Failed to create manager volume flow"))
             raise exception.CinderException(
-                _("Failed to create manager volume flow"))
+                _("Failed to create manager volume flow."))
 
         if snapshot_id is not None:
             # Make sure the snapshot is not deleted until we are done with it.
@@ -311,6 +313,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         elif source_volid is not None:
             # Make sure the volume is not deleted until we are done with it.
             locked_action = "%s-%s" % (source_volid, 'delete_volume')
+        elif source_replicaid is not None:
+            # Make sure the volume is not deleted until we are done with it.
+            locked_action = "%s-%s" % (source_replicaid, 'delete_volume')
         else:
             locked_action = None
 
@@ -1265,11 +1270,22 @@ class VolumeManager(manager.SchedulerDependentManager):
             retyped = True
 
         # Call driver to try and change the type
+        retype_model_update = None
         if not retyped:
             try:
                 new_type = volume_types.get_volume_type(context, new_type_id)
-                retyped = self.driver.retype(context, volume_ref, new_type,
-                                             diff, host)
+                ret = self.driver.retype(context,
+                                         volume_ref,
+                                         new_type,
+                                         diff,
+                                         host)
+                # Check if the driver retype provided a model update or
+                # just a retype indication
+                if type(ret) == tuple:
+                    retyped, retype_model_update = ret
+                else:
+                    retyped = ret
+
                 if retyped:
                     LOG.info(_("Volume %s: retyped successfully"), volume_id)
             except Exception as ex:
@@ -1296,6 +1312,16 @@ class VolumeManager(manager.SchedulerDependentManager):
                 msg = _("Volume must not have snapshots.")
                 LOG.error(msg)
                 raise exception.InvalidVolume(reason=msg)
+
+            # Don't allow volume with replicas to be migrated
+            rep_status = volume_ref['replication_status']
+            if rep_status is not None and rep_status != 'disabled':
+                _retype_error(context, volume_id, old_reservations,
+                              new_reservations, status_update)
+                msg = _("Volume must not be replicated.")
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+
             self.db.volume_update(context, volume_ref['id'],
                                   {'migration_status': 'starting'})
 
@@ -1307,10 +1333,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                     _retype_error(context, volume_id, old_reservations,
                                   new_reservations, status_update)
         else:
-            self.db.volume_update(context, volume_id,
-                                  {'volume_type_id': new_type_id,
-                                   'host': host['host'],
-                                   'status': status_update['status']})
+            model_update = {'volume_type_id': new_type_id,
+                            'host': host['host'],
+                            'status': status_update['status']}
+            if retype_model_update:
+                model_update.update(retype_model_update)
+            self.db.volume_update(context, volume_id, model_update)
 
         if old_reservations:
             QUOTAS.commit(context, old_reservations, project_id=project_id)
@@ -1319,7 +1347,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.publish_service_capabilities(context)
 
     def manage_existing(self, ctxt, volume_id, ref=None):
-        LOG.debug('manage_existing: managing %s' % ref)
+        LOG.debug('manage_existing: managing %s.' % ref)
         try:
             flow_engine = manage_existing.get_flow(
                 ctxt,
@@ -1341,3 +1369,96 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Update volume stats
         self.stats['allocated_capacity_gb'] += volume_ref['size']
         return volume_ref['id']
+
+    def promote_replica(self, ctxt, volume_id):
+        """Promote volume replica secondary to be the primary volume."""
+        try:
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Failed to promote replica for volume %(id)s.")
+                              % {'id': volume_id})
+
+        volume = self.db.volume_get(ctxt, volume_id)
+        model_update = None
+        try:
+            LOG.debug("Volume %s: promote replica.", volume_id)
+            model_update = self.driver.promote_replica(ctxt, volume)
+        except exception.CinderException:
+            err_msg = (_('Error promoting secondary volume to primary'))
+            raise exception.ReplicationError(reason=err_msg,
+                                             volume_id=volume_id)
+
+        try:
+            if model_update:
+                volume = self.db.volume_update(ctxt,
+                                               volume_id,
+                                               model_update)
+        except exception.CinderException:
+            err_msg = (_("Failed updating model"
+                         " with driver provided model %(model)s") %
+                       {'model': model_update})
+            raise exception.ReplicationError(reason=err_msg,
+                                             volume_id=volume_id)
+
+    def reenable_replication(self, ctxt, volume_id):
+        """Re-enable replication of secondary volume with primary volumes."""
+        try:
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Failed to sync replica for volume %(id)s.")
+                              % {'id': volume_id})
+
+        volume = self.db.volume_get(ctxt, volume_id)
+        model_update = None
+        try:
+            LOG.debug("Volume %s: sync replica.", volume_id)
+            model_update = self.driver.reenable_replication(ctxt, volume)
+        except exception.CinderException:
+            err_msg = (_('Error synchronizing secondary volume to primary'))
+            raise exception.ReplicationError(reason=err_msg,
+                                             volume_id=volume_id)
+
+        try:
+            if model_update:
+                volume = self.db.volume_update(ctxt,
+                                               volume_id,
+                                               model_update)
+        except exception.CinderException:
+            err_msg = (_("Failed updating model"
+                         " with driver provided model %(model)s") %
+                       {'model': model_update})
+            raise exception.ReplicationError(reason=err_msg,
+                                             volume_id=volume_id)
+
+    @periodic_task.periodic_task
+    def _update_replication_relationship_status(self, ctxt):
+        LOG.info(_('Updating volume replication status.'))
+        if not self.driver.initialized:
+            if self.driver.configuration.config_group is None:
+                config_group = ''
+            else:
+                config_group = ('(config name %s)' %
+                                self.driver.configuration.config_group)
+
+            LOG.warning(_('Unable to update volume replication status, '
+                          '%(driver_name)s -%(driver_version)s '
+                          '%(config_group)s driver is uninitialized.') %
+                        {'driver_name': self.driver.__class__.__name__,
+                         'driver_version': self.driver.get_version(),
+                         'config_group': config_group})
+        else:
+            volumes = self.db.volume_get_all_by_host(ctxt, self.host)
+            for vol in volumes:
+                model_update = None
+                try:
+                    model_update = self.driver.get_replication_status(
+                        ctxt, vol)
+                    if model_update:
+                        self.db.volume_update(ctxt,
+                                              vol['id'],
+                                              model_update)
+                except Exception:
+                    LOG.exception(_("Error checking replication status for "
+                                    "volume %s") % vol['id'])

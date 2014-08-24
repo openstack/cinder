@@ -54,7 +54,13 @@ def _usage_from_volume(context, volume_ref, **kw):
                       created_at=null_safe_str(volume_ref['created_at']),
                       status=volume_ref['status'],
                       snapshot_id=volume_ref['snapshot_id'],
-                      size=volume_ref['size'])
+                      size=volume_ref['size'],
+                      replication_status=volume_ref['replication_status'],
+                      replication_extended_status=
+                      volume_ref['replication_extended_status'],
+                      replication_driver_data=
+                      volume_ref['replication_driver_data'],
+                      )
 
     usage_info.update(kw)
     return usage_info
@@ -105,6 +111,40 @@ def notify_about_snapshot_usage(context, snapshot, event_suffix,
     rpc.get_notifier('snapshot', host).info(context,
                                             'snapshot.%s' % event_suffix,
                                             usage_info)
+
+
+def notify_about_replication_usage(context, volume, suffix,
+                                   extra_usage_info=None, host=None):
+    if not host:
+        host = CONF.host
+
+    if not extra_usage_info:
+        extra_usage_info = {}
+
+    usage_info = _usage_from_volume(context,
+                                    volume,
+                                    **extra_usage_info)
+
+    rpc.get_notifier('replication', host).info(context,
+                                               'replication.%s' % suffix,
+                                               usage_info)
+
+
+def notify_about_replication_error(context, volume, suffix,
+                                   extra_error_info=None, host=None):
+    if not host:
+        host = CONF.host
+
+    if not extra_error_info:
+        extra_error_info = {}
+
+    usage_info = _usage_from_volume(context,
+                                    volume,
+                                    **extra_error_info)
+
+    rpc.get_notifier('replication', host).error(context,
+                                                'replication.%s' % suffix,
+                                                usage_info)
 
 
 def setup_blkio_cgroup(srcpath, dstpath, bps_limit, execute=utils.execute):

@@ -31,6 +31,9 @@ def create_volume(ctxt,
                   size=1,
                   availability_zone='fake_az',
                   volume_type_id=None,
+                  replication_status='disabled',
+                  replication_extended_status=None,
+                  replication_driver_data=None,
                   **kwargs):
     """Create a volume object in the DB."""
     vol = {}
@@ -48,6 +51,10 @@ def create_volume(ctxt,
         vol['volume_type_id'] = volume_type_id
     for key in kwargs:
         vol[key] = kwargs[key]
+    vol['replication_status'] = replication_status
+    vol['replication_extended_status'] = replication_extended_status
+    vol['replication_driver_data'] = replication_driver_data
+
     return db.volume_create(ctxt, vol)
 
 

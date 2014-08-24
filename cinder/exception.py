@@ -586,6 +586,16 @@ class ManageExistingInvalidReference(CinderException):
                 "reference %(existing_ref)s: %(reason)s")
 
 
+class ReplicationError(CinderException):
+    message = _("Volume %(volume_id)s replication "
+                "error: %(reason)s")
+
+
+class ReplicationNotFound(NotFound):
+    message = _("Volume replication for %(volume_id)s "
+                "could not be found.")
+
+
 class ManageExistingVolumeTypeMismatch(CinderException):
     message = _("Manage existing volume failed due to volume type mismatch: "
                 "%(reason)s")

@@ -208,7 +208,8 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
     default_provides = 'volume_spec'
 
     def __init__(self, db):
-        requires = ['image_id', 'snapshot_id', 'source_volid']
+        requires = ['image_id', 'snapshot_id', 'source_volid',
+                    'source_replicaid']
         super(ExtractVolumeSpecTask, self).__init__(addons=[ACTION],
                                                     requires=requires)
         self.db = db
@@ -253,6 +254,18 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
                 # may or may not be sketchy to do??
                 'source_volstatus': source_volume_ref['status'],
                 'type': 'source_vol',
+            })
+        elif kwargs.get('source_replicaid'):
+            # We are making a clone based on the replica.
+            #
+            # NOTE(harlowja): This will likely fail if the replica
+            # disappeared by the time this call occurred.
+            source_volid = kwargs['source_replicaid']
+            source_volume_ref = self.db.volume_get(context, source_volid)
+            specs.update({
+                'source_replicaid': source_volid,
+                'source_replicastatus': source_volume_ref['status'],
+                'type': 'source_replica',
             })
         elif kwargs.get('image_id'):
             # We are making an image based volume instead of a raw volume.
@@ -363,6 +376,17 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     context,
                     source_volid,
                     volume_id)
+            elif kwargs.get('source_replicaid'):
+                src_type = 'source replica'
+                src_id = kwargs['source_replicaid']
+                source_replicaid = src_id
+                LOG.debug(log_template % {'src_type': src_type,
+                                          'src_id': src_id,
+                                          'vol_id': volume_id})
+                self.db.volume_glance_metadata_copy_from_volume_to_volume(
+                    context,
+                    source_replicaid,
+                    volume_id)
             elif kwargs.get('image_id'):
                 src_type = 'image'
                 src_id = kwargs['image_id']
@@ -430,6 +454,27 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         if srcvol_ref.bootable:
             self._handle_bootable_volume_glance_meta(context, volume_ref['id'],
                                                      source_volid=source_volid)
+        return model_update
+
+    def _create_from_source_replica(self, context, volume_ref,
+                                    source_replicaid, **kwargs):
+        # NOTE(harlowja): if the source volume has disappeared this will be our
+        # detection of that since this database call should fail.
+        #
+        # NOTE(harlowja): likely this is not the best place for this to happen
+        # and we should have proper locks on the source volume while actions
+        # that use the source volume are underway.
+        srcvol_ref = self.db.volume_get(context, source_replicaid)
+        model_update = self.driver.create_replica_test_volume(volume_ref,
+                                                              srcvol_ref)
+        # NOTE(harlowja): Subtasks would be useful here since after this
+        # point the volume has already been created and further failures
+        # will not destroy the volume (although they could in the future).
+        if srcvol_ref.bootable:
+            self._handle_bootable_volume_glance_meta(
+                context,
+                volume_ref['id'],
+                source_replicaid=source_replicaid)
         return model_update
 
     def _copy_image_to_volume(self, context, volume_ref,
@@ -588,6 +633,9 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         elif create_type == 'source_vol':
             model_update = self._create_from_source_volume(
                 context, volume_ref=volume_ref, **volume_spec)
+        elif create_type == 'source_replica':
+            model_update = self._create_from_source_replica(
+                context, volume_ref=volume_ref, **volume_spec)
         elif create_type == 'image':
             model_update = self._create_from_image(context,
                                                    volume_ref=volume_ref,
@@ -661,7 +709,7 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
 def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
              allow_reschedule, reschedule_context, request_spec,
              filter_properties, snapshot_id=None, image_id=None,
-             source_volid=None):
+             source_volid=None, source_replicaid=None):
     """Constructs and returns the manager entrypoint flow.
 
     This flow will do the following:
@@ -691,6 +739,7 @@ def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
         'snapshot_id': snapshot_id,
         'source_volid': source_volid,
         'volume_id': volume_id,
+        'source_replicaid': source_replicaid,
     }
 
     volume_flow.add(ExtractVolumeRefTask(db, host))

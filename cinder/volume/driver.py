@@ -278,19 +278,57 @@ class VolumeDriver(object):
     def create_volume(self, volume):
         """Creates a volume. Can optionally return a Dictionary of
         changes to the volume object to be persisted.
+
+        If volume_type extra specs includes
+        'capabilities:replication <is> True' the driver
+        needs to create a volume replica (secondary), and setup replication
+        between the newly created volume and the secondary volume.
+        Returned dictionary should include:
+            volume['replication_status'] = 'copying'
+            volume['replication_extended_status'] = driver specific value
+            volume['driver_data'] = driver specific value
+
         """
         raise NotImplementedError()
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a volume from a snapshot."""
+        """Creates a volume from a snapshot.
+
+        If volume_type extra specs includes 'replication: <is> True'
+        the driver needs to create a volume replica (secondary),
+        and setup replication between the newly created volume and
+        the secondary volume.
+        """
+
         raise NotImplementedError()
 
     def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
+        """Creates a clone of the specified volume.
+
+        If volume_type extra specs includes 'replication: <is> True' the
+        driver needs to create a volume replica (secondary)
+        and setup replication between the newly created volume
+        and the secondary volume.
+
+        """
+
+        raise NotImplementedError()
+
+    def create_replica_test_volume(self, volume, src_vref):
+        """Creates a test replica clone of the specified replicated volume.
+
+        Create a clone of the replicated (secondary) volume.
+
+        """
         raise NotImplementedError()
 
     def delete_volume(self, volume):
-        """Deletes a volume."""
+        """Deletes a volume.
+
+        If volume_type extra specs includes 'replication: <is> True'
+        then the driver needs to delete the volume replica too.
+
+        """
         raise NotImplementedError()
 
     def create_snapshot(self, snapshot):
@@ -307,6 +345,10 @@ class VolumeDriver(object):
     def get_volume_stats(self, refresh=False):
         """Return the current state of the volume service. If 'refresh' is
            True, run the update first.
+
+           For replication the following state should be reported:
+           replication_support = True (None or false disables replication)
+
         """
         return None
 
@@ -547,7 +589,24 @@ class VolumeDriver(object):
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
 
-        Returns a boolean indicating whether the retype occurred.
+        Returns either:
+        A boolean indicating whether the retype occurred, or
+        A tuple (retyped, model_update) where retyped is a boolean
+        indicating if the retype occurred, and the model_update includes
+        changes for the volume db.
+        if diff['extra_specs'] includes 'replication' then:
+            if  ('True', _ ) then replication should be disabled:
+                Volume replica should be deleted
+                volume['replication_status'] should be changed to 'disabled'
+                volume['replication_extended_status'] = None
+                volume['replication_driver_data'] = None
+            if  (_, 'True') then replication should be enabled:
+                Volume replica (secondary) should be created, and replication
+                should be setup between the volume and the newly created
+                replica
+                volume['replication_status'] = 'copying'
+                volume['replication_extended_status'] = driver specific value
+                volume['replication_driver_data'] = driver specific value
 
         :param ctxt: Context
         :param volume: A dictionary describing the volume to migrate
@@ -557,7 +616,7 @@ class VolumeDriver(object):
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
         """
-        return False
+        return False, None
 
     def accept_transfer(self, context, volume, new_user, new_project):
         """Accept the transfer of a volume for a new user/project."""
@@ -634,6 +693,82 @@ class VolumeDriver(object):
     @staticmethod
     def validate_connector_has_setting(connector, setting):
         pass
+
+    def reenable_replication(self, context, volume):
+        """Re-enable replication between the replica and primary volume.
+
+        This is used to re-enable/fix the replication between primary
+        and secondary. One use is as part of the fail-back process, when
+        you re-synchorize your old primary with the promoted volume
+        (the old replica).
+        Returns model_update for the volume to reflect the actions of the
+        driver.
+        The driver is expected to update the following entries:
+            'replication_status'
+            'replication_extended_status'
+            'replication_driver_data'
+        Possible 'replication_status' values (in model_update) are:
+        'error' - replication in error state
+        'copying' - replication copying data to secondary (inconsistent)
+        'active' - replication copying data to secondary (consistent)
+        'active-stopped' - replication data copy on hold (consistent)
+        'inactive' - replication data copy on hold (inconsistent)
+        Values in 'replication_extended_status' and 'replication_driver_data'
+        are managed by the driver.
+
+        :param context: Context
+        :param volume: A dictionary describing the volume
+
+        """
+        msg = _("sync_replica not implemented.")
+        raise NotImplementedError(msg)
+
+    def get_replication_status(self, context, volume):
+        """Query the actual volume replication status from the driver.
+
+        Returns model_update for the volume.
+        The driver is expected to update the following entries:
+            'replication_status'
+            'replication_extended_status'
+            'replication_driver_data'
+        Possible 'replication_status' values (in model_update) are:
+        'error' - replication in error state
+        'copying' - replication copying data to secondary (inconsistent)
+        'active' - replication copying data to secondary (consistent)
+        'active-stopped' - replication data copy on hold (consistent)
+        'inactive' - replication data copy on hold (inconsistent)
+        Values in 'replication_extended_status' and 'replication_driver_data'
+        are managed by the driver.
+
+        :param context: Context
+        :param volume: A dictionary describing the volume
+        """
+        return None
+
+    def promote_replica(self, context, volume):
+        """Promote the replica to be the primary volume.
+
+        Following this command, replication between the volumes at
+        the storage level should be stopped, the replica should be
+        available to be attached, and the replication status should
+        be in status 'inactive'.
+
+        Returns model_update for the volume.
+        The driver is expected to update the following entries:
+            'replication_status'
+            'replication_extended_status'
+            'replication_driver_data'
+        Possible 'replication_status' values (in model_update) are:
+        'error' - replication in error state
+        'inactive' - replication data copy on hold (inconsistent)
+        Values in 'replication_extended_status' and 'replication_driver_data'
+        are managed by the driver.
+
+        :param context: Context
+        :param volume: A dictionary describing the volume
+        """
+        msg = _("promote_replica not implemented.")
+        raise NotImplementedError(msg)
 
     # #######  Interface methods for DataPath (Connector) ########
     def ensure_export(self, context, volume):

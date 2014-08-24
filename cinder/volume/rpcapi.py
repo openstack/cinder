@@ -51,6 +51,8 @@ class VolumeAPI(object):
         1.14 - Adds reservation parameter to extend_volume().
         1.15 - Adds manage_existing and unmanage_only flag to delete_volume.
         1.16 - Removes create_export.
+        1.17 - Add replica option to create_volume, promote_replica and
+               sync_replica.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -59,12 +61,13 @@ class VolumeAPI(object):
         super(VolumeAPI, self).__init__()
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, '1.15')
+        self.client = rpc.get_client(target, '1.17')
 
     def create_volume(self, ctxt, volume, host,
                       request_spec, filter_properties,
                       allow_reschedule=True,
                       snapshot_id=None, image_id=None,
+                      source_replicaid=None,
                       source_volid=None):
 
         cctxt = self.client.prepare(server=host, version='1.4')
@@ -76,6 +79,7 @@ class VolumeAPI(object):
                    allow_reschedule=allow_reschedule,
                    snapshot_id=snapshot_id,
                    image_id=image_id,
+                   source_replicaid=source_replicaid,
                    source_volid=source_volid),
 
     def delete_volume(self, ctxt, volume, unmanage_only=False):
@@ -165,3 +169,11 @@ class VolumeAPI(object):
     def manage_existing(self, ctxt, volume, ref):
         cctxt = self.client.prepare(server=volume['host'], version='1.15')
         cctxt.cast(ctxt, 'manage_existing', volume_id=volume['id'], ref=ref)
+
+    def promote_replica(self, ctxt, volume):
+        cctxt = self.client.prepare(server=volume['host'], version='1.17')
+        cctxt.cast(ctxt, 'promote_replica', volume_id=volume['id'])
+
+    def reenable_replication(self, ctxt, volume):
+        cctxt = self.client.prepare(server=volume['host'], version='1.17')
+        cctxt.cast(ctxt, 'reenable_replication', volume_id=volume['id'])
