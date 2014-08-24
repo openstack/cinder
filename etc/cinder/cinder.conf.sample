@@ -1273,6 +1273,33 @@
 
 
 #
+# Options defined in cinder.volume.drivers.ibm.ibmnas
+#
+
+# IP address or Hostname of NAS system. (string value)
+#nas_ip=
+
+# User name to connect to NAS system. (string value)
+#nas_login=admin
+
+# Password to connect to NAS system. (string value)
+#nas_password=
+
+# SSH port to use to connect to NAS system. (integer value)
+#nas_ssh_port=22
+
+# Filename of private key to use for SSH authentication.
+# (string value)
+#nas_private_key=
+
+# IBMNAS platform type to be used as backend storage; valid
+# values are - v7ku : for using IBM Storwize V7000 Unified,
+# sonas : for using IBM Scale Out NAS, gpfs-nas : for using
+# NFS based IBM GPFS deployments. (string value)
+#ibmnas_platform_type=v7ku
+
+
+#
 # Options defined in cinder.volume.drivers.ibm.storwize_svc
 #
 
