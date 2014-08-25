@@ -300,30 +300,36 @@ class IBMNASDriverTestCase(test.TestCase):
                           self.TEST_EXTEND_SIZE_IN_GB)
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver._run_ssh')
-    def test_delete_snapfiles(self, mock_ssh):
+    @mock.patch('cinder.openstack.common.processutils.execute')
+    def test_delete_snapfiles(self, mock_ssh, mock_execute):
         """Delete_snapfiles test case."""
 
         drv = self._driver
-        mock_ssh.return_value = ('Parent Depth Parent inode'
-                                 'File name\n yes    0 /ibm/gpfs0/gshare/\n'
-                                 'volume-123\n EFSSG1000I The command'
-                                 'completed successfully.', '')
+        expected = ('Parent Depth Parent inode'
+                    'File name\n yes    0 /ibm/gpfs0/gshare/\n'
+                    'volume-123\n EFSSG1000I The command'
+                    'completed successfully.', '')
+        mock_execute.return_value = expected
+        mock_ssh.return_value = expected
 
         drv._delete_snapfiles(self.TEST_VOLUME_PATH,
                               self.TEST_MNT_POINT)
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver._run_ssh')
-    def test_delete_snapfiles_nas_gpfs(self, mock_ssh):
+    @mock.patch('cinder.openstack.common.processutils.execute')
+    def test_delete_snapfiles_nas_gpfs(self, mock_ssh, mock_execute):
         """Delete_snapfiles for gpfs-nas platform test case."""
 
         drv = self._driver
         drv.configuration.platform = 'gpfs-nas'
-        mock_ssh.return_value = ('Parent  Depth   Parent inode'
-                                 'File name\n'
-                                 '------  -----  -------------'
-                                 '-  ---------\n'
-                                 'yes      0\n'
-                                 '/ibm/gpfs0/gshare/volume-123', '')
+        expected = ('Parent  Depth   Parent inode'
+                    'File name\n'
+                    '------  -----  -------------'
+                    '-  ---------\n'
+                    'yes      0\n'
+                    '/ibm/gpfs0/gshare/volume-123', '')
+        mock_execute.return_value = expected
+        mock_ssh.return_value = expected
 
         drv._delete_snapfiles(self.TEST_VOLUME_PATH,
                               self.TEST_MNT_POINT)
