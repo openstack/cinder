@@ -17,8 +17,9 @@
 
 **Related Flags**
 
-:backup_swift_url: The URL of the Swift endpoint (default:
-                                                        localhost:8080).
+:backup_swift_url: The URL of the Swift endpoint (default: None, use catalog).
+:swift_catalog_info: Info to match when looking for swift in the service '
+                     catalog.
 :backup_swift_object_size: The size in bytes of the Swift objects used
                                     for volume backups (default: 52428800).
 :backup_swift_retry_attempts: The number of retries to make for Swift
@@ -53,8 +54,14 @@ LOG = logging.getLogger(__name__)
 
 swiftbackup_service_opts = [
     cfg.StrOpt('backup_swift_url',
-               default='http://localhost:8080/v1/AUTH_',
+               default=None,
                help='The URL of the Swift endpoint'),
+    cfg.StrOpt('swift_catalog_info',
+               default='object-store:swift:publicURL',
+               help='Info to match when looking for swift in the service '
+               'catalog. Format is: separated values of the form: '
+               '<service_type>:<service_name>:<endpoint_type> - '
+               'Only used if backup_swift_url is unset'),
     cfg.StrOpt('backup_swift_auth',
                default='per_user',
                help='Swift authentication mechanism'),
@@ -117,8 +124,29 @@ class SwiftBackupDriver(BackupDriver):
 
     def __init__(self, context, db_driver=None):
         super(SwiftBackupDriver, self).__init__(context, db_driver)
-        self.swift_url = '%s%s' % (CONF.backup_swift_url,
-                                   self.context.project_id)
+        if CONF.backup_swift_url is None:
+            self.swift_url = None
+            info = CONF.swift_catalog_info
+            try:
+                service_type, service_name, endpoint_type = info.split(':')
+            except ValueError:
+                raise exception.BackupDriverException(_(
+                    "Failed to parse the configuration option "
+                    "'swift_catalog_info', must be in the form "
+                    "<service_type>:<service_name>:<endpoint_type>"))
+            for entry in context.service_catalog:
+                if entry.get('type') == service_type:
+                    self.swift_url = entry.get(
+                        'endpoints')[0].get(endpoint_type)
+        else:
+            self.swift_url = '%s%s' % (CONF.backup_swift_url,
+                                       context.project_id)
+        if self.swift_url is None:
+            raise exception.BackupDriverException(_(
+                "Could not determine which Swift endpoint to use. This can "
+                " either be set in the service catalog or with the "
+                " cinder.conf config option 'backup_swift_url'."))
+        LOG.debug("Using swift URL %s", self.swift_url)
         self.az = CONF.storage_availability_zone
         self.data_block_size_bytes = CONF.backup_swift_object_size
         self.swift_attempts = CONF.backup_swift_retry_attempts

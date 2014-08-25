@@ -23,6 +23,7 @@ import os
 import tempfile
 import zlib
 
+from oslo.config import cfg
 from swiftclient import client as swift
 
 from cinder.backup.drivers.swift import SwiftBackupDriver
@@ -36,6 +37,8 @@ from cinder.tests.backup.fake_swift_client import FakeSwiftClient
 
 
 LOG = logging.getLogger(__name__)
+
+CONF = cfg.CONF
 
 
 def fake_md5(arg):
@@ -65,7 +68,11 @@ class BackupSwiftTestCase(test.TestCase):
 
     def setUp(self):
         super(BackupSwiftTestCase, self).setUp()
+        service_catalog = [{u'type': u'object-store', u'name': u'swift',
+                            u'endpoints': [{
+                                u'publicURL': u'http://example.com'}]}]
         self.ctxt = context.get_admin_context()
+        self.ctxt.service_catalog = service_catalog
 
         self.stubs.Set(swift, 'Connection', FakeSwiftClient.Connection)
         self.stubs.Set(hashlib, 'md5', fake_md5)
@@ -75,6 +82,35 @@ class BackupSwiftTestCase(test.TestCase):
         self.addCleanup(self.volume_file.close)
         for i in xrange(0, 128):
             self.volume_file.write(os.urandom(1024))
+
+    def test_backup_swift_url(self):
+        self.ctxt.service_catalog = [{u'type': u'object-store',
+                                      u'name': u'swift',
+                                      u'endpoints': [{
+                                          u'adminURL': u'http://example.com'}]
+                                      }]
+        self.assertRaises(exception.BackupDriverException,
+                          SwiftBackupDriver,
+                          self.ctxt)
+
+    def test_backup_swift_url_conf(self):
+        self.ctxt.service_catalog = [{u'type': u'object-store',
+                                      u'name': u'swift',
+                                      u'endpoints': [{
+                                          u'adminURL': u'http://example.com'}]
+                                      }]
+        self.ctxt.project_id = "12345678"
+        CONF.set_override("backup_swift_url", "http://public.example.com/")
+        backup = SwiftBackupDriver(self.ctxt)
+        self.assertEqual("%s%s" % (CONF.backup_swift_url,
+                                   self.ctxt.project_id),
+                         backup.swift_url)
+
+    def test_backup_swift_info(self):
+        CONF.set_override("swift_catalog_info", "dummy")
+        self.assertRaises(exception.BackupDriverException,
+                          SwiftBackupDriver,
+                          self.ctxt)
 
     def test_backup_uncompressed(self):
         self._create_backup_db_entry()
