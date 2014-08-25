@@ -1093,10 +1093,10 @@
 
 
 #
-# Options defined in cinder.volume.drivers.emc.emc_smis_common
+# Options defined in cinder.volume.drivers.emc.emc_vmax_common
 #
 
-# The configuration file for the Cinder EMC driver (string
+# use this file for cinder emc plugin config data (string
 # value)
 #cinder_emc_config_file=/etc/cinder/cinder_emc_config.xml
 
