@@ -258,6 +258,21 @@ class API(base.Base):
 
         return d
 
+    def reset_status(self, context, backup_id, status):
+        """Make the RPC call to reset a volume backup's status.
+
+        Call backup manager to execute backup status reset operation.
+        :param context: running context
+        :param backup_id: which backup's status to be reset
+        :parma status: backup's status to be reset
+        :raises: InvalidBackup
+        """
+        # get backup info
+        backup = self.get(context, backup_id)
+        # send to manager to do reset operation
+        self.backup_rpcapi.reset_status(ctxt=context, host=backup['host'],
+                                        backup_id=backup_id, status=status)
+
     def export_record(self, context, backup_id):
         """Make the RPC call to export a volume backup.
 

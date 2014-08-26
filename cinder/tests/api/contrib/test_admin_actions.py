@@ -15,6 +15,7 @@ import tempfile
 
 from oslo.config import cfg
 import webob
+from webob import exc
 
 from cinder.api.contrib import admin_actions
 from cinder.brick.local_dev import lvm as brick_lvm
@@ -67,6 +68,16 @@ class AdminActionsTest(test.TestCase):
     def _issue_snapshot_reset(self, ctx, snapshot, updated_status):
         req = webob.Request.blank('/v2/fake/snapshots/%s/action' %
                                   snapshot['id'])
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = \
+            jsonutils.dumps({'os-reset_status': updated_status})
+        req.environ['cinder.context'] = ctx
+        resp = req.get_response(app())
+        return resp
+
+    def _issue_backup_reset(self, ctx, backup, updated_status):
+        req = webob.Request.blank('/v2/fake/backups/%s/action' % backup['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = \
@@ -167,6 +178,54 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_get(context.get_admin_context(), volume['id'])
         # status is still 'error'
         self.assertEqual(volume['status'], 'error')
+
+    def test_backup_reset_status_as_admin(self):
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = db.volume_create(ctx, {'status': 'available'})
+        backup = db.backup_create(ctx, {'status': 'available',
+                                        'size': 1,
+                                        'volume_id': volume['id']})
+
+        resp = self._issue_backup_reset(ctx,
+                                        backup,
+                                        {'status': 'error'})
+
+        self.assertEqual(resp.status_int, 202)
+
+    def test_backup_reset_status_as_non_admin(self):
+        ctx = context.RequestContext('fake', 'fake')
+        backup = db.backup_create(ctx, {'status': 'available',
+                                        'size': 1,
+                                        'volume_id': "fakeid"})
+        resp = self._issue_backup_reset(ctx,
+                                        backup,
+                                        {'status': 'error'})
+        # request is not authorized
+        self.assertEqual(resp.status_int, 403)
+
+    def test_backup_reset_status(self):
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1})
+        backup = db.backup_create(ctx, {'status': 'available',
+                                        'volume_id': volume['id']})
+
+        resp = self._issue_backup_reset(ctx,
+                                        backup,
+                                        {'status': 'error'})
+
+        self.assertEqual(resp.status_int, 202)
+
+    def test_invalid_status_for_backup(self):
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1})
+        backup = db.backup_create(ctx, {'status': 'available',
+                                        'volume_id': volume['id']})
+        resp = self._issue_backup_reset(ctx,
+                                        backup,
+                                        {'status': 'restoring'})
+        self.assertEqual(resp.status_int, 400)
 
     def test_malformed_reset_status_body(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -761,3 +820,14 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         volume = self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
                                                 expected_status, expected_id)
+
+    def test_backup_reset_valid_updates(self):
+        vac = admin_actions.BackupAdminController()
+        vac.validate_update({'status': 'available'})
+        vac.validate_update({'status': 'error'})
+        self.assertRaises(exc.HTTPBadRequest,
+                          vac.validate_update,
+                          {'status': 'restoring'})
+        self.assertRaises(exc.HTTPBadRequest,
+                          vac.validate_update,
+                          {'status': 'creating'})

@@ -22,6 +22,7 @@ import tempfile
 import mock
 from oslo.config import cfg
 
+from cinder.backup import manager
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -29,6 +30,8 @@ from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder import test
+from cinder.tests.backup.fake_service_with_verify import\
+    get_backup_driver
 
 
 CONF = cfg.CONF
@@ -598,4 +601,85 @@ class BackupTestCaseWithVerify(BaseBackupTest):
                               backup_hosts)
             self.assertTrue(_mock_record_verify.called)
         backup = db.backup_get(self.ctxt, imported_record)
+        self.assertEqual(backup['status'], 'error')
+
+    def test_backup_reset_status_from_nonrestoring_to_available(
+            self):
+        vol_id = self._create_volume_db_entry(status='available',
+                                              size=1)
+        backup_id = self._create_backup_db_entry(status='error',
+                                                 volume_id=vol_id)
+        with mock.patch.object(manager.BackupManager,
+                               '_map_service_to_driver') as \
+                mock_map_service_to_driver:
+            mock_map_service_to_driver.return_value = \
+                get_backup_driver(self.ctxt)
+            self.backup_mgr.reset_status(self.ctxt,
+                                         backup_id,
+                                         'available')
+        backup = db.backup_get(self.ctxt, backup_id)
+        self.assertEqual(backup['status'], 'available')
+
+    def test_backup_reset_status_to_available_invalid_backup(self):
+        volume = db.volume_create(self.ctxt, {'status': 'available',
+                                              'host': 'test',
+                                              'provider_location': '',
+                                              'size': 1})
+        backup = db.backup_create(self.ctxt,
+                                  {'status': 'error',
+                                   'service':
+                                   CONF.backup_driver,
+                                   'volume_id': volume['id']})
+
+        backup_driver = self.backup_mgr.service.get_backup_driver(self.ctxt)
+        _mock_backup_verify_class = ('%s.%s.%s' %
+                                     (backup_driver.__module__,
+                                      backup_driver.__class__.__name__,
+                                      'verify'))
+        with mock.patch(_mock_backup_verify_class) as \
+                _mock_record_verify:
+            _mock_record_verify.side_effect = \
+                exception.BackupVerifyUnsupportedDriver(reason='fake')
+
+            self.assertRaises(exception.BackupVerifyUnsupportedDriver,
+                              self.backup_mgr.reset_status,
+                              self.ctxt,
+                              backup['id'],
+                              'available')
+            backup = db.backup_get(self.ctxt, backup['id'])
+            self.assertEqual(backup['status'], 'error')
+
+    def test_backup_reset_status_from_restoring_to_available(self):
+        volume = db.volume_create(self.ctxt,
+                                  {'status': 'available',
+                                   'host': 'test',
+                                   'provider_location': '',
+                                   'size': 1})
+        backup = db.backup_create(self.ctxt,
+                                  {'status': 'restoring',
+                                   'service':
+                                   CONF.backup_driver,
+                                   'volume_id': volume['id']})
+
+        self.backup_mgr.reset_status(self.ctxt,
+                                     backup['id'],
+                                     'available')
+        backup = db.backup_get(self.ctxt, backup['id'])
+        self.assertEqual(backup['status'], 'available')
+
+    def test_backup_reset_status_to_error(self):
+        volume = db.volume_create(self.ctxt,
+                                  {'status': 'available',
+                                   'host': 'test',
+                                   'provider_location': '',
+                                   'size': 1})
+        backup = db.backup_create(self.ctxt,
+                                  {'status': 'creating',
+                                   'service':
+                                   CONF.backup_driver,
+                                   'volume_id': volume['id']})
+        self.backup_mgr.reset_status(self.ctxt,
+                                     backup['id'],
+                                     'error')
+        backup = db.backup_get(self.ctxt, backup['id'])
         self.assertEqual(backup['status'], 'error')
