@@ -19,6 +19,8 @@
 #   Avishay Traeger <avishay@il.ibm.com>
 
 
+import copy
+
 import mox
 from oslo.config import cfg
 
@@ -33,10 +35,18 @@ FAKE = "fake"
 VOLUME = {'size': 16,
           'name': FAKE,
           'id': 1}
+
 MANAGED_FAKE = "managed_fake"
 MANAGED_VOLUME = {'size': 16,
                   'name': MANAGED_FAKE,
                   'id': 2}
+
+REPLICA_FAKE = "repicated_fake"
+REPLICATED_VOLUME = {'size': 64,
+                     'name': REPLICA_FAKE,
+                     'id': 2}
+
+CONTEXT = {}
 
 CONNECTOR = {'initiator': "iqn.2012-07.org.fake:01:948f189c4695", }
 
@@ -129,6 +139,32 @@ class XIVDS8KFakeProxyDriver(object):
 
         return (self.volumes[volume['name']].get('attached', None)
                 == connector)
+
+    def reenable_replication(self, context, volume):
+        model_update = {}
+        if volume['replication_status'] == 'inactive':
+            model_update['replication_status'] = 'active'
+        elif volume['replication_status'] == 'invalid_status_val':
+            raise exception.CinderException()
+        model_update['replication_extended_status'] = 'some_status'
+        model_update['replication_driver_data'] = 'some_data'
+        return model_update
+
+    def get_replication_status(self, context, volume):
+        if volume['replication_status'] == 'invalid_status_val':
+            raise exception.CinderException()
+        return {'replication_status': 'active'}
+
+    def promote_replica(self, context, volume):
+        if volume['replication_status'] == 'invalid_status_val':
+            raise exception.CinderException()
+        return {'replication_status': 'inactive'}
+
+    def create_replica_test_volume(self, volume, src_vref):
+        if volume['size'] != src_vref['size']:
+            raise exception.InvalidVolume(
+                reason="Target and source volumes have different size.")
+        return
 
 
 class XIVDS8KVolumeDriverTest(test.TestCase):
@@ -317,3 +353,130 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
                           self.driver.manage_existing,
                           VOLUME,
                           existing_ref)
+
+    def test_reenable_replication(self):
+        """Test that reenable_replication returns successfully. """
+
+        self.driver.do_setup(None)
+        # assume the replicated volume is inactive
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        replicated_volume['replication_status'] = 'inactive'
+        model_update = self.driver.reenable_replication(
+            CONTEXT,
+            replicated_volume
+        )
+        self.assertEqual(
+            model_update['replication_status'],
+            'active'
+        )
+        self.assertTrue('replication_extended_status' in model_update)
+        self.assertTrue('replication_driver_data' in model_update)
+
+    def test_reenable_replication_fail_on_cinder_exception(self):
+        """Test that reenable_replication fails on driver raising exception."""
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # on purpose - set invalid value to replication_status
+        # expect an exception.
+        replicated_volume['replication_status'] = 'invalid_status_val'
+        self.assertRaises(
+            exception.CinderException,
+            self.driver.reenable_replication,
+            CONTEXT,
+            replicated_volume
+        )
+
+    def test_get_replication_status(self):
+        """Test that get_replication_status return successfully. """
+
+        self.driver.do_setup(None)
+
+        # assume the replicated volume is inactive
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        replicated_volume['replication_status'] = 'inactive'
+        model_update = self.driver.get_replication_status(
+            CONTEXT,
+            replicated_volume
+        )
+        self.assertEqual(
+            model_update['replication_status'],
+            'active'
+        )
+
+    def test_get_replication_status_fail_on_exception(self):
+        """Test that get_replication_status fails on exception"""
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # on purpose - set invalid value to replication_status
+        # expect an exception.
+        replicated_volume['replication_status'] = 'invalid_status_val'
+        self.assertRaises(
+            exception.CinderException,
+            self.driver.get_replication_status,
+            CONTEXT,
+            replicated_volume
+        )
+
+    def test_promote_replica(self):
+        """Test that promote_replica returns successfully. """
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # assume the replication_status should be active
+        replicated_volume['replication_status'] = 'active'
+        model_update = self.driver.promote_replica(
+            CONTEXT,
+            replicated_volume
+        )
+        # after promoting, replication_status should be inactive
+        self.assertEqual(
+            model_update['replication_status'],
+            'inactive'
+        )
+
+    def test_promote_replica_fail_on_cinder_exception(self):
+        """Test that promote_replica fails on CinderException. """
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # on purpose - set invalid value to replication_status
+        # expect an exception.
+        replicated_volume['replication_status'] = 'invalid_status_val'
+        self.assertRaises(
+            exception.CinderException,
+            self.driver.promote_replica,
+            CONTEXT,
+            replicated_volume
+        )
+
+    def test_create_replica_test_volume(self):
+        """Test that create_replica_test_volume returns successfully."""
+
+        self.driver.do_setup(None)
+        tgt_volume = copy.deepcopy(VOLUME)
+        src_volume = copy.deepcopy(REPLICATED_VOLUME)
+        tgt_volume['size'] = src_volume['size']
+        model_update = self.driver.create_replica_test_volume(
+            tgt_volume,
+            src_volume
+        )
+        self.assertTrue(model_update is None)
+
+    def test_create_replica_test_volume_fail_on_diff_size(self):
+        """Test that create_replica_test_volume fails on diff size."""
+
+        self.driver.do_setup(None)
+        tgt_volume = copy.deepcopy(VOLUME)
+        src_volume = copy.deepcopy(REPLICATED_VOLUME)
+        self.assertRaises(
+            exception.InvalidVolume,
+            self.driver.create_replica_test_volume,
+            tgt_volume,
+            src_volume
+        )
