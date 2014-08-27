@@ -69,7 +69,8 @@ class ViewBuilder(common.ViewBuilder):
                 'user_id': volume.get('user_id'),
                 'bootable': str(volume.get('bootable')).lower(),
                 'encrypted': self._is_volume_encrypted(volume),
-                'replication_status': volume.get('replication_status')
+                'replication_status': volume.get('replication_status'),
+                'consistencygroup_id': volume.get('consistencygroup_id')
             }
         }
 

@@ -794,6 +794,22 @@ class VolumeDriver(object):
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
 
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+        raise NotImplementedError()
+
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group."""
+        raise NotImplementedError()
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Creates a cgsnapshot."""
+        raise NotImplementedError()
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+        raise NotImplementedError()
+
 
 class ISCSIDriver(VolumeDriver):
     """Executes commands relating to ISCSI volumes.

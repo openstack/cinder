@@ -78,6 +78,15 @@
     "backup:backup-export": [["rule:admin_api"]],
 
     "volume_extension:replication:promote": [["rule:admin_api"]],
-    "volume_extension:replication:reenable": [["rule:admin_api"]]
+    "volume_extension:replication:reenable": [["rule:admin_api"]],
 
+    "consistencygroup:create" : [],
+    "consistencygroup:delete": [],
+    "consistencygroup:get": [],
+    "consistencygroup:get_all": [],
+
+    "consistencygroup:create_cgsnapshot" : [],
+    "consistencygroup:delete_cgsnapshot": [],
+    "consistencygroup:get_cgsnapshot": [],
+    "consistencygroup:get_all_cgsnapshots": []
 }

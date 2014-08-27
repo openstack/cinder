@@ -70,6 +70,7 @@ from eventlet.greenpool import GreenPool
 LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
+CGQUOTAS = quota.CGQUOTAS
 
 volume_manager_opts = [
     cfg.StrOpt('volume_driver',
@@ -152,7 +153,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.17'
+    RPC_API_VERSION = '1.18'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -276,7 +277,7 @@ class VolumeManager(manager.SchedulerDependentManager):
     def create_volume(self, context, volume_id, request_spec=None,
                       filter_properties=None, allow_reschedule=True,
                       snapshot_id=None, image_id=None, source_volid=None,
-                      source_replicaid=None):
+                      source_replicaid=None, consistencygroup_id=None):
 
         """Creates the volume."""
         context_saved = context.deepcopy()
@@ -298,6 +299,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 image_id=image_id,
                 source_volid=source_volid,
                 source_replicaid=source_replicaid,
+                consistencygroup_id=consistencygroup_id,
                 allow_reschedule=allow_reschedule,
                 reschedule_context=context_saved,
                 request_spec=request_spec,
@@ -1168,6 +1170,39 @@ class VolumeManager(manager.SchedulerDependentManager):
             context, snapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
+    def _notify_about_consistencygroup_usage(self,
+                                             context,
+                                             group,
+                                             event_suffix,
+                                             extra_usage_info=None):
+        volume_utils.notify_about_consistencygroup_usage(
+            context, group, event_suffix,
+            extra_usage_info=extra_usage_info, host=self.host)
+
+        volumes = self.db.volume_get_all_by_group(context, group['id'])
+        if volumes:
+            for volume in volumes:
+                volume_utils.notify_about_volume_usage(
+                    context, volume, event_suffix,
+                    extra_usage_info=extra_usage_info, host=self.host)
+
+    def _notify_about_cgsnapshot_usage(self,
+                                       context,
+                                       cgsnapshot,
+                                       event_suffix,
+                                       extra_usage_info=None):
+        volume_utils.notify_about_cgsnapshot_usage(
+            context, cgsnapshot, event_suffix,
+            extra_usage_info=extra_usage_info, host=self.host)
+
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(context,
+                                                            cgsnapshot['id'])
+        if snapshots:
+            for snapshot in snapshots:
+                volume_utils.notify_about_snapshot_usage(
+                    context, snapshot, event_suffix,
+                    extra_usage_info=extra_usage_info, host=self.host)
+
     def extend_volume(self, context, volume_id, new_size, reservations):
         try:
             # NOTE(flaper87): Verify the driver is enabled
@@ -1462,3 +1497,343 @@ class VolumeManager(manager.SchedulerDependentManager):
                 except Exception:
                     LOG.exception(_("Error checking replication status for "
                                     "volume %s") % vol['id'])
+
+    def create_consistencygroup(self, context, group_id):
+        """Creates the consistency group."""
+        context = context.elevated()
+        group_ref = self.db.consistencygroup_get(context, group_id)
+        group_ref['host'] = self.host
+
+        status = 'available'
+        model_update = False
+
+        self._notify_about_consistencygroup_usage(
+            context, group_ref, "create.start")
+
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            LOG.info(_("Consistency group %s: creating"), group_ref['name'])
+            model_update = self.driver.create_consistencygroup(context,
+                                                               group_ref)
+
+            if model_update:
+                group_ref = self.db.consistencygroup_update(
+                    context, group_ref['id'], model_update)
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.db.consistencygroup_update(
+                    context,
+                    group_ref['id'],
+                    {'status': 'error'})
+                LOG.error(_("Consistency group %s: create failed"),
+                          group_ref['name'])
+
+        now = timeutils.utcnow()
+        self.db.consistencygroup_update(context,
+                                        group_ref['id'],
+                                        {'status': status,
+                                         'created_at': now})
+        LOG.info(_("Consistency group %s: created successfully"),
+                 group_ref['name'])
+
+        self._notify_about_consistencygroup_usage(
+            context, group_ref, "create.end")
+
+        return group_ref['id']
+
+    def delete_consistencygroup(self, context, group_id):
+        """Deletes consistency group and the volumes in the group."""
+        context = context.elevated()
+        group_ref = self.db.consistencygroup_get(context, group_id)
+        project_id = group_ref['project_id']
+
+        if context.project_id != group_ref['project_id']:
+            project_id = group_ref['project_id']
+        else:
+            project_id = context.project_id
+
+        LOG.info(_("Consistency group %s: deleting"), group_ref['id'])
+
+        volumes = self.db.volume_get_all_by_group(context, group_id)
+
+        for volume_ref in volumes:
+            if volume_ref['attach_status'] == "attached":
+                # Volume is still attached, need to detach first
+                raise exception.VolumeAttached(volume_id=volume_ref['id'])
+            if volume_ref['host'] != self.host:
+                raise exception.InvalidVolume(
+                    reason=_("Volume is not local to this node"))
+
+        self._notify_about_consistencygroup_usage(
+            context, group_ref, "delete.start")
+
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            LOG.debug("Consistency group %(group_id)s: deleting",
+                      {'group_id': group_id})
+
+            model_update, volumes = self.driver.delete_consistencygroup(
+                context, group_ref)
+
+            if volumes:
+                for volume in volumes:
+                    update = {'status': volume['status']}
+                    self.db.volume_update(context, volume['id'],
+                                          update)
+                    # If we failed to delete a volume, make sure the status
+                    # for the cg is set to error as well
+                    if (volume['status'] in ['error_deleting', 'error'] and
+                            model_update['status'] not in
+                            ['error_deleting', 'error']):
+                        model_update['status'] = volume['status']
+
+            if model_update:
+                if model_update['status'] in ['error_deleting', 'error']:
+                    msg = (_('Error occurred when deleting consistency group '
+                             '%s.') % group_ref['id'])
+                    LOG.exception(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                else:
+                    self.db.consistencygroup_update(context, group_ref['id'],
+                                                    model_update)
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.db.consistencygroup_update(
+                    context,
+                    group_ref['id'],
+                    {'status': 'error_deleting'})
+
+        # Get reservations for group
+        try:
+            reserve_opts = {'consistencygroups': -1}
+            cgreservations = CGQUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              **reserve_opts)
+        except Exception:
+            cgreservations = None
+            LOG.exception(_("Failed to update usages deleting "
+                          "consistency groups."))
+
+        for volume_ref in volumes:
+            # Get reservations for volume
+            try:
+                volume_id = volume_ref['id']
+                reserve_opts = {'volumes': -1,
+                                'gigabytes': -volume_ref['size']}
+                QUOTAS.add_volume_type_opts(context,
+                                            reserve_opts,
+                                            volume_ref.get('volume_type_id'))
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              **reserve_opts)
+            except Exception:
+                reservations = None
+                LOG.exception(_("Failed to update usages deleting volume."))
+
+            # Delete glance metadata if it exists
+            self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
+
+            self.db.volume_destroy(context, volume_id)
+
+            # Commit the reservations
+            if reservations:
+                QUOTAS.commit(context, reservations, project_id=project_id)
+
+            self.stats['allocated_capacity_gb'] -= volume_ref['size']
+
+        if cgreservations:
+            CGQUOTAS.commit(context, cgreservations,
+                            project_id=project_id)
+
+        self.db.consistencygroup_destroy(context, group_id)
+        LOG.info(_("Consistency group %s: deleted successfully."),
+                 group_id)
+        self._notify_about_consistencygroup_usage(
+            context, group_ref, "delete.end")
+        self.publish_service_capabilities(context)
+
+        return True
+
+    def create_cgsnapshot(self, context, group_id, cgsnapshot_id):
+        """Creates the cgsnapshot."""
+        caller_context = context
+        context = context.elevated()
+        cgsnapshot_ref = self.db.cgsnapshot_get(context, cgsnapshot_id)
+        LOG.info(_("Cgsnapshot %s: creating."), cgsnapshot_ref['id'])
+
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(context,
+                                                            cgsnapshot_id)
+
+        self._notify_about_cgsnapshot_usage(
+            context, cgsnapshot_ref, "create.start")
+
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            LOG.debug("Cgsnapshot %(cgsnap_id)s: creating.",
+                      {'cgsnap_id': cgsnapshot_id})
+
+            # Pass context so that drivers that want to use it, can,
+            # but it is not a requirement for all drivers.
+            cgsnapshot_ref['context'] = caller_context
+            for snapshot in snapshots:
+                snapshot['context'] = caller_context
+
+            model_update, snapshots = \
+                self.driver.create_cgsnapshot(context, cgsnapshot_ref)
+
+            if snapshots:
+                for snapshot in snapshots:
+                    # Update db if status is error
+                    if snapshot['status'] == 'error':
+                        update = {'status': snapshot['status']}
+                        self.db.snapshot_update(context, snapshot['id'],
+                                                update)
+                        # If status for one snapshot is error, make sure
+                        # the status for the cgsnapshot is also error
+                        if model_update['status'] != 'error':
+                            model_update['status'] = snapshot['status']
+
+            if model_update:
+                if model_update['status'] == 'error':
+                    msg = (_('Error occurred when creating cgsnapshot '
+                             '%s.') % cgsnapshot_ref['id'])
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.db.cgsnapshot_update(context,
+                                          cgsnapshot_ref['id'],
+                                          {'status': 'error'})
+
+        for snapshot in snapshots:
+            volume_id = snapshot['volume_id']
+            snapshot_id = snapshot['id']
+            vol_ref = self.db.volume_get(context, volume_id)
+            if vol_ref.bootable:
+                try:
+                    self.db.volume_glance_metadata_copy_to_snapshot(
+                        context, snapshot['id'], volume_id)
+                except exception.CinderException as ex:
+                    LOG.error(_("Failed updating %(snapshot_id)s"
+                                " metadata using the provided volumes"
+                                " %(volume_id)s metadata") %
+                              {'volume_id': volume_id,
+                               'snapshot_id': snapshot_id})
+                    self.db.snapshot_update(context,
+                                            snapshot['id'],
+                                            {'status': 'error'})
+                    raise exception.MetadataCopyFailure(reason=ex)
+
+            self.db.snapshot_update(context,
+                                    snapshot['id'], {'status': 'available',
+                                                     'progress': '100%'})
+
+        self.db.cgsnapshot_update(context,
+                                  cgsnapshot_ref['id'],
+                                  {'status': 'available'})
+
+        LOG.info(_("cgsnapshot %s: created successfully"),
+                 cgsnapshot_ref['id'])
+        self._notify_about_cgsnapshot_usage(
+            context, cgsnapshot_ref, "create.end")
+        return cgsnapshot_id
+
+    def delete_cgsnapshot(self, context, cgsnapshot_id):
+        """Deletes cgsnapshot."""
+        caller_context = context
+        context = context.elevated()
+        cgsnapshot_ref = self.db.cgsnapshot_get(context, cgsnapshot_id)
+        project_id = cgsnapshot_ref['project_id']
+
+        LOG.info(_("cgsnapshot %s: deleting"), cgsnapshot_ref['id'])
+
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(context,
+                                                            cgsnapshot_id)
+
+        self._notify_about_cgsnapshot_usage(
+            context, cgsnapshot_ref, "delete.start")
+
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            LOG.debug("cgsnapshot %(cgsnap_id)s: deleting",
+                      {'cgsnap_id': cgsnapshot_id})
+
+            # Pass context so that drivers that want to use it, can,
+            # but it is not a requirement for all drivers.
+            cgsnapshot_ref['context'] = caller_context
+            for snapshot in snapshots:
+                snapshot['context'] = caller_context
+
+            model_update, snapshots = \
+                self.driver.delete_cgsnapshot(context, cgsnapshot_ref)
+
+            if snapshots:
+                for snapshot in snapshots:
+                    update = {'status': snapshot['status']}
+                    self.db.snapshot_update(context, snapshot['id'],
+                                            update)
+                    if snapshot['status'] in ['error_deleting', 'error'] and \
+                            model_update['status'] not in \
+                            ['error_deleting', 'error']:
+                        model_update['status'] = snapshot['status']
+
+            if model_update:
+                if model_update['status'] in ['error_deleting', 'error']:
+                    msg = (_('Error occurred when deleting cgsnapshot '
+                             '%s.') % cgsnapshot_ref['id'])
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                else:
+                    self.db.cgsnapshot_update(context, cgsnapshot_ref['id'],
+                                              model_update)
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.db.cgsnapshot_update(context,
+                                          cgsnapshot_ref['id'],
+                                          {'status': 'error_deleting'})
+
+        for snapshot in snapshots:
+            # Get reservations
+            try:
+                if CONF.no_snapshot_gb_quota:
+                    reserve_opts = {'snapshots': -1}
+                else:
+                    reserve_opts = {
+                        'snapshots': -1,
+                        'gigabytes': -snapshot['volume_size'],
+                    }
+                volume_ref = self.db.volume_get(context, snapshot['volume_id'])
+                QUOTAS.add_volume_type_opts(context,
+                                            reserve_opts,
+                                            volume_ref.get('volume_type_id'))
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              **reserve_opts)
+
+            except Exception:
+                reservations = None
+                LOG.exception(_("Failed to update usages deleting snapshot"))
+
+            self.db.volume_glance_metadata_delete_by_snapshot(context,
+                                                              snapshot['id'])
+            self.db.snapshot_destroy(context, snapshot['id'])
+
+            # Commit the reservations
+            if reservations:
+                QUOTAS.commit(context, reservations, project_id=project_id)
+
+        self.db.cgsnapshot_destroy(context, cgsnapshot_id)
+        LOG.info(_("cgsnapshot %s: deleted successfully"),
+                 cgsnapshot_ref['id'])
+        self._notify_about_cgsnapshot_usage(
+            context, cgsnapshot_ref, "delete.end")
+
+        return True

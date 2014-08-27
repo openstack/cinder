@@ -197,6 +197,9 @@ global_opts = [
                help='The full class name of the volume transfer API class'),
     cfg.StrOpt('replication_api_class',
                default='cinder.replication.api.API',
-               help='The full class name of the volume replication API class'), ]
+               help='The full class name of the volume replication API class'),
+    cfg.StrOpt('consistencygroup_api_class',
+               default='cinder.consistencygroup.api.API',
+               help='The full class name of the consistencygroup API class'), ]
 
 CONF.register_opts(global_opts)

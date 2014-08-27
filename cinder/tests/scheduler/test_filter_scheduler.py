@@ -31,6 +31,80 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
 
     driver_cls = filter_scheduler.FilterScheduler
 
+    def test_create_consistencygroup_no_hosts(self):
+        # Ensure empty hosts result in NoValidHosts exception.
+        sched = fakes.FakeFilterScheduler()
+
+        fake_context = context.RequestContext('user', 'project')
+        request_spec = {'volume_properties': {'project_id': 1,
+                                              'size': 0},
+                        'volume_type': {'name': 'Type1',
+                                        'extra_specs': {}}}
+        request_spec2 = {'volume_properties': {'project_id': 1,
+                                               'size': 0},
+                         'volume_type': {'name': 'Type2',
+                                         'extra_specs': {}}}
+        request_spec_list = [request_spec, request_spec2]
+        self.assertRaises(exception.NoValidHost,
+                          sched.schedule_create_consistencygroup,
+                          fake_context, 'faki-id1', request_spec_list, {})
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_schedule_consistencygroup(self,
+                                       _mock_service_get_all_by_topic):
+        # Make sure _schedule_group() can find host successfully.
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project',
+                                              is_admin=True)
+
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+
+        specs = {'capabilities:consistencygroup_support': '<is> True'}
+        request_spec = {'volume_properties': {'project_id': 1,
+                                              'size': 0},
+                        'volume_type': {'name': 'Type1',
+                                        'extra_specs': specs}}
+        request_spec2 = {'volume_properties': {'project_id': 1,
+                                               'size': 0},
+                         'volume_type': {'name': 'Type2',
+                                         'extra_specs': specs}}
+        request_spec_list = [request_spec, request_spec2]
+        weighed_host = sched._schedule_group(fake_context,
+                                             request_spec_list,
+                                             {})
+        self.assertIsNotNone(weighed_host.obj)
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_schedule_consistencygroup_no_cg_support_in_extra_specs(
+            self,
+            _mock_service_get_all_by_topic):
+        # Make sure _schedule_group() can find host successfully even
+        # when consistencygroup_support is not specified in volume type's
+        # extra specs
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project',
+                                              is_admin=True)
+
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+
+        request_spec = {'volume_properties': {'project_id': 1,
+                                              'size': 0},
+                        'volume_type': {'name': 'Type1',
+                                        'extra_specs': {}}}
+        request_spec2 = {'volume_properties': {'project_id': 1,
+                                               'size': 0},
+                         'volume_type': {'name': 'Type2',
+                                         'extra_specs': {}}}
+        request_spec_list = [request_spec, request_spec2]
+        weighed_host = sched._schedule_group(fake_context,
+                                             request_spec_list,
+                                             {})
+        self.assertIsNotNone(weighed_host.obj)
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
     def test_create_volume_no_hosts(self):
         # Ensure empty hosts/child_zones result in NoValidHosts exception.
         sched = fakes.FakeFilterScheduler()

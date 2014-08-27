@@ -66,6 +66,42 @@ class Service(BASE, CinderBase):
     disabled_reason = Column(String(255))
 
 
+class ConsistencyGroup(BASE, CinderBase):
+    """Represents a consistencygroup."""
+    __tablename__ = 'consistencygroups'
+    id = Column(String(36), primary_key=True)
+
+    user_id = Column(String(255), nullable=False)
+    project_id = Column(String(255), nullable=False)
+
+    host = Column(String(255))
+    availability_zone = Column(String(255))
+    name = Column(String(255))
+    description = Column(String(255))
+    volume_type_id = Column(String(255))
+    status = Column(String(255))
+
+
+class Cgsnapshot(BASE, CinderBase):
+    """Represents a cgsnapshot."""
+    __tablename__ = 'cgsnapshots'
+    id = Column(String(36), primary_key=True)
+
+    consistencygroup_id = Column(String(36))
+    user_id = Column(String(255), nullable=False)
+    project_id = Column(String(255), nullable=False)
+
+    name = Column(String(255))
+    description = Column(String(255))
+    status = Column(String(255))
+
+    consistencygroup = relationship(
+        ConsistencyGroup,
+        backref="cgsnapshots",
+        foreign_keys=consistencygroup_id,
+        primaryjoin='Cgsnapshot.consistencygroup_id == ConsistencyGroup.id')
+
+
 class Volume(BASE, CinderBase):
     """Represents a block storage device that can be attached to a vm."""
     __tablename__ = 'volumes'
@@ -116,12 +152,20 @@ class Volume(BASE, CinderBase):
     source_volid = Column(String(36))
     encryption_key_id = Column(String(36))
 
+    consistencygroup_id = Column(String(36))
+
     deleted = Column(Boolean, default=False)
     bootable = Column(Boolean, default=False)
 
     replication_status = Column(String(255))
     replication_extended_status = Column(String(255))
     replication_driver_data = Column(String(255))
+
+    consistencygroup = relationship(
+        ConsistencyGroup,
+        backref="volumes",
+        foreign_keys=consistencygroup_id,
+        primaryjoin='Volume.consistencygroup_id == ConsistencyGroup.id')
 
 
 class VolumeMetadata(BASE, CinderBase):
@@ -353,6 +397,7 @@ class Snapshot(BASE, CinderBase):
     project_id = Column(String(255))
 
     volume_id = Column(String(36))
+    cgsnapshot_id = Column(String(36))
     status = Column(String(255))
     progress = Column(String(255))
     volume_size = Column(Integer)
@@ -368,6 +413,12 @@ class Snapshot(BASE, CinderBase):
     volume = relationship(Volume, backref="snapshots",
                           foreign_keys=volume_id,
                           primaryjoin='Snapshot.volume_id == Volume.id')
+
+    cgsnapshot = relationship(
+        Cgsnapshot,
+        backref="snapshots",
+        foreign_keys=cgsnapshot_id,
+        primaryjoin='Snapshot.cgsnapshot_id == Cgsnapshot.id')
 
 
 class SnapshotMetadata(BASE, CinderBase):
@@ -487,6 +538,8 @@ def register_models():
               VolumeTypeExtraSpecs,
               VolumeTypes,
               VolumeGlanceMetadata,
+              ConsistencyGroup,
+              Cgsnapshot
               )
     engine = create_engine(CONF.database.connection, echo=False)
     for model in models:

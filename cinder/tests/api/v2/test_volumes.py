@@ -94,6 +94,7 @@ class VolumeApiTest(test.TestCase):
                            'volume_id': '1'}],
                          'availability_zone': 'zone1:host1',
                          'bootable': 'false',
+                         'consistencygroup_id': None,
                          'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                          'description': 'Volume Test Desc',
                          'id': '1',
@@ -197,6 +198,7 @@ class VolumeApiTest(test.TestCase):
                                           'volume_id': '1'}],
                          'availability_zone': 'nova',
                          'bootable': 'false',
+                         'consistencygroup_id': None,
                          'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                          'description': 'Volume Test Desc',
                          'encrypted': False,
@@ -287,6 +289,7 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'Updated Test Name',
                 'replication_status': 'disabled',
                 'attachments': [
@@ -340,6 +343,7 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'Updated Test Name',
                 'replication_status': 'disabled',
                 'attachments': [
@@ -396,6 +400,7 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'New Name',
                 'replication_status': 'disabled',
                 'attachments': [
@@ -447,6 +452,7 @@ class VolumeApiTest(test.TestCase):
             'encrypted': False,
             'availability_zone': 'fakeaz',
             'bootable': 'false',
+            'consistencygroup_id': None,
             'name': 'displayname',
             'replication_status': 'disabled',
             'attachments': [{
@@ -509,6 +515,7 @@ class VolumeApiTest(test.TestCase):
             'encrypted': False,
             'availability_zone': 'fakeaz',
             'bootable': 'false',
+            'consistencygroup_id': None,
             'name': 'Updated Test Name',
             'replication_status': 'disabled',
             'attachments': [{
@@ -613,6 +620,7 @@ class VolumeApiTest(test.TestCase):
                     'encrypted': False,
                     'availability_zone': 'fakeaz',
                     'bootable': 'false',
+                    'consistencygroup_id': None,
                     'name': 'displayname',
                     'replication_status': 'disabled',
                     'attachments': [
@@ -674,6 +682,7 @@ class VolumeApiTest(test.TestCase):
                     'encrypted': False,
                     'availability_zone': 'fakeaz',
                     'bootable': 'false',
+                    'consistencygroup_id': None,
                     'name': 'displayname',
                     'replication_status': 'disabled',
                     'attachments': [
@@ -1074,6 +1083,7 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'displayname',
                 'replication_status': 'disabled',
                 'attachments': [
@@ -1124,6 +1134,7 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'displayname',
                 'replication_status': 'disabled',
                 'attachments': [],
@@ -1182,6 +1193,7 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'displayname',
                 'replication_status': 'disabled',
                 'attachments': [

@@ -64,6 +64,9 @@ class fake_db(object):
     def snapshot_get(self, *args, **kwargs):
         return {'volume_id': 1}
 
+    def consistencygroup_get(self, *args, **kwargs):
+        return {'consistencygroup_id': 1}
+
 
 class CreateVolumeFlowTestCase(test.TestCase):
 
@@ -88,7 +91,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'source_volid': None,
                 'snapshot_id': None,
                 'image_id': None,
-                'source_replicaid': None}
+                'source_replicaid': None,
+                'consistencygroup_id': None}
 
         task = create_volume.VolumeCastTask(
             fake_scheduler_rpc_api(spec, self),
@@ -101,7 +105,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'source_volid': 2,
                 'snapshot_id': 3,
                 'image_id': 4,
-                'source_replicaid': 5}
+                'source_replicaid': 5,
+                'consistencygroup_id': 5}
 
         task = create_volume.VolumeCastTask(
             fake_scheduler_rpc_api(spec, self),
