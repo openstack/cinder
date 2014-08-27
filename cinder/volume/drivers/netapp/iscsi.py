@@ -797,6 +797,9 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
                                  'ex': ex})
             finally:
                 self._update_stale_vols(volume=volume)
+        msg = _("Failure creating volume /vol/%(vol_id)s/%(name)s.") % {
+            'vol_id': volume.id['name'], 'name': name}
+        raise exception.VolumeBackendAPIException(msg)
 
     def _get_avl_volumes(self, size, extra_specs=None):
         """Get the available volume by size, extra_specs."""

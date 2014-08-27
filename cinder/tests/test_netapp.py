@@ -22,15 +22,17 @@ import BaseHTTPServer
 import httplib
 from lxml import etree
 
+import mock
 import six
 
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
 from cinder.volume.drivers.netapp.api import NaServer
 from cinder.volume.drivers.netapp import common
+from cinder.volume.drivers.netapp import iscsi
 from cinder.volume.drivers.netapp.options import netapp_7mode_opts
 from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
 from cinder.volume.drivers.netapp.options import netapp_cluster_opts
@@ -38,9 +40,6 @@ from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_provisioning_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
 from cinder.volume.drivers.netapp import ssc_utils
-
-
-LOG = logging.getLogger("cinder.volume.driver")
 
 
 def create_configuration():
@@ -657,6 +656,32 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.driver.create_volume(self.volume)
         self.driver.extend_volume(self.volume, 4)
 
+    @mock.patch.object(iscsi.LOG, 'error')
+    def test_na_api_error_in_create_lun_on_eligible_vol(self, mock_log):
+        drv = self.driver.driver
+        vol_name = 'fake_lun_vol'
+        lun_name = 'lun1'
+        size = '1'
+        metadata = {'OSType': 'linux', 'SpaceReserved': 'true'}
+        path = '/vol/%(vol_name)s/%(lun_name)s' % {'vol_name': vol_name,
+                                                   'lun_name': lun_name}
+        metadata_out = {'Path': path,
+                        'Qtree': None,
+                        'OSType': 'linux',
+                        'SpaceReserved': 'true',
+                        'Volume': 'lun1'}
+        extra_specs = {}
+        available_vol = ssc_utils.NetAppVolume(vol_name)
+
+        with mock.patch.object(drv, '_get_avl_volumes',
+                               return_value=[available_vol]):
+            with mock.patch.object(drv, 'create_lun', side_effect=NaApiError):
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  drv._create_lun_on_eligible_vol,
+                                  lun_name, size, metadata, extra_specs)
+
+        self.assertEqual(1, mock_log.call_count)
+
 
 class NetAppDriverNegativeTestCase(test.TestCase):
     """Test case for NetAppDriver"""
@@ -1175,6 +1200,18 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
         # check exception raises when not supported version
         self.assertRaises(exception.VolumeBackendAPIException,
                           drv.check_for_setup_error)
+
+    def test_na_api_error_in_create_lun_on_eligible_vol(self):
+        drv = self.driver.driver
+        req_size = 1.0
+        fake_volume = {'name': 'fake_vol'}
+        fake_metadata = {}
+
+        with mock.patch.object(drv, '_get_avl_volume_by_size',
+                               return_value=fake_volume):
+            with mock.patch.object(drv, 'create_lun', side_effect=NaApiError):
+                self.assertRaises(NaApiError, drv._create_lun_on_eligible_vol,
+                                  fake_volume['name'], req_size, fake_metadata)
 
 
 class NetAppDirect7modeISCSIDriverTestCase_WV(
