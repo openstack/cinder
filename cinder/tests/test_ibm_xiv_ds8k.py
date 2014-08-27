@@ -24,11 +24,13 @@ import copy
 import mox
 from oslo.config import cfg
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import xiv_ds8k
+from cinder.volume import volume_types
 
 
 FAKE = "fake"
@@ -165,6 +167,10 @@ class XIVDS8KFakeProxyDriver(object):
             raise exception.InvalidVolume(
                 reason="Target and source volumes have different size.")
         return
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        volume['easytier'] = new_type['extra_specs']['easytier']
+        return True, volume
 
 
 class XIVDS8KVolumeDriverTest(test.TestCase):
@@ -479,4 +485,81 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
             self.driver.create_replica_test_volume,
             tgt_volume,
             src_volume
+        )
+
+    def test_retype(self):
+        """Test that retype returns successfully."""
+
+        self.driver.do_setup(None)
+
+        # prepare parameters
+        ctxt = context.get_admin_context()
+
+        host = {
+            'host': 'foo',
+            'capabilities': {
+                'location_info': 'xiv_ds8k_fake_1',
+                'extent_size': '1024'
+            }
+        }
+
+        key_specs_old = {'easytier': False, 'warning': 2, 'autoexpand': True}
+        key_specs_new = {'easytier': True, 'warning': 5, 'autoexpand': False}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, equal = volume_types.volume_types_diff(
+            ctxt,
+            old_type_ref['id'],
+            new_type_ref['id'],
+        )
+
+        volume = copy.deepcopy(VOLUME)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.create_volume(volume)
+        ret = self.driver.retype(ctxt, volume, new_type, diff, host)
+        self.assertTrue(ret)
+        self.assertTrue(volume['easytier'])
+
+    def test_retype_fail_on_exception(self):
+        """Test that retype fails on exception."""
+
+        self.driver.do_setup(None)
+
+        # prepare parameters
+        ctxt = context.get_admin_context()
+
+        host = {
+            'host': 'foo',
+            'capabilities': {
+                'location_info': 'xiv_ds8k_fake_1',
+                'extent_size': '1024'
+            }
+        }
+
+        key_specs_old = {'easytier': False, 'warning': 2, 'autoexpand': True}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new')
+
+        diff, equal = volume_types.volume_types_diff(
+            ctxt,
+            old_type_ref['id'],
+            new_type_ref['id'],
+        )
+
+        volume = copy.deepcopy(VOLUME)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.create_volume(volume)
+        self.assertRaises(
+            KeyError,
+            self.driver.retype,
+            ctxt, volume, new_type, diff, host
         )

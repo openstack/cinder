@@ -221,3 +221,8 @@ class XIVDS8KDriver(san.SanDriver):
         """Creates a test replica clone of the specified replicated volume."""
 
         return self.xiv_ds8k_proxy.create_replica_test_volume(volume, src_vref)
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Convert the volume to be of the new type."""
+
+        return self.xiv_ds8k_proxy.retype(ctxt, volume, new_type, diff, host)
