@@ -1016,18 +1016,15 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
 
         root_file_fmt = info.file_format
 
-        temp_path = None
-
-        try:
+        tmp_params = {
+            'prefix': '%s.temp_image.%s' % (volume['id'], image_meta['id']),
+            'suffix': '.img'
+        }
+        with image_utils.temporary_file(**tmp_params) as temp_path:
             if snapshots_exist or (root_file_fmt != 'raw'):
                 # Convert due to snapshots
                 # or volume data not being stored in raw format
                 #  (upload_volume assumes raw format input)
-                temp_path = '%s/%s.temp_image.%s' % (
-                    self._local_volume_dir(volume),
-                    volume['id'],
-                    image_meta['id'])
-
                 image_utils.convert_image(active_file_path, temp_path, 'raw')
                 upload_path = temp_path
             else:
@@ -1037,9 +1034,6 @@ class GlusterfsDriver(nfs.RemoteFsDriver):
                                       image_service,
                                       image_meta,
                                       upload_path)
-        finally:
-            if temp_path is not None:
-                self._execute('rm', '-f', temp_path)
 
     @utils.synchronized('glusterfs', external=False)
     def extend_volume(self, volume, size_gb):
