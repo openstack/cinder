@@ -42,7 +42,7 @@ from cinder.openstack.common import processutils
 from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers import nfs
-from cinder.volume.drivers.nfs import nas_opts
+from cinder.volume.drivers.remotefs import nas_opts
 from cinder.volume.drivers.san import san
 
 VERSION = '1.1.0'
