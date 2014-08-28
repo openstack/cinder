@@ -22,6 +22,7 @@ import BaseHTTPServer
 import httplib
 
 from lxml import etree
+import mock
 import six
 
 from cinder import exception
@@ -39,7 +40,6 @@ from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_provisioning_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
 from cinder.volume.drivers.netapp import ssc_utils
-
 
 LOG = logging.getLogger("cinder.volume.driver")
 
@@ -657,6 +657,23 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
     def test_extend_vol_sub_lun_clone(self):
         self.driver.create_volume(self.volume)
         self.driver.extend_volume(self.volume, 4)
+
+    def test_initialize_connection_no_target_details_found(self):
+        fake_volume = {'name': 'mock-vol'}
+        fake_connector = {'initiator': 'iqn.mock'}
+        self.driver._map_lun = mock.Mock(return_value='mocked-lun-id')
+        self.driver._get_iscsi_service_details = mock.Mock(
+            return_value='mocked-iqn')
+        self.driver._get_target_details = mock.Mock(return_value=[])
+        expected = (_('No iscsi target details were found for LUN %s')
+                    % fake_volume['name'])
+        try:
+            self.driver.initialize_connection(fake_volume, fake_connector)
+        except exception.VolumeBackendAPIException as exc:
+            if expected not in str(exc):
+                self.fail(_('Expected exception message is missing'))
+        else:
+            self.fail(_('VolumeBackendAPIException not raised'))
 
 
 class NetAppDriverNegativeTestCase(test.TestCase):

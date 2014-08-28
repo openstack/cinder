@@ -236,7 +236,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         LOG.debug(msg % msg_fmt)
 
         if not target_details_list:
-            msg = _('Failed to get LUN target details for the LUN %s')
+            msg = _('No iscsi target details were found for LUN %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
         target_details = None
         for tgt_detail in target_details_list:
