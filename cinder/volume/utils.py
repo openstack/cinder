@@ -147,6 +147,69 @@ def notify_about_replication_error(context, volume, suffix,
                                                 usage_info)
 
 
+def _usage_from_consistencygroup(context, group_ref, **kw):
+    usage_info = dict(tenant_id=group_ref['project_id'],
+                      user_id=group_ref['user_id'],
+                      availability_zone=group_ref['availability_zone'],
+                      consistencygroup_id=group_ref['id'],
+                      name=group_ref['name'],
+                      created_at=null_safe_str(group_ref['created_at']),
+                      status=group_ref['status'])
+
+    usage_info.update(kw)
+    return usage_info
+
+
+def notify_about_consistencygroup_usage(context, group, event_suffix,
+                                        extra_usage_info=None, host=None):
+    if not host:
+        host = CONF.host
+
+    if not extra_usage_info:
+        extra_usage_info = {}
+
+    usage_info = _usage_from_consistencygroup(context,
+                                              group,
+                                              **extra_usage_info)
+
+    rpc.get_notifier("consistencygroup", host).info(
+        context,
+        'consistencygroup.%s' % event_suffix,
+        usage_info)
+
+
+def _usage_from_cgsnapshot(context, cgsnapshot_ref, **kw):
+    usage_info = dict(
+        tenant_id=cgsnapshot_ref['project_id'],
+        user_id=cgsnapshot_ref['user_id'],
+        cgsnapshot_id=cgsnapshot_ref['id'],
+        name=cgsnapshot_ref['name'],
+        consistencygroup_id=cgsnapshot_ref['consistencygroup_id'],
+        created_at=null_safe_str(cgsnapshot_ref['created_at']),
+        status=cgsnapshot_ref['status'])
+
+    usage_info.update(kw)
+    return usage_info
+
+
+def notify_about_cgsnapshot_usage(context, cgsnapshot, event_suffix,
+                                  extra_usage_info=None, host=None):
+    if not host:
+        host = CONF.host
+
+    if not extra_usage_info:
+        extra_usage_info = {}
+
+    usage_info = _usage_from_cgsnapshot(context,
+                                        cgsnapshot,
+                                        **extra_usage_info)
+
+    rpc.get_notifier("cgsnapshot", host).info(
+        context,
+        'cgsnapshot.%s' % event_suffix,
+        usage_info)
+
+
 def setup_blkio_cgroup(srcpath, dstpath, bps_limit, execute=utils.execute):
     if not bps_limit:
         LOG.debug('Not using bps rate limiting on volume copy')

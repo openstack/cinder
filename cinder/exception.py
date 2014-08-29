@@ -795,3 +795,21 @@ class EMCVnxCLICmdError(VolumeBackendAPIException):
             LOG.error(msg)
         else:
             LOG.warn(msg)
+
+
+# ConsistencyGroup
+class ConsistencyGroupNotFound(NotFound):
+    message = _("ConsistencyGroup %(consistencygroup_id)s could not be found.")
+
+
+class InvalidConsistencyGroup(Invalid):
+    message = _("Invalid ConsistencyGroup: %(reason)s")
+
+
+# CgSnapshot
+class CgSnapshotNotFound(NotFound):
+    message = _("CgSnapshot %(cgsnapshot_id)s could not be found.")
+
+
+class InvalidCgSnapshot(Invalid):
+    message = _("Invalid CgSnapshot: %(reason)s")

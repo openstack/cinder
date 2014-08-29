@@ -53,6 +53,9 @@ class VolumeAPI(object):
         1.16 - Removes create_export.
         1.17 - Add replica option to create_volume, promote_replica and
                sync_replica.
+        1.18 - Adds create_consistencygroup, delete_consistencygroup,
+               create_cgsnapshot, and delete_cgsnapshot. Also adds
+               the consistencygroup_id parameter in create_volume.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -61,14 +64,37 @@ class VolumeAPI(object):
         super(VolumeAPI, self).__init__()
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, '1.17')
+        self.client = rpc.get_client(target, '1.18')
+
+    def create_consistencygroup(self, ctxt, group, host):
+        cctxt = self.client.prepare(server=host, version='1.18')
+        cctxt.cast(ctxt, 'create_consistencygroup',
+                   group_id=group['id'])
+
+    def delete_consistencygroup(self, ctxt, group):
+        cctxt = self.client.prepare(server=group['host'], version='1.18')
+        cctxt.cast(ctxt, 'delete_consistencygroup',
+                   group_id=group['id'])
+
+    def create_cgsnapshot(self, ctxt, group, cgsnapshot):
+
+        cctxt = self.client.prepare(server=group['host'], version='1.18')
+        cctxt.cast(ctxt, 'create_cgsnapshot',
+                   group_id=group['id'],
+                   cgsnapshot_id=cgsnapshot['id'])
+
+    def delete_cgsnapshot(self, ctxt, cgsnapshot, host):
+        cctxt = self.client.prepare(server=host, version='1.18')
+        cctxt.cast(ctxt, 'delete_cgsnapshot',
+                   cgsnapshot_id=cgsnapshot['id'])
 
     def create_volume(self, ctxt, volume, host,
                       request_spec, filter_properties,
                       allow_reschedule=True,
                       snapshot_id=None, image_id=None,
                       source_replicaid=None,
-                      source_volid=None):
+                      source_volid=None,
+                      consistencygroup_id=None):
 
         cctxt = self.client.prepare(server=host, version='1.4')
         request_spec_p = jsonutils.to_primitive(request_spec)
@@ -80,7 +106,8 @@ class VolumeAPI(object):
                    snapshot_id=snapshot_id,
                    image_id=image_id,
                    source_replicaid=source_replicaid,
-                   source_volid=source_volid),
+                   source_volid=source_volid,
+                   consistencygroup_id=consistencygroup_id)
 
     def delete_volume(self, ctxt, volume, unmanage_only=False):
         cctxt = self.client.prepare(server=volume['host'], version='1.15')

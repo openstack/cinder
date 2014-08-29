@@ -709,7 +709,8 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
 def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
              allow_reschedule, reschedule_context, request_spec,
              filter_properties, snapshot_id=None, image_id=None,
-             source_volid=None, source_replicaid=None):
+             source_volid=None, source_replicaid=None,
+             consistencygroup_id=None):
     """Constructs and returns the manager entrypoint flow.
 
     This flow will do the following:
@@ -740,6 +741,7 @@ def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
         'source_volid': source_volid,
         'volume_id': volume_id,
         'source_replicaid': source_replicaid,
+        'consistencygroup_id': consistencygroup_id,
     }
 
     volume_flow.add(ExtractVolumeRefTask(db, host))

@@ -224,6 +224,10 @@
 # value)
 #quota_snapshots=10
 
+# Number of consistencygroups allowed per project (integer
+# value)
+#quota_consistencygroups=10
+
 # Total amount of storage, in gigabytes, allowed for volumes
 # and snapshots per project (integer value)
 #quota_gigabytes=1000
@@ -618,6 +622,10 @@
 # The full class name of the volume replication API class
 # (string value)
 #replication_api_class=cinder.replication.api.API
+
+# The full class name of the consistencygroup API class
+# (string value)
+#consistencygroup_api_class=cinder.consistencygroup.api.API
 
 
 #

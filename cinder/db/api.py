@@ -222,6 +222,11 @@ def volume_get_all_by_host(context, host):
     return IMPL.volume_get_all_by_host(context, host)
 
 
+def volume_get_all_by_group(context, group_id):
+    """Get all volumes belonging to a consistency group."""
+    return IMPL.volume_get_all_by_group(context, group_id)
+
+
 def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
                               sort_dir, filters=None):
     """Get all volumes belonging to a project."""
@@ -269,6 +274,11 @@ def snapshot_get_all(context):
 def snapshot_get_all_by_project(context, project_id):
     """Get all snapshots belonging to a project."""
     return IMPL.snapshot_get_all_by_project(context, project_id)
+
+
+def snapshot_get_all_for_cgsnapshot(context, project_id):
+    """Get all snapshots belonging to a cgsnapshot."""
+    return IMPL.snapshot_get_all_for_cgsnapshot(context, project_id)
 
 
 def snapshot_get_all_for_volume(context, volume_id):
@@ -377,6 +387,11 @@ def volume_type_get(context, id, inactive=False):
 def volume_type_get_by_name(context, name):
     """Get volume type by name."""
     return IMPL.volume_type_get_by_name(context, name)
+
+
+def volume_types_get_by_name_or_id(context, volume_type_list):
+    """Get volume types by name or id."""
+    return IMPL.volume_types_get_by_name_or_id(context, volume_type_list)
 
 
 def volume_type_qos_associations_get(context, qos_specs_id, inactive=False):
@@ -792,3 +807,90 @@ def transfer_destroy(context, transfer_id):
 def transfer_accept(context, transfer_id, user_id, project_id):
     """Accept a volume transfer."""
     return IMPL.transfer_accept(context, transfer_id, user_id, project_id)
+
+
+###################
+
+
+def consistencygroup_get(context, consistencygroup_id):
+    """Get a consistencygroup or raise if it does not exist."""
+    return IMPL.consistencygroup_get(context, consistencygroup_id)
+
+
+def consistencygroup_get_all(context):
+    """Get all consistencygroups."""
+    return IMPL.consistencygroup_get_all(context)
+
+
+def consistencygroup_get_all_by_host(context, host):
+    """Get all consistencygroups belonging to a host."""
+    return IMPL.consistencygroup_get_all_by_host(context, host)
+
+
+def consistencygroup_create(context, values):
+    """Create a consistencygroup from the values dictionary."""
+    return IMPL.consistencygroup_create(context, values)
+
+
+def consistencygroup_get_all_by_project(context, project_id):
+    """Get all consistencygroups belonging to a project."""
+    return IMPL.consistencygroup_get_all_by_project(context, project_id)
+
+
+def consistencygroup_update(context, consistencygroup_id, values):
+    """Set the given properties on a consistencygroup and update it.
+
+    Raises NotFound if consistencygroup does not exist.
+    """
+    return IMPL.consistencygroup_update(context, consistencygroup_id, values)
+
+
+def consistencygroup_destroy(context, consistencygroup_id):
+    """Destroy the consistencygroup or raise if it does not exist."""
+    return IMPL.consistencygroup_destroy(context, consistencygroup_id)
+
+
+###################
+
+
+def cgsnapshot_get(context, cgsnapshot_id):
+    """Get a cgsnapshot or raise if it does not exist."""
+    return IMPL.cgsnapshot_get(context, cgsnapshot_id)
+
+
+def cgsnapshot_get_all(context):
+    """Get all cgsnapshots."""
+    return IMPL.cgsnapshot_get_all(context)
+
+
+def cgsnapshot_get_all_by_host(context, host):
+    """Get all cgsnapshots belonging to a host."""
+    return IMPL.cgsnapshot_get_all_by_host(context, host)
+
+
+def cgsnapshot_create(context, values):
+    """Create a cgsnapshot from the values dictionary."""
+    return IMPL.cgsnapshot_create(context, values)
+
+
+def cgsnapshot_get_all_by_group(context, group_id):
+    """Get all cgsnapshots belonging to a consistency group."""
+    return IMPL.cgsnapshot_get_all_by_group(context, group_id)
+
+
+def cgsnapshot_get_all_by_project(context, project_id):
+    """Get all cgsnapshots belonging to a project."""
+    return IMPL.cgsnapshot_get_all_by_project(context, project_id)
+
+
+def cgsnapshot_update(context, cgsnapshot_id, values):
+    """Set the given properties on a cgsnapshot and update it.
+
+    Raises NotFound if cgsnapshot does not exist.
+    """
+    return IMPL.cgsnapshot_update(context, cgsnapshot_id, values)
+
+
+def cgsnapshot_destroy(context, cgsnapshot_id):
+    """Destroy the cgsnapshot or raise if it does not exist."""
+    return IMPL.cgsnapshot_destroy(context, cgsnapshot_id)

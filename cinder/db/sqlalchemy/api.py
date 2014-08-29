@@ -284,10 +284,19 @@ def _sync_gigabytes(context, project_id, session, volume_type_id=None,
     return {key: vol_gigs + snap_gigs}
 
 
+def _sync_consistencygroups(context, project_id, session,
+                            volume_type_id=None,
+                            volume_type_name=None):
+    (_junk, groups) = _consistencygroup_data_get_for_project(
+        context, project_id, session=session)
+    key = 'consistencygroups'
+    return {key: groups}
+
 QUOTA_SYNC_FUNCTIONS = {
     '_sync_volumes': _sync_volumes,
     '_sync_snapshots': _sync_snapshots,
     '_sync_gigabytes': _sync_gigabytes,
+    '_sync_consistencygroups': _sync_consistencygroups,
 }
 
 
@@ -1153,12 +1162,14 @@ def _volume_get_query(context, session=None, project_only=False):
                            project_only=project_only).\
             options(joinedload('volume_metadata')).\
             options(joinedload('volume_admin_metadata')).\
-            options(joinedload('volume_type'))
+            options(joinedload('volume_type')).\
+            options(joinedload('consistencygroup'))
     else:
         return model_query(context, models.Volume, session=session,
                            project_only=project_only).\
             options(joinedload('volume_metadata')).\
-            options(joinedload('volume_type'))
+            options(joinedload('volume_type')).\
+            options(joinedload('consistencygroup'))
 
 
 @require_context
@@ -1209,6 +1220,12 @@ def volume_get_all(context, marker, limit, sort_key, sort_dir,
 @require_admin_context
 def volume_get_all_by_host(context, host):
     return _volume_get_query(context).filter_by(host=host).all()
+
+
+@require_admin_context
+def volume_get_all_by_group(context, group_id):
+    return _volume_get_query(context).filter_by(consistencygroup_id=group_id).\
+        all()
 
 
 @require_context
@@ -1639,6 +1656,16 @@ def snapshot_get_all_for_volume(context, volume_id):
 
 
 @require_context
+def snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id):
+    return model_query(context, models.Snapshot, read_deleted='no',
+                       project_only=True).\
+        filter_by(cgsnapshot_id=cgsnapshot_id).\
+        options(joinedload('volume')).\
+        options(joinedload('snapshot_metadata')).\
+        all()
+
+
+@require_context
 def snapshot_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
     return model_query(context, models.Snapshot).\
@@ -1884,6 +1911,19 @@ def volume_type_get_by_name(context, name):
     """Return a dict describing specific volume_type."""
 
     return _volume_type_get_by_name(context, name)
+
+
+@require_context
+def volume_types_get_by_name_or_id(context, volume_type_list):
+    """Return a dict describing specific volume_type."""
+    req_volume_types = []
+    for vol_t in volume_type_list:
+        if not uuidutils.is_uuid_like(vol_t):
+            vol_type = _volume_type_get_by_name(context, vol_t)
+        else:
+            vol_type = _volume_type_get(context, vol_t)
+        req_volume_types.append(vol_type)
+    return req_volume_types
 
 
 @require_admin_context
@@ -2850,5 +2890,196 @@ def transfer_accept(context, transfer_id, user_id, project_id):
         session.query(models.Transfer).\
             filter_by(id=transfer_ref['id']).\
             update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
+
+
+###############################
+
+
+@require_admin_context
+def _consistencygroup_data_get_for_project(context, project_id,
+                                           session=None):
+    query = model_query(context,
+                        func.count(models.ConsistencyGroup.id),
+                        read_deleted="no",
+                        session=session).\
+        filter_by(project_id=project_id)
+
+    result = query.first()
+
+    return (0, result[0] or 0)
+
+
+@require_admin_context
+def consistencygroup_data_get_for_project(context, project_id):
+    return _consistencygroup_data_get_for_project(context, project_id)
+
+
+@require_context
+def _consistencygroup_get(context, consistencygroup_id, session=None):
+    result = model_query(context, models.ConsistencyGroup, session=session,
+                         project_only=True).\
+        filter_by(id=consistencygroup_id).\
+        first()
+
+    if not result:
+        raise exception.ConsistencyGroupNotFound(
+            consistencygroup_id=consistencygroup_id)
+
+    return result
+
+
+@require_context
+def consistencygroup_get(context, consistencygroup_id):
+    return _consistencygroup_get(context, consistencygroup_id)
+
+
+@require_admin_context
+def consistencygroup_get_all(context):
+    return model_query(context, models.ConsistencyGroup).all()
+
+
+@require_admin_context
+def consistencygroup_get_all_by_host(context, host):
+    return model_query(context, models.ConsistencyGroup).\
+        filter_by(host=host).all()
+
+
+@require_context
+def consistencygroup_get_all_by_project(context, project_id):
+    authorize_project_context(context, project_id)
+
+    return model_query(context, models.ConsistencyGroup).\
+        filter_by(project_id=project_id).all()
+
+
+@require_context
+def consistencygroup_create(context, values):
+    consistencygroup = models.ConsistencyGroup()
+    if not values.get('id'):
+        values['id'] = str(uuid.uuid4())
+
+    session = get_session()
+    with session.begin():
+        consistencygroup.update(values)
+        session.add(consistencygroup)
+
+        return _consistencygroup_get(context, values['id'], session=session)
+
+
+@require_context
+def consistencygroup_update(context, consistencygroup_id, values):
+    session = get_session()
+    with session.begin():
+        result = model_query(context, models.ConsistencyGroup, project_only=True).\
+            filter_by(id=consistencygroup_id).\
+            first()
+
+        if not result:
+            raise exception.ConsistencyGroupNotFound(
+                _("No consistency group with id %s") % consistencygroup_id)
+
+        result.update(values)
+        result.save(session=session)
+    return result
+
+
+@require_admin_context
+def consistencygroup_destroy(context, consistencygroup_id):
+    session = get_session()
+    with session.begin():
+        model_query(context, models.ConsistencyGroup, session=session).\
+            filter_by(id=consistencygroup_id).\
+            update({'status': 'deleted',
+                    'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
+
+
+###############################
+
+
+@require_context
+def _cgsnapshot_get(context, cgsnapshot_id, session=None):
+    result = model_query(context, models.Cgsnapshot, session=session,
+                         project_only=True).\
+        filter_by(id=cgsnapshot_id).\
+        first()
+
+    if not result:
+        raise exception.CgSnapshotNotFound(cgsnapshot_id=cgsnapshot_id)
+
+    return result
+
+
+@require_context
+def cgsnapshot_get(context, cgsnapshot_id):
+    return _cgsnapshot_get(context, cgsnapshot_id)
+
+
+@require_admin_context
+def cgsnapshot_get_all(context):
+    return model_query(context, models.Cgsnapshot).all()
+
+
+@require_admin_context
+def cgsnapshot_get_all_by_host(context, host):
+    return model_query(context, models.Cgsnapshot).filter_by(host=host).all()
+
+
+@require_admin_context
+def cgsnapshot_get_all_by_group(context, group_id):
+    return model_query(context, models.Cgsnapshot).\
+        filter_by(consistencygroup_id=group_id).all()
+
+
+@require_context
+def cgsnapshot_get_all_by_project(context, project_id):
+    authorize_project_context(context, project_id)
+
+    return model_query(context, models.Cgsnapshot).\
+        filter_by(project_id=project_id).all()
+
+
+@require_context
+def cgsnapshot_create(context, values):
+    cgsnapshot = models.Cgsnapshot()
+    if not values.get('id'):
+        values['id'] = str(uuid.uuid4())
+
+    session = get_session()
+    with session.begin():
+        cgsnapshot.update(values)
+        session.add(cgsnapshot)
+
+        return _cgsnapshot_get(context, values['id'], session=session)
+
+
+@require_context
+def cgsnapshot_update(context, cgsnapshot_id, values):
+    session = get_session()
+    with session.begin():
+        result = model_query(context, models.Cgsnapshot, project_only=True).\
+            filter_by(id=cgsnapshot_id).\
+            first()
+
+        if not result:
+            raise exception.CgSnapshotNotFound(
+                _("No cgsnapshot with id %s") % cgsnapshot_id)
+
+        result.update(values)
+        result.save(session=session)
+    return result
+
+
+@require_admin_context
+def cgsnapshot_destroy(context, cgsnapshot_id):
+    session = get_session()
+    with session.begin():
+        model_query(context, models.Cgsnapshot, session=session).\
+            filter_by(id=cgsnapshot_id).\
+            update({'status': 'deleted',
+                    'deleted': True,
                     'deleted_at': timeutils.utcnow(),
                     'updated_at': literal_column('updated_at')})

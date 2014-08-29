@@ -41,6 +41,7 @@ QUOTAS = quota.QUOTAS
 SNAPSHOT_PROCEED_STATUS = ('available',)
 SRC_VOL_PROCEED_STATUS = ('available', 'in-use',)
 REPLICA_PROCEED_STATUS = ('active', 'active-stopped')
+CG_PROCEED_STATUS = ('available',)
 
 
 class ExtractVolumeRequestTask(flow_utils.CinderTask):
@@ -59,13 +60,32 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
     # reconstructed elsewhere and continued).
     default_provides = set(['availability_zone', 'size', 'snapshot_id',
                             'source_volid', 'volume_type', 'volume_type_id',
-                            'encryption_key_id', 'source_replicaid'])
+                            'encryption_key_id', 'source_replicaid',
+                            'consistencygroup_id'])
 
     def __init__(self, image_service, availability_zones, **kwargs):
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
                                                        **kwargs)
         self.image_service = image_service
         self.availability_zones = availability_zones
+
+    @staticmethod
+    def _extract_consistencygroup(consistencygroup):
+        """Extracts the consistencygroup id from the provided consistencygroup.
+
+        This function validates the input consistencygroup dict and checks that
+        the status of that consistencygroup is valid for creating a volume in.
+        """
+
+        consistencygroup_id = None
+        if consistencygroup is not None:
+            if consistencygroup['status'] not in CG_PROCEED_STATUS:
+                msg = _("Originating consistencygroup status must be one"
+                        " of '%s' values")
+                msg = msg % (", ".join(CG_PROCEED_STATUS))
+                raise exception.InvalidConsistencyGroup(reason=msg)
+            consistencygroup_id = consistencygroup['id']
+        return consistencygroup_id
 
     @staticmethod
     def _extract_snapshot(snapshot):
@@ -363,7 +383,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata,
-                key_manager, backup_source_volume, source_replica):
+                key_manager, backup_source_volume, source_replica,
+                consistencygroup):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -376,6 +397,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         source_volid = self._extract_source_volume(source_volume)
         source_replicaid = self._extract_source_replica(source_replica)
         size = self._extract_size(size, source_volume, snapshot)
+        consistencygroup_id = self._extract_consistencygroup(consistencygroup)
 
         self._check_image_metadata(context, image_id, size)
 
@@ -429,6 +451,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             'encryption_key_id': encryption_key_id,
             'qos_specs': specs,
             'source_replicaid': source_replicaid,
+            'consistencygroup_id': consistencygroup_id,
         }
 
 
@@ -444,7 +467,7 @@ class EntryCreateTask(flow_utils.CinderTask):
         requires = ['availability_zone', 'description', 'metadata',
                     'name', 'reservations', 'size', 'snapshot_id',
                     'source_volid', 'volume_type_id', 'encryption_key_id',
-                    'source_replicaid']
+                    'source_replicaid', 'consistencygroup_id', ]
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
         self.db = db
@@ -656,7 +679,8 @@ class VolumeCastTask(flow_utils.CinderTask):
     def __init__(self, scheduler_rpcapi, volume_rpcapi, db):
         requires = ['image_id', 'scheduler_hints', 'snapshot_id',
                     'source_volid', 'volume_id', 'volume_type',
-                    'volume_properties', 'source_replicaid']
+                    'volume_properties', 'source_replicaid',
+                    'consistencygroup_id']
         super(VolumeCastTask, self).__init__(addons=[ACTION],
                                              requires=requires)
         self.volume_rpcapi = volume_rpcapi
@@ -669,9 +693,14 @@ class VolumeCastTask(flow_utils.CinderTask):
         volume_id = request_spec['volume_id']
         snapshot_id = request_spec['snapshot_id']
         image_id = request_spec['image_id']
+        group_id = request_spec['consistencygroup_id']
         host = None
 
-        if snapshot_id and CONF.snapshot_same_host:
+        if group_id:
+            group = self.db.consistencygroup_get(context, group_id)
+            if group:
+                host = group.get('host', None)
+        elif snapshot_id and CONF.snapshot_same_host:
             # NOTE(Rongze Zhu): A simple solution for bug 1008866.
             #
             # If snapshot_id is set, make the call create volume directly to
@@ -715,7 +744,8 @@ class VolumeCastTask(flow_utils.CinderTask):
                 snapshot_id=snapshot_id,
                 image_id=image_id,
                 source_volid=source_volid,
-                source_replicaid=source_replicaid)
+                source_replicaid=source_replicaid,
+                consistencygroup_id=group_id)
 
     def execute(self, context, **kwargs):
         scheduler_hints = kwargs.pop('scheduler_hints', None)
