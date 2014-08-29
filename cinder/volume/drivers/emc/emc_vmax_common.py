@@ -104,7 +104,7 @@ class EMCVMAXCommon(object):
 
         For a striped compositeType:
         The user must supply an extra spec to determine how many metas
-        will make up the striped volume.If the meta size is greater than
+        will make up the striped volume. If the meta size is greater than
         240GB an error is returned to the user. Otherwise the
         EMCNumberOfMembers is what the user specifies.
 
@@ -271,8 +271,8 @@ class EMCVMAXCommon(object):
 
         Removes volume from the Device Masking Group that belongs to
         a Masking View.
-        Check if fast policy is in the extra specs, if it isn't we do
-        not need to do any thing for FAST
+        Check if fast policy is in the extra specs. If it isn't we do
+        not need to do anything for FAST.
         Assume that isTieringPolicySupported is False unless the FAST
         policy is in the extra specs and tiering is enabled on the array
 
@@ -325,8 +325,8 @@ class EMCVMAXCommon(object):
 
         The volume may be already mapped, if this is so the deviceInfo tuple
         is returned.  If the volume is not already mapped then we need to
-        gather information to either 1. Create an new masking view or 2.Add
-        the volume to to an existing storage group within an already existing
+        gather information to either 1. Create a new masking view or 2. Add
+        the volume to an existing storage group within an already existing
         maskingview.
 
         The naming convention is the following:
@@ -1356,8 +1356,7 @@ class EMCVMAXCommon(object):
     def find_device_number(self, volume, connector):
         """Given the volume dict find a device number.
 
-        Find a device number  that a host can see
-        for a volume
+        Find a device number that a host can see for a volume.
 
         :param volume: the volume dict
         :param connector: the connector dict
@@ -1591,7 +1590,7 @@ class EMCVMAXCommon(object):
                     data=exceptionMessage)
 
             # Get the FAST policy from the file this value can be None if the
-            # user doesnt want to associate with any FAST policy
+            # user doesn't want to associate with any FAST policy
             fastPolicyName = self.utils.parse_fast_policy_name_from_file(
                 configurationFile)
             if fastPolicyName is not None:
