@@ -1954,21 +1954,162 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             mock.call.getHost(self.FAKE_HOST),
             mock.ANY,
             mock.call.getHost(self.FAKE_HOST),
+            mock.call.getPorts(),
             mock.call.createVLUN(
                 self.VOLUME_3PAR_NAME,
                 auto=True,
                 hostname=self.FAKE_HOST),
             mock.call.getHostVLUNs(self.FAKE_HOST),
-            mock.call.getPorts(),
             mock.call.logout()]
 
         mock_client.assert_has_calls(expected)
 
         self.assertDictMatch(result, self.properties)
 
+    @mock.patch('cinder.zonemanager.utils.create_lookup_service')
+    def test_initialize_connection_with_lookup_single_nsp(self, mock_lookup):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        class fake_lookup_object:
+            def get_device_mapping_from_network(self, connector, target_wwns):
+                fake_map = {
+                    'FAB_1': {
+                        'target_port_wwn_list': ['0987654321234'],
+                        'initiator_port_wwn_list': ['123456789012345']
+                    }
+                }
+                return fake_map
+        mock_lookup.return_value = fake_lookup_object()
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.getHost.side_effect = [
+            hpexceptions.HTTPNotFound('fake'),
+            {'name': self.FAKE_HOST,
+                'FCPaths': [{'driverVersion': None,
+                             'firmwareVersion': None,
+                             'hostSpeed': 0,
+                             'model': None,
+                             'portPos': {'cardPort': 1, 'node': 1,
+                                         'slot': 2},
+                             'vendor': None,
+                             'wwn': self.wwn[0]}]}]
+        mock_client.findHost.return_value = self.FAKE_HOST
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': 90, 'type': 0}]
+        location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
+                    {'volume_name': self.VOLUME_3PAR_NAME,
+                     'lun_id': 90,
+                     'host': self.FAKE_HOST,
+                     'nsp': 'something'})
+        mock_client.createVLUN.return_value = location
+
+        connector = {'ip': '10.0.0.2',
+                     'initiator': 'iqn.1993-08.org.debian:01:222',
+                     'wwpns': [self.wwn[0]],
+                     'wwnns': ["223456789012345"],
+                     'host': self.FAKE_HOST}
+
+        expected_properties = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'target_lun': 90,
+                'target_wwn': ['0987654321234'],
+                'target_discovered': True,
+                'initiator_target_map': {'123456789012345':
+                                         ['0987654321234']
+                                         }}}
+
+        result = self.driver.initialize_connection(self.volume, connector)
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getVolume(self.VOLUME_3PAR_NAME),
+            mock.call.getCPG(HP3PAR_CPG),
+            mock.call.getHost(self.FAKE_HOST),
+            mock.ANY,
+            mock.call.getHost(self.FAKE_HOST),
+            mock.call.getPorts(),
+            mock.call.getPorts(),
+            mock.call.createVLUN(
+                self.VOLUME_3PAR_NAME,
+                auto=True,
+                hostname=self.FAKE_HOST,
+                portPos={'node': 7, 'slot': 1, 'cardPort': 1}),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
+            mock.call.logout()]
+
+        mock_client.assert_has_calls(expected)
+
+        self.assertDictMatch(result, expected_properties)
+
     def test_terminate_connection(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+
+        effects = [
+            [{'active': True, 'volumeName': self.VOLUME_3PAR_NAME,
+              'lun': None, 'type': 0}],
+            hpexceptions.HTTPNotFound]
+
+        mock_client.getHostVLUNs.side_effect = effects
+
+        expected = [
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
+            mock.call.deleteVLUN(
+                self.VOLUME_3PAR_NAME,
+                None,
+                self.FAKE_HOST),
+            mock.call.deleteHost(self.FAKE_HOST),
+            mock.call.getHostVLUNs(self.FAKE_HOST),
+            mock.call.getPorts(),
+            mock.call.logout()]
+
+        conn_info = self.driver.terminate_connection(self.volume,
+                                                     self.connector)
+        mock_client.assert_has_calls(expected)
+        self.assertIn('data', conn_info)
+        self.assertIn('initiator_target_map', conn_info['data'])
+        mock_client.reset_mock()
+
+        mock_client.getHostVLUNs.side_effect = effects
+
+        # mock some deleteHost exceptions that are handled
+        delete_with_vlun = hpexceptions.HTTPConflict(
+            error={'message': "has exported VLUN"})
+        delete_with_hostset = hpexceptions.HTTPConflict(
+            error={'message': "host is a member of a set"})
+        mock_client.deleteHost = mock.Mock(
+            side_effect=[delete_with_vlun, delete_with_hostset])
+
+        conn_info = self.driver.terminate_connection(self.volume,
+                                                     self.connector)
+        mock_client.assert_has_calls(expected)
+        mock_client.reset_mock()
+        mock_client.getHostVLUNs.side_effect = effects
+
+        conn_info = self.driver.terminate_connection(self.volume,
+                                                     self.connector)
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch('cinder.zonemanager.utils.create_lookup_service')
+    def test_terminate_connection_with_lookup(self, mock_lookup):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        class fake_lookup_object:
+            def get_device_mapping_from_network(self, connector, target_wwns):
+                fake_map = {
+                    'FAB_1': {
+                        'target_port_wwn_list': ['0987654321234'],
+                        'initiator_port_wwn_list': ['123456789012345']
+                    }
+                }
+                return fake_map
+        mock_lookup.return_value = fake_lookup_object()
         mock_client = self.setup_driver()
 
         effects = [

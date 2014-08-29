@@ -23,6 +23,7 @@ from cinder.i18n import _
 from cinder.openstack.common import log
 from cinder.volume.configuration import Configuration
 from cinder.volume import manager
+from cinder.zonemanager import fc_san_lookup_service
 from cinder.zonemanager import fc_zone_manager
 
 LOG = log.getLogger(__name__)
@@ -44,6 +45,19 @@ def create_zone_manager():
         return zm
     else:
         LOG.debug("FC Zone Manager not enabled in cinder.conf.")
+        return None
+
+
+def create_lookup_service():
+    config = Configuration(manager.volume_manager_opts)
+    LOG.debug("zoning mode %s" % config.safe_get('zoning_mode'))
+    if config.safe_get('zoning_mode') == 'fabric':
+        LOG.debug("FC Lookup Service enabled.")
+        lookup = fc_san_lookup_service.FCSanLookupService(configuration=config)
+        LOG.info(_("Using FC lookup service %s") % lookup.lookup_service)
+        return lookup
+    else:
+        LOG.debug("FC Lookup Service not enabled in cinder.conf.")
         return None
 
 
