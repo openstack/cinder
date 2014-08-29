@@ -1236,6 +1236,91 @@
 
 
 #
+# Options defined in cinder.volume.drivers.hitachi.hbsd_common
+#
+
+# Serial number of storage system (string value)
+#hitachi_serial_number=<None>
+
+# Name of an array unit (string value)
+#hitachi_unit_name=<None>
+
+# Pool ID of storage system (integer value)
+#hitachi_pool_id=<None>
+
+# Thin pool ID of storage system (integer value)
+#hitachi_thin_pool_id=<None>
+
+# Range of logical device of storage system (string value)
+#hitachi_ldev_range=<None>
+
+# Default copy method of storage system (string value)
+#hitachi_default_copy_method=FULL
+
+# Copy speed of storage system (integer value)
+#hitachi_copy_speed=3
+
+# Interval to check copy (integer value)
+#hitachi_copy_check_interval=3
+
+# Interval to check copy asynchronously (integer value)
+#hitachi_async_copy_check_interval=10
+
+# Control port names for HostGroup or iSCSI Target (string
+# value)
+#hitachi_target_ports=<None>
+
+# Range of group number (string value)
+#hitachi_group_range=<None>
+
+# Request for creating HostGroup or iSCSI Target (boolean
+# value)
+#hitachi_group_request=false
+
+
+#
+# Options defined in cinder.volume.drivers.hitachi.hbsd_fc
+#
+
+# Request for FC Zone creating HostGroup (boolean value)
+#hitachi_zoning_request=false
+
+
+#
+# Options defined in cinder.volume.drivers.hitachi.hbsd_horcm
+#
+
+# Instance numbers for HORCM (string value)
+#hitachi_horcm_numbers=200,201
+
+# Username of storage system for HORCM (string value)
+#hitachi_horcm_user=<None>
+
+# Password of storage system for HORCM (string value)
+#hitachi_horcm_password=<None>
+
+# Add to HORCM configuration (boolean value)
+#hitachi_horcm_add_conf=true
+
+
+#
+# Options defined in cinder.volume.drivers.hitachi.hbsd_iscsi
+#
+
+# Add CHAP user (boolean value)
+#hitachi_add_chap_user=false
+
+# iSCSI authentication method (string value)
+#hitachi_auth_method=<None>
+
+# iSCSI authentication username (string value)
+#hitachi_auth_user=HBSD-CHAP-user
+
+# iSCSI authentication password (string value)
+#hitachi_auth_password=HBSD-CHAP-password
+
+
+#
 # Options defined in cinder.volume.drivers.huawei
 #
 
