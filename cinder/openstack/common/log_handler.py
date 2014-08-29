@@ -25,5 +25,6 @@ class PublishErrorsHandler(logging.Handler):
         if ('cinder.openstack.common.notifier.log_notifier' in
                 cfg.CONF.notification_driver):
             return
-        rpc.get_notifier('error.publisher').info('error_notification',
-                                                 dict(error=record.msg))
+        msg = record.getMessage()
+        rpc.get_notifier('error.publisher').error(None, 'error_notification',
+                                                  dict(error=msg))
