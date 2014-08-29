@@ -338,15 +338,13 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         return availability_zone
 
     def _get_encryption_key_id(self, key_manager, context, volume_type_id,
-                               snapshot, source_volume, backup_source_volume):
+                               snapshot, source_volume):
         encryption_key_id = None
         if volume_types.is_encrypted(context, volume_type_id):
             if snapshot is not None:  # creating from snapshot
                 encryption_key_id = snapshot['encryption_key_id']
             elif source_volume is not None:  # cloning volume
                 encryption_key_id = source_volume['encryption_key_id']
-            elif backup_source_volume is not None:  # creating from backup
-                encryption_key_id = backup_source_volume['encryption_key_id']
 
             # NOTE(joel-coffman): References to the encryption key should *not*
             # be copied because the key is deleted when the volume is deleted.
@@ -360,8 +358,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         return encryption_key_id
 
-    def _get_volume_type_id(self, volume_type, source_volume, snapshot,
-                            backup_source_volume):
+    def _get_volume_type_id(self, volume_type, source_volume, snapshot):
         volume_type_id = None
         if not volume_type and source_volume:
             volume_type_id = source_volume['volume_type_id']
@@ -374,8 +371,6 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                             "be the same as the source volume.")
                     LOG.warn(msg)
             volume_type_id = snapshot['volume_type_id']
-        elif backup_source_volume is not None:
-            volume_type_id = backup_source_volume['volume_type_id']
         else:
             volume_type_id = volume_type.get('id')
 
@@ -383,7 +378,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata,
-                key_manager, backup_source_volume, source_replica,
+                key_manager, source_replica,
                 consistencygroup):
 
         utils.check_exclusive_options(snapshot=snapshot,
@@ -421,15 +416,13 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             volume_type = def_vol_type
 
         volume_type_id = self._get_volume_type_id(volume_type,
-                                                  source_volume, snapshot,
-                                                  backup_source_volume)
+                                                  source_volume, snapshot)
 
         encryption_key_id = self._get_encryption_key_id(key_manager,
                                                         context,
                                                         volume_type_id,
                                                         snapshot,
-                                                        source_volume,
-                                                        backup_source_volume)
+                                                        source_volume)
 
         specs = {}
         if volume_type_id:

@@ -528,6 +528,10 @@ class BackupRBDOperationFailed(BackupDriverException):
     message = _("Backup RBD operation failed")
 
 
+class EncryptedBackupOperationFailed(BackupDriverException):
+    message = _("Backup operation of an encrypted volume failed.")
+
+
 class BackupNotFound(NotFound):
     message = _("Backup %(backup_id)s could not be found.")
 

@@ -153,7 +153,7 @@ class API(base.Base):
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
                availability_zone=None, source_volume=None,
-               scheduler_hints=None, backup_source_volume=None,
+               scheduler_hints=None,
                source_replica=None, consistencygroup=None):
 
         # NOTE(jdg): we can have a create without size if we're
@@ -224,7 +224,6 @@ class API(base.Base):
             'source_volume': source_volume,
             'scheduler_hints': scheduler_hints,
             'key_manager': self.key_manager,
-            'backup_source_volume': backup_source_volume,
             'source_replica': source_replica,
             'optional_args': {'is_quota_committed': False},
             'consistencygroup': consistencygroup

@@ -911,7 +911,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_restore_metdata(self):
-        version = 1
+        version = 2
 
         def mock_read(*args):
             base_tag = driver.BackupMetadataAPI.TYPE_TAG_VOL_BASE_META
@@ -927,7 +927,7 @@ class BackupCephTestCase(test.TestCase):
         self.assertTrue(self.mock_rados.Object.return_value.stat.called)
         self.assertTrue(self.mock_rados.Object.return_value.read.called)
 
-        version = 2
+        version = 3
         try:
             self.service._restore_metadata(self.backup, self.volume_id)
         except exception.BackupOperationError as exc:
@@ -939,7 +939,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     @mock.patch('cinder.backup.drivers.ceph.VolumeMetadataBackup', spec=True)
-    def test_backup_metata_already_exists(self, mock_meta_backup):
+    def test_backup_metadata_already_exists(self, mock_meta_backup):
 
         def mock_set(json_meta):
             msg = (_("Metadata backup object '%s' already exists") %
@@ -994,7 +994,7 @@ class BackupCephTestCase(test.TestCase):
             glance_tag = driver.BackupMetadataAPI.TYPE_TAG_VOL_GLANCE_META
             return jsonutils.dumps({base_tag: {'image_name': 'image.base'},
                                     glance_tag: {'image_name': 'image.glance'},
-                                    'version': 2})
+                                    'version': 3})
 
         self.mock_rados.Object.return_value.read.side_effect = mock_read
         with mock.patch.object(ceph.VolumeMetadataBackup, '_exists') as \
