@@ -49,7 +49,7 @@ LOG = logging.getLogger(__name__)
 XML_NS_V1 = 'http://docs.openstack.org/volume/api/v1'
 
 
-# Regex that matches alphanumeric characters, periods, hypens,
+# Regex that matches alphanumeric characters, periods, hyphens,
 # colons and underscores:
 # ^ assert position at start of the string
 # [\w\.\-\:\_] match expression
