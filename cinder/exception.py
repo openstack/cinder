@@ -813,3 +813,25 @@ class CgSnapshotNotFound(NotFound):
 
 class InvalidCgSnapshot(Invalid):
     message = _("Invalid CgSnapshot: %(reason)s")
+
+
+# Hitachi Block Storage Driver
+class HBSDError(CinderException):
+    message = _("HBSD error occurs.")
+
+
+class HBSDCmdError(HBSDError):
+
+    def __init__(self, message=None, ret=None, err=None):
+        self.ret = ret
+        self.stderr = err
+
+        super(HBSDCmdError, self).__init__(message=message)
+
+
+class HBSDBusy(HBSDError):
+    message = "Device or resource is busy."
+
+
+class HBSDNotFound(NotFound):
+    message = _("Storage resource could not be found.")
