@@ -739,9 +739,6 @@ class GPFSDriver(driver.VolumeDriver):
             return (None, False)
 
         vol_path = self.local_path(volume)
-        # if the image is not already a GPFS snap file make it so
-        if not self._is_gpfs_parent_file(image_path):
-            self._create_gpfs_snap(image_path)
 
         data = image_utils.qemu_img_info(image_path)
 
@@ -752,6 +749,10 @@ class GPFSDriver(driver.VolumeDriver):
                     'copy_on_write'):
                 LOG.debug('Clone image to vol %s using mmclone.' %
                           volume['id'])
+                # if the image is not already a GPFS snap file make it so
+                if not self._is_gpfs_parent_file(image_path):
+                    self._create_gpfs_snap(image_path)
+
                 self._create_gpfs_copy(image_path, vol_path)
             elif self.configuration.gpfs_images_share_mode == 'copy':
                 LOG.debug('Clone image to vol %s using copyfile.' %
