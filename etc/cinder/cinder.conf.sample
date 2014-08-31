@@ -1188,6 +1188,22 @@
 
 
 #
+# Options defined in cinder.volume.drivers.fusionio.ioControl
+#
+
+# amount of time wait for iSCSI target to come online (integer
+# value)
+#fusionio_iocontrol_targetdelay=5
+
+# number of retries for GET operations (integer value)
+#fusionio_iocontrol_retry=3
+
+# verify the array certificate on each transaction (boolean
+# value)
+#fusionio_iocontrol_verify_cert=true
+
+
+#
 # Options defined in cinder.volume.drivers.glusterfs
 #
 
