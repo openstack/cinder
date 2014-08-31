@@ -18,9 +18,9 @@ Utility functions for Image transfer.
 
 from eventlet import timeout
 
-from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
+from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import io_util
 from cinder.volume.drivers.vmware import read_write_util as rw_util
 
@@ -79,8 +79,10 @@ def start_transfer(context, timeout_secs, read_file_handle, max_data_size,
         write_thread.stop()
 
         # Log and raise the exception.
-        LOG.exception(exc)
-        raise exception.CinderException(exc)
+        LOG.exception(_("Error occurred during image transfer."))
+        if isinstance(exc, error_util.ImageTransferException):
+            raise
+        raise error_util.ImageTransferException(exc)
     finally:
         timer.cancel()
         # No matter what, try closing the read and write handles, if it so
