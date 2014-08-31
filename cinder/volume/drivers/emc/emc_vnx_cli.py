@@ -1218,7 +1218,7 @@ class CommandLineHelper(object):
             self.active_storage_ip == self.primary_storage_ip else\
             self.primary_storage_ip
 
-        LOG.info(_('Toggle storage_vnx_ip_adress from %(old)s to '
+        LOG.info(_('Toggle storage_vnx_ip_address from %(old)s to '
                    '%(new)s.') %
                  {'old': old_ip,
                   'new': self.primary_storage_ip})
