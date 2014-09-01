@@ -75,10 +75,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 and hp3parclient 3.1.0.
         2.0.6 - Fixing missing login/logout around attach/detach bug #1367429
         2.0.7 - Add support for pools with model update
+        2.0.8 - Migrate without losing type settings bug #1356608
 
     """
 
-    VERSION = "2.0.7"
+    VERSION = "2.0.8"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -667,6 +668,14 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
     @utils.synchronized('3par', external=True)
     def migrate_volume(self, context, volume, host):
+
+        if volume['status'] == 'in-use':
+            protocol = host['capabilities']['storage_protocol']
+            if protocol != 'iSCSI':
+                LOG.debug("3PAR ISCSI driver cannot migrate in-use volume "
+                          "to a host with storage_protocol=%s." % protocol)
+                return False, None
+
         self.common.client_login()
         try:
             return self.common.migrate_volume(volume, host)

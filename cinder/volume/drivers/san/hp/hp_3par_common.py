@@ -42,6 +42,8 @@ import pprint
 import re
 import uuid
 
+import six
+
 from cinder.openstack.common import importutils
 hp3parclient = importutils.try_import("hp3parclient")
 if hp3parclient:
@@ -153,10 +155,11 @@ class HP3PARCommon(object):
         2.0.22 - HP 3PAR drivers should not claim to have 'infinite' space
         2.0.23 - Increase the hostname size from 23 to 31  Bug #1371242
         2.0.24 - Add pools (hp3par_cpg now accepts a list of CPGs)
+        2.0.25 - Migrate without losing type settings bug #1356608
 
     """
 
-    VERSION = "2.0.24"
+    VERSION = "2.0.25"
 
     stats = {}
 
@@ -943,33 +946,23 @@ class HP3PARCommon(object):
                 qos = self._get_qos_by_volume_type(volume_type)
         return hp3par_keys, qos, volume_type, vvs_name
 
-    def get_volume_settings_from_type_id(self, type_id, volume):
+    def get_volume_settings_from_type_id(self, type_id, pool):
         """Get 3PAR volume settings given a type_id.
 
         Combines type info and config settings to return a dictionary
         describing the 3PAR volume settings.  Does some validation (CPG).
-        Uses volume['host'] to determine default cpg (when not specified in
-        volume type specs).
+        Uses pool as the default cpg (when not specified in volume type specs).
 
-        :param type_id:
+        :param type_id: id of type to get settings for
+        :param pool: CPG to use if type does not have one set
         :return: dict
         """
 
         hp3par_keys, qos, volume_type, vvs_name = self.get_type_info(type_id)
 
-        # Default to 1st configured CPG unless we can extract pool from host.
-        default_cpg = self.config.hp3par_cpg[0]
-        try:
-            pool = volume_utils.extract_host(volume['host'], 'pool')
-            if pool:
-                default_cpg = pool
-                LOG.debug("Default CPG from volume['host'] is (%s)" %
-                          default_cpg)
-            else:
-                LOG.debug("Default CPG from volume['host'] not found")
-        except Exception as ex:
-            LOG.debug("Default CPG from volume['host'] not found due to (%s)" %
-                      ex)
+        # Default to pool extracted from host.
+        # If that doesn't work use the 1st CPG in the config as the default.
+        default_cpg = pool or self.config.hp3par_cpg[0]
 
         cpg = self._get_key_value(hp3par_keys, 'cpg', default_cpg)
         if cpg not in self.config.hp3par_cpg:
@@ -1011,7 +1004,7 @@ class HP3PARCommon(object):
                 'vvs_name': vvs_name, 'qos': qos,
                 'tpvv': tpvv, 'volume_type': volume_type}
 
-    def get_volume_settings_from_type(self, volume):
+    def get_volume_settings_from_type(self, volume, host=None):
         """Get 3PAR volume settings given a volume.
 
         Combines type info and config settings to return a dictionary
@@ -1019,13 +1012,19 @@ class HP3PARCommon(object):
         persona).
 
         :param volume:
+        :param host: Optional host to use for default pool.
         :return: dict
         """
 
         type_id = volume.get('volume_type_id', None)
 
-        volume_settings = self.get_volume_settings_from_type_id(type_id,
-                                                                volume)
+        pool = None
+        if host:
+            pool = volume_utils.extract_host(host['host'], 'pool')
+        else:
+            pool = volume_utils.extract_host(volume['host'], 'pool')
+
+        volume_settings = self.get_volume_settings_from_type_id(type_id, pool)
 
         # check for valid persona even if we don't use it until
         # attach time, this will give the end user notice that the
@@ -1430,58 +1429,31 @@ class HP3PARCommon(object):
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
         :returns (False, None) if the driver does not support migration,
-                 (True, None) if successful
+                 (True, model_update) if successful
 
         """
 
-        dbg = {'id': volume['id'], 'host': host['host']}
+        dbg = {'id': volume['id'],
+               'host': host['host'],
+               'status': volume['status']}
         LOG.debug('enter: migrate_volume: id=%(id)s, host=%(host)s.' % dbg)
 
-        false_ret = (False, None)
+        ret = False, None
 
-        # Make sure volume is not attached
-        if volume['status'] != 'available':
-            LOG.debug('Volume is attached: migrate_volume: '
-                      'id=%(id)s, host=%(host)s.' % dbg)
-            return false_ret
+        if volume['status'] in ['available', 'in-use']:
+            volume_type = None
+            if volume['volume_type_id']:
+                volume_type = self._get_volume_type(volume['volume_type_id'])
 
-        if 'location_info' not in host['capabilities']:
-            return false_ret
+            try:
+                ret = self.retype(volume, volume_type, None, host)
+            except Exception as e:
+                LOG.info(_('3PAR driver cannot perform migration. '
+                           'Retype exception: %s') % six.text_type(e))
 
-        info = host['capabilities']['location_info']
-        try:
-            (dest_type, dest_id, dest_cpg) = info.split(':')
-        except ValueError:
-            return false_ret
-
-        sys_info = self.client.getStorageSystemInfo()
-        if not (dest_type == 'HP3PARDriver' and
-                dest_id == sys_info['serialNumber']):
-            LOG.debug('Dest does not match: migrate_volume: '
-                      'id=%(id)s, host=%(host)s.' % dbg)
-            return false_ret
-
-        type_info = self.get_volume_settings_from_type(volume)
-
-        if dest_cpg == type_info['cpg']:
-            LOG.debug('CPGs are the same: migrate_volume: '
-                      'id=%(id)s, host=%(host)s.' % dbg)
-            return false_ret
-
-        # Check to make sure CPGs are in the same domain
-        src_domain = self.get_domain(type_info['cpg'])
-        dst_domain = self.get_domain(dest_cpg)
-        if src_domain != dst_domain:
-            LOG.debug('CPGs in different domains: migrate_volume: '
-                      'id=%(id)s, host=%(host)s.' % dbg)
-            return false_ret
-
-        self._convert_to_base_volume(volume, new_cpg=dest_cpg)
-
-        # TODO(Ramy) When volume retype is available,
-        # use that to change the type
         LOG.debug('leave: migrate_volume: id=%(id)s, host=%(host)s.' % dbg)
-        return (True, None)
+        LOG.debug('migrate_volume result: %s, %s' % ret)
+        return ret
 
     def _convert_to_base_volume(self, volume, new_cpg=None):
         try:
@@ -1709,7 +1681,7 @@ class HP3PARCommon(object):
                        {'status': status, 'volume_name': volume_name})
                 raise exception.VolumeBackendAPIException(msg)
 
-    def _retype_pre_checks(self, host, new_persona,
+    def _retype_pre_checks(self, volume, host, new_persona,
                            old_cpg, new_cpg,
                            new_snap_cpg):
         """Test retype parameters before making retype changes.
@@ -1759,7 +1731,7 @@ class HP3PARCommon(object):
 
         action = "volume:retype"
 
-        self._retype_pre_checks(host, new_persona,
+        self._retype_pre_checks(volume, host, new_persona,
                                 old_cpg, new_cpg,
                                 new_snap_cpg)
 
@@ -1803,10 +1775,18 @@ class HP3PARCommon(object):
         """
         volume_id = volume['id']
         volume_name = self._get_3par_vol_name(volume_id)
-        new_type_name = new_type['name']
-        new_type_id = new_type['id']
+        new_type_name = None
+        new_type_id = None
+        if new_type:
+            new_type_name = new_type['name']
+            new_type_id = new_type['id']
+        pool = None
+        if host:
+            pool = volume_utils.extract_host(host['host'], 'pool')
+        else:
+            pool = volume_utils.extract_host(volume['host'], 'pool')
         new_volume_settings = self.get_volume_settings_from_type_id(
-            new_type_id, volume)
+            new_type_id, pool)
         new_cpg = new_volume_settings['cpg']
         new_snap_cpg = new_volume_settings['snap_cpg']
         new_tpvv = new_volume_settings['tpvv']
@@ -1854,8 +1834,8 @@ class HP3PARCommon(object):
                        volume-type is not used here. This method uses None.
         :param new_type: A dictionary describing the volume type to convert to
         """
-        none_type_settings = self.get_volume_settings_from_type_id(
-            None, volume)
+        pool = volume_utils.extract_host(volume['host'], 'pool')
+        none_type_settings = self.get_volume_settings_from_type_id(None, pool)
         return self._retype_from_old_to_new(volume, new_type,
                                             none_type_settings, None)
 
@@ -1878,7 +1858,7 @@ class HP3PARCommon(object):
                                                       'new_type': new_type,
                                                       'diff': diff,
                                                       'host': host})
-        old_volume_settings = self.get_volume_settings_from_type(volume)
+        old_volume_settings = self.get_volume_settings_from_type(volume, host)
         return self._retype_from_old_to_new(volume, new_type,
                                             old_volume_settings, host)
 
@@ -1944,8 +1924,17 @@ class ModifyVolumeTask(flow_utils.CinderTask):
             comment_dict['qos'] = new_qos
         else:
             comment_dict['qos'] = {}
-        comment_dict['volume_type_name'] = new_type_name
-        comment_dict['volume_type_id'] = new_type_id
+
+        if new_type_name:
+            comment_dict['volume_type_name'] = new_type_name
+        else:
+            comment_dict.pop('volume_type_name', None)
+
+        if new_type_id:
+            comment_dict['volume_type_id'] = new_type_id
+        else:
+            comment_dict.pop('volume_type_id', None)
+
         return comment_dict
 
     def execute(self, common, volume_name, old_snap_cpg, new_snap_cpg,
