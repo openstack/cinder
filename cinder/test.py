@@ -187,6 +187,15 @@ class TestCase(testtools.TestCase):
         CONF.set_override('fatal_exception_format_errors', True)
         # This will be cleaned up by the NestedTempfile fixture
         CONF.set_override('lock_path', tempfile.mkdtemp())
+        CONF.set_override('policy_file',
+                          os.path.join(
+                              os.path.abspath(
+                                  os.path.join(
+                                      os.path.dirname(__file__),
+                                      '..',
+                                  )
+                              ),
+                              'cinder/tests/policy.json'))
 
     def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""

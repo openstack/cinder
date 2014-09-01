@@ -3965,15 +3965,10 @@ class VolumePolicyTestCase(test.TestCase):
     def setUp(self):
         super(VolumePolicyTestCase, self).setUp()
 
-        cinder.policy.reset()
         cinder.policy.init()
 
         self.context = context.get_admin_context()
         self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
-        self.addCleanup(cinder.policy.reset)
-
-    def _set_rules(self, rules):
-        cinder.common.policy.set_brain(cinder.common.policy.Brain(rules))
 
     def test_check_policy(self):
         self.mox.StubOutWithMock(cinder.policy, 'enforce')

@@ -203,17 +203,6 @@
 
 
 #
-# Options defined in cinder.policy
-#
-
-# JSON file representing policy (string value)
-#policy_file=policy.json
-
-# Rule checked when requested rule is not found (string value)
-#policy_default_rule=default
-
-
-#
 # Options defined in cinder.quota
 #
 
@@ -853,6 +842,18 @@
 # Some periodic tasks can be run in a separate process. Should
 # we run them here? (boolean value)
 #run_external_periodic_tasks=true
+
+
+#
+# Options defined in cinder.openstack.common.policy
+#
+
+# The JSON file that defines policies. (string value)
+#policy_file=policy.json
+
+# Default rule. Enforced when a requested rule is not found.
+# (string value)
+#policy_default_rule=default
 
 
 #

@@ -25,6 +25,7 @@ from oslo.config import cfg
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import processutils
 from cinder.openstack.common import units
 from cinder import test
@@ -621,10 +622,10 @@ class TestTemporaryFile(test.TestCase):
     def test_file_unlinked(self):
         mox = self.mox
         mox.StubOutWithMock(image_utils, 'create_temporary_file')
-        mox.StubOutWithMock(image_utils.os, 'unlink')
+        mox.StubOutWithMock(fileutils, 'delete_if_exists')
 
         image_utils.create_temporary_file().AndReturn('somefile')
-        image_utils.os.unlink('somefile')
+        fileutils.delete_if_exists('somefile')
 
         mox.ReplayAll()
 
@@ -634,10 +635,10 @@ class TestTemporaryFile(test.TestCase):
     def test_file_unlinked_on_error(self):
         mox = self.mox
         mox.StubOutWithMock(image_utils, 'create_temporary_file')
-        mox.StubOutWithMock(image_utils.os, 'unlink')
+        mox.StubOutWithMock(fileutils, 'delete_if_exists')
 
         image_utils.create_temporary_file().AndReturn('somefile')
-        image_utils.os.unlink('somefile')
+        fileutils.delete_if_exists('somefile')
 
         mox.ReplayAll()
 
@@ -706,6 +707,7 @@ class TestXenServerImageToCoalescedVhd(test.TestCase):
         mox.StubOutWithMock(image_utils, 'fix_vhd_chain')
         mox.StubOutWithMock(image_utils, 'coalesce_chain')
         mox.StubOutWithMock(image_utils.os, 'unlink')
+        mox.StubOutWithMock(fileutils, 'delete_if_exists')
         mox.StubOutWithMock(image_utils, 'rename_file')
 
         image_utils.temporary_dir().AndReturn(fake_context('somedir'))
@@ -715,7 +717,7 @@ class TestXenServerImageToCoalescedVhd(test.TestCase):
         image_utils.fix_vhd_chain(['somedir/0.vhd', 'somedir/1.vhd'])
         image_utils.coalesce_chain(
             ['somedir/0.vhd', 'somedir/1.vhd']).AndReturn('somedir/1.vhd')
-        image_utils.os.unlink('image')
+        fileutils.delete_if_exists('image')
         image_utils.rename_file('somedir/1.vhd', 'image')
 
         mox.ReplayAll()

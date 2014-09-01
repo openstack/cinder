@@ -367,31 +367,6 @@ class GenericUtilsTestCase(test.TestCase):
                                        CONF.glance_port)
         self.assertEqual(generated_url, actual_url)
 
-    @mock.patch('__builtin__.open')
-    @mock.patch('os.path.getmtime', return_value=1)
-    def test_read_cached_file(self, mock_mtime, mock_open):
-        fake_file = "/this/is/a/fake"
-        cache_data = {"data": 1123, "mtime": 2}
-        mock_open.return_value = _get_local_mock_open()
-        data = utils.read_cached_file(fake_file, cache_data)
-        self.assertEqual(cache_data["data"], data)
-        mock_open.assert_called_once_with(fake_file)
-
-    @mock.patch('__builtin__.open')
-    @mock.patch('os.path.getmtime', return_value=1)
-    def test_read_modified_cached_file(self, mock_mtime, mock_open):
-        fake_data = 'lorem ipsum'
-        fake_file = "/this/is/a/fake"
-        mock_open.return_value = _get_local_mock_open(fake_data)
-        cache_data = {"data": 'original data', "mtime": 2}
-        mock_reload = mock.Mock()
-        data = utils.read_cached_file(fake_file,
-                                      cache_data,
-                                      reload_func=mock_reload)
-        self.assertEqual(data, fake_data)
-        mock_reload.assert_called_once_with(fake_data)
-        mock_open.assert_called_once_with(fake_file)
-
     def test_read_file_as_root(self):
         def fake_execute(*args, **kwargs):
             if args[1] == 'bad':
