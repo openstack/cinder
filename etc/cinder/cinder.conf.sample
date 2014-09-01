@@ -2224,6 +2224,37 @@
 #principal_switch_wwn=<None>
 
 
+[CISCO_FABRIC_EXAMPLE]
+
+#
+# Options defined in cinder.zonemanager.drivers.cisco.cisco_fabric_opts
+#
+
+# Management IP of fabric (string value)
+#cisco_fc_fabric_address=
+
+# Fabric user ID (string value)
+#cisco_fc_fabric_user=
+
+# Password for user (string value)
+#cisco_fc_fabric_password=
+
+# Connecting port (integer value)
+#cisco_fc_fabric_port=22
+
+# overridden zoning policy (string value)
+#cisco_zoning_policy=initiator-target
+
+# overridden zoning activation state (boolean value)
+#cisco_zone_activate=true
+
+# overridden zone name prefix (string value)
+#cisco_zone_name_prefix=<None>
+
+# VSAN of the Fabric (string value)
+#cisco_zoning_vsan=<None>
+
+
 [database]
 
 #
@@ -2349,6 +2380,14 @@
 
 # Southbound connector for zoning operation (string value)
 #brcd_sb_connector=cinder.zonemanager.drivers.brocade.brcd_fc_zone_client_cli.BrcdFCZoneClientCLI
+
+
+#
+# Options defined in cinder.zonemanager.drivers.cisco.cisco_fc_zone_driver
+#
+
+# Southbound connector for zoning operation (string value)
+#cisco_sb_connector=cinder.zonemanager.drivers.cisco.cisco_fc_zone_client_cli.CiscoFCZoneClientCLI
 
 
 #

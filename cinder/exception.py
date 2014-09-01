@@ -773,6 +773,10 @@ class BrocadeZoningCliException(CinderException):
     message = _("Fibre Channel Zoning CLI error: %(reason)s")
 
 
+class CiscoZoningCliException(CinderException):
+    message = _("Fibre Channel Zoning CLI error: %(reason)s")
+
+
 class NetAppDriverException(VolumeDriverException):
     message = _("NetApp Cinder Driver exception.")
 

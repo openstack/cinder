@@ -61,6 +61,15 @@ def create_lookup_service():
         return None
 
 
+def get_formatted_wwn(wwn_str):
+    """Utility API that formats WWN to insert ':'."""
+    if (len(wwn_str) != 16):
+        return wwn_str.lower()
+    else:
+        return (':'.join([wwn_str[i:i + 2]
+                         for i in range(0, len(wwn_str), 2)])).lower()
+
+
 def AddFCZone(initialize_connection):
     """Decorator to add a FC Zone."""
     def decorator(self, *args, **kwargs):
