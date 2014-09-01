@@ -27,6 +27,7 @@ from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.scheduler import driver
 from cinder.scheduler import scheduler_options
+from cinder.volume import utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -115,7 +116,7 @@ class FilterScheduler(driver.Scheduler):
             if host_state.host == host:
                 return host_state
 
-        msg = (_('cannot place volume %(id)s on %(host)s')
+        msg = (_('Cannot place volume %(id)s on %(host)s')
                % {'id': request_spec['volume_id'], 'host': host})
         raise exception.NoValidHost(reason=msg)
 
@@ -141,6 +142,21 @@ class FilterScheduler(driver.Scheduler):
             host_state = weighed_host.obj
             if host_state.host == current_host:
                 return host_state
+
+        if utils.extract_host(current_host, 'pool') is None:
+            # legacy volumes created before pool is introduced has no pool
+            # info in host.  But host_state.host always include pool level
+            # info. In this case if above exact match didn't work out, we
+            # find host_state that are of the same host of volume being
+            # retyped. In other words, for legacy volumes, retyping could
+            # cause migration between pools on same host, which we consider
+            # it is different from migration between hosts thus allow that
+            # to happen even migration policy is 'never'.
+            for weighed_host in weighed_hosts:
+                host_state = weighed_host.obj
+                backend = utils.extract_host(host_state.host, 'backend')
+                if backend == current_host:
+                    return host_state
 
         if migration_policy == 'never':
             msg = (_('Current host not valid for volume %(id)s with type '

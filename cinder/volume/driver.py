@@ -189,6 +189,8 @@ class VolumeDriver(object):
         self.set_execute(execute)
         self._stats = {}
 
+        self.pools = []
+
         # set True by manager after successful check_for_setup
         self._initialized = False
 
@@ -810,6 +812,14 @@ class VolumeDriver(object):
         """Deletes a cgsnapshot."""
         raise NotImplementedError()
 
+    def get_pool(self, volume):
+        """Return pool name where volume reside on.
+
+        :param volume: The volume hosted by the the driver.
+        :return: name of the pool where given volume is in.
+        """
+        return None
+
 
 class ISCSIDriver(VolumeDriver):
     """Executes commands relating to ISCSI volumes.
@@ -1025,11 +1035,30 @@ class ISCSIDriver(VolumeDriver):
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'iSCSI'
+        data["pools"] = []
 
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
-        data['QoS_support'] = False
+        if self.pools:
+            for pool in self.pools:
+                new_pool = {}
+                new_pool.update(dict(
+                    pool_name=pool,
+                    total_capacity_gb=0,
+                    free_capacity_gb=0,
+                    reserved_percentage=100,
+                    QoS_support=False
+                ))
+                data["pools"].append(new_pool)
+        else:
+            # No pool configured, the whole backend will be treated as a pool
+            single_pool = {}
+            single_pool.update(dict(
+                pool_name=data["volume_backend_name"],
+                total_capacity_gb=0,
+                free_capacity_gb=0,
+                reserved_percentage=100,
+                QoS_support=False
+            ))
+            data["pools"].append(single_pool)
         self._stats = data
 
     def get_target_helper(self, db):
@@ -1183,11 +1212,30 @@ class ISERDriver(ISCSIDriver):
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'iSER'
+        data["pools"] = []
 
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
-        data['QoS_support'] = False
+        if self.pools:
+            for pool in self.pools:
+                new_pool = {}
+                new_pool.update(dict(
+                    pool_name=pool,
+                    total_capacity_gb=0,
+                    free_capacity_gb=0,
+                    reserved_percentage=100,
+                    QoS_support=False
+                ))
+                data["pools"].append(new_pool)
+        else:
+            # No pool configured, the whole backend will be treated as a pool
+            single_pool = {}
+            single_pool.update(dict(
+                pool_name=data["volume_backend_name"],
+                total_capacity_gb=0,
+                free_capacity_gb=0,
+                reserved_percentage=100,
+                QoS_support=False
+            ))
+            data["pools"].append(single_pool)
         self._stats = data
 
     def get_target_helper(self, db):

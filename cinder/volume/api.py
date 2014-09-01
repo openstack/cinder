@@ -1016,7 +1016,8 @@ class API(base.Base):
                                                     disabled=False)
         found = False
         for service in services:
-            if utils.service_is_up(service) and service['host'] == host:
+            svc_host = volume_utils.extract_host(host, 'backend')
+            if utils.service_is_up(service) and service['host'] == svc_host:
                 found = True
         if not found:
             msg = (_('No available service named %s') % host)
@@ -1183,8 +1184,9 @@ class API(base.Base):
         if availability_zone is None:
             elevated = context.elevated()
             try:
+                svc_host = volume_utils.extract_host(host, 'backend')
                 service = self.db.service_get_by_host_and_topic(
-                    elevated, host, CONF.volume_topic)
+                    elevated, svc_host, CONF.volume_topic)
             except exception.ServiceNotFound:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_('Unable to find service for given host.'))

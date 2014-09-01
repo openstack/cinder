@@ -55,6 +55,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup['description'] = description
         consistencygroup['volume_type_id'] = volume_type_id
         consistencygroup['status'] = status
+        consistencygroup['host'] = 'fakehost'
         return db.consistencygroup_create(
             context.get_admin_context(),
             consistencygroup)['id']

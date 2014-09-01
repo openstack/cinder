@@ -71,6 +71,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         vol['size'] = size
         vol['status'] = 'available'
         vol['volume_type_id'] = self.volume_type['id']
+        vol['host'] = 'fake_host'
         return db.volume_create(self.context, vol)
 
     def _create_snapshot(self, volume):
@@ -79,6 +80,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         snapshot['project_id'] = self.project_id
         snapshot['volume_id'] = volume['id']
         snapshot['volume_size'] = volume['size']
+        snapshot['host'] = volume['host']
         snapshot['status'] = 'available'
         return db.snapshot_create(self.context, snapshot)
 

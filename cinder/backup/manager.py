@@ -46,6 +46,7 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -191,7 +192,8 @@ class BackupManager(manager.SchedulerDependentManager):
         LOG.info(_("Cleaning up incomplete backup operations."))
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
         for volume in volumes:
-            backend = self._get_volume_backend(host=volume['host'])
+            volume_host = volume_utils.extract_host(volume['host'], 'backend')
+            backend = self._get_volume_backend(host=volume_host)
             if volume['status'] == 'backing-up':
                 LOG.info(_('Resetting volume %s to available '
                            '(was backing-up).') % volume['id'])
@@ -232,7 +234,8 @@ class BackupManager(manager.SchedulerDependentManager):
         LOG.info(_('Create backup started, backup: %(backup_id)s '
                    'volume: %(volume_id)s.') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
-        backend = self._get_volume_backend(host=volume['host'])
+        volume_host = volume_utils.extract_host(volume['host'], 'backend')
+        backend = self._get_volume_backend(host=volume_host)
 
         self.db.backup_update(context, backup_id, {'host': self.host,
                                                    'service':
@@ -296,7 +299,8 @@ class BackupManager(manager.SchedulerDependentManager):
 
         backup = self.db.backup_get(context, backup_id)
         volume = self.db.volume_get(context, volume_id)
-        backend = self._get_volume_backend(host=volume['host'])
+        volume_host = volume_utils.extract_host(volume['host'], 'backend')
+        backend = self._get_volume_backend(host=volume_host)
 
         self.db.backup_update(context, backup_id, {'host': self.host})
 

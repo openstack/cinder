@@ -62,7 +62,7 @@ from cinder.volume.configuration import Configuration
 from cinder.volume.flows.manager import create_volume
 from cinder.volume.flows.manager import manage_existing
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import utils as volume_utils
+from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
 from eventlet.greenpool import GreenPool
@@ -196,6 +196,47 @@ class VolumeManager(manager.SchedulerDependentManager):
     def _add_to_threadpool(self, func, *args, **kwargs):
         self._tp.spawn_n(func, *args, **kwargs)
 
+    def _count_allocated_capacity(self, ctxt, volume):
+        pool = vol_utils.extract_host(volume['host'], 'pool')
+        if pool is None:
+            # No pool name encoded in host, so this is a legacy
+            # volume created before pool is introduced, ask
+            # driver to provide pool info if it has such
+            # knowledge and update the DB.
+            try:
+                pool = self.driver.get_pool(volume)
+            except Exception as err:
+                LOG.error(_('Failed to fetch pool name for volume: %s'),
+                          volume['id'])
+                LOG.exception(err)
+                return
+
+            if pool:
+                new_host = vol_utils.append_host(volume['host'],
+                                                 pool)
+                self.db.volume_update(ctxt, volume['id'],
+                                      {'host': new_host})
+            else:
+                # Otherwise, put them into a special fixed pool with
+                # volume_backend_name being the pool name, if
+                # volume_backend_name is None, use default pool name.
+                # This is only for counting purpose, doesn't update DB.
+                pool = (self.driver.configuration.safe_get(
+                    'volume_backend_name') or vol_utils.extract_host(
+                    volume['host'], 'pool', True))
+        try:
+            pool_stat = self.stats['pools'][pool]
+        except KeyError:
+            # First volume in the pool
+            self.stats['pools'][pool] = dict(
+                allocated_capacity_gb=0)
+            pool_stat = self.stats['pools'][pool]
+        pool_sum = pool_stat['allocated_capacity_gb']
+        pool_sum += volume['size']
+
+        self.stats['pools'][pool]['allocated_capacity_gb'] = pool_sum
+        self.stats['allocated_capacity_gb'] += volume['size']
+
     def init_host(self):
         """Do any initialization that needs to be run if this is a
            standalone service.
@@ -218,16 +259,18 @@ class VolumeManager(manager.SchedulerDependentManager):
             return
 
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
-        LOG.debug("Re-exporting %s volumes", len(volumes))
+        # FIXME volume count for exporting is wrong
+        LOG.debug("Re-exporting %s volumes" % len(volumes))
 
         try:
-            sum = 0
-            self.stats.update({'allocated_capacity_gb': sum})
+            self.stats['pools'] = {}
+            self.stats.update({'allocated_capacity_gb': 0})
             for volume in volumes:
-                if volume['status'] in ['in-use']:
+                # available volume should also be counted into allocated
+                if volume['status'] in ['in-use', 'available']:
                     # calculate allocated capacity for driver
-                    sum += volume['size']
-                    self.stats['allocated_capacity_gb'] = sum
+                    self._count_allocated_capacity(ctxt, volume)
+
                     try:
                         self.driver.ensure_export(ctxt, volume)
                     except Exception as export_ex:
@@ -339,10 +382,23 @@ class VolumeManager(manager.SchedulerDependentManager):
             _run_flow_locked()
 
         # Fetch created volume from storage
-        volume_ref = flow_engine.storage.fetch('volume')
+        vol_ref = flow_engine.storage.fetch('volume')
         # Update volume stats
-        self.stats['allocated_capacity_gb'] += volume_ref['size']
-        return volume_ref['id']
+        pool = vol_utils.extract_host(vol_ref['host'], 'pool')
+        if pool is None:
+            # Legacy volume, put them into default pool
+            pool = self.driver.configuration.safe_get(
+                'volume_backend_name') or vol_utils.extract_host(
+                    vol_ref['host'], 'pool', True)
+
+        try:
+            self.stats['pools'][pool]['allocated_capacity_gb'] \
+                += vol_ref['size']
+        except KeyError:
+            self.stats['pools'][pool] = dict(
+                allocated_capacity_gb=vol_ref['size'])
+
+        return vol_ref['id']
 
     @locked_volume_operation
     def delete_volume(self, context, volume_id, unmanage_only=False):
@@ -367,7 +423,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         if volume_ref['attach_status'] == "attached":
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume_id)
-        if volume_ref['host'] != self.host:
+        if (vol_utils.extract_host(volume_ref['host']) != self.host):
             raise exception.InvalidVolume(
                 reason=_("volume is not local to this node"))
 
@@ -426,7 +482,20 @@ class VolumeManager(manager.SchedulerDependentManager):
         if reservations:
             QUOTAS.commit(context, reservations, project_id=project_id)
 
-        self.stats['allocated_capacity_gb'] -= volume_ref['size']
+        pool = vol_utils.extract_host(volume_ref['host'], 'pool')
+        if pool is None:
+            # Legacy volume, put them into default pool
+            pool = self.driver.configuration.safe_get(
+                'volume_backend_name') or vol_utils.extract_host(
+                    volume_ref['host'], 'pool', True)
+        size = volume_ref['size']
+
+        try:
+            self.stats['pools'][pool]['allocated_capacity_gb'] -= size
+        except KeyError:
+            self.stats['pools'][pool] = dict(
+                allocated_capacity_gb=-size)
+
         self.publish_service_capabilities(context)
 
         return True
@@ -1138,9 +1207,23 @@ class VolumeManager(manager.SchedulerDependentManager):
                 volume_stats.update(self.extra_capabilities)
             if volume_stats:
                 # Append volume stats with 'allocated_capacity_gb'
-                volume_stats.update(self.stats)
+                self._append_volume_stats(volume_stats)
+
                 # queue it to be sent to the Schedulers.
                 self.update_service_capabilities(volume_stats)
+
+    def _append_volume_stats(self, vol_stats):
+        pools = vol_stats.get('pools', None)
+        if pools and isinstance(pools, list):
+            for pool in pools:
+                pool_name = pool['pool_name']
+                try:
+                    pool_stats = self.stats['pools'][pool_name]
+                except KeyError:
+                    # Pool not found in volume manager
+                    pool_stats = dict(allocated_capacity_gb=0)
+
+                pool.update(pool_stats)
 
     def publish_service_capabilities(self, context):
         """Collect driver status and then publish."""
@@ -1155,7 +1238,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                    volume,
                                    event_suffix,
                                    extra_usage_info=None):
-        volume_utils.notify_about_volume_usage(
+        vol_utils.notify_about_volume_usage(
             context, volume, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
@@ -1164,7 +1247,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                      snapshot,
                                      event_suffix,
                                      extra_usage_info=None):
-        volume_utils.notify_about_snapshot_usage(
+        vol_utils.notify_about_snapshot_usage(
             context, snapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
@@ -1173,14 +1256,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                                              group,
                                              event_suffix,
                                              extra_usage_info=None):
-        volume_utils.notify_about_consistencygroup_usage(
+        vol_utils.notify_about_consistencygroup_usage(
             context, group, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
         volumes = self.db.volume_get_all_by_group(context, group['id'])
         if volumes:
             for volume in volumes:
-                volume_utils.notify_about_volume_usage(
+                vol_utils.notify_about_volume_usage(
                     context, volume, event_suffix,
                     extra_usage_info=extra_usage_info, host=self.host)
 
@@ -1189,7 +1272,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                        cgsnapshot,
                                        event_suffix,
                                        extra_usage_info=None):
-        volume_utils.notify_about_cgsnapshot_usage(
+        vol_utils.notify_about_cgsnapshot_usage(
             context, cgsnapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
@@ -1197,7 +1280,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                             cgsnapshot['id'])
         if snapshots:
             for snapshot in snapshots:
-                volume_utils.notify_about_snapshot_usage(
+                vol_utils.notify_about_snapshot_usage(
                     context, snapshot, event_suffix,
                     extra_usage_info=extra_usage_info, host=self.host)
 
@@ -1237,7 +1320,18 @@ class VolumeManager(manager.SchedulerDependentManager):
                                        volume['id'],
                                        {'size': int(new_size),
                                         'status': 'available'})
-        self.stats['allocated_capacity_gb'] += size_increase
+        pool = vol_utils.extract_host(volume['host'], 'pool')
+        if pool is None:
+            # Legacy volume, put them into default pool
+            pool = self.driver.configuration.safe_get(
+                'volume_backend_name') or vol_utils.extract_host(
+                    volume['host'], 'pool', True)
+
+        try:
+            self.stats['pools'][pool]['allocated_capacity_gb'] += size_increase
+        except KeyError:
+            self.stats['pools'][pool] = dict(
+                allocated_capacity_gb=size_increase)
 
         self._notify_about_volume_usage(
             context, volume, "resize.end",
@@ -1398,10 +1492,23 @@ class VolumeManager(manager.SchedulerDependentManager):
             flow_engine.run()
 
         # Fetch created volume from storage
-        volume_ref = flow_engine.storage.fetch('volume')
+        vol_ref = flow_engine.storage.fetch('volume')
         # Update volume stats
-        self.stats['allocated_capacity_gb'] += volume_ref['size']
-        return volume_ref['id']
+        pool = vol_utils.extract_host(vol_ref['host'], 'pool')
+        if pool is None:
+            # Legacy volume, put them into default pool
+            pool = self.driver.configuration.safe_get(
+                'volume_backend_name') or vol_utils.extract_host(
+                    vol_ref['host'], 'pool', True)
+
+        try:
+            self.stats['pools'][pool]['allocated_capacity_gb'] \
+                += vol_ref['size']
+        except KeyError:
+            self.stats['pools'][pool] = dict(
+                allocated_capacity_gb=vol_ref['size'])
+
+        return vol_ref['id']
 
     def promote_replica(self, ctxt, volume_id):
         """Promote volume replica secondary to be the primary volume."""

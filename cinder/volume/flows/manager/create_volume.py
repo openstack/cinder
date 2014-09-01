@@ -180,10 +180,6 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
         # the volume can not be deleted while its still being created?
         volume_ref = self.db.volume_get(context, volume_id)
 
-        # NOTE(vish): so we don't have to get volume from db again before
-        # passing it to the driver.
-        volume_ref['host'] = self.host
-
         return volume_ref
 
     def revert(self, context, volume_id, result, **kwargs):
