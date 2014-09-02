@@ -132,6 +132,11 @@ function run_tests {
 
   if [ $coverage -eq 1 ]; then
     TESTRTESTS="$TESTRTESTS --coverage"
+    if [ -z "${PYTHONPATH:-}" ]; then
+        export PYTHONPATH=./
+    else
+        export PYTHONPATH=$PYTHONPATH:./
+    fi
   else
     TESTRTESTS="$TESTRTESTS"
   fi
