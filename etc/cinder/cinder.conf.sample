@@ -1476,6 +1476,11 @@
 # Allow tenants to specify QOS on create (boolean value)
 #storwize_svc_allow_tenant_qos=false
 
+# If operating in stretched cluster mode, specify the name of
+# the pool in which mirrored copies are stored.Example:
+# "pool2" (string value)
+#storwize_svc_stretched_cluster_partner=<None>
+
 
 #
 # Options defined in cinder.volume.drivers.ibm.xiv_ds8k

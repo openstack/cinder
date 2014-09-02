@@ -214,6 +214,7 @@ class StorwizeSVCManagementSimulator:
             'vdisk',
             'warning',
             'wwpn',
+            'primary'
         ]
         no_or_one_param_args = [
             'autoexpand',
@@ -1341,7 +1342,8 @@ port_speed!N/A
         vol = self._volumes_list[vol_name]
         kwargs.pop('obj')
 
-        params = ['name', 'warning', 'udid', 'autoexpand', 'easytier']
+        params = ['name', 'warning', 'udid',
+                  'autoexpand', 'easytier', 'primary']
         for key, value in kwargs.iteritems():
             if key == 'easytier':
                 vol['easy_tier'] = value
@@ -1353,6 +1355,20 @@ port_speed!N/A
                 vol['name'] = value
                 del self._volumes_list[vol_name]
                 self._volumes_list[value] = vol
+            if key == 'primary':
+                if value == '0':
+                    self._volumes_list[vol_name]['copies']['0']['primary']\
+                        = 'yes'
+                    self._volumes_list[vol_name]['copies']['1']['primary']\
+                        = 'no'
+                elif value == '1':
+                    self._volumes_list[vol_name]['copies']['0']['primary']\
+                        = 'no'
+                    self._volumes_list[vol_name]['copies']['1']['primary']\
+                        = 'yes'
+                else:
+                    err = self._errors['CMMVC6353E'][1] % {'VALUE': key}
+                    return ('', err)
             if key in params:
                 vol[key] = value
             else:
@@ -1387,6 +1403,31 @@ port_speed!N/A
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
         return ('', '')
+
+    # list vdisk sync process
+    def _cmd_lsvdisksyncprogress(self, **kwargs):
+        if 'obj' not in kwargs:
+            return self._errors['CMMVC5804E']
+        name = kwargs['obj']
+        copy_id = kwargs.get('copy', None)
+        vol = self._volumes_list[name]
+        rows = []
+        rows.append(['vdisk_id', 'vdisk_name', 'copy_id', 'progress',
+                     'estimated_completion_time'])
+        copy_found = False
+        for copy in vol['copies'].itervalues():
+            if not copy_id or copy_id == copy['id']:
+                copy_found = True
+                row = [vol['id'], name, copy['id']]
+                if copy['sync'] == 'yes':
+                    row.extend(['100', ''])
+                else:
+                    row.extend(['50', '140210115226'])
+                    copy['sync'] = 'yes'
+                rows.append(row)
+        if not copy_found:
+            return self._errors['CMMVC5804E']
+        return self._print_info_cmd(rows=rows, **kwargs)
 
     def _add_host_to_list(self, connector):
         host_info = {}
@@ -1483,6 +1524,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.sim = StorwizeSVCManagementSimulator('openstack')
 
             self.driver.set_fake_storage(self.sim)
+            self.ctxt = context.get_admin_context()
         else:
             self.driver = storwize_svc.StorwizeSVCDriver(
                 configuration=conf.Configuration(None))
@@ -2754,6 +2796,123 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.assertEqual(term_data, term_ret)
 
+    def test_storwize_create_volume_with_strech_cluster_replication(self):
+        # Set replication flag, set pool openstack2 for secondary volume.
+        self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
+
+        # Create a type for repliation.
+        volume = self._generate_vol_info(None, None)
+        volume_type = self._create_replication_volume_type(True)
+        volume['volume_type_id'] = volume_type['id']
+
+        self.driver.do_setup(self.ctxt)
+
+        model_update = self.driver.create_volume(volume)
+        self.assertEqual('copying', model_update['replication_status'])
+
+        volume['replication_status'] = 'copying'
+        volume['replication_extended_status'] = None
+
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertEqual('copying', model_update['replication_status'])
+
+        # Check the volume copy created on pool opentack2.
+        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+        self.assertIn('openstack2', attrs['mdisk_grp_name'])
+
+        primary_status = attrs['primary']
+
+        self.driver.promote_replica(self.ctxt, volume)
+        # After promote_replica, primary copy should be swiched.
+        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+        self.assertEqual(primary_status[0], attrs['primary'][1])
+        self.assertEqual(primary_status[1], attrs['primary'][0])
+
+        self.driver.delete_volume(volume)
+        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+        self.assertIsNone(attrs)
+
+    def test_storwize_create_cloned_volume_with_strech_cluster_replica(self):
+        # Set replication flag, set pool openstack2 for secondary volume.
+        self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
+        self.driver.do_setup(self.ctxt)
+
+        # Create a source volume.
+        src_volume = self._generate_vol_info(None, None)
+        self.driver.create_volume(src_volume)
+
+        # Create a type for repliation.
+        volume = self._generate_vol_info(None, None)
+        volume_type = self._create_replication_volume_type(True)
+        volume['volume_type_id'] = volume_type['id']
+
+        # Create a cloned volume from source volume.
+        model_update = self.driver.create_cloned_volume(volume, src_volume)
+        self.assertEqual('copying', model_update['replication_status'])
+
+        # Check the replication volume created on pool openstack2.
+        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+        self.assertIn('openstack2', attrs['mdisk_grp_name'])
+
+    def test_storwize_create_snapshot_volume_with_strech_cluster_replica(self):
+        # Set replication flag, set pool openstack2 for secondary volume.
+        self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
+        self.driver.do_setup(self.ctxt)
+
+        vol1 = self._create_volume()
+        snap = self._generate_vol_info(vol1['name'], vol1['id'])
+        self.driver.create_snapshot(snap)
+        vol2 = self._generate_vol_info(None, None)
+
+        # Create a type for repliation.
+        vol2 = self._generate_vol_info(None, None)
+        volume_type = self._create_replication_volume_type(True)
+        vol2['volume_type_id'] = volume_type['id']
+
+        model_update = self.driver.create_volume_from_snapshot(vol2, snap)
+        self._assert_vol_exists(vol2['name'], True)
+        self.assertEqual('copying', model_update['replication_status'])
+        # Check the replication volume created on pool openstack2.
+        attrs = self.driver._helpers.get_vdisk_attributes(vol2['name'])
+        self.assertIn('openstack2', attrs['mdisk_grp_name'])
+
+    def test_storwize_retype_with_strech_cluster_replication(self):
+        self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
+        self.driver.do_setup(self.ctxt)
+        self.driver.do_setup(None)
+        loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
+               ':openstack')
+        cap = {'location_info': loc, 'extent_size': '128'}
+        self.driver._stats = {'location_info': loc}
+        host = {'host': 'foo', 'capabilities': cap}
+        ctxt = context.get_admin_context()
+
+        disable_type = self._create_replication_volume_type(False)
+        enable_type = self._create_replication_volume_type(True)
+
+        diff, equal = volume_types.volume_types_diff(ctxt,
+                                                     disable_type['id'],
+                                                     enable_type['id'])
+
+        volume = self._generate_vol_info(None, None)
+        volume['host'] = host
+        volume['volume_type_id'] = disable_type['id']
+        volume['volume_type'] = disable_type
+        volume['replication_status'] = None
+        volume['replication_extended_status'] = None
+
+        # Create volume which is not volume replication
+        self.driver.create_volume(volume)
+        # volume should be DB object in this parameter
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertIs('error', model_update['replication_status'])
+        # Enable replica
+        self.driver.retype(ctxt, volume, enable_type, diff, host)
+
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertIs('copying', model_update['replication_status'])
+        self.driver.delete_volume(volume)
+
     def test_storwize_initiator_target_map_npiv(self):
         # Create two volumes to be used in mappings
         ctxt = context.get_admin_context()
@@ -2811,6 +2970,20 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                      }
 
         self.assertEqual(term_data, term_ret)
+
+    def _create_replication_volume_type(self, enable):
+        # Generate a volume type for volume repliation.
+        if enable:
+            spec = {'capabilities:replication': '<is> True'}
+            type_ref = volume_types.create(self.ctxt, "replication_1", spec)
+        else:
+            spec = {'capabilities:replication': '<is> False'}
+            type_ref = volume_types.create(self.ctxt, "replication_2", spec)
+
+        replication_type = volume_types.get_volume_type(self.ctxt,
+                                                        type_ref['id'])
+
+        return replication_type
 
     def _get_vdisk_uid(self, vdisk_name):
         """Return vdisk_UID for given vdisk.
