@@ -67,6 +67,7 @@ from taskflow.patterns import linear_flow
 LOG = logging.getLogger(__name__)
 
 MIN_CLIENT_VERSION = '3.1.0'
+MIN_CLIENT_SSH_ARGS_VERSION = '3.1.1'
 
 hp3par_opts = [
     cfg.StrOpt('hp3par_api_url',
@@ -146,10 +147,11 @@ class HP3PARCommon(object):
                  and hp3parclient 3.1.0
         2.0.18 - HP 3PAR manage_existing with volume-type support
         2.0.19 - Update default persona from Generic to Generic-ALUA
+        2.0.20 - Configurable SSH missing key policy and known hosts file
 
     """
 
-    VERSION = "2.0.19"
+    VERSION = "2.0.20"
 
     stats = {}
 
@@ -210,12 +212,26 @@ class HP3PARCommon(object):
             LOG.error(ex_msg)
             raise exception.InvalidInput(reason=ex_msg)
 
-        cl.setSSHOptions(self.config.san_ip,
-                         self.config.san_login,
-                         self.config.san_password,
-                         port=self.config.san_ssh_port,
-                         conn_timeout=self.config.ssh_conn_timeout,
-                         privatekey=self.config.san_private_key)
+        if client_version < MIN_CLIENT_SSH_ARGS_VERSION:
+            cl.setSSHOptions(self.config.san_ip,
+                             self.config.san_login,
+                             self.config.san_password,
+                             port=self.config.san_ssh_port,
+                             conn_timeout=self.config.ssh_conn_timeout,
+                             privatekey=self.config.san_private_key)
+        else:
+            known_hosts_file = CONF.ssh_hosts_key_file
+            policy = "AutoAddPolicy"
+            if CONF.strict_ssh_host_key_policy:
+                policy = "RejectPolicy"
+            cl.setSSHOptions(self.config.san_ip,
+                             self.config.san_login,
+                             self.config.san_password,
+                             port=self.config.san_ssh_port,
+                             conn_timeout=self.config.ssh_conn_timeout,
+                             privatekey=self.config.san_private_key,
+                             missing_key_policy=policy,
+                             known_hosts_file=known_hosts_file)
 
         return cl
 

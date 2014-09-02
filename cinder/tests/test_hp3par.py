@@ -19,6 +19,8 @@ import mock
 
 import ast
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -33,6 +35,8 @@ from cinder.volume import volume_types
 hpexceptions = hp3parclient.hpexceptions
 
 LOG = logging.getLogger(__name__)
+
+CONF = cfg.CONF
 
 HP3PAR_CPG = 'OpenStackCPG'
 HP3PAR_CPG_SNAP = 'OpenStackCPGSnap'
@@ -384,6 +388,90 @@ class HP3PARBaseDriver(object):
         self.driver = driver(configuration=conf)
         self.driver.do_setup(None)
         return _m_client
+
+    @mock.patch('hp3parclient.version', "3.0.9")
+    def test_unsupported_client_version(self):
+
+        self.assertRaises(exception.InvalidInput,
+                          self.setup_driver)
+
+    @mock.patch('hp3parclient.version', "3.1.0")
+    def test_ssh_options_310(self):
+
+        self.ctxt = context.get_admin_context()
+        mock_client = self.setup_mock_client(driver=hpfcdriver.HP3PARFCDriver)
+        expected = [
+            mock.call.setSSHOptions(
+                HP3PAR_SAN_IP,
+                HP3PAR_USER_NAME,
+                HP3PAR_USER_PASS,
+                privatekey=HP3PAR_SAN_SSH_PRIVATE,
+                port=HP3PAR_SAN_SSH_PORT,
+                conn_timeout=HP3PAR_SAN_SSH_CON_TIMEOUT),
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getCPG(HP3PAR_CPG),
+            mock.call.logout()]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch('hp3parclient.version', "3.1.1")
+    def test_ssh_options(self):
+
+        expected_hosts_key_file = "test_hosts_key_file"
+        orig_ssh_hosts_key_file = CONF.ssh_hosts_key_file
+        orig_strict_ssh_host_key_policy = CONF.strict_ssh_host_key_policy
+        CONF.ssh_hosts_key_file = expected_hosts_key_file
+        CONF.strict_ssh_host_key_policy = False
+
+        self.ctxt = context.get_admin_context()
+        mock_client = self.setup_mock_client(driver=hpfcdriver.HP3PARFCDriver)
+
+        CONF.ssh_hosts_key_file = orig_ssh_hosts_key_file
+        CONF.strict_ssh_host_key_policy = orig_strict_ssh_host_key_policy
+
+        expected = [
+            mock.call.setSSHOptions(
+                HP3PAR_SAN_IP,
+                HP3PAR_USER_NAME,
+                HP3PAR_USER_PASS,
+                privatekey=HP3PAR_SAN_SSH_PRIVATE,
+                known_hosts_file=expected_hosts_key_file,
+                missing_key_policy="AutoAddPolicy",
+                port=HP3PAR_SAN_SSH_PORT,
+                conn_timeout=HP3PAR_SAN_SSH_CON_TIMEOUT),
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getCPG(HP3PAR_CPG),
+            mock.call.logout()]
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch('hp3parclient.version', "3.1.1")
+    def test_ssh_options_strict(self):
+
+        expected_hosts_key_file = "test_hosts_key_file"
+        orig_ssh_hosts_key_file = CONF.ssh_hosts_key_file
+        orig_strict_ssh_host_key_policy = CONF.strict_ssh_host_key_policy
+        CONF.ssh_hosts_key_file = expected_hosts_key_file
+        CONF.strict_ssh_host_key_policy = True
+
+        self.ctxt = context.get_admin_context()
+        mock_client = self.setup_mock_client(driver=hpfcdriver.HP3PARFCDriver)
+
+        CONF.ssh_hosts_key_file = orig_ssh_hosts_key_file
+        CONF.strict_ssh_host_key_policy = orig_strict_ssh_host_key_policy
+
+        expected = [
+            mock.call.setSSHOptions(
+                HP3PAR_SAN_IP,
+                HP3PAR_USER_NAME,
+                HP3PAR_USER_PASS,
+                privatekey=HP3PAR_SAN_SSH_PRIVATE,
+                known_hosts_file=expected_hosts_key_file,
+                missing_key_policy="RejectPolicy",
+                port=HP3PAR_SAN_SSH_PORT,
+                conn_timeout=HP3PAR_SAN_SSH_CON_TIMEOUT),
+            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.getCPG(HP3PAR_CPG),
+            mock.call.logout()]
+        mock_client.assert_has_calls(expected)
 
     def test_task_waiter(self):
 

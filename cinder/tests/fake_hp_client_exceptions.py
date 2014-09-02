@@ -16,6 +16,11 @@
 """Fake HP client exceptions to use when mocking HP clients."""
 
 
+class UnsupportedVersion(Exception):
+    """Unsupported version of the client."""
+    pass
+
+
 class ClientException(Exception):
     """The base exception class for these fake exceptions."""
     _error_code = None
