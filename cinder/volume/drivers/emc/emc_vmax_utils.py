@@ -259,7 +259,7 @@ class EMCVMAXUtils(object):
     def wait_for_job_complete(self, conn, job):
         """Given the job wait for it to complete.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param job: the job dict
         :returns: rc - the return code
         :returns: errorDesc - the error description string
@@ -281,7 +281,7 @@ class EMCVMAXUtils(object):
     def _wait_for_job_complete(self, conn, job):
         """Given the job wait for it to complete.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param job: the job dict
         """
 
@@ -312,7 +312,7 @@ class EMCVMAXUtils(object):
 
     def _is_job_finished(self, conn, job):
         """Check if the job is finished.
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param job: the job dict
 
         :returns: True if finished; False if not finished;
@@ -340,7 +340,7 @@ class EMCVMAXUtils(object):
     def wait_for_sync(self, conn, syncName):
         """Given the sync name wait for it to fully synchronize.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param syncName: the syncName
         """
 
@@ -371,7 +371,7 @@ class EMCVMAXUtils(object):
 
     def _is_sync_complete(self, conn, syncName):
         """Check if the job is finished.
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param syncName: the sync name
 
         :returns: True if fully synchronized; False if not;
@@ -436,7 +436,7 @@ class EMCVMAXUtils(object):
         Given the volume instance name get the associated storage group if it
         is belong to one
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param volumeInstanceName: the volume instance name
         :returns: foundStorageGroupInstanceName - the storage group
                                                   instance name
@@ -480,7 +480,7 @@ class EMCVMAXUtils(object):
     def find_storage_system_name_from_service(self, configService):
         """Given any service get the storage system name from it.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param configService: the configuration service
         :returns: configService['SystemName'] - storage system name (String)
         """
@@ -489,7 +489,7 @@ class EMCVMAXUtils(object):
     def find_volume_instance(self, conn, volumeDict, volumeName):
         """Given the volumeDict get the instance from it.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param volumeDict: the volume Dict
         :param volumeName: the user friendly name of the volume
         :returns: foundVolumeInstance - the volume instance
@@ -535,7 +535,7 @@ class EMCVMAXUtils(object):
         NOTE:  This exists in common too...will be moving it to other file
         where both common and masking can access it
 
-        :param classname: connection the the ecom server
+        :param classname: connection to the ecom server
         :param bindings: volume created from job
         :returns: foundVolumeInstance - the volume instance
 
@@ -972,7 +972,7 @@ class EMCVMAXUtils(object):
         Given the storage pool name, get the total capacity and remaining
         capacity in GB
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param storagePoolName: string value of the storage pool name
         :returns: total_capacity_gb - total capacity of the storage pool in GB
         :returns: free_capacity_gb - remaining capacity of the
@@ -1003,7 +1003,7 @@ class EMCVMAXUtils(object):
     def get_pool_by_name(self, conn, storagePoolName, storageSystemName):
         """Returns the instance name associated with a storage pool name.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param storagePoolName: string value of the storage pool name
         :param storageSystemName: string value of array
         :returns: poolInstanceName - instance name of storage pool
