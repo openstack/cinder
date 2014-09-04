@@ -279,6 +279,24 @@
 
 
 #
+# Options defined in cinder.ssh_utils
+#
+
+# Option to enable strict host key checking.  When set to
+# "True" Cinder will only connect to systems with a host key
+# present in the configured "ssh_hosts_key_file".  When set to
+# "False" the host key will be saved upon first connection and
+# used for subsequent connections.  Default=False (boolean
+# value)
+#strict_ssh_host_key_policy=false
+
+# File containing SSH host keys for the systems with which
+# Cinder needs to communicate.  OPTIONAL:
+# Default=$state_path/known_hosts (string value)
+#ssh_hosts_key_file=$state_path/ssh_known_hosts
+
+
+#
 # Options defined in cinder.test
 #
 

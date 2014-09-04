@@ -814,6 +814,9 @@ class FakeSSHClient(object):
     def get_policy(self):
         return self.policy
 
+    def get_host_keys(self):
+        return '127.0.0.1 ssh-rsa deadbeef'
+
     def close(self):
         pass
 
@@ -841,9 +844,35 @@ class FakeTransport(object):
 
 class SSHPoolTestCase(test.TestCase):
     """Unit test for SSH Connection Pool."""
+    @mock.patch('__builtin__.open')
     @mock.patch('paramiko.SSHClient')
-    def test_ssh_key_policy(self, mock_sshclient):
-        mock_sshclient.return_value = FakeSSHClient()
+    @mock.patch('os.path.isfile', return_value=True)
+    def test_ssh_default_hosts_key_file(self, mock_isfile, mock_sshclient,
+                                        mock_open):
+        mock_ssh = mock.MagicMock()
+        mock_sshclient.return_value = mock_ssh
+
+        # create with customized setting
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
+
+        host_key_files = sshpool.hosts_key_file
+
+        self.assertEqual('/var/lib/cinder/ssh_known_hosts', host_key_files)
+
+        mock_ssh.load_host_keys.assert_called_once_with(
+            '/var/lib/cinder/ssh_known_hosts')
+
+    @mock.patch('__builtin__.open')
+    @mock.patch('paramiko.SSHClient')
+    @mock.patch('os.path.isfile', return_value=True)
+    def test_ssh_host_key_file_kwargs(self, mock_isfile, mock_sshclient,
+                                      mock_open):
+        mock_ssh = mock.MagicMock()
+        mock_sshclient.return_value = mock_ssh
 
         # create with customized setting
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
@@ -851,28 +880,28 @@ class SSHPoolTestCase(test.TestCase):
                                     password="test",
                                     min_size=1,
                                     max_size=1,
-                                    missing_key_policy=paramiko.RejectPolicy(),
                                     hosts_key_file='dummy_host_keyfile')
-        with sshpool.item() as ssh:
-            self.assertTrue(isinstance(ssh.get_policy(),
-                                       paramiko.RejectPolicy))
-            self.assertEqual(ssh.hosts_key_file, 'dummy_host_keyfile')
 
-        # create with default setting
-        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
-                                    "test",
-                                    password="test",
-                                    min_size=1,
-                                    max_size=1)
-        with sshpool.item() as ssh:
-            self.assertTrue(isinstance(ssh.get_policy(),
-                                       paramiko.AutoAddPolicy))
-            self.assertEqual(ssh.system_host_keys, 'system_host_keys')
+        host_key_files = sshpool.hosts_key_file
 
+        self.assertIn('dummy_host_keyfile', host_key_files)
+        self.assertIn('/var/lib/cinder/ssh_known_hosts', host_key_files)
+
+        expected = [
+            mock.call.load_host_keys('dummy_host_keyfile'),
+            mock.call.load_host_keys('/var/lib/cinder/ssh_known_hosts')]
+
+        mock_ssh.assert_has_calls(expected, any_order=True)
+
+    @mock.patch('__builtin__.open')
+    @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('paramiko.SSHClient')
-    def test_single_ssh_connect(self, mock_sshclient, mock_pkey):
+    def test_single_ssh_connect(self, mock_sshclient, mock_pkey, mock_isfile,
+                                mock_open):
         mock_sshclient.return_value = FakeSSHClient()
+
+        CONF.ssh_hosts_key_file = '/var/lib/cinder/ssh_known_hosts'
 
         # create with password
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
@@ -905,8 +934,9 @@ class SSHPoolTestCase(test.TestCase):
                           min_size=1,
                           max_size=1)
 
+    @mock.patch('__builtin__.open')
     @mock.patch('paramiko.SSHClient')
-    def test_closed_reopend_ssh_connections(self, mock_sshclient):
+    def test_closed_reopened_ssh_connections(self, mock_sshclient, mock_open):
         mock_sshclient.return_value = eval('FakeSSHClient')()
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
                                     "test",
@@ -930,6 +960,97 @@ class SSHPoolTestCase(test.TestCase):
             third_id = ssh.id
 
         self.assertNotEqual(first_id, third_id)
+
+    @mock.patch('__builtin__.open')
+    @mock.patch('paramiko.SSHClient')
+    def test_missing_ssh_hosts_key_config(self, mock_sshclient, mock_open):
+        mock_sshclient.return_value = FakeSSHClient()
+
+        CONF.ssh_hosts_key_file = None
+        # create with password
+        self.assertRaises(exception.ParameterNotFound,
+                          ssh_utils.SSHPool,
+                          "127.0.0.1", 22, 10,
+                          "test",
+                          password="test",
+                          min_size=1,
+                          max_size=1)
+
+    @mock.patch('__builtin__.open')
+    @mock.patch('paramiko.SSHClient')
+    def test_create_default_known_hosts_file(self, mock_sshclient,
+                                             mock_open):
+        mock_sshclient.return_value = FakeSSHClient()
+
+        CONF.state_path = '/var/lib/cinder'
+        CONF.ssh_hosts_key_file = '/var/lib/cinder/ssh_known_hosts'
+
+        default_file = '/var/lib/cinder/ssh_known_hosts'
+
+        ssh_pool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                     "test",
+                                     password="test",
+                                     min_size=1,
+                                     max_size=1)
+
+        with ssh_pool.item() as ssh:
+            mock_open.assert_called_once_with(default_file, 'a')
+            ssh_pool.remove(ssh)
+
+    @mock.patch('__builtin__.open')
+    @mock.patch('paramiko.SSHClient')
+    def test_ssh_missing_hosts_key_file(self, mock_sshclient, mock_open):
+        mock_sshclient.return_value = FakeSSHClient()
+
+        CONF.ssh_hosts_key_file = '/tmp/blah'
+
+        self.assertRaises(exception.InvalidInput,
+                          ssh_utils.SSHPool,
+                          "127.0.0.1", 22, 10,
+                          "test",
+                          password="test",
+                          min_size=1,
+                          max_size=1)
+
+    @mock.patch('__builtin__.open')
+    @mock.patch('paramiko.SSHClient')
+    @mock.patch('os.path.isfile', return_value=True)
+    def test_ssh_strict_host_key_policy(self, mock_isfile, mock_sshclient,
+                                        mock_open):
+        mock_sshclient.return_value = FakeSSHClient()
+
+        CONF.strict_ssh_host_key_policy = True
+
+        # create with customized setting
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
+
+        with sshpool.item() as ssh:
+            self.assertTrue(isinstance(ssh.get_policy(),
+                                       paramiko.RejectPolicy))
+
+    @mock.patch('__builtin__.open')
+    @mock.patch('paramiko.SSHClient')
+    @mock.patch('os.path.isfile', return_value=True)
+    def test_ssh_not_strict_host_key_policy(self, mock_isfile, mock_sshclient,
+                                            mock_open):
+        mock_sshclient.return_value = FakeSSHClient()
+
+        CONF.strict_ssh_host_key_policy = False
+
+        # create with customized setting
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
+
+        with sshpool.item() as ssh:
+            self.assertTrue(isinstance(ssh.get_policy(),
+                                       paramiko.AutoAddPolicy))
 
 
 class BrickUtils(test.TestCase):
