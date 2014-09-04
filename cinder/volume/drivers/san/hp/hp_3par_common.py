@@ -145,10 +145,11 @@ class HP3PARCommon(object):
                  This update now requires 3.1.3 MU1 firmware
                  and hp3parclient 3.1.0
         2.0.18 - HP 3PAR manage_existing with volume-type support
+        2.0.19 - Update default persona from Generic to Generic-ALUA
 
     """
 
-    VERSION = "2.0.18"
+    VERSION = "2.0.19"
 
     stats = {}
 
@@ -166,8 +167,8 @@ class HP3PARCommon(object):
     # Valid values for volume type extra specs
     # The first value in the list is the default value
     valid_prov_values = ['thin', 'full']
-    valid_persona_values = ['1 - Generic',
-                            '2 - Generic-ALUA',
+    valid_persona_values = ['2 - Generic-ALUA',
+                            '1 - Generic',
                             '6 - Generic-legacy',
                             '7 - HPUX-legacy',
                             '8 - AIX-legacy',

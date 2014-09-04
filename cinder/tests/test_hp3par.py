@@ -277,7 +277,7 @@ class HP3PARBaseDriver(object):
         'extra_specs': {
             'cpg': 'bogus',
             'snap_cpg': 'bogus',
-            'hp3par:persona': '1 - Generic'
+            'hp3par:persona': '2 - Generic-ALUA'
         }
     }
 
@@ -2264,7 +2264,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             mock.call.createHost(
                 self.FAKE_HOST,
                 FCWwns=['123456789012345', '123456789054321'],
-                optional={'domain': None, 'persona': 1}),
+                optional={'domain': None, 'persona': 2}),
             mock.call.getHost(self.FAKE_HOST)]
 
         mock_client.assert_has_calls(expected)
@@ -2533,7 +2533,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             mock.call.findHost(iqn='iqn.1993-08.org.debian:01:222'),
             mock.call.createHost(
                 self.FAKE_HOST,
-                optional={'domain': None, 'persona': 1},
+                optional={'domain': None, 'persona': 2},
                 iscsiNames=['iqn.1993-08.org.debian:01:222']),
             mock.call.getHost(self.FAKE_HOST)]
 
@@ -2588,7 +2588,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             mock.call.findHost(iqn='iqn.1993-08.org.debian:01:222'),
             mock.call.createHost(
                 self.FAKE_HOST,
-                optional={'domain': None, 'persona': 1},
+                optional={'domain': None, 'persona': 2},
                 iscsiNames=['iqn.1993-08.org.debian:01:222']),
             mock.call.modifyHost(
                 'fakehost',
