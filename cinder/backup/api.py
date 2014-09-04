@@ -246,8 +246,10 @@ class API(base.Base):
         self.db.backup_update(context, backup_id, {'status': 'restoring'})
         self.db.volume_update(context, volume_id, {'status':
                                                    'restoring-backup'})
+
+        volume_host = volume_utils.extract_host(volume['host'], 'host')
         self.backup_rpcapi.restore_backup(context,
-                                          backup['host'],
+                                          volume_host,
                                           backup['id'],
                                           volume_id)
 
