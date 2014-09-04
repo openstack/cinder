@@ -489,7 +489,8 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
         delete_snapshot_request = {'addr': 'cms',
                                    'data': {
                                        'repoName': fake_repository_name,
-                                       'lvName': fake_snapshot_name},
+                                       'lvName': fake_snapshot_name,
+                                       'newLvName': 'noop'},
                                    'op': 'orchStrLunMods',
                                    'args': 'delClSnap'}
         pack_data(delete_snapshot_request)
