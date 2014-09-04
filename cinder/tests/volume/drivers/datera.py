@@ -146,6 +146,25 @@ class DateraVolumeTestCase(test.TestCase):
         self.assertRaises(exception.DateraAPIException,
                           self.driver.create_export, ctxt, self.volume)
 
+    def test_detach_volume_success(self):
+        self.mock_api.return_value = {}
+        ctxt = context.get_admin_context()
+        volume = _stub_volume(status='in-use')
+        self.assertIsNone(self.driver.detach_volume(ctxt, volume))
+
+    def test_detach_volume_fails(self):
+        self.mock_api.side_effect = exception.DateraAPIException
+        ctxt = context.get_admin_context()
+        volume = _stub_volume(status='in-use')
+        self.assertRaises(exception.DateraAPIException,
+                          self.driver.detach_volume, ctxt, volume)
+
+    def test_detach_volume_not_found(self):
+        self.mock_api.side_effect = exception.NotFound
+        ctxt = context.get_admin_context()
+        volume = _stub_volume(status='in-use')
+        self.assertIsNone(self.driver.detach_volume(ctxt, volume))
+
     def test_create_snapshot_success(self):
         self.mock_api.return_value = {
             u'uuid': u'0bb34f0c-fea4-48e0-bf96-591120ac7e3c',
