@@ -1196,6 +1196,15 @@
 
 
 #
+# Options defined in cinder.volume.drivers.fujitsu_eternus_dx_common
+#
+
+# The configuration file for the Cinder SMI-S driver (string
+# value)
+#cinder_smis_config_file=/etc/cinder/cinder_fujitsu_eternus_dx.xml
+
+
+#
 # Options defined in cinder.volume.drivers.fusionio.ioControl
 #
 
