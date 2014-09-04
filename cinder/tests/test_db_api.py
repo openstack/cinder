@@ -814,6 +814,7 @@ class DBAPIEncryptionTestCase(BaseTest):
         'deleted_at',
         'created_at',
         'updated_at',
+        'encryption_id',
     ]
 
     def setUp(self):
