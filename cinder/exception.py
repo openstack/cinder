@@ -849,3 +849,8 @@ class HBSDBusy(HBSDError):
 
 class HBSDNotFound(NotFound):
     message = _("Storage resource could not be found.")
+
+
+# Datera driver
+class DateraAPIException(VolumeBackendAPIException):
+    message = _("Bad response from Datera API")

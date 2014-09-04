@@ -119,6 +119,14 @@ volume_opts = [
                     'perform write-back(on) or write-through(off). '
                     'This parameter is valid if iscsi_helper is set '
                     'to tgtadm or iseradm.'),
+    cfg.StrOpt('driver_client_cert_key',
+               default=None,
+               help='The path to the client certificate key for verification, '
+                    'if the driver supports it.'),
+    cfg.StrOpt('driver_client_cert',
+               default=None,
+               help='The path to the client certificate for verification, '
+                    'if the driver supports it.'),
 ]
 
 # for backward compatibility
