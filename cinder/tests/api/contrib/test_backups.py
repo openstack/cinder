@@ -58,13 +58,13 @@ class BackupsAPITestCase(test.TestCase):
                        display_description='this is a test backup',
                        container='volumebackups',
                        status='creating',
-                       size=0, object_count=0):
+                       size=0, object_count=0, host='testhost'):
         """Create a backup object."""
         backup = {}
         backup['volume_id'] = volume_id
         backup['user_id'] = 'fake'
         backup['project_id'] = 'fake'
-        backup['host'] = 'testhost'
+        backup['host'] = host
         backup['availability_zone'] = 'az1'
         backup['display_name'] = display_name
         backup['display_description'] = display_description
@@ -980,6 +980,33 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 202)
         self.assertEqual(res_dict['restore']['backup_id'], backup_id)
         self.assertEqual(res_dict['restore']['volume_id'], volume_id)
+
+        db.volume_destroy(context.get_admin_context(), volume_id)
+        db.backup_destroy(context.get_admin_context(), backup_id)
+
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.restore_backup')
+    def test_restore_backup_with_different_host(self, mock_restore_backup):
+        backup_id = self._create_backup(status='available', size=10,
+                                        host='HostA@BackendB#PoolA')
+        volume_id = utils.create_volume(self.context, size=10,
+                                        host='HostB@BackendB#PoolB')['id']
+
+        body = {"restore": {"volume_id": volume_id, }}
+        req = webob.Request.blank('/v2/fake/backups/%s/restore' %
+                                  backup_id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(res.status_int, 202)
+        self.assertEqual(res_dict['restore']['backup_id'], backup_id)
+        self.assertEqual(res_dict['restore']['volume_id'], volume_id)
+        mock_restore_backup.assert_called_once_with(mock.ANY,
+                                                    'HostB',
+                                                    backup_id,
+                                                    volume_id)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
         db.backup_destroy(context.get_admin_context(), backup_id)
