@@ -39,6 +39,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import network_utils
 from cinder import utils
 
 
@@ -210,8 +211,11 @@ class Server(object):
                                       socket.SO_REUSEADDR, 1)
 
                 # sockets can hang around forever without keepalive
-                dup_socket.setsockopt(socket.SOL_SOCKET,
-                                      socket.SO_KEEPALIVE, 1)
+                network_utils.set_tcp_keepalive(dup_socket,
+                                                CONF.tcp_keepalive,
+                                                CONF.tcp_keepidle,
+                                                CONF.tcp_keepalive_count,
+                                                CONF.tcp_keepalive_interval)
 
             except Exception:
                 with excutils.save_and_reraise_exception():
