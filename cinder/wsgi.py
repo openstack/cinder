@@ -84,6 +84,11 @@ eventlet_opts = [
                 help='If False, closes the client socket connection '
                      'explicitly. Setting it to True to maintain backward '
                      'compatibility. Recommended setting is set it to False.'),
+    cfg.IntOpt('client_socket_timeout', default=0,
+               help="Timeout for client connections\' socket operations. "
+                    "If an incoming connection is idle for this number of "
+                    "seconds it will be closed. A value of \'0\' means "
+                    "wait forever."),
 ]
 
 CONF = cfg.CONF
@@ -112,6 +117,7 @@ class Server(object):
         """
         # Allow operators to customize http requests max header line size.
         eventlet.wsgi.MAX_HEADER_LINE = CONF.max_header_line
+        self.client_socket_timeout = CONF.client_socket_timeout or None
         self.name = name
         self.app = app
         self._host = host or "0.0.0.0"
@@ -235,7 +241,8 @@ class Server(object):
             'protocol': self._protocol,
             'custom_pool': self._pool,
             'log': self._wsgi_logger,
-            'keepalive': CONF.wsgi_keep_alive
+            'keepalive': CONF.wsgi_keep_alive,
+            'socket_timeout': self.client_socket_timeout
         }
 
         self._server = eventlet.spawn(**wsgi_kwargs)
