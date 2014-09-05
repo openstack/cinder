@@ -121,7 +121,7 @@ class VolumeTenantAttributeTest(test.TestCase):
         res = req.get_response(app())
         vol = etree.XML(res.body)
         tenant_key = ('{http://docs.openstack.org/volume/ext/'
-                      'volume_tenant_attribute/api/v1}tenant_id')
+                      'volume_tenant_attribute/api/v2}tenant_id')
         self.assertEqual(vol.get(tenant_key), PROJECT_ID)
 
     def test_list_volumes_detail_xml(self):
@@ -133,5 +133,5 @@ class VolumeTenantAttributeTest(test.TestCase):
         res = req.get_response(app())
         vol = list(etree.XML(res.body))[0]
         tenant_key = ('{http://docs.openstack.org/volume/ext/'
-                      'volume_tenant_attribute/api/v1}tenant_id')
+                      'volume_tenant_attribute/api/v2}tenant_id')
         self.assertEqual(vol.get(tenant_key), PROJECT_ID)

@@ -33,7 +33,7 @@ from cinder import utils
 from cinder.volume import api as volume_api
 
 
-NS = '{http://docs.openstack.org/volume/api/v1}'
+NS = '{http://docs.openstack.org/api/openstack-block-storage/1.0/content}'
 
 TEST_SNAPSHOT_UUID = '00000000-0000-0000-0000-000000000001'
 

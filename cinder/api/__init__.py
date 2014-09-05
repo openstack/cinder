@@ -18,12 +18,20 @@
 from oslo.config import cfg
 import paste.urlmap
 
+from cinder.openstack.common.gettextutils import _
+from cinder.openstack.common import log as logging
+
 
 CONF = cfg.CONF
+LOG = logging.getLogger(__name__)
 
 
 def root_app_factory(loader, global_conf, **local_conf):
-    if not CONF.enable_v1_api:
+    if CONF.enable_v1_api:
+        LOG.warn(_('The v1 api is deprecated and will be removed after the '
+                   'Juno release. You should set enable_v1_api=false and '
+                   'enable_v2_api=true in your cinder.conf file.'))
+    else:
         del local_conf['/v1']
     if not CONF.enable_v2_api:
         del local_conf['/v2']

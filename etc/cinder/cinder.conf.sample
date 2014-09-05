@@ -547,7 +547,7 @@
 # The topic that volume backup nodes listen on (string value)
 #backup_topic=cinder-backup
 
-# Deploy v1 of the Cinder API. (boolean value)
+# DEPRECATED: Deploy v1 of the Cinder API. (boolean value)
 #enable_v1_api=true
 
 # Deploy v2 of the Cinder API. (boolean value)
