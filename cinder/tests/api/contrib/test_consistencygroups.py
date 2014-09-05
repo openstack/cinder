@@ -20,13 +20,14 @@ Tests for consistency group code.
 import json
 from xml.dom import minidom
 
+import mock
 import webob
 
+import cinder.consistencygroup
 from cinder import context
 from cinder import db
 from cinder import test
 from cinder.tests.api import fakes
-import cinder.volume
 
 
 class ConsistencyGroupsAPITestCase(test.TestCase):
@@ -34,10 +35,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
     def setUp(self):
         super(ConsistencyGroupsAPITestCase, self).setUp()
-        self.volume_api = cinder.volume.API()
-        self.context = context.get_admin_context()
-        self.context.project_id = 'fake'
-        self.context.user_id = 'fake'
+        self.cg_api = cinder.consistencygroup.API()
 
     @staticmethod
     def _create_consistencygroup(
@@ -45,6 +43,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             description='this is a test consistency group',
             volume_type_id='123456',
             availability_zone='az1',
+            host='fakehost',
             status='creating'):
         """Create a consistency group object."""
         consistencygroup = {}
@@ -54,8 +53,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup['name'] = name
         consistencygroup['description'] = description
         consistencygroup['volume_type_id'] = volume_type_id
+        consistencygroup['host'] = host
         consistencygroup['status'] = status
-        consistencygroup['host'] = 'fakehost'
         return db.consistencygroup_create(
             context.get_admin_context(),
             consistencygroup)['id']
@@ -378,3 +377,51 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         db.consistencygroup_destroy(context.get_admin_context(),
                                     consistencygroup_id)
+
+    def test_delete_consistencygroup_no_host(self):
+        consistencygroup_id = self._create_consistencygroup(
+            host=None,
+            status='error')
+        req = webob.Request.blank('/v2/fake/consistencygroups/%s/delete' %
+                                  consistencygroup_id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        body = {"consistencygroup": {"force": True}}
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(res.status_int, 202)
+
+        cg = db.consistencygroup_get(
+            context.get_admin_context(read_deleted='yes'),
+            consistencygroup_id)
+        self.assertEqual(cg['status'], 'deleted')
+        self.assertEqual(cg['host'], None)
+
+    def test_create_delete_consistencygroup_update_quota(self):
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        name = 'mycg'
+        description = 'consistency group 1'
+        fake_type = {'id': '1', 'name': 'fake_type'}
+        self.stubs.Set(db, 'volume_types_get_by_name_or_id',
+                       mock.Mock(return_value=[fake_type]))
+        self.stubs.Set(self.cg_api,
+                       '_cast_create_consistencygroup',
+                       mock.Mock())
+        self.stubs.Set(self.cg_api, 'update_quota',
+                       mock.Mock())
+
+        cg = self.cg_api.create(ctxt, name, description, fake_type['name'])
+        self.cg_api.update_quota.assert_called_once_with(
+            ctxt, cg['id'], 1)
+        self.assertEqual(cg['status'], 'creating')
+        self.assertEqual(cg['host'], None)
+        self.cg_api.update_quota.reset_mock()
+
+        cg['status'] = 'error'
+        self.cg_api.delete(ctxt, cg)
+        self.cg_api.update_quota.assert_called_once_with(
+            ctxt, cg['id'], -1, ctxt.project_id)
+        cg = db.consistencygroup_get(
+            context.get_admin_context(read_deleted='yes'),
+            cg['id'])
+        self.assertEqual(cg['status'], 'deleted')
