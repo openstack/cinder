@@ -22,7 +22,10 @@ import mock
 from oslo.config import cfg
 
 from cinder import context
+from cinder import db
 from cinder import exception
+from cinder.i18n import _
+from cinder.openstack.common import log as logging
 from cinder.scheduler import driver
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager
@@ -187,6 +190,46 @@ class SchedulerManagerTestCase(test.TestCase):
         _mock_vol_update.assert_called_once_with(self.context, fake_volume_id,
                                                  {'status': 'in-use'})
         self.manager.driver.find_retype_host = orig_retype
+
+    def test_create_consistencygroup_exceptions(self):
+        with mock.patch.object(filter_scheduler.FilterScheduler,
+                               'schedule_create_consistencygroup') as mock_cg:
+            original_driver = self.manager.driver
+            self.manager.driver = filter_scheduler.FilterScheduler
+            LOG = logging.getLogger('cinder.scheduler.manager')
+            self.stubs.Set(LOG, 'error', mock.Mock())
+            self.stubs.Set(LOG, 'exception', mock.Mock())
+            self.stubs.Set(db, 'consistencygroup_update', mock.Mock())
+
+            ex = exception.CinderException('test')
+            mock_cg.side_effect = ex
+            group_id = '1'
+            self.assertRaises(exception.CinderException,
+                              self.manager.create_consistencygroup,
+                              self.context,
+                              'volume',
+                              group_id)
+            LOG.exception.assert_called_once_with(_(
+                "Failed to create consistency group "
+                "%(group_id)s."), {'group_id': group_id})
+            db.consistencygroup_update.assert_called_once_with(
+                self.context, group_id, {'status': 'error'})
+
+            mock_cg.reset_mock()
+            LOG.exception.reset_mock()
+            db.consistencygroup_update.reset_mock()
+
+            mock_cg.side_effect = exception.NoValidHost(
+                reason="No weighed hosts available")
+            self.manager.create_consistencygroup(
+                self.context, 'volume', group_id)
+            LOG.error.assert_called_once_with(_(
+                "Could not find a host for consistency group "
+                "%(group_id)s.") % {'group_id': group_id})
+            db.consistencygroup_update.assert_called_once_with(
+                self.context, group_id, {'status': 'error'})
+
+            self.manager.driver = original_driver
 
 
 class SchedulerTestCase(test.TestCase):

@@ -104,27 +104,20 @@ class API(base.Base):
         return availability_zone
 
     def create(self, context, name, description,
-               cg_volume_types=None, availability_zone=None):
+               cg_volume_types, availability_zone=None):
 
         check_policy(context, 'create')
         volume_type_list = None
-        if cg_volume_types:
-            volume_type_list = cg_volume_types.split(',')
+        volume_type_list = cg_volume_types.split(',')
 
         req_volume_types = []
-        if volume_type_list:
-            req_volume_types = (self.db.volume_types_get_by_name_or_id(
-                context, volume_type_list))
-
-        if not req_volume_types:
-            volume_type = volume_types.get_default_volume_type()
-            req_volume_types.append(volume_type)
+        req_volume_types = (self.db.volume_types_get_by_name_or_id(
+            context, volume_type_list))
 
         req_volume_type_ids = ""
         for voltype in req_volume_types:
-            if voltype:
-                req_volume_type_ids = (
-                    req_volume_type_ids + voltype.get('id') + ",")
+            req_volume_type_ids = (
+                req_volume_type_ids + voltype.get('id') + ",")
         if len(req_volume_type_ids) == 0:
             req_volume_type_ids = None
 

@@ -155,11 +155,15 @@ class API(base.Base):
                scheduler_hints=None, backup_source_volume=None,
                source_replica=None, consistencygroup=None):
 
-        if volume_type and consistencygroup:
+        if consistencygroup:
+            if not volume_type:
+                msg = _("volume_type must be provided when creating "
+                        "a volume in a consistency group.")
+                raise exception.InvalidInput(reason=msg)
             cg_voltypeids = consistencygroup.get('volume_type_id')
             if volume_type.get('id') not in cg_voltypeids:
                 msg = _("Invalid volume_type provided (requested type "
-                        "must be supported by this consistency group.")
+                        "must be supported by this consistency group).")
                 raise exception.InvalidInput(reason=msg)
 
         if source_volume and volume_type:

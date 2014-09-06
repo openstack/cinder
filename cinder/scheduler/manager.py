@@ -96,18 +96,18 @@ class SchedulerManager(manager.Manager):
                 context, group_id,
                 request_spec_list,
                 filter_properties_list)
-        except exception.NoValidHost as ex:
+        except exception.NoValidHost:
             msg = (_("Could not find a host for consistency group "
                      "%(group_id)s.") %
                    {'group_id': group_id})
             LOG.error(msg)
             db.consistencygroup_update(context, group_id,
                                        {'status': 'error'})
-        except Exception as ex:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Failed to create consistency group "
-                            "%(group_id)s."))
-                LOG.exception(ex)
+                LOG.exception(_("Failed to create consistency group "
+                                "%(group_id)s."),
+                              {'group_id': group_id})
                 db.consistencygroup_update(context, group_id,
                                            {'status': 'error'})
 
