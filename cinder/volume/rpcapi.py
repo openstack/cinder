@@ -176,8 +176,8 @@ class VolumeAPI(object):
     def accept_transfer(self, ctxt, volume, new_user, new_project):
         new_host = utils.extract_host(volume['host'])
         cctxt = self.client.prepare(server=new_host, version='1.9')
-        cctxt.cast(ctxt, 'accept_transfer', volume_id=volume['id'],
-                   new_user=new_user, new_project=new_project)
+        return cctxt.call(ctxt, 'accept_transfer', volume_id=volume['id'],
+                          new_user=new_user, new_project=new_project)
 
     def extend_volume(self, ctxt, volume, new_size, reservations):
         new_host = utils.extract_host(volume['host'])

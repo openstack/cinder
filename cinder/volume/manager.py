@@ -967,7 +967,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         if model_update:
             try:
-                self.db.volume_update(context,
+                self.db.volume_update(context.elevated(),
                                       volume_id,
                                       model_update)
             except exception.CinderException:
@@ -981,6 +981,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                     self.db.volume_update(context.elevated(),
                                           volume_id,
                                           {'status': 'error'})
+
+        return model_update
 
     def _migrate_volume_generic(self, ctxt, volume, host, new_type_id):
         rpcapi = volume_rpcapi.VolumeAPI()
