@@ -130,8 +130,8 @@ class VolumeAPI(object):
 
     def accept_transfer(self, ctxt, volume, new_user, new_project):
         cctxt = self.client.prepare(server=volume['host'], version='1.9')
-        cctxt.cast(ctxt, 'accept_transfer', volume_id=volume['id'],
-                   new_user=new_user, new_project=new_project)
+        return cctxt.call(ctxt, 'accept_transfer', volume_id=volume['id'],
+                          new_user=new_user, new_project=new_project)
 
     def extend_volume(self, ctxt, volume, new_size, reservations):
         cctxt = self.client.prepare(server=volume['host'], version='1.14')
