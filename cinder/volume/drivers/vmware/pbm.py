@@ -58,7 +58,8 @@ class PBMClient(vim_module.Vim):
         self._vimSession = vimSession
         self._url = vim_util.get_soap_url(protocol, host, 'pbm')
         # create the pbm client
-        self._client = suds.client.Client(pbm_wsdl, location=self._url)
+        self._client = suds.client.Client(pbm_wsdl, location=self._url,
+                                          cache=suds.cache.NoCache())
         PBMClient._copy_client_cookie(self._vimSession, self._client)
         # Get the PBM service content
         si_moref = vim_module.get_moref(SERVICE_INSTANCE, SERVICE_TYPE)
