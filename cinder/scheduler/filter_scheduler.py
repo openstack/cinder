@@ -168,6 +168,10 @@ class FilterScheduler(driver.Scheduler):
         top_host = self._choose_top_host(weighed_hosts, request_spec)
         return top_host.obj
 
+    def get_pools(self, context, filters):
+        #TODO(zhiteng) Add filters support
+        return self.host_manager.get_pools(context)
+
     def _post_select_populate_filter_properties(self, filter_properties,
                                                 host_state):
         """Add additional information to the filter properties after a host has

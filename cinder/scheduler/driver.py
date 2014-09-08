@@ -98,3 +98,8 @@ class Scheduler(object):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_(
             "Must implement schedule_create_consistencygroup"))
+
+    def get_pools(self, context, filters):
+        """Must override schedule method for scheduler to work."""
+        raise NotImplementedError(_(
+            "Must implement schedule_get_pools"))

@@ -39,6 +39,7 @@ class SchedulerAPI(object):
         1.4 - Add retype method
         1.5 - Add manage_existing method
         1.6 - Add create_consistencygroup method
+        1.7 - Add get_active_pools method
     '''
 
     RPC_API_VERSION = '1.0'
@@ -47,7 +48,7 @@ class SchedulerAPI(object):
         super(SchedulerAPI, self).__init__()
         target = messaging.Target(topic=CONF.scheduler_topic,
                                   version=self.RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.6')
+        self.client = rpc.get_client(target, version_cap='1.7')
 
     def create_consistencygroup(self, ctxt, topic, group_id,
                                 request_spec_list=None,
@@ -113,6 +114,11 @@ class SchedulerAPI(object):
                           volume_id=volume_id,
                           request_spec=request_spec_p,
                           filter_properties=filter_properties)
+
+    def get_pools(self, ctxt, filters=None):
+        cctxt = self.client.prepare(version='1.7')
+        return cctxt.call(ctxt, 'get_pools',
+                          filters=filters)
 
     def update_service_capabilities(self, ctxt,
                                     service_name, host,

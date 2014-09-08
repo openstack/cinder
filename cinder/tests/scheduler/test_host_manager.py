@@ -188,6 +188,89 @@ class HostManagerTestCase(test.TestCase):
             self.assertEqual(host_state_map[host].service,
                              volume_node)
 
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.utils.service_is_up')
+    def test_get_pools(self, _mock_service_is_up,
+                       _mock_service_get_all_by_topic):
+        context = 'fake_context'
+
+        services = [
+            dict(id=1, host='host1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=2, host='host2@back1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=3, host='host2@back2', topic='volume', disabled=False,
+                 availability_zone='zone2', updated_at=timeutils.utcnow()),
+        ]
+
+        mocked_service_states = {
+            'host1': dict(volume_backend_name='AAA',
+                          total_capacity_gb=512, free_capacity_gb=200,
+                          timestamp=None, reserved_percentage=0),
+            'host2@back1': dict(volume_backend_name='BBB',
+                                total_capacity_gb=256, free_capacity_gb=100,
+                                timestamp=None, reserved_percentage=0),
+            'host2@back2': dict(volume_backend_name='CCC',
+                                total_capacity_gb=10000, free_capacity_gb=700,
+                                timestamp=None, reserved_percentage=0),
+        }
+
+        _mock_service_get_all_by_topic.return_value = services
+        _mock_service_is_up.return_value = True
+        _mock_warning = mock.Mock()
+        host_manager.LOG.warn = _mock_warning
+
+        with mock.patch.dict(self.host_manager.service_states,
+                             mocked_service_states):
+            # call get_all_host_states to populate host_state_map
+            self.host_manager.get_all_host_states(context)
+
+            res = self.host_manager.get_pools(context)
+
+            # check if get_pools returns all 3 pools
+            self.assertEqual(3, len(res))
+
+            expected = [
+                {
+                    'name': 'host1#AAA',
+                    'capabilities': {
+                        'timestamp': None,
+                        'volume_backend_name': 'AAA',
+                        'free_capacity_gb': 200,
+                        'driver_version': None,
+                        'total_capacity_gb': 512,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None},
+                },
+                {
+                    'name': 'host2@back1#BBB',
+                    'capabilities': {
+                        'timestamp': None,
+                        'volume_backend_name': 'BBB',
+                        'free_capacity_gb': 100,
+                        'driver_version': None,
+                        'total_capacity_gb': 256,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None},
+                },
+                {
+                    'name': 'host2@back2#CCC',
+                    'capabilities': {
+                        'timestamp': None,
+                        'volume_backend_name': 'CCC',
+                        'free_capacity_gb': 700,
+                        'driver_version': None,
+                        'total_capacity_gb': 10000,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None},
+                }
+            ]
+            self.assertEqual(len(expected), len(res))
+            self.assertEqual(sorted(expected), sorted(res))
+
 
 class HostStateTestCase(test.TestCase):
     """Test case for HostState class."""

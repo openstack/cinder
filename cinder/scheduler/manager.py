@@ -53,7 +53,7 @@ LOG = logging.getLogger(__name__)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
-    RPC_API_VERSION = '1.6'
+    RPC_API_VERSION = '1.7'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -239,6 +239,10 @@ class SchedulerManager(manager.Manager):
         else:
             volume_rpcapi.VolumeAPI().manage_existing(context, volume_ref,
                                                       request_spec.get('ref'))
+
+    def get_pools(self, context, filters=None):
+        """Get active pools from scheduler's cache."""
+        return self.driver.get_pools(context, filters)
 
     def _set_volume_state_and_notify(self, method, updates, context, ex,
                                      request_spec, msg=None):
