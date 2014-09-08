@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-08-09 06:08+0000\n"
-"PO-Revision-Date: 2014-08-07 07:52+0000\n"
+"POT-Creation-Date: 2014-09-08 06:09+0000\n"
+"PO-Revision-Date: 2014-09-01 20:31+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Chinese (China) (http://www.transifex.com/projects/p/cinder/"
 "language/zh_CN/)\n"
@@ -19,7 +19,32 @@ msgstr ""
 "Generated-By: Babel 1.3\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+#: cinder/openstack/common/excutils.py:76
+#, python-format
+msgid "Original exception being dropped: %s"
+msgstr "正在删除原始异常：%s"
+
+#: cinder/openstack/common/excutils.py:105
+#, python-format
+msgid "Unexpected exception occurred %d time(s)... retrying."
+msgstr "意外的异常已发生 %d 次...正在重试。"
+
 #: cinder/openstack/common/periodic_task.py:202
 #, python-format
 msgid "Error during %(full_task_name)s: %(e)s"
 msgstr "在 %(full_task_name)s 期间发生错误：%(e)s"
+
+#: cinder/openstack/common/policy.py:508
+#, python-format
+msgid "Failed to understand rule %s"
+msgstr "未能理解规则 %s"
+
+#: cinder/openstack/common/policy.py:518
+#, python-format
+msgid "No handler for matches of kind %s"
+msgstr "对于类型为 %s 的匹配项，不存在任何处理程序"
+
+#: cinder/openstack/common/policy.py:788
+#, python-format
+msgid "Failed to understand rule %r"
+msgstr "未能理解规则 %r "

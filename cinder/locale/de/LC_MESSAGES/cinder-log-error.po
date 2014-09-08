@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-08-09 06:08+0000\n"
-"PO-Revision-Date: 2014-08-07 07:52+0000\n"
+"POT-Creation-Date: 2014-09-08 06:09+0000\n"
+"PO-Revision-Date: 2014-09-01 20:31+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/cinder/language/"
 "de/)\n"
@@ -19,7 +19,32 @@ msgstr ""
 "Generated-By: Babel 1.3\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: cinder/openstack/common/excutils.py:76
+#, python-format
+msgid "Original exception being dropped: %s"
+msgstr "Ursprüngliche Ausnahme wird gelöscht: %s"
+
+#: cinder/openstack/common/excutils.py:105
+#, python-format
+msgid "Unexpected exception occurred %d time(s)... retrying."
+msgstr "Unerwartete Ausnahme %d mal(e) aufgetreten... Neuversuch."
+
 #: cinder/openstack/common/periodic_task.py:202
 #, python-format
 msgid "Error during %(full_task_name)s: %(e)s"
 msgstr "Fehler bei %(full_task_name)s: %(e)s"
+
+#: cinder/openstack/common/policy.py:508
+#, python-format
+msgid "Failed to understand rule %s"
+msgstr "Regel %s konnte nicht verstanden werden"
+
+#: cinder/openstack/common/policy.py:518
+#, python-format
+msgid "No handler for matches of kind %s"
+msgstr "Kein Handler für Übereinstimmungen des Typs %s"
+
+#: cinder/openstack/common/policy.py:788
+#, python-format
+msgid "Failed to understand rule %r"
+msgstr "Regel %r konnte nicht verstanden werden"
