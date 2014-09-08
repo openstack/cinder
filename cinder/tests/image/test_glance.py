@@ -21,6 +21,7 @@ import datetime
 import glanceclient.exc
 import glanceclient.v2.client
 from glanceclient.v2.client import Client as glanceclient_v2
+import mock
 from oslo.config import cfg
 
 from cinder import context
@@ -547,45 +548,24 @@ class TestGlanceImageService(test.TestCase):
 
 class TestGlanceClientVersion(test.TestCase):
     """Tests the version of the glance client generated."""
-    def setUp(self):
-        super(TestGlanceClientVersion, self).setUp()
 
-        def fake_get_model(self):
-            return
-
-        self.stubs.Set(glanceclient_v2, '_get_image_model',
-                       fake_get_model)
-
-        try:
-            self.stubs.Set(glanceclient_v2, '_get_member_model',
-                           fake_get_model)
-        except AttributeError:
-            # method requires stubbing only with newer glanceclients.
-            pass
-
-    def test_glance_version_by_flag(self):
+    @mock.patch('cinder.image.glance.glanceclient.Client')
+    def test_glance_version_by_flag(self, _mockglanceclient):
         """Test glance version set by flag is honoured."""
-        client_wrapper_v1 = glance.GlanceClientWrapper('fake', 'fake_host',
-                                                       9292)
-        self.assertEqual(client_wrapper_v1.client.__module__,
-                         'glanceclient.v1.client')
+        glance.GlanceClientWrapper('fake', 'fake_host', 9292)
+        self.assertEqual('1', _mockglanceclient.call_args[0][0])
         self.flags(glance_api_version=2)
-        client_wrapper_v2 = glance.GlanceClientWrapper('fake', 'fake_host',
-                                                       9292)
-        self.assertEqual(client_wrapper_v2.client.__module__,
-                         'glanceclient.v2.client')
+        glance.GlanceClientWrapper('fake', 'fake_host', 9292)
+        self.assertEqual('2', _mockglanceclient.call_args[0][0])
         CONF.reset()
 
-    def test_glance_version_by_arg(self):
+    @mock.patch('cinder.image.glance.glanceclient.Client')
+    def test_glance_version_by_arg(self, _mockglanceclient):
         """Test glance version set by arg to GlanceClientWrapper"""
-        client_wrapper_v1 = glance.GlanceClientWrapper('fake', 'fake_host',
-                                                       9292, version=1)
-        self.assertEqual(client_wrapper_v1.client.__module__,
-                         'glanceclient.v1.client')
-        client_wrapper_v2 = glance.GlanceClientWrapper('fake', 'fake_host',
-                                                       9292, version=2)
-        self.assertEqual(client_wrapper_v2.client.__module__,
-                         'glanceclient.v2.client')
+        glance.GlanceClientWrapper('fake', 'fake_host', 9292, version=1)
+        self.assertEqual('1', _mockglanceclient.call_args[0][0])
+        glance.GlanceClientWrapper('fake', 'fake_host', 9292, version=2)
+        self.assertEqual('2', _mockglanceclient.call_args[0][0])
 
 
 def _create_failing_glance_client(info):
