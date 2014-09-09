@@ -504,7 +504,9 @@ class SmbFsTestCase(test.TestCase):
                     drv._DISK_FORMAT_VHDX,
                     mock.sentinel.block_size)
                 drv._do_extend_volume.assert_called_once_with(
-                    self._FAKE_VOLUME_PATH, self._FAKE_VOLUME['size'])
+                    self._FAKE_VOLUME_PATH,
+                    self._FAKE_VOLUME['size'],
+                    self._FAKE_VOLUME['name'])
 
     def test_copy_image_to_volume(self):
         self._test_copy_image_to_volume()

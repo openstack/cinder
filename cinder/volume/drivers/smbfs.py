@@ -101,6 +101,10 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
             smbfs_mount_options=opts)
         self.img_suffix = None
 
+    def _qemu_img_info(self, path, volume_name):
+        return super(SmbfsDriver, self)._qemu_img_info_base(
+            path, volume_name, self.configuration.smbfs_mount_point_base)
+
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
 
@@ -111,7 +115,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         active_file = self.get_active_image_from_info(volume)
         active_file_path = os.path.join(self._local_volume_dir(volume),
                                         active_file)
-        info = self._qemu_img_info(active_file_path)
+        info = self._qemu_img_info(active_file_path, volume['name'])
         fmt = info.file_format
 
         data = {'export': volume['provider_location'],
@@ -183,7 +187,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         volume_path = os.path.join(volume_dir, volume['name'])
 
         if os.path.exists(volume_path):
-            info = self._qemu_img_info(volume_path)
+            info = self._qemu_img_info(volume_path, volume['name'])
             volume_format = info.file_format
         else:
             volume_format = (
@@ -409,10 +413,10 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         self._check_extend_volume_support(volume, size_gb)
         LOG.info(_('Resizing file to %sG...') % size_gb)
 
-        self._do_extend_volume(volume_path, size_gb)
+        self._do_extend_volume(volume_path, size_gb, volume['name'])
 
-    def _do_extend_volume(self, volume_path, size_gb):
-        info = self._qemu_img_info(volume_path)
+    def _do_extend_volume(self, volume_path, size_gb, volume_name):
+        info = self._qemu_img_info(volume_path, volume_name)
         fmt = info.file_format
 
         # Note(lpetrut): as for version 2.0, qemu-img cannot resize
@@ -481,7 +485,8 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         # Find the file which backs this file, which represents the point
         # when this snapshot was created.
-        img_info = self._qemu_img_info(forward_path)
+        img_info = self._qemu_img_info(forward_path,
+                                       snapshot['volume']['name'])
         path_to_snap_img = os.path.join(vol_dir, img_info.backing_file)
 
         LOG.debug("Will copy from snapshot at %s" % path_to_snap_img)
@@ -512,7 +517,9 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
             self.local_path(volume), volume_format,
             self.configuration.volume_dd_blocksize)
 
-        self._do_extend_volume(self.local_path(volume), volume['size'])
+        self._do_extend_volume(self.local_path(volume),
+                               volume['size'],
+                               volume['name'])
 
         data = image_utils.qemu_img_info(self.local_path(volume))
         virt_size = data.virtual_size / units.Gi
