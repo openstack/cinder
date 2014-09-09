@@ -282,7 +282,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
         vol_name = snapshot['volume_name']
         snapshot_name = snapshot['name']
-        lun = self.lun_table[vol_name]
+        lun = self._get_lun_from_table(vol_name)
         self._clone_lun(lun.name, snapshot_name, 'false')
 
     def delete_snapshot(self, snapshot):
@@ -545,7 +545,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         vol_size = volume['size']
-        src_vol = self.lun_table[src_vref['name']]
+        src_vol = self._get_lun_from_table(src_vref['name'])
         src_vol_size = src_vref['size']
         new_name = volume['name']
         self._clone_lun(src_vol.name, new_name, 'true')
@@ -576,8 +576,9 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
         name = volume['name']
-        path = self.lun_table[name].metadata['Path']
-        curr_size_bytes = str(self.lun_table[name].size)
+        lun = self._get_lun_from_table(name)
+        path = lun.metadata['Path']
+        curr_size_bytes = str(lun.size)
         new_size_bytes = str(int(new_size) * units.Gi)
         # Reused by clone scenarios.
         # Hence comparing the stored size.
@@ -671,7 +672,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         LOG.info(_("Resizing lun %s using sub clone to new size."), seg[-1])
         name = seg[-1]
         vol_name = seg[2]
-        lun = self.lun_table[name]
+        lun = self._get_lun_from_table(name)
         metadata = lun.metadata
         compression = self._get_vol_option(vol_name, 'compression')
         if compression == "on":
@@ -1130,7 +1131,10 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
 
     def delete_volume(self, volume):
         """Driver entry point for destroying existing volumes."""
-        lun = self.lun_table.get(volume['name'])
+        try:
+            lun = self._get_lun_from_table(volume['name'])
+        except exception.VolumeNotFound:
+            lun = None
         netapp_vol = None
         if lun:
             netapp_vol = lun.get_metadata_property('Volume')
