@@ -170,7 +170,7 @@ class RemoteFSDriver(driver.VolumeDriver):
 
         mounted_path = self.local_path(volume)
 
-        self._execute('rm', '-f', mounted_path, run_as_root=True)
+        self._delete(mounted_path)
 
     def ensure_export(self, ctx, volume):
         """Synchronously recreates an export for a logical volume."""
@@ -191,6 +191,11 @@ class RemoteFSDriver(driver.VolumeDriver):
            of snapshot in error state.
         """
         pass
+
+    def _delete(self, path):
+        # Note(lpetrut): this method is needed in order to provide
+        # interoperability with Windows as it will be overridden.
+        self._execute('rm', '-f', path, run_as_root=True)
 
     def _create_sparsed_file(self, path, size):
         """Creates file with 0 disk usage."""
@@ -378,17 +383,24 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         super(RemoteFSSnapDriver, self).__init__(*args, **kwargs)
 
     def _local_volume_dir(self, volume):
-        raise NotImplementedError()
+        share = volume['provider_location']
+        local_dir = self._get_mount_point_for_share(share)
+        return local_dir
 
     def _local_path_volume(self, volume):
-        path_to_disk = '%s/%s' % (
+        path_to_disk = os.path.join(
             self._local_volume_dir(volume),
             volume['name'])
 
         return path_to_disk
 
+    def _get_new_snap_path(self, snapshot):
+        vol_path = self.local_path(snapshot['volume'])
+        snap_path = '%s.%s' % (vol_path, snapshot['id'])
+        return snap_path
+
     def _local_path_volume_info(self, volume):
-        return '%s%s' % (self._local_path_volume(volume), '.info')
+        return '%s%s' % (self.local_path(volume), '.info')
 
     def _read_file(self, filename):
         """This method is to make it easier to stub out code for testing.
@@ -421,8 +433,13 @@ class RemoteFSSnapDriver(RemoteFSDriver):
 
         return info
 
-    def _qemu_img_commit(self, path):
-        return self._execute('qemu-img', 'commit', path, run_as_root=True)
+    def _img_commit(self, path):
+        self._execute('qemu-img', 'commit', path, run_as_root=True)
+        self._delete(path)
+
+    def _rebase_img(self, image, backing_file, volume_format):
+        self._execute('qemu-img', 'rebase', '-u', '-b', backing_file, image,
+                      '-F', volume_format, run_as_root=True)
 
     def _read_info_file(self, info_path, empty_if_missing=False):
         """Return dict of snapshot information.
@@ -526,3 +543,444 @@ class RemoteFSSnapDriver(RemoteFSDriver):
                     'Cinder volume service. Snapshot operations will not be '
                     'supported.') % {'dir': path}
             raise exception.RemoteFSException(msg)
+
+    def _copy_volume_to_image(self, context, volume, image_service,
+                              image_meta):
+        """Copy the volume to the specified image."""
+
+        # If snapshots exist, flatten to a temporary image, and upload it
+
+        active_file = self.get_active_image_from_info(volume)
+        active_file_path = os.path.join(self._local_volume_dir(volume),
+                                        active_file)
+        info = self._qemu_img_info(active_file_path)
+        backing_file = info.backing_file
+
+        root_file_fmt = info.file_format
+
+        tmp_params = {
+            'prefix': '%s.temp_image.%s' % (volume['id'], image_meta['id']),
+            'suffix': '.img'
+        }
+        with image_utils.temporary_file(**tmp_params) as temp_path:
+            if backing_file or (root_file_fmt != 'raw'):
+                # Convert due to snapshots
+                # or volume data not being stored in raw format
+                #  (upload_volume assumes raw format input)
+                image_utils.convert_image(active_file_path, temp_path, 'raw')
+                upload_path = temp_path
+            else:
+                upload_path = active_file_path
+
+            image_utils.upload_volume(context,
+                                      image_service,
+                                      image_meta,
+                                      upload_path)
+
+    def get_active_image_from_info(self, volume):
+        """Returns filename of the active image from the info file."""
+
+        info_file = self._local_path_volume_info(volume)
+
+        snap_info = self._read_info_file(info_file, empty_if_missing=True)
+
+        if not snap_info:
+            # No info file = no snapshots exist
+            vol_path = os.path.basename(self.local_path(volume))
+            return vol_path
+
+        return snap_info['active']
+
+    def _create_cloned_volume(self, volume, src_vref):
+        LOG.info(_('Cloning volume %(src)s to volume %(dst)s') %
+                 {'src': src_vref['id'],
+                  'dst': volume['id']})
+
+        if src_vref['status'] != 'available':
+            msg = _("Volume status must be 'available'.")
+            raise exception.InvalidVolume(msg)
+
+        volume_name = CONF.volume_name_template % volume['id']
+
+        volume_info = {'provider_location': src_vref['provider_location'],
+                       'size': src_vref['size'],
+                       'id': volume['id'],
+                       'name': volume_name,
+                       'status': src_vref['status']}
+        temp_snapshot = {'volume_name': volume_name,
+                         'size': src_vref['size'],
+                         'volume_size': src_vref['size'],
+                         'name': 'clone-snap-%s' % src_vref['id'],
+                         'volume_id': src_vref['id'],
+                         'id': 'tmp-snap-%s' % src_vref['id'],
+                         'volume': src_vref}
+        self._create_snapshot(temp_snapshot)
+        try:
+            self._copy_volume_from_snapshot(temp_snapshot,
+                                            volume_info,
+                                            volume['size'])
+
+        finally:
+            self._delete_snapshot(temp_snapshot)
+
+        return {'provider_location': src_vref['provider_location']}
+
+    def _delete_stale_snapshot(self, snapshot):
+        info_path = self._local_path_volume_info(snapshot['volume'])
+        snap_info = self._read_info_file(info_path)
+
+        snapshot_file = snap_info[snapshot['id']]
+        active_file = self.get_active_image_from_info(snapshot['volume'])
+        snapshot_path = os.path.join(
+            self._local_volume_dir(snapshot['volume']), snapshot_file)
+        if (snapshot_file == active_file):
+            return
+
+        LOG.info(_('Deleting stale snapshot: %s') % snapshot['id'])
+        self._delete(snapshot_path)
+        del(snap_info[snapshot['id']])
+        self._write_info_file(info_path, snap_info)
+
+    def _delete_snapshot(self, snapshot):
+        """Delete a snapshot.
+
+        If volume status is 'available', delete snapshot here in Cinder
+        using qemu-img.
+
+        If volume status is 'in-use', calculate what qcow2 files need to
+        merge, and call to Nova to perform this operation.
+
+        :raises: InvalidVolume if status not acceptable
+        :raises: RemotefsException(msg) if operation fails
+        :returns: None
+
+        """
+
+        LOG.debug('Deleting snapshot %s:' % snapshot['id'])
+
+        volume_status = snapshot['volume']['status']
+        if volume_status not in ['available', 'in-use']:
+            msg = _('Volume status must be "available" or "in-use".')
+            raise exception.InvalidVolume(msg)
+
+        self._ensure_share_writable(
+            self._local_volume_dir(snapshot['volume']))
+
+        # Determine the true snapshot file for this snapshot
+        # based on the .info file
+        info_path = self._local_path_volume_info(snapshot['volume'])
+        snap_info = self._read_info_file(info_path, empty_if_missing=True)
+
+        if snapshot['id'] not in snap_info:
+            # If snapshot info file is present, but snapshot record does not
+            # exist, do not attempt to delete.
+            # (This happens, for example, if snapshot_create failed due to lack
+            # of permission to write to the share.)
+            LOG.info(_('Snapshot record for %s is not present, allowing '
+                       'snapshot_delete to proceed.') % snapshot['id'])
+            return
+
+        snapshot_file = snap_info[snapshot['id']]
+        LOG.debug('snapshot_file for this snap is: %s' % snapshot_file)
+        snapshot_path = os.path.join(
+            self._local_volume_dir(snapshot['volume']),
+            snapshot_file)
+
+        snapshot_path_img_info = self._qemu_img_info(snapshot_path)
+
+        vol_path = self._local_volume_dir(snapshot['volume'])
+
+        # Find what file has this as its backing file
+        active_file = self.get_active_image_from_info(snapshot['volume'])
+        active_file_path = os.path.join(vol_path, active_file)
+
+        if volume_status == 'in-use':
+            # Online delete
+            context = snapshot['context']
+
+            base_file = snapshot_path_img_info.backing_file
+            if base_file is None:
+                # There should always be at least the original volume
+                # file as base.
+                msg = _('No backing file found for %s, allowing snapshot '
+                        'to be deleted.') % snapshot_path
+                LOG.warn(msg)
+
+                # Snapshot may be stale, so just delete it and update ther
+                # info file instead of blocking
+                return self._delete_stale_snapshot(snapshot)
+
+            base_path = os.path.join(
+                self._local_volume_dir(snapshot['volume']), base_file)
+            base_file_img_info = self._qemu_img_info(base_path)
+            new_base_file = base_file_img_info.backing_file
+
+            base_id = None
+            for key, value in snap_info.iteritems():
+                if value == base_file and key != 'active':
+                    base_id = key
+                    break
+            if base_id is None:
+                # This means we are deleting the oldest snapshot
+                msg = 'No %(base_id)s found for %(file)s' % {
+                    'base_id': 'base_id',
+                    'file': snapshot_file}
+                LOG.debug(msg)
+
+            online_delete_info = {
+                'active_file': active_file,
+                'snapshot_file': snapshot_file,
+                'base_file': base_file,
+                'base_id': base_id,
+                'new_base_file': new_base_file
+            }
+
+            return self._delete_snapshot_online(context,
+                                                snapshot,
+                                                online_delete_info)
+
+        if snapshot_file == active_file:
+            # Need to merge snapshot_file into its backing file
+            # There is no top file
+            #      T0       |        T1         |
+            #     base      |   snapshot_file   | None
+            # (guaranteed to|  (being deleted)  |
+            #    exist)     |                   |
+
+            base_file = snapshot_path_img_info.backing_file
+
+            self._img_commit(snapshot_path)
+
+            # Remove snapshot_file from info
+            del(snap_info[snapshot['id']])
+            # Active file has changed
+            snap_info['active'] = base_file
+            self._write_info_file(info_path, snap_info)
+        else:
+            #      T0        |      T1        |     T2         |       T3
+            #     base       |  snapshot_file |  higher_file   |  highest_file
+            # (guaranteed to | (being deleted)|(guaranteed to  |   (may exist,
+            #   exist, not   |                | exist, being   |    needs ptr
+            #   used here)   |                | committed down)|  update if so)
+
+            backing_chain = self._get_backing_chain_for_path(
+                snapshot['volume'], active_file_path)
+            # This file is guaranteed to exist since we aren't operating on
+            # the active file.
+            higher_file = next((os.path.basename(f['filename'])
+                                for f in backing_chain
+                                if f.get('backing-filename', '') ==
+                                snapshot_file),
+                               None)
+            if higher_file is None:
+                msg = _('No file found with %s as backing file.') %\
+                    snapshot_file
+                raise exception.RemoteFSException(msg)
+
+            higher_id = next((i for i in snap_info
+                              if snap_info[i] == higher_file
+                              and i != 'active'),
+                             None)
+            if higher_id is None:
+                msg = _('No snap found with %s as backing file.') %\
+                    higher_file
+                raise exception.RemoteFSException(msg)
+
+            # Is there a file depending on higher_file?
+            highest_file = next((os.path.basename(f['filename'])
+                                for f in backing_chain
+                                if f.get('backing-filename', '') ==
+                                higher_file),
+                                None)
+            if highest_file is None:
+                msg = 'No file depends on %s.' % higher_file
+                LOG.debug(msg)
+
+            # Committing higher_file into snapshot_file
+            # And update pointer in highest_file
+            higher_file_path = os.path.join(vol_path, higher_file)
+            self._img_commit(higher_file_path)
+            if highest_file is not None:
+                highest_file_path = os.path.join(vol_path, highest_file)
+                snapshot_file_fmt = snapshot_path_img_info.file_format
+                self._rebase_img(highest_file_path, snapshot_file,
+                                 snapshot_file_fmt)
+
+            # Remove snapshot_file from info
+            del(snap_info[snapshot['id']])
+            snap_info[higher_id] = snapshot_file
+            if higher_file == active_file:
+                if highest_file is not None:
+                    msg = _('Check condition failed: '
+                            '%s expected to be None.') % 'highest_file'
+                    raise exception.RemoteFSException(msg)
+                # Active file has changed
+                snap_info['active'] = snapshot_file
+
+            self._write_info_file(info_path, snap_info)
+
+    def _create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot.
+
+        Snapshot must not be the active snapshot. (offline)
+        """
+
+        if snapshot['status'] != 'available':
+            msg = _('Snapshot status must be "available" to clone.')
+            raise exception.InvalidSnapshot(msg)
+
+        self._ensure_shares_mounted()
+
+        volume['provider_location'] = self._find_share(volume['size'])
+
+        self._do_create_volume(volume)
+
+        self._copy_volume_from_snapshot(snapshot,
+                                        volume,
+                                        volume['size'])
+
+        return {'provider_location': volume['provider_location']}
+
+    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
+        raise NotImplementedError()
+
+    def _do_create_snapshot(self, snapshot, backing_filename,
+                            new_snap_path):
+        """Create a QCOW2 file backed by another file.
+
+        :param snapshot: snapshot reference
+        :param backing_filename: filename of file that will back the
+            new qcow2 file
+        :param new_snap_path: filename of new qcow2 file
+        """
+
+        backing_path_full_path = os.path.join(
+            self._local_volume_dir(snapshot['volume']),
+            backing_filename)
+
+        command = ['qemu-img', 'create', '-f', 'qcow2', '-o',
+                   'backing_file=%s' % backing_path_full_path, new_snap_path]
+        self._execute(*command, run_as_root=True)
+
+        info = self._qemu_img_info(backing_path_full_path)
+        backing_fmt = info.file_format
+
+        command = ['qemu-img', 'rebase', '-u',
+                   '-b', backing_filename,
+                   '-F', backing_fmt,
+                   new_snap_path]
+        self._execute(*command, run_as_root=True)
+
+        self._set_rw_permissions_for_all(new_snap_path)
+
+    def _create_snapshot(self, snapshot):
+        """Create a snapshot.
+
+        If volume is attached, call to Nova to create snapshot,
+        providing a qcow2 file.
+        Otherwise, create locally with qemu-img.
+
+        A file named volume-<uuid>.info is stored with the volume
+        data and is a JSON table which contains a mapping between
+        Cinder snapshot UUIDs and filenames, as these associations
+        will change as snapshots are deleted.
+
+
+        Basic snapshot operation:
+
+        1. Initial volume file:
+            volume-1234
+
+        2. Snapshot created:
+            volume-1234  <- volume-1234.aaaa
+
+            volume-1234.aaaa becomes the new "active" disk image.
+            If the volume is not attached, this filename will be used to
+            attach the volume to a VM at volume-attach time.
+            If the volume is attached, the VM will switch to this file as
+            part of the snapshot process.
+
+            Note that volume-1234.aaaa represents changes after snapshot
+            'aaaa' was created.  So the data for snapshot 'aaaa' is actually
+            in the backing file(s) of volume-1234.aaaa.
+
+            This file has a qcow2 header recording the fact that volume-1234 is
+            its backing file.  Delta changes since the snapshot was created are
+            stored in this file, and the backing file (volume-1234) does not
+            change.
+
+            info file: { 'active': 'volume-1234.aaaa',
+                         'aaaa':   'volume-1234.aaaa' }
+
+        3. Second snapshot created:
+            volume-1234 <- volume-1234.aaaa <- volume-1234.bbbb
+
+            volume-1234.bbbb now becomes the "active" disk image, recording
+            changes made to the volume.
+
+            info file: { 'active': 'volume-1234.bbbb',
+                         'aaaa':   'volume-1234.aaaa',
+                         'bbbb':   'volume-1234.bbbb' }
+
+        4. First snapshot deleted:
+            volume-1234 <- volume-1234.aaaa(* now with bbbb's data)
+
+            volume-1234.aaaa is removed (logically) from the snapshot chain.
+            The data from volume-1234.bbbb is merged into it.
+
+            (*) Since bbbb's data was committed into the aaaa file, we have
+                "removed" aaaa's snapshot point but the .aaaa file now
+                represents snapshot with id "bbbb".
+
+
+            info file: { 'active': 'volume-1234.bbbb',
+                         'bbbb':   'volume-1234.aaaa'   (* changed!)
+                       }
+
+        5. Second snapshot deleted:
+            volume-1234
+
+            volume-1234.bbbb is removed from the snapshot chain, as above.
+            The base image, volume-1234, becomes the active image for this
+            volume again.  If in-use, the VM begins using the volume-1234.bbbb
+            file immediately as part of the snapshot delete process.
+
+            info file: { 'active': 'volume-1234' }
+
+        For the above operations, Cinder handles manipulation of qcow2 files
+        when the volume is detached.  When attached, Cinder creates and deletes
+        qcow2 files, but Nova is responsible for transitioning the VM between
+        them and handling live transfers of data between files as required.
+        """
+
+        status = snapshot['volume']['status']
+        if status not in ['available', 'in-use']:
+            msg = _('Volume status must be "available" or "in-use"'
+                    ' for snapshot. (is %s)') % status
+            raise exception.InvalidVolume(msg)
+
+        info_path = self._local_path_volume_info(snapshot['volume'])
+        snap_info = self._read_info_file(info_path, empty_if_missing=True)
+        backing_filename = self.get_active_image_from_info(
+            snapshot['volume'])
+        new_snap_path = self._get_new_snap_path(snapshot)
+
+        if status == 'in-use':
+            self._create_snapshot_online(snapshot,
+                                         backing_filename,
+                                         new_snap_path)
+        else:
+            self._do_create_snapshot(snapshot,
+                                     backing_filename,
+                                     new_snap_path)
+
+        snap_info['active'] = os.path.basename(new_snap_path)
+        snap_info[snapshot['id']] = os.path.basename(new_snap_path)
+        self._write_info_file(info_path, snap_info)
+
+    def _create_snapshot_online(self, snapshot, backing_filename,
+                                new_snap_path):
+        raise NotImplementedError()
+
+    def _delete_snapshot_online(self, context, snapshot, info):
+        raise NotImplementedError()

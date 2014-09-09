@@ -2039,6 +2039,42 @@
 
 
 #
+# Options defined in cinder.volume.drivers.smbfs
+#
+
+# File with the list of available smbfs shares. (string value)
+#smbfs_shares_config=/etc/cinder/smbfs_shares
+
+# Default format that will be used when creating volumes if no
+# volume format is specified. Can be set to: raw, qcow2, vhd
+# or vhdx. (string value)
+#smbfs_default_volume_format=qcow2
+
+# Create volumes as sparsed files which take no space rather
+# than regular files when using raw format, in which case
+# volume creation takes lot of time. (boolean value)
+#smbfs_sparsed_volumes=true
+
+# Percent of ACTUAL usage of the underlying volume before no
+# new volumes can be allocated to the volume destination.
+# (floating point value)
+#smbfs_used_ratio=0.95
+
+# This will compare the allocated to available space on the
+# volume destination.  If the ratio exceeds this number, the
+# destination will no longer be valid. (floating point value)
+#smbfs_oversub_ratio=1.0
+
+# Base dir containing mount points for smbfs shares. (string
+# value)
+#smbfs_mount_point_base=$state_path/mnt
+
+# Mount options passed to the smbfs client. See mount.cifs man
+# page for details. (string value)
+#smbfs_mount_options=noperm,file_mode=0775,dir_mode=0775
+
+
+#
 # Options defined in cinder.volume.drivers.solidfire
 #
 
