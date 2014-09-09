@@ -234,7 +234,7 @@ class VolumeRpcAPITestCase(test.TestCase):
 
     def test_accept_transfer(self):
         self._test_volume_api('accept_transfer',
-                              rpc_method='cast',
+                              rpc_method='call',
                               volume=self.fake_volume,
                               new_user='e5565fd0-06c8-11e3-'
                                        '8ffd-0800200c9b77',
