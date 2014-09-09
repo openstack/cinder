@@ -68,10 +68,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.6 - Added support for volume retype
         2.0.7 - Only one FC port is used when a single FC path
                 is present.  bug #1360001
+        2.0.8 - Fixing missing login/logout around attach/detach bug #1367429
 
     """
 
-    VERSION = "2.0.7"
+    VERSION = "2.0.8"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -435,11 +436,19 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     @utils.synchronized('3par', external=True)
     def attach_volume(self, context, volume, instance_uuid, host_name,
                       mountpoint):
-        self.common.attach_volume(volume, instance_uuid)
+        self.common.client_login()
+        try:
+            self.common.attach_volume(volume, instance_uuid)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def detach_volume(self, context, volume):
-        self.common.detach_volume(volume)
+        self.common.client_login()
+        try:
+            self.common.detach_volume(volume)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def retype(self, context, volume, new_type, diff, host):
