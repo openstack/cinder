@@ -425,7 +425,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         with open(info_path, 'w') as f:
             json.dump(snap_info, f, indent=1, sort_keys=True)
 
-    def _qemu_img_info(self, path):
+    def _qemu_img_info_base(self, path, volume_name, basedir):
         """Sanitize image_utils' qemu_img_info.
 
         This code expects to deal only with relative filenames.
@@ -435,9 +435,24 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         if info.image:
             info.image = os.path.basename(info.image)
         if info.backing_file:
+            backing_file_template = \
+                "(%(basedir)s/[0-9a-f]+/)?%" \
+                "(volname)s(.(tmp-snap-)?[0-9a-f-]+)?$" % {
+                    'basedir': basedir,
+                    'volname': volume_name
+                }
+            if not re.match(backing_file_template, info.backing_file):
+                msg = _("File %(path)s has invalid backing file "
+                        "%(bfile)s, aborting.") % {'path': path,
+                                                   'bfile': info.backing_file}
+                raise exception.RemoteFSException(msg)
+
             info.backing_file = os.path.basename(info.backing_file)
 
         return info
+
+    def _qemu_img_info(self, path, volume_name):
+        raise NotImplementedError()
 
     def _img_commit(self, path):
         self._execute('qemu-img', 'commit', path, run_as_root=True)
@@ -476,7 +491,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
 
         output = []
 
-        info = self._qemu_img_info(path)
+        info = self._qemu_img_info(path, volume['name'])
         new_info = {}
         new_info['filename'] = os.path.basename(path)
         new_info['backing-filename'] = info.backing_file
@@ -486,7 +501,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         while new_info['backing-filename']:
             filename = new_info['backing-filename']
             path = os.path.join(self._local_volume_dir(volume), filename)
-            info = self._qemu_img_info(path)
+            info = self._qemu_img_info(path, volume['name'])
             backing_filename = info.backing_file
             new_info = {}
             new_info['filename'] = filename
@@ -559,7 +574,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         active_file = self.get_active_image_from_info(volume)
         active_file_path = os.path.join(self._local_volume_dir(volume),
                                         active_file)
-        info = self._qemu_img_info(active_file_path)
+        info = self._qemu_img_info(active_file_path, volume['name'])
         backing_file = info.backing_file
 
         root_file_fmt = info.file_format
@@ -692,7 +707,9 @@ class RemoteFSSnapDriver(RemoteFSDriver):
             self._local_volume_dir(snapshot['volume']),
             snapshot_file)
 
-        snapshot_path_img_info = self._qemu_img_info(snapshot_path)
+        snapshot_path_img_info = self._qemu_img_info(
+            snapshot_path,
+            snapshot['volume']['name'])
 
         vol_path = self._local_volume_dir(snapshot['volume'])
 
@@ -718,7 +735,9 @@ class RemoteFSSnapDriver(RemoteFSDriver):
 
             base_path = os.path.join(
                 self._local_volume_dir(snapshot['volume']), base_file)
-            base_file_img_info = self._qemu_img_info(base_path)
+            base_file_img_info = self._qemu_img_info(
+                base_path,
+                snapshot['volume']['name'])
             new_base_file = base_file_img_info.backing_file
 
             base_id = None
@@ -868,7 +887,8 @@ class RemoteFSSnapDriver(RemoteFSDriver):
                    'backing_file=%s' % backing_path_full_path, new_snap_path]
         self._execute(*command, run_as_root=True)
 
-        info = self._qemu_img_info(backing_path_full_path)
+        info = self._qemu_img_info(backing_path_full_path,
+                                   snapshot['volume']['name'])
         backing_fmt = info.file_format
 
         command = ['qemu-img', 'rebase', '-u',
