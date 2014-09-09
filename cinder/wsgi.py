@@ -174,8 +174,8 @@ class Server(object):
                                {'host': host, 'port': port})
 
         (self._host, self._port) = self._socket.getsockname()[0:2]
-        LOG.info(_("%(name)s listening on %(_host)s:%(_port)s")
-                 % self.__dict__)
+        LOG.info(_("%(name)s listening on %(_host)s:%(_port)s") %
+                 {'name': self.name, '_host': self._host, '_port': self._port})
 
     def start(self):
         """Start serving a WSGI application.
