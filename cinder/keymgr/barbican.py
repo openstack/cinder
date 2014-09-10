@@ -27,10 +27,10 @@ from keystoneclient.v2_0 import client as keystone_client
 from oslo.config import cfg
 
 from cinder import exception
+from cinder.i18n import _
 from cinder.keymgr import key as keymgr_key
 from cinder.keymgr import key_mgr
 from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _    # noqa
 from cinder.openstack.common import log as logging
 
 CONF = cfg.CONF
