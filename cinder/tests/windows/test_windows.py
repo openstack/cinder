@@ -326,7 +326,7 @@ class TestWindowsDriver(test.TestCase):
             vhdutils.VHDUtils.convert_vhd(temp_vhd_path, upload_image,
                                           constants.VHD_TYPE_DYNAMIC)
 
-        image_utils.upload_volume(None, None, image_meta, upload_image, 'vpc')
+        image_utils.upload_volume(None, None, image_meta, upload_image, 'vhd')
 
         fileutils.delete_if_exists(temp_vhd_path)
         fileutils.delete_if_exists(upload_image)

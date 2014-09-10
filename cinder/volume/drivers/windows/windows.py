@@ -201,7 +201,7 @@ class WindowsDriver(driver.ISCSIDriver):
                                           constants.VHD_TYPE_DYNAMIC)
 
             image_utils.upload_volume(context, image_service, image_meta,
-                                      upload_image, 'vpc')
+                                      upload_image, 'vhd')
         finally:
             fileutils.delete_if_exists(temp_vhd_path)
             fileutils.delete_if_exists(upload_image)
