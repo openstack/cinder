@@ -1442,9 +1442,9 @@
 # may take a significantly longer time. (boolean value)
 #gpfs_sparse_volumes=true
 
-# Specifies the storage pool that volumes are assigned to.  By
+# Specifies the storage pool that volumes are assigned to. By
 # default, the system storage pool is used. (string value)
-#gpfs_storage_pool=<None>
+#gpfs_storage_pool=system
 
 
 #

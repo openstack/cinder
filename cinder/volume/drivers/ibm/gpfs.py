@@ -73,9 +73,9 @@ gpfs_opts = [
                       'volume is created as a fully allocated file, in which '
                       'case, creation may take a significantly longer time.')),
     cfg.StrOpt('gpfs_storage_pool',
-               default=None,
+               default='system',
                help=('Specifies the storage pool that volumes are assigned '
-                     'to.  By default, the system storage pool is used.')),
+                     'to. By default, the system storage pool is used.')),
 ]
 CONF = cfg.CONF
 CONF.register_opts(gpfs_opts)
@@ -333,7 +333,7 @@ class GPFSDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=msg)
 
         pool = self.configuration.safe_get('gpfs_storage_pool')
-        self._storage_pool = pool or 'system'
+        self._storage_pool = pool
         if not self._verify_gpfs_pool(self._storage_pool):
             msg = (_('Invalid storage pool %s specificed.') %
                    self._storage_pool)
