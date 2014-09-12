@@ -595,27 +595,6 @@ class HP3PARBaseDriver(object):
         mock_client.assert_has_calls(expected)
 
     @mock.patch.object(volume_types, 'get_volume_type')
-    def test_retype_snap_cpg_check(self, _mock_volume_types):
-        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
-        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
-        mock_client.getVolume.return_value = self.RETYPE_VOLUME_INFO_NO_SNAP
-
-        self.assertRaises(exception.InvalidVolume,
-                          self.driver.retype,
-                          self.ctxt,
-                          self.RETYPE_VOLUME_INFO_NO_SNAP,
-                          self.RETYPE_VOLUME_TYPE_1,
-                          self.RETYPE_DIFF,
-                          self.RETYPE_HOST)
-
-        expected = [
-            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getVolume(self.VOLUME_3PAR_NAME),
-            mock.call.getStorageSystemInfo(),
-            mock.call.logout()]
-        mock_client.assert_has_calls(expected)
-
-    @mock.patch.object(volume_types, 'get_volume_type')
     def test_retype_specs_error_reverts_snap_cpg(self, _mock_volume_types):
         _mock_volume_types.side_effect = [
             self.RETYPE_VOLUME_TYPE_1, self.RETYPE_VOLUME_TYPE_0]
@@ -738,7 +717,6 @@ class HP3PARBaseDriver(object):
             {'domain': 'cpg_domain'},
             {'domain': 'cpg_domain'},
             {'domain': 'snap_cpg_domain_1'},
-            {'domain': 'snap_cpg_domain_2'},
         ]
 
         self.assertRaises(exception.Invalid3PARDomain,
@@ -755,7 +733,6 @@ class HP3PARBaseDriver(object):
             mock.call.getStorageSystemInfo(),
             mock.call.getCPG(self.RETYPE_VOLUME_INFO_0['userCPG']),
             mock.call.getCPG(self.RETYPE_VOLUME_TYPE_1['extra_specs']['cpg']),
-            mock.call.getCPG(self.RETYPE_VOLUME_INFO_0['snapCPG']),
             mock.call.getCPG(
                 self.RETYPE_VOLUME_TYPE_1['extra_specs']['snap_cpg']),
             mock.call.logout()
