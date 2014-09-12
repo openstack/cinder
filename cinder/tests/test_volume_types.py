@@ -19,6 +19,8 @@ Unit Tests for volume types code
 import datetime
 import time
 
+from oslo.config import cfg
+
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as db_api
@@ -76,6 +78,15 @@ class VolumeTypeTestCase(test.TestCase):
                          new_all_vtypes,
                          'drive type was not deleted')
 
+    def test_create_volume_type_with_invalid_params(self):
+        """Ensure exception will be returned."""
+        vol_type_invalid_specs = "invalid_extra_specs"
+
+        self.assertRaises(exception.VolumeTypeCreateFailed,
+                          volume_types.create, self.ctxt,
+                          self.vol_type1_name,
+                          vol_type_invalid_specs)
+
     def test_get_all_volume_types(self):
         """Ensures that all volume types can be retrieved."""
         session = db_api.get_session()
@@ -96,6 +107,11 @@ class VolumeTypeTestCase(test.TestCase):
         """
         default_vol_type = volume_types.get_default_volume_type()
         self.assertEqual(default_vol_type, {})
+
+    def test_get_default_volume_type_under_non_default(self):
+        cfg.CONF.set_default('default_volume_type', None)
+
+        self.assertEqual({}, volume_types.get_default_volume_type())
 
     def test_non_existent_vol_type_shouldnt_delete(self):
         """Ensures that volume type creation fails with invalid args."""
@@ -317,3 +333,21 @@ class VolumeTypeTestCase(test.TestCase):
                           'deleted': (None, False),
                           'key_size': (None, 256),
                           'provider': (None, 'p1')})
+
+    def test_get_volume_type_encryption(self):
+        volume_type = volume_types.create(self.ctxt, "type1")
+        volume_type_id = volume_type.get('id')
+        encryption = {
+            'control_location': 'front-end',
+            'provider': 'fake_provider',
+        }
+        db.volume_type_encryption_create(self.ctxt, volume_type_id,
+                                         encryption)
+
+        ret = volume_types.get_volume_type_encryption(self.ctxt,
+                                                      volume_type_id)
+        self.assertIsNotNone(ret)
+
+    def test_get_volume_type_encryption_without_volume_type_id(self):
+        ret = volume_types.get_volume_type_encryption(self.ctxt, None)
+        self.assertIsNone(ret)
