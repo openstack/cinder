@@ -191,6 +191,18 @@ class Server(object):
         # to keep file descriptor usable.
 
         dup_socket = self._socket.dup()
+        dup_socket.setsockopt(socket.SOL_SOCKET,
+                              socket.SO_REUSEADDR, 1)
+
+        # NOTE(praneshp): Call set_tcp_keepalive in oslo to set
+        # tcp keepalive parameters. Sockets can hang around forever
+        # without keepalive
+        network_utils.set_tcp_keepalive(dup_socket,
+                                        CONF.tcp_keepalive,
+                                        CONF.tcp_keepidle,
+                                        CONF.tcp_keepalive_count,
+                                        CONF.tcp_keepalive_interval)
+
         if self._use_ssl:
             try:
                 ssl_kwargs = {
@@ -206,17 +218,6 @@ class Server(object):
 
                 dup_socket = ssl.wrap_socket(dup_socket,
                                              **ssl_kwargs)
-
-                dup_socket.setsockopt(socket.SOL_SOCKET,
-                                      socket.SO_REUSEADDR, 1)
-
-                # sockets can hang around forever without keepalive
-                network_utils.set_tcp_keepalive(dup_socket,
-                                                CONF.tcp_keepalive,
-                                                CONF.tcp_keepidle,
-                                                CONF.tcp_keepalive_count,
-                                                CONF.tcp_keepalive_interval)
-
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_("Failed to start %(name)s on %(_host)s:"
