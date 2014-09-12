@@ -1,5 +1,3 @@
-BEGIN TRANSACTION;
-
 CREATE TABLE volumes_v12 (
     created_at DATETIME,
     updated_at DATETIME,
@@ -65,4 +63,3 @@ INSERT INTO volumes_v12
 
 DROP TABLE volumes;
 ALTER TABLE volumes_v12 RENAME TO volumes;
-COMMIT;
