@@ -353,7 +353,12 @@ class CoraidAppliance(object):
         request = {'addr': 'cms',
                    'data': {
                        'repoName': repository_name,
-                       'lvName': snapshot_name},
+                       'lvName': snapshot_name,
+                       # NOTE(novel): technically, the 'newLvName' is not
+                       # required for 'delClSnap' command. However, some
+                       # versions of ESM have a bug that fails validation
+                       # if we don't specify that. Hence, this fake value.
+                       'newLvName': "noop"},
                    'op': 'orchStrLunMods',
                    'args': 'delClSnap'}
         esm_result = self.esm_command(request)
