@@ -3104,7 +3104,85 @@ class VolumeTestCase(BaseVolumeTestCase):
                           db.cgsnapshot_get,
                           self.context,
                           cgsnapshot_id)
+
         self.volume.delete_consistencygroup(self.context, group_id)
+
+    def test_delete_consistencygroup_correct_host(self):
+        """Test consistencygroup can be deleted.
+
+        Test consistencygroup can be deleted when volumes are on
+        the correct volume node.
+        """
+
+        rval = {'status': 'available'}
+        driver.VolumeDriver.create_consistencygroup = \
+            mock.Mock(return_value=rval)
+
+        rval = {'status': 'deleted'}, []
+        driver.VolumeDriver.delete_consistencygroup = \
+            mock.Mock(return_value=rval)
+
+        group = tests_utils.create_consistencygroup(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2')
+
+        group_id = group['id']
+        volume = tests_utils.create_volume(
+            self.context,
+            consistencygroup_id = group_id,
+            host='host1@backend1#pool1',
+            status = 'creating',
+            size = 1)
+        self.volume.host = 'host1@backend1'
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+
+        self.volume.delete_consistencygroup(self.context, group_id)
+        cg = db.consistencygroup_get(
+            context.get_admin_context(read_deleted='yes'),
+            group_id)
+        self.assertEqual(cg['status'], 'deleted')
+        self.assertRaises(exception.NotFound,
+                          db.consistencygroup_get,
+                          self.context,
+                          group_id)
+
+    def test_delete_consistencygroup_wrong_host(self):
+        """Test consistencygroup cannot be deleted.
+
+        Test consistencygroup cannot be deleted when volumes in the
+        group are not local to the volume node.
+        """
+
+        rval = {'status': 'available'}
+        driver.VolumeDriver.create_consistencygroup = \
+            mock.Mock(return_value=rval)
+
+        group = tests_utils.create_consistencygroup(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2')
+
+        group_id = group['id']
+        volume = tests_utils.create_volume(
+            self.context,
+            consistencygroup_id = group_id,
+            host='host1@backend1#pool1',
+            status = 'creating',
+            size = 1)
+        self.volume.host = 'host1@backend2'
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume.delete_consistencygroup,
+                          self.context,
+                          group_id)
+        cg = db.consistencygroup_get(self.context,
+                                     group_id)
+        # Group is not deleted
+        self.assertEqual(cg['status'], 'available')
 
 
 class CopyVolumeToImageTestCase(BaseVolumeTestCase):
