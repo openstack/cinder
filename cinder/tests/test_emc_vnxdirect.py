@@ -46,6 +46,35 @@ class EMCVNXCLIDriverTestData():
         'display_name': 'vol1',
         'display_description': 'test volume',
         'volume_type_id': None,
+        'consistencygroup_id': None,
+        'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]
+    }
+
+    test_volume_clone_cg = {
+        'name': 'vol1',
+        'size': 1,
+        'volume_name': 'vol1',
+        'id': '1',
+        'provider_auth': None,
+        'project_id': 'project',
+        'display_name': 'vol1',
+        'display_description': 'test volume',
+        'volume_type_id': None,
+        'consistencygroup_id': None,
+        'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]
+    }
+
+    test_volume_cg = {
+        'name': 'vol1',
+        'size': 1,
+        'volume_name': 'vol1',
+        'id': '1',
+        'provider_auth': None,
+        'project_id': 'project',
+        'display_name': 'vol1',
+        'display_description': 'test volume',
+        'volume_type_id': None,
+        'consistencygroup_id': 'cg_id',
         'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]
     }
 
@@ -59,7 +88,8 @@ class EMCVNXCLIDriverTestData():
         'display_name': 'vol1',
         'display_description': 'test volume',
         'volume_type_id': None,
-        'volume_admin_metadata': [{'key': 'access_mode', 'value': 'rw'},
+        'consistencygroup_id': None,
+        'volume_admin_metadata': [{'key': 'attached_mode', 'value': 'rw'},
                                   {'key': 'readonly', 'value': 'False'}]
     }
 
@@ -71,6 +101,19 @@ class EMCVNXCLIDriverTestData():
         'provider_auth': None,
         'project_id': 'project',
         'display_name': 'vol2',
+        'consistencygroup_id': None,
+        'display_description': 'test volume',
+        'volume_type_id': None}
+
+    volume_in_cg = {
+        'name': 'vol2',
+        'size': 1,
+        'volume_name': 'vol2',
+        'id': '1',
+        'provider_auth': None,
+        'project_id': 'project',
+        'display_name': 'vol2',
+        'consistencygroup_id': None,
         'display_description': 'test volume',
         'volume_type_id': None}
 
@@ -82,6 +125,7 @@ class EMCVNXCLIDriverTestData():
         'provider_auth': None,
         'project_id': 'project',
         'display_name': 'thin_vol',
+        'consistencygroup_id': None,
         'display_description': 'vol with type',
         'volume_type_id': 'abc1-2320-9013-8813-8941-1374-8112-1231'}
 
@@ -93,6 +137,7 @@ class EMCVNXCLIDriverTestData():
         'provider_auth': None,
         'project_id': 'project',
         'display_name': 'failed_vol',
+        'consistencygroup_id': None,
         'display_description': 'test failed volume',
         'volume_type_id': None}
     test_snapshot = {
@@ -101,6 +146,8 @@ class EMCVNXCLIDriverTestData():
         'id': '4444',
         'volume_name': 'vol1',
         'volume_size': 1,
+        'consistencygroup_id': None,
+        'cgsnapshot_id': None,
         'project_id': 'project'}
     test_failed_snapshot = {
         'name': 'failed_snapshot',
@@ -117,6 +164,18 @@ class EMCVNXCLIDriverTestData():
         'provider_auth': None,
         'project_id': 'project',
         'display_name': 'clone1',
+        'consistencygroup_id': None,
+        'display_description': 'volume created from snapshot',
+        'volume_type_id': None}
+    test_clone_cg = {
+        'name': 'clone1',
+        'size': 1,
+        'id': '2',
+        'volume_name': 'vol1',
+        'provider_auth': None,
+        'project_id': 'project',
+        'display_name': 'clone1',
+        'consistencygroup_id': 'consistencygroup_id',
         'display_description': 'volume created from snapshot',
         'volume_type_id': None}
     connector = {
@@ -205,6 +264,26 @@ class EMCVNXCLIDriverTestData():
                   {'location_info': '|FNM00124500890',
                    'volume_backend_name': 'array_backend_1',
                    'storage_protocol': 'iSCSI'}}
+
+    test_cg = {'id': 'consistencygroup_id',
+               'name': 'group_name',
+               'status': 'deleting'}
+
+    test_cgsnapshot = {
+        'consistencygroup_id': 'consistencygroup_id',
+        'id': 'cgsnapshot_id',
+        'status': 'available'}
+
+    test_member_cgsnapshot = {
+        'name': 'snapshot1',
+        'size': 1,
+        'id': 'cgsnapshot_id',
+        'volume_name': 'vol1',
+        'volume_size': 1,
+        'consistencygroup_id': 'consistencygroup_id',
+        'cgsnapshot_id': 'cgsnapshot_id',
+        'project_id': 'project'
+    }
 
     test_lun_id = 1
     test_existing_ref = {'id': test_lun_id}
@@ -323,6 +402,53 @@ class EMCVNXCLIDriverTestData():
     def CHECK_FASTCACHE_CMD(self, storage_pool):
         return ('-np', 'storagepool', '-list', '-name',
                 storage_pool, '-fastcache')
+
+    def CREATE_CONSISTENCYGROUP_CMD(self, cg_name):
+        return ('-np', 'snap', '-group', '-create',
+                '-name', cg_name, '-allowSnapAutoDelete', 'no')
+
+    def DELETE_CONSISTENCYGROUP_CMD(self, cg_name):
+        return ('-np', 'snap', '-group', '-destroy',
+                '-id', cg_name)
+
+    def GET_CONSISTENCYGROUP_BY_NAME(self, cg_name):
+        return ('snap', '-group', '-list', '-id', cg_name)
+
+    def ADD_LUN_TO_CG_CMD(self, cg_name, lun_id):
+        return ('-np', 'snap', '-group',
+                '-addmember', '-id', cg_name, '-res', lun_id)
+
+    def CREATE_CG_SNAPSHOT(self, cg_name, snap_name):
+        return ('-np', 'snap', '-create', '-res', cg_name,
+                '-resType', 'CG', '-name', snap_name, '-allowReadWrite',
+                'yes', '-allowAutoDelete', 'no')
+
+    def DELETE_CG_SNAPSHOT(self, snap_name):
+        return ('-np', 'snap', '-destroy', '-id', snap_name, '-o')
+
+    def GET_CG_BY_NAME_CMD(self, cg_name):
+        return ('snap', '-group', '-list', '-id', cg_name)
+
+    def CONSISTENCY_GROUP_VOLUMES(self):
+        volumes = []
+        volumes.append(self.test_volume)
+        volumes.append(self.test_volume)
+        return volumes
+
+    def SNAPS_IN_SNAP_GROUP(self):
+        snaps = []
+        snaps.append(self.test_snapshot)
+        snaps.append(self.test_snapshot)
+        return snaps
+
+    def CG_PROPERTY(self, cg_name):
+        return """
+Name:  %(cg_name)s
+Description:
+Allow auto delete:  No
+Member LUN ID(s):  1, 3
+State:  Ready
+""" % {'cg_name': cg_name}
 
     POOL_PROPERTY = ("""\
 Pool Name:  unit_test_pool
@@ -851,7 +977,7 @@ class EMCVNXCLIDriverISCSITestCase(test.TestCase):
             "volume backend name is not correct")
         self.assertTrue(stats['location_info'] == "unit_test_pool|fakeSerial")
         self.assertTrue(
-            stats['driver_version'] == "04.00.00",
+            stats['driver_version'] == "04.01.00",
             "driver version is incorrect.")
 
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
@@ -2028,6 +2154,185 @@ Time Remaining:  0 second(s)
             'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]}
         self.assertEqual(self.driver.cli.get_lun_id(volume_02), 2)
 
+    def test_create_consistency_group(self):
+        cg_name = self.testData.test_cg['id']
+        commands = [self.testData.CREATE_CONSISTENCYGROUP_CMD(cg_name)]
+        results = [SUCCEED]
+        fake_cli = self.driverSetup(commands, results)
+
+        model_update = self.driver.create_consistencygroup(
+            None, self.testData.test_cg)
+        self.assertDictMatch({'status': 'available'}, model_update)
+        expect_cmd = [
+            mock.call(
+                *self.testData.CREATE_CONSISTENCYGROUP_CMD(
+                    cg_name))]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    def test_delete_consistency_group(self):
+        cg_name = self.testData.test_cg['id']
+        commands = [self.testData.DELETE_CONSISTENCYGROUP_CMD(cg_name),
+                    self.testData.LUN_DELETE_CMD('vol1')]
+        results = [SUCCEED, SUCCEED]
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.db = mock.MagicMock()
+        self.driver.db.volume_get_all_by_group.return_value =\
+            self.testData.CONSISTENCY_GROUP_VOLUMES()
+        self.driver.delete_consistencygroup(None,
+                                            self.testData.test_cg)
+        expect_cmd = [
+            mock.call(
+                *self.testData.DELETE_CONSISTENCYGROUP_CMD(
+                    cg_name)),
+            mock.call(
+                *self.testData.LUN_DELETE_CMD('vol1')),
+            mock.call(
+                *self.testData.LUN_DELETE_CMD('vol1'))]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    def test_create_cgsnapshot(self):
+        cgsnapshot = self.testData.test_cgsnapshot['id']
+        cg_name = self.testData.test_cgsnapshot['consistencygroup_id']
+        commands = [self.testData.CREATE_CG_SNAPSHOT(cg_name, cgsnapshot)]
+        results = [SUCCEED]
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.db = mock.MagicMock()
+        self.driver.db.volume_get_all_by_group.return_value =\
+            self.testData.SNAPS_IN_SNAP_GROUP()
+        self.driver.create_cgsnapshot(None, self.testData.test_cgsnapshot)
+        expect_cmd = [
+            mock.call(
+                *self.testData.CREATE_CG_SNAPSHOT(
+                    cg_name, cgsnapshot))]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    def test_delete_cgsnapshot(self):
+        snap_name = self.testData.test_cgsnapshot['id']
+        commands = [self.testData.DELETE_CG_SNAPSHOT(snap_name)]
+        results = [SUCCEED]
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.db = mock.MagicMock()
+        self.driver.db.snapshot_get_all_for_cgsnapshot.return_value =\
+            self.testData.SNAPS_IN_SNAP_GROUP()
+        self.driver.delete_cgsnapshot(None,
+                                      self.testData.test_cgsnapshot)
+        expect_cmd = [
+            mock.call(
+                *self.testData.DELETE_CG_SNAPSHOT(
+                    snap_name))]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    @mock.patch(
+        "eventlet.event.Event.wait",
+        mock.Mock(return_value=None))
+    def test_add_volume_to_cg(self):
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                    self.testData.ADD_LUN_TO_CG_CMD('cg_id', 1),
+                    self.testData.GET_CG_BY_NAME_CMD('cg_id')
+                    ]
+        results = [self.testData.LUN_PROPERTY('vol1', True),
+                   SUCCEED,
+                   self.testData.CG_PROPERTY('cg_id')]
+        fake_cli = self.driverSetup(commands, results)
+
+        self.driver.create_volume(self.testData.test_volume_cg)
+
+        expect_cmd = [
+            mock.call(*self.testData.LUN_CREATION_CMD(
+                'vol1', 1,
+                'unit_test_pool',
+                None, None)),
+            mock.call('lun', '-list', '-name', 'vol1',
+                      '-state', '-status', '-opDetails',
+                      '-userCap', '-owner', '-attachedSnapshot'),
+            mock.call(*self.testData.ADD_LUN_TO_CG_CMD(
+                'cg_id', 1))]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    def test_create_cloned_volume_from_consistnecy_group(self):
+        cmd_smp = ('lun', '-list', '-name', 'vol1', '-attachedSnapshot')
+        output_smp = ("""LOGICAL UNIT NUMBER 1
+                     Name:  vol1
+                     Attached Snapshot:  N/A""", 0)
+        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("vol1_dest")
+        output_dest = self.testData.LUN_PROPERTY("vol1_dest")
+        cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
+        output_migrate = ("", 0)
+        cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
+        output_migrate_verify = (r'The specified source LUN '
+                                 'is not currently migrating', 23)
+        cg_name = self.testData.test_cgsnapshot['consistencygroup_id']
+
+        commands = [cmd_smp, cmd_dest, cmd_migrate,
+                    cmd_migrate_verify]
+        results = [output_smp, output_dest, output_migrate,
+                   output_migrate_verify]
+        fake_cli = self.driverSetup(commands, results)
+
+        self.driver.create_cloned_volume(self.testData.test_volume_clone_cg,
+                                         self.testData.test_clone_cg)
+        tmp_cgsnapshot = 'tmp-cgsnapshot-' + self.testData.test_volume['id']
+        expect_cmd = [
+            mock.call(
+                *self.testData.CREATE_CG_SNAPSHOT(cg_name, tmp_cgsnapshot)),
+            mock.call(*self.testData.SNAP_MP_CREATE_CMD(name='vol1',
+                                                        source='clone1')),
+            mock.call(
+                *self.testData.SNAP_ATTACH_CMD(
+                    name='vol1', snapName=tmp_cgsnapshot)),
+            mock.call(*self.testData.LUN_CREATION_CMD(
+                'vol1_dest', 1, 'unit_test_pool', None, None)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1_dest')),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1_dest')),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1')),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1_dest')),
+            mock.call(*self.testData.MIGRATION_CMD(1, 1),
+                      retry_disable=True),
+            mock.call(*self.testData.MIGRATION_VERIFY_CMD(1)),
+            mock.call('lun', '-list', '-name', 'vol1', '-attachedSnapshot'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1')),
+            mock.call(*self.testData.DELETE_CG_SNAPSHOT(tmp_cgsnapshot))]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    def test_create_volume_from_cgsnapshot(self):
+        cmd_smp = ('lun', '-list', '-name', 'vol2', '-attachedSnapshot')
+        output_smp = ("""LOGICAL UNIT NUMBER 1
+                     Name:  vol2
+                     Attached Snapshot:  N/A""", 0)
+        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
+        output_dest = self.testData.LUN_PROPERTY("vol2_dest")
+        cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
+        output_migrate = ("", 0)
+        cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
+        output_migrate_verify = (r'The specified source LUN '
+                                 'is not currently migrating', 23)
+        commands = [cmd_smp, cmd_dest, cmd_migrate, cmd_migrate_verify]
+        results = [output_smp, output_dest, output_migrate,
+                   output_migrate_verify]
+        fake_cli = self.driverSetup(commands, results)
+
+        self.driver.create_volume_from_snapshot(
+            self.testData.volume_in_cg, self.testData.test_member_cgsnapshot)
+        expect_cmd = [
+            mock.call(
+                *self.testData.SNAP_MP_CREATE_CMD(
+                    name='vol2', source='vol1')),
+            mock.call(
+                *self.testData.SNAP_ATTACH_CMD(
+                    name='vol2', snapName='cgsnapshot_id')),
+            mock.call(*self.testData.LUN_CREATION_CMD(
+                'vol2_dest', 1, 'unit_test_pool', None, None)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest')),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest')),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2')),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest')),
+            mock.call(*self.testData.MIGRATION_CMD(1, 1),
+                      retry_disable=True),
+            mock.call(*self.testData.MIGRATION_VERIFY_CMD(1)),
+            mock.call('lun', '-list', '-name', 'vol2', '-attachedSnapshot'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2'))]
+        fake_cli.assert_has_calls(expect_cmd)
+
     def succeed_fake_command_execute(self, *command, **kwargv):
         return SUCCEED
 
@@ -2394,7 +2699,7 @@ class EMCVNXCLIDriverFCTestCase(test.TestCase):
             "volume backend name is not correct")
         self.assertTrue(stats['location_info'] == "unit_test_pool|fakeSerial")
         self.assertTrue(
-            stats['driver_version'] == "04.00.00",
+            stats['driver_version'] == "04.01.00",
             "driver version is incorrect.")
 
 

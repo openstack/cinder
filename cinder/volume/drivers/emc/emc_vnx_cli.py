@@ -22,6 +22,7 @@ import re
 import time
 
 from oslo.config import cfg
+import six
 
 from cinder import exception
 from cinder.exception import EMCVnxCLICmdError
@@ -187,6 +188,9 @@ class CommandLineHelper(object):
 
     POOL_ALL = [POOL_TOTAL_CAPACITY, POOL_FREE_CAPACITY]
 
+    CLI_RESP_PATTERN_CG_NOT_FOUND = 'Cannot find'
+    CLI_RESP_PATTERN_SNAP_NOT_FOUND = 'The specified snapshot does not exist'
+
     def __init__(self, configuration):
         configuration.append_config_values(san.san_opts)
 
@@ -281,7 +285,8 @@ class CommandLineHelper(object):
 
     @log_enter_exit
     def create_lun_with_advance_feature(self, pool, name, size,
-                                        provisioning, tiering):
+                                        provisioning, tiering,
+                                        consistencygroup_id=None):
         command_create_lun = ['lun', '-create',
                               '-capacity', size,
                               '-sq', 'gb',
@@ -305,7 +310,19 @@ class CommandLineHelper(object):
         except EMCVnxCLICmdError as ex:
             with excutils.save_and_reraise_exception():
                 self.delete_lun(name)
-                LOG.error(_("Failed to enable compression on lun: %s") % ex)
+                LOG.error(_("Error on enable compression on lun %s.")
+                          % six.text_type(ex))
+
+        # handle consistency group
+        try:
+            if consistencygroup_id:
+                self.add_lun_to_consistency_group(
+                    consistencygroup_id, data['lun_id'])
+        except EMCVnxCLICmdError as ex:
+            with excutils.save_and_reraise_exception():
+                self.delete_lun(name)
+                LOG.error(_("Error on adding lun to consistency"
+                            " group. %s") % six.text_type(ex))
         return data
 
     @log_enter_exit
@@ -433,6 +450,143 @@ class CommandLineHelper(object):
                 raise EMCVnxCLICmdError(command_modify_lun, rc, out)
 
     @log_enter_exit
+    def create_consistencygroup(self, context, group):
+        """create the consistency group."""
+        cg_name = group['id']
+        command_create_cg = ('-np', 'snap', '-group',
+                             '-create',
+                             '-name', cg_name,
+                             '-allowSnapAutoDelete', 'no')
+
+        out, rc = self.command_execute(*command_create_cg)
+        if rc != 0:
+            # Ignore the error if consistency group already exists
+            if (rc == 33 and
+                    out.find("(0x716d8021)") >= 0):
+                LOG.warn(_('Consistency group %(name)s already '
+                           'exists. Message: %(msg)s') %
+                         {'name': cg_name, 'msg': out})
+            else:
+                raise EMCVnxCLICmdError(command_create_cg, rc, out)
+
+    @log_enter_exit
+    def get_consistency_group_by_name(self, cg_name):
+        cmd = ('snap', '-group', '-list', '-id', cg_name)
+        data = {
+            'Name': None,
+            'Luns': None,
+            'State': None
+        }
+        out, rc = self.command_execute(*cmd)
+        if rc == 0:
+            cg_pat = r"Name:(.*)\n"\
+                     r"Description:(.*)\n"\
+                     r"Allow auto delete:(.*)\n"\
+                     r"Member LUN ID\(s\):(.*)\n"\
+                     r"State:(.*)\n"
+            for m in re.finditer(cg_pat, out):
+                data['Name'] = m.groups()[0].strip()
+                data['State'] = m.groups()[4].strip()
+                luns_of_cg = m.groups()[3].split(',')
+                if luns_of_cg:
+                    data['Luns'] = [lun.strip() for lun in luns_of_cg]
+                LOG.debug("Found consistent group %s." % data['Name'])
+
+        return data
+
+    @log_enter_exit
+    def add_lun_to_consistency_group(self, cg_name, lun_id):
+        add_lun_to_cg_cmd = ('-np', 'snap', '-group',
+                             '-addmember', '-id',
+                             cg_name, '-res', lun_id)
+
+        out, rc = self.command_execute(*add_lun_to_cg_cmd)
+        if rc != 0:
+            msg = (_("Can not add the lun %(lun)s to consistency "
+                   "group %(cg_name)s.") % {'lun': lun_id,
+                                            'cg_name': cg_name})
+            LOG.error(msg)
+            raise EMCVnxCLICmdError(add_lun_to_cg_cmd, rc, out)
+
+        def add_lun_to_consistency_success():
+            data = self.get_consistency_group_by_name(cg_name)
+            if str(lun_id) in data['Luns']:
+                LOG.debug(("Add lun %(lun)s to consistency "
+                           "group %(cg_name)s successfully.") %
+                          {'lun': lun_id, 'cg_name': cg_name})
+                return True
+            else:
+                LOG.debug(("Adding lun %(lun)s to consistency "
+                           "group %(cg_name)s.") %
+                          {'lun': lun_id, 'cg_name': cg_name})
+                return False
+
+        self._wait_for_a_condition(add_lun_to_consistency_success,
+                                   interval=INTERVAL_30_SEC)
+
+    @log_enter_exit
+    def delete_consistencygroup(self, cg_name):
+        delete_cg_cmd = ('-np', 'snap', '-group',
+                         '-destroy', '-id', cg_name)
+        out, rc = self.command_execute(*delete_cg_cmd)
+        if rc != 0:
+            # Ignore the error if CG doesn't exist
+            if rc == 13 and out.find(self.CLI_RESP_PATTERN_CG_NOT_FOUND) >= 0:
+                LOG.warn(_("CG %(cg_name)s does not exist. "
+                           "Message: %(msg)s") %
+                         {'cg_name': cg_name, 'msg': out})
+            elif rc == 1 and out.find("0x712d8801") >= 0:
+                LOG.warn(_("CG %(cg_name)s is deleting. "
+                           "Message: %(msg)s") %
+                         {'cg_name': cg_name, 'msg': out})
+            else:
+                raise EMCVnxCLICmdError(delete_cg_cmd, rc, out)
+        else:
+            LOG.info(_('Consistency group %s was deleted '
+                       'successfully.') % cg_name)
+
+    @log_enter_exit
+    def create_cgsnapshot(self, cgsnapshot):
+        """Create a cgsnapshot (snap group)."""
+        cg_name = cgsnapshot['consistencygroup_id']
+        snap_name = cgsnapshot['id']
+        create_cg_snap_cmd = ('-np', 'snap', '-create',
+                              '-res', cg_name,
+                              '-resType', 'CG',
+                              '-name', snap_name,
+                              '-allowReadWrite', 'yes',
+                              '-allowAutoDelete', 'no')
+
+        out, rc = self.command_execute(*create_cg_snap_cmd)
+        if rc != 0:
+            # Ignore the error if cgsnapshot already exists
+            if (rc == 5 and
+                    out.find("(0x716d8005)") >= 0):
+                LOG.warn(_('Cgsnapshot name %(name)s already '
+                           'exists. Message: %(msg)s') %
+                         {'name': snap_name, 'msg': out})
+            else:
+                raise EMCVnxCLICmdError(create_cg_snap_cmd, rc, out)
+
+    @log_enter_exit
+    def delete_cgsnapshot(self, cgsnapshot):
+        """Delete a cgsnapshot (snap group)."""
+        snap_name = cgsnapshot['id']
+        delete_cg_snap_cmd = ('-np', 'snap', '-destroy',
+                              '-id', snap_name, '-o')
+
+        out, rc = self.command_execute(*delete_cg_snap_cmd)
+        if rc != 0:
+            # Ignore the error if cgsnapshot does not exist.
+            if (rc == 5 and
+                    out.find(self.CLI_RESP_PATTERN_SNAP_NOT_FOUND) >= 0):
+                LOG.warn(_('Snapshot %(name)s for consistency group '
+                           'does not exist. Message: %(msg)s') %
+                         {'name': snap_name, 'msg': out})
+            else:
+                raise EMCVnxCLICmdError(delete_cg_snap_cmd, rc, out)
+
+    @log_enter_exit
     def create_snapshot(self, volume_name, name):
         data = self.get_lun_by_name(volume_name)
         if data[self.LUN_ID.key] is not None:
@@ -445,15 +599,15 @@ class CommandLineHelper(object):
             out, rc = self.command_execute(*command_create_snapshot)
             if rc != 0:
                 # Ignore the error that due to retry
-                if rc == 5 and \
-                        out.find("(0x716d8005)") >= 0:
+                if (rc == 5 and
+                        out.find("(0x716d8005)") >= 0):
                     LOG.warn(_('Snapshot %(name)s already exists. '
                                'Message: %(msg)s') %
                              {'name': name, 'msg': out})
                 else:
                     raise EMCVnxCLICmdError(command_create_snapshot, rc, out)
         else:
-            msg = _('Failed to get LUN ID for volume %s') % volume_name
+            msg = _('Failed to get LUN ID for volume %s.') % volume_name
             raise exception.VolumeBackendAPIException(data=msg)
 
     @log_enter_exit
@@ -1265,7 +1419,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '04.00.00'
+    VERSION = '04.01.00'
     stats = {'driver_version': VERSION,
              'free_capacity_gb': 'unknown',
              'reserved_percentage': 0,
@@ -1346,7 +1500,7 @@ class EMCVnxCliBase(object):
 
         data = self._client.create_lun_with_advance_feature(
             pool, volumename, volumesize,
-            provisioning, tiering)
+            provisioning, tiering, volume['consistencygroup_id'])
         pl_dict = {'system': self.get_array_serial(),
                    'type': 'lun',
                    'id': str(data['lun_id'])}
@@ -1676,6 +1830,10 @@ class EMCVnxCliBase(object):
             self.stats['fast_cache_enabled'] = 'True'
         else:
             self.stats['fast_cache_enabled'] = 'False'
+        if '-VNXSnapshots' in self.enablers:
+            self.stats['consistencygroup_support'] = 'True'
+        else:
+            self.stats['consistencygroup_support'] = 'False'
 
         return self.stats
 
@@ -1722,7 +1880,10 @@ class EMCVnxCliBase(object):
     @log_enter_exit
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        snapshot_name = snapshot['name']
+        if snapshot['cgsnapshot_id']:
+            snapshot_name = snapshot['cgsnapshot_id']
+        else:
+            snapshot_name = snapshot['name']
         source_volume_name = snapshot['volume_name']
         volume_name = volume['name']
         volume_size = snapshot['volume_size']
@@ -1772,20 +1933,131 @@ class EMCVnxCliBase(object):
         """Creates a clone of the specified volume."""
         source_volume_name = src_vref['name']
         volume_size = src_vref['size']
+        consistencygroup_id = src_vref['consistencygroup_id']
         snapshot_name = 'tmp-snap-%s' % volume['id']
+        tmp_cgsnapshot_name = None
+        if consistencygroup_id:
+            tmp_cgsnapshot_name = 'tmp-cgsnapshot-%s' % volume['id']
 
         snapshot = {
             'name': snapshot_name,
             'volume_name': source_volume_name,
             'volume_size': volume_size,
+            'cgsnapshot_id': tmp_cgsnapshot_name,
+            'consistencygroup_id': consistencygroup_id,
+            'id': tmp_cgsnapshot_name
         }
         # Create temp Snapshot
-        self.create_snapshot(snapshot)
+        if consistencygroup_id:
+            self._client.create_cgsnapshot(snapshot)
+        else:
+            self.create_snapshot(snapshot)
+
         # Create volume
         model_update = self.create_volume_from_snapshot(volume, snapshot)
         # Delete temp Snapshot
-        self.delete_snapshot(snapshot)
+        if consistencygroup_id:
+            self._client.delete_cgsnapshot(snapshot)
+        else:
+            self.delete_snapshot(snapshot)
         return model_update
+
+    @log_enter_exit
+    def create_consistencygroup(self, context, group):
+        """Create a consistency group."""
+        LOG.info(_('Start to create consistency group: %(group_name)s '
+                   'id: %(id)s') %
+                 {'group_name': group['name'], 'id': group['id']})
+
+        model_update = {'status': 'available'}
+        try:
+            self._client.create_consistencygroup(context, group)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                msg = (_('Create consistency group %s failed.')
+                       % group['id'])
+                LOG.error(msg)
+
+        return model_update
+
+    @log_enter_exit
+    def delete_consistencygroup(self, driver, context, group):
+        """Delete a consistency group."""
+        cg_name = group['id']
+        volumes = driver.db.volume_get_all_by_group(context, group['id'])
+
+        model_update = {}
+        model_update['status'] = group['status']
+        LOG.info(_('Start to delete consistency group: %(cg_name)s')
+                 % {'cg_name': cg_name})
+        try:
+            self._client.delete_consistencygroup(cg_name)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                msg = (_('Delete consistency group %s failed.')
+                       % cg_name)
+                LOG.error(msg)
+
+        for volume_ref in volumes:
+            try:
+                self._client.delete_lun(volume_ref['name'])
+                volume_ref['status'] = 'deleted'
+            except Exception:
+                volume_ref['status'] = 'error_deleting'
+                model_update['status'] = 'error_deleting'
+
+        return model_update, volumes
+
+    @log_enter_exit
+    def create_cgsnapshot(self, driver, context, cgsnapshot):
+        """Create a cgsnapshot (snap group)."""
+        cgsnapshot_id = cgsnapshot['id']
+        snapshots = driver.db.snapshot_get_all_for_cgsnapshot(
+            context, cgsnapshot_id)
+
+        model_update = {}
+        LOG.info(_('Start to create cgsnapshot for consistency group'
+                   ': %(group_name)s') %
+                 {'group_name': cgsnapshot['consistencygroup_id']})
+
+        try:
+            self._client.create_cgsnapshot(cgsnapshot)
+            for snapshot in snapshots:
+                snapshot['status'] = 'available'
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                msg = (_('Create cg snapshot %s failed.')
+                       % cgsnapshot_id)
+                LOG.error(msg)
+
+        model_update['status'] = 'available'
+
+        return model_update, snapshots
+
+    @log_enter_exit
+    def delete_cgsnapshot(self, driver, context, cgsnapshot):
+        """delete a cgsnapshot (snap group)."""
+        cgsnapshot_id = cgsnapshot['id']
+        snapshots = driver.db.snapshot_get_all_for_cgsnapshot(
+            context, cgsnapshot_id)
+
+        model_update = {}
+        model_update['status'] = cgsnapshot['status']
+        LOG.info(_('Delete cgsnapshot %(snap_name)s for consistency group: '
+                   '%(group_name)s') % {'snap_name': cgsnapshot['id'],
+                 'group_name': cgsnapshot['consistencygroup_id']})
+
+        try:
+            self._client.delete_cgsnapshot(cgsnapshot)
+            for snapshot in snapshots:
+                snapshot['status'] = 'deleted'
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                msg = (_('Delete cgsnapshot %s failed.')
+                       % cgsnapshot_id)
+                LOG.error(msg)
+
+        return model_update, snapshots
 
     def get_lun_id_by_name(self, volume_name):
         data = self._client.get_lun_by_name(volume_name)

@@ -46,6 +46,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                 FAST Cache Support), Storage-assisted Retype,
                 External Volume Management, Read-only Volume,
                 FC Auto Zoning
+        4.1.0 - Consistency group support
     """
 
     def __init__(self, *args, **kwargs):
@@ -217,3 +218,21 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         """Return size of volume to be managed by manage_existing.
         """
         return self.cli.manage_existing_get_size(volume, existing_ref)
+
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+        return self.cli.create_consistencygroup(context, group)
+
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group."""
+        return self.cli.delete_consistencygroup(
+            self, context, group)
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Creates a cgsnapshot."""
+        return self.cli.create_cgsnapshot(
+            self, context, cgsnapshot)
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+        return self.cli.delete_cgsnapshot(self, context, cgsnapshot)
