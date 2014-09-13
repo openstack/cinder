@@ -1,4 +1,3 @@
-
 # Copyright (c) 2012 NetApp, Inc.
 # All Rights Reserved.
 #
@@ -323,26 +322,28 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_ensure_shares_mounted_should_not_save_mounting_with_error(self):
         """_ensure_shares_mounted should not save share if failed to mount."""
-        mox = self._mox
-        drv = self._driver
 
-        mox.StubOutWithMock(drv, '_read_config_file')
         config_data = []
         config_data.append(self.TEST_NFS_EXPORT1)
-        drv._read_config_file(self.TEST_SHARES_CONFIG_FILE).\
-            AndReturn(config_data)
+        self._driver.configuration.nfs_shares_config =\
+            self.TEST_SHARES_CONFIG_FILE
 
-        mox.StubOutWithMock(drv, '_ensure_share_mounted')
-        drv.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
-        drv._ensure_share_mounted(self.TEST_NFS_EXPORT1).AndRaise(Exception())
+        self.mock_object(self._driver, '_read_config_file',
+                         mock.Mock(return_value=config_data))
+        self.mock_object(self._driver, '_ensure_share_mounted',
+                         mock.Mock(side_effect=Exception()))
+        self.mock_object(remotefs, 'LOG')
 
-        mox.ReplayAll()
+        self._driver._ensure_shares_mounted()
 
-        drv._ensure_shares_mounted()
+        self.assertEqual(0, len(self._driver._mounted_shares))
+        self._driver._read_config_file.assert_called_once_with(
+            self.TEST_SHARES_CONFIG_FILE)
 
-        self.assertEqual(0, len(drv._mounted_shares))
+        self._driver._ensure_share_mounted.assert_called_once_with(
+            self.TEST_NFS_EXPORT1)
 
-        mox.VerifyAll()
+        self.assertEqual(1, remotefs.LOG.error.call_count)
 
     def test_setup_should_throw_error_if_shares_config_not_configured(self):
         """do_setup should throw error if shares config is not configured."""
