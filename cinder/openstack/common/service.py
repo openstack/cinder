@@ -23,7 +23,6 @@ import os
 import random
 import signal
 import sys
-import threading
 import time
 
 try:
@@ -35,12 +34,14 @@ except ImportError:
     UnsupportedOperation = None
 
 import eventlet
+from eventlet import event
 from oslo.config import cfg
 
 from cinder.openstack.common import eventlet_backdoor
-from cinder.openstack.common.gettextutils import _
+from cinder.openstack.common.gettextutils import _LE, _LI, _LW
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import systemd
 from cinder.openstack.common import threadgroup
 
 
@@ -163,7 +164,7 @@ class ServiceLauncher(Launcher):
         status = None
         signo = 0
 
-        LOG.debug(_('Full set of CONF:'))
+        LOG.debug('Full set of CONF:')
         CONF.log_opt_values(LOG, std_logging.DEBUG)
 
         try:
@@ -172,7 +173,7 @@ class ServiceLauncher(Launcher):
             super(ServiceLauncher, self).wait()
         except SignalExit as exc:
             signame = _signo_to_signame(exc.signo)
-            LOG.info(_('Caught %s, exiting'), signame)
+            LOG.info(_LI('Caught %s, exiting'), signame)
             status = exc.code
             signo = exc.signo
         except SystemExit as exc:
@@ -184,11 +185,12 @@ class ServiceLauncher(Launcher):
                     rpc.cleanup()
                 except Exception:
                     # We're shutting down, so it doesn't matter at this point.
-                    LOG.exception(_('Exception during rpc cleanup.'))
+                    LOG.exception(_LE('Exception during rpc cleanup.'))
 
         return status, signo
 
     def wait(self, ready_callback=None):
+        systemd.notify_once()
         while True:
             self.handle_signal()
             status, signo = self._wait_for_exit_or_signal(ready_callback)
@@ -235,7 +237,7 @@ class ProcessLauncher(object):
         # dies unexpectedly
         self.readpipe.read()
 
-        LOG.info(_('Parent process has died unexpectedly, exiting'))
+        LOG.info(_LI('Parent process has died unexpectedly, exiting'))
 
         sys.exit(1)
 
@@ -266,13 +268,13 @@ class ProcessLauncher(object):
             launcher.wait()
         except SignalExit as exc:
             signame = _signo_to_signame(exc.signo)
-            LOG.info(_('Caught %s, exiting'), signame)
+            LOG.info(_LI('Child caught %s, exiting'), signame)
             status = exc.code
             signo = exc.signo
         except SystemExit as exc:
             status = exc.code
         except BaseException:
-            LOG.exception(_('Unhandled exception'))
+            LOG.exception(_LE('Unhandled exception'))
             status = 2
         finally:
             launcher.stop()
@@ -305,7 +307,7 @@ class ProcessLauncher(object):
             # start up quickly but ensure we don't fork off children that
             # die instantly too quickly.
             if time.time() - wrap.forktimes[0] < wrap.workers:
-                LOG.info(_('Forking too fast, sleeping'))
+                LOG.info(_LI('Forking too fast, sleeping'))
                 time.sleep(1)
 
             wrap.forktimes.pop(0)
@@ -324,7 +326,7 @@ class ProcessLauncher(object):
 
             os._exit(status)
 
-        LOG.info(_('Started child %d'), pid)
+        LOG.info(_LI('Started child %d'), pid)
 
         wrap.children.add(pid)
         self.children[pid] = wrap
@@ -334,7 +336,7 @@ class ProcessLauncher(object):
     def launch_service(self, service, workers=1):
         wrap = ServiceWrapper(service, workers)
 
-        LOG.info(_('Starting %d workers'), wrap.workers)
+        LOG.info(_LI('Starting %d workers'), wrap.workers)
         while self.running and len(wrap.children) < wrap.workers:
             self._start_child(wrap)
 
@@ -351,15 +353,15 @@ class ProcessLauncher(object):
 
         if os.WIFSIGNALED(status):
             sig = os.WTERMSIG(status)
-            LOG.info(_('Child %(pid)d killed by signal %(sig)d'),
+            LOG.info(_LI('Child %(pid)d killed by signal %(sig)d'),
                      dict(pid=pid, sig=sig))
         else:
             code = os.WEXITSTATUS(status)
-            LOG.info(_('Child %(pid)s exited with status %(code)d'),
+            LOG.info(_LI('Child %(pid)s exited with status %(code)d'),
                      dict(pid=pid, code=code))
 
         if pid not in self.children:
-            LOG.warning(_('pid %d not in child list'), pid)
+            LOG.warning(_LW('pid %d not in child list'), pid)
             return None
 
         wrap = self.children.pop(pid)
@@ -381,23 +383,35 @@ class ProcessLauncher(object):
     def wait(self):
         """Loop waiting on children to die and respawning as necessary."""
 
-        LOG.debug(_('Full set of CONF:'))
+        systemd.notify_once()
+        LOG.debug('Full set of CONF:')
         CONF.log_opt_values(LOG, std_logging.DEBUG)
 
-        while True:
-            self.handle_signal()
-            self._respawn_children()
-            if self.sigcaught:
+        try:
+            while True:
+                self.handle_signal()
+                self._respawn_children()
+                # No signal means that stop was called.  Don't clean up here.
+                if not self.sigcaught:
+                    return
+
                 signame = _signo_to_signame(self.sigcaught)
-                LOG.info(_('Caught %s, stopping children'), signame)
-            if not _is_sighup_and_daemon(self.sigcaught):
-                break
+                LOG.info(_LI('Caught %s, stopping children'), signame)
+                if not _is_sighup_and_daemon(self.sigcaught):
+                    break
 
-            for pid in self.children:
-                os.kill(pid, signal.SIGHUP)
-            self.running = True
-            self.sigcaught = None
+                for pid in self.children:
+                    os.kill(pid, signal.SIGHUP)
+                self.running = True
+                self.sigcaught = None
+        except eventlet.greenlet.GreenletExit:
+            LOG.info(_LI("Wait called after thread killed.  Cleaning up."))
 
+        self.stop()
+
+    def stop(self):
+        """Terminate child processes and wait on each."""
+        self.running = False
         for pid in self.children:
             try:
                 os.kill(pid, signal.SIGTERM)
@@ -407,7 +421,7 @@ class ProcessLauncher(object):
 
         # Wait for children to die
         if self.children:
-            LOG.info(_('Waiting on %d children to exit'), len(self.children))
+            LOG.info(_LI('Waiting on %d children to exit'), len(self.children))
             while self.children:
                 self._wait_child()
 
@@ -419,10 +433,11 @@ class Service(object):
         self.tg = threadgroup.ThreadGroup(threads)
 
         # signal that the service is done shutting itself down:
-        self._done = threading.Event()
+        self._done = event.Event()
 
     def reset(self):
-        self._done = threading.Event()
+        # NOTE(Fengqian): docs for Event.reset() recommend against using it
+        self._done = event.Event()
 
     def start(self):
         pass
@@ -431,7 +446,8 @@ class Service(object):
         self.tg.stop()
         self.tg.wait()
         # Signal that service cleanup is done:
-        self._done.set()
+        if not self._done.ready():
+            self._done.send()
 
     def wait(self):
         self._done.wait()
@@ -442,7 +458,7 @@ class Services(object):
     def __init__(self):
         self.services = []
         self.tg = threadgroup.ThreadGroup()
-        self.done = threading.Event()
+        self.done = event.Event()
 
     def add(self, service):
         self.services.append(service)
@@ -456,7 +472,8 @@ class Services(object):
 
         # Each service has performed cleanup, now signal that the run_service
         # wrapper threads can now die:
-        self.done.set()
+        if not self.done.ready():
+            self.done.send()
 
         # reap threads:
         self.tg.stop()
@@ -466,7 +483,7 @@ class Services(object):
 
     def restart(self):
         self.stop()
-        self.done = threading.Event()
+        self.done = event.Event()
         for restart_service in self.services:
             restart_service.reset()
             self.tg.add_thread(self.run_service, restart_service, self.done)
@@ -484,11 +501,12 @@ class Services(object):
         done.wait()
 
 
-def launch(service, workers=None):
-    if workers:
-        launcher = ProcessLauncher()
-        launcher.launch_service(service, workers=workers)
-    else:
+def launch(service, workers=1):
+    if workers is None or workers == 1:
         launcher = ServiceLauncher()
         launcher.launch_service(service)
+    else:
+        launcher = ProcessLauncher()
+        launcher.launch_service(service, workers=workers)
+
     return launcher
