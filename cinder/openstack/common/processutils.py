@@ -19,6 +19,7 @@
 System-level utilities and helper functions.
 """
 
+import logging
 import os
 import random
 import shlex
@@ -28,7 +29,7 @@ from eventlet.green import subprocess
 from eventlet import greenthread
 
 from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import log as logging
+from cinder.openstack.common import strutils
 
 
 LOG = logging.getLogger(__name__)
@@ -102,6 +103,8 @@ def execute(*cmd, **kwargs):
     :param shell:           whether or not there should be a shell used to
                             execute this command. Defaults to false.
     :type shell:            boolean
+    :param loglevel:        log level for execute commands.
+    :type loglevel:         int.  (Should be logging.DEBUG or logging.INFO)
     :returns:               (stdout, stderr) from process execution
     :raises:                :class:`UnknownArgumentError` on
                             receiving unknown arguments
@@ -116,6 +119,7 @@ def execute(*cmd, **kwargs):
     run_as_root = kwargs.pop('run_as_root', False)
     root_helper = kwargs.pop('root_helper', '')
     shell = kwargs.pop('shell', False)
+    loglevel = kwargs.pop('loglevel', logging.DEBUG)
 
     if isinstance(check_exit_code, bool):
         ignore_exit_code = not check_exit_code
@@ -135,11 +139,12 @@ def execute(*cmd, **kwargs):
         cmd = shlex.split(root_helper) + list(cmd)
 
     cmd = map(str, cmd)
+    sanitized_cmd = strutils.mask_password(' '.join(cmd))
 
     while attempts > 0:
         attempts -= 1
         try:
-            LOG.debug(_('Running cmd (subprocess): %s'), ' '.join(cmd))
+            LOG.log(loglevel, _('Running cmd (subprocess): %s'), sanitized_cmd)
             _PIPE = subprocess.PIPE  # pylint: disable=E1101
 
             if os.name == 'nt':
@@ -163,20 +168,21 @@ def execute(*cmd, **kwargs):
                 result = obj.communicate()
             obj.stdin.close()  # pylint: disable=E1101
             _returncode = obj.returncode  # pylint: disable=E1101
-            if _returncode:
-                LOG.debug(_('Result was %s') % _returncode)
-                if not ignore_exit_code and _returncode not in check_exit_code:
-                    (stdout, stderr) = result
-                    raise ProcessExecutionError(exit_code=_returncode,
-                                                stdout=stdout,
-                                                stderr=stderr,
-                                                cmd=' '.join(cmd))
+            LOG.log(loglevel, _('Result was %s') % _returncode)
+            if not ignore_exit_code and _returncode not in check_exit_code:
+                (stdout, stderr) = result
+                sanitized_stdout = strutils.mask_password(stdout)
+                sanitized_stderr = strutils.mask_password(stderr)
+                raise ProcessExecutionError(exit_code=_returncode,
+                                            stdout=sanitized_stdout,
+                                            stderr=sanitized_stderr,
+                                            cmd=sanitized_cmd)
             return result
         except ProcessExecutionError:
             if not attempts:
                 raise
             else:
-                LOG.debug(_('%r failed. Retrying.'), cmd)
+                LOG.log(loglevel, _('%r failed. Retrying.'), sanitized_cmd)
                 if delay_on_retry:
                     greenthread.sleep(random.randint(20, 200) / 100.0)
         finally:
