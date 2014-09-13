@@ -23,6 +23,7 @@ from threading import Timer
 import time
 import uuid
 
+import six
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
@@ -45,9 +46,9 @@ from cinder.volume.drivers.netapp.options import netapp_transport_opts
 from cinder.volume.drivers.netapp import ssc_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers.netapp.utils import get_volume_extra_specs
-from cinder.volume.drivers.netapp.utils import provide_ems
 from cinder.volume.drivers.netapp.utils import validate_instantiation
 from cinder.volume.drivers import nfs
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -80,6 +81,14 @@ class NetAppNFSDriver(nfs.NfsDriver):
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
         raise NotImplementedError()
+
+    def get_pool(self, volume):
+        """Return pool name where volume resides.
+
+        :param volume: The volume hosted by the driver.
+        :return: Name of the pool where given volume is hosted.
+        """
+        return volume['provider_location']
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
@@ -217,8 +226,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
-        super(NetAppNFSDriver, self)._update_volume_stats()
-        self._spawn_clean_cache_job()
+        raise NotImplementedError()
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
@@ -719,6 +727,23 @@ class NetAppDirectNfsDriver (NetAppNFSDriver):
             'file-usage-get', **{'path': path})
         return file_use
 
+    def _get_extended_capacity_info(self, nfs_share):
+        """Returns an extended set of share capacity metrics."""
+
+        total_size, total_available, total_allocated = \
+            self._get_capacity_info(nfs_share)
+
+        used_ratio = (total_size - total_available) / total_size
+        subscribed_ratio = total_allocated / total_size
+        apparent_size = max(0, total_size * self.configuration.nfs_used_ratio)
+        apparent_available = max(0, apparent_size - total_allocated)
+
+        return {'total_size': total_size, 'total_available': total_available,
+                'total_allocated': total_allocated, 'used_ratio': used_ratio,
+                'subscribed_ratio': subscribed_ratio,
+                'apparent_size': apparent_size,
+                'apparent_available': apparent_available}
+
 
 class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
     """Executes commands related to volumes on c mode."""
@@ -773,34 +798,39 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
 
         :param volume: volume reference
         """
+        LOG.debug('create_volume on %s' % volume['host'])
         self._ensure_shares_mounted()
+
+        # get share as pool name
+        share = volume_utils.extract_host(volume['host'], level='pool')
+
+        if share is None:
+            msg = _("Pool is not available in the volume host field.")
+            raise exception.InvalidHost(reason=msg)
+
         extra_specs = get_volume_extra_specs(volume)
-        qos_policy_group = None
-        if extra_specs:
-            qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None)
-        eligible = self._find_shares(volume['size'], extra_specs)
-        if not eligible:
-            raise exception.NfsNoSuitableShareFound(
-                volume_size=volume['size'])
-        for sh in eligible:
-            try:
-                volume['provider_location'] = sh
-                LOG.info(_('casted to %s') % volume['provider_location'])
-                self._do_create_volume(volume)
-                if qos_policy_group:
-                    self._set_qos_policy_group_on_volume(volume, sh,
-                                                         qos_policy_group)
-                return {'provider_location': volume['provider_location']}
-            except Exception as ex:
-                LOG.error(_("Exception creating vol %(name)s on "
-                            "share %(share)s. Details: %(ex)s")
-                          % {'name': volume['name'],
-                             'share': volume['provider_location'],
-                             'ex': ex})
-                volume['provider_location'] = None
-            finally:
-                if self.ssc_enabled:
-                    self._update_stale_vols(self._get_vol_for_share(sh))
+        qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
+            if extra_specs else None
+
+        try:
+            volume['provider_location'] = share
+            LOG.info(_('casted to %s') % volume['provider_location'])
+            self._do_create_volume(volume)
+            if qos_policy_group:
+                self._set_qos_policy_group_on_volume(volume, share,
+                                                     qos_policy_group)
+            return {'provider_location': volume['provider_location']}
+        except Exception as ex:
+            LOG.error(_("Exception creating vol %(name)s on "
+                        "share %(share)s. Details: %(ex)s")
+                      % {'name': volume['name'],
+                         'share': volume['provider_location'],
+                         'ex': ex})
+            volume['provider_location'] = None
+        finally:
+            if self.ssc_enabled:
+                self._update_stale_vols(self._get_vol_for_share(share))
+
         msg = _("Volume %s could not be created on shares.")
         raise exception.VolumeBackendAPIException(data=msg % (volume['name']))
 
@@ -816,23 +846,6 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                'file': target_path,
                'vserver': self.vserver})
         self._invoke_successfully(file_assign_qos)
-
-    def _find_shares(self, size, extra_specs):
-        """Finds suitable shares for given params."""
-        shares = []
-        containers = []
-        if self.ssc_enabled:
-            vols = ssc_utils.get_volumes_for_specs(self.ssc_vols, extra_specs)
-            containers = [x.export['path'] for x in vols]
-        else:
-            containers = self._mounted_shares
-        for sh in containers:
-            if self._is_share_eligible(sh, size):
-                size, avl, alloc = self._get_capacity_info(sh)
-                shares.append((sh, avl))
-        shares = [a for a, b in sorted(
-            shares, key=lambda x: x[1], reverse=True)]
-        return shares
 
     def _clone_volume(self, volume_name, clone_name,
                       volume_id, share=None):
@@ -927,58 +940,85 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         self._invoke_successfully(clone_create, vserver)
 
     def _update_volume_stats(self):
-        """Retrieve stats info from volume group."""
-        super(NetAppDirectCmodeNfsDriver, self)._update_volume_stats()
-        netapp_backend = 'NetApp_NFS_cluster_direct'
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        self._stats["volume_backend_name"] = (backend_name or
-                                              netapp_backend)
-        self._stats["vendor_name"] = 'NetApp'
-        self._stats["driver_version"] = '1.0'
-        self._update_cluster_vol_stats(self._stats)
-        provide_ems(self, self._client, self._stats, netapp_backend)
+        """Retrieve stats info from vserver."""
 
-    def _update_cluster_vol_stats(self, data):
-        """Updates vol stats with cluster config."""
-        if self.ssc_enabled:
-            sync = True if self.ssc_vols is None else False
-            ssc_utils.refresh_cluster_ssc(self, self._client, self.vserver,
-                                          synchronous=sync)
-        else:
-            LOG.warn(_("No vserver set in config. SSC will be disabled."))
-        if self.ssc_vols:
-            data['netapp_mirrored'] = 'true'\
-                if self.ssc_vols['mirrored'] else 'false'
-            data['netapp_unmirrored'] = 'true'\
-                if len(self.ssc_vols['all']) >\
-                len(self.ssc_vols['mirrored']) else 'false'
-            data['netapp_dedup'] = 'true'\
-                if self.ssc_vols['dedup'] else 'false'
-            data['netapp_nodedup'] = 'true'\
-                if len(self.ssc_vols['all']) >\
-                len(self.ssc_vols['dedup']) else 'false'
-            data['netapp_compression'] = 'true'\
-                if self.ssc_vols['compression'] else 'false'
-            data['netapp_nocompression'] = 'true'\
-                if len(self.ssc_vols['all']) >\
-                len(self.ssc_vols['compression']) else 'false'
-            data['netapp_thin_provisioned'] = 'true'\
-                if self.ssc_vols['thin'] else 'false'
-            data['netapp_thick_provisioned'] = 'true'\
-                if len(self.ssc_vols['all']) >\
-                len(self.ssc_vols['thin']) else 'false'
-            if self.ssc_vols['all']:
-                vol_max = max(self.ssc_vols['all'])
-                data['total_capacity_gb'] =\
-                    int(vol_max.space['size_total_bytes']) / units.Gi
-                data['free_capacity_gb'] =\
-                    int(vol_max.space['size_avl_bytes']) / units.Gi
-            else:
-                data['total_capacity_gb'] = 0
-                data['free_capacity_gb'] = 0
-        elif self.ssc_enabled:
-            LOG.warn(_("No cluster ssc stats found."
-                       " Wait for next volume stats update."))
+        self._ensure_shares_mounted()
+        sync = True if self.ssc_vols is None else False
+        ssc_utils.refresh_cluster_ssc(self, self._client,
+                                      self.vserver, synchronous=sync)
+
+        LOG.debug('Updating volume stats')
+        data = {}
+        netapp_backend = 'NetApp_NFS_Cluster_direct'
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data['volume_backend_name'] = backend_name or netapp_backend
+        data['vendor_name'] = 'NetApp'
+        data['driver_version'] = self.VERSION
+        data['storage_protocol'] = 'nfs'
+        data['pools'] = self._get_pool_stats()
+
+        self._spawn_clean_cache_job()
+        na_utils.provide_ems(self, self._client, data, netapp_backend)
+        self._stats = data
+
+    def _get_pool_stats(self):
+        """Retrieve pool (i.e. NFS share) stats info from SSC volumes."""
+
+        pools = []
+
+        for nfs_share in self._mounted_shares:
+
+            capacity = self._get_extended_capacity_info(nfs_share)
+
+            pool = dict()
+            pool['pool_name'] = nfs_share
+            pool['QoS_support'] = False
+            pool['reserved_percentage'] = 0
+
+            # Report pool as reserved when over the configured used_ratio
+            if capacity['used_ratio'] > self.configuration.nfs_used_ratio:
+                pool['reserved_percentage'] = 100
+
+            # Report pool as reserved when over the subscribed ratio
+            if capacity['subscribed_ratio'] >=\
+                    self.configuration.nfs_oversub_ratio:
+                pool['reserved_percentage'] = 100
+
+            # convert sizes to GB
+            total = float(capacity['apparent_size']) / units.Gi
+            pool['total_capacity_gb'] = na_utils.round_down(total, '0.01')
+
+            free = float(capacity['apparent_available']) / units.Gi
+            pool['free_capacity_gb'] = na_utils.round_down(free, '0.01')
+
+            # add SSC content if available
+            vol = self._get_vol_for_share(nfs_share)
+            if vol and self.ssc_vols:
+                pool['netapp:raid_type'] = vol.aggr['raid_type']
+                pool['netapp:disk_type'] = vol.aggr['disk_type']
+                pool['netapp:qos_policy_group'] = vol.qos['qos_policy_group']
+
+                mirrored = vol in self.ssc_vols['mirrored']
+                pool['netapp_mirrored'] = six.text_type(mirrored).lower()
+                pool['netapp_unmirrored'] = six.text_type(not mirrored).lower()
+
+                dedup = vol in self.ssc_vols['dedup']
+                pool['netapp_dedup'] = six.text_type(dedup).lower()
+                pool['netapp_nodedup'] = six.text_type(not dedup).lower()
+
+                compression = vol in self.ssc_vols['compression']
+                pool['netapp_compression'] = six.text_type(compression).lower()
+                pool['netapp_nocompression'] = six.text_type(
+                    not compression).lower()
+
+                thin = vol in self.ssc_vols['thin']
+                pool['netapp_thin_provisioned'] = six.text_type(thin).lower()
+                pool['netapp_thick_provisioned'] = six.text_type(
+                    not thin).lower()
+
+            pools.append(pool)
+
+        return pools
 
     @utils.synchronized('update_stale')
     def _update_stale_vols(self, volume=None, reset=False):
@@ -1323,6 +1363,39 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         result = server.invoke_successfully(na_element, True)
         return result
 
+    def create_volume(self, volume):
+        """Creates a volume.
+
+        :param volume: volume reference
+        """
+        LOG.debug('create_volume on %s' % volume['host'])
+        self._ensure_shares_mounted()
+
+        # get share as pool name
+        share = volume_utils.extract_host(volume['host'], level='pool')
+
+        if share is None:
+            msg = _("Pool is not available in the volume host field.")
+            raise exception.InvalidHost(reason=msg)
+
+        volume['provider_location'] = share
+        LOG.info(_('Creating volume at location %s')
+                 % volume['provider_location'])
+
+        try:
+            self._do_create_volume(volume)
+        except Exception as ex:
+            LOG.error(_("Exception creating vol %(name)s on "
+                        "share %(share)s. Details: %(ex)s")
+                      % {'name': volume['name'],
+                         'share': volume['provider_location'],
+                         'ex': six.text_type(ex)})
+            msg = _("Volume %s could not be created on shares.")
+            raise exception.VolumeBackendAPIException(
+                data=msg % (volume['name']))
+
+        return {'provider_location': volume['provider_location']}
+
     def _clone_volume(self, volume_name, clone_name,
                       volume_id, share=None):
         """Clones mounted volume with NetApp filer."""
@@ -1420,16 +1493,58 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
             retry = retry - 1
 
     def _update_volume_stats(self):
-        """Retrieve stats info from volume group."""
-        super(NetAppDirect7modeNfsDriver, self)._update_volume_stats()
+        """Retrieve stats info from vserver."""
+
+        self._ensure_shares_mounted()
+
+        LOG.debug('Updating volume stats')
+        data = {}
         netapp_backend = 'NetApp_NFS_7mode_direct'
         backend_name = self.configuration.safe_get('volume_backend_name')
-        self._stats["volume_backend_name"] = (backend_name or
-                                              'NetApp_NFS_7mode_direct')
-        self._stats["vendor_name"] = 'NetApp'
-        self._stats["driver_version"] = self.VERSION
-        provide_ems(self, self._client, self._stats, netapp_backend,
-                    server_type="7mode")
+        data['volume_backend_name'] = backend_name or netapp_backend
+        data['vendor_name'] = 'NetApp'
+        data['driver_version'] = self.VERSION
+        data['storage_protocol'] = 'nfs'
+        data['pools'] = self._get_pool_stats()
+
+        self._spawn_clean_cache_job()
+        na_utils.provide_ems(self, self._client, data, netapp_backend,
+                             server_type="7mode")
+        self._stats = data
+
+    def _get_pool_stats(self):
+        """Retrieve pool (i.e. NFS share) stats info from SSC volumes."""
+
+        pools = []
+
+        for nfs_share in self._mounted_shares:
+
+            capacity = self._get_extended_capacity_info(nfs_share)
+
+            pool = dict()
+            pool['pool_name'] = nfs_share
+            pool['QoS_support'] = False
+            pool['reserved_percentage'] = 0
+
+            # Report pool as reserved when over the configured used_ratio
+            if capacity['used_ratio'] > self.configuration.nfs_used_ratio:
+                pool['reserved_percentage'] = 100
+
+            # Report pool as reserved when over the subscribed ratio
+            if capacity['subscribed_ratio'] >=\
+                    self.configuration.nfs_oversub_ratio:
+                pool['reserved_percentage'] = 100
+
+            # convert sizes to GB
+            total = float(capacity['apparent_size']) / units.Gi
+            pool['total_capacity_gb'] = na_utils.round_down(total, '0.01')
+
+            free = float(capacity['apparent_available']) / units.Gi
+            pool['free_capacity_gb'] = na_utils.round_down(free, '0.01')
+
+            pools.append(pool)
+
+        return pools
 
     def _shortlist_del_eligible_files(self, share, old_files):
         """Prepares list of eligible files to be deleted from cache."""

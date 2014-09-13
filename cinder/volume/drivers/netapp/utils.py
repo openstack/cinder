@@ -23,8 +23,11 @@ NetApp drivers to achieve the desired functionality.
 import base64
 import binascii
 import copy
+import decimal
 import socket
 import uuid
+
+import six
 
 from cinder import context
 from cinder import exception
@@ -356,3 +359,8 @@ def convert_es_fmt_to_uuid(es_label):
     """Converts e-series name format to uuid."""
     es_label_b32 = es_label.ljust(32, '=')
     return uuid.UUID(binascii.hexlify(base64.b32decode(es_label_b32)))
+
+
+def round_down(value, precision):
+    return float(decimal.Decimal(six.text_type(value)).quantize(
+        decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))

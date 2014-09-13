@@ -21,6 +21,7 @@ import time
 import uuid
 
 from oslo.config import cfg
+import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -35,6 +36,7 @@ from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_eseries_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
 from cinder.volume.drivers.netapp import utils
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -64,7 +66,7 @@ class Driver(driver.ISCSIDriver):
         self.configuration.append_config_values(netapp_connection_opts)
         self.configuration.append_config_values(netapp_transport_opts)
         self.configuration.append_config_values(netapp_eseries_opts)
-        self._objects = {'disk_pool_refs': [],
+        self._objects = {'disk_pool_refs': [], 'pools': [],
                          'volumes': {'label_ref': {}, 'ref_vol': {}},
                          'snapshots': {'label_ref': {}, 'ref_snap': {}}}
 
@@ -182,6 +184,7 @@ class Driver(driver.ISCSIDriver):
             if (pool.get('raidLevel') == 'raidDiskPool'
                     and pool['label'].lower() in pools):
                 self._objects['disk_pool_refs'].append(pool['volumeGroupRef'])
+                self._objects['pools'].append(pool)
 
     def _cache_volume(self, obj):
         """Caches volumes for further reference."""
@@ -284,14 +287,67 @@ class Driver(driver.ISCSIDriver):
                 return True
         return False
 
+    def get_pool(self, volume):
+        """Return pool name where volume resides.
+
+        :param volume: The volume hosted by the driver.
+        :return: Name of the pool where given volume is hosted.
+        """
+        eseries_volume = self._get_volume(volume['id'])
+        for pool in self._objects['pools']:
+            if pool['volumeGroupRef'] == eseries_volume['volumeGroupRef']:
+                return pool['label']
+        return None
+
     def create_volume(self, volume):
         """Creates a volume."""
-        label = utils.convert_uuid_to_es_fmt(volume['id'])
+
+        LOG.debug('create_volume on %s' % volume['host'])
+
+        # get E-series pool label as pool name
+        eseries_pool_label = volume_utils.extract_host(volume['host'],
+                                                       level='pool')
+
+        if eseries_pool_label is None:
+            msg = _("Pool is not available in the volume host field.")
+            raise exception.InvalidHost(reason=msg)
+
+        eseries_volume_label = utils.convert_uuid_to_es_fmt(volume['id'])
+
+        # get size of the requested volume creation
         size_gb = int(volume['size'])
-        vol = self._create_volume(label, size_gb)
+        vol = self._create_volume(eseries_pool_label, eseries_volume_label,
+                                  size_gb)
         self._cache_volume(vol)
 
-    def _create_volume(self, label, size_gb):
+    def _create_volume(self, eseries_pool_label, eseries_volume_label,
+                       size_gb):
+        """Creates volume with given label and size."""
+
+        target_pool = None
+
+        pools = self._client.list_storage_pools()
+        for pool in pools:
+            if pool["label"] == eseries_pool_label:
+                target_pool = pool
+                break
+
+        if not target_pool:
+            msg = _("Pools %s does not exist")
+            raise exception.NetAppDriverException(msg % eseries_pool_label)
+
+        try:
+            vol = self._client.create_volume(target_pool['volumeGroupRef'],
+                                             eseries_volume_label, size_gb)
+            LOG.info(_("Created volume with label %s."), eseries_volume_label)
+        except exception.NetAppDriverException as e:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_("Error creating volume. Msg - %s."),
+                          six.text_type(e))
+
+        return vol
+
+    def _schedule_and_create_volume(self, label, size_gb):
         """Creates volume with given label and size."""
         avl_pools = self._get_sorted_avl_storage_pools(size_gb)
         for pool in avl_pools:
@@ -305,28 +361,11 @@ class Driver(driver.ISCSIDriver):
         msg = _("Failure creating volume %s.")
         raise exception.NetAppDriverException(msg % label)
 
-    def _get_sorted_avl_storage_pools(self, size_gb):
-        """Returns storage pools sorted on available capacity."""
-        size = size_gb * units.Gi
-        pools = self._client.list_storage_pools()
-        sorted_pools = sorted(pools, key=lambda x:
-                              (int(x.get('totalRaidedSpace', 0))
-                               - int(x.get('usedSpace', 0))), reverse=True)
-        avl_pools = [x for x in sorted_pools
-                     if (x['volumeGroupRef'] in
-                         self._objects['disk_pool_refs']) and
-                     (int(x.get('totalRaidedSpace', 0)) -
-                      int(x.get('usedSpace', 0) >= size))]
-        if not avl_pools:
-            msg = _("No storage pool found with available capacity %s.")
-            exception.NotFound(msg % size_gb)
-        return avl_pools
-
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
         label = utils.convert_uuid_to_es_fmt(volume['id'])
         size = volume['size']
-        dst_vol = self._create_volume(label, size)
+        dst_vol = self._schedule_and_create_volume(label, size)
         try:
             src_vol = None
             src_vol = self._create_snapshot_volume(snapshot['id'])
@@ -624,31 +663,48 @@ class Driver(driver.ISCSIDriver):
     def _update_volume_stats(self):
         """Update volume statistics."""
         LOG.debug("Updating volume stats.")
-        self._stats = self._stats or {}
-        netapp_backend = 'NetApp_ESeries'
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        self._stats["volume_backend_name"] = (
-            backend_name or netapp_backend)
-        self._stats["vendor_name"] = 'NetApp'
-        self._stats["driver_version"] = '1.0'
-        self._stats["storage_protocol"] = 'iSCSI'
-        self._stats["total_capacity_gb"] = 0
-        self._stats["free_capacity_gb"] = 0
-        self._stats["reserved_percentage"] = 0
-        self._stats["QoS_support"] = False
-        self._update_capacity()
-        self._garbage_collect_tmp_vols()
+        data = dict()
+        netapp_backend = "NetApp_ESeries"
+        backend_name = self.configuration.safe_get("volume_backend_name")
+        data["volume_backend_name"] = (backend_name or netapp_backend)
+        data["vendor_name"] = "NetApp"
+        data["driver_version"] = self.VERSION
+        data["storage_protocol"] = "iSCSI"
+        data["pools"] = []
 
-    def _update_capacity(self):
-        """Get free and total appliance capacity in bytes."""
-        tot_bytes, used_bytes = 0, 0
         pools = self._client.list_storage_pools()
         for pool in pools:
-            if pool['volumeGroupRef'] in self._objects['disk_pool_refs']:
-                tot_bytes = tot_bytes + int(pool.get('totalRaidedSpace', 0))
-                used_bytes = used_bytes + int(pool.get('usedSpace', 0))
-        self._stats['free_capacity_gb'] = (tot_bytes - used_bytes) / units.Gi
-        self._stats['total_capacity_gb'] = tot_bytes / units.Gi
+            cinder_pool = {}
+            cinder_pool["pool_name"] = pool.get("label", 0)
+            cinder_pool["QoS_support"] = False
+            cinder_pool["reserved_percentage"] = 0
+            if pool["volumeGroupRef"] in self._objects["disk_pool_refs"]:
+                tot_bytes = int(pool.get("totalRaidedSpace", 0))
+                used_bytes = int(pool.get("usedSpace", 0))
+                cinder_pool["free_capacity_gb"] = ((tot_bytes - used_bytes) /
+                                                   units.Gi)
+                cinder_pool["total_capacity_gb"] = tot_bytes / units.Gi
+                data["pools"].append(cinder_pool)
+
+        self._stats = data
+        self._garbage_collect_tmp_vols()
+
+    def _get_sorted_avl_storage_pools(self, size_gb):
+        """Returns storage pools sorted on available capacity."""
+        size = size_gb * units.Gi
+        pools = self._client.list_storage_pools()
+        sorted_pools = sorted(pools, key=lambda x:
+                              (int(x.get('totalRaidedSpace', 0))
+                               - int(x.get('usedSpace', 0))), reverse=True)
+        avl_pools = [x for x in sorted_pools
+                     if (x['volumeGroupRef'] in
+                         self._objects['disk_pool_refs']) and
+                     (int(x.get('totalRaidedSpace', 0)) -
+                      int(x.get('usedSpace', 0) >= size))]
+        if not avl_pools:
+            msg = _("No storage pool found with available capacity %s.")
+            LOG.warn(msg % size_gb)
+        return avl_pools
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""

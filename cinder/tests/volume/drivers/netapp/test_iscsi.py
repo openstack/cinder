@@ -20,29 +20,82 @@ import uuid
 
 import mock
 
+from cinder import exception
 from cinder import test
+from cinder.tests.test_netapp import create_configuration
 import cinder.volume.drivers.netapp.api as ntapi
 import cinder.volume.drivers.netapp.iscsi as ntap_iscsi
+from cinder.volume.drivers.netapp.iscsi import NetAppDirect7modeISCSIDriver \
+    as iscsi7modeDriver
+from cinder.volume.drivers.netapp.iscsi import NetAppDirectCmodeISCSIDriver \
+    as iscsiCmodeDriver
+from cinder.volume.drivers.netapp.iscsi import NetAppDirectISCSIDriver \
+    as iscsiDriver
+import cinder.volume.drivers.netapp.ssc_utils as ssc_utils
+import cinder.volume.drivers.netapp.utils as na_utils
 
 
 class NetAppDirectISCSIDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppDirectISCSIDriverTestCase, self).setUp()
+        configuration = self._set_config(create_configuration())
         self.driver = ntap_iscsi.NetAppDirectISCSIDriver(
-            configuration=mock.Mock())
+            configuration=configuration)
         self.driver.client = mock.Mock()
         self.fake_volume = str(uuid.uuid4())
         self.fake_lun = str(uuid.uuid4())
         self.fake_size = '1024'
-        self.fake_metadata = {
-            'OsType': 'linux',
-            'SpaceReserved': 'true',
-        }
+        self.fake_metadata = {'OsType': 'linux', 'SpaceReserved': 'true'}
         self.mock_request = mock.Mock()
+
+    def _set_config(self, configuration):
+        configuration.netapp_storage_protocol = 'iscsi'
+        configuration.netapp_login = 'admin'
+        configuration.netapp_password = 'pass'
+        configuration.netapp_server_hostname = '127.0.0.1'
+        configuration.netapp_transport_type = 'http'
+        configuration.netapp_server_port = '80'
+        return configuration
 
     def tearDown(self):
         super(NetAppDirectISCSIDriverTestCase, self).tearDown()
+
+    @mock.patch.object(iscsiDriver, '_get_lun_attr',
+                       mock.Mock(return_value={'Volume': 'vol1'}))
+    def test_get_pool(self):
+        pool = self.driver.get_pool({'name': 'volume-fake-uuid'})
+        self.assertEqual(pool, 'vol1')
+
+    @mock.patch.object(iscsiDriver, '_get_lun_attr',
+                       mock.Mock(return_value=None))
+    def test_get_pool_no_metadata(self):
+        pool = self.driver.get_pool({'name': 'volume-fake-uuid'})
+        self.assertEqual(pool, None)
+
+    @mock.patch.object(iscsiDriver, '_get_lun_attr',
+                       mock.Mock(return_value=dict()))
+    def test_get_pool_volume_unknown(self):
+        pool = self.driver.get_pool({'name': 'volume-fake-uuid'})
+        self.assertEqual(pool, None)
+
+    @mock.patch.object(iscsiDriver, 'create_lun', mock.Mock())
+    @mock.patch.object(iscsiDriver, '_create_lun_handle', mock.Mock())
+    @mock.patch.object(iscsiDriver, '_add_lun_to_table', mock.Mock())
+    @mock.patch.object(na_utils, 'get_volume_extra_specs',
+                       mock.Mock(return_value=None))
+    def test_create_volume(self):
+        self.driver.create_volume({'name': 'lun1', 'size': 100,
+                                   'id': uuid.uuid4(),
+                                   'host': 'hostname@backend#vol1'})
+        self.driver.create_lun.assert_called_once_with(
+            'vol1', 'lun1', 107374182400, mock.ANY, None)
+
+    def test_create_volume_no_pool_provided_by_scheduler(self):
+        self.assertRaises(exception.InvalidHost, self.driver.create_volume,
+                          {'name': 'lun1', 'size': 100,
+                           'id': uuid.uuid4(),
+                           'host': 'hostname@backend'})  # missing pool
 
     def test_create_lun(self):
         expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
@@ -89,6 +142,20 @@ class NetAppDirectISCSIDriverTestCase(test.TestCase):
             self.driver.client.invoke_successfully.assert_called_once_with(
                 mock.ANY, True)
 
+    def test_create_lun_raises_on_failure(self):
+        self.driver.client.invoke_successfully = mock.Mock(
+            side_effect=ntapi.NaApiError)
+        self.assertRaises(ntapi.NaApiError,
+                          self.driver.create_lun,
+                          self.fake_volume,
+                          self.fake_lun,
+                          self.fake_size,
+                          self.fake_metadata)
+
+    def test_update_volume_stats_is_abstract(self):
+        self.assertRaises(NotImplementedError,
+                          self.driver._update_volume_stats)
+
 
 class NetAppiSCSICModeTestCase(test.TestCase):
     """Test case for NetApp's C-Mode iSCSI driver."""
@@ -99,6 +166,7 @@ class NetAppiSCSICModeTestCase(test.TestCase):
             configuration=mock.Mock())
         self.driver.client = mock.Mock()
         self.driver.vserver = mock.Mock()
+        self.driver.ssc_vols = None
 
     def tearDown(self):
         super(NetAppiSCSICModeTestCase, self).tearDown()
@@ -181,6 +249,13 @@ class NetAppiSCSICModeTestCase(test.TestCase):
         self.driver._clone_lun('fakeLUN', 'newFakeLUN')
 
         self.assertEqual(1, self.driver.client.invoke_successfully.call_count)
+
+    @mock.patch.object(ssc_utils, 'refresh_cluster_ssc', mock.Mock())
+    @mock.patch.object(iscsiCmodeDriver, '_get_pool_stats', mock.Mock())
+    @mock.patch.object(na_utils, 'provide_ems', mock.Mock())
+    def test_vol_stats_calls_provide_ems(self):
+        self.driver.get_volume_stats(refresh=True)
+        self.assertEqual(na_utils.provide_ems.call_count, 1)
 
 
 class NetAppiSCSI7ModeTestCase(test.TestCase):
@@ -284,3 +359,10 @@ class NetAppiSCSI7ModeTestCase(test.TestCase):
         self.driver._clone_lun('fakeLUN', 'newFakeLUN')
 
         self.assertEqual(1, self.driver.client.invoke_successfully.call_count)
+
+    @mock.patch.object(iscsi7modeDriver, '_refresh_volume_info', mock.Mock())
+    @mock.patch.object(iscsi7modeDriver, '_get_pool_stats', mock.Mock())
+    @mock.patch.object(na_utils, 'provide_ems', mock.Mock())
+    def test_vol_stats_calls_provide_ems(self):
+        self.driver.get_volume_stats(refresh=True)
+        self.assertEqual(na_utils.provide_ems.call_count, 1)
