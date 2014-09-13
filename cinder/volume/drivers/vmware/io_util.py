@@ -27,6 +27,7 @@ from eventlet import queue
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.vmware import error_util
+from cinder.volume.drivers.vmware import read_write_util
 
 LOG = logging.getLogger(__name__)
 IO_THREAD_SLEEP_TIME = .01
@@ -181,7 +182,7 @@ class IOThread(object):
             self._running = True
             while self._running:
                 try:
-                    data = self.input_file.read(None)
+                    data = self.input_file.read(read_write_util.READ_CHUNKSIZE)
                     if not data:
                         self.stop()
                         self.done.send(True)

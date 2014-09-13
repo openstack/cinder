@@ -2135,6 +2135,10 @@
 # the VC server version. (string value)
 #vmware_host_version=<None>
 
+# Directory where virtual disks are stored during volume
+# backup and restore. (string value)
+#vmware_tmp_dir=/tmp
+
 
 #
 # Options defined in cinder.volume.drivers.windows.windows

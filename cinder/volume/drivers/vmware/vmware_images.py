@@ -159,3 +159,39 @@ def upload_image(context, timeout_secs, image_service, image_id, owner_id,
                    image_service=image_service, image_id=image_id,
                    image_meta=image_metadata)
     LOG.info(_("Uploaded image: %s to the Glance image server.") % image_id)
+
+
+def download_stream_optimized_disk(
+        context, timeout_secs, write_handle, **kwargs):
+    """Download virtual disk in streamOptimized format from VMware server."""
+    vmdk_file_path = kwargs.get('vmdk_file_path')
+    LOG.debug("Downloading virtual disk: %(vmdk_path)s to %(dest)s.",
+              {'vmdk_path': vmdk_file_path,
+               'dest': write_handle.name})
+    file_size = kwargs.get('vmdk_size')
+    read_handle = rw_util.VMwareHTTPReadVmdk(kwargs.get('session'),
+                                             kwargs.get('host'),
+                                             kwargs.get('vm'),
+                                             vmdk_file_path,
+                                             file_size)
+    start_transfer(context, timeout_secs, read_handle, file_size, write_handle)
+    LOG.debug("Downloaded virtual disk: %s.", vmdk_file_path)
+
+
+def upload_stream_optimized_disk(context, timeout_secs, read_handle, **kwargs):
+    """Upload virtual disk in streamOptimized format to VMware server."""
+    LOG.debug("Uploading virtual disk file: %(path)s to create backing with "
+              "spec: %(spec)s.",
+              {'path': read_handle.name,
+               'spec': kwargs.get('vm_create_spec')})
+    file_size = kwargs.get('vmdk_size')
+    write_handle = rw_util.VMwareHTTPWriteVmdk(kwargs.get('session'),
+                                               kwargs.get('host'),
+                                               kwargs.get('resource_pool'),
+                                               kwargs.get('vm_folder'),
+                                               kwargs.get('vm_create_spec'),
+                                               file_size)
+    start_transfer(context, timeout_secs, read_handle, file_size,
+                   write_file_handle=write_handle)
+    LOG.debug("Uploaded virtual disk file: %s.", read_handle.name)
+    return write_handle.get_imported_vm()

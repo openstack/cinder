@@ -199,6 +199,7 @@ class VMwareHTTPWriteVmdk(VMwareHTTPFile):
         self._lease = lease
         lease_info = session.invoke_api(vim_util, 'get_object_property',
                                         session.vim, lease, 'info')
+        self._vm_ref = lease_info.entity
         # Find the url for vmdk device
         url = self.find_vmdk_url(lease_info, host)
         if not url:
@@ -261,6 +262,10 @@ class VMwareHTTPWriteVmdk(VMwareHTTPFile):
         else:
             LOG.debug("Lease is already in state: %s." % state)
         super(VMwareHTTPWriteVmdk, self).close()
+
+    def get_imported_vm(self):
+        """"Get managed object reference of the VM created for import."""
+        return self._vm_ref
 
 
 class VMwareHTTPReadVmdk(VMwareHTTPFile):
