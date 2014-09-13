@@ -128,8 +128,9 @@ class VolumeTransferController(wsgi.Controller):
     def _get_transfers(self, req, is_detail):
         """Returns a list of transfers, transformed through view builder."""
         context = req.environ['cinder.context']
+        filters = req.params.copy()
         LOG.debug('Listing volume transfers')
-        transfers = self.transfer_api.get_all(context)
+        transfers = self.transfer_api.get_all(context, filters=filters)
         limited_list = common.limited(transfers, req)
 
         if is_detail:
