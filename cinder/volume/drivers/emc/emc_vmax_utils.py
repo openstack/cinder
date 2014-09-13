@@ -480,7 +480,6 @@ class EMCVMAXUtils(object):
     def find_storage_system_name_from_service(self, configService):
         """Given any service get the storage system name from it.
 
-        :param conn: connection to the ecom server
         :param configService: the configuration service
         :returns: configService['SystemName'] - storage system name (String)
         """
@@ -535,7 +534,7 @@ class EMCVMAXUtils(object):
         NOTE:  This exists in common too...will be moving it to other file
         where both common and masking can access it
 
-        :param classname: connection to the ecom server
+        :param classname: class name for the volume instance
         :param bindings: volume created from job
         :returns: foundVolumeInstance - the volume instance
 
@@ -558,18 +557,9 @@ class EMCVMAXUtils(object):
         :returns: ecomIp - the ecom IP address
         :returns: ecomPort - the ecom port
         """
-        myFile = open(filename, 'r')
-        data = myFile.read()
-        myFile.close()
-        dom = parseString(data)
-        ecomIps = dom.getElementsByTagName('EcomServerIp')
-        if ecomIps is not None and len(ecomIps) > 0:
-            ecomIp = ecomIps[0].toxml().replace('<EcomServerIp>', '')
-            ecomIp = ecomIp.replace('</EcomServerIp>', '')
-        ecomPorts = dom.getElementsByTagName('EcomServerPort')
-        if ecomPorts is not None and len(ecomPorts) > 0:
-            ecomPort = ecomPorts[0].toxml().replace('<EcomServerPort>', '')
-            ecomPort = ecomPort.replace('</EcomServerPort>', '')
+
+        ecomIp = self._parse_from_file(filename, 'EcomServerIp')
+        ecomPort = self._parse_from_file(filename, 'EcomServerPort')
         if ecomIp is not None and ecomPort is not None:
             LOG.debug("Ecom IP: %(ecomIp)s Port: %(ecomPort)s",
                       {'ecomIp': ecomIp, 'ecomPort': ecomPort})
@@ -585,18 +575,9 @@ class EMCVMAXUtils(object):
         :returns: ecomUser - the ecom user
         :returns: ecomPasswd - the ecom password
         """
-        myFile = open(filename, 'r')
-        data = myFile.read()
-        myFile.close()
-        dom = parseString(data)
-        ecomUsers = dom.getElementsByTagName('EcomUserName')
-        if ecomUsers is not None and len(ecomUsers) > 0:
-            ecomUser = ecomUsers[0].toxml().replace('<EcomUserName>', '')
-            ecomUser = ecomUser.replace('</EcomUserName>', '')
-        ecomPasswds = dom.getElementsByTagName('EcomPassword')
-        if ecomPasswds is not None and len(ecomPasswds) > 0:
-            ecomPasswd = ecomPasswds[0].toxml().replace('<EcomPassword>', '')
-            ecomPasswd = ecomPasswd.replace('</EcomPassword>', '')
+
+        ecomUser = self._parse_from_file(filename, 'EcomUserName')
+        ecomPasswd = self._parse_from_file(filename, 'EcomPassword')
         if ecomUser is not None and ecomPasswd is not None:
             return ecomUser, ecomPasswd
         else:
@@ -622,11 +603,14 @@ class EMCVMAXUtils(object):
             portGroupsXml = portGroups[0].toxml()
             portGroupsXml = portGroupsXml.replace('<PortGroups>', '')
             portGroupsXml = portGroupsXml.replace('</PortGroups>', '')
-            portGroupsXml = portGroupsXml.replace('<PortGroup>', '')
+            portGroupsXml = portGroupsXml.replace('<PortGroup>', '|')
             portGroupsXml = portGroupsXml.replace('</PortGroup>', '')
-            # convert the newline separated string to a list
+            portGroupsXml = portGroupsXml.replace('\n', '')
+            portGroupsXml = portGroupsXml.replace('\t', '')
+            portGroupsXml = portGroupsXml[1:]
+            # convert the | separated string to a list
             portGroupNames = (
-                [s.strip() for s in portGroupsXml.split('\n') if s])
+                [s.strip() for s in portGroupsXml.split('|') if s])
 
             numPortGroups = len(portGroupNames)
 
@@ -639,30 +623,46 @@ class EMCVMAXUtils(object):
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-    def parse_fast_policy_name_from_file(self, fileName):
-        """Parse the fast policy name from config file.  If it is not there
-        then NON FAST is assumed
+    def _parse_from_file(self, fileName, stringToParse):
+        """Parse the string from XML.
+
+        Remove newlines, tabs, and trailing spaces.
 
         :param fileName: the path and name of the file
-        :returns: fastPolicyName - the fast policy name
+        :returns: retString - the returned string
         """
-        fastPolicyName = None
+        retString = None
         myFile = open(fileName, 'r')
         data = myFile.read()
         myFile.close()
         dom = parseString(data)
-        fastPolicy = dom.getElementsByTagName('FastPolicy')
-        if fastPolicy is not None and len(fastPolicy) > 0:
-            fastPolicyXml = fastPolicy[0].toxml()
-            fastPolicyXml = fastPolicyXml.replace('<FastPolicy>', '')
-            fastPolicyName = fastPolicyXml.replace('</FastPolicy>', '')
+        tag = dom.getElementsByTagName(stringToParse)
+        if tag is not None and len(tag) > 0:
+            strXml = tag[0].toxml()
+            strXml = strXml.replace('<%s>' % stringToParse, '')
+            strXml = strXml.replace('\n', '')
+            strXml = strXml.replace('\t', '')
+            retString = strXml.replace('</%s>' % stringToParse, '')
+            retString = retString.strip()
+        return retString
+
+    def parse_fast_policy_name_from_file(self, fileName):
+        """Parse the fast policy name from config file.
+
+        If it is not there, then NON FAST is assumed.
+
+        :param fileName: the path and name of the file
+        :returns: fastPolicyName - the fast policy name
+        """
+
+        fastPolicyName = self._parse_from_file(fileName, 'FastPolicy')
+        if fastPolicyName:
             LOG.debug("File %(fileName)s: Fast Policy is %(fastPolicyName)s"
                       % {'fileName': fileName,
                          'fastPolicyName': fastPolicyName})
-            return fastPolicyName
         else:
             LOG.info(_("Fast Policy not found."))
-            return None
+        return fastPolicyName
 
     def parse_array_name_from_file(self, fileName):
         """Parse the array name from config file.
@@ -673,20 +673,10 @@ class EMCVMAXUtils(object):
         :param fileName: the path and name of the file
         :returns: arrayName - the array name
         """
-        arrayName = None
-        myFile = open(fileName, 'r')
-        data = myFile.read()
-        myFile.close()
-        dom = parseString(data)
-        array = dom.getElementsByTagName('Array')
-        if array is not None and len(array) > 0:
-            arrayXml = array[0].toxml()
-            arrayXml = arrayXml.replace('<Array>', '')
-            arrayName = arrayXml.replace('</Array>', '')
-            return arrayName
-        else:
+        arrayName = self._parse_from_file(fileName, 'Array')
+        if not arrayName:
             LOG.debug("Array not found from config file.")
-            return None
+        return arrayName
 
     def parse_pool_name_from_file(self, fileName):
         """Parse the pool name from config file.
@@ -696,18 +686,8 @@ class EMCVMAXUtils(object):
         :param fileName: the path and name of the file
         :returns: poolName - the pool name
         """
-        poolName = None
-        myFile = open(fileName, 'r')
-        data = myFile.read()
-        myFile.close()
-        dom = parseString(data)
-        pool = dom.getElementsByTagName('Pool')
-        if pool is not None and len(pool) > 0:
-            poolXml = pool[0].toxml()
-            poolXml = poolXml.replace('<Pool>', '')
-            poolName = poolXml.replace('</Pool>', '')
-            return poolName
-        else:
+        poolName = self._parse_from_file(fileName, 'Pool')
+        if not poolName:
             LOG.debug("Pool not found from config file.")
 
         return poolName
@@ -1148,7 +1128,7 @@ class EMCVMAXUtils(object):
             self, conn, hardwareIdManagementService):
         """Get all the hardware ids from an array.
 
-        :param conn: connection to the ecom
+        :param conn: connection to the ecom server
         :param: hardwareIdManagementService - hardware id management service
         :returns: hardwareIdInstanceNames - the list of hardware
                                             id instance names
@@ -1177,11 +1157,15 @@ class EMCVMAXUtils(object):
                 propertiesList = (
                     ipProtocolEndpointInstance.properties.items())
                 for properties in propertiesList:
-                    if properties[0] == 'ElementName':
+                    if properties[0] == 'IPv4Address':
                         cimProperties = properties[1]
                         foundIpAddress = cimProperties.value
-                        break
-                if foundIpAddress is not None:
-                    break
+                        if (foundIpAddress == '127.0.0.1'
+                                or foundIpAddress == '0.0.0.0'):
+                            foundIpAddress = None
+                        else:
+                            break
+            if foundIpAddress is not None:
+                break
 
         return foundIpAddress
