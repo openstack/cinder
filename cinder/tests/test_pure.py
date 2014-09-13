@@ -211,6 +211,29 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.assert_error_propagates([self.array.destroy_volume],
                                      self.driver.delete_volume, VOLUME)
 
+    def test_delete_connected_volume(self):
+        vol_name = VOLUME["name"] + "-cinder"
+        host_name_a = "ha"
+        host_name_b = "hb"
+        self.array.list_volume_hosts.return_value = [{
+            "host": host_name_a,
+            "lun": 7,
+            "name": vol_name,
+            "size": 3221225472
+        }, {
+            "host": host_name_b,
+            "lun": 2,
+            "name": vol_name,
+            "size": 3221225472
+        }]
+
+        self.driver.delete_volume(VOLUME)
+        expected = [mock.call.list_volume_hosts(vol_name),
+                    mock.call.disconnect_host(host_name_a, vol_name),
+                    mock.call.disconnect_host(host_name_b, vol_name),
+                    mock.call.destroy_volume(vol_name)]
+        self.array.assert_has_calls(expected)
+
     def test_create_snapshot(self):
         vol_name = SRC_VOL["name"] + "-cinder"
         self.driver.create_snapshot(SNAPSHOT)
@@ -337,12 +360,13 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.assertFalse(self.array.delete_host.called)
         # Branch with host added to host group
         self.array.reset_mock()
+        self.array.list_host_connections.return_value = []
         mock_host.return_value = PURE_HOST.copy()
         mock_host.return_value.update(hgroup="some-group")
         self.driver.terminate_connection(VOLUME, CONNECTOR)
         self.array.disconnect_host.assert_called_with(PURE_HOST_NAME, vol_name)
-        self.assertFalse(self.array.list_host_connections.called)
-        self.assertFalse(self.array.delete_host.called)
+        self.assertTrue(self.array.list_host_connections.called)
+        self.assertTrue(self.array.delete_host.called)
         # Branch with host still having connected volumes
         self.array.reset_mock()
         self.array.list_host_connections.return_value = [
@@ -370,6 +394,15 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.array.list_host_connections.assert_called_with(PURE_HOST_NAME,
                                                             private=True)
         self.array.delete_host.assert_called_with(PURE_HOST_NAME)
+        # Branch where an unexpected exception occurs
+        self.array.reset_mock()
+        self.array.disconnect_host.side_effect = exception.PureAPIException(
+            code=500, reason="unexpected exception")
+        self.assertRaises(exception.PureAPIException,
+                          self.driver.terminate_connection, VOLUME, CONNECTOR)
+        self.array.disconnect_host.assert_called_with(PURE_HOST_NAME, vol_name)
+        self.assertFalse(self.array.list_host_connections.called)
+        self.assertFalse(self.array.delete_host.called)
 
     def test_get_volume_stats(self):
         self.assertEqual(self.driver.get_volume_stats(), {})
@@ -685,6 +718,14 @@ class FlashArrayRESTTestCase(FlashArrayBaseTestCase):
         mock_req.assert_called_with(self.array, "GET", "port", self.kwargs)
         self.assert_error_propagates([mock_req], self.array.list_ports,
                                      **self.kwargs)
+
+    def test_list_volume_hosts(self, mock_req):
+        mock_req.return_value = self.result
+        result = self.array.list_volume_hosts("vol-name")
+        self.assertEqual(result, self.result)
+        mock_req.assert_called_with(self.array, "GET", "volume/vol-name/host")
+        self.assert_error_propagates([mock_req], self.array.list_volume_hosts,
+                                     "vol-name")
 
 
 class FakeFlashArray(pure.FlashArray):
