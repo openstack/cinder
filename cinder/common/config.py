@@ -100,6 +100,9 @@ global_opts = [
                      'can improve data throughput, such as when high '
                      'network bandwidth is available and you use '
                      'compressed image formats like qcow2.'),
+    cfg.StrOpt('glance_ca_certificates_file',
+               help='Location of ca certificates file to use for glance '
+                    'client requests.'),
     cfg.IntOpt('glance_request_timeout',
                default=None,
                help='http/https timeout value for glance operations. If no '

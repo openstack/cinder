@@ -84,6 +84,7 @@ def _create_glance_client(context, netloc, use_ssl,
         # https specific params
         params['insecure'] = CONF.glance_api_insecure
         params['ssl_compression'] = CONF.glance_api_ssl_compression
+        params['cacert'] = CONF.glance_ca_certificates_file
     else:
         scheme = 'http'
     if CONF.auth_strategy == 'keystone':

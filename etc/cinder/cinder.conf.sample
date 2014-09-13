@@ -524,6 +524,10 @@
 # value)
 #glance_api_ssl_compression=false
 
+# Location of ca certificates file to use for glance client
+# requests. (string value)
+#glance_ca_certificates_file=<None>
+
 # http/https timeout value for glance operations. If no value
 # (None) is supplied here, the glanceclient default value is
 # used. (integer value)
