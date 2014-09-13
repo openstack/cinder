@@ -73,10 +73,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.4 - Added support for volume retype
         2.0.5 - Added CHAP support, requires 3.1.3 MU1 firmware
                 and hp3parclient 3.1.0.
+        2.0.6 - Fixing missing login/logout around attach/detach bug #1367429
 
     """
 
-    VERSION = "2.0.5"
+    VERSION = "2.0.6"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -643,11 +644,19 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     @utils.synchronized('3par', external=True)
     def attach_volume(self, context, volume, instance_uuid, host_name,
                       mountpoint):
-        self.common.attach_volume(volume, instance_uuid)
+        self.common.client_login()
+        try:
+            self.common.attach_volume(volume, instance_uuid)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def detach_volume(self, context, volume):
-        self.common.detach_volume(volume)
+        self.common.client_login()
+        try:
+            self.common.detach_volume(volume)
+        finally:
+            self.common.client_logout()
 
     @utils.synchronized('3par', external=True)
     def retype(self, context, volume, new_type, diff, host):
