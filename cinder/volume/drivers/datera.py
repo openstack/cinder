@@ -85,9 +85,9 @@ class DateraDriver(san.SanISCSIDriver):
         try:
             self._issue_api_request('volumes', 'delete', volume['id'])
         except exception.NotFound:
-            msg = _("Tried to delete volume %s, but was not found in Datera "
-                    "cluster. Continuing with delete.")
-            LOG.info(msg)
+            msg = _("Tried to delete volume %s, but it was not found in the "
+                    "Datera cluster. Continuing with delete.")
+            LOG.info(msg, volume['id'])
 
     def _do_export(self, context, volume):
         """Gets the associated account, retrieves CHAP info and updates."""
@@ -114,13 +114,23 @@ class DateraDriver(san.SanISCSIDriver):
     def create_export(self, context, volume):
         return self._do_export(context, volume)
 
+    def detach_volume(self, context, volume):
+        try:
+            self._issue_api_request('volumes', 'delete', resource=volume['id'],
+                                    action='export')
+        except exception.NotFound:
+            msg = _("Tried to delete export for volume %s, but it was not "
+                    "found in the Datera cluster. Continuing with volume "
+                    "detach")
+            LOG.info(msg, volume['id'])
+
     def delete_snapshot(self, snapshot):
         try:
             self._issue_api_request('snapshots', 'delete', snapshot['id'])
         except exception.NotFound:
             msg = _("Tried to delete snapshot %s, but was not found in Datera "
                     "cluster. Continuing with delete.")
-            LOG.info(msg)
+            LOG.info(msg, snapshot['id'])
 
     def create_snapshot(self, snapshot):
         data = {
