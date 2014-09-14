@@ -1284,17 +1284,20 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                   {'id': volume['id'],
                    'image_id': image_id})
 
-        # If the user-specified volume size is greater than image size, we need
-        # to extend the virtual disk to the capacity specified by the user.
-        volume_size_in_bytes = volume['size'] * units.Gi
-        if volume_size_in_bytes > image_size_in_bytes:
-            LOG.debug("Extending volume: %(id)s since the user specified "
-                      "volume size (bytes): %(size)s is greater than image"
-                      " size (bytes): %(image_size)s.",
-                      {'id': volume['id'],
-                       'size': volume_size_in_bytes,
-                       'image_size': image_size_in_bytes})
+        # If the user-specified volume size is greater than backing's
+        # current disk size, we should extend the disk.
+        volume_size = volume['size'] * units.Gi
+        backing = self.volumeops.get_backing(volume['name'])
+        disk_size = self.volumeops.get_disk_size(backing)
+        if volume_size > disk_size:
+            LOG.debug("Extending volume: %(name)s since the user specified "
+                      "volume size (bytes): %(vol_size)d is greater than "
+                      "backing's current disk size (bytes): %(disk_size)d.",
+                      {'name': volume['name'],
+                       'vol_size': volume_size,
+                       'disk_size': disk_size})
             self._extend_vmdk_virtual_disk(volume['name'], volume['size'])
+        # TODO(vbala): handle volume_size < disk_size case.
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Creates glance image from volume.

@@ -935,6 +935,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                           fake_context, fake_volume,
                           image_service, fake_image_id)
 
+    @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
     @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -948,7 +949,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     def test_copy_image_to_volume_non_stream_optimized(
             self, create_backing, get_ds_name_folder_path, get_disk_type,
             create_disk_from_sparse_image, create_disk_from_preallocated_image,
-            vops, select_ds_for_volume, generate_uuid):
+            vops, select_ds_for_volume, generate_uuid, extend_disk):
         self._test_copy_image_to_volume_non_stream_optimized(
             create_backing,
             get_ds_name_folder_path,
@@ -957,12 +958,13 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
             create_disk_from_preallocated_image,
             vops,
             select_ds_for_volume,
-            generate_uuid)
+            generate_uuid,
+            extend_disk)
 
     def _test_copy_image_to_volume_non_stream_optimized(
             self, create_backing, get_ds_name_folder_path, get_disk_type,
             create_disk_from_sparse_image, create_disk_from_preallocated_image,
-            vops, select_ds_for_volume, generate_uuid):
+            vops, select_ds_for_volume, generate_uuid, extend_disk):
         image_size_in_bytes = 2 * units.Gi
         adapter_type = 'lsiLogic'
         image_meta = {'disk_format': 'vmdk',
@@ -1004,11 +1006,15 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         create_disk_from_sparse_image.return_value = path
         create_disk_from_preallocated_image.return_value = path
 
+        volume_size = 2
+        vops.get_disk_size.return_value = volume_size * units.Gi
+
         context = mock.Mock()
         volume = {'name': 'volume_name',
                   'id': 'volume_id',
-                  'size': image_size_in_bytes}
+                  'size': volume_size}
         image_id = mock.Mock()
+
         self._driver.copy_image_to_volume(
             context, volume, image_service, image_id)
 
@@ -1026,11 +1032,14 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
             volume['name'], backing, None, volumeops.FULL_CLONE_TYPE,
             summary.datastore, disk_type)
         vops.delete_backing.assert_called_once_with(backing)
+        self.assertFalse(extend_disk.called)
 
+        vops.get_disk_size.return_value = 1 * units.Gi
         create_backing.reset_mock()
         vops.attach_disk_to_backing.reset_mock()
         vops.delete_backing.reset_mock()
         image_meta['properties']['vmware_disktype'] = 'preallocated'
+
         self._driver.copy_image_to_volume(
             context, volume, image_service, image_id)
 
@@ -1042,13 +1051,17 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vops.attach_disk_to_backing.assert_called_once_with(
             backing, image_size_in_bytes / units.Ki, disk_type,
             adapter_type, path.get_descriptor_ds_file_path())
+        extend_disk.assert_called_once_with(volume['name'], volume['size'])
 
+        extend_disk.reset_mock()
         create_disk_from_preallocated_image.side_effect = (
             error_util.VimException("Error"))
+
         self.assertRaises(error_util.VimException,
                           self._driver.copy_image_to_volume,
                           context, volume, image_service, image_id)
         vops.delete_backing.assert_called_once_with(backing)
+        self.assertFalse(extend_disk.called)
 
     @mock.patch(
         'cinder.volume.drivers.vmware.volumeops.FlatExtentVirtualDiskPath')
@@ -1211,15 +1224,19 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                           image_service, fake_image_id)
         self.assertFalse(volumeops.get_create_spec.called)
 
-        # If the volume size is greater then than the image size,
+        # If the volume size is greater then than the backing's disk size,
         # _extend_vmdk_virtual_disk will be called.
         _select_ds_for_volume.side_effect = None
         _select_ds_for_volume.return_value = (fake_host, fake_rp,
                                               fake_folder, fake_summary)
         profile_id = 'profile-1'
         get_profile_id.return_value = profile_id
+
+        volumeops.get_disk_size.return_value = size
+
         self._driver.copy_image_to_volume(fake_context, fake_volume,
                                           image_service, fake_image_id)
+
         image_service.show.assert_called_with(fake_context, fake_image_id)
         _select_ds_for_volume.assert_called_with(fake_volume)
         get_profile_id.assert_called_once_with(fake_volume)
@@ -1240,31 +1257,30 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                                                  vm_create_spec=
                                                  vm_import_spec,
                                                  image_size=size)
-        _extend_virtual_disk.assert_called_with(fake_volume['name'],
-                                                fake_volume_size)
-        self.assertFalse(volumeops.get_backing.called)
-        self.assertFalse(volumeops.delete_backing.called)
+        _extend_virtual_disk.assert_called_once_with(fake_volume['name'],
+                                                     fake_volume_size)
 
-        # If the volume size is not greater then than the image size,
+        # If the volume size is not greater then than backing's disk size,
         # _extend_vmdk_virtual_disk will not be called.
-        fake_volume_size = size_gb
-        fake_volume['size'] = fake_volume_size
+        volumeops.get_disk_size.return_value = fake_volume_size * units.Gi
         _extend_virtual_disk.reset_mock()
+
         self._driver.copy_image_to_volume(fake_context, fake_volume,
                                           image_service, fake_image_id)
+
         self.assertFalse(_extend_virtual_disk.called)
-        self.assertFalse(volumeops.get_backing.called)
-        self.assertFalse(volumeops.delete_backing.called)
 
         # If fetch_stream_optimized_image raises an exception,
         # get_backing and delete_backing will be called.
         fetch_optimized_image.side_effect = exception.CinderException
+
         self.assertRaises(exception.CinderException,
                           self._driver.copy_image_to_volume,
                           fake_context, fake_volume,
                           image_service, fake_image_id)
         volumeops.get_backing.assert_called_with(fake_volume['name'])
         volumeops.delete_backing.assert_called_with(fake_backing)
+        self.assertFalse(_extend_virtual_disk.called)
 
     def test_copy_volume_to_image_non_vmdk(self):
         """Test copy_volume_to_image for a non-vmdk disk format."""
@@ -2277,6 +2293,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         """Test vmdk._extend_vmdk_virtual_disk."""
         self._test_extend_vmdk_virtual_disk(volume_ops)
 
+    @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
     @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -2290,7 +2307,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     def test_copy_image_to_volume_non_stream_optimized(
             self, create_backing, get_ds_name_folder_path, get_disk_type,
             create_disk_from_sparse_image, create_disk_from_preallocated_image,
-            vops, select_ds_for_volume, generate_uuid):
+            vops, select_ds_for_volume, generate_uuid, extend_disk):
         self._test_copy_image_to_volume_non_stream_optimized(
             create_backing,
             get_ds_name_folder_path,
@@ -2299,7 +2316,8 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
             create_disk_from_preallocated_image,
             vops,
             select_ds_for_volume,
-            generate_uuid)
+            generate_uuid,
+            extend_disk)
 
     @mock.patch(
         'cinder.volume.drivers.vmware.volumeops.FlatExtentVirtualDiskPath')

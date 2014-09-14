@@ -1142,6 +1142,9 @@ class VMwareVolumeOps(object):
             if device.__class__.__name__ == "VirtualDisk":
                 return device
 
+        LOG.error(_("Virtual disk device of backing: %s not found."), backing)
+        raise error_util.VirtualDiskNotFoundException()
+
     def get_vmdk_path(self, backing):
         """Get the vmdk file name of the backing.
 
@@ -1158,6 +1161,15 @@ class VMwareVolumeOps(object):
             LOG.error(msg)
             raise AssertionError(msg)
         return backing.fileName
+
+    def get_disk_size(self, backing):
+        """Get disk size of the backing.
+
+        :param backing: backing VM reference
+        :return: disk size in bytes
+        """
+        disk_device = self._get_disk_device(backing)
+        return disk_device.capacityInKB * units.Ki
 
     def _get_virtual_disk_create_spec(self, size_in_kb, adapter_type,
                                       disk_type):

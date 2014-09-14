@@ -83,3 +83,8 @@ class InvalidDiskTypeException(VMwareDriverException):
 class ImageTransferException(VMwareDriverException):
     """Thrown when there is an error during image transfer."""
     message = _("Error occurred during image transfer.")
+
+
+class VirtualDiskNotFoundException(VMwareDriverException):
+    """Thrown when virtual disk is not found."""
+    message = _("There is no virtual disk device.")
