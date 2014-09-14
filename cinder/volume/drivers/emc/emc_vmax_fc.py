@@ -149,7 +149,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
                 }
             }
         """
-        device_info, ipAddress = self.common.initialize_connection(
+        device_info = self.common.initialize_connection(
             volume, connector)
         device_number = device_info['hostlunid']
         storage_system = device_info['storagesystem']

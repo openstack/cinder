@@ -48,7 +48,9 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                                           configuration=self.configuration)
 
     def check_for_setup_error(self):
-        pass
+        if not self.configuration.iscsi_ip_address:
+            raise exception.InvalidInput(
+                reason=_('iscsi_ip_address is not set.'))
 
     def create_volume(self, volume):
         """Creates a EMC(VMAX/VNX) volume."""
@@ -138,11 +140,10 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                 }
             }
         """
-        devInfo, ipAddress = self.common.initialize_connection(
-            volume, connector)
+        self.common.initialize_connection(volume, connector)
 
         iscsi_properties = self.smis_get_iscsi_properties(
-            volume, connector, ipAddress)
+            volume, connector)
 
         LOG.info(_("Leaving initialize_connection: %s") % (iscsi_properties))
         return {
@@ -150,13 +151,13 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
             'data': iscsi_properties
         }
 
-    def smis_do_iscsi_discovery(self, volume, ipAddress):
+    def smis_do_iscsi_discovery(self, volume):
 
-        LOG.warn(_("ISCSI provider_location not stored, using discovery"))
+        LOG.info(_("ISCSI provider_location not stored, using discovery."))
 
         (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
                                     '-t', 'sendtargets', '-p',
-                                    ipAddress,
+                                    self.configuration.iscsi_ip_address,
                                     run_as_root=True)
 
         LOG.info(_(
@@ -168,7 +169,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
 
         return targets
 
-    def smis_get_iscsi_properties(self, volume, connector, ipAddress):
+    def smis_get_iscsi_properties(self, volume, connector):
         """Gets iscsi configuration.
 
         We ideally get saved information in the volume entity, but fall back
@@ -186,7 +187,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         """
         properties = {}
 
-        location = self.smis_do_iscsi_discovery(volume, ipAddress)
+        location = self.smis_do_iscsi_discovery(volume)
         if not location:
             raise exception.InvalidVolume(_("Could not find iSCSI export "
                                           " for volume %(volumeName)s")
