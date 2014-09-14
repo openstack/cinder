@@ -378,6 +378,7 @@ class Backups(extensions.ExtensionDescriptor):
         res = extensions.ResourceExtension(
             Backups.alias, BackupsController(),
             collection_actions={'detail': 'GET', 'import_record': 'POST'},
-            member_actions={'restore': 'POST', 'export_record': 'GET'})
+            member_actions={'restore': 'POST', 'export_record': 'GET',
+                            'action': 'POST'})
         resources.append(res)
         return resources

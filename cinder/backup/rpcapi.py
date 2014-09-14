@@ -88,3 +88,12 @@ class BackupAPI(object):
                    backup_service=backup_service,
                    backup_url=backup_url,
                    backup_hosts=backup_hosts)
+
+    def reset_status(self, ctxt, host, backup_id, status):
+        LOG.debug("reset_status in rpcapi backup_id %(id)s "
+                  "on host %(host)s.",
+                  {'id': backup_id,
+                   'host': host})
+        cctxt = self.client.prepare(server=host)
+        return cctxt.cast(ctxt, 'reset_status', backup_id=backup_id,
+                          status=status)

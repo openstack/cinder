@@ -17,6 +17,7 @@ from webob import exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder import backup
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -47,6 +48,7 @@ class AdminController(wsgi.Controller):
         # singular name of the resource
         self.resource_name = self.collection.rstrip('s')
         self.volume_api = volume.API()
+        self.backup_api = backup.API()
 
     def _update(self, *args, **kwargs):
         raise NotImplementedError()
@@ -254,6 +256,38 @@ class SnapshotAdminController(AdminController):
         return self.volume_api.delete_snapshot(*args, **kwargs)
 
 
+class BackupAdminController(AdminController):
+    """AdminController for Backups."""
+
+    collection = 'backups'
+
+    valid_status = set(['available',
+                        'error'
+                        ])
+
+    @wsgi.action('os-reset_status')
+    def _reset_status(self, req, id, body):
+        """Reset status on the resource."""
+        context = req.environ['cinder.context']
+        self.authorize(context, 'reset_status')
+        update = self.validate_update(body['os-reset_status'])
+        msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
+        LOG.debug(msg, {'resource': self.resource_name, 'id': id,
+                        'update': update})
+
+        notifier_info = {'id': id, 'update': update}
+        notifier = rpc.get_notifier('backupStatusUpdate')
+        notifier.info(context, self.collection + '.reset_status.start',
+                      notifier_info)
+
+        try:
+            self.backup_api.reset_status(context=context, backup_id=id,
+                                         status=update['status'])
+        except exception.NotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+        return webob.Response(status_int=202)
+
+
 class Admin_actions(extensions.ExtensionDescriptor):
     """Enable admin actions."""
 
@@ -264,7 +298,8 @@ class Admin_actions(extensions.ExtensionDescriptor):
 
     def get_controller_extensions(self):
         exts = []
-        for class_ in (VolumeAdminController, SnapshotAdminController):
+        for class_ in (VolumeAdminController, SnapshotAdminController,
+                       BackupAdminController):
             controller = class_()
             extension = extensions.ControllerExtension(
                 self, class_.collection, controller)

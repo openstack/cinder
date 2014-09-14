@@ -46,6 +46,7 @@ from cinder.openstack.common import excutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder import quota
+from cinder import rpc
 from cinder import utils
 from cinder.volume import utils as volume_utils
 
@@ -601,3 +602,97 @@ class BackupManager(manager.SchedulerDependentManager):
 
             LOG.info(_('Import record id %s metadata from driver '
                        'finished.') % backup_id)
+
+    def reset_status(self, context, backup_id, status):
+        """Reset volume backup status.
+
+        :param context: running context
+        :param backup_id: The backup id for reset status operation
+        :param status: The status to be set
+        :raises: InvalidBackup
+        :raises: BackupVerifyUnsupportedDriver
+        :raises: AttributeError
+        """
+        LOG.info(_('Reset backup status started, backup_id: '
+                   '%(backup_id)s, status: %(status)s.'),
+                 {'backup_id': backup_id,
+                  'status': status})
+        try:
+            # NOTE(flaper87): Verify the driver is enabled
+            # before going forward. The exception will be caught
+            # and the backup status updated. Fail early since there
+            # are no other status to change but backup's
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_("Backup driver has not been initialized"))
+
+        backup = self.db.backup_get(context, backup_id)
+        backup_service = self._map_service_to_driver(backup['service'])
+        LOG.info(_('Backup service: %s.'), backup_service)
+        if backup_service is not None:
+            configured_service = self.driver_name
+            if backup_service != configured_service:
+                err = _('Reset backup status aborted, the backup service'
+                        ' currently configured [%(configured_service)s] '
+                        'is not the backup service that was used to create'
+                        ' this backup [%(backup_service)s].') % \
+                    {'configured_service': configured_service,
+                     'backup_service': backup_service}
+                raise exception.InvalidBackup(reason=err)
+            # Verify backup
+            try:
+                # check whether the backup is ok or not
+                if status == 'available' and backup['status'] != 'restoring':
+                    # check whether we could verify the backup is ok or not
+                    if isinstance(backup_service,
+                                  driver.BackupDriverWithVerify):
+                        backup_service.verify(backup_id)
+                        self.db.backup_update(context, backup_id,
+                                              {'status': status})
+                    # driver does not support verify function
+                    else:
+                        msg = (_('Backup service %(configured_service)s '
+                                 'does not support verify. Backup id'
+                                 ' %(id)s is not verified. '
+                                 'Skipping verify.') %
+                               {'configured_service': self.driver_name,
+                                'id': backup_id})
+                        raise exception.BackupVerifyUnsupportedDriver(
+                            reason=msg)
+                # reset status to error or from restoring to available
+                else:
+                    if (status == 'error' or
+                        (status == 'available' and
+                            backup['status'] == 'restoring')):
+                        self.db.backup_update(context, backup_id,
+                                              {'status': status})
+            except exception.InvalidBackup:
+                with excutils.save_and_reraise_exception():
+                    msg = (_("Backup id %(id)s is not invalid. "
+                             "Skipping reset.") % {'id': backup_id})
+                    LOG.error(msg)
+            except exception.BackupVerifyUnsupportedDriver:
+                with excutils.save_and_reraise_exception():
+                    msg = (_('Backup service %(configured_service)s '
+                             'does not support verify. Backup id'
+                             ' %(id)s is not verified. '
+                             'Skipping verify.') %
+                           {'configured_service': self.driver_name,
+                            'id': backup_id})
+                    LOG.error(msg)
+            except AttributeError:
+                msg = (_('Backup service %(service)s does not support '
+                         'verify. Backup id %(id)s is not verified. '
+                         'Skipping reset.') %
+                       {'service': self.driver_name,
+                        'id': backup_id})
+                LOG.error(msg)
+                raise exception.BackupVerifyUnsupportedDriver(
+                    reason=msg)
+
+            # send notification to ceilometer
+            notifier_info = {'id': backup_id, 'update': {'status': status}}
+            notifier = rpc.get_notifier('backupStatusUpdate')
+            notifier.info(context, "backups" + '.reset_status.end',
+                          notifier_info)

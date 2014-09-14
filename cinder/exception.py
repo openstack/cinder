@@ -514,6 +514,10 @@ class BackupMetadataUnsupportedVersion(BackupDriverException):
     message = _("Unsupported backup metadata version requested")
 
 
+class BackupVerifyUnsupportedDriver(BackupDriverException):
+    message = _("Unsupported backup verify driver")
+
+
 class VolumeMetadataBackupExists(BackupDriverException):
     message = _("Metadata backup already exists for this volume")
 
