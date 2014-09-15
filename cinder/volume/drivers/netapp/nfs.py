@@ -827,7 +827,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             containers = self._mounted_shares
         for sh in containers:
             if self._is_share_eligible(sh, size):
-                size, avl, alloc = self._get_capacity_info(sh)
+                total_size, avl, alloc = self._get_capacity_info(sh)
                 shares.append((sh, avl))
         shares = [a for a, b in sorted(
             shares, key=lambda x: x[1], reverse=True)]
