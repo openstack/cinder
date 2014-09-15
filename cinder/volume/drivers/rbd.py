@@ -643,6 +643,11 @@ class RBDDriver(driver.VolumeDriver):
                     # Now raise this so that volume stays available so that we
                     # delete can be retried.
                     raise exception.VolumeIsBusy(msg, volume_name=volume_name)
+                except self.rbd.ImageNotFound:
+                    msg = (_("RBD volume %s not found, allowing delete "
+                             "operation to proceed.") % volume_name)
+                    LOG.info(msg)
+                    return
 
                 # If it is a clone, walk back up the parent chain deleting
                 # references.
