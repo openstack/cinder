@@ -66,12 +66,12 @@ To run the tests in the ``cinder/tests/test_libvirt.py`` file::
 To run the tests in the `HostStateTestCase` class in
 ``cinder/tests/test_libvirt.py``::
 
-    ./run_tests.sh test_libvirt:HostStateTestCase
+    ./run_tests.sh test_libvirt.HostStateTestCase
 
 To run the `ToPrimitiveTestCase.test_dict` test method in
 ``cinder/tests/test_utils.py``::
 
-    ./run_tests.sh test_utils:ToPrimitiveTestCase.test_dict
+    ./run_tests.sh test_utils.ToPrimitiveTestCase.test_dict
 
 
 Suppressing logging output when tests fail
