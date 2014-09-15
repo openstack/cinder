@@ -113,7 +113,7 @@ class BrcdFCZoneClientCLI(object):
         switch_data = None
         return zone_set
 
-    def add_zones(self, zones, activate):
+    def add_zones(self, zones, activate, active_zone_set=None):
         """Add zone configuration.
 
         This method will add the zone configuration passed by user.
@@ -126,22 +126,24 @@ class BrcdFCZoneClientCLI(object):
                     ['50:06:0b:00:00:c2:66:04', '20:19:00:05:1e:e8:e3:29']
                 }
             activate - True/False
+            active_zone_set - active zone set dict retrieved from
+                              get_active_zone_set method
         """
         LOG.debug(_("Add Zones - Zones passed: %s"), zones)
         cfg_name = None
         iterator_count = 0
         zone_with_sep = ''
-        active_zone_set = self.get_active_zone_set()
-        LOG.debug(_("Active zone set:%s"), active_zone_set)
+        if not active_zone_set:
+            active_zone_set = self.get_active_zone_set()
+            LOG.debug("Active zone set:%s", active_zone_set)
         zone_list = active_zone_set[ZoneConstant.CFG_ZONES]
         LOG.debug(_("zone list:%s"), zone_list)
         for zone in zones.keys():
             # if zone exists, its an update. Delete & insert
             # TODO(skolathur): This can be optimized to an update call later
-            LOG.debug("Update call")
             if (zone in zone_list):
                 try:
-                    self.delete_zones(zone, activate)
+                    self.delete_zones(zone, activate, active_zone_set)
                 except exception.BrocadeZoningCliException:
                     with excutils.save_and_reraise_exception():
                         LOG.error(_("Deleting zone failed %s"), zone)
@@ -171,9 +173,10 @@ class BrcdFCZoneClientCLI(object):
                     % {'zoneset': cfg_name, 'zones': zone_with_sep}
             LOG.debug(_("New zone %s"), cmd)
             self.apply_zone_change(cmd.split())
-            self._cfg_save()
             if activate:
                 self.activate_zoneset(cfg_name)
+            else:
+                self._cfg_save()
         except Exception as e:
             self._cfg_trans_abort()
             msg = _("Creating and activating zone set failed: "
@@ -191,18 +194,20 @@ class BrcdFCZoneClientCLI(object):
         """Method to deActivate the zone config."""
         return self._ssh_execute([ZoneConstant.DEACTIVATE_ZONESET], True, 1)
 
-    def delete_zones(self, zone_names, activate):
+    def delete_zones(self, zone_names, activate, active_zone_set=None):
         """Delete zones from fabric.
 
         Method to delete the active zone config zones
 
         params zone_names: zoneNames separated by semicolon
         params activate: True/False
+        params active_zone_set: the active zone set dict retrieved
+                                from get_active_zone_set method
         """
         active_zoneset_name = None
-        active_zone_set = None
         zone_list = []
-        active_zone_set = self.get_active_zone_set()
+        if not active_zone_set:
+            active_zone_set = self.get_active_zone_set()
         active_zoneset_name = active_zone_set[
             ZoneConstant.ACTIVE_ZONE_CONFIG]
         zone_list = active_zone_set[ZoneConstant.CFG_ZONES]
@@ -213,7 +218,7 @@ class BrcdFCZoneClientCLI(object):
                 self.deactivate_zoneset()
                 cmd = 'cfgdelete "%(active_zoneset_name)s"' \
                     % {'active_zoneset_name': active_zoneset_name}
-                # Active zoneset is being deleted, hence reset is_active
+                # Active zoneset is being deleted, hence reset activate flag
                 activate = False
             else:
                 cmd = 'cfgremove "%(active_zoneset_name)s", "%(zone_names)s"' \
@@ -224,9 +229,10 @@ class BrcdFCZoneClientCLI(object):
             self.apply_zone_change(cmd.split())
             for zone in zones:
                 self._zone_delete(zone)
-            self._cfg_save()
             if activate:
                 self.activate_zoneset(active_zoneset_name)
+            else:
+                self._cfg_save()
         except Exception as e:
             msg = _("Deleting zones failed: (command=%(cmd)s error=%(err)s)."
                     ) % {'cmd': cmd, 'err': e}
@@ -243,21 +249,16 @@ class BrcdFCZoneClientCLI(object):
         cli_output = None
         return_list = []
         try:
-            cli_output = self._get_switch_info([ZoneConstant.NS_SHOW])
+            cmd = '%(nsshow)s;%(nscamshow)s' % {
+                'nsshow': ZoneConstant.NS_SHOW,
+                'nscamshow': ZoneConstant.NS_CAM_SHOW}
+            cli_output = self._get_switch_info([cmd])
         except exception.BrocadeZoningCliException:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Failed collecting nsshow "
                             "info for fabric %s"), self.switch_ip)
         if (cli_output):
             return_list = self._parse_ns_output(cli_output)
-        try:
-            cli_output = self._get_switch_info([ZoneConstant.NS_CAM_SHOW])
-        except exception.BrocadeZoningCliException:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_("Failed collecting nscamshow "
-                            "info for fabric %s"), self.switch_ip)
-        if (cli_output):
-            return_list.extend(self._parse_ns_output(cli_output))
         cli_output = None
         return return_list
 
@@ -536,7 +537,6 @@ exit
                 channel.close()
             except Exception as e:
                 LOG.exception(e)
-            LOG.debug("_execute_cmd: stdout to return:%s" % stdout)
             LOG.debug("_execute_cmd: stderr to return:%s" % stderr)
         return (stdout, stderr)
 

@@ -61,12 +61,14 @@ class BrcdFCZoneDriver(FCZoneDriver):
 
     Version history:
         1.0 - Initial Brocade FC zone driver
+        1.1 - Implements performance enhancements
     """
 
-    VERSION = "1.0"
+    VERSION = "1.1"
 
     def __init__(self, **kwargs):
         super(BrcdFCZoneDriver, self).__init__(**kwargs)
+        self.sb_conn_map = {}
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(brcd_opts)
@@ -131,10 +133,6 @@ class BrcdFCZoneDriver(FCZoneDriver):
         LOG.debug(_("Add connection for Fabric:%s"), fabric)
         LOG.info(_("BrcdFCZoneDriver - Add connection "
                    "for I-T map: %s"), initiator_target_map)
-        fabric_ip = self.fabric_configs[fabric].safe_get('fc_fabric_address')
-        fabric_user = self.fabric_configs[fabric].safe_get('fc_fabric_user')
-        fabric_pwd = self.fabric_configs[fabric].safe_get('fc_fabric_password')
-        fabric_port = self.fabric_configs[fabric].safe_get('fc_fabric_port')
         zoning_policy = self.configuration.zoning_policy
         zoning_policy_fab = self.fabric_configs[fabric].safe_get(
             'zoning_policy')
@@ -142,29 +140,9 @@ class BrcdFCZoneDriver(FCZoneDriver):
             zoning_policy = zoning_policy_fab
 
         LOG.info(_("Zoning policy for Fabric %s"), zoning_policy)
-        cli_client = None
-        try:
-            cli_client = importutils.import_object(
-                self.configuration.brcd_sb_connector,
-                ipaddress=fabric_ip,
-                username=fabric_user,
-                password=fabric_pwd,
-                port=fabric_port)
-            if not cli_client.is_supported_firmware():
-                msg = _("Unsupported firmware on switch %s. Make sure "
-                        "switch is running firmware v6.4 or higher"
-                        ) % fabric_ip
-                LOG.error(msg)
-                raise exception.FCZoneDriverException(msg)
-        except exception.BrocadeZoningCliException as brocade_ex:
-            raise exception.FCZoneDriverException(brocade_ex)
-        except Exception as e:
-            LOG.error(e)
-            msg = _("Failed to add zoning configuration %s") % e
-            raise exception.FCZoneDriverException(msg)
+        cli_client = self._get_cli_client(fabric)
+        cfgmap_from_fabric = self._get_active_zone_set(cli_client)
 
-        cfgmap_from_fabric = self.get_active_zone_set(
-            fabric_ip, fabric_user, fabric_pwd, fabric_port)
         zone_names = []
         if cfgmap_from_fabric.get('zones'):
             zone_names = cfgmap_from_fabric['zones'].keys()
@@ -216,7 +194,8 @@ class BrcdFCZoneDriver(FCZoneDriver):
             if len(zone_map) > 0:
                 try:
                     cli_client.add_zones(
-                        zone_map, self.configuration.zone_activate)
+                        zone_map, self.configuration.zone_activate,
+                        cfgmap_from_fabric)
                     cli_client.cleanup()
                 except exception.BrocadeZoningCliException as brocade_ex:
                     raise exception.FCZoneDriverException(brocade_ex)
@@ -240,10 +219,6 @@ class BrcdFCZoneDriver(FCZoneDriver):
         LOG.debug(_("Delete connection for fabric:%s"), fabric)
         LOG.info(_("BrcdFCZoneDriver - Delete connection for I-T map: %s"),
                  initiator_target_map)
-        fabric_ip = self.fabric_configs[fabric].safe_get('fc_fabric_address')
-        fabric_user = self.fabric_configs[fabric].safe_get('fc_fabric_user')
-        fabric_pwd = self.fabric_configs[fabric].safe_get('fc_fabric_password')
-        fabric_port = self.fabric_configs[fabric].safe_get('fc_fabric_port')
         zoning_policy = self.configuration.zoning_policy
         zoning_policy_fab = self.fabric_configs[fabric].safe_get(
             'zoning_policy')
@@ -251,29 +226,9 @@ class BrcdFCZoneDriver(FCZoneDriver):
             zoning_policy = zoning_policy_fab
 
         LOG.info(_("Zoning policy for fabric %s"), zoning_policy)
-        conn = None
-        try:
-            conn = importutils.import_object(
-                self.configuration.brcd_sb_connector,
-                ipaddress=fabric_ip,
-                username=fabric_user,
-                password=fabric_pwd,
-                port=fabric_port)
-            if not conn.is_supported_firmware():
-                msg = _("Unsupported firmware on switch %s. Make sure "
-                        "switch is running firmware v6.4 or higher"
-                        ) % fabric_ip
-                LOG.error(msg)
-                raise exception.FCZoneDriverException(msg)
-        except exception.BrocadeZoningCliException as brocade_ex:
-            raise exception.FCZoneDriverException(brocade_ex)
-        except Exception as e:
-            LOG.error(e)
-            msg = _("Failed to delete zoning configuration %s") % e
-            raise exception.FCZoneDriverException(msg)
+        conn = self._get_cli_client(fabric)
+        cfgmap_from_fabric = self._get_active_zone_set(conn)
 
-        cfgmap_from_fabric = self.get_active_zone_set(
-            fabric_ip, fabric_user, fabric_pwd, fabric_port)
         zone_names = []
         if cfgmap_from_fabric.get('zones'):
             zone_names = cfgmap_from_fabric['zones'].keys()
@@ -299,8 +254,8 @@ class BrcdFCZoneDriver(FCZoneDriver):
                     LOG.debug(_("Zone name to del: %s"), zone_name)
                     if len(zone_names) > 0 and (zone_name in zone_names):
                         # delete zone.
-                        LOG.debug(("Added zone to delete to "
-                                   "list: %s"), zone_name)
+                        LOG.debug("Added zone to delete to "
+                                  "list: %s", zone_name)
                         zones_to_delete.append(zone_name)
 
             elif zoning_policy == 'initiator':
@@ -342,7 +297,8 @@ class BrcdFCZoneDriver(FCZoneDriver):
                 # Update zone membership.
                 if zone_map:
                     conn.add_zones(
-                        zone_map, self.configuration.zone_activate)
+                        zone_map, self.configuration.zone_activate,
+                        cfgmap_from_fabric)
                 # Delete zones ~sk.
                 if zones_to_delete:
                     zone_name_string = ''
@@ -357,7 +313,8 @@ class BrcdFCZoneDriver(FCZoneDriver):
                                 zone_name_string, ';', zones_to_delete[i])
 
                     conn.delete_zones(
-                        zone_name_string, self.configuration.zone_activate)
+                        zone_name_string, self.configuration.zone_activate,
+                        cfgmap_from_fabric)
                 conn.cleanup()
             except Exception as e:
                 LOG.error(e)
@@ -382,34 +339,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
             LOG.debug(_("Formatted Target wwn List:"
                         " %s"), formatted_target_list)
             for fabric_name in fabrics:
-                fabric_ip = self.fabric_configs[fabric_name].safe_get(
-                    'fc_fabric_address')
-                fabric_user = self.fabric_configs[fabric_name].safe_get(
-                    'fc_fabric_user')
-                fabric_pwd = self.fabric_configs[fabric_name].safe_get(
-                    'fc_fabric_password')
-                fabric_port = self.fabric_configs[fabric_name].safe_get(
-                    'fc_fabric_port')
-                conn = None
-                try:
-                    conn = importutils.import_object(
-                        self.configuration.brcd_sb_connector,
-                        ipaddress=fabric_ip,
-                        username=fabric_user,
-                        password=fabric_pwd,
-                        port=fabric_port)
-                    if not conn.is_supported_firmware():
-                        msg = _("Unsupported firmware on switch %s. Make sure "
-                                "switch is running firmware v6.4 or higher"
-                                ) % fabric_ip
-                        LOG.error(msg)
-                        raise exception.FCZoneDriverException(msg)
-                except exception.BrocadeZoningCliException as brocade_ex:
-                    raise exception.FCZoneDriverException(brocade_ex)
-                except Exception as e:
-                    LOG.error(e)
-                    msg = _("Failed to get SAN context %s") % e
-                    raise exception.FCZoneDriverException(msg)
+                conn = self._get_cli_client(fabric_name)
 
                 # Get name server data from fabric and get the targets
                 # logged in.
@@ -419,6 +349,12 @@ class BrcdFCZoneDriver(FCZoneDriver):
                     LOG.debug(_("name server info from fabric:%s"), nsinfo)
                     conn.cleanup()
                 except exception.BrocadeZoningCliException as ex:
+                    if not conn.is_supported_firmware():
+                        msg = _("Unsupported firmware on switch %s. Make sure "
+                                "switch is running firmware v6.4 or higher"
+                                ) % conn.switch_ip
+                        LOG.error(msg)
+                        raise exception.FCZoneDriverException(msg)
                     with excutils.save_and_reraise_exception():
                         LOG.error(_("Error getting name server "
                                     "info: %s"), ex)
@@ -444,31 +380,43 @@ class BrcdFCZoneDriver(FCZoneDriver):
         LOG.debug(_("Return SAN context output:%s"), fabric_map)
         return fabric_map
 
-    def get_active_zone_set(self, fabric_ip,
-                            fabric_user, fabric_pwd, fabric_port):
-        """Gets active zone config from fabric."""
-        cfgmap = {}
-        conn = None
+    def _get_active_zone_set(self, conn):
+        cfgmap = None
         try:
-            LOG.debug(_("Southbound connector:"
-                        " %s"), self.configuration.brcd_sb_connector)
-            conn = importutils.import_object(
-                self.configuration.brcd_sb_connector,
-                ipaddress=fabric_ip, username=fabric_user,
-                password=fabric_pwd, port=fabric_port)
+            cfgmap = conn.get_active_zone_set()
+        except exception.BrocadeZoningCliException:
             if not conn.is_supported_firmware():
                 msg = _("Unsupported firmware on switch %s. Make sure "
                         "switch is running firmware v6.4 or higher"
-                        ) % fabric_ip
+                        ) % conn.switch_ip
                 LOG.error(msg)
                 raise exception.FCZoneDriverException(msg)
-            cfgmap = conn.get_active_zone_set()
-            conn.cleanup()
-        except exception.BrocadeZoningCliException as brocade_ex:
-            raise exception.FCZoneDriverException(brocade_ex)
         except Exception as e:
-            msg = (_("Failed to access active zoning configuration:%s") % e)
-            LOG.error(msg)
+            LOG.error(e)
+            msg = _("Failed to retrieve active zoning configuration %s") % e
             raise exception.FCZoneDriverException(msg)
         LOG.debug(_("Active zone set from fabric: %s"), cfgmap)
         return cfgmap
+
+    def _get_cli_client(self, fabric):
+        fabric_ip = self.fabric_configs[fabric].safe_get('fc_fabric_address')
+        fabric_user = self.fabric_configs[fabric].safe_get('fc_fabric_user')
+        fabric_pwd = self.fabric_configs[fabric].safe_get('fc_fabric_password')
+        fabric_port = self.fabric_configs[fabric].safe_get('fc_fabric_port')
+        cli_client = None
+        try:
+            cli_client = self.sb_conn_map.get(fabric_ip)
+            if not cli_client:
+                LOG.debug("CLI client not found, creating for %s", fabric_ip)
+                cli_client = importutils.import_object(
+                    self.configuration.brcd_sb_connector,
+                    ipaddress=fabric_ip,
+                    username=fabric_user,
+                    password=fabric_pwd,
+                    port=fabric_port)
+                self.sb_conn_map[fabric_ip] = cli_client
+        except Exception as e:
+            LOG.error(e)
+            msg = _("Failed to create sb connector for %s") % fabric_ip
+            raise exception.FCZoneDriverException(msg)
+        return cli_client
