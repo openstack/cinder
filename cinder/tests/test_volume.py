@@ -670,6 +670,68 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         self.volume.delete_volume(self.context, volume_id)
 
+    def test_get_all_limit_bad_value(self):
+        """Test value of 'limit' is numeric and >= 0"""
+        volume_api = cinder.volume.api.API()
+
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.get_all,
+                          self.context,
+                          limit="A")
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.get_all,
+                          self.context,
+                          limit="-1")
+
+    def test_get_all_tenants_value(self):
+        """Validate allowable values for --all_tenants
+
+           Note: type of the value could be String, Boolean, or Int
+        """
+        api = cinder.volume.api.API()
+
+        self.assertTrue(api._get_all_tenants_value({'all_tenants': True}))
+        self.assertTrue(api._get_all_tenants_value({'all_tenants': 1}))
+        self.assertFalse(api._get_all_tenants_value({'all_tenants': 'False'}))
+        self.assertFalse(api._get_all_tenants_value({'all_tenants': '0'}))
+        self.assertRaises(exception.InvalidInput,
+                          api._get_all_tenants_value,
+                          {'all_tenants': 'No'})
+        self.assertRaises(exception.InvalidInput,
+                          api._get_all_tenants_value,
+                          {'all_tenants': -1})
+
+    def test_get_all_tenants_volume_list(self):
+        """Validate when the volume list for all tenants is returned"""
+        volume_api = cinder.volume.api.API()
+
+        with mock.patch.object(volume_api.db,
+                               'volume_get_all_by_project') as by_project:
+            with mock.patch.object(volume_api.db,
+                                   'volume_get_all') as get_all:
+                fake_volume = {'volume_type_id': 'fake_type_id',
+                               'name': 'fake_name',
+                               'host': 'fake_host',
+                               'id': 'fake_volume_id'}
+
+                fake_volume_list = []
+                fake_volume_list.append([fake_volume])
+                by_project.return_value = fake_volume_list
+                get_all.return_value = fake_volume_list
+
+                volume_api.get_all(self.context, filters={'all_tenants': '0'})
+                self.assertTrue(by_project.called)
+                by_project.called = False
+
+                self.context.is_admin = False
+                volume_api.get_all(self.context, filters={'all_tenants': '1'})
+                self.assertTrue(by_project.called)
+
+                # check for volume list of all tenants
+                self.context.is_admin = True
+                volume_api.get_all(self.context, filters={'all_tenants': '1'})
+                self.assertTrue(get_all.called)
+
     def test_delete_volume_in_error_extending(self):
         """Test volume can be deleted in error_extending stats."""
         # create a volume
@@ -2033,7 +2095,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         self.volume.driver.delete_snapshot(
             mox.IgnoreArg()).AndRaise(
-                exception.SnapshotIsBusy(snapshot_name='fake'))
+            exception.SnapshotIsBusy(snapshot_name='fake'))
         self.mox.ReplayAll()
         self.volume.delete_snapshot(self.context, snapshot_id)
         snapshot_ref = db.snapshot_get(self.context, snapshot_id)
@@ -2063,7 +2125,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         self.volume.driver.delete_snapshot(
             mox.IgnoreArg()).AndRaise(
-                exception.SnapshotIsBusy(snapshot_name='fake'))
+            exception.SnapshotIsBusy(snapshot_name='fake'))
         self.mox.ReplayAll()
         self.volume.delete_snapshot(self.context, snapshot_id)
         snapshot_ref = db.snapshot_get(self.context, snapshot_id)
@@ -2206,8 +2268,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                         'container_format': 'bare',
                         'status': 'active'}
 
-        volume_api = cinder.volume.api.API(image_service=
-                                           _ModifiedFakeImageService())
+        volume_api = cinder.volume.api.API(
+            image_service=_ModifiedFakeImageService())
 
         self.assertRaises(exception.InvalidInput,
                           volume_api.create,
@@ -2224,8 +2286,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                         'min_disk': 5,
                         'status': 'active'}
 
-        volume_api = cinder.volume.api.API(image_service=
-                                           _ModifiedFakeImageService())
+        volume_api = cinder.volume.api.API(
+            image_service=_ModifiedFakeImageService())
 
         self.assertRaises(exception.InvalidInput,
                           volume_api.create,
@@ -2242,8 +2304,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                         'min_disk': 5,
                         'status': 'deleted'}
 
-        volume_api = cinder.volume.api.API(image_service=
-                                           _ModifiedFakeImageService())
+        volume_api = cinder.volume.api.API(
+            image_service=_ModifiedFakeImageService())
 
         self.assertRaises(exception.InvalidInput,
                           volume_api.create,
@@ -2476,12 +2538,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         def fake_create_volume(*args, **kwargs):
             raise exception.CinderException('fake exception')
 
-        #create context for testing
+        # create context for testing
         ctxt = self.context.deepcopy()
         if 'admin' in ctxt.roles:
             ctxt.roles.remove('admin')
             ctxt.is_admin = False
-        #create one copy of context for future comparison
+        # create one copy of context for future comparison
         self.saved_ctxt = ctxt.deepcopy()
 
         self.stubs.Set(self.volume.driver, 'create_volume', fake_create_volume)
@@ -2500,10 +2562,10 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume_src = tests_utils.create_volume(self.context,
                                                **self.volume_params)
         self.volume.create_volume(self.context, volume_src['id'])
-        volume_dst = tests_utils.create_volume(self.context,
-                                               source_replicaid=
-                                               volume_src['id'],
-                                               **self.volume_params)
+        volume_dst = tests_utils.create_volume(
+            self.context,
+            source_replicaid=volume_src['id'],
+            **self.volume_params)
         self.volume.create_volume(self.context, volume_dst['id'],
                                   source_replicaid=volume_src['id'])
         self.assertEqual('available',
@@ -3050,13 +3112,13 @@ class VolumeTestCase(BaseVolumeTestCase):
         group_id = group['id']
         volume = tests_utils.create_volume(
             self.context,
-            consistencygroup_id = group_id,
+            consistencygroup_id=group_id,
             **self.volume_params)
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
         cgsnapshot = tests_utils.create_cgsnapshot(
             self.context,
-            consistencygroup_id = group_id)
+            consistencygroup_id=group_id)
         cgsnapshot_id = cgsnapshot['id']
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
         cgsnapshot_returns = self._create_cgsnapshot(group_id, volume_id)
