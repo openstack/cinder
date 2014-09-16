@@ -64,11 +64,15 @@ def qemu_img_info(path):
 def convert_image(source, dest, out_format, bps_limit=None):
     """Convert image to other format."""
     start_time = timeutils.utcnow()
-    cmd = ('qemu-img', 'convert', '-O', out_format, source, dest)
+    # Always set -t none. First it is needed for cgroup io/limiting
+    # and it is needed to ensure that all data hit the device before
+    # it gets unmapped remotely from the host
+    cmd = ('qemu-img', 'convert',
+           '-t', 'none',
+           '-O', out_format, source, dest)
     cgcmd = volume_utils.setup_blkio_cgroup(source, dest, bps_limit)
     if cgcmd:
         cmd = tuple(cgcmd) + cmd
-        cmd += ('-t', 'none')  # required to enable ratelimit by blkio cgroup
     utils.execute(*cmd, run_as_root=True)
 
     duration = timeutils.delta_seconds(start_time, timeutils.utcnow())

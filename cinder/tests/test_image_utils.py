@@ -89,8 +89,9 @@ class TestUtils(test.TestCase):
         TEST_SOURCE = 'img/qemu.img'
         TEST_DEST = '/img/vmware.vmdk'
 
-        utils.execute('qemu-img', 'convert', '-O', TEST_OUT_FORMAT,
-                      TEST_SOURCE, TEST_DEST, run_as_root=True)
+        utils.execute(
+            'qemu-img', 'convert', '-t', 'none', '-O', TEST_OUT_FORMAT,
+            TEST_SOURCE, TEST_DEST, run_as_root=True)
 
         mox.ReplayAll()
 
@@ -236,11 +237,10 @@ class TestUtils(test.TestCase):
         if has_qemu and dest_inf:
             if bps_limit:
                 prefix = ('cgexec', '-g', 'blkio:test')
-                postfix = ('-t', 'none')
             else:
-                prefix = postfix = ()
-            cmd = prefix + ('qemu-img', 'convert', '-O', 'raw',
-                            self.TEST_DEV_PATH, self.TEST_DEV_PATH) + postfix
+                prefix = ()
+            cmd = prefix + ('qemu-img', 'convert', '-t', 'none', '-O', 'raw',
+                            self.TEST_DEV_PATH, self.TEST_DEV_PATH)
 
             volume_utils.setup_blkio_cgroup(
                 self.TEST_DEV_PATH, self.TEST_DEV_PATH,
@@ -441,11 +441,10 @@ class TestUtils(test.TestCase):
         if bps_limit:
             CONF.set_override('volume_copy_bps_limit', bps_limit)
             prefix = ('cgexec', '-g', 'blkio:test')
-            postfix = ('-t', 'none')
         else:
-            prefix = postfix = ()
-        cmd = prefix + ('qemu-img', 'convert', '-O', 'qcow2',
-                        mox.IgnoreArg(), mox.IgnoreArg()) + postfix
+            prefix = ()
+        cmd = prefix + ('qemu-img', 'convert', '-t', 'none', '-O', 'qcow2',
+                        mox.IgnoreArg(), mox.IgnoreArg())
 
         m = self._mox
         m.StubOutWithMock(utils, 'execute')
@@ -495,7 +494,7 @@ class TestUtils(test.TestCase):
         m = self._mox
         m.StubOutWithMock(utils, 'execute')
 
-        utils.execute('qemu-img', 'convert', '-O', 'qcow2',
+        utils.execute('qemu-img', 'convert', '-t', 'none', '-O', 'qcow2',
                       mox.IgnoreArg(), mox.IgnoreArg(), run_as_root=True)
         utils.execute(
             'env', 'LC_ALL=C', 'qemu-img', 'info',
