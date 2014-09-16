@@ -149,7 +149,7 @@ class ZFSSAApi(object):
 
             ret = self.rclient.post(svc, arg)
             if ret.status != restclient.Status.CREATED:
-                exception_msg = (_('Error Creating Initator: '
+                exception_msg = (_('Error Creating Initiator: '
                                    '%(initiator)s on '
                                    'Alias: %(alias)s '
                                    'Return code: %(ret.status)d '
@@ -173,7 +173,7 @@ class ZFSSAApi(object):
             }
             ret = self.rclient.post(svc, arg)
             if ret.status != restclient.Status.CREATED:
-                exception_msg = (_('Error Adding Initator: '
+                exception_msg = (_('Error Adding Initiator: '
                                    '%(initiator)s on group'
                                    'InitiatorGroup: %(initiatorgroup)s '
                                    'Return code: %(ret.status)d '
@@ -185,13 +185,30 @@ class ZFSSAApi(object):
                 LOG.error(exception_msg)
                 raise exception.VolumeBackendAPIException(data=exception_msg)
         else:
+            val = json.loads(ret.data)
+            inits = val['group']['initiators']
+            if inits is None:
+                exception_msg = (_('Error Getting Initiators: '
+                                   'InitiatorGroup: %(initiatorgroup)s '
+                                   'Return code: %(ret.status)d '
+                                   'Message: %(ret.data)s .')
+                                 % {'initiatorgroup': initiatorgroup,
+                                    'ret.status': ret.status,
+                                    'ret.data': ret.data})
+                LOG.error(exception_msg)
+                raise exception.VolumeBackendAPIException(data=exception_msg)
+
+            if initiator in inits:
+                return
+
+            inits.append(initiator)
             svc = '/api/san/v1/iscsi/initiator-groups/' + initiatorgroup
             arg = {
-                'initiators': [initiator]
+                'initiators': inits
             }
             ret = self.rclient.put(svc, arg)
             if ret.status != restclient.Status.ACCEPTED:
-                exception_msg = (_('Error Adding Initator: '
+                exception_msg = (_('Error Adding Initiator: '
                                    '%(initiator)s on group'
                                    'InitiatorGroup: %(initiatorgroup)s '
                                    'Return code: %(ret.status)d '

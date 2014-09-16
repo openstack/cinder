@@ -17,11 +17,15 @@ Unit tests for Oracle's ZFSSA Cinder volume driver
 
 import mock
 
+from json import JSONEncoder
+
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.zfssa import restclient as client
 from cinder.volume.drivers.zfssa import zfssaiscsi as iscsi
+from cinder.volume.drivers.zfssa import zfssarest as rest
 
 
 LOG = logging.getLogger(__name__)
@@ -69,15 +73,9 @@ class FakeZFSSA(object):
         return out
 
     def add_to_initiatorgroup(self, init, initgrp):
-        out = {}
-        if not self.host or not self.user:
-            return out
-
-        out = {"href": "fake_href",
-               "name": "fake_initgrp",
-               "initiators": ["fake_iqn.1993-08.org.fake:01:000000000000"]
-               }
-        return out
+        r = rest.ZFSSAApi()
+        type(r).rclient = mock.PropertyMock(return_value=FakeAddIni2InitGrp())
+        r.add_to_initiatorgroup(init, initgrp)
 
     def create_target(self, tgtalias, inter, tchapuser, tchapsecret):
         out = {}
@@ -257,7 +255,7 @@ class TestZFSSAISCSIDriver(test.TestCase):
         self.configuration.zfssa_lun_compression = 'off'
         self.configuration.zfssa_initiator_group = 'test-init-grp1'
         self.configuration.zfssa_initiator = \
-            'iqn.1993-08.org.debian:01:daa02db2a827'
+            'iqn.1-0.org.deb:01:d7, iqn.1-0.org.deb:01:d9'
         self.configuration.zfssa_initiator_user = ''
         self.configuration.zfssa_initiator_password = ''
         self.configuration.zfssa_target_group = 'test-target-grp1'
@@ -304,3 +302,24 @@ class TestZFSSAISCSIDriver(test.TestCase):
 
     def tearDown(self):
         super(TestZFSSAISCSIDriver, self).tearDown()
+
+
+class FakeAddIni2InitGrp(object):
+
+    def get(self, path, **kwargs):
+        result = client.RestResult()
+        result.status = client.Status.OK
+        result.data = JSONEncoder().encode({'group':
+                                            {'initiators':
+                                             ['iqn.1-0.org.deb:01:d7']}})
+        return result
+
+    def put(self, path, body="", **kwargs):
+        result = client.RestResult()
+        result.status = client.Status.ACCEPTED
+        return result
+
+    def post(self, path, body="", **kwargs):
+        result = client.RestResult()
+        result.status = client.Status.CREATED
+        return result
