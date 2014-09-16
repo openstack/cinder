@@ -59,7 +59,10 @@ ZFSSA_OPTS = [
     cfg.StrOpt('zfssa_target_portal',
                help='iSCSI target portal (Data-IP:Port, w.x.y.z:3260).'),
     cfg.StrOpt('zfssa_target_interfaces',
-               help='Network interfaces of iSCSI targets. (comma separated)')
+               help='Network interfaces of iSCSI targets. (comma separated)'),
+    cfg.IntOpt('zfssa_rest_timeout',
+               help='REST connection timeout. (seconds)')
+
 ]
 
 CONF.register_opts(ZFSSA_OPTS)
@@ -95,7 +98,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         msg = (_('Connecting to host: %s.') % lcfg.san_ip)
         LOG.info(msg)
         self.zfssa = factory_zfssa()
-        self.zfssa.set_host(lcfg.san_ip)
+        self.zfssa.set_host(lcfg.san_ip, timeout=lcfg.zfssa_rest_timeout)
         auth_str = base64.encodestring('%s:%s' %
                                        (lcfg.san_login,
                                         lcfg.san_password))[:-1]

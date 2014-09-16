@@ -276,7 +276,11 @@ class RestClientURL(object):
             try:
                 response = urllib2.urlopen(req, timeout=self.timeout)
             except urllib2.HTTPError as err:
-                LOG.error(_('REST Not Available: %s') % err.code)
+                if err.code == httplib.NOT_FOUND:
+                    LOG.debug('REST Not Found: %s' % err.code)
+                else:
+                    LOG.error(_('REST Not Available: %s') % err.code)
+
                 if err.code == httplib.SERVICE_UNAVAILABLE and \
                    retry < maxreqretries:
                     retry += 1

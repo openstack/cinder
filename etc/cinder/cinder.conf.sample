@@ -2269,6 +2269,9 @@
 # (string value)
 #zfssa_target_interfaces=<None>
 
+# REST connection timeout. (seconds) (integer value)
+#zfssa_rest_timeout=<None>
+
 
 #
 # Options defined in cinder.volume.manager

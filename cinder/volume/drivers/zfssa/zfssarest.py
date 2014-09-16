@@ -57,10 +57,10 @@ class ZFSSAApi(object):
         return vdata['version']['asn'] == pdata['pool']['asn'] and \
             vdata['version']['nodename'] == pdata['pool']['owner']
 
-    def set_host(self, host):
+    def set_host(self, host, timeout=None):
         self.host = host
         self.url = "https://" + self.host + ":215"
-        self.rclient = restclient.RestClientURL(self.url)
+        self.rclient = restclient.RestClientURL(self.url, timeout=timeout)
 
     def login(self, auth_str):
         """Login to the appliance"""
@@ -375,7 +375,7 @@ class ZFSSAApi(object):
            optional - volblocksize, sparse, compression, logbias
         """
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
-            project + '/luns'
+              project + '/luns'
         arg = {
             'name': lun,
             'volsize': volsize,
