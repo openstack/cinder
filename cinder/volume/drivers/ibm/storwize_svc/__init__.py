@@ -753,7 +753,10 @@ class StorwizeSVCDriver(san.SanDriver):
         return replica_status
 
     def get_replication_status(self, ctxt, volume):
-        return self.replication.get_replication_status(volume)
+        replica_status = None
+        if self.replication:
+            replica_status = self.replication.get_replication_status(volume)
+        return replica_status
 
     def _check_volume_copy_ops(self):
         LOG.debug("enter: update volume copy status")

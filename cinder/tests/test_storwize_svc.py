@@ -2796,6 +2796,15 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.assertEqual(term_data, term_ret)
 
+    def test_storwize_create_volume_with_replication_disable(self):
+        volume = self._generate_vol_info(None, None)
+
+        model_update = self.driver.create_volume(volume)
+        self.assertIsNone(model_update)
+
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertIsNone(model_update)
+
     def test_storwize_create_volume_with_strech_cluster_replication(self):
         # Set replication flag, set pool openstack2 for secondary volume.
         self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
