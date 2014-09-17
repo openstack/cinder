@@ -1037,7 +1037,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         conn = FakeEcomConnection()
         return conn
 
-    def fake_do_iscsi_discovery(self, volume, ipAddress):
+    def fake_do_iscsi_discovery(self, volume):
         output = []
         item = '10.10.0.50: 3260,1 iqn.1992-04.com.emc: 50000973f006dd80'
         output.append(item)
@@ -1181,12 +1181,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         '_wrap_find_device_number',
         return_value={'hostlunid': 1,
                       'storagesystem': EMCVMAXCommonData.storage_system})
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_ip_protocol_endpoint',
-        return_value='10.10.10.10')
     def test_map_no_fast_success(self, _mock_volume_type, mock_wrap_group,
-                                 mock_wrap_device, mock_find_ip):
+                                 mock_wrap_device):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -1362,6 +1358,13 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             self.data.test_ctxt, self.data.test_volume, self.data.new_type,
             self.data.diff, self.data.test_host)
 
+    def test_check_for_setup_error(self):
+        self.driver.configuration.iscsi_ip_address = '1.1.1.1'
+        self.driver.check_for_setup_error()
+        self.driver.configuration.iscsi_ip_address = None
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.check_for_setup_error)
+
     def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)
         if bExists:
@@ -1470,7 +1473,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         conn = FakeEcomConnection()
         return conn
 
-    def fake_do_iscsi_discovery(self, volume, ipAddress):
+    def fake_do_iscsi_discovery(self, volume):
         output = []
         item = '10.10.0.50: 3260,1 iqn.1992-04.com.emc: 50000973f006dd80'
         output.append(item)
@@ -1621,12 +1624,8 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         '_wrap_find_device_number',
         return_value={'hostlunid': 1,
                       'storagesystem': EMCVMAXCommonData.storage_system})
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_ip_protocol_endpoint',
-        return_value='10.10.10.10')
     def test_map_fast_success(self, _mock_volume_type, mock_wrap_group,
-                              mock_wrap_device, mock_find_ip):
+                              mock_wrap_device):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -2109,12 +2108,8 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         '_wrap_find_device_number',
         return_value={'hostlunid': 1,
                       'storagesystem': EMCVMAXCommonData.storage_system})
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_ip_protocol_endpoint',
-        return_value='10.10.10.10')
     def test_map_no_fast_success(self, _mock_volume_type, mock_wrap_group,
-                                 mock_wrap_device, mock_find_ip):
+                                 mock_wrap_device):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
