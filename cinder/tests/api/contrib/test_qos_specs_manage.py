@@ -323,8 +323,12 @@ class QoSSpecManageApiTest(test.TestCase):
     def test_create_no_body(self):
         self._create_qos_specs_bad_body(body=None)
 
-    def test_create_missing_specs_name(self):
+    def test_create_invalid_body(self):
         body = {'foo': {'a': 'b'}}
+        self._create_qos_specs_bad_body(body=body)
+
+    def test_create_missing_specs_name(self):
+        body = {'qos_specs': {'a': 'b'}}
         self._create_qos_specs_bad_body(body=body)
 
     def test_create_malformed_entity(self):
