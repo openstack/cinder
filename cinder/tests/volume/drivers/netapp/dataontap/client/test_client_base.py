@@ -1,5 +1,4 @@
-# Copyright (c) - 2014, Alex Meade.  All rights reserved.
-# All Rights Reserved.
+# Copyright (c) 2014 Alex Meade.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -20,23 +19,28 @@ import mock
 import six
 
 from cinder import test
-from cinder.volume.drivers.netapp import api as netapp_api
-from cinder.volume.drivers.netapp.client import base
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+from cinder.volume.drivers.netapp.dataontap.client import client_base
+
+
+CONNECTION_INFO = {'hostname': 'hostname',
+                   'transport_type': 'https',
+                   'port': 443,
+                   'username': 'admin',
+                   'password': 'passw0rd'}
 
 
 class NetAppBaseClientTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppBaseClientTestCase, self).setUp()
-        self.connection = mock.MagicMock()
-        self.client = base.Client(self.connection)
+        self.client = client_base.Client(**CONNECTION_INFO)
+        self.client.connection = mock.MagicMock()
+        self.connection = self.client.connection
         self.fake_volume = six.text_type(uuid.uuid4())
         self.fake_lun = six.text_type(uuid.uuid4())
         self.fake_size = '1024'
-        self.fake_metadata = {
-            'OsType': 'linux',
-            'SpaceReserved': 'true',
-        }
+        self.fake_metadata = {'OsType': 'linux', 'SpaceReserved': 'true'}
 
     def tearDown(self):
         super(NetAppBaseClientTestCase, self).tearDown()
@@ -49,10 +53,24 @@ class NetAppBaseClientTestCase(test.TestCase):
                           </results>"""))
         self.connection.invoke_successfully.return_value = version_response
 
-        major, minor = self.client.get_ontapi_version()
+        major, minor = self.client.get_ontapi_version(cached=False)
 
         self.assertEqual('1', major)
         self.assertEqual('19', minor)
+
+    def test_get_ontapi_version_cached(self):
+
+        self.connection.get_api_version.return_value = (1, 20)
+        major, minor = self.client.get_ontapi_version()
+        self.assertEqual(1, self.connection.get_api_version.call_count)
+        self.assertEqual(1, major)
+        self.assertEqual(20, minor)
+
+    def test_check_is_naelement(self):
+
+        element = netapp_api.NaElement('name')
+        self.assertIsNone(self.client.check_is_naelement(element))
+        self.assertRaises(ValueError, self.client.check_is_naelement, None)
 
     def test_create_lun(self):
         expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)

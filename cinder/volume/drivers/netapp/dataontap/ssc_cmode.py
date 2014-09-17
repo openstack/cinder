@@ -1,6 +1,7 @@
-# Copyright (c) 2012 NetApp, Inc.
-# Copyright (c) 2012 OpenStack Foundation
-# All Rights Reserved.
+# Copyright (c) 2012 NetApp, Inc.  All rights reserved.
+# Copyright (c) 2014 Ben Swartzlander.  All rights reserved.
+# Copyright (c) 2014 Navneet Singh.  All rights reserved.
+# Copyright (c) 2014 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -24,11 +25,10 @@ from oslo.utils import timeutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder import utils
-from cinder.volume import driver
-from cinder.volume.drivers.netapp import api
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -155,11 +155,11 @@ def query_cluster_vols_for_ssc(na_server, vserver, volume=None):
                  'volume-space-attributes',
                  'volume-state-attributes',
                  'volume-qos-attributes']}
-    result = na_utils.invoke_api(na_server, api_name='volume-get-iter',
-                                 api_family='cm', query=query,
-                                 des_result=des_attr,
-                                 additional_elems=None,
-                                 is_iter=True)
+    result = netapp_api.invoke_api(na_server, api_name='volume-get-iter',
+                                   api_family='cm', query=query,
+                                   des_result=des_attr,
+                                   additional_elems=None,
+                                   is_iter=True)
     vols = set()
     for res in result:
         records = res.get_child_content('num-records')
@@ -256,12 +256,12 @@ def query_aggr_options(na_server, aggr_name):
     add_elems = {'aggregate': aggr_name}
     attrs = {}
     try:
-        result = na_utils.invoke_api(na_server,
-                                     api_name='aggr-options-list-info',
-                                     api_family='cm', query=None,
-                                     des_result=None,
-                                     additional_elems=add_elems,
-                                     is_iter=False)
+        result = netapp_api.invoke_api(na_server,
+                                       api_name='aggr-options-list-info',
+                                       api_family='cm', query=None,
+                                       des_result=None,
+                                       additional_elems=add_elems,
+                                       is_iter=False)
         for res in result:
             options = res.get_child_by_name('options')
             if options:
@@ -290,11 +290,11 @@ def get_sis_vol_dict(na_server, vserver, volume=None):
         query_attr['path'] = vol_path
     query = {'sis-status-info': query_attr}
     try:
-        result = na_utils.invoke_api(na_server,
-                                     api_name='sis-get-iter',
-                                     api_family='cm',
-                                     query=query,
-                                     is_iter=True)
+        result = netapp_api.invoke_api(na_server,
+                                       api_name='sis-get-iter',
+                                       api_family='cm',
+                                       query=query,
+                                       is_iter=True)
         for res in result:
             attr_list = res.get_child_by_name('attributes-list')
             if attr_list:
@@ -325,10 +325,10 @@ def get_snapmirror_vol_dict(na_server, vserver, volume=None):
         query_attr['source-volume'] = volume
     query = {'snapmirror-info': query_attr}
     try:
-        result = na_utils.invoke_api(na_server,
-                                     api_name='snapmirror-get-iter',
-                                     api_family='cm', query=query,
-                                     is_iter=True)
+        result = netapp_api.invoke_api(na_server,
+                                       api_name='snapmirror-get-iter',
+                                       api_family='cm', query=query,
+                                       is_iter=True)
         for res in result:
             attr_list = res.get_child_by_name('attributes-list')
             if attr_list:
@@ -359,12 +359,12 @@ def query_aggr_storage_disk(na_server, aggr):
     des_attr = {'storage-disk-info':
                 {'disk-raid-info': ['effective-disk-type']}}
     try:
-        result = na_utils.invoke_api(na_server,
-                                     api_name='storage-disk-get-iter',
-                                     api_family='cm', query=query,
-                                     des_result=des_attr,
-                                     additional_elems=None,
-                                     is_iter=True)
+        result = netapp_api.invoke_api(na_server,
+                                       api_name='storage-disk-get-iter',
+                                       api_family='cm', query=query,
+                                       des_result=des_attr,
+                                       additional_elems=None,
+                                       is_iter=True)
         for res in result:
             attr_list = res.get_child_by_name('attributes-list')
             if attr_list:
@@ -421,8 +421,8 @@ def refresh_cluster_stale_ssc(*args, **kwargs):
         @utils.synchronized(lock_pr)
         def refresh_stale_ssc():
             stale_vols = backend._update_stale_vols(reset=True)
-            LOG.info(_('Running stale ssc refresh job for %(server)s'
-                       ' and vserver %(vs)s')
+            LOG.info(_LI('Running stale ssc refresh job for %(server)s'
+                         ' and vserver %(vs)s')
                      % {'server': na_server, 'vs': vserver})
             # refreshing single volumes can create inconsistency
             # hence doing manipulations on copy
@@ -455,8 +455,8 @@ def refresh_cluster_stale_ssc(*args, **kwargs):
                     vol_set = ssc_vols_copy[k]
                     vol_set.discard(vol)
             backend.refresh_ssc_vols(ssc_vols_copy)
-            LOG.info(_('Successfully completed stale refresh job for'
-                       ' %(server)s and vserver %(vs)s')
+            LOG.info(_LI('Successfully completed stale refresh job for'
+                         ' %(server)s and vserver %(vs)s')
                      % {'server': na_server, 'vs': vserver})
 
         refresh_stale_ssc()
@@ -482,14 +482,14 @@ def get_cluster_latest_ssc(*args, **kwargs):
 
         @utils.synchronized(lock_pr)
         def get_latest_ssc():
-            LOG.info(_('Running cluster latest ssc job for %(server)s'
-                       ' and vserver %(vs)s')
+            LOG.info(_LI('Running cluster latest ssc job for %(server)s'
+                         ' and vserver %(vs)s')
                      % {'server': na_server, 'vs': vserver})
             ssc_vols = get_cluster_ssc(na_server, vserver)
             backend.refresh_ssc_vols(ssc_vols)
             backend.ssc_run_time = timeutils.utcnow()
-            LOG.info(_('Successfully completed ssc job for %(server)s'
-                       ' and vserver %(vs)s')
+            LOG.info(_LI('Successfully completed ssc job for %(server)s'
+                         ' and vserver %(vs)s')
                      % {'server': na_server, 'vs': vserver})
 
         get_latest_ssc()
@@ -499,9 +499,7 @@ def get_cluster_latest_ssc(*args, **kwargs):
 
 def refresh_cluster_ssc(backend, na_server, vserver, synchronous=False):
     """Refresh cluster ssc for backend."""
-    if not isinstance(backend, driver.VolumeDriver):
-        raise exception.InvalidInput(reason=_("Backend not a VolumeDriver."))
-    if not isinstance(na_server, api.NaServer):
+    if not isinstance(na_server, netapp_api.NaServer):
         raise exception.InvalidInput(reason=_("Backend server not NaServer."))
     delta_secs = getattr(backend, 'ssc_run_delta_secs', 1800)
     if getattr(backend, 'ssc_job_running', None):
@@ -600,8 +598,8 @@ def get_volumes_for_specs(ssc_vols, specs):
     return result
 
 
-def check_ssc_api_permissions(na_server):
-    """Checks backend ssc api permissions for the user."""
+def check_ssc_api_permissions(client_cmode):
+    """Checks backend SSC API permissions for the user."""
     api_map = {'storage-disk-get-iter': ['netapp:disk_type'],
                'snapmirror-get-iter': ['netapp_mirrored',
                                        'netapp_unmirrored'],
@@ -610,7 +608,7 @@ def check_ssc_api_permissions(na_server):
                                 'netapp_nocompression'],
                'aggr-options-list-info': ['netapp:raid_type'],
                'volume-get-iter': []}
-    failed_apis = na_utils.check_apis_on_cluster(na_server, api_map.keys())
+    failed_apis = client_cmode.check_apis_on_cluster(api_map.keys())
     if failed_apis:
         if 'volume-get-iter' in failed_apis:
             msg = _("Fatal error: User not permitted"
@@ -621,6 +619,6 @@ def check_ssc_api_permissions(na_server):
             for fail in failed_apis:
                 unsupp_ssc_features.extend(api_map[fail])
             LOG.warning(_LW("The user does not have access or sufficient "
-                            "privileges to use all netapp apis. The "
+                            "privileges to use all netapp APIs. The "
                             "following extra_specs will fail or be ignored: "
                             "%s"), unsupp_ssc_features)

@@ -1,6 +1,6 @@
-# Copyright (c) 2012 NetApp, Inc.
-# Copyright (c) 2012 OpenStack Foundation
-# All Rights Reserved.
+# Copyright (c) 2012 NetApp, Inc.  All rights reserved.
+# Copyright (c) 2014 Navneet Singh.  All rights reserved.
+# Copyright (c) 2014 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -21,11 +21,11 @@ Supports call to multiple storage systems of different families and protocols.
 from oslo.utils import importutils
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.options import netapp_proxy_opts
-from cinder.volume.drivers.netapp import utils
+from cinder.volume.drivers.netapp import utils as na_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -34,36 +34,26 @@ LOG = logging.getLogger(__name__)
 # NOTE(singn): Holds family:{protocol:driver} registration information.
 # Plug in new families and protocols to support new drivers.
 # No other code modification required.
+
+DATAONTAP_PATH = 'cinder.volume.drivers.netapp.dataontap'
+ESERIES_PATH = 'cinder.volume.drivers.netapp.eseries'
+
 netapp_unified_plugin_registry =\
     {'ontap_cluster':
      {
-         'iscsi':
-         'cinder.volume.drivers.netapp.iscsi.NetAppDirectCmodeISCSIDriver',
-         'nfs': 'cinder.volume.drivers.netapp.nfs.NetAppDirectCmodeNfsDriver'
+         'iscsi': DATAONTAP_PATH + '.iscsi_cmode.NetAppCmodeISCSIDriver',
+         'nfs': DATAONTAP_PATH + '.nfs_cmode.NetAppCmodeNfsDriver'
      },
      'ontap_7mode':
      {
-         'iscsi':
-         'cinder.volume.drivers.netapp.iscsi.NetAppDirect7modeISCSIDriver',
-         'nfs':
-         'cinder.volume.drivers.netapp.nfs.NetAppDirect7modeNfsDriver'
+         'iscsi': DATAONTAP_PATH + '.iscsi_7mode.NetApp7modeISCSIDriver',
+         'nfs': DATAONTAP_PATH + '.nfs_7mode.NetApp7modeNfsDriver'
      },
      'eseries':
      {
-         'iscsi':
-         'cinder.volume.drivers.netapp.eseries.iscsi.Driver'
+         'iscsi': ESERIES_PATH + '.iscsi.NetAppEseriesISCSIDriver'
      },
      }
-
-# NOTE(singn): Holds family:protocol information.
-# Protocol represents the default protocol driver option
-# in case no protocol is specified by the user in configuration.
-netapp_family_default =\
-    {
-        'ontap_cluster': 'nfs',
-        'ontap_7mode': 'nfs',
-        'eseries': 'iscsi'
-    }
 
 
 class NetAppDriver(object):
@@ -74,18 +64,25 @@ class NetAppDriver(object):
        Override the proxy driver method by adding method in this driver.
     """
 
+    REQUIRED_FLAGS = ['netapp_storage_family', 'netapp_storage_protocol']
+
     def __init__(self, *args, **kwargs):
         super(NetAppDriver, self).__init__()
-        app_version = utils.OpenStackInfo().info()
-        LOG.info(_('OpenStack OS Version Info: %(info)s') % {
+
+        app_version = na_utils.OpenStackInfo().info()
+        LOG.info(_LI('OpenStack OS Version Info: %(info)s') % {
             'info': app_version})
+
         self.configuration = kwargs.get('configuration', None)
-        if self.configuration:
-            self.configuration.append_config_values(netapp_proxy_opts)
-        else:
+        if not self.configuration:
             raise exception.InvalidInput(
                 reason=_("Required configuration not found"))
+
+        self.configuration.append_config_values(netapp_proxy_opts)
+        na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
+
         kwargs['app_version'] = app_version
+
         self.driver = NetAppDriverFactory.create_driver(
             self.configuration.netapp_storage_family,
             self.configuration.netapp_storage_protocol,
@@ -108,40 +105,33 @@ class NetAppDriverFactory(object):
     """Factory to instantiate appropriate NetApp driver."""
 
     @staticmethod
-    def create_driver(
-            storage_family, storage_protocol, *args, **kwargs):
+    def create_driver(storage_family, storage_protocol, *args, **kwargs):
         """"Creates an appropriate driver based on family and protocol."""
-        fmt = {'storage_family': storage_family,
-               'storage_protocol': storage_protocol}
-        LOG.info(_('Requested unified config: %(storage_family)s and '
-                   '%(storage_protocol)s') % fmt)
-        storage_family = storage_family.lower()
+
+        fmt = {'storage_family': storage_family.lower(),
+               'storage_protocol': storage_protocol.lower()}
+        LOG.info(_LI('Requested unified config: %(storage_family)s and '
+                     '%(storage_protocol)s') % fmt)
+
         family_meta = netapp_unified_plugin_registry.get(storage_family)
         if family_meta is None:
             raise exception.InvalidInput(
                 reason=_('Storage family %s is not supported')
                 % storage_family)
-        if storage_protocol is None:
-            storage_protocol = netapp_family_default.get(storage_family)
-            fmt['storage_protocol'] = storage_protocol
-        if storage_protocol is None:
-            raise exception.InvalidInput(
-                reason=_('No default storage protocol found'
-                         ' for storage family %(storage_family)s')
-                % fmt)
-        storage_protocol = storage_protocol.lower()
+
         driver_loc = family_meta.get(storage_protocol)
         if driver_loc is None:
             raise exception.InvalidInput(
                 reason=_('Protocol %(storage_protocol)s is not supported'
                          ' for storage family %(storage_family)s')
                 % fmt)
+
         NetAppDriverFactory.check_netapp_driver(driver_loc)
         kwargs = kwargs or {}
         kwargs['netapp_mode'] = 'proxy'
         driver = importutils.import_object(driver_loc, *args, **kwargs)
-        LOG.info(_('NetApp driver of family %(storage_family)s and protocol'
-                   ' %(storage_protocol)s loaded') % fmt)
+        LOG.info(_LI('NetApp driver of family %(storage_family)s and protocol'
+                     ' %(storage_protocol)s loaded') % fmt)
         return driver
 
     @staticmethod

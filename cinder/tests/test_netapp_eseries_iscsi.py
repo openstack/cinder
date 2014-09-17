@@ -32,9 +32,9 @@ from cinder.volume.drivers.netapp import common
 from cinder.volume.drivers.netapp.eseries import client
 from cinder.volume.drivers.netapp.eseries import iscsi
 from cinder.volume.drivers.netapp.eseries.iscsi import LOG as driver_log
+from cinder.volume.drivers.netapp.eseries import utils
 from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
 from cinder.volume.drivers.netapp.options import netapp_eseries_opts
-import cinder.volume.drivers.netapp.utils as na_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -590,7 +590,7 @@ class FakeEseriesHTTPSession(object):
             raise exception.Invalid()
 
 
-class NetAppEseriesIscsiDriverTestCase(test.TestCase):
+class NetAppEseriesISCSIDriverTestCase(test.TestCase):
     """Test case for NetApp e-series iscsi driver."""
 
     volume = {'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef', 'size': 1,
@@ -629,13 +629,13 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
                           'project_id': 'project', 'display_name': None,
                           'display_description': 'lun1',
                           'volume_type_id': None}
-    fake_eseries_volume_label = na_utils.convert_uuid_to_es_fmt(volume['id'])
+    fake_eseries_volume_label = utils.convert_uuid_to_es_fmt(volume['id'])
     connector = {'initiator': 'iqn.1998-01.com.vmware:localhost-28a58148'}
     fake_size_gb = volume['size']
     fake_eseries_pool_label = 'DDP'
 
     def setUp(self):
-        super(NetAppEseriesIscsiDriverTestCase, self).setUp()
+        super(NetAppEseriesISCSIDriverTestCase, self).setUp()
         self._custom_setup()
 
     def _custom_setup(self):
@@ -781,7 +781,7 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
         self.driver.delete_snapshot(self.snapshot)
         self.driver.delete_volume(self.volume)
 
-    @mock.patch.object(iscsi.Driver, '_get_volume',
+    @mock.patch.object(iscsi.NetAppEseriesISCSIDriver, '_get_volume',
                        mock.Mock(return_value={'volumeGroupRef': 'fake_ref'}))
     def test_get_pool(self):
         self.driver._objects['pools'] = [{'volumeGroupRef': 'fake_ref',
@@ -789,14 +789,14 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
         pool = self.driver.get_pool({'id': 'fake-uuid'})
         self.assertEqual(pool, 'ddp1')
 
-    @mock.patch.object(iscsi.Driver, '_get_volume',
+    @mock.patch.object(iscsi.NetAppEseriesISCSIDriver, '_get_volume',
                        mock.Mock(return_value={'volumeGroupRef': 'fake_ref'}))
     def test_get_pool_no_pools(self):
         self.driver._objects['pools'] = []
         pool = self.driver.get_pool({'id': 'fake-uuid'})
         self.assertEqual(pool, None)
 
-    @mock.patch.object(iscsi.Driver, '_get_volume',
+    @mock.patch.object(iscsi.NetAppEseriesISCSIDriver, '_get_volume',
                        mock.Mock(return_value={'volumeGroupRef': 'fake_ref'}))
     def test_get_pool_no_match(self):
         self.driver._objects['pools'] = [{'volumeGroupRef': 'fake_ref2',
@@ -804,7 +804,8 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
         pool = self.driver.get_pool({'id': 'fake-uuid'})
         self.assertEqual(pool, None)
 
-    @mock.patch.object(iscsi.Driver, '_create_volume', mock.Mock())
+    @mock.patch.object(iscsi.NetAppEseriesISCSIDriver, '_create_volume',
+                       mock.Mock())
     def test_create_volume(self):
         self.driver.create_volume(self.volume)
         self.driver._create_volume.assert_called_with(

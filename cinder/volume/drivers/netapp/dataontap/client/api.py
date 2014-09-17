@@ -1,6 +1,7 @@
-# Copyright (c) 2012 NetApp, Inc.
-# Copyright (c) 2012 OpenStack Foundation
-# All Rights Reserved.
+# Copyright (c) 2012 NetApp, Inc.  All rights reserved.
+# Copyright (c) 2014 Navneet Singh.  All rights reserved.
+# Copyright (c) 2014 Glenn Gobeli.  All rights reserved.
+# Copyright (c) 2014 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,16 +15,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-NetApp api for ONTAP and OnCommand DFM.
+NetApp API for Data ONTAP and OnCommand DFM.
 
-Contains classes required to issue api calls to ONTAP and OnCommand DFM.
+Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
 
+import copy
 import urllib2
 
 from lxml import etree
 import six
 
+from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
 
@@ -48,21 +51,25 @@ class NaServer(object):
     def __init__(self, host, server_type=SERVER_TYPE_FILER,
                  transport_type=TRANSPORT_TYPE_HTTP,
                  style=STYLE_LOGIN_PASSWORD, username=None,
-                 password=None):
+                 password=None, port=None):
         self._host = host
         self.set_server_type(server_type)
         self.set_transport_type(transport_type)
         self.set_style(style)
+        if port:
+            self.set_port(port)
         self._username = username
         self._password = password
         self._refresh_conn = True
+
+        LOG.debug('Using NetApp controller: %s' % self._host)
 
     def get_transport_type(self):
         """Get the transport type protocol."""
         return self._protocol
 
     def set_transport_type(self, transport_type):
-        """Set the transport type protocol for api.
+        """Set the transport type protocol for API.
 
         Supports http and https transport types.
         """
@@ -118,7 +125,7 @@ class NaServer(object):
         self._refresh_conn = True
 
     def set_api_version(self, major, minor):
-        """Set the api version."""
+        """Set the API version."""
         try:
             self._api_major_version = int(major)
             self._api_minor_version = int(minor)
@@ -129,7 +136,7 @@ class NaServer(object):
         self._refresh_conn = True
 
     def get_api_version(self):
-        """Gets the api version tuple."""
+        """Gets the API version tuple."""
         if hasattr(self, '_api_version'):
             return (self._api_major_version, self._api_minor_version)
         return None
@@ -187,9 +194,9 @@ class NaServer(object):
         self._refresh_conn = True
 
     def invoke_elem(self, na_element, enable_tunneling=False):
-        """Invoke the api on the server."""
+        """Invoke the API on the server."""
         if na_element and not isinstance(na_element, NaElement):
-            ValueError('NaElement must be supplied to invoke api')
+            ValueError('NaElement must be supplied to invoke API')
         request = self._create_request(na_element, enable_tunneling)
         if not hasattr(self, '_opener') or not self._opener \
                 or self._refresh_conn:
@@ -207,7 +214,7 @@ class NaServer(object):
         return self._get_result(xml)
 
     def invoke_successfully(self, na_element, enable_tunneling=False):
-        """Invokes api and checks execution status as success.
+        """Invokes API and checks execution status as success.
 
         Need to set enable_tunneling to True explicitly to achieve it.
         This helps to use same connection instance to enable or disable
@@ -303,7 +310,7 @@ class NaServer(object):
 
 
 class NaElement(object):
-    """Class wraps basic building block for NetApp api request."""
+    """Class wraps basic building block for NetApp API request."""
 
     def __init__(self, name):
         """Name of the element or etree.Element."""
@@ -496,16 +503,96 @@ class NaElement(object):
 
 
 class NaApiError(Exception):
-    """Base exception class for NetApp api errors."""
+    """Base exception class for NetApp API errors."""
 
     def __init__(self, code='unknown', message='unknown'):
         self.code = code
         self.message = message
 
     def __str__(self, *args, **kwargs):
-        return 'NetApp api failed. Reason - %s:%s' % (self.code, self.message)
+        return 'NetApp API failed. Reason - %s:%s' % (self.code, self.message)
 
 
 NaErrors = {'API_NOT_FOUND': NaApiError('13005', 'Unable to find API'),
             'INSUFFICIENT_PRIVS': NaApiError('13003',
                                              'Insufficient privileges')}
+
+
+def invoke_api(na_server, api_name, api_family='cm', query=None,
+               des_result=None, additional_elems=None,
+               is_iter=False, records=0, tag=None,
+               timeout=0, tunnel=None):
+    """Invokes any given API call to a NetApp server.
+
+        :param na_server: na_server instance
+        :param api_name: API name string
+        :param api_family: cm or 7m
+        :param query: API query as dict
+        :param des_result: desired result as dict
+        :param additional_elems: dict other than query and des_result
+        :param is_iter: is iterator API
+        :param records: limit for records, 0 for infinite
+        :param timeout: timeout seconds
+        :param tunnel: tunnel entity, vserver or vfiler name
+    """
+    record_step = 50
+    if not (na_server or isinstance(na_server, NaServer)):
+        msg = _("Requires an NaServer instance.")
+        raise exception.InvalidInput(reason=msg)
+    server = copy.copy(na_server)
+    if api_family == 'cm':
+        server.set_vserver(tunnel)
+    else:
+        server.set_vfiler(tunnel)
+    if timeout > 0:
+        server.set_timeout(timeout)
+    iter_records = 0
+    cond = True
+    while cond:
+        na_element = create_api_request(
+            api_name, query, des_result, additional_elems,
+            is_iter, record_step, tag)
+        result = server.invoke_successfully(na_element, True)
+        if is_iter:
+            if records > 0:
+                iter_records = iter_records + record_step
+                if iter_records >= records:
+                    cond = False
+            tag_el = result.get_child_by_name('next-tag')
+            tag = tag_el.get_content() if tag_el else None
+            if not tag:
+                cond = False
+        else:
+            cond = False
+        yield result
+
+
+def create_api_request(api_name, query=None, des_result=None,
+                       additional_elems=None, is_iter=False,
+                       record_step=50, tag=None):
+    """Creates a NetApp API request.
+
+        :param api_name: API name string
+        :param query: API query as dict
+        :param des_result: desired result as dict
+        :param additional_elems: dict other than query and des_result
+        :param is_iter: is iterator API
+        :param record_step: records at a time for iter API
+        :param tag: next tag for iter API
+    """
+    api_el = NaElement(api_name)
+    if query:
+        query_el = NaElement('query')
+        query_el.translate_struct(query)
+        api_el.add_child_elem(query_el)
+    if des_result:
+        res_el = NaElement('desired-attributes')
+        res_el.translate_struct(des_result)
+        api_el.add_child_elem(res_el)
+    if additional_elems:
+        api_el.translate_struct(additional_elems)
+    if is_iter:
+        api_el.add_new_child('max-records', six.text_type(record_step))
+    if tag:
+        api_el.add_new_child('tag', tag, True)
+    return api_el

@@ -1,4 +1,4 @@
-# Copyright (c) - 2014, Alex Meade.  All rights reserved.
+# Copyright (c) 2014 Alex Meade.  All rights reserved.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,17 +20,32 @@ import mock
 import six
 
 from cinder import test
-from cinder.volume.drivers.netapp import api as netapp_api
-from cinder.volume.drivers.netapp.client import seven_mode
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+from cinder.volume.drivers.netapp.dataontap.client import client_7mode
+
+
+CONNECTION_INFO = {'hostname': 'hostname',
+                   'transport_type': 'https',
+                   'port': 443,
+                   'username': 'admin',
+                   'password': 'passw0rd'}
 
 
 class NetApp7modeClientTestCase(test.TestCase):
 
     def setUp(self):
         super(NetApp7modeClientTestCase, self).setUp()
-        self.connection = mock.MagicMock()
+
         self.fake_volume = six.text_type(uuid.uuid4())
-        self.client = seven_mode.Client(self.connection, [self.fake_volume])
+
+        with mock.patch.object(client_7mode.Client,
+                               'get_ontapi_version',
+                               return_value=(1, 20)):
+            self.client = client_7mode.Client([self.fake_volume],
+                                              **CONNECTION_INFO)
+
+        self.client.connection = mock.MagicMock()
+        self.connection = self.client.connection
         self.fake_lun = six.text_type(uuid.uuid4())
 
     def tearDown(self):
