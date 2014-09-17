@@ -125,11 +125,10 @@ class ConsistencyGroupsController(wsgi.Controller):
             group = self.consistencygroup_api.get(context, id)
             self.consistencygroup_api.delete(context, group, force)
         except exception.ConsistencyGroupNotFound:
-            msg = _("Consistency group could not be found")
+            msg = _("Consistency group %s could not be found.") % id
             raise exc.HTTPNotFound(explanation=msg)
-        except exception.InvalidConsistencyGroup:
-            msg = _("Invalid consistency group")
-            raise exc.HTTPBadRequest(explanation=msg)
+        except exception.InvalidConsistencyGroup as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
 
         return webob.Response(status_int=202)
 
@@ -176,6 +175,10 @@ class ConsistencyGroupsController(wsgi.Controller):
         name = consistencygroup.get('name', None)
         description = consistencygroup.get('description', None)
         volume_types = consistencygroup.get('volume_types', None)
+        if not volume_types:
+            msg = _("volume_types must be provided to create "
+                    "consistency group %(name)s.") % {'name': name}
+            raise exc.HTTPBadRequest(explanation=msg)
         availability_zone = consistencygroup.get('availability_zone', None)
 
         LOG.info(_("Creating consistency group %(name)s."),
@@ -184,7 +187,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         try:
             new_consistencygroup = self.consistencygroup_api.create(
-                context, name, description, cg_volume_types=volume_types,
+                context, name, description, volume_types,
                 availability_zone=availability_zone)
         except exception.InvalidConsistencyGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
