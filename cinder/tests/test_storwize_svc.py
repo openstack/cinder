@@ -2888,7 +2888,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
     def test_storwize_retype_with_strech_cluster_replication(self):
         self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
         self.driver.do_setup(self.ctxt)
-        self.driver.do_setup(None)
         loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
                ':openstack')
         cap = {'location_info': loc, 'extent_size': '128'}
@@ -2918,6 +2917,42 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Enable replica
         self.driver.retype(ctxt, volume, enable_type, diff, host)
 
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertIs('copying', model_update['replication_status'])
+        self.driver.delete_volume(volume)
+
+    def test_storwize_retype_from_none_to_strech_cluster_replication(self):
+        self._set_flag('storwize_svc_stretched_cluster_partner', 'openstack2')
+        self.driver.do_setup(self.ctxt)
+        loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
+               ':openstack')
+        cap = {'location_info': loc, 'extent_size': '128'}
+        self.driver._stats = {'location_info': loc}
+        host = {'host': 'foo', 'capabilities': cap}
+        ctxt = context.get_admin_context()
+
+        volume = self._generate_vol_info(None, None)
+        volume['volume_type_id'] = None
+        volume['volume_type'] = None
+        volume['replication_status'] = "disabled"
+        volume['replication_extended_status'] = None
+
+        # Create volume which is not volume replication
+        model_update = self.driver.create_volume(volume)
+        self.assertIsNone(model_update)
+        # volume should be DB object in this parameter
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertIsNone(model_update)
+
+        enable_type = self._create_replication_volume_type(True)
+        diff, equal = volume_types.volume_types_diff(ctxt,
+                                                     None,
+                                                     enable_type['id'])
+
+        # Enable replica
+        self.driver.retype(ctxt, volume, enable_type, diff, host)
+        # In DB replication_status will be updated
+        volume['replication_status'] = None
         model_update = self.driver.get_replication_status(self.ctxt, volume)
         self.assertIs('copying', model_update['replication_status'])
         self.driver.delete_volume(volume)
