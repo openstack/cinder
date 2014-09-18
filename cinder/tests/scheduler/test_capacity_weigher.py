@@ -59,6 +59,7 @@ class CapacityWeigherTestCase(test.TestCase):
         # host2: free_capacity_gb=300, free=300*(1-0.1)
         # host3: free_capacity_gb=512, free=256
         # host4: free_capacity_gb=200, free=200*(1-0.05)
+        # host5: free_capacity_gb=unknown free=-1
 
         # so, host1 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
@@ -74,6 +75,7 @@ class CapacityWeigherTestCase(test.TestCase):
         # host2: free_capacity_gb=300, free=-300*(1-0.1)
         # host3: free_capacity_gb=512, free=-256
         # host4: free_capacity_gb=200, free=-200*(1-0.05)
+        # host5: free_capacity_gb=unknown free=-float('inf')
 
         # so, host4 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
@@ -89,6 +91,7 @@ class CapacityWeigherTestCase(test.TestCase):
         # host2: free_capacity_gb=300, free=300*(1-0.1)*2
         # host3: free_capacity_gb=512, free=256*2
         # host4: free_capacity_gb=200, free=200*(1-0.05)*2
+        # host5: free_capacity_gb=unknown free=-2
 
         # so, host1 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)

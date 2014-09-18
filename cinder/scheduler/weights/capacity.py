@@ -67,7 +67,11 @@ class CapacityWeigher(weights.BaseHostWeigher):
         if free_space == 'infinite' or free_space == 'unknown':
             #(zhiteng) 'infinite' and 'unknown' are treated the same
             # here, for sorting purpose.
-            free = float('inf')
+
+            # As a partial fix for bug #1350638, 'infinite' and 'unknown' are
+            # given the lowest weight to discourage driver from report such
+            # capacity anymore.
+            free = -1 if CONF.capacity_weight_multiplier > 0 else float('inf')
         else:
             free = math.floor(host_state.free_capacity_gb * (1 - reserved))
         return free
