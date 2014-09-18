@@ -314,6 +314,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
                             self.configuration.lvm_type,
                             mirror_count)
 
+        self.vg.activate_lv(temp_snapshot['name'], is_snapshot=True)
+
         try:
             volutils.copy_volume(self.local_path(temp_snapshot),
                                  self.local_path(volume),
