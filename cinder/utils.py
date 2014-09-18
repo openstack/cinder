@@ -96,6 +96,14 @@ def as_int(obj, quiet=True):
     return obj
 
 
+def is_int_like(val):
+    """Check if a value looks like an int."""
+    try:
+        return str(int(val)) == str(val)
+    except Exception:
+        return False
+
+
 def check_exclusive_options(**kwargs):
     """Checks that only one of the provided options is actually not-none.
 

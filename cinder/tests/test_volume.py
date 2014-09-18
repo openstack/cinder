@@ -2303,6 +2303,26 @@ class VolumeTestCase(BaseVolumeTestCase):
                           'name',
                           'description')
 
+    def test_create_volume_with_float_fails(self):
+        """Test volume creation with invalid float size."""
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context,
+                          '1.5',
+                          'name',
+                          'description')
+
+    def test_create_volume_with_zero_size_fails(self):
+        """Test volume creation with string size."""
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context,
+                          '0',
+                          'name',
+                          'description')
+
     def test_begin_detaching_fails_available(self):
         volume_api = cinder.volume.api.API()
         volume = tests_utils.create_volume(self.context, **self.volume_params)
