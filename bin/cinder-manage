@@ -288,7 +288,7 @@ class VolumeCommands(object):
     @args('--currenthost', required=True, help='Existing volume host name')
     @args('--newhost', required=True, help='New volume host name')
     def update_host(self, currenthost, newhost):
-        """Modify the host name asscoiated with
+        """Modify the host name associated with
         a volume.  Particularly to recover from
         cases where one has moved their Cinder Volume
         node, or modfied their backend_name in a
