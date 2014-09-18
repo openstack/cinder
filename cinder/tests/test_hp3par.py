@@ -27,6 +27,7 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
 from cinder import test
 from cinder.tests import fake_hp_3par_client as hp3parclient
+from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san.hp import hp_3par_fc as hpfcdriver
 from cinder.volume.drivers.san.hp import hp_3par_iscsi as hpdriver
 from cinder.volume import qos_specs
@@ -1934,6 +1935,13 @@ class HP3PARBaseDriver(object):
             mock.call.logout()]
 
         mock_client.assert_has_calls(expected)
+
+    def test__safe_hostname(self):
+        long_hostname = "abc123abc123abc123abc123abc123abc123"
+        fixed_hostname = "abc123abc123abc123abc123abc123a"
+        common = hpcommon.HP3PARCommon(None)
+        safe_host = common._safe_hostname(long_hostname)
+        self.assertEqual(fixed_hostname, safe_host)
 
 
 class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
