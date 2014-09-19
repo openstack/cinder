@@ -21,7 +21,7 @@
 .. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
 .. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
 """
-
+from io import BytesIO
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common.gettextutils import _
@@ -37,6 +37,9 @@ except ImportError:
 import urllib
 import pprint
 import time
+import tempfile
+import os
+import base64
 
 LOG = logging.getLogger(__name__)
 
@@ -765,10 +768,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
-        time.sleep(5)
         rsp = self.restapi.get('iscsi', {
                 'objectPath' : self.bucket_path + '/' + volume['name']
             })
+
         return {
             'driver_volume_type': 'iscsi',
             'data': {
@@ -787,22 +790,43 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         pass
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
-        #image_utils.fetch_to_raw(context,
-        #                         image_service,
-        #                         image_id,
-        #                         self.local_path(volume),
-        #                         self.configuration.volume_dd_blocksize,
-        #                         size=volume['size'])
-        #self.create_volume(volume)
-      
-        #image_id is vol.img  && must be our predefined name, else exc
-        #clone /cltest/test/bk1/vol.img -> clone_body.
+        """Fetch the image from image_service and write it to the volume. """
+        tmp_dir = '/tmp' #self.configuration.volume_tmp_dir
+        with tempfile.NamedTemporaryFile(dir=tmp_dir) as tmp:
+            image_utils.fetch_to_raw(context,
+                                 image_service,
+                                 image_id,
+                                 tmp.name,
+                                 self.configuration.volume_dd_blocksize,
+                                 size=volume['size'])
+            obj_f = open(tmp.name, "rb")
+            chunkSize = 128 * 4096 
+            for x in range (0, os.path.getsize(tmp.name) / (chunkSize)):
+                obj_data = obj_f.read(chunkSize)
+                data64 = base64.b64encode(obj_data, None)
+                payload = { 'data' : data64 }
+                url = self.bucket_url + '/' + self.bucket + '/objects/' + volume['name'] + '?offsetSize=' + str(x *chunkSize) + '?bufferSize=' + str(len(data64))
+                try:
+                    rsp = self.restapi.post(url, payload)
+                except nexenta.NexentaException, e:
+                    LOG.error(_('Error while copying Image to Volume: %s'), str(e))
+                    pass
+        
+        try:
+            rsp = self.restapi.post('iscsi/-1/resize', {
+                'objectPath' : self.bucket_path + '/' + volume['name'],
+                'newSizeMB' : int(volume['size']) * 1024,
+            })
+        except nexenta.NexentaException, e:
+            LOG.error(_('Error while creating Volume from Image: %s'), str(e))
+            pass
+        '''image_id is vol.img  && must be our predefined name, else exc
+        clone /cltest/test/bk1/vol.img -> clone_body.
         image_meta = image_service.show(context, image_id)
         if image_meta['name'] != 'p_linux':
             vol_img = image_meta['name']
         else:
-            vol_img = "vol.img"
+        vol_img = "vol.img"
         vol_url = self.bucket_url + '/' + self.bucket  + '/objects/' + vol_img 
         clone_body = { 'tenant_name' : self.tenant,
                       'bucket_name' : self.bucket,
@@ -817,7 +841,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except nexenta.NexentaException, e:
             LOG.error(_('Error while creating Volume from Image: %s'), str(e))
             pass
-
+        '''
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
         image_utils.upload_volume(context,
@@ -828,7 +852,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def local_path(self, volume):
         """Return local path to existing local volume.
         """
-        return self.bucket_url + "/bk1/volumes/" + volume['name']
+        #return self.bucket_url + "/bk1/volumes/" + volume['name']
+        return '/v1/' + self.tenant + '/' + self.bucket + '/' + volume['name'] 
 
     def clone_image(self, volume, image_location, image_id, image_meta):
         """Create a volume efficiently from an existing image.
