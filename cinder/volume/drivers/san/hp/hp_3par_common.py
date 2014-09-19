@@ -148,10 +148,11 @@ class HP3PARCommon(object):
         2.0.18 - HP 3PAR manage_existing with volume-type support
         2.0.19 - Update default persona from Generic to Generic-ALUA
         2.0.20 - Configurable SSH missing key policy and known hosts file
+        2.0.21 - Remove bogus invalid snapCPG=None exception
 
     """
 
-    VERSION = "2.0.20"
+    VERSION = "2.0.21"
 
     stats = {}
 
@@ -1634,7 +1635,7 @@ class HP3PARCommon(object):
 
     def _retype_pre_checks(self, host, new_persona,
                            old_cpg, new_cpg,
-                           old_snap_cpg, new_snap_cpg):
+                           new_snap_cpg):
         """Test retype parameters before making retype changes.
 
         Do pre-retype parameter validation.  These checks will
@@ -1658,12 +1659,6 @@ class HP3PARCommon(object):
                 reason = (_("Cannot retype from one 3PAR array to another."))
                 raise exception.InvalidHost(reason)
 
-        if not old_snap_cpg:
-            reason = (_("Invalid current snapCPG name for retype.  The volume "
-                        "may be in a transitioning state.  snapCpg='%s'.") %
-                      old_snap_cpg)
-            raise exception.InvalidVolume(reason)
-
         # Validate new_snap_cpg.  A white-space snapCPG will fail eventually,
         # but we'd prefer to fail fast -- if this ever happens.
         if not new_snap_cpg or new_snap_cpg.isspace():
@@ -1672,11 +1667,12 @@ class HP3PARCommon(object):
             raise exception.InvalidInput(reason)
 
         # Check to make sure CPGs are in the same domain
-        if self.get_domain(old_cpg) != self.get_domain(new_cpg):
+        domain = self.get_domain(old_cpg)
+        if domain != self.get_domain(new_cpg):
             reason = (_('Cannot retype to a CPG in a different domain.'))
             raise exception.Invalid3PARDomain(reason)
 
-        if self.get_domain(old_snap_cpg) != self.get_domain(new_snap_cpg):
+        if domain != self.get_domain(new_snap_cpg):
             reason = (_('Cannot retype to a snap CPG in a different domain.'))
             raise exception.Invalid3PARDomain(reason)
 
@@ -1689,7 +1685,7 @@ class HP3PARCommon(object):
 
         self._retype_pre_checks(host, new_persona,
                                 old_cpg, new_cpg,
-                                old_snap_cpg, new_snap_cpg)
+                                new_snap_cpg)
 
         flow_name = action.replace(":", "_") + "_api"
         retype_flow = linear_flow.Flow(flow_name)
