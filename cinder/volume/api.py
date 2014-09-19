@@ -156,6 +156,22 @@ class API(base.Base):
                scheduler_hints=None, backup_source_volume=None,
                source_replica=None, consistencygroup=None):
 
+        # NOTE(jdg): we can have a create without size if we're
+        # doing a create from snap or volume.  Currently
+        # the taskflow api will handle this and pull in the
+        # size from the source.
+
+        # NOTE(jdg): cinderclient sends in a string representation
+        # of the size value.  BUT there is a possbility that somebody
+        # could call the API directly so the is_int_like check
+        # handles both cases (string representation or true float or int).
+        if size and (not utils.is_int_like(size) or int(size) <= 0):
+            msg = _('Invalid volume size provided for create request '
+                    '(size argument must be an integer (or string '
+                    'represenation or an integer) and greater '
+                    'than zero).')
+            raise exception.InvalidInput(reason=msg)
+
         if consistencygroup:
             if not volume_type:
                 msg = _("volume_type must be provided when creating "
