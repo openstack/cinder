@@ -2256,30 +2256,35 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
         mock_client.getCPG.return_value = self.cpgs[0]
-        mock_client.getStorageSystemInfo.return_value = {'serialNumber':
-                                                         '1234'}
+        totalCapacityMiB = 8000
+        freeCapacityMiB = 4000
+        mock_client.getStorageSystemInfo.return_value = {
+            'serialNumber': '1234',
+            'totalCapacityMiB': totalCapacityMiB,
+            'freeCapacityMiB': freeCapacityMiB
+        }
         stats = self.driver.get_volume_stats(True)
+        const = 0.0009765625
         self.assertEqual(stats['storage_protocol'], 'FC')
-        self.assertEqual(stats['total_capacity_gb'], 'infinite')
-        self.assertEqual(stats['free_capacity_gb'], 'infinite')
+        self.assertEqual(stats['total_capacity_gb'], totalCapacityMiB * const)
+        self.assertEqual(stats['free_capacity_gb'], freeCapacityMiB * const)
 
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getCPG(HP3PAR_CPG),
             mock.call.getStorageSystemInfo(),
+            mock.call.getCPG(HP3PAR_CPG),
             mock.call.logout()]
 
         mock_client.assert_has_calls(expected)
         stats = self.driver.get_volume_stats(True)
         self.assertEqual(stats['storage_protocol'], 'FC')
-        self.assertEqual(stats['total_capacity_gb'], 'infinite')
-        self.assertEqual(stats['free_capacity_gb'], 'infinite')
+        self.assertEqual(stats['total_capacity_gb'], totalCapacityMiB * const)
+        self.assertEqual(stats['free_capacity_gb'], freeCapacityMiB * const)
 
         cpg2 = self.cpgs[0].copy()
         cpg2.update({'SDGrowth': {'limitMiB': 8192}})
         mock_client.getCPG.return_value = cpg2
 
-        const = 0.0009765625
         stats = self.driver.get_volume_stats(True)
         self.assertEqual(stats['storage_protocol'], 'FC')
         total_capacity_gb = 8192 * const
@@ -2544,30 +2549,31 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
         mock_client.getCPG.return_value = self.cpgs[0]
-        mock_client.getStorageSystemInfo.return_value = {'serialNumber':
-                                                         '1234'}
+        totalCapacityMiB = 8000
+        freeCapacityMiB = 4000
+        mock_client.getStorageSystemInfo.return_value = {
+            'serialNumber': '1234',
+            'totalCapacityMiB': totalCapacityMiB,
+            'freeCapacityMiB': freeCapacityMiB
+        }
         stats = self.driver.get_volume_stats(True)
+        const = 0.0009765625
         self.assertEqual(stats['storage_protocol'], 'iSCSI')
-        self.assertEqual(stats['total_capacity_gb'], 'infinite')
-        self.assertEqual(stats['free_capacity_gb'], 'infinite')
+        self.assertEqual(stats['total_capacity_gb'], totalCapacityMiB * const)
+        self.assertEqual(stats['free_capacity_gb'], freeCapacityMiB * const)
 
         expected = [
             mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getCPG(HP3PAR_CPG),
             mock.call.getStorageSystemInfo(),
+            mock.call.getCPG(HP3PAR_CPG),
             mock.call.logout()]
 
         mock_client.assert_has_calls(expected)
-
-        self.assertEqual(stats['storage_protocol'], 'iSCSI')
-        self.assertEqual(stats['total_capacity_gb'], 'infinite')
-        self.assertEqual(stats['free_capacity_gb'], 'infinite')
 
         cpg2 = self.cpgs[0].copy()
         cpg2.update({'SDGrowth': {'limitMiB': 8192}})
         mock_client.getCPG.return_value = cpg2
 
-        const = 0.0009765625
         stats = self.driver.get_volume_stats(True)
         self.assertEqual(stats['storage_protocol'], 'iSCSI')
         total_capacity_gb = 8192 * const

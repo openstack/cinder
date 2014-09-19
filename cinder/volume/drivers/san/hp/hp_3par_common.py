@@ -149,10 +149,11 @@ class HP3PARCommon(object):
         2.0.19 - Update default persona from Generic to Generic-ALUA
         2.0.20 - Configurable SSH missing key policy and known hosts file
         2.0.21 - Remove bogus invalid snapCPG=None exception
+        2.0.22 - HP 3PAR drivers should not claim to have 'infinite' space
 
     """
 
-    VERSION = "2.0.21"
+    VERSION = "2.0.22"
 
     stats = {}
 
@@ -623,11 +624,13 @@ class HP3PARCommon(object):
                  'vendor_name': 'Hewlett-Packard',
                  'volume_backend_name': None}
 
+        info = self.client.getStorageSystemInfo()
         try:
             cpg = self.client.getCPG(self.config.hp3par_cpg)
             if 'limitMiB' not in cpg['SDGrowth']:
-                total_capacity = 'infinite'
-                free_capacity = 'infinite'
+                # System capacity is best we can do for now.
+                total_capacity = info['totalCapacityMiB'] * const
+                free_capacity = info['freeCapacityMiB'] * const
             else:
                 total_capacity = int(cpg['SDGrowth']['limitMiB'] * const)
                 free_capacity = int((cpg['SDGrowth']['limitMiB'] -
@@ -641,7 +644,6 @@ class HP3PARCommon(object):
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
-        info = self.client.getStorageSystemInfo()
         stats['location_info'] = ('HP3PARDriver:%(sys_id)s:%(dest_cpg)s' %
                                   {'sys_id': info['serialNumber'],
                                    'dest_cpg': self.config.safe_get(
