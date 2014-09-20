@@ -150,10 +150,11 @@ class HP3PARCommon(object):
         2.0.20 - Configurable SSH missing key policy and known hosts file
         2.0.21 - Remove bogus invalid snapCPG=None exception
         2.0.22 - HP 3PAR drivers should not claim to have 'infinite' space
+        2.0.23 - Increase the hostname size from 23 to 31  Bug #1371242
 
     """
 
-    VERSION = "2.0.22"
+    VERSION = "2.0.23"
 
     stats = {}
 
@@ -561,8 +562,8 @@ class HP3PARCommon(object):
             index = len(hostname)
 
         # we'll just chop this off for now.
-        if index > 23:
-            index = 23
+        if index > 31:
+            index = 31
 
         return hostname[:index]
 
