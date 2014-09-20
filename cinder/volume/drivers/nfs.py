@@ -145,7 +145,7 @@ class RemoteFsDriver(driver.VolumeDriver):
         """Look for remote shares in the flags and tries to mount them
         locally.
         """
-        self._mounted_shares = []
+        mounted_shares = []
 
         self._load_shares_config(getattr(self.configuration,
                                          self.driver_prefix +
@@ -154,9 +154,11 @@ class RemoteFsDriver(driver.VolumeDriver):
         for share in self.shares.keys():
             try:
                 self._ensure_share_mounted(share)
-                self._mounted_shares.append(share)
+                mounted_shares.append(share)
             except Exception as exc:
                 LOG.warning(_('Exception during mounting %s') % (exc,))
+
+        self._mounted_shares = mounted_shares
 
         LOG.debug('Available shares %s' % str(self._mounted_shares))
 
