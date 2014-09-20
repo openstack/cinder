@@ -1218,6 +1218,18 @@ class TestMigrations(test.TestCase):
             self.assertIsInstance(cgsnapshots.c.status.type,
                                   sqlalchemy.types.VARCHAR)
 
+            # Verify foreign keys are created
+            fkey, = volumes.c.consistencygroup_id.foreign_keys
+            self.assertEqual(consistencygroups.c.id, fkey.column)
+            self.assertEqual(1, len(volumes.foreign_keys))
+
+            fkey, = snapshots.c.cgsnapshot_id.foreign_keys
+            self.assertEqual(cgsnapshots.c.id, fkey.column)
+            fkey, = snapshots.c.volume_id.foreign_keys
+            self.assertEqual(volumes.c.id, fkey.column)
+            # 2 foreign keys in Table snapshots
+            self.assertEqual(2, len(snapshots.foreign_keys))
+
             # Downgrade
             migration_api.downgrade(engine, TestMigrations.REPOSITORY, 24)
             metadata = sqlalchemy.schema.MetaData()
@@ -1234,6 +1246,13 @@ class TestMigrations(test.TestCase):
                                          metadata,
                                          autoload=True)
             self.assertNotIn('cgsnapshot_id', snapshots.c)
+
+            # Verify foreign keys are removed
+            self.assertEqual(0, len(volumes.foreign_keys))
+            self.assertEqual(1, len(snapshots.foreign_keys))
+            # volume_id foreign key is still in Table snapshots
+            fkey, = snapshots.c.volume_id.foreign_keys
+            self.assertEqual(volumes.c.id, fkey.column)
 
             # Test Table cgsnapshots doesn't exist any more
             self.assertFalse(engine.dialect.has_table(engine.connect(),
