@@ -36,7 +36,7 @@ class FakeZFSSA(object):
     def login(self, user):
         self.user = user
 
-    def set_host(self, host):
+    def set_host(self, host, timeout=None):
         self.host = host
 
     def create_project(self, pool, project, compression, logbias):
@@ -265,6 +265,7 @@ class TestZFSSAISCSIDriver(test.TestCase):
         self.configuration.zfssa_target_password = ''
         self.configuration.zfssa_target_portal = '1.1.1.1:3260'
         self.configuration.zfssa_target_interfaces = 'e1000g0'
+        self.configuration.zfssa_rest_timeout = 60
 
     def test_create_delete_volume(self):
         self.drv.create_volume(self.test_vol)
