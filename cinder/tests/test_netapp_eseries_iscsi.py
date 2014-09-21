@@ -595,7 +595,7 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
     volume = {'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef', 'size': 1,
               'volume_name': 'lun1', 'host': 'hostname@backend#DDP',
               'os_type': 'linux', 'provider_location': 'lun1',
-              'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+              'name_id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
               'provider_auth': 'provider a b', 'project_id': 'project',
               'display_name': None, 'display_description': 'lun1',
               'volume_type_id': None}
@@ -608,14 +608,14 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
     volume_sec = {'id': 'b6c01641-8955-4917-a5e3-077147478575',
                   'size': 2, 'volume_name': 'lun1',
                   'os_type': 'linux', 'provider_location': 'lun1',
-                  'id': 'b6c01641-8955-4917-a5e3-077147478575',
+                  'name_id': 'b6c01641-8955-4917-a5e3-077147478575',
                   'provider_auth': None, 'project_id': 'project',
                   'display_name': None, 'display_description': 'lun1',
                   'volume_type_id': None}
     volume_clone = {'id': 'b4b24b27-c716-4647-b66d-8b93ead770a5', 'size': 3,
                     'volume_name': 'lun1',
                     'os_type': 'linux', 'provider_location': 'cl_sm',
-                    'id': 'b4b24b27-c716-4647-b66d-8b93ead770a5',
+                    'name_id': 'b4b24b27-c716-4647-b66d-8b93ead770a5',
                     'provider_auth': None,
                     'project_id': 'project', 'display_name': None,
                     'display_description': 'lun1',
@@ -623,7 +623,7 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
     volume_clone_large = {'id': 'f6ef5bf5-e24f-4cbb-b4c4-11d631d6e553',
                           'size': 6, 'volume_name': 'lun1',
                           'os_type': 'linux', 'provider_location': 'cl_lg',
-                          'id': 'f6ef5bf5-e24f-4cbb-b4c4-11d631d6e553',
+                          'name_id': 'f6ef5bf5-e24f-4cbb-b4c4-11d631d6e553',
                           'provider_auth': None,
                           'project_id': 'project', 'display_name': None,
                           'display_description': 'lun1',
@@ -686,11 +686,14 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
         self.driver.delete_volume(self.volume)
 
     def test_create_vol_snapshot_destroy(self):
+        self.driver.db = mock.Mock(
+            volume_get=mock.Mock(return_value=self.volume))
         self.driver.create_volume(self.volume)
         self.driver.create_snapshot(self.snapshot)
         self.driver.create_volume_from_snapshot(self.volume_sec, self.snapshot)
         self.driver.delete_snapshot(self.snapshot)
         self.driver.delete_volume(self.volume)
+        self.assertEqual(1, self.driver.db.volume_get.call_count)
 
     def test_map_unmap(self):
         self.driver.create_volume(self.volume)
@@ -749,8 +752,11 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
         self.driver.delete_volume(self.volume)
 
     def test_cloned_volume_destroy(self):
+        self.driver.db = mock.Mock(
+            volume_get=mock.Mock(return_value=self.volume))
         self.driver.create_volume(self.volume)
-        self.driver.create_cloned_volume(self.snapshot, self.volume)
+        self.driver.create_cloned_volume(self.volume_sec, self.volume)
+        self.assertEqual(1, self.driver.db.volume_get.call_count)
         self.driver.delete_volume(self.volume)
 
     def test_map_by_creating_host(self):
@@ -766,19 +772,25 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
         self.driver.get_volume_stats(refresh=True)
 
     def test_create_vol_snapshot_diff_size_resize(self):
+        self.driver.db = mock.Mock(
+            volume_get=mock.Mock(return_value=self.volume))
         self.driver.create_volume(self.volume)
         self.driver.create_snapshot(self.snapshot)
         self.driver.create_volume_from_snapshot(
             self.volume_clone, self.snapshot)
+        self.assertEqual(1, self.driver.db.volume_get.call_count)
         self.driver.delete_snapshot(self.snapshot)
         self.driver.delete_volume(self.volume)
 
     def test_create_vol_snapshot_diff_size_subclone(self):
+        self.driver.db = mock.Mock(
+            volume_get=mock.Mock(return_value=self.volume))
         self.driver.create_volume(self.volume)
         self.driver.create_snapshot(self.snapshot)
         self.driver.create_volume_from_snapshot(
             self.volume_clone_large, self.snapshot)
         self.driver.delete_snapshot(self.snapshot)
+        self.assertEqual(1, self.driver.db.volume_get.call_count)
         self.driver.delete_volume(self.volume)
 
     @mock.patch.object(iscsi.Driver, '_get_volume',
@@ -786,14 +798,14 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
     def test_get_pool(self):
         self.driver._objects['pools'] = [{'volumeGroupRef': 'fake_ref',
                                           'label': 'ddp1'}]
-        pool = self.driver.get_pool({'id': 'fake-uuid'})
+        pool = self.driver.get_pool({'name_id': 'fake-uuid'})
         self.assertEqual(pool, 'ddp1')
 
     @mock.patch.object(iscsi.Driver, '_get_volume',
                        mock.Mock(return_value={'volumeGroupRef': 'fake_ref'}))
     def test_get_pool_no_pools(self):
         self.driver._objects['pools'] = []
-        pool = self.driver.get_pool({'id': 'fake-uuid'})
+        pool = self.driver.get_pool({'name_id': 'fake-uuid'})
         self.assertEqual(pool, None)
 
     @mock.patch.object(iscsi.Driver, '_get_volume',
@@ -801,7 +813,7 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
     def test_get_pool_no_match(self):
         self.driver._objects['pools'] = [{'volumeGroupRef': 'fake_ref2',
                                           'label': 'ddp2'}]
-        pool = self.driver.get_pool({'id': 'fake-uuid'})
+        pool = self.driver.get_pool({'name_id': 'fake-uuid'})
         self.assertEqual(pool, None)
 
     @mock.patch.object(iscsi.Driver, '_create_volume', mock.Mock())
