@@ -486,3 +486,18 @@ class HostManager(object):
                 all_pools[pool_key] = pool
 
         return all_pools.itervalues()
+
+    def get_pools(self, context):
+        """Returns a dict of all pools on all hosts HostManager knows about."""
+
+        all_pools = []
+        for host, state in self.host_state_map.items():
+            for key in state.pools:
+                pool = state.pools[key]
+                # use host.pool_name to make sure key is unique
+                pool_key = vol_utils.append_host(host, pool.pool_name)
+                new_pool = dict(name=pool_key)
+                new_pool.update(dict(capabilities=pool.capabilities))
+                all_pools.append(new_pool)
+
+        return all_pools
