@@ -2153,29 +2153,6 @@
 
 
 #
-# Options defined in cinder.volume.drivers.xenapi.sm
-#
-
-# NFS server to be used by XenAPINFSDriver (string value)
-#xenapi_nfs_server=<None>
-
-# Path of exported NFS, used by XenAPINFSDriver (string value)
-#xenapi_nfs_serverpath=<None>
-
-# URL for XenAPI connection (string value)
-#xenapi_connection_url=<None>
-
-# Username for XenAPI connection (string value)
-#xenapi_connection_username=root
-
-# Password for XenAPI connection (string value)
-#xenapi_connection_password=<None>
-
-# Base path to the storage repository (string value)
-#xenapi_sr_base_path=/var/run/sr-mount
-
-
-#
 # Options defined in cinder.volume.drivers.zadara
 #
 
