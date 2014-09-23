@@ -102,7 +102,7 @@ class LinuxSCSI(executor.Executor):
                           root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
             msg = _("Failed to flush IO buffers prior to removing"
-                    "device: (%(code)s)") % {'code': exc.exit_code}
+                    " device: (%(code)s)") % {'code': exc.exit_code}
             LOG.warn(msg)
 
     def flush_multipath_device(self, device):

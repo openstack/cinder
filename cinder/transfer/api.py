@@ -185,7 +185,7 @@ class API(base.Base):
         except Exception:
             donor_reservations = None
             LOG.exception(_("Failed to update quota donating volume"
-                            "transfer id %s") % transfer_id)
+                            " transfer id %s") % transfer_id)
 
         try:
             # Transfer ownership of the volume now, must use an elevated
