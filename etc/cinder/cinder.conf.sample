@@ -283,7 +283,7 @@
 
 # File containing SSH host keys for the systems with which
 # Cinder needs to communicate.  OPTIONAL:
-# Default=$state_path/known_hosts (string value)
+# Default=$state_path/ssh_known_hosts (string value)
 #ssh_hosts_key_file=$state_path/ssh_known_hosts
 
 
