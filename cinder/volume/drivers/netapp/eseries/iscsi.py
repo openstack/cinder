@@ -66,6 +66,8 @@ class Driver(driver.ISCSIDriver):
         self.configuration.append_config_values(netapp_connection_opts)
         self.configuration.append_config_values(netapp_transport_opts)
         self.configuration.append_config_values(netapp_eseries_opts)
+        self._backend_name = self.configuration.safe_get("volume_backend_name")\
+            or "NetApp_ESeries"
         self._objects = {'disk_pool_refs': [], 'pools': [],
                          'volumes': {'label_ref': {}, 'ref_vol': {}},
                          'snapshots': {'label_ref': {}, 'ref_snap': {}}}
@@ -89,6 +91,13 @@ class Driver(driver.ISCSIDriver):
             if not getattr(self.configuration, flag, None):
                 msg = _('%s is not set.') % flag
                 raise exception.InvalidInput(reason=msg)
+        if not self.configuration.use_multipath_for_image_xfer:
+            msg = _('Production use of "%(backend)s" backend requires the '
+                    'Cinder controller to have multipathing properly set up '
+                    'and the configuration option "%(mpflag)s" to be set to '
+                    '"True".') % {'backend': self._backend_name,
+                                  'mpflag': 'use_multipath_for_image_xfer'}
+            LOG.warning(msg)
 
     def check_for_setup_error(self):
         self._check_storage_system()
@@ -684,9 +693,7 @@ class Driver(driver.ISCSIDriver):
         """Update volume statistics."""
         LOG.debug("Updating volume stats.")
         data = dict()
-        netapp_backend = "NetApp_ESeries"
-        backend_name = self.configuration.safe_get("volume_backend_name")
-        data["volume_backend_name"] = (backend_name or netapp_backend)
+        data["volume_backend_name"] = self._backend_name
         data["vendor_name"] = "NetApp"
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = "iSCSI"
