@@ -44,7 +44,7 @@ ssh_opts = [
                default='$state_path/ssh_known_hosts',
                help='File containing SSH host keys for the systems with which '
                     'Cinder needs to communicate.  OPTIONAL: '
-                    'Default=$state_path/known_hosts'),
+                    'Default=$state_path/ssh_known_hosts'),
 ]
 
 CONF = cfg.CONF
