@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-08 06:09+0000\n"
+"POT-Creation-Date: 2014-09-24 06:03+0000\n"
 "PO-Revision-Date: 2014-08-07 07:52+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Russian (http://www.transifex.com/projects/p/cinder/language/"
@@ -30,6 +30,14 @@ msgstr ""
 msgid "Unexpected exception occurred %d time(s)... retrying."
 msgstr ""
 
+#: cinder/openstack/common/loopingcall.py:95
+msgid "in fixed duration looping call"
+msgstr ""
+
+#: cinder/openstack/common/loopingcall.py:138
+msgid "in dynamic looping call"
+msgstr ""
+
 #: cinder/openstack/common/periodic_task.py:202
 #, python-format
 msgid "Error during %(full_task_name)s: %(e)s"
@@ -48,4 +56,12 @@ msgstr ""
 #: cinder/openstack/common/policy.py:788
 #, python-format
 msgid "Failed to understand rule %r"
+msgstr ""
+
+#: cinder/openstack/common/service.py:188
+msgid "Exception during rpc cleanup."
+msgstr ""
+
+#: cinder/openstack/common/service.py:277
+msgid "Unhandled exception"
 msgstr ""

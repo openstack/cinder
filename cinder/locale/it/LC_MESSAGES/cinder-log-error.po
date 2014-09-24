@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-08 06:09+0000\n"
-"PO-Revision-Date: 2014-08-07 07:52+0000\n"
+"POT-Creation-Date: 2014-09-24 06:03+0000\n"
+"PO-Revision-Date: 2014-09-13 22:05+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Italian (http://www.transifex.com/projects/p/cinder/language/"
 "it/)\n"
@@ -22,12 +22,20 @@ msgstr ""
 #: cinder/openstack/common/excutils.py:76
 #, python-format
 msgid "Original exception being dropped: %s"
-msgstr ""
+msgstr "Eccezione originale in corso di eliminazione: %s"
 
 #: cinder/openstack/common/excutils.py:105
 #, python-format
 msgid "Unexpected exception occurred %d time(s)... retrying."
-msgstr ""
+msgstr "Un errore inatteso si è verificato %d volte... ritento."
+
+#: cinder/openstack/common/loopingcall.py:95
+msgid "in fixed duration looping call"
+msgstr "chiamata in loop a durata fissa"
+
+#: cinder/openstack/common/loopingcall.py:138
+msgid "in dynamic looping call"
+msgstr "chiamata in loop dinamico"
 
 #: cinder/openstack/common/periodic_task.py:202
 #, python-format
@@ -42,9 +50,17 @@ msgstr ""
 #: cinder/openstack/common/policy.py:518
 #, python-format
 msgid "No handler for matches of kind %s"
-msgstr ""
+msgstr "Nessun gestore per le corrispondenze di tipo %s"
 
 #: cinder/openstack/common/policy.py:788
 #, python-format
 msgid "Failed to understand rule %r"
 msgstr ""
+
+#: cinder/openstack/common/service.py:188
+msgid "Exception during rpc cleanup."
+msgstr "Eccezioni durante pulitura rpc."
+
+#: cinder/openstack/common/service.py:277
+msgid "Unhandled exception"
+msgstr "Eccezione non gestita"
