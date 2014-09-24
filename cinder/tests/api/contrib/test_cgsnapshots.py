@@ -20,10 +20,13 @@ Tests for cgsnapshot code.
 import json
 from xml.dom import minidom
 
+import mock
 import webob
 
+from cinder.consistencygroup import api as consistencygroupAPI
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.api import fakes
@@ -383,6 +386,57 @@ class CgsnapshotsAPITestCase(test.TestCase):
         self.assertEqual(res_dict['badRequest']['message'],
                          'The server could not comply with the request since'
                          ' it is either malformed or otherwise incorrect.')
+
+    @mock.patch.object(consistencygroupAPI.API, 'create_cgsnapshot',
+                       side_effect=exception.InvalidCgSnapshot(
+                           reason='invalid cgsnapshot'))
+    def test_create_with_invalid_cgsnapshot(self, mock_create_cgsnapshot):
+        consistencygroup_id = utils.create_consistencygroup(self.context)['id']
+        utils.create_volume(
+            self.context,
+            consistencygroup_id=consistencygroup_id)['id']
+
+        body = {"cgsnapshot": {"name": "cg1",
+                               "description":
+                               "CG Snapshot 1",
+                               "consistencygroup_id": consistencygroup_id}}
+        req = webob.Request.blank('/v2/fake/cgsnapshots')
+        req.body = json.dumps(body)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertEqual('Invalid CgSnapshot: invalid cgsnapshot',
+                         res_dict['badRequest']['message'])
+
+    @mock.patch.object(consistencygroupAPI.API, 'create_cgsnapshot',
+                       side_effect=exception.CgSnapshotNotFound(
+                           cgsnapshot_id='invalid_id'))
+    def test_create_with_cgsnapshot_not_found(self, mock_create_cgsnapshot):
+        consistencygroup_id = utils.create_consistencygroup(self.context)['id']
+        utils.create_volume(
+            self.context,
+            consistencygroup_id=consistencygroup_id)['id']
+
+        body = {"cgsnapshot": {"name": "cg1",
+                               "description":
+                               "CG Snapshot 1",
+                               "consistencygroup_id": consistencygroup_id}}
+
+        req = webob.Request.blank('/v2/fake/cgsnapshots')
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(404, res.status_int)
+        self.assertEqual(404, res_dict['itemNotFound']['code'])
+        self.assertEqual('CgSnapshot invalid_id could not be found.',
+                         res_dict['itemNotFound']['message'])
 
     def test_delete_cgsnapshot_available(self):
         consistencygroup_id = utils.create_consistencygroup(self.context)['id']
