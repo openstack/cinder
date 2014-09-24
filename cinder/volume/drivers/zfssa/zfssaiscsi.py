@@ -283,7 +283,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         LOG.debug("Updating volume status")
         self._stats = None
         data = {}
-        data["volume_backend_name"] = self.__class__.__name__
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or self.__class__.__name__
         data["vendor_name"] = 'Oracle'
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = self.protocol
