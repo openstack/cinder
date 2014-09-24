@@ -610,7 +610,7 @@ class SolidFireDriver(SanISCSIDriver):
         Note that for SolidFire Clusters currently there is no snapshot
         implementation.  Due to the way SF does cloning there's no performance
         hit or extra space used.  The only thing that's lacking from this is
-        the abilit to restore snaps.
+        the ability to restore snaps.
 
         After GA a true snapshot implementation will be available with
         restore at which time we'll rework this appropriately.

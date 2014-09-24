@@ -424,7 +424,7 @@ class LimiterTest(BaseLimitTestSuite):
         """test delay on 11th put request.
 
         the 11th PUT will result in a delay of 6.0 seconds until
-        the next request will be granced.
+        the next request will be granted.
         """
         expected = [None] * 10 + [6.0]
         results = list(self._check(11, "PUT", "/anything"))
@@ -435,7 +435,7 @@ class LimiterTest(BaseLimitTestSuite):
         """test delay of 8th post request.
 
         Ensure that the 8th POST will result in a delay of 6.0 seconds
-        until the next request will be granced.
+        until the next request will be granted.
         """
         expected = [None] * 7
         results = list(self._check(7, "POST", "/anything"))

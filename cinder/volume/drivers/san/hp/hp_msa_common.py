@@ -158,7 +158,7 @@ class HPMSACommon(object):
             raise exception.HPMSANotEnoughSpace(vdisk=self.vdisk)
 
     def _assert_source_detached(self, volume):
-        """The MSA requires a volume to be dettached to clone it.
+        """The MSA requires a volume to be detached to clone it.
 
         Make sure that the volume is not in use when trying to copy it.
         """

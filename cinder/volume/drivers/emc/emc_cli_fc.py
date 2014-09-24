@@ -123,7 +123,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         The target_wwn can be a single entry or a list of wwns that
         correspond to the list of remote wwn(s) that will export the volume.
         The initiator_target_map is a map that represents the remote wwn(s)
-        and a list of wwns which are visiable to the remote wwn(s).
+        and a list of wwns which are visible to the remote wwn(s).
         Example return values:
 
             {

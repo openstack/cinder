@@ -79,7 +79,7 @@ class TestGlanceImageService(test.TestCase):
     At a high level, the translations involved are:
 
         1. Glance -> ImageService - This is needed so we can support
-           multple ImageServices (Glance, Local, etc)
+           multiple ImageServices (Glance, Local, etc)
 
         2. ImageService -> API - This is needed so we can support multple
            APIs (OpenStack, EC2)

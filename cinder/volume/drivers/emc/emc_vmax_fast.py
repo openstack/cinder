@@ -674,7 +674,7 @@ class EMCVMAXFast(object):
     def get_capacities_associated_to_policy(self, conn, arrayName, policyName):
         """Gets the total and un-used capacities for all pools in a policy.
 
-        Given the name of the policy, get the total capcity and un-used
+        Given the name of the policy, get the total capacity and un-used
         capacity in GB of all the storage pools associated with the policy.
 
         :param policyName: the name of policy rule, a string value
