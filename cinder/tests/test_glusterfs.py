@@ -74,6 +74,7 @@ class GlusterFsDriverTestCase(test.TestCase):
     TEST_FILE_NAME = 'test.txt'
     TEST_SHARES_CONFIG_FILE = '/etc/cinder/test-shares.conf'
     VOLUME_UUID = 'abcdefab-cdef-abcd-efab-cdefabcdefab'
+    VOLUME_NAME = 'volume-%s' % VOLUME_UUID
     SNAP_UUID = 'bacadaca-baca-daca-baca-dacadacadaca'
     SNAP_UUID_2 = 'bebedede-bebe-dede-bebe-dedebebedede'
 
@@ -1520,8 +1521,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         volume = self._simple_volume()
         vol_filename = volume['name']
-        vol_filename_2 = volume['name'] + '.asdfjkl'
-        vol_filename_3 = volume['name'] + 'qwertyuiop'
+        vol_filename_2 = volume['name'] + '.abcd'
+        vol_filename_3 = volume['name'] + '.efef'
         hashed = drv._get_hash_str(self.TEST_EXPORT1)
         vol_dir = '%s/%s' % (self.TEST_MNT_POINT_BASE, hashed)
         vol_path = '%s/%s' % (vol_dir, vol_filename)
@@ -1725,7 +1726,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         info.file_format = 'raw'
 
         drv.db.volume_get(ctxt, volume['id']).AndReturn(volume)
-        drv._qemu_img_info(IgnoreArg()).AndReturn(info)
+        drv._qemu_img_info(IgnoreArg(), IgnoreArg()).AndReturn(info)
 
         base_driver.VolumeDriver.backup_volume(IgnoreArg(),
                                                IgnoreArg(),
@@ -1761,7 +1762,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         info.file_format = 'raw'
 
         drv.db.volume_get(ctxt, volume['id']).AndReturn(volume)
-        drv._qemu_img_info(IgnoreArg()).AndReturn(info)
+        drv._qemu_img_info(IgnoreArg(), IgnoreArg()).AndReturn(info)
 
         base_driver.VolumeDriver.backup_volume(IgnoreArg(),
                                                IgnoreArg(),
@@ -1823,7 +1824,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         info.file_format = 'raw'
         info.backing_file = 'file1'
 
-        drv._qemu_img_info(IgnoreArg()).AndReturn(info)
+        drv._qemu_img_info(IgnoreArg(), IgnoreArg()).AndReturn(info)
 
         base_driver.VolumeDriver.backup_volume(IgnoreArg(),
                                                IgnoreArg(),
@@ -1857,7 +1858,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         info.file_format = 'qcow2'
 
         drv.db.volume_get(ctxt, volume['id']).AndReturn(volume)
-        drv._qemu_img_info(IgnoreArg()).AndReturn(info)
+        drv._qemu_img_info(IgnoreArg(), IgnoreArg()).AndReturn(info)
 
         base_driver.VolumeDriver.backup_volume(IgnoreArg(),
                                                IgnoreArg(),
