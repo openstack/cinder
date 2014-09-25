@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 2014.2.dev13.g04abab8\n"
+"Project-Id-Version: cinder 2014.2.dev127.gd5d2744\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-08 06:09+0000\n"
+"POT-Creation-Date: 2014-09-24 06:03+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -25,6 +25,14 @@ msgstr ""
 #: cinder/openstack/common/excutils.py:105
 #, python-format
 msgid "Unexpected exception occurred %d time(s)... retrying."
+msgstr ""
+
+#: cinder/openstack/common/loopingcall.py:95
+msgid "in fixed duration looping call"
+msgstr ""
+
+#: cinder/openstack/common/loopingcall.py:138
+msgid "in dynamic looping call"
 msgstr ""
 
 #: cinder/openstack/common/periodic_task.py:202
@@ -45,5 +53,13 @@ msgstr ""
 #: cinder/openstack/common/policy.py:788
 #, python-format
 msgid "Failed to understand rule %r"
+msgstr ""
+
+#: cinder/openstack/common/service.py:188
+msgid "Exception during rpc cleanup."
+msgstr ""
+
+#: cinder/openstack/common/service.py:277
+msgid "Unhandled exception"
 msgstr ""
 

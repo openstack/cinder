@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-08 06:09+0000\n"
-"PO-Revision-Date: 2014-09-01 20:31+0000\n"
+"POT-Creation-Date: 2014-09-24 06:03+0000\n"
+"PO-Revision-Date: 2014-09-13 22:05+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Japanese (http://www.transifex.com/projects/p/cinder/language/"
 "ja/)\n"
@@ -29,6 +29,14 @@ msgstr "除去される元の例外: %s"
 msgid "Unexpected exception occurred %d time(s)... retrying."
 msgstr "予期せぬ例外が、%d回()発生しました。再試行中。"
 
+#: cinder/openstack/common/loopingcall.py:95
+msgid "in fixed duration looping call"
+msgstr "一定期間の呼び出しループ"
+
+#: cinder/openstack/common/loopingcall.py:138
+msgid "in dynamic looping call"
+msgstr "動的呼び出しループ"
+
 #: cinder/openstack/common/periodic_task.py:202
 #, python-format
 msgid "Error during %(full_task_name)s: %(e)s"
@@ -48,3 +56,11 @@ msgstr "種類 %s の一致向けのハンドラーがありません"
 #, python-format
 msgid "Failed to understand rule %r"
 msgstr "ルール %r を解釈できませんでした"
+
+#: cinder/openstack/common/service.py:188
+msgid "Exception during rpc cleanup."
+msgstr "RPCクリーンアップ中に例外が発生"
+
+#: cinder/openstack/common/service.py:277
+msgid "Unhandled exception"
+msgstr "未処理例外"

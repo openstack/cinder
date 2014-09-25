@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-08 06:09+0000\n"
-"PO-Revision-Date: 2014-09-01 20:31+0000\n"
+"POT-Creation-Date: 2014-09-24 06:03+0000\n"
+"PO-Revision-Date: 2014-09-13 22:05+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Vietnamese (Viet Nam) (http://www.transifex.com/projects/p/"
 "cinder/language/vi_VN/)\n"
@@ -29,6 +29,14 @@ msgstr "Ngoại lệ ban đầu được giảm xuống: %s"
 msgid "Unexpected exception occurred %d time(s)... retrying."
 msgstr "Ngoại lệ bất ngờ xảy ra %d thời gian(s) ... thử lại"
 
+#: cinder/openstack/common/loopingcall.py:95
+msgid "in fixed duration looping call"
+msgstr "trong cuộc gọi vòng lặp thời khoảng cố định "
+
+#: cinder/openstack/common/loopingcall.py:138
+msgid "in dynamic looping call"
+msgstr "trong cuộc gọi lặp động"
+
 #: cinder/openstack/common/periodic_task.py:202
 #, python-format
 msgid "Error during %(full_task_name)s: %(e)s"
@@ -48,3 +56,11 @@ msgstr "Không có bộ xử lý thích ứng của loại %s"
 #, python-format
 msgid "Failed to understand rule %r"
 msgstr "Không hiểu luật %r"
+
+#: cinder/openstack/common/service.py:188
+msgid "Exception during rpc cleanup."
+msgstr "Ngoại lệ trong quá trình dọn dẹp RPC"
+
+#: cinder/openstack/common/service.py:277
+msgid "Unhandled exception"
+msgstr "ngoại lệ không được quản lý"

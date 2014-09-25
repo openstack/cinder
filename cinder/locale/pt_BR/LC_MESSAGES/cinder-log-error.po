@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-08 06:09+0000\n"
-"PO-Revision-Date: 2014-09-01 20:31+0000\n"
+"POT-Creation-Date: 2014-09-24 06:03+0000\n"
+"PO-Revision-Date: 2014-09-13 22:05+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Portuguese (Brazil) (http://www.transifex.com/projects/p/"
 "cinder/language/pt_BR/)\n"
@@ -29,6 +29,14 @@ msgstr "Exceção original sendo descartada: %s"
 msgid "Unexpected exception occurred %d time(s)... retrying."
 msgstr "Exceção não esperada ocorreu %d vez(es)... tentando novamente."
 
+#: cinder/openstack/common/loopingcall.py:95
+msgid "in fixed duration looping call"
+msgstr "em uma chamada de laço de duração fixa"
+
+#: cinder/openstack/common/loopingcall.py:138
+msgid "in dynamic looping call"
+msgstr "em chamada de laço dinâmico"
+
 #: cinder/openstack/common/periodic_task.py:202
 #, python-format
 msgid "Error during %(full_task_name)s: %(e)s"
@@ -48,3 +56,11 @@ msgstr "Nenhum manipulador para correspondências do tipo %s"
 #, python-format
 msgid "Failed to understand rule %r"
 msgstr "Falha ao interpretar regra %r"
+
+#: cinder/openstack/common/service.py:188
+msgid "Exception during rpc cleanup."
+msgstr "Exceção durante limpeza de RPC."
+
+#: cinder/openstack/common/service.py:277
+msgid "Unhandled exception"
+msgstr "Exceção não tratada"
