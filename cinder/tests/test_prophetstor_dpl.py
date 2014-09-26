@@ -88,20 +88,46 @@ DATA_ASSIGNVDEV = 0, {
 
 DATA_OUTPUT = 0, None
 
+MOD_OUTPUT = {'status': 'available'}
+
+DATA_IN_GROUP = {'id': 'group123',
+                 'name': 'group123',
+                 'description': 'des123',
+                 'status': ''}
+
 DATA_IN_VOLUME = {'id': 'abc123',
                   'display_name': 'abc123',
                   'display_description': '',
                   'size': 1}
+
+DATA_IN_VOLUME_VG = {'id': 'abc123',
+                     'display_name': 'abc123',
+                     'display_description': '',
+                     'size': 1,
+                     'consistencygroup_id': 'group123',
+                     'status': 'available'}
 
 DATA_IN_VOLUME1 = {'id': 'abc456',
                    'display_name': 'abc456',
                    'display_description': '',
                    'size': 1}
 
+DATA_IN_CG_SNAPSHOT = {'consistencygroup_id': 'group123',
+                       'id': 'cgsnapshot1',
+                       'name': 'cgsnapshot1',
+                       'description': 'cgsnapshot1',
+                       'status': ''}
+
 DATA_IN_SNAPSHOT = {'id': 'snapshot1',
                     'volume_id': 'abc123',
                     'display_name': 'snapshot1',
                     'display_description': ''}
+
+DATA_OUT_SNAPSHOT_CG = {'id': 'snapshot1',
+                        'volume_id': 'abc123',
+                        'display_name': 'snapshot1',
+                        'display_description': '',
+                        'cgsnapshot_id': 'cgsnapshot1'}
 
 
 class TestProphetStorDPLVolume(test.TestCase):
@@ -407,9 +433,11 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.configuration.san_thin_provision = True
         self.context = ''
         self.DPL_MOCK = mock.MagicMock()
+        self.DB_MOCK = mock.MagicMock()
         self.dpldriver = DPLDRIVER.DPLISCSIDriver(
             configuration=self.configuration)
         self.dpldriver.dpl = self.DPL_MOCK
+        self.dpldriver.db = self.DB_MOCK
         self.dpldriver.do_setup(self.context)
 
     def test_get_volume_stats(self):
@@ -426,74 +454,76 @@ class TestProphetStorDPLDriver(test.TestCase):
     def test_create_volume(self):
         self.DPL_MOCK.create_vdev.return_value = DATA_OUTPUT
         self.dpldriver.create_volume(DATA_IN_VOLUME)
-        self.DPL_MOCK\
-            .create_vdev\
-            .assert_called_once_with(
-                self._conver_uuid2hex(DATA_IN_VOLUME['id']),
-                DATA_IN_VOLUME['display_name'],
-                DATA_IN_VOLUME['display_description'],
-                self.configuration.dpl_pool,
-                int(DATA_IN_VOLUME['size']) * units.Gi,
-                True)
+        self.DPL_MOCK.create_vdev.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
+            DATA_IN_VOLUME['display_name'],
+            DATA_IN_VOLUME['display_description'],
+            self.configuration.dpl_pool,
+            int(DATA_IN_VOLUME['size']) * units.Gi,
+            True)
+
+    def test_create_volume_of_group(self):
+        self.DPL_MOCK.create_vdev.return_value = DATA_OUTPUT
+        self.DPL_MOCK.join_vg.return_value = DATA_OUTPUT
+        self.dpldriver.create_volume(DATA_IN_VOLUME_VG)
+        self.DPL_MOCK.create_vdev.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
+            DATA_IN_VOLUME['display_name'],
+            DATA_IN_VOLUME['display_description'],
+            self.configuration.dpl_pool,
+            int(DATA_IN_VOLUME['size']) * units.Gi,
+            True)
+        self.DPL_MOCK.join_vg.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME_VG['id']),
+            self._conver_uuid2hex(
+                DATA_IN_VOLUME_VG['consistencygroup_id']))
 
     def test_delete_volume(self):
         self.DPL_MOCK.delete_vdev.return_value = DATA_OUTPUT
         self.dpldriver.delete_volume(DATA_IN_VOLUME)
-        self.DPL_MOCK\
-            .delete_vdev\
-            .assert_called_once_with(self
-                                     ._conver_uuid2hex(DATA_IN_VOLUME['id']))
+        self.DPL_MOCK.delete_vdev.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME['id']))
 
     def test_create_volume_from_snapshot(self):
         self.DPL_MOCK.create_vdev_from_snapshot.return_value = DATA_OUTPUT
         self.dpldriver.create_volume_from_snapshot(DATA_IN_VOLUME,
                                                    DATA_IN_SNAPSHOT)
-        self.DPL_MOCK\
-            .create_vdev_from_snapshot\
-            .assert_called_once_with(self
-                                     ._conver_uuid2hex(DATA_IN_VOLUME['id']),
-                                     DATA_IN_VOLUME['display_name'],
-                                     DATA_IN_VOLUME['display_description'],
-                                     self
-                                     ._conver_uuid2hex(DATA_IN_SNAPSHOT['id']),
-                                     self.configuration.dpl_pool,
-                                     True)
+        self.DPL_MOCK.create_vdev_from_snapshot.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
+            DATA_IN_VOLUME['display_name'],
+            DATA_IN_VOLUME['display_description'],
+            self._conver_uuid2hex(DATA_IN_SNAPSHOT['id']),
+            self.configuration.dpl_pool,
+            True)
 
     def test_create_cloned_volume(self):
         self.DPL_MOCK.clone_vdev.return_value = DATA_OUTPUT
         self.dpldriver.create_cloned_volume(DATA_IN_VOLUME1, DATA_IN_VOLUME)
-        self.DPL_MOCK\
-            .clone_vdev\
-            .assert_called_once_with(self
-                                     ._conver_uuid2hex(DATA_IN_VOLUME['id']),
-                                     self
-                                     ._conver_uuid2hex(DATA_IN_VOLUME1['id']),
-                                     self.configuration.dpl_pool,
-                                     DATA_IN_VOLUME1['display_name'],
-                                     DATA_IN_VOLUME1['display_description'],
-                                     int(DATA_IN_VOLUME1['size']) *
-                                     units.Gi,
-                                     True)
+        self.DPL_MOCK.clone_vdev.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
+            self._conver_uuid2hex(DATA_IN_VOLUME1['id']),
+            self.configuration.dpl_pool,
+            DATA_IN_VOLUME1['display_name'],
+            DATA_IN_VOLUME1['display_description'],
+            int(DATA_IN_VOLUME1['size']) *
+            units.Gi,
+            True)
 
     def test_create_snapshot(self):
         self.DPL_MOCK.create_vdev_snapshot.return_value = DATA_OUTPUT
         self.dpldriver.create_snapshot(DATA_IN_SNAPSHOT)
-        self.DPL_MOCK\
-            .create_vdev_snapshot\
-            .assert_called_once_with(
-                self._conver_uuid2hex(DATA_IN_SNAPSHOT['volume_id']),
-                self._conver_uuid2hex(DATA_IN_SNAPSHOT['id']),
-                DATA_IN_SNAPSHOT['display_name'],
-                DATA_IN_SNAPSHOT['display_description'])
+        self.DPL_MOCK.create_vdev_snapshot.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_SNAPSHOT['volume_id']),
+            self._conver_uuid2hex(DATA_IN_SNAPSHOT['id']),
+            DATA_IN_SNAPSHOT['display_name'],
+            DATA_IN_SNAPSHOT['display_description'])
 
     def test_delete_snapshot(self):
         self.DPL_MOCK.delete_vdev_snapshot.return_value = DATA_OUTPUT
         self.dpldriver.delete_snapshot(DATA_IN_SNAPSHOT)
-        self.DPL_MOCK\
-            .delete_vdev_snapshot\
-            .assert_called_once_with(
-                self._conver_uuid2hex(DATA_IN_SNAPSHOT['volume_id']),
-                self._conver_uuid2hex(DATA_IN_SNAPSHOT['id']))
+        self.DPL_MOCK.delete_vdev_snapshot.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_SNAPSHOT['volume_id']),
+            self._conver_uuid2hex(DATA_IN_SNAPSHOT['id']))
 
     def test_initialize_connection(self):
         self.DPL_MOCK.assign_vdev.return_value = DATA_ASSIGNVDEV
@@ -511,20 +541,16 @@ class TestProphetStorDPLDriver(test.TestCase):
     def test_terminate_connection(self):
         self.DPL_MOCK.unassign_vdev.return_value = DATA_OUTPUT
         self.dpldriver.terminate_connection(DATA_IN_VOLUME, DATA_IN_CONNECTOR)
-        self.DPL_MOCK\
-            .unassign_vdev\
-            .assert_called_once_with(
-                self._conver_uuid2hex(DATA_IN_VOLUME['id']),
-                DATA_IN_CONNECTOR['initiator'])
+        self.DPL_MOCK.unassign_vdev.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
+            DATA_IN_CONNECTOR['initiator'])
 
     def test_terminate_connection_volume_detached(self):
         self.DPL_MOCK.unassign_vdev.return_value = errno.ENODATA, None
         self.dpldriver.terminate_connection(DATA_IN_VOLUME, DATA_IN_CONNECTOR)
-        self.DPL_MOCK\
-            .unassign_vdev\
-            .assert_called_once_with(
-                self._conver_uuid2hex(DATA_IN_VOLUME['id']),
-                DATA_IN_CONNECTOR['initiator'])
+        self.DPL_MOCK.unassign_vdev.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
+            DATA_IN_CONNECTOR['initiator'])
 
     def test_terminate_connection_failed(self):
         self.DPL_MOCK.unassign_vdev.return_value = errno.EFAULT, None
@@ -557,3 +583,45 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.assertEqual(res['metadata']['state'], 'Online')
         self.assertEqual(res['metadata']['total_capacity'], 4194828288)
         self.assertEqual(res['metadata']['zpool_guid'], '8173612007304181810')
+
+    def test_create_consistency_group(self):
+        self.DPL_MOCK.create_vg.return_value = DATA_OUTPUT
+        model_update = self.dpldriver.create_consistencygroup(self.context,
+                                                              DATA_IN_GROUP)
+        self.DPL_MOCK.create_vg.assert_called_once_with(
+            DATA_IN_GROUP['id'], DATA_IN_GROUP['name'],
+            DATA_IN_GROUP['description'])
+        self.assertDictMatch({'status': 'available'}, model_update)
+
+    def test_delete_consistency_group(self):
+        self.DB_MOCK.volume_get_all_by_group.return_value = \
+            [DATA_IN_VOLUME_VG]
+        self.DPL_MOCK.delete_vdev.return_value = DATA_OUTPUT
+        self.DPL_MOCK.delete_cg.return_value = DATA_OUTPUT
+        model_update, volumes = self.dpldriver.delete_consistencygroup(
+            self.context, DATA_IN_GROUP)
+        self.DPL_MOCK.delete_vg.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_GROUP['id']))
+        self.DPL_MOCK.delete_vdev.assert_called_once_with(
+            self._conver_uuid2hex((DATA_IN_VOLUME_VG['id'])))
+        self.assertDictMatch({'status': 'deleted'}, model_update, )
+
+    def test_create_consistency_group_snapshot(self):
+        self.DB_MOCK.snapshot_get_all_for_cgsnapshot.return_value = \
+            [DATA_OUT_SNAPSHOT_CG]
+        self.DPL_MOCK.create_vdev_snapshot.return_value = DATA_OUTPUT
+        model_update, snapshots = self.dpldriver.create_cgsnapshot(
+            self.context, DATA_IN_CG_SNAPSHOT)
+        self.assertDictMatch({'status': 'available'}, model_update)
+
+    def test_delete_consistency_group_snapshot(self):
+        self.DB_MOCK.snapshot_get_all_for_cgsnapshot.return_value = \
+            [DATA_OUT_SNAPSHOT_CG]
+        self.DPL_MOCK.delete_cgsnapshot.return_value = DATA_OUTPUT
+        model_update, snapshots = self.dpldriver.delete_cgsnapshot(
+            self.context, DATA_IN_CG_SNAPSHOT)
+        self.DPL_MOCK.delete_vdev_snapshot.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_CG_SNAPSHOT['consistencygroup_id']),
+            self._conver_uuid2hex(DATA_IN_CG_SNAPSHOT['id']),
+            True)
+        self.assertDictMatch({'status': 'deleted'}, model_update)
