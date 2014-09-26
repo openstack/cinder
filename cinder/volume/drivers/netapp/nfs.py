@@ -1222,6 +1222,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         dst_share = self._get_provider_location(volume['id'])
         self._check_share_can_hold_size(dst_share, img_info['size'])
 
+        dst_dir = self._get_mount_point_for_share(dst_share)
+        dst_img_local = os.path.join(dst_dir, tmp_img_file)
         try:
             # If src and dst share not equal
             if (('%s:%s' % (src_ip, dr)) !=
@@ -1233,8 +1235,6 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                               check_exit_code=0)
             else:
                 self._clone_file_dst_exists(dst_share, img_file, tmp_img_file)
-            dst_dir = self._get_mount_point_for_share(dst_share)
-            dst_img_local = os.path.join(dst_dir, tmp_img_file)
             self._discover_file_till_timeout(dst_img_local, timeout=120)
             LOG.debug(_('Copied image %(img)s to tmp file %(tmp)s.')
                       % {'img': image_id, 'tmp': tmp_img_file})
