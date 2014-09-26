@@ -819,6 +819,7 @@ class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
         self._driver.ssc_enabled = True
         self._driver.configuration.netapp_copyoffload_tool_path = 'cof_path'
 
+    @mock.patch.object(utils, 'LOG', mock.Mock())
     @mock.patch.object(netapp_nfs, 'get_volume_extra_specs')
     def test_create_volume(self, mock_volume_extra_specs):
         drv = self._driver
@@ -832,6 +833,40 @@ class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
                 volume_info = self._driver.create_volume(FakeVolume(host, 1))
                 self.assertEqual(volume_info.get('provider_location'),
                                  fake_share)
+                self.assertEqual(0, utils.LOG.warn.call_count)
+
+    @mock.patch.object(utils, 'LOG', mock.Mock())
+    @mock.patch.object(netapp_nfs, 'get_volume_extra_specs')
+    def test_create_volume_obsolete_extra_spec(self, mock_volume_extra_specs):
+        drv = self._driver
+        drv.ssc_enabled = False
+        extra_specs = {'netapp:raid_type': 'raid4'}
+        mock_volume_extra_specs.return_value = extra_specs
+        fake_share = 'localhost:myshare'
+        host = 'hostname@backend#' + fake_share
+        with mock.patch.object(drv, '_ensure_shares_mounted'):
+            with mock.patch.object(drv, '_do_create_volume'):
+                self._driver.create_volume(FakeVolume(host, 1))
+                warn_msg = 'Extra spec netapp:raid_type is obsolete.  ' \
+                           'Use netapp_raid_type instead.'
+                utils.LOG.warn.assert_called_once_with(warn_msg)
+
+    @mock.patch.object(utils, 'LOG', mock.Mock())
+    @mock.patch.object(netapp_nfs, 'get_volume_extra_specs')
+    def test_create_volume_deprecated_extra_spec(self,
+                                                 mock_volume_extra_specs):
+        drv = self._driver
+        drv.ssc_enabled = False
+        extra_specs = {'netapp_thick_provisioned': 'true'}
+        mock_volume_extra_specs.return_value = extra_specs
+        fake_share = 'localhost:myshare'
+        host = 'hostname@backend#' + fake_share
+        with mock.patch.object(drv, '_ensure_shares_mounted'):
+            with mock.patch.object(drv, '_do_create_volume'):
+                self._driver.create_volume(FakeVolume(host, 1))
+                warn_msg = 'Extra spec netapp_thick_provisioned is ' \
+                           'deprecated.  Use netapp_thin_provisioned instead.'
+                utils.LOG.warn.assert_called_once_with(warn_msg)
 
     def test_create_volume_no_pool_specified(self):
         drv = self._driver

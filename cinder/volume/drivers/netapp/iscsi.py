@@ -190,6 +190,9 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
             if extra_specs else None
 
+        # warn on obsolete extra specs
+        na_utils.log_extra_spec_warnings(extra_specs)
+
         self.create_lun(ontap_volume_name, lun_name, size,
                         metadata, qos_policy_group)
         LOG.debug('Created LUN with name %s' % lun_name)
@@ -1105,9 +1108,8 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
             free /= units.Gi
             pool['free_capacity_gb'] = round_down(free, '0.01')
 
-            pool['netapp:raid_type'] = vol.aggr['raid_type']
-            pool['netapp:disk_type'] = vol.aggr['disk_type']
-            pool['netapp:qos_policy_group'] = vol.qos['qos_policy_group']
+            pool['netapp_raid_type'] = vol.aggr['raid_type']
+            pool['netapp_disk_type'] = vol.aggr['disk_type']
 
             mirrored = vol in self.ssc_vols['mirrored']
             pool['netapp_mirrored'] = six.text_type(mirrored).lower()
