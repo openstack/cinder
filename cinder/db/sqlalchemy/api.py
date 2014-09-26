@@ -2465,14 +2465,14 @@ def volume_encryption_metadata_get(context, volume_id, session=None):
 
 @require_context
 def _volume_glance_metadata_get_all(context, session=None):
-    rows = model_query(context,
-                       models.VolumeGlanceMetadata,
-                       project_only=True,
-                       session=session).\
-        filter_by(deleted=False).\
-        all()
-
-    return rows
+    query = model_query(context,
+                        models.VolumeGlanceMetadata,
+                        session=session)
+    if is_user_context(context):
+        query = query.filter(
+            models.Volume.id == models.VolumeGlanceMetadata.volume_id,
+            models.Volume.project_id == context.project_id)
+    return query.all()
 
 
 @require_context
