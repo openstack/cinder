@@ -130,7 +130,7 @@ class HTTPRequest(webob.Request):
         out = os_wsgi.Request.blank(*args, **kwargs)
         out.environ['cinder.context'] = FakeRequestContext(
             'fake_user',
-            'fake',
+            'fakeproject',
             is_admin=use_admin_context)
         return out
 

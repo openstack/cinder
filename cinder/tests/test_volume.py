@@ -507,6 +507,28 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.mox.UnsetStubs()
         self.volume.delete_volume(self.context, volume_id)
 
+    def test_get_volume_different_tenant(self):
+        """Test can't get volume of another tenant when viewable_admin_meta."""
+        volume = tests_utils.create_volume(self.context,
+                                           **self.volume_params)
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+
+        another_context = context.RequestContext('another_user_id',
+                                                 'another_project_id',
+                                                 is_admin=False)
+        self.assertNotEqual(another_context.project_id,
+                            self.context.project_id)
+
+        volume_api = cinder.volume.api.API()
+
+        self.assertRaises(exception.VolumeNotFound, volume_api.get,
+                          another_context, volume_id, viewable_admin_meta=True)
+        self.assertEqual(volume_id,
+                         volume_api.get(self.context, volume_id)['id'])
+
+        self.volume.delete_volume(self.context, volume_id)
+
     def test_delete_volume_in_error_extending(self):
         """Test volume can be deleted in error_extending stats."""
         # create a volume
