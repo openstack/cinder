@@ -88,3 +88,8 @@ class ImageTransferException(VMwareDriverException):
 class VirtualDiskNotFoundException(VMwareDriverException):
     """Thrown when virtual disk is not found."""
     message = _("There is no virtual disk device.")
+
+
+class ProfileNotFoundException(VMwareDriverException):
+    """Thrown when the given storage profile cannot be found."""
+    message = _("Storage profile: %(storage_profile)s not found.")
