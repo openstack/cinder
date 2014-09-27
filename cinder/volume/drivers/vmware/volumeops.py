@@ -831,7 +831,8 @@ class VMwareVolumeOps(object):
         LOG.debug("Spec for relocating the backing: %s.", relocate_spec)
         return relocate_spec
 
-    def relocate_backing(self, backing, datastore, resource_pool, host):
+    def relocate_backing(
+            self, backing, datastore, resource_pool, host, disk_type=None):
         """Relocates backing to the input datastore and resource pool.
 
         The implementation uses moveAllDiskBackingsAndAllowSharing disk move
@@ -841,15 +842,27 @@ class VMwareVolumeOps(object):
         :param datastore: Reference to the datastore
         :param resource_pool: Reference to the resource pool
         :param host: Reference to the host
+        :param disk_type: destination disk type
         """
         LOG.debug("Relocating backing: %(backing)s to datastore: %(ds)s "
-                  "and resource pool: %(rp)s." %
-                  {'backing': backing, 'ds': datastore, 'rp': resource_pool})
+                  "and resource pool: %(rp)s with destination disk type: "
+                  "%(disk_type)s.",
+                  {'backing': backing,
+                   'ds': datastore,
+                   'rp': resource_pool,
+                   'disk_type': disk_type})
 
         # Relocate the volume backing
         disk_move_type = 'moveAllDiskBackingsAndAllowSharing'
+
+        disk_device = None
+        if disk_type is not None:
+            disk_device = self._get_disk_device(backing)
+
         relocate_spec = self._get_relocate_spec(datastore, resource_pool, host,
-                                                disk_move_type)
+                                                disk_move_type, disk_type,
+                                                disk_device)
+
         task = self._session.invoke_api(self._session.vim, 'RelocateVM_Task',
                                         backing, spec=relocate_spec)
         LOG.debug("Initiated relocation of volume backing: %s." % backing)
@@ -1044,6 +1057,19 @@ class VMwareVolumeOps(object):
         LOG.info(_("Successfully created clone: %s.") % new_backing)
         return new_backing
 
+    def _reconfigure_backing(self, backing, reconfig_spec):
+        """Reconfigure backing VM with the given spec."""
+        LOG.debug("Reconfiguring backing VM: %(backing)s with spec: %(spec)s.",
+                  {'backing': backing,
+                   'spec': reconfig_spec})
+        reconfig_task = self._session.invoke_api(self._session.vim,
+                                                 "ReconfigVM_Task",
+                                                 backing,
+                                                 spec=reconfig_spec)
+        LOG.debug("Task: %s created for reconfiguring backing VM.",
+                  reconfig_task)
+        self._session.wait_for_task(reconfig_task)
+
     def attach_disk_to_backing(self, backing, size_in_kb, disk_type,
                                adapter_type, vmdk_ds_file_path):
         """Attach an existing virtual disk to the backing VM.
@@ -1055,6 +1081,13 @@ class VMwareVolumeOps(object):
         :param vmdk_ds_file_path: datastore file path of the virtual disk to
                                   be attached
         """
+        LOG.debug("Reconfiguring backing VM: %(backing)s to add new disk: "
+                  "%(path)s with size (KB): %(size)d and adapter type: "
+                  "%(adapter_type)s.",
+                  {'backing': backing,
+                   'path': vmdk_ds_file_path,
+                   'size': size_in_kb,
+                   'adapter_type': adapter_type})
         cf = self._session.vim.client.factory
         reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
         specs = self._create_specs_for_disk_add(size_in_kb,
@@ -1062,16 +1095,7 @@ class VMwareVolumeOps(object):
                                                 adapter_type,
                                                 vmdk_ds_file_path)
         reconfig_spec.deviceChange = specs
-        LOG.debug("Reconfiguring backing VM: %(backing)s with spec: %(spec)s.",
-                  {'backing': backing,
-                   'spec': reconfig_spec})
-        reconfig_task = self._session.invoke_api(self._session.vim,
-                                                 "ReconfigVM_Task",
-                                                 backing,
-                                                 spec=reconfig_spec)
-        LOG.debug("Task: %s created for reconfiguring backing VM.",
-                  reconfig_task)
-        self._session.wait_for_task(reconfig_task)
+        self._reconfigure_backing(backing, reconfig_spec)
         LOG.debug("Backing VM: %s reconfigured with new disk.", backing)
 
     def rename_backing(self, backing, new_name):
@@ -1092,6 +1116,32 @@ class VMwareVolumeOps(object):
         LOG.info(_("Backing VM: %(backing)s renamed to %(new_name)s."),
                  {'backing': backing,
                   'new_name': new_name})
+
+    def change_backing_profile(self, backing, profile_id):
+        """Change storage profile of the backing VM.
+
+        The current profile is removed if the new profile is None.
+        """
+        LOG.debug("Reconfiguring backing VM: %(backing)s to change profile to:"
+                  " %(profile)s.",
+                  {'backing': backing,
+                   'profile': profile_id})
+        cf = self._session.vim.client.factory
+        reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
+
+        if profile_id is None:
+            vm_profile = cf.create('ns0:VirtualMachineEmptyProfileSpec')
+            vm_profile.dynamicType = 'profile'
+        else:
+            vm_profile = cf.create('ns0:VirtualMachineDefinedProfileSpec')
+            vm_profile.profileId = profile_id.uniqueId
+
+        reconfig_spec.vmProfile = [vm_profile]
+        self._reconfigure_backing(backing, reconfig_spec)
+        LOG.debug("Backing VM: %(backing)s reconfigured with new profile: "
+                  "%(profile)s.",
+                  {'backing': backing,
+                   'profile': profile_id})
 
     def delete_file(self, file_path, datacenter=None):
         """Delete file or folder on the datastore.

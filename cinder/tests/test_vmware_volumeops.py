@@ -689,21 +689,32 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual('persistent', backing.diskMode)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_disk_device')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 '_get_relocate_spec')
-    def test_relocate_backing(self, get_relocate_spec):
+    def test_relocate_backing(self, get_relocate_spec, get_disk_device):
+        disk_device = mock.sentinel.disk_device
+        get_disk_device.return_value = disk_device
+
         spec = mock.sentinel.relocate_spec
         get_relocate_spec.return_value = spec
+
         task = mock.sentinel.task
         self.session.invoke_api.return_value = task
+
         backing = mock.sentinel.backing
         datastore = mock.sentinel.datastore
         resource_pool = mock.sentinel.resource_pool
         host = mock.sentinel.host
-        self.vops.relocate_backing(backing, datastore, resource_pool, host)
+        disk_type = mock.sentinel.disk_type
+        self.vops.relocate_backing(backing, datastore, resource_pool, host,
+                                   disk_type)
         # Verify calls
         disk_move_type = 'moveAllDiskBackingsAndAllowSharing'
+        get_disk_device.assert_called_once_with(backing)
         get_relocate_spec.assert_called_once_with(datastore, resource_pool,
-                                                  host, disk_move_type)
+                                                  host, disk_move_type,
+                                                  disk_type, disk_device)
         self.session.invoke_api.assert_called_once_with(self.session.vim,
                                                         'RelocateVM_Task',
                                                         backing,
@@ -1000,6 +1011,50 @@ class VolumeOpsTestCase(test.TestCase):
                                                         backing,
                                                         newName=new_name)
         self.session.wait_for_task.assert_called_once_with(task)
+
+    def test_change_backing_profile(self):
+        # Test change to empty profile.
+        reconfig_spec = mock.Mock()
+        empty_profile_spec = mock.sentinel.empty_profile_spec
+        self.session.vim.client.factory.create.side_effect = [
+            reconfig_spec, empty_profile_spec]
+
+        task = mock.sentinel.task
+        self.session.invoke_api.return_value = task
+
+        backing = mock.sentinel.backing
+        unique_profile_id = mock.sentinel.unique_profile_id
+        profile_id = mock.Mock(uniqueId=unique_profile_id)
+        self.vops.change_backing_profile(backing, profile_id)
+
+        self.assertEqual([empty_profile_spec], reconfig_spec.vmProfile)
+        self.session.invoke_api.assert_called_once_with(self.session.vim,
+                                                        "ReconfigVM_Task",
+                                                        backing,
+                                                        spec=reconfig_spec)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+        # Test change to non-empty profile.
+        profile_spec = mock.Mock()
+        self.session.vim.client.factory.create.side_effect = [
+            reconfig_spec, profile_spec]
+
+        self.session.invoke_api.reset_mock()
+        self.session.wait_for_task.reset_mock()
+
+        self.vops.change_backing_profile(backing, profile_id)
+
+        self.assertEqual([profile_spec], reconfig_spec.vmProfile)
+        self.assertEqual(unique_profile_id,
+                         reconfig_spec.vmProfile[0].profileId)
+        self.session.invoke_api.assert_called_once_with(self.session.vim,
+                                                        "ReconfigVM_Task",
+                                                        backing,
+                                                        spec=reconfig_spec)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+        # Clear side effects.
+        self.session.vim.client.factory.create.side_effect = None
 
     def test_delete_file(self):
         file_mgr = mock.sentinel.file_manager
