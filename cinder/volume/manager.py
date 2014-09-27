@@ -684,11 +684,18 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume = self.db.volume_get(context, volume_id)
         try:
             utils.require_driver_initialized(self.driver)
+            LOG.debug(_("volume %s: removing export"), volume_id)
+            self.driver.remove_export(context.elevated(), volume)
         except exception.DriverNotInitialized as ex:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_("Error detaching volume %(volume)s, "
                                 "due to uninitialized driver."),
                               {"volume": volume_id})
+        except Exception as ex:
+            LOG.exception(_("Error detaching volume %(volume)s, "
+                            "due to remove export failure."),
+                          {"volume": volume_id})
+            raise exception.RemoveExportException(volume=volume_id, reason=ex)
 
         self._notify_about_volume_usage(context, volume, "detach.end")
 
@@ -863,15 +870,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                        % {'err': err})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
-
-        try:
-            LOG.debug(_("volume %s: removing export"), volume_id)
-            self.driver.remove_export(context.elevated(), volume_ref)
-        except Exception as ex:
-            LOG.exception(_("Error detaching volume %(volume)s, "
-                            "due to remove export failure."),
-                          {"volume": volume_id})
-            raise exception.RemoveExportException(volume=volume_id, reason=ex)
 
     def accept_transfer(self, context, volume_id, new_user, new_project):
         # NOTE(flaper87): Verify the driver is enabled
