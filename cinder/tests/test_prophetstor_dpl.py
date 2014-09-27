@@ -12,10 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import errno
 import httplib
+import re
 
 import mock
 
+from cinder import exception
 from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
@@ -513,6 +516,24 @@ class TestProphetStorDPLDriver(test.TestCase):
             .assert_called_once_with(
                 self._conver_uuid2hex(DATA_IN_VOLUME['id']),
                 DATA_IN_CONNECTOR['initiator'])
+
+    def test_terminate_connection_volume_detached(self):
+        self.DPL_MOCK.unassign_vdev.return_value = errno.ENODATA, None
+        self.dpldriver.terminate_connection(DATA_IN_VOLUME, DATA_IN_CONNECTOR)
+        self.DPL_MOCK\
+            .unassign_vdev\
+            .assert_called_once_with(
+                self._conver_uuid2hex(DATA_IN_VOLUME['id']),
+                DATA_IN_CONNECTOR['initiator'])
+
+    def test_terminate_connection_failed(self):
+        self.DPL_MOCK.unassign_vdev.return_value = errno.EFAULT, None
+        ex = self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.dpldriver.terminate_connection,
+            volume=DATA_IN_VOLUME, connector=DATA_IN_CONNECTOR)
+        self.assertTrue(
+            re.match(r".*Flexvisor failed", ex.msg))
 
     def test_get_pool_info(self):
         self.DPL_MOCK.get_pool.return_value = DATA_POOLINFO

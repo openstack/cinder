@@ -134,8 +134,12 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
                         '%(id)s.') % {'id': volume['id']}
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
+        elif ret == errno.ENODATA:
+            msg = _('Flexvisor already unassigned volume '
+                    '%(id)s.') % {'id': volume['id']}
+            LOG.info(msg)
         elif ret != 0:
-            msg = _('Flexvisor unassign volume failed:%(id)s:'
+            msg = _('Flexvisor failed to unassign volume:%(id)s:'
                     '%(status)s.') % {'id': volume['id'], 'status': ret}
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
