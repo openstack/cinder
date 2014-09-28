@@ -926,7 +926,8 @@ class StorwizeSVCDriver(san.SanDriver):
 
         # Add replica if needed
         if not old_type_replication and new_type_replication:
-            model_update = self.replication.create_replica(ctxt, volume)
+            model_update = self.replication.create_replica(ctxt, volume,
+                                                           new_type)
 
         LOG.debug('exit: retype: ild=%(id)s, new_type=%(new_type)s,'
                   'diff=%(diff)s, host=%(host)s' % {'id': volume['id'],

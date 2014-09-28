@@ -67,10 +67,12 @@ class StorwizeSVCReplicationStretchedCluster(StorwizeSVCReplication):
     def __init__(self, driver):
         super(StorwizeSVCReplicationStretchedCluster, self).__init__(driver)
 
-    def create_replica(self, ctxt, volume):
+    def create_replica(self, ctxt, volume, vol_type = None):
+        # if vol_type is None, use the source volume type
+        if vol_type is None:
+            vol_type = volume['volume_type_id']
+            vol_type = volume_types.get_volume_type(ctxt, vol_type)
         conf = self.driver.configuration
-        vol_type = volume['volume_type_id']
-        vol_type = volume_types.get_volume_type(ctxt, vol_type)
         dest_pool = conf.storwize_svc_stretched_cluster_partner
 
         self.driver.add_vdisk_copy(volume['name'], dest_pool, vol_type)
