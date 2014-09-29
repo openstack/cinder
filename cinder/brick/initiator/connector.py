@@ -291,7 +291,8 @@ class ISCSIConnector(InitiatorConnector):
                          {'portal': connection_properties['target_portal'],
                           'iqn': connection_properties['target_iqn']})
         devices = self.driver.get_all_block_devices()
-        devices = [dev for dev in devices if dev.startswith(device_prefix)]
+        devices = [dev for dev in devices if dev.startswith(device_prefix)
+                   and os.path.exists(dev)]
 
         if not devices:
             self._disconnect_from_iscsi_portal(connection_properties)
