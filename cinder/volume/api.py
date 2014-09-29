@@ -993,7 +993,10 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         try:
-            reservations = QUOTAS.reserve(context, gigabytes=+size_increase)
+            reserve_opts = {'gigabytes': size_increase}
+            QUOTAS.add_volume_type_opts(context, reserve_opts,
+                                        volume.get('volume_type_id'))
+            reservations = QUOTAS.reserve(context, **reserve_opts)
         except exception.OverQuota as exc:
             usages = exc.kwargs['usages']
             quotas = exc.kwargs['quotas']

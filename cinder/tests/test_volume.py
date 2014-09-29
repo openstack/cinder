@@ -2557,6 +2557,35 @@ class VolumeTestCase(BaseVolumeTestCase):
         # clean up
         self.volume.delete_volume(self.context, volume['id'])
 
+    def test_extend_volume_with_volume_type(self):
+        elevated = context.get_admin_context()
+        project_id = self.context.project_id
+        db.volume_type_create(elevated, {'name': 'type', 'extra_specs': {}})
+        vol_type = db.volume_type_get_by_name(elevated, 'type')
+
+        volume_api = cinder.volume.api.API()
+        volume = volume_api.create(self.context, 100, 'name', 'description',
+                                   volume_type=vol_type)
+        try:
+            usage = db.quota_usage_get(elevated, project_id, 'gigabytes_type')
+            volumes_in_use = usage.in_use
+        except exception.QuotaUsageNotFound:
+            volumes_in_use = 0
+        self.assertEqual(volumes_in_use, 100)
+        volume['status'] = 'available'
+        volume['host'] = 'fakehost'
+        volume['volume_type_id'] = vol_type.get('id')
+
+        volume_api.extend(self.context, volume, 200)
+
+        try:
+            usage = db.quota_usage_get(elevated, project_id, 'gigabytes_type')
+            volumes_reserved = usage.reserved
+        except exception.QuotaUsageNotFound:
+            volumes_reserved = 0
+
+        self.assertEqual(volumes_reserved, 100)
+
     def test_create_volume_from_unelevated_context(self):
         """Test context does't change after volume creation failure."""
         def fake_create_volume(*args, **kwargs):
