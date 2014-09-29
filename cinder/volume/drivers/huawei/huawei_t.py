@@ -436,7 +436,7 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
         """Check for wwpns in connector."""
         if 'wwpns' not in connector:
             err_msg = (_('validate_connector: The FC driver requires the'
-                         'wwpns in the connector.'))
+                         ' wwpns in the connector.'))
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
