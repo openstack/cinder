@@ -918,7 +918,7 @@
 #iser_num_targets=100
 
 # prefix for iser volumes (string value)
-#iser_target_prefix=iqn.2010-10.org.iser.openstack:
+#iser_target_prefix=iqn.2010-10.org.openstack:
 
 # The IP address that the iSER daemon is listening on (string
 # value)

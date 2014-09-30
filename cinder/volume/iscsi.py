@@ -263,4 +263,13 @@ class IetAdm(_ExportMixin, iscsi.IetAdm):
 
 
 class ISERTgtAdm(_ExportMixin, iscsi.ISERTgtAdm):
-    pass
+    def _get_target_and_lun(self, context, volume):
+        lun = 1  # For tgtadm the controller is lun 0, dev starts at lun 1
+        iscsi_target = 0
+        return iscsi_target, lun
+
+    def _get_iscsi_target(self, context, vol_id):
+        return 0
+
+    def _get_target_for_ensure_export(self, context, volume_id):
+        return 1
