@@ -68,6 +68,10 @@ On Fedora-based distributions (e.g., Fedora/RHEL/CentOS/Scientific Linux)::
 
   sudo yum install python-devel openssl-devel python-pip git libmysqlclient-dev libqp-dev
 
+On openSUSE-based distributions (SLES 12, openSUSE 13.1, Factory or Tumbleweed)::
+
+  sudo zypper install gcc git libmysqlclient-devel libopenssl-devel postgresql-devel python-devel python-pip
+
 
 Mac OS X Systems
 ----------------
