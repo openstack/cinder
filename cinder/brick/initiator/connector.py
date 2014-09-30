@@ -351,12 +351,13 @@ class ISCSIConnector(InitiatorConnector):
         block_devices = self.driver.get_all_block_devices()
         devices = []
         for dev in block_devices:
-            if "/mapper/" in dev:
-                devices.append(dev)
-            else:
-                mpdev = self._get_multipath_device_name(dev)
-                if mpdev:
-                    devices.append(mpdev)
+            if os.path.exists(dev):
+                if "/mapper/" in dev:
+                    devices.append(dev)
+                else:
+                    mpdev = self._get_multipath_device_name(dev)
+                    if mpdev:
+                        devices.append(mpdev)
 
         # Do a discovery to find all targets.
         # Targets for multiple paths for the same multipath device
