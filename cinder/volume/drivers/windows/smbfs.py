@@ -135,7 +135,7 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
         backing_file_path = os.path.join(image_dir, backing_file)
         self.vhdutils.reconnect_parent(image, backing_file_path)
 
-    def _qemu_img_info(self, path):
+    def _qemu_img_info(self, path, volume_name=None):
         # This code expects to deal only with relative filenames.
         # As this method is needed by the upper class and qemu-img does
         # not fully support vhdx images, for the moment we'll use Win32 API
