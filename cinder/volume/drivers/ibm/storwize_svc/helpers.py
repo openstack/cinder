@@ -38,8 +38,14 @@ LOG = logging.getLogger(__name__)
 
 class StorwizeHelpers(object):
 
-    svc_qos_keys = {'IOThrottling': int}
-    svc_qos_param_dict = {'IOThrottling': 'rate'}
+    # All the supported QoS key are saved in this dict. When a new
+    # key is going to add, three values MUST be set:
+    # 'default': to indicate the value, when the parameter is disabled.
+    # 'param': to indicate the corresponding parameter in the command.
+    # 'type': to indicate the type of this value.
+    svc_qos_keys = {'IOThrottling': {'default': '0',
+                                     'param': 'rate',
+                                     'type': int}}
 
     def __init__(self, run_ssh):
         self.ssh = storwize_ssh.StorwizeSSH(run_ssh)
@@ -487,12 +493,13 @@ class StorwizeHelpers(object):
 
             # Add the QoS.
             if scope and scope == 'qos':
-                type_fn = self.svc_qos_keys[key]
-                try:
-                    value = type_fn(value)
-                    qos[self.svc_qos_param_dict[key]] = value
-                except ValueError:
-                    continue
+                if key in self.svc_qos_keys.keys():
+                    try:
+                        type_fn = self.svc_qos_keys[key]['type']
+                        value = type_fn(value)
+                        qos[key] = value
+                    except ValueError:
+                        continue
 
             # Any keys that the driver should look at should have the
             # 'drivers' scope.
@@ -525,10 +532,10 @@ class StorwizeHelpers(object):
             # Add the QoS.
             if scope and scope == 'qos':
                 if key in self.svc_qos_keys.keys():
-                    type_fn = self.svc_qos_keys[key]
                     try:
+                        type_fn = self.svc_qos_keys[key]['type']
                         value = type_fn(value)
-                        qos[self.svc_qos_param_dict[key]] = value
+                        qos[key] = value
                     except ValueError:
                         continue
         return qos
@@ -876,8 +883,39 @@ class StorwizeHelpers(object):
         return dest_pool
 
     def add_vdisk_qos(self, vdisk, qos):
+        """Add the QoS configuration to the volume."""
         for key, value in qos.iteritems():
-            self.ssh.chvdisk(vdisk, ['-' + key, str(value)])
+            if key in self.svc_qos_keys.keys():
+                param = self.svc_qos_keys[key]['param']
+                self.ssh.chvdisk(vdisk, ['-' + param, str(value)])
+
+    def update_vdisk_qos(self, vdisk, qos):
+        """Update all the QoS in terms of a key and value.
+
+        svc_qos_keys saves all the supported QoS parameters. Going through
+        this dict, we set the new values to all the parameters. If QoS is
+        available in the QoS configuration, the value is taken from it;
+        if not, the value will be set to default.
+        """
+        for key, value in self.svc_qos_keys.iteritems():
+            param = value['param']
+            if key in qos.keys():
+                # If the value is set in QoS, take the value from
+                # the QoS configuration.
+                v = qos[key]
+            else:
+                # If not, set the value to default.
+                v = value['default']
+            self.ssh.chvdisk(vdisk, ['-' + param, str(v)])
+
+    def disable_vdisk_qos(self, vdisk, qos):
+        """Disable the QoS."""
+        for key, value in qos.iteritems():
+            if key in self.svc_qos_keys.keys():
+                param = self.svc_qos_keys[key]['param']
+                # Take the default value.
+                value = self.svc_qos_keys[key]['default']
+                self.ssh.chvdisk(vdisk, ['-' + param, value])
 
     def change_vdisk_options(self, vdisk, changes, opts, state):
         if 'warning' in opts:
