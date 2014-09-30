@@ -176,8 +176,9 @@ class Vim(object):
                 doc = excep.document
                 detail = doc.childAtPath('/Envelope/Body/Fault/detail')
                 fault_list = []
-                for child in detail.getChildren():
-                    fault_list.append(child.get('type'))
+                if detail is not None:
+                    for child in detail.getChildren():
+                        fault_list.append(child.get('type'))
                 raise error_util.VimFaultException(fault_list, excep)
 
             except AttributeError as excep:
