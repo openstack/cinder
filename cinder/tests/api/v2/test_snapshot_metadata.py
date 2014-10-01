@@ -126,7 +126,7 @@ def return_volume(context, volume_id):
 
 
 def return_snapshot_nonexistent(context, snapshot_id):
-    raise exception.SnapshotNotFound('bogus test message')
+    raise exception.SnapshotNotFound(snapshot_id=snapshot_id)
 
 
 def fake_update_snapshot_metadata(self, context, snapshot, diff):
