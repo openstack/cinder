@@ -1134,6 +1134,10 @@
 # value)
 #coraid_repository_key=coraid_repository
 
+# ESM Repository Name to use if not specified in Volume Type
+# keys (string value)
+#coraid_default_repository=<None>
+
 
 #
 # Options defined in cinder.volume.drivers.datera
