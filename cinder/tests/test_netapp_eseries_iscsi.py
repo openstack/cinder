@@ -45,6 +45,7 @@ def create_configuration():
     configuration = conf.Configuration(None)
     configuration.append_config_values(options.netapp_basicauth_opts)
     configuration.append_config_values(options.netapp_eseries_opts)
+    configuration.append_config_values(options.netapp_san_opts)
     return configuration
 
 
@@ -948,10 +949,16 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
 
     def test_setup_error_unsupported_host_type(self):
         configuration = self._set_config(create_configuration())
-        configuration.netapp_eseries_host_type = 'garbage'
+        configuration.netapp_host_type = 'garbage'
         driver = common.NetAppDriver(configuration=configuration)
         self.assertRaises(exception.NetAppDriverException,
                           driver.check_for_setup_error)
+
+    def test_check_host_type_default(self):
+        configuration = self._set_config(create_configuration())
+        driver = common.NetAppDriver(configuration=configuration)
+        driver._check_host_type()
+        self.assertEqual('LnxALUA', driver.host_type)
 
     def test_do_setup_all_default(self):
         configuration = self._set_config(create_configuration())

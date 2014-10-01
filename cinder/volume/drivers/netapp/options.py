@@ -159,13 +159,7 @@ netapp_eseries_opts = [
                      'specified storage pools. Only dynamic disk pools are '
                      'currently supported. Specify the value of this option to'
                      ' be a comma separated list of disk pool names to be used'
-                     ' for provisioning.')),
-    cfg.StrOpt('netapp_eseries_host_type',
-               default='linux_dm_mp',
-               help=('This option is used to define how the controllers in '
-                     'the E-Series storage array will work with the '
-                     'particular operating system on the hosts that are '
-                     'connected to it.')), ]
+                     ' for provisioning.')), ]
 netapp_nfs_extra_opts = [
     cfg.StrOpt('netapp_copyoffload_tool_path',
                default=None,
@@ -173,6 +167,19 @@ netapp_nfs_extra_opts = [
                      'offload tool binary. Ensure that the binary has execute '
                      'permissions set which allow the effective user of the '
                      'cinder-volume process to execute the file.')), ]
+netapp_san_opts = [
+    cfg.StrOpt('netapp_lun_ostype',
+               default=None,
+               help=('This option defines the type of operating system that'
+                     ' will access a LUN exported from Data ONTAP; it is'
+                     ' assigned to the LUN at the time it is created.')),
+    cfg.StrOpt('netapp_host_type',
+               deprecated_name='netapp_eseries_host_type',
+               default=None,
+               help=('This option defines the type of operating system for'
+                     ' all initiators that can access a LUN. This information'
+                     ' is used when mapping LUNs to individual hosts or'
+                     ' groups of hosts.'))]
 
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts)
@@ -185,3 +192,4 @@ CONF.register_opts(netapp_provisioning_opts)
 CONF.register_opts(netapp_img_cache_opts)
 CONF.register_opts(netapp_eseries_opts)
 CONF.register_opts(netapp_nfs_extra_opts)
+CONF.register_opts(netapp_san_opts)
