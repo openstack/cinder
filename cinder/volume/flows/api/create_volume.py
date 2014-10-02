@@ -175,7 +175,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         def validate_snap_size(size):
             if snapshot and size < snapshot['volume_size']:
-                msg = _("Volume size %(size)sGB cannot be smaller than"
+                msg = _("Volume size '%(size)s'GB cannot be smaller than"
                         " the snapshot size %(snap_size)sGB. "
                         "They must be >= original snapshot size.")
                 msg = msg % {'size': size,
@@ -184,7 +184,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         def validate_source_size(size):
             if source_volume and size < source_volume['size']:
-                msg = _("Volume size %(size)sGB cannot be smaller than "
+                msg = _("Volume size '%(size)s'GB cannot be smaller than "
                         "original volume size  %(source_size)sGB. "
                         "They must be >= original volume size.")
                 msg = msg % {'size': size,
@@ -193,7 +193,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         def validate_int(size):
             if not isinstance(size, int) or size <= 0:
-                msg = _("Volume size %(size)s must be an integer and"
+                msg = _("Volume size '%(size)s' must be an integer and"
                         " greater than 0") % {'size': size}
                 raise exception.InvalidInput(reason=msg)
 
@@ -212,7 +212,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             size = snapshot['volume_size']
 
         size = utils.as_int(size)
-        LOG.debug("Validating volume %(size)s using %(functors)s" %
+        LOG.debug("Validating volume '%(size)s' using %(functors)s" %
                   {'size': size,
                    'functors': ", ".join([common.make_pretty_name(func)
                                           for func in validator_functors])})
