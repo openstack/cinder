@@ -18,6 +18,7 @@ from taskflow import states
 from taskflow import task
 from taskflow.utils import misc
 
+from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
 
@@ -85,16 +86,27 @@ class DynamicLogListener(base_listener.ListenerBase):
     def _task_receiver(self, state, details):
         # Gets called on task state changes.
         if 'result' in details and state in base_listener.FINISH_STATES:
-            # If the task failed, it's useful to show the exception traceback
-            # and any other available exception information.
             result = details.get('result')
+            # If task failed log the exception
             if isinstance(result, misc.Failure):
-                self._logger.warn(_("Task '%(task_name)s' (%(task_uuid)s)"
-                                    " transitioned into state '%(state)s'") %
-                                  {'task_name': details['task_name'],
-                                   'task_uuid': details['task_uuid'],
-                                   'state': state},
-                                  exc_info=tuple(result.exc_info))
+                message_dict = {'task_name': details['task_name'],
+                                'task_uuid': details['task_uuid'],
+                                'state': state}
+                if result.check(exception.InvalidInput) is not None:
+                    # Exception is an excepted case, don't stacktrace
+                    message_dict['exception_str'] = result.exception_str
+                    message = (_("Task '%(task_name)s' (%(task_uuid)s)"
+                                 " transitioned into state '%(state)s'. "
+                                 "Exception: '%(exception_str)s'") %
+                               message_dict)
+                    self._logger.warn(message)
+                else:
+                    # Task failed with unexpected Exception, show stacktrace
+                    message = (_("Task '%(task_name)s' (%(task_uuid)s)"
+                               " transitioned into state '%(state)s'") %
+                               message_dict)
+                    self._logger.warn(message,
+                                      exc_info=tuple(result.exc_info))
             else:
                 # Otherwise, depending on the enabled logging level/state we
                 # will show or hide results that the task may have produced
