@@ -153,6 +153,10 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         self._ensure_shares_mounted()
 
+    def _qemu_img_info(self, path, volume_name):
+        return super(GlusterfsDriver, self)._qemu_img_info_base(
+            path, volume_name, self.configuration.glusterfs_mount_point_base)
+
     def check_for_setup_error(self):
         """Just to override parent behavior."""
         pass
@@ -207,7 +211,8 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         # Find the file which backs this file, which represents the point
         # when this snapshot was created.
-        img_info = self._qemu_img_info(forward_path)
+        img_info = self._qemu_img_info(forward_path,
+                                       snapshot['volume']['name'])
         path_to_snap_img = os.path.join(vol_path, img_info.backing_file)
 
         path_to_new_vol = self._local_path_volume(volume)
@@ -392,7 +397,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
             data['options'] = self.shares[volume['provider_location']]
 
         # Test file for raw vs. qcow2 format
-        info = self._qemu_img_info(path)
+        info = self._qemu_img_info(path, volume['name'])
         data['format'] = info.file_format
         if data['format'] not in ['raw', 'qcow2']:
             msg = _('%s must be a valid raw or qcow2 image.') % path
@@ -425,7 +430,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                     ' driver when no snapshots exist.')
             raise exception.InvalidVolume(msg)
 
-        info = self._qemu_img_info(volume_path)
+        info = self._qemu_img_info(volume_path, volume['name'])
         backing_fmt = info.file_format
 
         if backing_fmt not in ['raw', 'qcow2']:
@@ -557,7 +562,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
             volume_dir,
             self.get_active_image_from_info(volume))
 
-        info = self._qemu_img_info(active_file_path)
+        info = self._qemu_img_info(active_file_path, volume['name'])
 
         if info.backing_file is not None:
             msg = _('No snapshots found in database, but '
