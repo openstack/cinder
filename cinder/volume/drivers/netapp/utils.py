@@ -45,6 +45,14 @@ from cinder.volume import volume_types
 LOG = logging.getLogger(__name__)
 
 
+OBSOLETE_SSC_SPECS = {'netapp:raid_type': 'netapp_raid_type',
+                      'netapp:disk_type': 'netapp_disk_type'}
+DEPRECATED_SSC_SPECS = {'netapp_unmirrored': 'netapp_mirrored',
+                        'netapp_nodedup': 'netapp_dedup',
+                        'netapp_nocompression': 'netapp_compression',
+                        'netapp_thick_provisioned': 'netapp_thin_provisioned'}
+
+
 def provide_ems(requester, server, stats, netapp_backend,
                 server_type="cluster"):
     """Provide ems with volume stats for the requester.
@@ -364,3 +372,16 @@ def convert_es_fmt_to_uuid(es_label):
 def round_down(value, precision):
     return float(decimal.Decimal(six.text_type(value)).quantize(
         decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))
+
+
+def log_extra_spec_warnings(extra_specs):
+    for spec in (set(extra_specs.keys() if extra_specs else []) &
+                 set(OBSOLETE_SSC_SPECS.keys())):
+            msg = _('Extra spec %(old)s is obsolete.  Use %(new)s instead.')
+            args = {'old': spec, 'new': OBSOLETE_SSC_SPECS[spec]}
+            LOG.warn(msg % args)
+    for spec in (set(extra_specs.keys() if extra_specs else []) &
+                 set(DEPRECATED_SSC_SPECS.keys())):
+            msg = _('Extra spec %(old)s is deprecated.  Use %(new)s instead.')
+            args = {'old': spec, 'new': DEPRECATED_SSC_SPECS[spec]}
+            LOG.warn(msg % args)
