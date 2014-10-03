@@ -640,7 +640,7 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
     def _custom_setup(self):
         configuration = self._set_config(create_configuration())
         self.driver = common.NetAppDriver(configuration=configuration)
-        requests.Session = mock.Mock(wraps=FakeEseriesHTTPSession)
+        self.mock_object(requests, 'Session', FakeEseriesHTTPSession)
         self.driver.do_setup(context='context')
         self.driver.check_for_setup_error()
 
