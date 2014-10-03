@@ -92,7 +92,8 @@ class DynamicLogListener(base_listener.ListenerBase):
                 message_dict = {'task_name': details['task_name'],
                                 'task_uuid': details['task_uuid'],
                                 'state': state}
-                if result.check(exception.InvalidInput) is not None:
+                if (result.check(exception.InvalidInput,
+                                 exception.QuotaError) is not None):
                     # Exception is an excepted case, don't stacktrace
                     message_dict['exception_str'] = result.exception_str
                     message = (_("Task '%(task_name)s' (%(task_uuid)s)"
