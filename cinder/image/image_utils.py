@@ -63,13 +63,28 @@ def qemu_img_info(path):
 
 def convert_image(source, dest, out_format, bps_limit=None):
     """Convert image to other format."""
-    start_time = timeutils.utcnow()
-    # Always set -t none. First it is needed for cgroup io/limiting
-    # and it is needed to ensure that all data hit the device before
-    # it gets unmapped remotely from the host
+
     cmd = ('qemu-img', 'convert',
-           '-t', 'none',
            '-O', out_format, source, dest)
+
+    # Check whether O_DIRECT is supported and set '-t none' if it is
+    # This is needed to ensure that all data hit the device before
+    # it gets unmapped remotely from the host for some backends
+    # Reference Bug: #1363016
+
+    # NOTE(jdg): In the case of file devices qemu does the
+    # flush properly and more efficiently than would be done
+    # setting O_DIRECT, so check for that and skip the
+    # setting for non BLK devs
+    if (utils.is_blk_device(dest) and
+            volume_utils.check_for_odirect_support(source,
+                                                   dest,
+                                                   'oflag=direct')):
+        cmd = ('qemu-img', 'convert',
+               '-t', 'none',
+               '-O', out_format, source, dest)
+
+    start_time = timeutils.utcnow()
     cgcmd = volume_utils.setup_blkio_cgroup(source, dest, bps_limit)
     if cgcmd:
         cmd = tuple(cgcmd) + cmd

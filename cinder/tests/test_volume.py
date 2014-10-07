@@ -920,6 +920,9 @@ class VolumeTestCase(BaseVolumeTestCase):
             return inner_sync2
         return inner_sync1
 
+    def _fake_execute(self, *cmd, **kwargs):
+        pass
+
     def test_create_volume_from_snapshot_check_locks(self):
         # mock the synchroniser so we can record events
         self.stubs.Set(utils, 'synchronized', self._mock_synchronized)
@@ -989,6 +992,7 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_create_volume_from_volume_check_locks(self):
         # mock the synchroniser so we can record events
         self.stubs.Set(utils, 'synchronized', self._mock_synchronized)
+        self.stubs.Set(utils, 'execute', self._fake_execute)
 
         orig_flow = engine.ActionEngine.run
 
