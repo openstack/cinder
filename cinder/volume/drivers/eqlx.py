@@ -135,7 +135,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
     def _get_output(self, chan):
         out = ''
         ending = '%s> ' % self.configuration.eqlx_group_name
-        while not out.endswith(ending):
+        while out.find(ending) == -1:
             out += chan.recv(102400)
 
         LOG.debug("CLI output\n%s", out)
