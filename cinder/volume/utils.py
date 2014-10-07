@@ -285,18 +285,26 @@ def _calculate_count(size_in_m, blocksize):
     return blocksize, int(count)
 
 
+def check_for_odirect_support(src, dest, flag='oflag=direct'):
+
+    # Check whether O_DIRECT is supported
+    try:
+        utils.execute('dd', 'count=0', 'if=%s' % src, 'of=%s' % dest,
+                      flag, run_as_root=True)
+        return True
+    except processutils.ProcessExecutionError:
+        return False
+
+
 def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
                 execute=utils.execute, ionice=None):
     # Use O_DIRECT to avoid thrashing the system buffer cache
     extra_flags = []
-    # Check whether O_DIRECT is supported to iflag and oflag separately
-    for flag in ['iflag=direct', 'oflag=direct']:
-        try:
-            execute('dd', 'count=0', 'if=%s' % srcstr, 'of=%s' % deststr,
-                    flag, run_as_root=True)
-            extra_flags.append(flag)
-        except processutils.ProcessExecutionError:
-            pass
+    if check_for_odirect_support(srcstr, deststr, 'iflag=direct'):
+        extra_flags.append('iflag=direct')
+
+    if check_for_odirect_support(srcstr, deststr, 'oflag=direct'):
+        extra_flags.append('oflag=direct')
 
     # If the volume is being unprovisioned then
     # request the data is persisted before returning,

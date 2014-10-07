@@ -757,3 +757,13 @@ def remove_invalid_filter_options(context, filters,
     LOG.debug(log_msg)
     for opt in unknown_options:
         del filters[opt]
+
+
+def is_blk_device(dev):
+    try:
+        if stat.S_ISBLK(os.stat(dev).st_mode):
+            return True
+        return False
+    except Exception:
+        LOG.debug('Path %s not found in is_blk_device check' % dev)
+        return False
