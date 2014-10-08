@@ -302,6 +302,7 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                        lambda x: iqns.pop())
         self.stubs.Set(self.connector, '_disconnect_from_iscsi_portal',
                        fake_disconnect_from_iscsi_portal)
+        self.stubs.Set(os.path, 'exists', lambda x: True)
         fake_property = {'target_portal': portal,
                          'target_iqn': iqn1}
         self.connector._disconnect_volume_multipath_iscsi(fake_property,
@@ -326,6 +327,35 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                        lambda: [])
         self.stubs.Set(self.connector, '_disconnect_from_iscsi_portal',
                        fake_disconnect_from_iscsi_portal)
+        self.stubs.Set(os.path, 'exists', lambda x: True)
+        fake_property = {'target_portal': portal,
+                         'target_iqn': iqn}
+        self.connector._disconnect_volume_multipath_iscsi(fake_property,
+                                                          'fake/multipath')
+        # Target not in use by other mp devices, disconnect
+        self.assertEqual([fake_property], result)
+
+    def test_disconnect_volume_multipath_iscsi_with_invalid_symlink(self):
+        result = []
+
+        def fake_disconnect_from_iscsi_portal(properties):
+            result.append(properties)
+
+        portal = '10.0.0.1:3260'
+        name = 'volume-00000001'
+        iqn = 'iqn.2010-10.org.openstack:%s' % name
+        dev = ('ip-%s-iscsi-%s-lun-0' % (portal, iqn))
+        self.stubs.Set(self.connector,
+                       '_get_target_portals_from_iscsiadm_output',
+                       lambda x: [[portal, iqn]])
+        self.stubs.Set(self.connector, '_rescan_iscsi', lambda: None)
+        self.stubs.Set(self.connector, '_rescan_multipath', lambda: None)
+        self.stubs.Set(self.connector.driver, 'get_all_block_devices',
+                       lambda: [dev, '/dev/mapper/md-1'])
+        self.stubs.Set(self.connector, '_disconnect_from_iscsi_portal',
+                       fake_disconnect_from_iscsi_portal)
+        # Simulate a broken symlink by returning False for os.path.exists(dev)
+        self.stubs.Set(os.path, 'exists', lambda x: False)
         fake_property = {'target_portal': portal,
                          'target_iqn': iqn}
         self.connector._disconnect_volume_multipath_iscsi(fake_property,
