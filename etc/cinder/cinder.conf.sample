@@ -2278,6 +2278,9 @@
 # iSCSI initiator CHAP password. (string value)
 #zfssa_initiator_password=
 
+# iSCSI initiators configuration. (string value)
+#zfssa_initiator_config=
+
 # iSCSI target group name. (string value)
 #zfssa_target_group=tgt-grp
 
