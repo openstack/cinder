@@ -190,7 +190,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     # 1.1.0 - selection of datastore based on number of host mounts
     # 1.2.0 - storage profile volume types based placement of volumes
     # 1.3.0 - support for volume backup/restore
-    VERSION = '1.3.0'
+    # 1.4.0 - support for volume retype
+    VERSION = '1.4.0'
 
     def _do_deprecation_warning(self):
         LOG.warn(_('The VMware ESX VMDK driver is now deprecated and will be '
