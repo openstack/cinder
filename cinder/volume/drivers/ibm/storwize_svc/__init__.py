@@ -920,9 +920,13 @@ class StorwizeSVCDriver(san.SanDriver):
             self._helpers.change_vdisk_options(volume['name'], vdisk_changes,
                                                new_opts, self._state)
 
-        qos = new_opts['qos'] or old_opts['qos']
-        if qos:
-            self._helpers.add_vdisk_qos(volume['name'], qos)
+        if new_opts['qos']:
+            # Add the new QoS setting to the volume. If the volume has an
+            # old QoS setting, it will be overwritten.
+            self._helpers.update_vdisk_qos(volume['name'], new_opts['qos'])
+        elif old_opts['qos']:
+            # If the old_opts contain QoS keys, disable them.
+            self._helpers.disable_vdisk_qos(volume['name'], old_opts['qos'])
 
         # Add replica if needed
         if not old_type_replication and new_type_replication:
