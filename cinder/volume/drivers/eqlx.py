@@ -151,29 +151,36 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
     def _ssh_execute(self, ssh, command, *arg, **kwargs):
         transport = ssh.get_transport()
         chan = transport.open_session()
-        chan.invoke_shell()
+        completed = False
 
-        LOG.debug("Reading CLI MOTD")
-        self._get_output(chan)
+        try:
+            chan.invoke_shell()
 
-        cmd = 'stty columns 255'
-        LOG.debug("Setting CLI terminal width: '%s'.", cmd)
-        chan.send(cmd + '\r')
-        out = self._get_output(chan)
+            LOG.debug("Reading CLI MOTD")
+            self._get_output(chan)
 
-        LOG.debug("Sending CLI command: '%s'.", command)
-        chan.send(command + '\r')
-        out = self._get_output(chan)
+            cmd = 'stty columns 255'
+            LOG.debug("Setting CLI terminal width: '%s'", cmd)
+            chan.send(cmd + '\r')
+            out = self._get_output(chan)
 
-        chan.close()
+            LOG.debug("Sending CLI command: '%s'", command)
+            chan.send(command + '\r')
+            out = self._get_output(chan)
 
-        if any(line.startswith(('% Error', 'Error:')) for line in out):
-            desc = _("Error executing EQL command")
-            cmdout = '\n'.join(out)
-            LOG.error(cmdout)
-            raise processutils.ProcessExecutionError(
-                stdout=cmdout, cmd=command, description=desc)
-        return out
+            completed = True
+
+            if any(ln.startswith(('% Error', 'Error:')) for ln in out):
+                desc = _("Error executing EQL command")
+                cmdout = '\n'.join(out)
+                LOG.error(cmdout)
+                raise processutils.ProcessExecutionError(
+                    stdout=cmdout, cmd=command, description=desc)
+            return out
+        finally:
+            if not completed:
+                LOG.debug("Timed out executing command: '%s'", command)
+            chan.close()
 
     def _run_ssh(self, cmd_list, attempts=1):
         utils.check_ssh_injection(cmd_list)
@@ -295,11 +302,11 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         and returns the correct connection id.
         """
         lines = [line for line in out if line != '']
-        #Every record has 2 lines
+        # Every record has 2 lines
         for i in xrange(0, len(lines), 2):
             try:
                 int(lines[i][0])
-                #sanity check
+                # sanity check
                 if len(lines[i + 1].split()) == 1:
                     check = lines[i].split()[1] + lines[i + 1].strip()
                     if connector['initiator'] == check:
