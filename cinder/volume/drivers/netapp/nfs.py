@@ -812,6 +812,9 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
             if extra_specs else None
 
+        # warn on obsolete extra specs
+        na_utils.log_extra_spec_warnings(extra_specs)
+
         try:
             volume['provider_location'] = share
             LOG.info(_('casted to %s') % volume['provider_location'])
@@ -994,9 +997,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             # add SSC content if available
             vol = self._get_vol_for_share(nfs_share)
             if vol and self.ssc_vols:
-                pool['netapp:raid_type'] = vol.aggr['raid_type']
-                pool['netapp:disk_type'] = vol.aggr['disk_type']
-                pool['netapp:qos_policy_group'] = vol.qos['qos_policy_group']
+                pool['netapp_raid_type'] = vol.aggr['raid_type']
+                pool['netapp_disk_type'] = vol.aggr['disk_type']
 
                 mirrored = vol in self.ssc_vols['mirrored']
                 pool['netapp_mirrored'] = six.text_type(mirrored).lower()
