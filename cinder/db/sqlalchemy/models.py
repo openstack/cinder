@@ -24,7 +24,7 @@ from oslo.db.sqlalchemy import models
 from sqlalchemy import Column, Integer, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship, backref, validates
 
 from cinder.openstack.common import timeutils
 
@@ -477,6 +477,10 @@ class Backup(BASE, CinderBase):
     service = Column(String(255))
     size = Column(Integer)
     object_count = Column(Integer)
+
+    @validates('fail_reason')
+    def validate_fail_reason(self, key, fail_reason):
+        return fail_reason and fail_reason[:255] or ''
 
 
 class Encryption(BASE, CinderBase):
