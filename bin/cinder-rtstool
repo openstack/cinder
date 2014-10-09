@@ -42,7 +42,7 @@ def create(backing_device, name, userid, password, initiator_iqns=None):
 
     # Look to see if BlockStorageObject already exists
     for x in rtsroot.storage_objects:
-        if x.dump()['name'] == name:
+        if x.name == name:
             # Already exists, use this one
             return
 
@@ -90,7 +90,7 @@ def _lookup_target(target_iqn, initiator_iqn):
 
     # Look for the target
     for t in rtsroot.targets:
-        if t.dump()['wwn'] == target_iqn:
+        if t.wwn == target_iqn:
             return t
     raise RtstoolError(_('Could not find target %s') % target_iqn)
 
@@ -98,7 +98,7 @@ def _lookup_target(target_iqn, initiator_iqn):
 def add_initiator(target_iqn, initiator_iqn, userid, password):
     target = _lookup_target(target_iqn, initiator_iqn)
     tpg = target.tpgs.next()  # get the first one
-    for acl in tpg.dump()['node_acls']:
+    for acl in tpg.node_acls:
         # See if this ACL configuration already exists
         if acl['node_wwn'] == initiator_iqn:
             # No further action required
@@ -125,18 +125,18 @@ def delete_initiator(target_iqn, initiator_iqn):
 def get_targets():
     rtsroot = rtslib.root.RTSRoot()
     for x in rtsroot.targets:
-        print(x.dump()['wwn'])
+        print(x.wwn)
 
 
 def delete(iqn):
     rtsroot = rtslib.root.RTSRoot()
     for x in rtsroot.targets:
-        if x.dump()['wwn'] == iqn:
+        if x.wwn == iqn:
             x.delete()
             break
 
     for x in rtsroot.storage_objects:
-        if x.dump()['name'] == iqn:
+        if x.name == iqn:
             x.delete()
             break
 
