@@ -508,13 +508,12 @@ class FakeIscsiHelper(object):
 
 class LioAdm(TargetAdmin):
     """iSCSI target administration for LIO using python-rtslib."""
-    def __init__(self, root_helper, lio_initiator_iqns='',
+    def __init__(self, root_helper,
                  iscsi_target_prefix='iqn.2010-10.org.openstack:',
                  execute=putils.execute):
         super(LioAdm, self).__init__('cinder-rtstool', root_helper, execute)
 
         self.iscsi_target_prefix = iscsi_target_prefix
-        self.lio_initiator_iqns = lio_initiator_iqns
         self._verify_rtstool()
 
     def _verify_rtstool(self):
@@ -546,18 +545,12 @@ class LioAdm(TargetAdmin):
         if chap_auth is not None:
             (chap_auth_userid, chap_auth_password) = chap_auth.split(' ')[1:]
 
-        extra_args = []
-        if self.lio_initiator_iqns:
-            extra_args.append(self.lio_initiator_iqns)
-
         try:
             command_args = ['create',
                             path,
                             name,
                             chap_auth_userid,
                             chap_auth_password]
-            if extra_args:
-                command_args.extend(extra_args)
             self._run('cinder-rtstool', *command_args, run_as_root=True)
         except putils.ProcessExecutionError as e:
             LOG.error(_LE("Failed to create iscsi target for volume "
