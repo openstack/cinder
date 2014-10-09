@@ -410,8 +410,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         try:
-            src_volume_name = self.configuration.\
-                volume_name_template % src_vref['id']
+            src_volume_name = src_vref['name']
             out = self._eql_execute('volume', 'select', src_volume_name,
                                     'clone', volume['name'])
             self.add_multihost_access(volume)

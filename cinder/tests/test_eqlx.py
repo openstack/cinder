@@ -49,7 +49,6 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.configuration.eqlx_cli_max_retries = 5
         self.configuration.eqlx_chap_login = 'admin'
         self.configuration.eqlx_chap_password = 'password'
-        self.configuration.volume_name_template = 'volume_%s'
         self._context = context.get_admin_context()
         self.driver = eqlx.DellEQLSanISCSIDriver(
             configuration=self.configuration)
@@ -159,11 +158,9 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
     def test_create_cloned_volume(self):
         self.driver._eql_execute = self.mox.\
             CreateMock(self.driver._eql_execute)
-        src_vref = {'id': 'fake_uuid'}
+        src_vref = {'name': 'fake_uuid'}
         volume = {'name': self.volume_name}
-        src_volume_name = self.configuration.\
-            volume_name_template % src_vref['id']
-        self.driver._eql_execute('volume', 'select', src_volume_name, 'clone',
+        self.driver._eql_execute('volume', 'select', src_vref['name'], 'clone',
                                  volume['name']).\
             AndReturn(['iSCSI target name is %s.' % self.fake_iqn])
         self.driver._eql_execute('volume', 'select', volume['name'],
