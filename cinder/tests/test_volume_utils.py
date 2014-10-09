@@ -213,6 +213,13 @@ class CopyVolumeTestCase(test.TestCase):
             if 'iflag=direct' in cmd and 'oflag=direct' in cmd:
                 raise exception.InvalidInput(message='iflag/oflag error')
 
+        def fake_check_odirect(src, dest, flags='blah'):
+            return False
+
+        self.stubs.Set(volume_utils,
+                       'check_for_odirect_support',
+                       fake_check_odirect)
+
         volume_utils.copy_volume('/dev/zero', '/dev/null', 1024,
                                  CONF.volume_dd_blocksize, sync=True,
                                  ionice=None, execute=fake_utils_execute)
