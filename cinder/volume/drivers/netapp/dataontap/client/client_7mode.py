@@ -48,8 +48,41 @@ class Client(client_base.Client):
         result = server.invoke_successfully(na_element, True)
         return result
 
-    def get_target_details(self):
-        """Gets the target portal details."""
+    def _invoke_7mode_iterator_getter(self, start_api_name, next_api_name,
+                                      end_api_name, record_container_tag_name,
+                                      maximum=100):
+        """Invoke a 7-mode iterator-style getter API."""
+        data = []
+
+        start_api = netapp_api.NaElement(start_api_name)
+        start_result = self.connection.invoke_successfully(start_api)
+        tag = start_result.get_child_content('tag')
+        if not tag:
+            return data
+
+        try:
+            while True:
+                next_api = netapp_api.NaElement(next_api_name)
+                next_api.add_new_child('tag', tag)
+                next_api.add_new_child('maximum', six.text_type(maximum))
+                next_result = self.connection.invoke_successfully(next_api)
+                records = next_result.get_child_content('records') or 0
+                if int(records) == 0:
+                    break
+
+                record_container = next_result.get_child_by_name(
+                    record_container_tag_name) or netapp_api.NaElement('none')
+
+                data.extend(record_container.get_children())
+        finally:
+            end_api = netapp_api.NaElement(end_api_name)
+            end_api.add_new_child('tag', tag)
+            self.connection.invoke_successfully(end_api)
+
+        return data
+
+    def get_iscsi_target_details(self):
+        """Gets the iSCSI target portal details."""
         iscsi_if_iter = netapp_api.NaElement('iscsi-portal-list-info')
         result = self.connection.invoke_successfully(iscsi_if_iter, True)
         tgt_list = []
@@ -64,6 +97,18 @@ class Client(client_base.Client):
                 d['tpgroup-tag'] = iscsi_if.get_child_content('tpgroup-tag')
                 tgt_list.append(d)
         return tgt_list
+
+    def get_fc_target_wwpns(self):
+        """Gets the FC target details."""
+        wwpns = []
+        port_name_list_api = netapp_api.NaElement('fcp-port-name-list-info')
+        result = self.connection.invoke_successfully(port_name_list_api)
+        port_names = result.get_child_by_name('fcp-port-names')
+        if port_names:
+            for port_name_info in port_names.get_children():
+                wwpn = port_name_info.get_child_content('port-name').lower()
+                wwpns.append(wwpn)
+        return wwpns
 
     def get_iscsi_service_details(self):
         """Returns iscsi iqn."""
@@ -97,34 +142,41 @@ class Client(client_base.Client):
         luns = result.get_child_by_name('luns')
         return luns.get_children()
 
-    def get_igroup_by_initiator(self, initiator):
-        """Get igroups by initiator."""
-        igroup_list = netapp_api.NaElement('igroup-list-info')
-        result = self.connection.invoke_successfully(igroup_list, True)
-        igroups = []
-        igs = result.get_child_by_name('initiator-groups')
-        if igs:
-            ig_infos = igs.get_children()
-            if ig_infos:
-                for info in ig_infos:
-                    initiators = info.get_child_by_name('initiators')
-                    init_infos = initiators.get_children()
-                    if init_infos:
-                        for init in init_infos:
-                            if init.get_child_content('initiator-name')\
-                                    == initiator:
-                                d = dict()
-                                d['initiator-group-os-type'] = \
-                                    info.get_child_content(
-                                        'initiator-group-os-type')
-                                d['initiator-group-type'] = \
-                                    info.get_child_content(
-                                        'initiator-group-type')
-                                d['initiator-group-name'] = \
-                                    info.get_child_content(
-                                        'initiator-group-name')
-                                igroups.append(d)
-        return igroups
+    def get_igroup_by_initiators(self, initiator_list):
+        """Get igroups exactly matching a set of initiators."""
+        igroup_list = []
+        if not initiator_list:
+            return igroup_list
+
+        initiator_set = set(initiator_list)
+
+        igroup_list_info = netapp_api.NaElement('igroup-list-info')
+        result = self.connection.invoke_successfully(igroup_list_info, True)
+
+        initiator_groups = result.get_child_by_name(
+            'initiator-groups') or netapp_api.NaElement('none')
+        for initiator_group_info in initiator_groups.get_children():
+
+            initiator_set_for_igroup = set()
+            initiators = initiator_group_info.get_child_by_name(
+                'initiators') or netapp_api.NaElement('none')
+            for initiator_info in initiators.get_children():
+                initiator_set_for_igroup.add(
+                    initiator_info.get_child_content('initiator-name'))
+
+            if initiator_set == initiator_set_for_igroup:
+                igroup = {'initiator-group-os-type':
+                          initiator_group_info.get_child_content(
+                              'initiator-group-os-type'),
+                          'initiator-group-type':
+                          initiator_group_info.get_child_content(
+                              'initiator-group-type'),
+                          'initiator-group-name':
+                          initiator_group_info.get_child_content(
+                              'initiator-group-name')}
+                igroup_list.append(igroup)
+
+        return igroup_list
 
     def clone_lun(self, path, clone_path, name, new_name,
                   space_reserved='true', src_block=0,

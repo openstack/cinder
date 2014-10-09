@@ -35,6 +35,7 @@ from cinder.volume.drivers.netapp.dataontap.client.api import NaApiError
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
+from cinder.zonemanager import utils as fczm_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -81,6 +82,7 @@ class NetAppBlockStorageLibrary(object):
         self.zapi_client = None
         self._stats = {}
         self.lun_table = {}
+        self.lookup_service = fczm_utils.create_lookup_service()
         self.app_version = kwargs.get("app_version", "unknown")
 
         self.configuration = kwargs['configuration']
@@ -232,10 +234,7 @@ class NetAppBlockStorageLibrary(object):
         raise NotImplementedError()
 
     def _extract_and_populate_luns(self, api_luns):
-        """Extracts the LUNs from API.
-
-        Populates in the LUN table.
-        """
+        """Extracts the LUNs from API and populates the LUN table."""
 
         for lun in api_luns:
             meta_dict = self._create_lun_meta(lun)
@@ -246,8 +245,8 @@ class NetAppBlockStorageLibrary(object):
             discovered_lun = NetAppLun(handle, name, size, meta_dict)
             self._add_lun_to_table(discovered_lun)
 
-    def _map_lun(self, name, initiator, initiator_type='iscsi', lun_id=None):
-        """Maps LUN to the initiator and returns LUN id assigned."""
+    def _map_lun(self, name, initiator_list, initiator_type, lun_id=None):
+        """Maps LUN to the initiator(s) and returns LUN ID assigned."""
         metadata = self._get_lun_attr(name, 'metadata')
         os = metadata['OsType']
         path = metadata['Path']
@@ -255,35 +254,42 @@ class NetAppBlockStorageLibrary(object):
             os = os
         else:
             os = 'default'
-        igroup_name = self._get_or_create_igroup(initiator,
+        igroup_name = self._get_or_create_igroup(initiator_list,
                                                  initiator_type, os)
         try:
             return self.zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
         except NaApiError:
             exc_info = sys.exc_info()
-            (_igroup, lun_id) = self._find_mapped_lun_igroup(path, initiator)
+            (_igroup, lun_id) = self._find_mapped_lun_igroup(path,
+                                                             initiator_list)
             if lun_id is not None:
                 return lun_id
             else:
                 raise exc_info[0], exc_info[1], exc_info[2]
 
-    def _unmap_lun(self, path, initiator):
+    def _unmap_lun(self, path, initiator_list):
         """Unmaps a LUN from given initiator."""
-        (igroup_name, _lun_id) = self._find_mapped_lun_igroup(path, initiator)
+        (igroup_name, _lun_id) = self._find_mapped_lun_igroup(path,
+                                                              initiator_list)
         self.zapi_client.unmap_lun(path, igroup_name)
 
-    def _find_mapped_lun_igroup(self, path, initiator, os=None):
-        """Find the igroup for mapped LUN with initiator."""
+    def _find_mapped_lun_igroup(self, path, initiator_list):
+        """Find an igroup for a LUN mapped to the given initiator(s)."""
         raise NotImplementedError()
 
-    def _get_or_create_igroup(self, initiator, initiator_type='iscsi',
+    def _has_luns_mapped_to_initiators(self, initiator_list):
+        """Checks whether any LUNs are mapped to the given initiator(s)."""
+        return self.zapi_client.has_luns_mapped_to_initiators(initiator_list)
+
+    def _get_or_create_igroup(self, initiator_list, initiator_type,
                               os='default'):
-        """Checks for an igroup for an initiator.
+        """Checks for an igroup for a set of one or more initiators.
 
         Creates igroup if not found.
         """
 
-        igroups = self.zapi_client.get_igroup_by_initiator(initiator=initiator)
+        igroups = self.zapi_client.get_igroup_by_initiators(initiator_list)
+
         igroup_name = None
         for igroup in igroups:
             if igroup['initiator-group-os-type'] == os:
@@ -296,7 +302,8 @@ class NetAppBlockStorageLibrary(object):
         if not igroup_name:
             igroup_name = self.IGROUP_PREFIX + six.text_type(uuid.uuid4())
             self.zapi_client.create_igroup(igroup_name, initiator_type, os)
-            self.zapi_client.add_igroup_initiator(igroup_name, initiator)
+            for initiator in initiator_list:
+                self.zapi_client.add_igroup_initiator(igroup_name, initiator)
         return igroup_name
 
     def _check_allowed_os(self, os):
@@ -346,6 +353,9 @@ class NetAppBlockStorageLibrary(object):
         return None
 
     def _create_lun_meta(self, lun):
+        raise NotImplementedError()
+
+    def _get_fc_target_wwpns(self, include_partner=True):
         raise NotImplementedError()
 
     def create_cloned_volume(self, volume, src_vref):
@@ -505,12 +515,12 @@ class NetAppBlockStorageLibrary(object):
 
         initiator_name = connector['initiator']
         name = volume['name']
-        lun_id = self._map_lun(name, initiator_name, 'iscsi', None)
+        lun_id = self._map_lun(name, [initiator_name], 'iscsi', None)
         msg = _("Mapped LUN %(name)s to the initiator %(initiator_name)s")
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)
         iqn = self.zapi_client.get_iscsi_service_details()
-        target_details_list = self.zapi_client.get_target_details()
+        target_details_list = self.zapi_client.get_iscsi_target_details()
         msg = _("Successfully fetched target details for LUN %(name)s and "
                 "initiator %(initiator_name)s")
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
@@ -565,7 +575,162 @@ class NetAppBlockStorageLibrary(object):
         name = volume['name']
         metadata = self._get_lun_attr(name, 'metadata')
         path = metadata['Path']
-        self._unmap_lun(path, initiator_name)
+        self._unmap_lun(path, [initiator_name])
         msg = _("Unmapped LUN %(name)s from the initiator %(initiator_name)s")
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)
+
+    def initialize_connection_fc(self, volume, connector):
+        """Initializes the connection and returns connection info.
+
+        Assign any created volume to a compute node/host so that it can be
+        used from that host.
+
+        The driver returns a driver_volume_type of 'fibre_channel'.
+        The target_wwn can be a single entry or a list of wwns that
+        correspond to the list of remote wwn(s) that will export the volume.
+        Example return values:
+            {
+                'driver_volume_type': 'fibre_channel'
+                'data': {
+                    'target_discovered': True,
+                    'target_lun': 1,
+                    'target_wwn': '500a098280feeba5',
+                    'access_mode': 'rw',
+                    'initiator_target_map': {
+                        '21000024ff406cc3': ['500a098280feeba5'],
+                        '21000024ff406cc2': ['500a098280feeba5']
+                    }
+                }
+            }
+
+            or
+
+             {
+                'driver_volume_type': 'fibre_channel'
+                'data': {
+                    'target_discovered': True,
+                    'target_lun': 1,
+                    'target_wwn': ['500a098280feeba5', '500a098290feeba5',
+                                   '500a098190feeba5', '500a098180feeba5'],
+                    'access_mode': 'rw',
+                    'initiator_target_map': {
+                        '21000024ff406cc3': ['500a098280feeba5',
+                                             '500a098290feeba5'],
+                        '21000024ff406cc2': ['500a098190feeba5',
+                                             '500a098180feeba5']
+                    }
+                }
+            }
+        """
+
+        initiators = [fczm_utils.get_formatted_wwn(wwpn)
+                      for wwpn in connector['wwpns']]
+        volume_name = volume['name']
+
+        lun_id = self._map_lun(volume_name, initiators, 'fcp', None)
+
+        msg = _("Mapped LUN %(name)s to the initiator(s) %(initiators)s")
+        msg_fmt = {'name': volume_name, 'initiators': initiators}
+        LOG.debug(msg % msg_fmt)
+
+        target_wwpns, initiator_target_map, num_paths = \
+            self._build_initiator_target_map(connector)
+
+        if target_wwpns:
+            msg = _("Successfully fetched target details for LUN %(name)s "
+                    "and initiator(s) %(initiators)s")
+            msg_fmt = {'name': volume_name, 'initiators': initiators}
+            LOG.debug(msg % msg_fmt)
+        else:
+            msg = _('Failed to get LUN target details for the LUN %s')
+            raise exception.VolumeBackendAPIException(data=msg % volume_name)
+
+        target_info = {'driver_volume_type': 'fibre_channel',
+                       'data': {'target_discovered': True,
+                                'target_lun': lun_id,
+                                'target_wwn': target_wwpns,
+                                'access_mode': 'rw',
+                                'initiator_target_map': initiator_target_map}}
+
+        return target_info
+
+    def terminate_connection_fc(self, volume, connector, **kwargs):
+        """Disallow connection from connector.
+
+        Return empty data if other volumes are in the same zone.
+        The FibreChannel ZoneManager doesn't remove zones
+        if there isn't an initiator_target_map in the
+        return of terminate_connection.
+
+        :returns: data - the target_wwns and initiator_target_map if the
+                         zone is to be removed, otherwise the same map with
+                         an empty dict for the 'data' key
+        """
+
+        initiators = [fczm_utils.get_formatted_wwn(wwpn)
+                      for wwpn in connector['wwpns']]
+        name = volume['name']
+        metadata = self._get_lun_attr(name, 'metadata')
+        path = metadata['Path']
+
+        self._unmap_lun(path, initiators)
+
+        msg = _("Unmapped LUN %(name)s from the initiator %(initiators)s")
+        msg_fmt = {'name': name, 'initiators': initiators}
+        LOG.debug(msg % msg_fmt)
+
+        info = {'driver_volume_type': 'fibre_channel',
+                'data': {}}
+
+        if not self._has_luns_mapped_to_initiators(initiators):
+            # No more exports for this host, so tear down zone.
+            LOG.info(_LI("Need to remove FC Zone, building initiator "
+                         "target map"))
+
+            target_wwpns, initiator_target_map, num_paths = \
+                self._build_initiator_target_map(connector)
+
+            info['data'] = {'target_wwn': target_wwpns,
+                            'initiator_target_map': initiator_target_map}
+
+        return info
+
+    def _build_initiator_target_map(self, connector):
+        """Build the target_wwns and the initiator target map."""
+
+        # get WWPNs from controller and strip colons
+        all_target_wwpns = self._get_fc_target_wwpns()
+        all_target_wwpns = [six.text_type(wwpn).replace(':', '')
+                            for wwpn in all_target_wwpns]
+
+        target_wwpns = []
+        init_targ_map = {}
+        num_paths = 0
+
+        if self.lookup_service is not None:
+            # Use FC SAN lookup to determine which ports are visible.
+            dev_map = self.lookup_service.get_device_mapping_from_network(
+                connector['wwpns'],
+                all_target_wwpns)
+
+            for fabric_name in dev_map:
+                fabric = dev_map[fabric_name]
+                target_wwpns += fabric['target_port_wwn_list']
+                for initiator in fabric['initiator_port_wwn_list']:
+                    if initiator not in init_targ_map:
+                        init_targ_map[initiator] = []
+                    init_targ_map[initiator] += fabric['target_port_wwn_list']
+                    init_targ_map[initiator] = list(set(
+                        init_targ_map[initiator]))
+                    for target in init_targ_map[initiator]:
+                        num_paths += 1
+            target_wwpns = list(set(target_wwpns))
+        else:
+            initiator_wwns = connector['wwpns']
+            target_wwpns = all_target_wwpns
+
+            for initiator in initiator_wwns:
+                init_targ_map[initiator] = target_wwpns
+
+        return target_wwpns, init_targ_map, num_paths

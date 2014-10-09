@@ -207,8 +207,12 @@ class Client(object):
         lun_move.add_new_child("new-path", new_path)
         self.connection.invoke_successfully(lun_move, True)
 
-    def get_target_details(self):
-        """Gets the target portal details."""
+    def get_iscsi_target_details(self):
+        """Gets the iSCSI target portal details."""
+        raise NotImplementedError()
+
+    def get_fc_target_wwpns(self):
+        """Gets the FC target details."""
         raise NotImplementedError()
 
     def get_iscsi_service_details(self):
@@ -219,9 +223,25 @@ class Client(object):
         """Gets the list of LUNs on filer."""
         raise NotImplementedError()
 
-    def get_igroup_by_initiator(self, initiator):
-        """Get igroups by initiator."""
+    def get_igroup_by_initiators(self, initiator_list):
+        """Get igroups exactly matching a set of initiators."""
         raise NotImplementedError()
+
+    def _has_luns_mapped_to_initiator(self, initiator):
+        """Checks whether any LUNs are mapped to the given initiator."""
+        lun_list_api = netapp_api.NaElement('lun-initiator-list-map-info')
+        lun_list_api.add_new_child('initiator', initiator)
+        result = self.connection.invoke_successfully(lun_list_api, True)
+        lun_maps_container = result.get_child_by_name(
+            'lun-maps') or netapp_api.NaElement('none')
+        return len(lun_maps_container.get_children()) > 0
+
+    def has_luns_mapped_to_initiators(self, initiator_list):
+        """Checks whether any LUNs are mapped to the given initiator(s)."""
+        for initiator in initiator_list:
+            if self._has_luns_mapped_to_initiator(initiator):
+                return True
+        return False
 
     def get_lun_by_args(self, **args):
         """Retrieves LUNs with specified args."""

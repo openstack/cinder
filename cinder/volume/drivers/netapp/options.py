@@ -36,7 +36,8 @@ netapp_proxy_opts = [
     cfg.StrOpt('netapp_storage_protocol',
                default=None,
                help=('The storage protocol to be used on the data path with '
-                     'the storage system; valid values are iscsi or nfs.')), ]
+                     'the storage system; valid values are iscsi, fc, or '
+                     'nfs.')), ]
 
 netapp_connection_opts = [
     cfg.StrOpt('netapp_server_hostname',
@@ -78,8 +79,8 @@ netapp_provisioning_opts = [
     cfg.StrOpt('netapp_volume_list',
                default=None,
                help=('This option is only utilized when the storage protocol '
-                     'is configured to use iSCSI. This option is used to '
-                     'restrict provisioning to the specified controller '
+                     'is configured to use iSCSI or FC. This option is used '
+                     'to restrict provisioning to the specified controller '
                      'volumes. Specify the value of this option to be a '
                      'comma separated list of NetApp controller volume names '
                      'to be used for provisioning.')), ]
@@ -107,7 +108,14 @@ netapp_7mode_opts = [
                      'driver when connecting to an instance with a storage '
                      'family of Data ONTAP operating in 7-Mode. Only use this '
                      'option when utilizing the MultiStore feature on the '
-                     'NetApp storage system.')), ]
+                     'NetApp storage system.')),
+    cfg.StrOpt('netapp_partner_backend_name',
+               default=None,
+               help=('The name of the config.conf stanza for a Data ONTAP '
+                     '(7-mode) HA partner.  This option is only used by the '
+                     'driver when connecting to an instance with a storage '
+                     'family of Data ONTAP operating in 7-Mode, and it is '
+                     'required if the storage protocol selected is FC.')), ]
 
 netapp_img_cache_opts = [
     cfg.IntOpt('thres_avl_size_perc_start',
