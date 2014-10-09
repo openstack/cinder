@@ -1396,3 +1396,64 @@ class EMCVMAXMasking(object):
         LOG.debug(
             "end: number of volumes in default storage group: %(numVol)d"
             % {'numVol': len(volumeInstanceNames)})
+
+    def get_target_wwns(self, conn, mvInstanceName):
+        """Get the DA ports' wwns.
+
+        :param conn: the ecom connection
+        :param mvInstanceName: masking view instance name
+        """
+        targetWwns = []
+        targetPortInstanceNames = conn.AssociatorNames(
+            mvInstanceName,
+            ResultClass='Symm_FCSCSIProtocolEndpoint')
+        numberOfPorts = len(targetPortInstanceNames)
+        if numberOfPorts <= 0:
+            LOG.warn("No target ports found in "
+                     "masking view %(maskingView)s"
+                     % {'numPorts': len(targetPortInstanceNames),
+                        'maskingView': mvInstanceName})
+        for targetPortInstanceName in targetPortInstanceNames:
+            targetWwns.append(targetPortInstanceName['Name'])
+        return targetWwns
+
+    def get_masking_view_by_volume(self, conn, volumeInstance):
+        """Given volume, retrieve the masking view instance name.
+
+        :param volume: the volume instance
+        :param mvInstanceName: masking view instance name
+        """
+        sgInstanceName = self.get_associated_masking_group_from_device(
+            conn, volumeInstance.path)
+        mvInstanceName = self.get_masking_view_from_storage_group(
+            conn, sgInstanceName)
+        LOG.debug("Found Masking View %(mv)s: " % {'mv': mvInstanceName})
+        return mvInstanceName
+
+    def get_masking_views_by_port_group(self, conn, portGroupInstanceName):
+        """Given port group, retrieve the masking view instance name.
+
+        :param : the volume
+        :param mvInstanceName: masking view instance name
+        :returns: maksingViewInstanceNames
+        """
+        mvInstanceNames = conn.AssociatorNames(
+            portGroupInstanceName, ResultClass='Symm_LunMaskingView')
+        return mvInstanceNames
+
+    def get_port_group_from_masking_view(self, conn, maskingViewInstanceName):
+        """Get the port group in a masking view.
+
+        :param maskingViewInstanceName: masking view instance name
+        :returns: portGroupInstanceName
+        """
+        portGroupInstanceNames = conn.AssociatorNames(
+            maskingViewInstanceName, ResultClass='SE_TargetMaskingGroup')
+        if len(portGroupInstanceNames) > 0:
+            LOG.debug("Found port group %(pg)s in masking view %(mv)s"
+                      % {'pg': portGroupInstanceNames[0],
+                         'mv': maskingViewInstanceName})
+            return portGroupInstanceNames[0]
+        else:
+            LOG.warn("No port group found in masking view %(mv)s"
+                     % {'mv': maskingViewInstanceName})
