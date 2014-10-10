@@ -375,97 +375,30 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.UnsetStubs()
         m.VerifyAll()
 
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_relocate_backing')
-    @mock.patch.object(VMDK_DRIVER, '_create_backing')
-    def test_initialize_connection_with_instance_and_backing(
-            self, create_backing, relocate_backing, vops):
-        self._test_initialize_connection_with_instance_and_backing(
-            create_backing, relocate_backing, vops)
+    def test_init_conn_with_instance_and_backing(self):
+        """Test initialize_connection with instance and backing."""
+        m = self.mox
+        m.StubOutWithMock(self._driver.__class__, 'volumeops')
+        self._driver.volumeops = self._volumeops
+        m.StubOutWithMock(self._volumeops, 'get_backing')
+        volume = FakeObject()
+        volume['name'] = 'volume_name'
+        volume['id'] = 'volume_id'
+        volume['size'] = 1
+        connector = {'instance': 'my_instance'}
+        backing = FakeMor('VirtualMachine', 'my_back')
+        self._volumeops.get_backing(volume['name']).AndReturn(backing)
+        m.StubOutWithMock(self._volumeops, 'get_host')
+        host = FakeMor('HostSystem', 'my_host')
+        self._volumeops.get_host(mox.IgnoreArg()).AndReturn(host)
 
-    def _test_initialize_connection_with_instance_and_backing(
-            self, create_backing, relocate_backing, vops):
-        instance = mock.sentinel.instance
-        connector = {'instance': instance}
-
-        backing = mock.Mock(value=mock.sentinel.backing_value)
-        vops.get_backing.return_value = backing
-
-        host = mock.sentinel.host
-        vops.get_host.return_value = host
-
-        volume = {'name': 'vol-1', 'id': 1}
+        m.ReplayAll()
         conn_info = self._driver.initialize_connection(volume, connector)
-
-        relocate_backing.assert_called_once_with(volume, backing, host)
-        self.assertFalse(create_backing.called)
-
-        self.assertEqual('vmdk', conn_info['driver_volume_type'])
-        self.assertEqual(backing.value, conn_info['data']['volume'])
-        self.assertEqual(volume['id'],
-                         conn_info['data']['volume_id'])
-
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_relocate_backing')
-    @mock.patch.object(VMDK_DRIVER, '_create_backing')
-    def test_initialize_connection_with_instance_and_no_backing(
-            self, create_backing, relocate_backing, vops):
-        self._test_initialize_connection_with_instance_and_no_backing(
-            create_backing, relocate_backing, vops)
-
-    def _test_initialize_connection_with_instance_and_no_backing(
-            self, create_backing, relocate_backing, vops):
-        instance = mock.sentinel.instance
-        connector = {'instance': instance}
-
-        vops.get_backing.return_value = None
-
-        host = mock.sentinel.host
-        vops.get_host.return_value = host
-
-        backing = mock.Mock(value=mock.sentinel.backing_value)
-        create_backing.return_value = backing
-
-        volume = {'name': 'vol-1', 'id': 1}
-        conn_info = self._driver.initialize_connection(volume, connector)
-
-        create_backing.assert_called_once_with(volume, host)
-        self.assertFalse(relocate_backing.called)
-
-        self.assertEqual('vmdk', conn_info['driver_volume_type'])
-        self.assertEqual(backing.value, conn_info['data']['volume'])
-        self.assertEqual(volume['id'],
-                         conn_info['data']['volume_id'])
-
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_relocate_backing')
-    @mock.patch.object(VMDK_DRIVER, '_create_backing_in_inventory')
-    def test_initialize_connection_with_no_instance_and_no_backing(
-            self, create_backing_in_inventory, relocate_backing, vops):
-        self._test_initialize_connection_with_no_instance_and_no_backing(
-            create_backing_in_inventory, relocate_backing, vops)
-
-    def _test_initialize_connection_with_no_instance_and_no_backing(
-            self, create_backing_in_inventory, relocate_backing, vops):
-        vops.get_backing.return_value = None
-
-        host = mock.sentinel.host
-        vops.get_host.return_value = host
-
-        backing = mock.Mock(value=mock.sentinel.backing_value)
-        create_backing_in_inventory.return_value = backing
-
-        connector = {}
-        volume = {'name': 'vol-1', 'id': 1}
-        conn_info = self._driver.initialize_connection(volume, connector)
-
-        create_backing_in_inventory.assert_called_once_with(volume)
-        self.assertFalse(relocate_backing.called)
-
-        self.assertEqual('vmdk', conn_info['driver_volume_type'])
-        self.assertEqual(backing.value, conn_info['data']['volume'])
-        self.assertEqual(volume['id'],
-                         conn_info['data']['volume_id'])
+        self.assertEqual(conn_info['driver_volume_type'], 'vmdk')
+        self.assertEqual(conn_info['data']['volume'], 'my_back')
+        self.assertEqual(conn_info['data']['volume_id'], 'volume_id')
+        m.UnsetStubs()
+        m.VerifyAll()
 
     def test_get_volume_group_folder(self):
         """Test _get_volume_group_folder."""
@@ -595,6 +528,71 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self.assertRaises(error_util.InvalidDiskTypeException,
                           vmdk.VMwareEsxVmdkDriver._get_disk_type,
                           volume)
+
+    def test_init_conn_with_instance_no_backing(self):
+        """Test initialize_connection with instance and without backing."""
+        m = self.mox
+        m.StubOutWithMock(self._driver.__class__, 'volumeops')
+        self._driver.volumeops = self._volumeops
+        m.StubOutWithMock(self._volumeops, 'get_backing')
+        volume = FakeObject()
+        volume['name'] = 'volume_name'
+        volume['id'] = 'volume_id'
+        volume['size'] = 1
+        volume['volume_type_id'] = None
+        connector = {'instance': 'my_instance'}
+        self._volumeops.get_backing(volume['name'])
+        m.StubOutWithMock(self._volumeops, 'get_host')
+        host = FakeMor('HostSystem', 'my_host')
+        self._volumeops.get_host(mox.IgnoreArg()).AndReturn(host)
+        m.StubOutWithMock(self._volumeops, 'get_dss_rp')
+        resource_pool = FakeMor('ResourcePool', 'my_rp')
+        datastores = [FakeMor('Datastore', 'my_ds')]
+        self._volumeops.get_dss_rp(host).AndReturn((datastores, resource_pool))
+        m.StubOutWithMock(self._driver, '_get_folder_ds_summary')
+        folder = FakeMor('Folder', 'my_fol')
+        summary = FakeDatastoreSummary(1, 1)
+        self._driver._get_folder_ds_summary(volume, resource_pool,
+                                            datastores).AndReturn((folder,
+                                                                   summary))
+        backing = FakeMor('VirtualMachine', 'my_back')
+        m.StubOutWithMock(self._volumeops, 'create_backing')
+        self._volumeops.create_backing(volume['name'],
+                                       volume['size'] * units.Mi,
+                                       mox.IgnoreArg(), folder,
+                                       resource_pool, host,
+                                       mox.IgnoreArg(),
+                                       mox.IgnoreArg(),
+                                       mox.IgnoreArg()).AndReturn(backing)
+
+        m.ReplayAll()
+        conn_info = self._driver.initialize_connection(volume, connector)
+        self.assertEqual(conn_info['driver_volume_type'], 'vmdk')
+        self.assertEqual(conn_info['data']['volume'], 'my_back')
+        self.assertEqual(conn_info['data']['volume_id'], 'volume_id')
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_init_conn_without_instance(self):
+        """Test initialize_connection without instance and a backing."""
+        m = self.mox
+        m.StubOutWithMock(self._driver.__class__, 'volumeops')
+        self._driver.volumeops = self._volumeops
+        m.StubOutWithMock(self._volumeops, 'get_backing')
+        backing = FakeMor('VirtualMachine', 'my_back')
+        volume = FakeObject()
+        volume['name'] = 'volume_name'
+        volume['id'] = 'volume_id'
+        connector = {}
+        self._volumeops.get_backing(volume['name']).AndReturn(backing)
+
+        m.ReplayAll()
+        conn_info = self._driver.initialize_connection(volume, connector)
+        self.assertEqual(conn_info['driver_volume_type'], 'vmdk')
+        self.assertEqual(conn_info['data']['volume'], 'my_back')
+        self.assertEqual(conn_info['data']['volume_id'], 'volume_id')
+        m.UnsetStubs()
+        m.VerifyAll()
 
     def test_create_snapshot_without_backing(self):
         """Test vmdk.create_snapshot without backing."""
@@ -2005,29 +2003,37 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self._test_create_backing_by_copying(volumeops, create_backing,
                                              extend_virtual_disk)
 
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_relocate_backing')
-    @mock.patch.object(VMDK_DRIVER, '_create_backing')
-    def test_initialize_connection_with_instance_and_backing(
-            self, create_backing, relocate_backing, vops):
-        self._test_initialize_connection_with_instance_and_backing(
-            create_backing, relocate_backing, vops)
+    def test_init_conn_with_instance_and_backing(self):
+        """Test initialize_connection with instance and backing."""
+        m = self.mox
+        m.StubOutWithMock(self._driver.__class__, 'volumeops')
+        self._driver.volumeops = self._volumeops
+        m.StubOutWithMock(self._volumeops, 'get_backing')
+        volume = FakeObject()
+        volume['name'] = 'volume_name'
+        volume['id'] = 'volume_id'
+        volume['size'] = 1
+        connector = {'instance': 'my_instance'}
+        backing = FakeMor('VirtualMachine', 'my_back')
+        self._volumeops.get_backing(volume['name']).AndReturn(backing)
+        m.StubOutWithMock(self._volumeops, 'get_host')
+        host = FakeMor('HostSystem', 'my_host')
+        self._volumeops.get_host(mox.IgnoreArg()).AndReturn(host)
+        datastore = FakeMor('Datastore', 'my_ds')
+        resource_pool = FakeMor('ResourcePool', 'my_rp')
+        m.StubOutWithMock(self._volumeops, 'get_dss_rp')
+        self._volumeops.get_dss_rp(host).AndReturn(([datastore],
+                                                    resource_pool))
+        m.StubOutWithMock(self._volumeops, 'get_datastore')
+        self._volumeops.get_datastore(backing).AndReturn(datastore)
 
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_relocate_backing')
-    @mock.patch.object(VMDK_DRIVER, '_create_backing')
-    def test_initialize_connection_with_instance_and_no_backing(
-            self, create_backing, relocate_backing, vops):
-        self._test_initialize_connection_with_instance_and_no_backing(
-            create_backing, relocate_backing, vops)
-
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_relocate_backing')
-    @mock.patch.object(VMDK_DRIVER, '_create_backing_in_inventory')
-    def test_initialize_connection_with_no_instance_and_no_backing(
-            self, create_backing_in_inventory, relocate_backing, vops):
-        self._test_initialize_connection_with_no_instance_and_no_backing(
-            create_backing_in_inventory, relocate_backing, vops)
+        m.ReplayAll()
+        conn_info = self._driver.initialize_connection(volume, connector)
+        self.assertEqual(conn_info['driver_volume_type'], 'vmdk')
+        self.assertEqual(conn_info['data']['volume'], 'my_back')
+        self.assertEqual(conn_info['data']['volume_id'], 'volume_id')
+        m.UnsetStubs()
+        m.VerifyAll()
 
     def test_get_volume_group_folder(self):
         """Test _get_volume_group_folder."""
@@ -2043,6 +2049,50 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
         m.ReplayAll()
         self._driver._get_volume_group_folder(datacenter)
+        m.UnsetStubs()
+        m.VerifyAll()
+
+    def test_init_conn_with_instance_and_backing_and_relocation(self):
+        """Test initialize_connection with backing being relocated."""
+        m = self.mox
+        m.StubOutWithMock(self._driver.__class__, 'volumeops')
+        self._driver.volumeops = self._volumeops
+        m.StubOutWithMock(self._volumeops, 'get_backing')
+        volume = FakeObject()
+        volume['name'] = 'volume_name'
+        volume['id'] = 'volume_id'
+        volume['size'] = 1
+        connector = {'instance': 'my_instance'}
+        backing = FakeMor('VirtualMachine', 'my_back')
+        self._volumeops.get_backing(volume['name']).AndReturn(backing)
+        m.StubOutWithMock(self._volumeops, 'get_host')
+        host = FakeMor('HostSystem', 'my_host')
+        self._volumeops.get_host(mox.IgnoreArg()).AndReturn(host)
+        datastore1 = FakeMor('Datastore', 'my_ds_1')
+        datastore2 = FakeMor('Datastore', 'my_ds_2')
+        resource_pool = FakeMor('ResourcePool', 'my_rp')
+        m.StubOutWithMock(self._volumeops, 'get_dss_rp')
+        self._volumeops.get_dss_rp(host).AndReturn(([datastore1],
+                                                    resource_pool))
+        m.StubOutWithMock(self._volumeops, 'get_datastore')
+        self._volumeops.get_datastore(backing).AndReturn(datastore2)
+        m.StubOutWithMock(self._driver, '_get_folder_ds_summary')
+        folder = FakeMor('Folder', 'my_fol')
+        summary = FakeDatastoreSummary(1, 1, datastore1)
+        self._driver._get_folder_ds_summary(volume, resource_pool,
+                                            [datastore1]).AndReturn((folder,
+                                                                     summary))
+        m.StubOutWithMock(self._volumeops, 'relocate_backing')
+        self._volumeops.relocate_backing(backing, datastore1,
+                                         resource_pool, host)
+        m.StubOutWithMock(self._volumeops, 'move_backing_to_folder')
+        self._volumeops.move_backing_to_folder(backing, folder)
+
+        m.ReplayAll()
+        conn_info = self._driver.initialize_connection(volume, connector)
+        self.assertEqual(conn_info['driver_volume_type'], 'vmdk')
+        self.assertEqual(conn_info['data']['volume'], 'my_back')
+        self.assertEqual(conn_info['data']['volume_id'], 'volume_id')
         m.UnsetStubs()
         m.VerifyAll()
 
@@ -2640,86 +2690,6 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                             suffix=suffix)
             close.assert_called_once_with(fd)
         delete_if_exists.assert_called_once_with(tmp)
-
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_relocate_backing_nop(self, ds_sel, vops):
-        volume = {'name': 'vol-1', 'size': 1}
-
-        datastore = mock.sentinel.datastore
-        vops.get_datastore.return_value = datastore
-
-        profile = mock.sentinel.profile
-        vops.get_profile.return_value = profile
-
-        vops.is_datastore_accessible.return_value = True
-        ds_sel.is_datastore_compliant.return_value = True
-
-        backing = mock.sentinel.backing
-        host = mock.sentinel.host
-        self._driver._relocate_backing(volume, backing, host)
-
-        vops.is_datastore_accessible.assert_called_once_with(datastore, host)
-        ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
-                                                              profile)
-        self.assertFalse(vops.relocate_backing.called)
-
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_relocate_backing_with_no_datastore(
-            self, ds_sel, vops):
-        volume = {'name': 'vol-1', 'size': 1}
-
-        profile = mock.sentinel.profile
-        vops.get_profile.return_value = profile
-
-        vops.is_datastore_accessible.return_value = True
-        ds_sel.is_datastore_compliant.return_value = False
-
-        ds_sel.select_datastore.return_value = []
-
-        backing = mock.sentinel.backing
-        host = mock.sentinel.host
-
-        self.assertRaises(error_util.NoValidDatastoreException,
-                          self._driver._relocate_backing,
-                          volume,
-                          backing,
-                          host)
-        ds_sel.select_datastore.assert_called_once_with(
-            {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
-             hub.DatastoreSelector.PROFILE_NAME: profile}, hosts=[host])
-        self.assertFalse(vops.relocate_backing.called)
-
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
-    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_relocate_backing(
-            self, ds_sel, get_volume_group_folder, vops):
-        volume = {'name': 'vol-1', 'size': 1}
-
-        vops.is_datastore_accessible.return_value = False
-        ds_sel.is_datastore_compliant.return_value = True
-
-        backing = mock.sentinel.backing
-        host = mock.sentinel.host
-
-        rp = mock.sentinel.rp
-        datastore = mock.sentinel.datastore
-        summary = mock.Mock(datastore=datastore)
-        ds_sel.select_datastore.return_value = (host, rp, summary)
-
-        folder = mock.sentinel.folder
-        get_volume_group_folder.return_value = folder
-
-        self._driver._relocate_backing(volume, backing, host)
-
-        vops.relocate_backing.assert_called_once_with(backing,
-                                                      datastore,
-                                                      rp,
-                                                      host)
-        vops.move_backing_to_folder.assert_called_once_with(backing,
-                                                            folder)
 
 
 class ImageDiskTypeTest(test.TestCase):

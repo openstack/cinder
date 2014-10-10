@@ -237,30 +237,6 @@ class VolumeOpsTestCase(test.TestCase):
             hosts = self.vops.get_connected_hosts(datastore)
             self.assertEqual([], hosts)
 
-    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
-                'get_connected_hosts')
-    def test_is_datastore_accessible(self, get_connected_hosts):
-        host_1 = mock.Mock(value=mock.sentinel.host_1)
-        host_2 = mock.Mock(value=mock.sentinel.host_2)
-        get_connected_hosts.return_value = [host_1, host_2]
-
-        ds = mock.sentinel.datastore
-        host = mock.Mock(value=mock.sentinel.host_1)
-        self.assertTrue(self.vops.is_datastore_accessible(ds, host))
-        get_connected_hosts.assert_called_once_with(ds)
-
-    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
-                'get_connected_hosts')
-    def test_is_datastore_accessible_with_inaccessible(self,
-                                                       get_connected_hosts):
-        host_1 = mock.Mock(value=mock.sentinel.host_1)
-        get_connected_hosts.return_value = [host_1]
-
-        ds = mock.sentinel.datastore
-        host = mock.Mock(value=mock.sentinel.host_2)
-        self.assertFalse(self.vops.is_datastore_accessible(ds, host))
-        get_connected_hosts.assert_called_once_with(ds)
-
     def test_is_valid(self):
         with mock.patch.object(self.vops, 'get_summary') as get_summary:
             summary = mock.Mock(spec=object)
@@ -1308,52 +1284,6 @@ class VolumeOpsTestCase(test.TestCase):
                                            name=vmdk_file_path,
                                            datacenter=dc_ref)
         self.session.wait_for_task.assert_called_once_with(task)
-
-    def test_get_profile(self):
-        server_obj = mock.Mock()
-        self.session.pbm.client.factory.create.return_value = server_obj
-
-        profile_ids = [mock.sentinel.profile_id]
-        profile_name = mock.sentinel.profile_name
-        profile = mock.Mock()
-        profile.name = profile_name
-        self.session.invoke_api.side_effect = [profile_ids, [profile]]
-
-        value = mock.sentinel.value
-        backing = mock.Mock(value=value)
-        self.assertEqual(profile_name, self.vops.get_profile(backing))
-
-        pbm = self.session.pbm
-        profile_manager = pbm.service_content.profileManager
-        exp_calls = [mock.call(pbm, 'PbmQueryAssociatedProfile',
-                               profile_manager, entity=server_obj),
-                     mock.call(pbm, 'PbmRetrieveContent', profile_manager,
-                               profileIds=profile_ids)]
-        self.assertEqual(exp_calls, self.session.invoke_api.call_args_list)
-
-        self.assertEqual(value, server_obj.key)
-        self.assertEqual('virtualMachine', server_obj.objectType)
-        self.session.invoke_api.side_effect = None
-
-    def test_get_profile_with_no_profile(self):
-        server_obj = mock.Mock()
-        self.session.pbm.client.factory.create.return_value = server_obj
-
-        self.session.invoke_api.side_effect = [[]]
-
-        value = mock.sentinel.value
-        backing = mock.Mock(value=value)
-        self.assertIsNone(self.vops.get_profile(backing))
-
-        pbm = self.session.pbm
-        profile_manager = pbm.service_content.profileManager
-        exp_calls = [mock.call(pbm, 'PbmQueryAssociatedProfile',
-                               profile_manager, entity=server_obj)]
-        self.assertEqual(exp_calls, self.session.invoke_api.call_args_list)
-
-        self.assertEqual(value, server_obj.key)
-        self.assertEqual('virtualMachine', server_obj.objectType)
-        self.session.invoke_api.side_effect = None
 
     def test_extend_virtual_disk(self):
         """Test volumeops.extend_virtual_disk."""
