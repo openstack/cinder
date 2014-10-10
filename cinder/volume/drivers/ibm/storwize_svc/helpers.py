@@ -547,8 +547,8 @@ class StorwizeHelpers(object):
         Takes volume type and defaults from config options into account.
         """
         opts = self.build_default_opts(config)
+        ctxt = context.get_admin_context()
         if volume_type is None and type_id is not None:
-            ctxt = context.get_admin_context()
             volume_type = volume_types.get_volume_type(ctxt, type_id)
         if volume_type:
             qos_specs_id = volume_type.get('qos_specs_id')
