@@ -51,10 +51,25 @@ class SolidFireVolumeTestCase(test.TestCase):
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
                        self.fake_issue_api_request)
+        self.stubs.Set(SolidFireDriver, '_build_endpoint_info',
+                       self.fake_build_endpoint_info)
 
         self.expected_qos_results = {'minIOPS': 1000,
                                      'maxIOPS': 10000,
                                      'burstIOPS': 20000}
+
+    def fake_build_endpoint_info(obj, **kwargs):
+        endpoint = {}
+        endpoint['mvip'] = '1.1.1.1'
+        endpoint['login'] = 'admin'
+        endpoint['passwd'] = 'admin'
+        endpoint['port'] = '443'
+        endpoint['url'] = '{scheme}://{mvip}'.format(mvip='%s:%s' %
+                                                     (endpoint['mvip'],
+                                                      endpoint['port']),
+                                                     scheme='https')
+
+        return endpoint
 
     def fake_issue_api_request(obj, method, params, version='1.0'):
         if method is 'GetClusterCapacity' and version == '1.0':
@@ -148,7 +163,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         else:
             LOG.error('Crap, unimplemented API call in Fake:%s' % method)
 
-    def fake_issue_api_request_fails(obj, method, params, version='1.0'):
+    def fake_issue_api_request_fails(obj, method,
+                                     params, version='1.0',
+                                     endpoint=None):
         return {'error': {'code': 000,
                           'name': 'DummyError',
                           'message': 'This is a fake error response'},

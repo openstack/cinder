@@ -13,16 +13,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import base64
-import httplib
 import json
 import random
 import socket
 import string
 import time
-import uuid
 
 from oslo.config import cfg
+import requests
+from six import wraps
 
 from cinder import context
 from cinder import exception
@@ -62,6 +61,32 @@ CONF = cfg.CONF
 CONF.register_opts(sf_opts)
 
 
+def retry(exc_tuple, tries=5, delay=1, backoff=2):
+    def retry_dec(f):
+        @wraps(f)
+        def func_retry(*args, **kwargs):
+            _tries, _delay = tries, delay
+            while _tries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except exc_tuple:
+                    time.sleep(_delay)
+                    _tries -= 1
+                    _delay *= backoff
+                    LOG.debug('Retrying %s, (%s attempts remaining)...' %
+                              (args, _tries))
+            # NOTE(jdg): Don't log the params passed here
+            # some cmds like createAccount will have sensitive
+            # info in the params, grab only the second tuple
+            # which should be the Method
+            msg = (_('Retry count exceeded for command: %s') %
+                    (args[1],))
+            LOG.error(msg)
+            raise exception.SolidFireAPIException(message=msg)
+        return func_retry
+    return retry_dec
+
+
 class SolidFireDriver(SanISCSIDriver):
     """OpenStack driver to enable SolidFire cluster.
 
@@ -71,10 +96,11 @@ class SolidFireDriver(SanISCSIDriver):
         1.2 - Add xfr and retype support
         1.2.1 - Add export/import support
         1.2.2 - Catch VolumeNotFound on accept xfr
+        2.0.0 - Move from httplib to requests
 
     """
 
-    VERSION = '1.2.2'
+    VERSION = '2.0.0'
 
     sf_qos_dict = {'slow': {'minIOPS': 100,
                             'maxIOPS': 200,
@@ -92,121 +118,69 @@ class SolidFireDriver(SanISCSIDriver):
 
     sf_qos_keys = ['minIOPS', 'maxIOPS', 'burstIOPS']
     cluster_stats = {}
+    retry_exc_tuple = (exception.SolidFireRetryableException,
+                       requests.exceptions.ConnectionError)
+    retryable_errors = ['xDBVersionMisMatch',
+                        'xMaxSnapshotsPerVolumeExceeded',
+                        'xMaxClonesPerVolumeExceeded',
+                        'xMaxSnapshotsPerNodeExceeded',
+                        'xMaxClonesPerNodeExceeded']
 
     def __init__(self, *args, **kwargs):
         super(SolidFireDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(sf_opts)
+        self._endpoint = self._build_endpoint_info()
         try:
             self._update_cluster_status()
         except exception.SolidFireAPIException:
             pass
 
-    def _issue_api_request(self, method_name, params, version='1.0'):
-        """All API requests to SolidFire device go through this method.
+    def _build_endpoint_info(self, **kwargs):
+        endpoint = {}
 
-        Simple json-rpc web based API calls.
-        each call takes a set of parameters (dict)
-        and returns results in a dict as well.
+        endpoint['mvip'] =\
+            kwargs.get('mvip', self.configuration.san_ip)
+        endpoint['login'] =\
+            kwargs.get('login', self.configuration.san_login)
+        endpoint['passwd'] =\
+            kwargs.get('passwd', self.configuration.san_password)
+        endpoint['port'] =\
+            kwargs.get('port', self.configuration.sf_api_port)
+        endpoint['url'] = 'https://%s:%s' % (endpoint['mvip'],
+                                             endpoint['port'])
 
-        """
-        max_simultaneous_clones = ['xMaxSnapshotsPerVolumeExceeded',
-                                   'xMaxClonesPerVolumeExceeded',
-                                   'xMaxSnapshotsPerNodeExceeded',
-                                   'xMaxClonesPerNodeExceeded']
-        host = self.configuration.san_ip
-        port = self.configuration.sf_api_port
+        # TODO(jdg): consider a call to GetAPI and setting version
+        return endpoint
 
-        cluster_admin = self.configuration.san_login
-        cluster_password = self.configuration.san_password
+    @retry(retry_exc_tuple, tries=6)
+    def _issue_api_request(self, method, params, version='1.0', endpoint=None):
+        if params is None:
+            params = {}
 
-        # NOTE(jdg): We're wrapping a retry loop for a know XDB issue
-        # Shows up in very high request rates (ie create 1000 volumes)
-        # we have to wrap the whole sequence because the request_id
-        # can't be re-used
-        retry_count = 5
-        while retry_count > 0:
-            request_id = hash(uuid.uuid4())  # just generate a random number
-            command = {'method': method_name,
-                       'id': request_id}
+        if endpoint is None:
+            endpoint = self._endpoint
+        payload = {'method': method, 'params': params}
 
-            if params is not None:
-                command['params'] = params
+        url = '%s/json-rpc/%s/' % (endpoint['url'], version)
+        req = requests.post(url,
+                            data=json.dumps(payload),
+                            auth=(endpoint['login'], endpoint['passwd']),
+                            verify=False,
+                            timeout=2)
 
-            json_string = json.dumps(command,
-                                     ensure_ascii=False).encode('utf-8')
-            header = {'Content-Type': 'application/json-rpc; charset=utf-8'}
+        response = req.json()
+        if (('error' in response) and
+                (response['error']['name'] in self.retryable_errors)):
+            msg = ('Retryable error (%s) encountered during '
+                   'SolidFire API call.' % response['error']['name'])
+            LOG.debug(msg)
+            raise exception.SolidFireRetryableException(message=msg)
 
-            if cluster_password is not None:
-                # base64.encodestring includes a newline character
-                # in the result, make sure we strip it off
-                auth_key = base64.encodestring('%s:%s' % (cluster_admin,
-                                               cluster_password))[:-1]
-                header['Authorization'] = 'Basic %s' % auth_key
+        if 'error' in response:
+            msg = _('API response: %s') % response
+            raise exception.SolidFireAPIException(msg)
 
-            LOG.debug("Payload for SolidFire API call: %s", json_string)
-
-            api_endpoint = '/json-rpc/%s' % version
-            connection = httplib.HTTPSConnection(host, port)
-            try:
-                connection.request('POST', api_endpoint, json_string, header)
-            except Exception as ex:
-                LOG.error(_('Failed to make httplib connection '
-                            'SolidFire Cluster: %s (verify san_ip '
-                            'settings)') % ex.message)
-                msg = _("Failed to make httplib connection: %s") % ex.message
-                raise exception.SolidFireAPIException(msg)
-            response = connection.getresponse()
-
-            data = {}
-            if response.status != 200:
-                connection.close()
-                LOG.error(_('Request to SolidFire cluster returned '
-                            'bad status: %(status)s / %(reason)s (check '
-                            'san_login/san_password settings)') %
-                          {'status': response.status,
-                           'reason': response.reason})
-                msg = (_("HTTP request failed, with status: %(status)s "
-                         "and reason: %(reason)s") %
-                       {'status': response.status, 'reason': response.reason})
-                raise exception.SolidFireAPIException(msg)
-
-            else:
-                data = response.read()
-                try:
-                    data = json.loads(data)
-                except (TypeError, ValueError) as exc:
-                    connection.close()
-                    msg = _("Call to json.loads() raised "
-                            "an exception: %s") % exc
-                    raise exception.SfJsonEncodeFailure(msg)
-
-                connection.close()
-
-            LOG.debug("Results of SolidFire API call: %s", data)
-
-            if 'error' in data:
-                if data['error']['name'] in max_simultaneous_clones:
-                    LOG.warning(_('Clone operation '
-                                  'encountered: %s') % data['error']['name'])
-                    LOG.warning(_(
-                        'Waiting for outstanding operation '
-                        'before retrying snapshot: %s') % params['name'])
-                    time.sleep(5)
-                    # Don't decrement the retry count for this one
-                elif 'xDBVersionMismatch' in data['error']['name']:
-                    LOG.warning(_('Detected xDBVersionMismatch, '
-                                'retry %s of 5') % (5 - retry_count))
-                    time.sleep(1)
-                    retry_count -= 1
-                elif 'xUnknownAccount' in data['error']['name']:
-                    retry_count = 0
-                else:
-                    msg = _("API response: %s") % data
-                    raise exception.SolidFireAPIException(msg)
-            else:
-                retry_count = 0
-
-        return data
+        return response
 
     def _get_volumes_by_sfaccount(self, account_id):
         """Get all volumes on cluster for specified account."""
@@ -219,10 +193,16 @@ class SolidFireDriver(SanISCSIDriver):
         """Get SolidFire account object by name."""
         sfaccount = None
         params = {'username': sf_account_name}
-        data = self._issue_api_request('GetAccountByName', params)
-        if 'result' in data and 'account' in data['result']:
-            LOG.debug('Found solidfire account: %s', sf_account_name)
-            sfaccount = data['result']['account']
+        try:
+            data = self._issue_api_request('GetAccountByName', params)
+            if 'result' in data and 'account' in data['result']:
+                LOG.debug('Found solidfire account: %s', sf_account_name)
+                sfaccount = data['result']['account']
+        except exception.SolidFireAPIException as ex:
+            if 'xUnknownAccount' in ex.msg:
+                return sfaccount
+            else:
+                raise
         return sfaccount
 
     def _get_sf_account_name(self, project_id):
