@@ -1916,52 +1916,38 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         return self.volumeops.create_folder(vm_folder, volume_folder)
 
     def _relocate_backing(self, volume, backing, host):
-        """Relocate volume backing to a datastore accessible to the given host.
+        """Relocate volume backing under host and move to volume_group folder.
 
-        The backing is not relocated if the current datastore is already
-        accessible to the host and compliant with the backing's storage
-        profile.
+        If the volume backing is on a datastore that is visible to the host,
+        then need not do any operation.
 
-        :param volume: Volume to be relocated
+        :param volume: volume to be relocated
         :param backing: Reference to the backing
         :param host: Reference to the host
         """
-        # Check if current datastore is visible to host managing
-        # the instance and compliant with the storage profile.
+        # Check if volume's datastore is visible to host managing
+        # the instance
+        (datastores, resource_pool) = self.volumeops.get_dss_rp(host)
         datastore = self.volumeops.get_datastore(backing)
-        backing_profile = self.volumeops.get_profile(backing)
-        if (self.volumeops.is_datastore_accessible(datastore, host) and
-                self.ds_sel.is_datastore_compliant(datastore,
-                                                   backing_profile)):
-            LOG.debug("Datastore: %(datastore)s of backing: %(backing)s is "
-                      "already accessible to instance's host: %(host)s and "
-                      "compliant with storage profile: %(profile)s.",
-                      {'backing': backing,
-                       'datastore': datastore,
-                       'host': host,
-                       'profile': backing_profile})
+
+        visible_to_host = False
+        for _datastore in datastores:
+            if _datastore.value == datastore.value:
+                visible_to_host = True
+                break
+        if visible_to_host:
             return
 
-        # We need to relocate the backing to an accessible and profile
-        # compliant datastore.
-        req = {}
-        req[hub.DatastoreSelector.SIZE_BYTES] = (volume['size'] *
-                                                 units.Gi)
-        req[hub.DatastoreSelector.PROFILE_NAME] = backing_profile
+        # The volume's backing is on a datastore that is not visible to the
+        # host managing the instance. We relocate the volume's backing.
 
-        # Select datastore satisfying the requirements.
-        best_candidate = self.ds_sel.select_datastore(req, hosts=[host])
-        if not best_candidate:
-            # No candidate datastore to relocate.
-            msg = _("There are no datastores matching volume requirements;"
-                    " can't relocate volume: %s.") % volume['name']
-            LOG.error(msg)
-            raise error_util.NoValidDatastoreException(msg)
-
-        (host, resource_pool, summary) = best_candidate
-        dc = self.volumeops.get_dc(resource_pool)
-        folder = self._get_volume_group_folder(dc)
-
+        # Pick a folder and datastore to relocate volume backing to
+        (folder, summary) = self._get_folder_ds_summary(volume,
+                                                        resource_pool,
+                                                        datastores)
+        LOG.info(_("Relocating volume: %(backing)s to %(ds)s and %(rp)s.") %
+                 {'backing': backing, 'ds': summary, 'rp': resource_pool})
+        # Relocate the backing to the datastore and folder
         self.volumeops.relocate_backing(backing, summary.datastore,
                                         resource_pool, host)
         self.volumeops.move_backing_to_folder(backing, folder)
