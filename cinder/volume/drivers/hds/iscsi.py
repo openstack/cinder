@@ -413,7 +413,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
     def remove_export(self, context, volume):
         """Disconnect a volume from an attached instance.
            :param context: context
-           :param volume: dictionary volume referencej
+           :param volume: dictionary volume reference
         """
 
         provider = volume['provider_location']

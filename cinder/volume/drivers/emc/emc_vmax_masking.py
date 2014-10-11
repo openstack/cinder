@@ -539,7 +539,7 @@ class EMCVMAXMasking(object):
         return foundHardwardIDsInstanceNames
 
     def _get_initiator_group_from_job(self, conn, job):
-        """After creating an new intiator group find it and return it
+        """After creating an new initiator group find it and return it
 
         :param conn: the connection to the ecom server
         :param job: the create initiator group job
@@ -562,7 +562,7 @@ class EMCVMAXMasking(object):
     def _create_masking_view(
             self, conn, configService, maskingViewName, deviceMaskingGroup,
             targetMaskingGroup, initiatorMaskingGroup):
-        """After creating an new intiator group find it and return it.
+        """After creating an new initiator group find it and return it.
 
         :param conn: the connection to the ecom server
         :param configService: the create initiator group job
@@ -872,7 +872,7 @@ class EMCVMAXMasking(object):
 
     def _get_initiator_group_from_masking_view(
             self, conn, maskingViewName, storageSystemName):
-        """Given the masking view name get the inititator group from it.
+        """Given the masking view name get the initiator group from it.
 
         :param conn: connection the the ecom server
         :param maskingViewName: the name of the masking view

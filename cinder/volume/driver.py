@@ -175,7 +175,7 @@ class VolumeDriver(object):
        data path related implementation should be a *member object*
        that we call a connector.  The point here is that for example
        don't allow the LVM driver to implement iSCSI methods, instead
-       call whatever connector it has configued via conf file
+       call whatever connector it has configured via conf file
        (iSCSI{LIO, TGT, IET}, FC, etc).
 
        In the base class and for example the LVM driver we do this via a has-a

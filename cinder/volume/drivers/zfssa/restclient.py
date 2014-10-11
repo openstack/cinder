@@ -242,7 +242,7 @@ class RestClientURL(object):
     def request(self, path, request, body=None, **kwargs):
         """Make an HTTP request and return the results
 
-        :param path: Path used with the initiazed URL to make a request
+        :param path: Path used with the initialized URL to make a request
         :param request: HTTP request type (GET, POST, PUT, DELETE)
         :param body: HTTP body of request
         :key accept: Set HTTP 'Accept' header with this value

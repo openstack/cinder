@@ -31,7 +31,7 @@ of filters and weighers.
   scheduler_default_weighers = 'ChanceWeigher'
 
 If one prefers the scheduler to pick up the back-end has most available
-space that scheudler can see (like SimpleScheduler did), use following
+space that scheduler can see (like SimpleScheduler did), use following
 combination of filters and weighers with FilterScheduler.
 
   scheduler_driver = cinder.scheduler.filter_scheduler.FilterScheduler

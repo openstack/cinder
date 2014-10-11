@@ -1525,7 +1525,7 @@ class EMCVMAXCommon(object):
         self.conn = self._get_ecom_connection()
 
     def _initial_setup(self, volume):
-        """Necessary setup to accummulate the relevant information.
+        """Necessary setup to accumulate the relevant information.
 
         The volume object has a host in which we can parse the
         config group name. The config group name is the key to our EMC
@@ -1744,7 +1744,7 @@ class EMCVMAXCommon(object):
         composite volume
 
         :param conn: the connection information to the ecom server
-        :param storageConfigService: thestorage config service instance name
+        :param storageConfigService: the storage config service instance name
         :param compositeVolumeInstanceName: the composite volume instance name
         :param additionalSize: the size you want to increase the volume by
         :returns: volume instance modifiedCompositeVolumeInstance

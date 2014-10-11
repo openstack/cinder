@@ -114,7 +114,7 @@ class PureISCSIDriverTestCase(test.TestCase):
             self.driver.do_setup, None)
 
     def assert_error_propagates(self, mocks, func, *args, **kwargs):
-        """Assert that errors from mocks propogate to func.
+        """Assert that errors from mocks propagate to func.
 
         Fail if exceptions raised by mocks are not seen when calling
         func(*args, **kwargs). Ensure that we are really seeing exceptions
@@ -345,7 +345,7 @@ class FlashArrayBaseTestCase(test.TestCase):
         self.array = array
 
     def assert_error_propagates(self, mocks, func, *args, **kwargs):
-        """Assert that errors from mocks propogate to func.
+        """Assert that errors from mocks propagate to func.
 
         Fail if exceptions raised by mocks are not seen when calling
         func(*args, **kwargs). Ensure that we are really seeing exceptions

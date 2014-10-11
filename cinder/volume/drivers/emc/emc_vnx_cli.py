@@ -1610,7 +1610,7 @@ class EMCVnxCliBase(object):
 
     def _is_valid_for_storage_assisted_migration(
             self, volume, host, new_type=None):
-        """Check the src and dest volume to decide the mogration type."""
+        """Check the src and dest volume to decide the migration type."""
         false_ret = (False, None)
 
         if 'location_info' not in host['capabilities']:
