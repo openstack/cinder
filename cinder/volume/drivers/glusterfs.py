@@ -54,7 +54,6 @@ volume_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
-CONF.import_opt('volume_name_template', 'cinder.db')
 
 
 class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
