@@ -57,6 +57,9 @@ coraid_opts = [
     cfg.StrOpt('coraid_repository_key',
                default='coraid_repository',
                help='Volume Type key name to store ESM Repository Name'),
+    cfg.StrOpt('coraid_default_repository',
+               help='ESM Repository Name to use if not specified in '
+                    'Volume Type keys'),
 ]
 
 CONF = cfg.CONF
@@ -446,8 +449,18 @@ class CoraidDriver(driver.VolumeDriver):
         """
         volume_type_id = volume_type['id']
         repository_key_name = self.configuration.coraid_repository_key
-        repository = volume_types.get_volume_type_extra_specs(
-            volume_type_id, repository_key_name)
+        repository = (volume_types.get_volume_type_extra_specs(
+            volume_type_id, repository_key_name) or
+            self.configuration.coraid_default_repository)
+
+        # if there's no repository still, we cannot move forward
+        if not repository:
+            message = ("The Coraid repository not specified neither "
+                       "in Volume Type '%s' key nor in the "
+                       "'coraid_default_repository' config option" %
+                       self.configuration.coraid_repository_key)
+            raise exception.CoraidException(message=message)
+
         # Remove <in> keyword from repository name if needed
         if repository.startswith('<in> '):
             return repository[len('<in> '):]
