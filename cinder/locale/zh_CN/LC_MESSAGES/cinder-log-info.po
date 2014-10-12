@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-24 06:03+0000\n"
-"PO-Revision-Date: 2014-09-13 22:05+0000\n"
+"POT-Creation-Date: 2014-10-12 06:17+0000\n"
+"PO-Revision-Date: 2014-10-10 16:30+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Chinese (China) (http://www.transifex.com/projects/p/cinder/"
 "language/zh_CN/)\n"
@@ -22,7 +22,7 @@ msgstr ""
 #: cinder/openstack/common/eventlet_backdoor.py:140
 #, python-format
 msgid "Eventlet backdoor listening on %(port)s for process %(pid)d"
-msgstr ""
+msgstr "携程为进程 %(pid)d 在后台监听 %(port)s "
 
 #: cinder/openstack/common/periodic_task.py:126
 #, python-format

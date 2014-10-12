@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-24 06:03+0000\n"
-"PO-Revision-Date: 2014-09-13 22:05+0000\n"
+"POT-Creation-Date: 2014-10-12 06:17+0000\n"
+"PO-Revision-Date: 2014-10-08 05:00+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Korean (Korea) (http://www.transifex.com/projects/p/cinder/"
 "language/ko_KR/)\n"
@@ -59,7 +59,7 @@ msgstr "룰 %r를 이해하지 못했습니다."
 
 #: cinder/openstack/common/service.py:188
 msgid "Exception during rpc cleanup."
-msgstr ""
+msgstr "RPC 정리하는 동안 예외입니다."
 
 #: cinder/openstack/common/service.py:277
 msgid "Unhandled exception"
