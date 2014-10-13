@@ -1645,6 +1645,12 @@
 # provisioning. (string value)
 #netapp_storage_pools=<None>
 
+# This option is used to define how the controllers in the
+# E-Series storage array will work with the particular
+# operating system on the hosts that are connected to it.
+# (string value)
+#netapp_eseries_host_type=linux_dm_mp
+
 # If the percentage of available space for an NFS share has
 # dropped below the value specified by this option, the NFS
 # image cache will be cleaned. (integer value)
