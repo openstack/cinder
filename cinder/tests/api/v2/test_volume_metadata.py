@@ -111,7 +111,7 @@ def return_volume(context, volume_id):
             'project_id': context.project_id}
 
 
-def return_volume_nonexistent(context, volume_id):
+def return_volume_nonexistent(*args, **kwargs):
     raise exception.VolumeNotFound('bogus test message')
 
 
@@ -209,7 +209,9 @@ class volumeMetaDataTest(test.TestCase):
         self.assertEqual(200, res.status_int)
 
     def test_delete_nonexistent_volume(self):
-        self.stubs.Set(db, 'volume_get',
+        self.stubs.Set(db, 'volume_metadata_get',
+                       return_volume_metadata)
+        self.stubs.Set(db, 'volume_metadata_delete',
                        return_volume_nonexistent)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'DELETE'
