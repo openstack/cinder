@@ -1894,9 +1894,11 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             # Destroy current session so that it is recreated with pbm enabled
             self._session = None
 
-        # recreate session and initialize volumeops
+        # recreate session and initialize volumeops and ds_sel
+        # TODO(vbala) remove properties: session, volumeops and ds_sel
         max_objects = self.configuration.vmware_max_objects_retrieval
         self._volumeops = volumeops.VMwareVolumeOps(self.session, max_objects)
+        self._ds_sel = hub.DatastoreSelector(self.volumeops, self.session)
 
         LOG.info(_("Successfully setup driver: %(driver)s for server: "
                    "%(ip)s.") % {'driver': self.__class__.__name__,
