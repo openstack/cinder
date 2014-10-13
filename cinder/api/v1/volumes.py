@@ -102,8 +102,7 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     if vol['volume_type_id'] and vol.get('volume_type'):
         d['volume_type'] = vol['volume_type']['name']
     else:
-        # TODO(bcwaldon): remove str cast once we use uuids
-        d['volume_type'] = str(vol['volume_type_id'])
+        d['volume_type'] = vol['volume_type_id']
 
     d['snapshot_id'] = vol['snapshot_id']
     d['source_volid'] = vol['source_volid']

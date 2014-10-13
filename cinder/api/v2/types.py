@@ -71,8 +71,6 @@ class VolumeTypesController(wsgi.Controller):
             msg = _("Volume type not found")
             raise exc.HTTPNotFound(explanation=msg)
 
-        # TODO(bcwaldon): remove str cast once we use uuids
-        vol_type['id'] = str(vol_type['id'])
         return self._view_builder.show(req, vol_type)
 
 
