@@ -224,9 +224,16 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             with excutils.save_and_reraise_exception():
                 LOG.error(_('Error running SSH command: "%s".'), command)
 
+    def check_for_setup_error(self):
+        super(DellEQLSanISCSIDriver, self).check_for_setup_error()
+        if self.configuration.eqlx_cli_max_retries < 0:
+            raise exception.InvalidInput(
+                reason=_("eqlx_cli_max_retries must be greater than or "
+                         "equal to 0"))
+
     def _eql_execute(self, *args, **kwargs):
         return self._run_ssh(
-            args, attempts=self.configuration.eqlx_cli_max_retries)
+            args, attempts=self.configuration.eqlx_cli_max_retries + 1)
 
     def _get_volume_data(self, lines):
         prefix = 'iSCSI target name is '
