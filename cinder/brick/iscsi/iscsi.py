@@ -171,8 +171,9 @@ class TgtAdm(TargetAdmin):
         if chap_auth is None:
             volume_conf = self.VOLUME_CONF % (name, path, write_cache)
         else:
+            chap_str = re.sub('^IncomingUser ', 'incominguser ', chap_auth)
             volume_conf = self.VOLUME_CONF_WITH_CHAP_AUTH % (name,
-                                                             path, chap_auth,
+                                                             path, chap_str,
                                                              write_cache)
 
         LOG.info(_('Creating iscsi_target for: %s') % vol_id)
