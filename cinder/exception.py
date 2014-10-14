@@ -697,6 +697,10 @@ class SolidFireAccountNotFound(SolidFireDriverException):
                 "Solidfire device")
 
 
+class SolidFireRetryableException(VolumeBackendAPIException):
+    message = _("Retryable SolidFire Exception encountered")
+
+
 # HP 3Par
 class Invalid3PARDomain(VolumeDriverException):
     message = _("Invalid 3PAR Domain: %(err)s")
