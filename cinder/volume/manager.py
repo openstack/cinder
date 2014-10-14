@@ -272,7 +272,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                     self._count_allocated_capacity(ctxt, volume)
 
                     try:
-                        self.driver.ensure_export(ctxt, volume)
+                        if volume['status'] in ['in-use']:
+                            self.driver.ensure_export(ctxt, volume)
                     except Exception as export_ex:
                         LOG.error(_("Failed to re-export volume %s: "
                                     "setting to error state"), volume['id'])
