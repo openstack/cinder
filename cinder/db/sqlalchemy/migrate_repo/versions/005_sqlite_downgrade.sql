@@ -1,5 +1,3 @@
-BEGIN TRANSACTION;
-
 CREATE TEMPORARY TABLE volumes_backup (
     created_at DATETIME,
     updated_at DATETIME,
@@ -121,4 +119,3 @@ INSERT INTO volumes
     FROM volumes_backup;
 
 DROP TABLE volumes_backup;
-COMMIT;

@@ -1,8 +1,6 @@
 -- As sqlite does not support the DROP FOREIGN KEY, we need to create
 -- the table, and move all the data to it.
 
-BEGIN TRANSACTION;
-
 CREATE TABLE snapshots_v6 (
     created_at DATETIME,
     updated_at DATETIME,
@@ -28,5 +26,3 @@ INSERT INTO snapshots_v6 SELECT * FROM snapshots;
 DROP TABLE snapshots;
 
 ALTER TABLE snapshots_v6 RENAME TO snapshots;
-
-COMMIT;
