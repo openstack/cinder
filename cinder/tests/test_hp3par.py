@@ -560,6 +560,72 @@ class HP3PARBaseDriver(object):
         self.assertEqual(return_model, None)
 
     @mock.patch.object(volume_types, 'get_volume_type')
+    def test_get_snap_cpg_from_volume_type(self, _mock_volume_types):
+
+        self.setup_driver()
+        expected_type_snap_cpg = "type_snap_cpg"
+        _mock_volume_types.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'cpg': HP3PAR_CPG,
+                'snap_cpg': expected_type_snap_cpg,
+                'volume_type': self.volume_type}}
+
+        result = self.driver.common.get_volume_settings_from_type_id(
+            "mock", self.driver.configuration.hp3par_cpg)
+
+        self.assertEqual(expected_type_snap_cpg, result['snap_cpg'])
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_get_snap_cpg_from_volume_type_cpg(self, _mock_volume_types):
+
+        self.setup_driver()
+        expected_cpg = 'use_extra_specs_cpg'
+        _mock_volume_types.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'cpg': expected_cpg,
+                'volume_type': self.volume_type}}
+
+        result = self.driver.common.get_volume_settings_from_type_id(
+            "mock", self.driver.configuration.hp3par_cpg)
+
+        self.assertEqual(expected_cpg, result['snap_cpg'])
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_get_snap_cpg_from_volume_type_conf_snap_cpg(
+            self, _mock_volume_types):
+        _mock_volume_types.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'volume_type': self.volume_type}}
+
+        conf = self.setup_configuration()
+        expected_snap_cpg = conf.hp3par_cpg_snap
+        self.setup_driver(config=conf)
+        result = self.driver.common.get_volume_settings_from_type_id(
+            "mock", self.driver.configuration.hp3par_cpg)
+
+        self.assertEqual(expected_snap_cpg, result['snap_cpg'])
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_get_snap_cpg_from_volume_type_conf_cpg(
+            self, _mock_volume_types):
+        _mock_volume_types.return_value = {
+            'name': 'gold',
+            'extra_specs': {
+                'volume_type': self.volume_type}}
+
+        conf = self.setup_configuration()
+        conf.hp3par_cpg_snap = None
+        expected_cpg = conf.hp3par_cpg
+        self.setup_driver(config=conf)
+        result = self.driver.common.get_volume_settings_from_type_id(
+            "mock", self.driver.configuration.hp3par_cpg)
+
+        self.assertEqual(expected_cpg, result['snap_cpg'])
+
+    @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_qos(self, _mock_volume_types):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
@@ -1016,7 +1082,7 @@ class HP3PARBaseDriver(object):
             mock.call.modifyVolume(
                 osv_matcher,
                 {'comment': '{"qos": {}, "display_name": "Foo Volume"}',
-                 'snapCPG': 'CPG-FC1'}),
+                 'snapCPG': HP3PAR_CPG_SNAP}),
             mock.call.modifyVolume(osv_matcher,
                                    {'action': 6,
                                     'userCPG': 'CPG-FC1',
@@ -1171,7 +1237,7 @@ class HP3PARBaseDriver(object):
             mock.call.modifyVolume(
                 osv_matcher,
                 {'comment': '{"qos": {}, "display_name": "Foo Volume"}',
-                 'snapCPG': 'CPG-FC1'}),
+                 'snapCPG': HP3PAR_CPG_SNAP}),
             mock.call.modifyVolume(osv_matcher,
                                    {'action': 6,
                                     'userCPG': 'CPG-FC1',
@@ -1884,11 +1950,12 @@ class HP3PARBaseDriver(object):
             }
         }
 
+        expected_snap_cpg = self.volume_type['extra_specs']['cpg']
         expected_retype_modify = [
             mock.call.modifyVolume(osv_matcher,
                                    {'comment': self.CommentMatcher(
                                        self.assertEqual, retype_comment_qos),
-                                    'snapCPG': 'OpenStackCPGSnap'}),
+                                    'snapCPG': expected_snap_cpg}),
             mock.call.deleteVolumeSet(vvs_matcher),
         ]
 
@@ -2151,7 +2218,7 @@ class HP3PARBaseDriver(object):
             mock.call.getVolume(unm_matcher),
             mock.call.modifyVolume(
                 unm_matcher, {'newName': osv_matcher, 'comment': mock.ANY}),
-            mock.call.getCPG('POOL1'),
+            mock.call.getCPG('OpenStackCPG'),
             mock.call.getVolume(osv_matcher),
             mock.call.getCPG('testUserCpg0'),
             mock.call.getCPG('OpenStackCPG'),

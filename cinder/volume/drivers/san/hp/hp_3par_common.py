@@ -156,10 +156,11 @@ class HP3PARCommon(object):
         2.0.23 - Increase the hostname size from 23 to 31  Bug #1371242
         2.0.24 - Add pools (hp3par_cpg now accepts a list of CPGs)
         2.0.25 - Migrate without losing type settings bug #1356608
+        2.0.26 - Don't ignore extra-specs snap_cpg when missing cpg #1368972
 
     """
 
-    VERSION = "2.0.25"
+    VERSION = "2.0.26"
 
     stats = {}
 
@@ -965,7 +966,7 @@ class HP3PARCommon(object):
         default_cpg = pool or self.config.hp3par_cpg[0]
 
         cpg = self._get_key_value(hp3par_keys, 'cpg', default_cpg)
-        if cpg not in self.config.hp3par_cpg:
+        if cpg is not default_cpg:
             # The cpg was specified in a volume type extra spec so it
             # needs to be validated that it's in the correct domain.
             self.validate_cpg(cpg)
@@ -974,12 +975,13 @@ class HP3PARCommon(object):
             # default.
             snap_cpg = self._get_key_value(hp3par_keys, 'snap_cpg', cpg)
         else:
-            # default snap_cpg to hp3par_cpg_snap if it's not specified
-            # in the volume type extra specs.
+            # Look to see if the snap_cpg was specified in volume type
+            # extra spec, if not use hp3par_cpg_snap from config as the
+            # default.
             snap_cpg = self.config.hp3par_cpg_snap
-            # if it's still not set or empty then set it to the cpg
-            # specified in the cinder.conf file.
-            if not self.config.hp3par_cpg_snap:
+            snap_cpg = self._get_key_value(hp3par_keys, 'snap_cpg', snap_cpg)
+            # If it's still not set or empty then set it to the cpg.
+            if not snap_cpg:
                 snap_cpg = cpg
 
         # if provisioning is not set use thin
