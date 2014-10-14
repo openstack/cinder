@@ -1920,11 +1920,11 @@
 # 3PAR Super user password (string value)
 #hp3par_password=
 
-# The CPG to use for volume creation (string value)
+# List of the CPG(s) to use for volume creation (list value)
 #hp3par_cpg=OpenStack
 
-# The CPG to use for Snapshots for volumes. If empty
-# hp3par_cpg will be used (string value)
+# The CPG to use for Snapshots for volumes. If empty the
+# userCPG will be used. (string value)
 #hp3par_cpg_snap=
 
 # The time in hours to retain a snapshot.  You can't delete it
