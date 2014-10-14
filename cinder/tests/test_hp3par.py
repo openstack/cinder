@@ -981,14 +981,19 @@ class HP3PARBaseDriver(object):
                 'status': 1},
             'getCPG.return_value': {},
             'copyVolume.return_value': {'taskid': 1},
-            'getVolume.return_value': {}
+            'getVolume.return_value': self.RETYPE_VOLUME_INFO_1
         }
 
         mock_client = self.setup_driver(mock_conf=conf)
 
+        mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
+        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.getTask.return_value = self.STATUS_DONE
+
         volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
                   'id': HP3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
+                  'volume_type_id': None,
                   'size': 2,
                   'status': 'available',
                   'host': HP3PARBaseDriver.FAKE_HOST,
@@ -997,7 +1002,7 @@ class HP3PARBaseDriver(object):
         volume_name_3par = self.driver.common._encode_name(volume['id'])
 
         loc_info = 'HP3PARDriver:1234:CPG-FC1'
-        host = {'host': 'stack@3parfc1',
+        host = {'host': 'stack@3parfc1#CPG-FC1',
                 'capabilities': {'location_info': loc_info}}
 
         result = self.driver.migrate_volume(context.get_admin_context(),
@@ -1006,18 +1011,89 @@ class HP3PARBaseDriver(object):
         self.assertEqual((True, None), result)
 
         osv_matcher = 'osv-' + volume_name_3par
-        omv_matcher = 'omv-' + volume_name_3par
 
         expected = [
-            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
-            mock.call.getStorageSystemInfo(),
-            mock.call.getCPG(HP3PAR_CPG),
-            mock.call.getCPG('CPG-FC1'),
-            mock.call.copyVolume(osv_matcher, omv_matcher, mock.ANY, mock.ANY),
+            mock.call.modifyVolume(
+                osv_matcher,
+                {'comment': '{"qos": {}, "display_name": "Foo Volume"}',
+                 'snapCPG': 'CPG-FC1'}),
+            mock.call.modifyVolume(osv_matcher,
+                                   {'action': 6,
+                                    'userCPG': 'CPG-FC1',
+                                    'conversionOperation': 1,
+                                    'tuneOperation': 1}),
             mock.call.getTask(mock.ANY),
-            mock.call.getVolume(osv_matcher),
-            mock.call.deleteVolume(osv_matcher),
-            mock.call.modifyVolume(omv_matcher, {'newName': osv_matcher}),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_migrate_volume_with_type(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_2
+
+        conf = {
+            'getStorageSystemInfo.return_value': {
+                'serialNumber': '1234'},
+            'getTask.return_value': {
+                'status': 1},
+            'getCPG.return_value': {},
+            'copyVolume.return_value': {'taskid': 1},
+            'getVolume.return_value': self.RETYPE_VOLUME_INFO_1
+        }
+
+        mock_client = self.setup_driver(mock_conf=conf)
+
+        mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
+        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.getTask.return_value = self.STATUS_DONE
+
+        display_name = 'Foo Volume'
+        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'display_name': display_name,
+                  "volume_type_id": self.RETYPE_VOLUME_TYPE_2['id'],
+                  'size': 2,
+                  'status': 'available',
+                  'host': HP3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+
+        volume_name_3par = self.driver.common._encode_name(volume['id'])
+
+        loc_info = 'HP3PARDriver:1234:CPG-FC1'
+        host = {'host': 'stack@3parfc1#CPG-FC1',
+                'capabilities': {'location_info': loc_info}}
+
+        result = self.driver.migrate_volume(context.get_admin_context(),
+                                            volume, host)
+        self.assertIsNotNone(result)
+        expected_host = volume_utils.append_host(
+            "stack@3parfc1",
+            self.RETYPE_VOLUME_TYPE_2['extra_specs']['cpg'])
+        self.assertEqual((True, {'host': expected_host}), result)
+
+        osv_matcher = 'osv-' + volume_name_3par
+
+        expected_comment = {
+            "display_name": display_name,
+            "volume_type_id": self.RETYPE_VOLUME_TYPE_2['id'],
+            "volume_type_name": self.RETYPE_VOLUME_TYPE_2['name'],
+            "vvs": self.RETYPE_VOLUME_TYPE_2['extra_specs']['vvs']
+        }
+        expected = [
+            mock.call.modifyVolume(
+                osv_matcher,
+                {'comment': self.CommentMatcher(self.assertEqual,
+                                                expected_comment),
+                 'snapCPG': self.RETYPE_VOLUME_TYPE_2
+                 ['extra_specs']['snap_cpg']}),
+            mock.call.modifyVolume(
+                osv_matcher,
+                {'action': 6,
+                 'userCPG': self.RETYPE_VOLUME_TYPE_2['extra_specs']['cpg'],
+                 'conversionOperation': 1,
+                 'tuneOperation': 1}),
+            mock.call.getTask(mock.ANY),
             mock.call.logout()
         ]
 
@@ -1034,6 +1110,7 @@ class HP3PARBaseDriver(object):
         volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
                   'id': HP3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
+                  'volume_type_id': None,
                   'size': 2,
                   'status': 'available',
                   'host': HP3PARBaseDriver.FAKE_HOST,
@@ -1048,40 +1125,71 @@ class HP3PARBaseDriver(object):
         self.assertIsNotNone(result)
         self.assertEqual((False, None), result)
 
-    def test_migrate_volume_diff_domain(self):
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_migrate_volume_diff_domain(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.volume_type
+
         conf = {
             'getStorageSystemInfo.return_value': {
                 'serialNumber': '1234'},
             'getTask.return_value': {
                 'status': 1},
-            'getCPG.side_effect':
-            lambda x: {'OpenStackCPG': {'domain': 'OpenStack'}}.get(x, {})
+            'getCPG.return_value': {},
+            'copyVolume.return_value': {'taskid': 1},
+            'getVolume.return_value': self.RETYPE_VOLUME_INFO_1
         }
 
-        self.setup_driver(mock_conf=conf)
+        mock_client = self.setup_driver(mock_conf=conf)
+
+        mock_client.getVolume.return_value = self.MANAGE_VOLUME_INFO
+        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.getTask.return_value = self.STATUS_DONE
 
         volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
                   'id': HP3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
+                  'volume_type_id': None,
                   'size': 2,
                   'status': 'available',
                   'host': HP3PARBaseDriver.FAKE_HOST,
                   'source_volid': HP3PARBaseDriver.VOLUME_ID}
 
+        volume_name_3par = self.driver.common._encode_name(volume['id'])
+
         loc_info = 'HP3PARDriver:1234:CPG-FC1'
-        host = {'host': 'stack@3parfc1',
+        host = {'host': 'stack@3parfc1#CPG-FC1',
                 'capabilities': {'location_info': loc_info}}
 
         result = self.driver.migrate_volume(context.get_admin_context(),
                                             volume, host)
         self.assertIsNotNone(result)
-        self.assertEqual((False, None), result)
+        self.assertEqual((True, None), result)
 
-    def test_migrate_volume_attached(self):
+        osv_matcher = 'osv-' + volume_name_3par
 
-        mock_client = self.setup_driver()
+        expected = [
+            mock.call.modifyVolume(
+                osv_matcher,
+                {'comment': '{"qos": {}, "display_name": "Foo Volume"}',
+                 'snapCPG': 'CPG-FC1'}),
+            mock.call.modifyVolume(osv_matcher,
+                                   {'action': 6,
+                                    'userCPG': 'CPG-FC1',
+                                    'conversionOperation': 1,
+                                    'tuneOperation': 1}),
+            mock.call.getTask(mock.ANY),
+            mock.call.logout()
+        ]
+
+        mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_migrate_volume_attached(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
 
         volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+                  'volume_type_id': None,
                   'id': HP3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
                   'size': 2,
@@ -1090,18 +1198,70 @@ class HP3PARBaseDriver(object):
                   'source_volid': HP3PARBaseDriver.VOLUME_ID}
 
         volume_name_3par = self.driver.common._encode_name(volume['id'])
+        osv_matcher = 'osv-' + volume_name_3par
 
-        mock_client.getVLUNs.return_value = {
-            'members': [{'volumeName': 'osv-' + volume_name_3par}]}
+        loc_info = 'HP3PARDriver:1234567:CPG-FC1'
 
-        loc_info = 'HP3PARDriver:1234:CPG-FC1'
+        protocol = "FC"
+        if self.properties['driver_volume_type'] == "iscsi":
+            protocol = "iSCSI"
+
         host = {'host': 'stack@3parfc1',
-                'capabilities': {'location_info': loc_info}}
+                'capabilities': {'location_info': loc_info,
+                                 'storage_protocol': protocol}}
 
         result = self.driver.migrate_volume(context.get_admin_context(),
                                             volume, host)
+
+        new_comment = {"qos": {},
+                       "retype_test": "test comment"}
+        expected = [
+            mock.call.modifyVolume(osv_matcher,
+                                   {'comment': self.CommentMatcher(
+                                       self.assertEqual, new_comment),
+                                    'snapCPG': 'OpenStackCPGSnap'}),
+            mock.call.modifyVolume(osv_matcher,
+                                   {'action': 6,
+                                    'userCPG': 'OpenStackCPG',
+                                    'conversionOperation': 1,
+                                    'tuneOperation': 1}),
+            mock.call.getTask(1),
+            mock.call.logout()
+        ]
+        mock_client.assert_has_calls(expected)
+
+        self.assertIsNotNone(result)
+        self.assertEqual((True, {'host': 'stack@3parfc1#OpenStackCPG'}),
+                         result)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_migrate_volume_attached_diff_protocol(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        protocol = "OTHER"
+
+        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+                  'volume_type_id': None,
+                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'display_name': 'Foo Volume',
+                  'size': 2,
+                  'status': 'in-use',
+                  'host': HP3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+
+        loc_info = 'HP3PARDriver:1234567:CPG-FC1'
+        host = {'host': 'stack@3parfc1',
+                'capabilities': {'location_info': loc_info,
+                                 'storage_protocol': protocol}}
+
+        result = self.driver.migrate_volume(context.get_admin_context(),
+                                            volume, host)
+
         self.assertIsNotNone(result)
         self.assertEqual((False, None), result)
+        expected = []
+        mock_client.assert_has_calls(expected)
 
     def test_attach_volume(self):
 
@@ -1962,6 +2122,7 @@ class HP3PARBaseDriver(object):
                 'volume_type': self.volume_type}}
 
         volume = {'display_name': None,
+                  'host': 'stack1@3pariscsi#POOL1',
                   'volume_type': 'gold',
                   'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
                   'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
@@ -1971,7 +2132,8 @@ class HP3PARBaseDriver(object):
         mock_client.getTask.return_value = self.STATUS_DONE
         mock_client.getCPG.side_effect = [
             {'domain': 'domain1'},
-            {'domain': 'domain2'}
+            {'domain': 'domain2'},
+            {'domain': 'domain3'},
         ]
 
         unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
@@ -1989,6 +2151,7 @@ class HP3PARBaseDriver(object):
             mock.call.getVolume(unm_matcher),
             mock.call.modifyVolume(
                 unm_matcher, {'newName': osv_matcher, 'comment': mock.ANY}),
+            mock.call.getCPG('POOL1'),
             mock.call.getVolume(osv_matcher),
             mock.call.getCPG('testUserCpg0'),
             mock.call.getCPG('OpenStackCPG'),
@@ -3499,8 +3662,9 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         self.setup_driver()
         volume = {'host': 'test-host@3pariscsi#pool_foo',
                   'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
+        pool = volume_utils.extract_host(volume['host'], 'pool')
         model = self.driver.common.get_volume_settings_from_type_id('gold-id',
-                                                                    volume)
+                                                                    pool)
         self.assertEqual(model['cpg'], 'pool_foo')
 
     def test_get_model_update(self):

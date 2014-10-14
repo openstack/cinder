@@ -71,10 +71,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                 is present.  bug #1360001
         2.0.8 - Fixing missing login/logout around attach/detach bug #1367429
         2.0.9 - Add support for pools with model update
+        2.0.10 - Migrate without losing type settings bug #1356608
 
     """
 
-    VERSION = "2.0.9"
+    VERSION = "2.0.10"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -460,6 +461,14 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
 
     @utils.synchronized('3par', external=True)
     def migrate_volume(self, context, volume, host):
+
+        if volume['status'] == 'in-use':
+            protocol = host['capabilities']['storage_protocol']
+            if protocol != 'FC':
+                LOG.debug("3PAR FC driver cannot migrate in-use volume "
+                          "to a host with storage_protocol=%s." % protocol)
+                return False, None
+
         self.common.client_login()
         try:
             return self.common.migrate_volume(volume, host)
