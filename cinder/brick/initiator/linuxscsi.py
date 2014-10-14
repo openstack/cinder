@@ -17,6 +17,7 @@
    Note, this is not iSCSI.
 """
 import os
+import re
 
 from cinder.brick import executor
 from cinder.i18n import _
@@ -24,6 +25,8 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
+
+MULTIPATH_ERROR_REGEX = re.compile("\w{3} \d+ \d\d:\d\d:\d\d \|.*$")
 
 
 class LinuxSCSI(executor.Executor):
@@ -143,6 +146,8 @@ class LinuxSCSI(executor.Executor):
         if out:
             lines = out.strip()
             lines = lines.split("\n")
+            lines = [line for line in lines
+                     if not re.match(MULTIPATH_ERROR_REGEX, line)]
             if lines:
                 line = lines[0]
                 info = line.split(" ")
