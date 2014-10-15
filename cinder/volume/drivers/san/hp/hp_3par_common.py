@@ -158,10 +158,11 @@ class HP3PARCommon(object):
         2.0.25 - Migrate without losing type settings bug #1356608
         2.0.26 - Don't ignore extra-specs snap_cpg when missing cpg #1368972
         2.0.27 - Fixing manage source-id error bug #1357075
+        2.0.28 - Removing locks bug #1381190
 
     """
 
-    VERSION = "2.0.27"
+    VERSION = "2.0.28"
 
     stats = {}
 
@@ -199,6 +200,7 @@ class HP3PARCommon(object):
         self.config = config
         self.hosts_naming_dict = dict()
         self.client = None
+        self.uuid = uuid.uuid4()
 
     def get_version(self):
         return self.VERSION
@@ -222,27 +224,6 @@ class HP3PARCommon(object):
             LOG.error(ex_msg)
             raise exception.InvalidInput(reason=ex_msg)
 
-        if client_version < MIN_CLIENT_SSH_ARGS_VERSION:
-            cl.setSSHOptions(self.config.san_ip,
-                             self.config.san_login,
-                             self.config.san_password,
-                             port=self.config.san_ssh_port,
-                             conn_timeout=self.config.ssh_conn_timeout,
-                             privatekey=self.config.san_private_key)
-        else:
-            known_hosts_file = CONF.ssh_hosts_key_file
-            policy = "AutoAddPolicy"
-            if CONF.strict_ssh_host_key_policy:
-                policy = "RejectPolicy"
-            cl.setSSHOptions(self.config.san_ip,
-                             self.config.san_login,
-                             self.config.san_password,
-                             port=self.config.san_ssh_port,
-                             conn_timeout=self.config.ssh_conn_timeout,
-                             privatekey=self.config.san_private_key,
-                             missing_key_policy=policy,
-                             known_hosts_file=known_hosts_file)
-
         return cl
 
     def client_login(self):
@@ -256,9 +237,35 @@ class HP3PARCommon(object):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
+        client_version = hp3parclient.version
+
+        if client_version < MIN_CLIENT_SSH_ARGS_VERSION:
+            self.client.setSSHOptions(
+                self.config.san_ip,
+                self.config.san_login,
+                self.config.san_password,
+                port=self.config.san_ssh_port,
+                conn_timeout=self.config.ssh_conn_timeout,
+                privatekey=self.config.san_private_key)
+        else:
+            known_hosts_file = CONF.ssh_hosts_key_file
+            policy = "AutoAddPolicy"
+            if CONF.strict_ssh_host_key_policy:
+                policy = "RejectPolicy"
+            self.client.setSSHOptions(
+                self.config.san_ip,
+                self.config.san_login,
+                self.config.san_password,
+                port=self.config.san_ssh_port,
+                conn_timeout=self.config.ssh_conn_timeout,
+                privatekey=self.config.san_private_key,
+                missing_key_policy=policy,
+                known_hosts_file=known_hosts_file)
+
     def client_logout(self):
+        LOG.info(_LI("Disconnect from 3PAR REST and SSH %s") % self.uuid)
         self.client.logout()
-        LOG.debug("Disconnect from 3PAR")
+        LOG.info(_LI("logout Done %s") % self.uuid)
 
     def do_setup(self, context):
         if hp3parclient is None:
@@ -274,8 +281,8 @@ class HP3PARCommon(object):
         if self.config.hp3par_debug:
             self.client.debug_rest(True)
 
+    def check_for_setup_error(self):
         self.client_login()
-
         try:
             cpg_names = self.config.hp3par_cpg
             for cpg_name in cpg_names:
