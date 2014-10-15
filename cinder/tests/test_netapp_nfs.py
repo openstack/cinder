@@ -1195,3 +1195,100 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
                 raise
 
         mox.VerifyAll()
+
+    def test_get_actual_path_for_export_no_vfiler(self):
+        drv = self._driver
+        drv.vfiler = None
+        test_path = '/vol/test/path'
+        mock_invoke = mock.Mock()
+        self.mock_object(drv, "_invoke_successfully", mock_invoke)
+
+        drv._get_actual_path_for_export(test_path)
+
+        mock_invoke.assert_called_once_with(mock.ANY, None)
+
+    def test_get_actual_path_for_export_with_vfiler(self):
+        test_vfiler = 'foo'
+        drv = self._driver
+        test_path = '/vol/test/path'
+        drv.vfiler = test_vfiler
+        mock_invoke = mock.Mock()
+        self.mock_object(drv, "_invoke_successfully", mock_invoke)
+
+        drv._get_actual_path_for_export(test_path)
+
+        mock_invoke.assert_called_once_with(mock.ANY, test_vfiler)
+
+    def test_start_clone_no_vfiler(self):
+        drv = self._driver
+        drv.vfiler = None
+        src_path = '/vol/test/src'
+        dest_path = '/vol/test/dest'
+        mock_invoke = mock.Mock()
+        self.mock_object(drv, "_invoke_successfully", mock_invoke)
+
+        drv._start_clone(src_path, dest_path)
+
+        mock_invoke.assert_called_once_with(mock.ANY, None)
+
+    def test_start_clone_with_vfiler(self):
+        test_vfiler = 'foo'
+        drv = self._driver
+        src_path = '/vol/test/src'
+        dest_path = '/vol/test/dest'
+        drv.vfiler = test_vfiler
+        mock_invoke = mock.Mock()
+        self.mock_object(drv, "_invoke_successfully", mock_invoke)
+
+        drv._start_clone(src_path, dest_path)
+
+        mock_invoke.assert_called_once_with(mock.ANY, test_vfiler)
+
+    def test_wait_for_clone_finish_no_vfiler(self):
+        drv = self._driver
+        drv.vfiler = None
+        src_path = '/vol/test/src'
+        dest_path = '/vol/test/dest'
+        mock_invoke = mock.Mock()
+        self.mock_object(drv, "_invoke_successfully", mock_invoke)
+        self.mock_object(drv, "_is_clone_still_running", False)
+
+        drv._start_clone(src_path, dest_path)
+
+        mock_invoke.assert_called_once_with(mock.ANY, None)
+
+    def test_wait_for_clone_finish_with_vfiler(self):
+        test_vfiler = 'foo'
+        drv = self._driver
+        src_path = '/vol/test/src'
+        dest_path = '/vol/test/dest'
+        drv.vfiler = test_vfiler
+        mock_invoke = mock.Mock()
+        self.mock_object(drv, "_invoke_successfully", mock_invoke)
+        self.mock_object(drv, "_is_clone_still_running", False)
+
+        drv._start_clone(src_path, dest_path)
+
+        mock_invoke.assert_called_once_with(mock.ANY, test_vfiler)
+
+    def test_clear_clone_no_vfiler(self):
+        drv = self._driver
+        drv.vfiler = None
+        fake_clone_id = '1234'
+        mock_invoke = mock.Mock()
+        self.mock_object(drv, "_invoke_successfully", mock_invoke)
+        drv._clear_clone(fake_clone_id)
+
+        mock_invoke.assert_called_once_with(mock.ANY, None)
+
+    def test_clear_clone_with_vfiler(self):
+        test_vfiler = 'foo'
+        drv = self._driver
+        fake_clone_id = '1234'
+        drv.vfiler = test_vfiler
+        mock_invoke = mock.Mock()
+        self.mock_object(drv, "_invoke_successfully", mock_invoke)
+
+        drv._clear_clone(fake_clone_id)
+
+        mock_invoke.assert_called_once_with(mock.ANY, test_vfiler)

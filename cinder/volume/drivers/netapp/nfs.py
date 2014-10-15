@@ -35,6 +35,7 @@ from cinder import utils
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
 from cinder.volume.drivers.netapp.api import NaServer
+from cinder.volume.drivers.netapp.options import netapp_7mode_opts
 from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
 from cinder.volume.drivers.netapp.options import netapp_cluster_opts
 from cinder.volume.drivers.netapp.options import netapp_connection_opts
@@ -1285,11 +1286,13 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
 
     def __init__(self, *args, **kwargs):
         super(NetAppDirect7modeNfsDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(netapp_7mode_opts)
 
     def _do_custom_setup(self, client):
         """Do the customized set up on client if any for 7 mode."""
         (major, minor) = self._get_ontapi_version()
         client.set_api_version(major, minor)
+        self.vfiler = self.configuration.netapp_vfiler
 
     def check_for_setup_error(self):
         """Checks if setup occurred properly."""
@@ -1343,7 +1346,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         """Gets the actual path on the filer for export path."""
         storage_path = NaElement.create_node_with_children(
             'nfs-exportfs-storage-path', **{'pathname': export_path})
-        result = self._invoke_successfully(storage_path, None)
+        result = self._invoke_successfully(storage_path, self.vfiler)
         if result.get_child_content('actual-pathname'):
             return result.get_child_content('actual-pathname')
         raise exception.NotFound(_('No storage path found for export path %s')
@@ -1363,7 +1366,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
             **{'source-path': src_path,
                 'destination-path': dest_path,
                 'no-snap': 'true'})
-        result = self._invoke_successfully(clone_start, None)
+        result = self._invoke_successfully(clone_start, self.vfiler)
         clone_id_el = result.get_child_by_name('clone-id')
         cl_id_info = clone_id_el.get_child_by_name('clone-id-info')
         vol_uuid = cl_id_info.get_child_content('volume-uuid')
@@ -1378,26 +1381,31 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         clone_id.add_node_with_children('clone-id-info',
                                         **{'clone-op-id': clone_op_id,
                                             'volume-uuid': vol_uuid})
-        task_running = True
-        while task_running:
-            result = self._invoke_successfully(clone_ls_st, None)
-            status = result.get_child_by_name('status')
-            ops_info = status.get_children()
-            if ops_info:
-                state = ops_info[0].get_child_content('clone-state')
-                if state == 'completed':
-                    task_running = False
-                elif state == 'failed':
-                    code = ops_info[0].get_child_content('error')
-                    reason = ops_info[0].get_child_content('reason')
-                    raise NaApiError(code, reason)
-                else:
-                    time.sleep(1)
+        clone_running = True
+        while clone_running:
+            result = self._invoke_successfully(clone_ls_st, self.vfiler)
+            clone_running = self._is_clone_still_running(result, clone_id)
+
+    def _is_clone_still_running(self, result, clone_id):
+        clone_running = True
+        status = result.get_child_by_name('status')
+        ops_info = status.get_children()
+        if ops_info:
+            state = ops_info[0].get_child_content('clone-state')
+            if state == 'completed':
+                clone_running = False
+            elif state == 'failed':
+                code = ops_info[0].get_child_content('error')
+                reason = ops_info[0].get_child_content('reason')
+                raise NaApiError(code, reason)
             else:
-                raise NaApiError(
-                    'UnknownCloneId',
-                    'No clone operation for clone id %s found on the filer'
-                    % (clone_id))
+                time.sleep(1)
+        else:
+            raise NaApiError(
+                'UnknownCloneId',
+                'No clone operation for clone id %s found on the filer'
+                % clone_id)
+        return clone_running
 
     def _clear_clone(self, clone_id):
         """Clear the clone information.
@@ -1411,7 +1419,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         retry = 3
         while retry:
             try:
-                self._invoke_successfully(clone_clear, None)
+                self._invoke_successfully(clone_clear, self.vfiler)
                 break
             except Exception as e:
                 # Filer might be rebooting
