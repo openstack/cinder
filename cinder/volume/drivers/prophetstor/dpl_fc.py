@@ -147,7 +147,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                 self._conver_uuid2hex(volumeid), targetwwpns,
                 initiatorwwpns, volumename)
         except Exception:
-            msg = _('Volume %(volumeid) failed to send assign command, '
+            msg = _('Volume %(volumeid)s failed to send assign command, '
                     'ret: %(status)s output: %(output)s') % \
                 {'volumeid': volumeid, 'status': ret, 'output': output}
             LOG.error(msg)
