@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import uuid
+
 from lxml import etree
 import webob
 
@@ -55,7 +57,7 @@ def return_empty_volume_types_get_all_types(context):
 def return_volume_types_get_volume_type(context, id):
     if id == "777":
         raise exception.VolumeTypeNotFound(volume_type_id=id)
-    return stub_volume_type(int(id))
+    return stub_volume_type(id)
 
 
 def return_volume_types_get_by_name(context, name):
@@ -97,12 +99,14 @@ class VolumeTypesApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_volume_type',
                        return_volume_types_get_volume_type)
 
-        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
-        res_dict = self.controller.show(req, 1)
+        type_id = str(uuid.uuid4())
+        req = fakes.HTTPRequest.blank('/v2/fake/types/' + type_id)
+        res_dict = self.controller.show(req, type_id)
 
         self.assertEqual(1, len(res_dict))
-        self.assertEqual('1', res_dict['volume_type']['id'])
-        self.assertEqual('vol_type_1', res_dict['volume_type']['name'])
+        self.assertEqual(type_id, res_dict['volume_type']['id'])
+        type_name = 'vol_type_' + type_id
+        self.assertEqual(type_name, res_dict['volume_type']['name'])
 
     def test_volume_types_show_not_found(self):
         self.stubs.Set(volume_types, 'get_volume_type',
