@@ -514,9 +514,8 @@ def iscsi_target_create_safe(context, values):
         with session.begin():
             session.add(iscsi_target_ref)
             return iscsi_target_ref
-    # TODO(e0ne): Remove check on db_exc.DBError, when
-    #             Cinder will use oslo.db 0.4.0 or higher.
-    except (db_exc.DBError, db_exc.DBDuplicateEntry):
+    except db_exc.DBDuplicateEntry:
+        LOG.debug("Can not add duplicate IscsiTarget.")
         return None
 
 
