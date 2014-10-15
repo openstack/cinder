@@ -106,8 +106,7 @@ netapp_7mode_opts = [
                help=('The vFiler unit on which provisioning of block storage '
                      'volumes will be done. This option is only used by the '
                      'driver when connecting to an instance with a storage '
-                     'family of Data ONTAP operating in 7-Mode and the '
-                     'storage protocol selected is iSCSI. Only use this '
+                     'family of Data ONTAP operating in 7-Mode. Only use this '
                      'option when utilizing the MultiStore feature on the '
                      'NetApp storage system.')), ]
 
