@@ -95,10 +95,17 @@ class Driver(driver.ISCSIDriver):
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         self._check_flags()
+        port = self.configuration.netapp_server_port
+        scheme = self.configuration.netapp_transport_type.lower()
+        if port is None:
+            if scheme == 'http':
+                port = 8080
+            elif scheme == 'https':
+                port = 8443
         self._client = client.RestClient(
-            scheme=self.configuration.netapp_transport_type,
+            scheme=scheme,
             host=self.configuration.netapp_server_hostname,
-            port=self.configuration.netapp_server_port,
+            port=port,
             service_path=self.configuration.netapp_webservice_path,
             username=self.configuration.netapp_login,
             password=self.configuration.netapp_password)

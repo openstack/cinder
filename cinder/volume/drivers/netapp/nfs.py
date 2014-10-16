@@ -670,9 +670,7 @@ class NetAppDirectNfsDriver (NetAppNFSDriver):
         """Raises error if any required configuration flag is missing."""
         required_flags = ['netapp_login',
                           'netapp_password',
-                          'netapp_server_hostname',
-                          'netapp_server_port',
-                          'netapp_transport_type']
+                          'netapp_server_hostname']
         for flag in required_flags:
             if not getattr(self.configuration, flag, None):
                 raise exception.CinderException(_('%s is not set') % flag)
@@ -686,6 +684,8 @@ class NetAppDirectNfsDriver (NetAppNFSDriver):
             style=NaServer.STYLE_LOGIN_PASSWORD,
             username=self.configuration.netapp_login,
             password=self.configuration.netapp_password)
+        if self.configuration.netapp_server_port is not None:
+            client.set_port(self.configuration.netapp_server_port)
         return client
 
     def _do_custom_setup(self, client):

@@ -31,6 +31,7 @@ from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import api
+from cinder.volume.drivers.netapp import common
 from cinder.volume.drivers.netapp import nfs as netapp_nfs
 from cinder.volume.drivers.netapp import utils
 
@@ -188,11 +189,9 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         mox = self.mox
         drv = self._driver
         required_flags = [
-            'netapp_transport_type',
             'netapp_login',
             'netapp_password',
-            'netapp_server_hostname',
-            'netapp_server_port']
+            'netapp_server_hostname']
 
         # set required flags
         for flag in required_flags:
@@ -803,6 +802,68 @@ class NetappDirectCmodeNfsDriverTestCase(test.TestCase):
         pool = self._driver.get_pool({'provider_location': 'fake-share'})
         self.assertEqual(pool, 'fake-share')
 
+    def _set_config(self, configuration):
+        configuration.netapp_storage_family = 'ontap_cluster'
+        configuration.netapp_storage_protocol = 'nfs'
+        configuration.netapp_login = 'admin'
+        configuration.netapp_password = 'pass'
+        configuration.netapp_server_hostname = '127.0.0.1'
+        configuration.netapp_transport_type = 'http'
+        configuration.netapp_server_port = None
+        configuration.netapp_vserver = 'openstack'
+        configuration.nfs_shares_config = '/nfs'
+        return configuration
+
+    @mock.patch.object(netapp_nfs.NetAppNFSDriver, 'do_setup')
+    def test_do_setup_all_default(self, mock_set_up):
+        configuration = self._set_config(create_configuration())
+        driver = common.NetAppDriver(configuration=configuration)
+        driver._do_custom_setup = mock.Mock()
+        driver.do_setup(context='')
+        self.assertEqual('80', driver._client.get_port())
+        self.assertEqual('http', driver._client.get_transport_type())
+
+    @mock.patch.object(netapp_nfs.NetAppNFSDriver, 'do_setup')
+    def test_do_setup_http_default_port(self, mock_setup):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_transport_type = 'http'
+        driver = common.NetAppDriver(configuration=configuration)
+        driver._do_custom_setup = mock.Mock()
+        driver.do_setup(context='')
+        self.assertEqual('80', driver._client.get_port())
+        self.assertEqual('http', driver._client.get_transport_type())
+
+    @mock.patch.object(netapp_nfs.NetAppNFSDriver, 'do_setup')
+    def test_do_setup_https_default_port(self, mock_setup):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_transport_type = 'https'
+        driver = common.NetAppDriver(configuration=configuration)
+        driver._do_custom_setup = mock.Mock()
+        driver.do_setup(context='')
+        self.assertEqual('443', driver._client.get_port())
+        self.assertEqual('https', driver._client.get_transport_type())
+
+    @mock.patch.object(netapp_nfs.NetAppNFSDriver, 'do_setup')
+    def test_do_setup_http_non_default_port(self, mock_setup):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_server_port = 81
+        driver = common.NetAppDriver(configuration=configuration)
+        driver._do_custom_setup = mock.Mock()
+        driver.do_setup(context='')
+        self.assertEqual('81', driver._client.get_port())
+        self.assertEqual('http', driver._client.get_transport_type())
+
+    @mock.patch.object(netapp_nfs.NetAppNFSDriver, 'do_setup')
+    def test_do_setup_https_non_default_port(self, mock_setup):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_transport_type = 'https'
+        configuration.netapp_server_port = 446
+        driver = common.NetAppDriver(configuration=configuration)
+        driver._do_custom_setup = mock.Mock()
+        driver.do_setup(context='')
+        self.assertEqual('446', driver._client.get_port())
+        self.assertEqual('https', driver._client.get_transport_type())
+
 
 class NetappDirectCmodeNfsDriverOnlyTestCase(test.TestCase):
     """Test direct NetApp C Mode driver only and not inherit."""
@@ -1255,3 +1316,9 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
     def test_get_pool(self):
         pool = self._driver.get_pool({'provider_location': 'fake-share'})
         self.assertEqual(pool, 'fake-share')
+
+    def _set_config(self, configuration):
+        super(NetappDirect7modeNfsDriverTestCase, self)._set_config(
+            configuration)
+        configuration.netapp_storage_family = 'ontap_7mode'
+        return configuration
