@@ -384,6 +384,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_id = self._create_volume()
         transfer = self._create_transfer(volume_id)
 
+        svc = self.start_service('volume', host='fake_host')
         body = {"accept": {"id": transfer['id'],
                            "auth_key": transfer['auth_key']}}
         req = webob.Request.blank('/v2/fake/os-volume-transfer/%s/accept' %
@@ -397,10 +398,13 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 202)
         self.assertEqual(res_dict['transfer']['id'], transfer['id'])
         self.assertEqual(res_dict['transfer']['volume_id'], volume_id)
+        # cleanup
+        svc.stop()
 
     def test_accept_transfer_volume_id_specified_xml(self):
         volume_id = self._create_volume(size=5)
         transfer = self._create_transfer(volume_id)
+        svc = self.start_service('volume', host='fake_host')
 
         req = webob.Request.blank('/v2/fake/os-volume-transfer/%s/accept' %
                                   transfer['id'])
@@ -418,6 +422,8 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(accept.item(0).getAttribute('volume_id'), volume_id)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
+        # cleanup
+        svc.stop()
 
     def test_accept_transfer_with_no_body(self):
         volume_id = self._create_volume(size=5)
