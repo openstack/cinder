@@ -1,4 +1,6 @@
 # Copyright (c) 2014 NetApp, Inc.
+# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
+# Copyright (c) 2015 Rushil Chugh.  All Rights Reserved.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -771,7 +773,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         self.assertIsNotNone(properties, 'Target portal is none')
 
     def test_vol_stats(self):
-        self.driver.get_volume_stats(refresh=True)
+        self.driver.get_volume_stats(refresh=False)
 
     def test_create_vol_snapshot_diff_size_resize(self):
         self.driver.db = mock.Mock(
