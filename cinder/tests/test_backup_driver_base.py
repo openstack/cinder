@@ -88,15 +88,22 @@ class BackupBaseDriverTestCase(test.TestCase):
 
 class BackupMetadataAPITestCase(test.TestCase):
 
-    def _create_volume_db_entry(self, id, size):
-        vol = {'id': id, 'size': size, 'status': 'available'}
+    def _create_volume_db_entry(self, id, size, display_name,
+                                display_description):
+        vol = {'id': id, 'size': size, 'status': 'available',
+               'display_name': display_name,
+               'display_description': display_description}
         return db.volume_create(self.ctxt, vol)['id']
 
     def setUp(self):
         super(BackupMetadataAPITestCase, self).setUp()
         self.ctxt = context.get_admin_context()
         self.volume_id = str(uuid.uuid4())
-        self._create_volume_db_entry(self.volume_id, 1)
+        self.volume_display_name = 'vol-1'
+        self.volume_display_description = 'test vol'
+        self._create_volume_db_entry(self.volume_id, 1,
+                                     self.volume_display_name,
+                                     self.volume_display_description)
         self.bak_meta_api = driver.BackupMetadataAPI(self.ctxt)
 
     def _add_metadata(self, vol_meta=False, vol_glance_meta=False):
@@ -158,17 +165,26 @@ class BackupMetadataAPITestCase(test.TestCase):
     def test_v1_restore_factory(self):
         fact = self.bak_meta_api._v1_restore_factory()
 
-        keys = [self.bak_meta_api.TYPE_TAG_VOL_BASE_META,
-                self.bak_meta_api.TYPE_TAG_VOL_META,
+        keys = [self.bak_meta_api.TYPE_TAG_VOL_META,
                 self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META]
 
         self.assertEqual(set(keys).symmetric_difference(set(fact.keys())),
                          set([]))
 
+        meta_container = {self.bak_meta_api.TYPE_TAG_VOL_BASE_META:
+                          {'display_name': 'vol-2',
+                           'display_description': 'description'},
+                          self.bak_meta_api.TYPE_TAG_VOL_META: {},
+                          self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META: {}}
         for f in fact:
             func = fact[f][0]
             fields = fact[f][1]
-            func({}, self.volume_id, fields)
+            func(meta_container[f], self.volume_id, fields)
+
+        vol = db.volume_get(self.ctxt, self.volume_id)
+        self.assertEqual(self.volume_display_name, vol['display_name'])
+        self.assertEqual(self.volume_display_description,
+                         vol['display_description'])
 
     def test_restore_vol_glance_meta(self):
         fields = {}
@@ -189,13 +205,6 @@ class BackupMetadataAPITestCase(test.TestCase):
         self._add_metadata(vol_meta=True)
         self.bak_meta_api._save_vol_meta(container, self.volume_id)
         self.bak_meta_api._restore_vol_meta(container, self.volume_id, fields)
-
-    def test_restore_vol_base_meta(self):
-        fields = {}
-        container = {}
-        self.bak_meta_api._save_vol_base_meta(container, self.volume_id)
-        self.bak_meta_api._restore_vol_base_meta(container, self.volume_id,
-                                                 fields)
 
     def test_filter(self):
         metadata = {'a': 1, 'b': 2, 'c': 3}

@@ -149,19 +149,6 @@ class BackupMetadataAPI(base.Base):
 
         return subset
 
-    def _restore_vol_base_meta(self, metadata, volume_id, fields):
-        """Restore values to Volume object for provided fields."""
-        LOG.debug("Restoring volume base metadata")
-        # Only set the display_name if it was not None since the
-        # restore action will have set a name which is more useful than
-        # None.
-        key = 'display_name'
-        if key in fields and key in metadata and metadata[key] is None:
-            fields = [f for f in fields if f != key]
-
-        metadata = self._filter(metadata, fields)
-        self.db.volume_update(self.context, volume_id, metadata)
-
     def _restore_vol_meta(self, metadata, volume_id, fields):
         """Restore values to VolumeMetadata object for provided fields."""
         LOG.debug("Restoring volume metadata")
@@ -196,10 +183,7 @@ class BackupMetadataAPI(base.Base):
         Empty field list indicates that all backed up fields should be
         restored.
         """
-        return {self.TYPE_TAG_VOL_BASE_META:
-                (self._restore_vol_base_meta,
-                 ['display_name', 'display_description']),
-                self.TYPE_TAG_VOL_META:
+        return {self.TYPE_TAG_VOL_META:
                 (self._restore_vol_meta, []),
                 self.TYPE_TAG_VOL_GLANCE_META:
                 (self._restore_vol_glance_meta, [])}
