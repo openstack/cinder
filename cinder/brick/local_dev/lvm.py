@@ -20,6 +20,7 @@ LVM class for performing LVM operations.
 import itertools
 import math
 import re
+import time
 
 from cinder.brick import exception
 from cinder.brick import executor
@@ -247,9 +248,14 @@ class LVM(executor.Executor):
         if vg_name is not None:
             cmd.append(vg_name)
 
+        lvs_start = time.time()
         (out, err) = putils.execute(*cmd,
                                     root_helper=root_helper,
                                     run_as_root=True)
+        total_time = time.time() - lvs_start
+        if total_time > 60:
+            LOG.warning(_('Took %s seconds to get logical volumes.'),
+                        total_time)
 
         lv_list = []
         if out is not None:
@@ -337,9 +343,13 @@ class LVM(executor.Executor):
         if vg_name is not None:
             cmd.append(vg_name)
 
+        start_vgs = time.time()
         (out, err) = putils.execute(*cmd,
                                     root_helper=root_helper,
                                     run_as_root=True)
+        total_time = time.time() - start_vgs
+        if total_time > 60:
+            LOG.warning(_('Took %s seconds to get volume groups.'), total_time)
 
         vg_list = []
         if out is not None:
