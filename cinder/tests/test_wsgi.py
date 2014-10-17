@@ -17,7 +17,10 @@
 """Unit tests for `cinder.wsgi`."""
 
 import os.path
+import re
+import socket
 import tempfile
+import time
 import urllib2
 
 import mock
@@ -141,7 +144,41 @@ class TestWSGIServer(test.TestCase):
 
         response = open_no_proxy('http://127.0.0.1:%d/' % server.port)
         self.assertEqual(greetings, response.read())
+        server.stop()
 
+    def test_client_socket_timeout(self):
+        CONF.set_default("client_socket_timeout", 0.1)
+        greetings = 'Hello, World!!!'
+
+        def hello_world(env, start_response):
+            start_response('200 OK', [('Content-Type', 'text/plain')])
+            return [greetings]
+
+        server = cinder.wsgi.Server("test_app", hello_world,
+                                    host="127.0.0.1", port=0)
+        server.start()
+
+        s = socket.socket()
+        s.connect(("127.0.0.1", server.port))
+
+        fd = s.makefile('rw')
+        fd.write(b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n')
+        fd.flush()
+
+        buf = fd.read()
+        self.assertTrue(re.search(greetings, buf))
+
+        s2 = socket.socket()
+        s2.connect(("127.0.0.1", server.port))
+        time.sleep(0.2)
+
+        fd = s2.makefile('rw')
+        fd.write(b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n')
+        fd.flush()
+
+        buf = fd.read()
+        # connection is closed so we get nothing from the server
+        self.assertFalse(buf)
         server.stop()
 
     def test_app_using_ssl(self):

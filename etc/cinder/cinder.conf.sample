@@ -305,6 +305,12 @@
 # with big service catalogs). (integer value)
 #max_header_line=16384
 
+# Timeout for client connections' socket operations. If an
+# incoming connection is idle for this number of seconds it
+# will be closed. A value of '0' means wait forever. (integer
+# value)
+#client_socket_timeout=900
+
 # Sets the value of TCP_KEEPALIVE (True/False) for each server
 # socket. (boolean value)
 #tcp_keepalive=true
