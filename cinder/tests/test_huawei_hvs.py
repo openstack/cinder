@@ -107,7 +107,7 @@ class FakeHVSCommon(rest_common.HVSCommon):
         # within this test.
         pass
 
-    def call(self, url=False, data=None, method=None):
+    def call(self, url=False, data=None, method=None):  # noqa
 
         url = url.replace('http://100.115.10.69:8082/deviceManager/rest', '')
         url = url.replace('/210235G7J20000000000/', '')

@@ -111,7 +111,7 @@ class FakeDirectCMODEServerHandler(FakeHTTPRequestHandler):
                   '<results reason="Not supported method type"'
                   ' status="failed" errno="Not_Allowed"/></netapp>')
 
-    def do_POST(s):
+    def do_POST(s):  # noqa
         """Respond to a POST request."""
         if '/servlets/netapp.servlets.admin.XMLrequest_filer' not in s.path:
             s.send_response(404)
