@@ -323,7 +323,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
     def _get_vpsa_volume_name(self, name):
         """Return VPSA's name for the volume."""
-        (vol_name, size) = self._get_vpsa_volume_name_and_size(name)
+        (vol_name, _size) = self._get_vpsa_volume_name_and_size(name)
         return vol_name
 
     def _get_volume_cg_name(self, name):

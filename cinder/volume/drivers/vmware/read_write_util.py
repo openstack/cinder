@@ -148,7 +148,7 @@ class VMwareHTTPWriteFile(VMwareHTTPFile):
         param_list = {'dcPath': data_center_name, 'dsName': datastore_name}
         base_url = base_url + '?' + urllib.urlencode(param_list)
         _urlparse = urlparse.urlparse(base_url)
-        scheme, netloc, path, params, query, fragment = _urlparse
+        scheme, netloc, path, _params, query, _fragment = _urlparse
         if scheme == 'http':
             conn = httplib.HTTPConnection(netloc)
         elif scheme == 'https':
@@ -211,7 +211,7 @@ class VMwareHTTPWriteVmdk(VMwareHTTPFile):
         # Prepare the http connection to the vmdk url
         cookies = session.vim.client.options.transport.cookiejar
         _urlparse = urlparse.urlparse(url)
-        scheme, netloc, path, params, query, fragment = _urlparse
+        scheme, netloc, path, _params, query, _fragment = _urlparse
         if scheme == 'http':
             conn = httplib.HTTPConnection(netloc)
         elif scheme == 'https':

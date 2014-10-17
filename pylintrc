@@ -29,3 +29,7 @@ no-docstring-rgx=((__.*__)|([tT]est.*)|setUp|tearDown)$
 max-public-methods=100
 min-public-methods=0
 max-args=6
+
+[Variables]
+
+dummy-variables-rgx=_

@@ -2565,8 +2565,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
         new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
 
-        diff, equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
-                                                     new_type_ref['id'])
+        diff, _equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                      new_type_ref['id'])
 
         volume = self._generate_vol_info(None, None)
         old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
@@ -2655,8 +2655,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
         new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
 
-        diff, equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
-                                                     new_type_ref['id'])
+        diff, _equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                      new_type_ref['id'])
 
         volume = self._generate_vol_info(None, None)
         old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
@@ -2688,8 +2688,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
         new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
 
-        diff, equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
-                                                     new_type_ref['id'])
+        diff, _equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                      new_type_ref['id'])
 
         volume = self._generate_vol_info(None, None)
         old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
@@ -3084,9 +3084,9 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         disable_type = self._create_replication_volume_type(False)
         enable_type = self._create_replication_volume_type(True)
 
-        diff, equal = volume_types.volume_types_diff(ctxt,
-                                                     disable_type['id'],
-                                                     enable_type['id'])
+        diff, _equal = volume_types.volume_types_diff(ctxt,
+                                                      disable_type['id'],
+                                                      enable_type['id'])
 
         volume = self._generate_vol_info(None, None)
         volume['host'] = host
@@ -3131,9 +3131,9 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.assertIsNone(model_update)
 
         enable_type = self._create_replication_volume_type(True)
-        diff, equal = volume_types.volume_types_diff(ctxt,
-                                                     None,
-                                                     enable_type['id'])
+        diff, _equal = volume_types.volume_types_diff(ctxt,
+                                                      None,
+                                                      enable_type['id'])
 
         # Enable replica
         self.driver.retype(ctxt, volume, enable_type, diff, host)
@@ -3245,8 +3245,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         the vdisk_UID parameter and returns it.
         Returns None if the specified vdisk does not exist.
         """
-        vdisk_properties, err = self.sim._cmd_lsvdisk(obj=vdisk_name,
-                                                      delim='!')
+        vdisk_properties, _err = self.sim._cmd_lsvdisk(obj=vdisk_name,
+                                                       delim='!')
 
         # Iterate through each row until we find the vdisk_UID entry
         for row in vdisk_properties.split('\n'):
@@ -3299,7 +3299,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Create a volume as a way of getting a vdisk created, and find out the
         # UID of that vdisk.
-        volume, uid = self._create_volume_and_return_uid('manage_test')
+        _volume, uid = self._create_volume_and_return_uid('manage_test')
 
         # Descriptor of the Cinder volume that we want to own the vdisk
         # referenced by uid.

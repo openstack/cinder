@@ -553,14 +553,14 @@ class AoEConnectorTestCase(ConnectorTestCase):
         self.assertDictMatch(volume_info, expected_info)
 
     def test_connect_volume_could_not_discover_path(self):
-        aoe_device, aoe_path = self.connector._get_aoe_info(
+        _aoe_device, aoe_path = self.connector._get_aoe_info(
             self.connection_properties)
 
         number_of_calls = 4
         self._mock_path_exists(aoe_path, [False] * (number_of_calls + 1))
         self.mox.StubOutWithMock(self.connector, '_execute')
 
-        for i in xrange(number_of_calls):
+        for _i in xrange(number_of_calls):
             self.connector._execute('aoe-discover',
                                     run_as_root=True,
                                     root_helper='sudo',

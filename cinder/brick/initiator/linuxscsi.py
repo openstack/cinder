@@ -65,8 +65,8 @@ class LinuxSCSI(executor.Executor):
             self.echo_scsi_command(path, "1")
 
     def get_device_info(self, device):
-        (out, err) = self._execute('sg_scan', device, run_as_root=True,
-                                   root_helper=self._root_helper)
+        (out, _err) = self._execute('sg_scan', device, run_as_root=True,
+                                    root_helper=self._root_helper)
         dev_info = {'device': device, 'host': None,
                     'channel': None, 'id': None, 'lun': None}
         if out:
@@ -135,9 +135,9 @@ class LinuxSCSI(executor.Executor):
         devices = []
         out = None
         try:
-            (out, err) = self._execute('multipath', '-l', device,
-                                       run_as_root=True,
-                                       root_helper=self._root_helper)
+            (out, _err) = self._execute('multipath', '-l', device,
+                                        run_as_root=True,
+                                        root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
             LOG.warn(_("multipath call failed exit (%(code)s)")
                      % {'code': exc.exit_code})

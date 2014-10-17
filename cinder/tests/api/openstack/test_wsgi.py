@@ -336,7 +336,7 @@ class ResourceTest(test.TestCase):
 
         controller = Controller()
         resource = wsgi.Resource(controller)
-        method, extensions = resource.get_method(None, 'index', None, '')
+        method, _extensions = resource.get_method(None, 'index', None, '')
         actual = resource.dispatch(method, None, {'pants': 'off'})
         expected = 'off'
         self.assertEqual(actual, expected)
@@ -359,9 +359,9 @@ class ResourceTest(test.TestCase):
 
         controller = Controller()
         resource = wsgi.Resource(controller)
-        method, extensions = resource.get_method(None, 'action',
-                                                 'application/json',
-                                                 '{"fooAction": true}')
+        method, _extensions = resource.get_method(None, 'action',
+                                                  'application/json',
+                                                  '{"fooAction": true}')
         self.assertEqual(controller._action_foo, method)
 
     def test_get_method_action_xml(self):
@@ -372,9 +372,8 @@ class ResourceTest(test.TestCase):
 
         controller = Controller()
         resource = wsgi.Resource(controller)
-        method, extensions = resource.get_method(None, 'action',
-                                                 'application/xml',
-                                                 '<fooAction>true</fooAction>')
+        method, _extensions = resource.get_method(
+            None, 'action', 'application/xml', '<fooAction>true</fooAction>')
         self.assertEqual(controller._action_foo, method)
 
     def test_get_method_action_bad_body(self):
@@ -407,9 +406,9 @@ class ResourceTest(test.TestCase):
 
         controller = Controller()
         resource = wsgi.Resource(controller)
-        method, extensions = resource.get_method(None, 'action',
-                                                 'application/xml',
-                                                 '<fooAction>true</fooAction')
+        method, _extensions = resource.get_method(None, 'action',
+                                                  'application/xml',
+                                                  '<fooAction>true</fooAction')
         self.assertEqual(controller.action, method)
 
     def test_get_action_args(self):

@@ -522,8 +522,8 @@ class TestGlanceImageService(test.TestCase):
     def test_glance_client_image_id(self):
         fixture = self._make_fixture(name='test image')
         image_id = self.service.create(self.context, fixture)['id']
-        (service, same_id) = glance.get_remote_image_service(self.context,
-                                                             image_id)
+        (_service, same_id) = glance.get_remote_image_service(self.context,
+                                                              image_id)
         self.assertEqual(same_id, image_id)
 
     def test_glance_client_image_ref(self):

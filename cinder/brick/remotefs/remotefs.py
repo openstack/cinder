@@ -77,7 +77,7 @@ class RemoteFsClient(object):
                             self._get_hash_str(device_name))
 
     def _read_mounts(self):
-        (out, err) = self._execute('mount', check_exit_code=0)
+        (out, _err) = self._execute('mount', check_exit_code=0)
         lines = out.split('\n')
         mounts = {}
         for line in lines:

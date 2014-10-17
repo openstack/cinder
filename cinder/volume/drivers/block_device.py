@@ -190,8 +190,8 @@ class BlockDeviceDriver(driver.ISCSIDriver):
         return used_devices
 
     def _get_device_size(self, dev_path):
-        out, err = self._execute('blockdev', '--getsz', dev_path,
-                                 run_as_root=True)
+        out, _err = self._execute('blockdev', '--getsz', dev_path,
+                                  run_as_root=True)
         size_in_m = int(out)
         return size_in_m / 2048
 

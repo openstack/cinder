@@ -57,7 +57,7 @@ def qemu_img_info(path, run_as_root=True):
     cmd = ('env', 'LC_ALL=C', 'qemu-img', 'info', path)
     if os.name == 'nt':
         cmd = cmd[2:]
-    out, err = utils.execute(*cmd, run_as_root=run_as_root)
+    out, _err = utils.execute(*cmd, run_as_root=run_as_root)
     return imageutils.QemuImgInfo(out)
 
 
@@ -363,7 +363,7 @@ def fix_vhd_chain(vhd_chain):
 
 
 def get_vhd_size(vhd_path):
-    out, err = utils.execute('vhd-util', 'query', '-n', vhd_path, '-v')
+    out, _err = utils.execute('vhd-util', 'query', '-n', vhd_path, '-v')
     return int(out)
 
 

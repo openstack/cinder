@@ -790,7 +790,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             mock.patch.object(self._driver, '_load_shares_config'),
             mock.patch.object(self._driver, '_do_umount'),
             mock.patch.object(glusterfs, 'LOG')
-        ) as (mock_load_shares_config, mock_do_umount, mock_logger):
+        ) as (_mock_load_shares_config, mock_do_umount, mock_logger):
             mock_do_umount.side_effect = Exception()
 
             self._driver._unmount_shares()
@@ -805,7 +805,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         with contextlib.nested(
             mock.patch.object(self._driver, '_load_shares_config'),
             mock.patch.object(self._driver, '_do_umount')
-        ) as (mock_load_shares_config, mock_do_umount):
+        ) as (_mock_load_shares_config, mock_do_umount):
             self._driver._unmount_shares()
 
             self.assertTrue(mock_do_umount.called)
@@ -819,7 +819,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         with contextlib.nested(
             mock.patch.object(self._driver, '_load_shares_config'),
             mock.patch.object(self._driver, '_do_umount')
-        ) as (mock_load_shares_config, mock_do_umount):
+        ) as (_mock_load_shares_config, mock_do_umount):
             self._driver._unmount_shares()
 
             mock_do_umount.assert_any_call(True,

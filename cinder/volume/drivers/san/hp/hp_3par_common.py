@@ -1274,7 +1274,7 @@ class HP3PARCommon(object):
 
             type_id = volume.get('volume_type_id', None)
 
-            hp3par_keys, qos, volume_type, vvs_name = self.get_type_info(
+            hp3par_keys, qos, _volume_type, vvs_name = self.get_type_info(
                 type_id)
 
             name = volume.get('display_name', None)
@@ -1633,7 +1633,7 @@ class HP3PARCommon(object):
                            " to %(new_cpg)s") %
                          {'volume_name': volume_name,
                           'old_cpg': old_cpg, 'new_cpg': new_cpg})
-                response, body = self.client.modifyVolume(
+                _response, body = self.client.modifyVolume(
                     volume_name,
                     {'action': 6,
                      'tuneOperation': 1,
@@ -1696,7 +1696,7 @@ class HP3PARCommon(object):
             self.validate_persona(new_persona)
 
         if host is not None:
-            (host_type, host_id, host_cpg) = (
+            (host_type, host_id, _host_cpg) = (
                 host['capabilities']['location_info']).split(':')
 
             if not (host_type == 'HP3PARDriver'):

@@ -385,7 +385,7 @@ class HUSDriver(driver.ISCSIDriver):
         info = _loc_info(prov_loc)
         (arid, lun) = info['id_lu']
         if 'tgt' in info.keys():  # connected?
-            (_portal, iqn, loc, ctl, port) = info['tgt']
+            (_portal, iqn, _loc, ctl, port) = info['tgt']
             self.bend.del_iscsi_conn(self.config['hus_cmd'],
                                      HDS_VERSION,
                                      self.config['mgmt_ip0'],

@@ -252,7 +252,7 @@ def model_query(context, *args, **kwargs):
 
 def _sync_volumes(context, project_id, session, volume_type_id=None,
                   volume_type_name=None):
-    (volumes, gigs) = _volume_data_get_for_project(
+    (volumes, _gigs) = _volume_data_get_for_project(
         context, project_id, volume_type_id=volume_type_id, session=session)
     key = 'volumes'
     if volume_type_name:
@@ -262,7 +262,7 @@ def _sync_volumes(context, project_id, session, volume_type_id=None,
 
 def _sync_snapshots(context, project_id, session, volume_type_id=None,
                     volume_type_name=None):
-    (snapshots, gigs) = _snapshot_data_get_for_project(
+    (snapshots, _gigs) = _snapshot_data_get_for_project(
         context, project_id, volume_type_id=volume_type_id, session=session)
     key = 'snapshots'
     if volume_type_name:
@@ -272,7 +272,7 @@ def _sync_snapshots(context, project_id, session, volume_type_id=None,
 
 def _sync_backups(context, project_id, session, volume_type_id=None,
                   volume_type_name=None):
-    (backups, gigs) = _backup_data_get_for_project(
+    (backups, _gigs) = _backup_data_get_for_project(
         context, project_id, volume_type_id=volume_type_id, session=session)
     key = 'backups'
     return {key: backups}
@@ -3026,7 +3026,8 @@ def consistencygroup_create(context, values):
 def consistencygroup_update(context, consistencygroup_id, values):
     session = get_session()
     with session.begin():
-        result = model_query(context, models.ConsistencyGroup, project_only=True).\
+        result = model_query(context, models.ConsistencyGroup,
+                             project_only=True).\
             filter_by(id=consistencygroup_id).\
             first()
 

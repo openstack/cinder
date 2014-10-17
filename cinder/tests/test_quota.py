@@ -98,7 +98,7 @@ class QuotaIntegrationTestCase(test.TestCase):
 
     def test_too_many_volumes(self):
         volume_ids = []
-        for i in range(CONF.quota_volumes):
+        for _i in range(CONF.quota_volumes):
             vol_ref = self._create_volume()
             volume_ids.append(vol_ref['id'])
         self.assertRaises(exception.VolumeLimitExceeded,

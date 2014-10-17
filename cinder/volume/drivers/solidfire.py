@@ -532,7 +532,7 @@ class SolidFireDriver(SanISCSIDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of an existing volume."""
-        (data, sfaccount, model) = self._do_clone_volume(
+        (_data, _sfaccount, model) = self._do_clone_volume(
             src_vref['id'],
             src_vref['project_id'],
             volume)
@@ -605,14 +605,14 @@ class SolidFireDriver(SanISCSIDriver):
         restore at which time we'll rework this appropriately.
 
         """
-        (data, sfaccount, model) = self._do_clone_volume(
+        (_data, _sfaccount, _model) = self._do_clone_volume(
             snapshot['volume_id'],
             snapshot['project_id'],
             snapshot)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from the specified snapshot."""
-        (data, sfaccount, model) = self._do_clone_volume(
+        (_data, _sfaccount, model) = self._do_clone_volume(
             snapshot['id'],
             snapshot['project_id'],
             volume)

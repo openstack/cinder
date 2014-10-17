@@ -300,7 +300,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 self.configuration.thres_avl_size_perc_stop
             for share in getattr(self, '_mounted_shares', []):
                 try:
-                    total_size, total_avl, total_alc =\
+                    total_size, total_avl, _total_alc =\
                         self._get_capacity_info(share)
                     avl_percent = int((total_avl / total_size) * 100)
                     if avl_percent <= thres_size_perc_start:
@@ -636,7 +636,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def _check_share_can_hold_size(self, share, size):
         """Checks if volume can hold image with size."""
-        tot_size, tot_available, tot_allocated = self._get_capacity_info(share)
+        _tot_size, tot_available, _tot_allocated = self._get_capacity_info(
+            share)
         if tot_available < size:
             msg = _("Container size smaller than required file size.")
             raise exception.VolumeDriverException(msg)
@@ -1415,7 +1416,7 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
     def _clone_volume(self, volume_name, clone_name,
                       volume_id, share=None):
         """Clones mounted volume with NetApp filer."""
-        (host_ip, export_path) = self._get_export_ip_path(volume_id, share)
+        (_host_ip, export_path) = self._get_export_ip_path(volume_id, share)
         storage_path = self._get_actual_path_for_export(export_path)
         target_path = '%s/%s' % (storage_path, clone_name)
         (clone_id, vol_uuid) = self._start_clone('%s/%s' % (storage_path,
