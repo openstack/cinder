@@ -164,6 +164,7 @@ class BackupsController(wsgi.Controller):
 
         try:
             backup = self.backup_api.get(context, backup_id=id)
+            req.cache_db_backup(backup)
         except exception.BackupNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
 
@@ -215,6 +216,7 @@ class BackupsController(wsgi.Controller):
 
         backups = self.backup_api.get_all(context, search_opts=filters)
         limited_list = common.limited(backups, req)
+        req.cache_db_backups(limited_list)
 
         if is_detail:
             backups = self._view_builder.detail_list(req, limited_list)

@@ -140,6 +140,44 @@ class RequestTest(test.TestCase):
                          request.cached_resource_by_id('o-0',
                                                        name='other-resource'))
 
+    def test_cache_and_retrieve_volumes(self):
+        self._test_cache_and_retrieve_resources('volume')
+
+    def test_cache_and_retrieve_volume_types(self):
+        self._test_cache_and_retrieve_resources('volume_type')
+
+    def test_cache_and_retrieve_snapshots(self):
+        self._test_cache_and_retrieve_resources('snapshot')
+
+    def test_cache_and_retrieve_backups(self):
+        self._test_cache_and_retrieve_resources('backup')
+
+    def _test_cache_and_retrieve_resources(self, resource_name):
+        """Generic helper for cache tests."""
+        cache_all_func = 'cache_db_%ss' % resource_name
+        cache_one_func = 'cache_db_%s' % resource_name
+        get_db_all_func = 'get_db_%ss' % resource_name
+        get_db_one_func = 'get_db_%s' % resource_name
+
+        r = wsgi.Request.blank('/foo')
+        resources = []
+        for x in xrange(3):
+            resources.append({'id': 'id%s' % x})
+
+        # Store 2
+        getattr(r, cache_all_func)(resources[:2])
+        # Store 1
+        getattr(r, cache_one_func)(resources[2])
+
+        self.assertEqual(getattr(r, get_db_one_func)('id0'), resources[0])
+        self.assertEqual(getattr(r, get_db_one_func)('id1'), resources[1])
+        self.assertEqual(getattr(r, get_db_one_func)('id2'), resources[2])
+        self.assertIsNone(getattr(r, get_db_one_func)('id3'))
+        self.assertEqual(getattr(r, get_db_all_func)(), {
+                         'id0': resources[0],
+                         'id1': resources[1],
+                         'id2': resources[2]})
+
 
 class ActionDispatcherTest(test.TestCase):
     def test_dispatch(self):

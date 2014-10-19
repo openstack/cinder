@@ -107,7 +107,7 @@ class SnapshotsController(wsgi.Controller):
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
-            req.cache_resource(snapshot)
+            req.cache_db_snapshot(snapshot)
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
@@ -153,7 +153,7 @@ class SnapshotsController(wsgi.Controller):
         snapshots = self.volume_api.get_all_snapshots(context,
                                                       search_opts=search_opts)
         limited_list = common.limited(snapshots, req)
-        req.cache_resource(limited_list)
+        req.cache_db_snapshots(limited_list)
         res = [entity_maker(context, snapshot) for snapshot in limited_list]
         return {'snapshots': res}
 
@@ -202,6 +202,7 @@ class SnapshotsController(wsgi.Controller):
                 snapshot.get('display_name'),
                 snapshot.get('display_description'),
                 **kwargs)
+        req.cache_db_snapshot(new_snapshot)
 
         retval = _translate_snapshot_detail_view(context, new_snapshot)
 
@@ -237,6 +238,7 @@ class SnapshotsController(wsgi.Controller):
             raise exc.HTTPNotFound()
 
         snapshot.update(update_dict)
+        req.cache_db_snapshot(snapshot)
 
         return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
 

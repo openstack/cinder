@@ -231,7 +231,7 @@ class VolumeController(wsgi.Controller):
 
         try:
             vol = self.volume_api.get(context, id, viewable_admin_meta=True)
-            req.cache_resource(vol)
+            req.cache_db_volume(vol)
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
@@ -289,7 +289,8 @@ class VolumeController(wsgi.Controller):
             utils.add_visible_admin_metadata(volume)
 
         limited_list = common.limited(volumes, req)
-        req.cache_resource(limited_list)
+        req.cache_db_volumes(limited_list)
+
         res = [entity_maker(context, vol) for vol in limited_list]
         return {'volumes': res}
 

@@ -78,7 +78,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         self.assertEqual(snapshot.get('%sprogress' % self.prefix), progress)
 
     def test_show(self):
-        url = '/v2/fake/snapshots/%s' % UUID2
+        url = '/v2/fake/snapshots/%s' % UUID1
         res = self._make_request(url)
 
         self.assertEqual(res.status_int, 200)
