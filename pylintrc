@@ -29,10 +29,3 @@ no-docstring-rgx=((__.*__)|([tT]est.*)|setUp|tearDown)$
 max-public-methods=100
 min-public-methods=0
 max-args=6
-
-[Variables]
-
-# List of additional names supposed to be defined in builtins. Remember that
-# you should avoid to define new builtins when possible.
-# _ is used by our localization
-additional-builtins=_
