@@ -126,16 +126,15 @@ class Driver(driver.ISCSIDriver):
             except socket.gaierror as e:
                 LOG.error(_('Error resolving host %(host)s. Error - %(e)s.')
                           % {'host': host, 'e': e})
-                return None
+                raise exception.NoValidHost(
+                    _("Controller IP '%(host)s' could not be resolved: %(e)s.")
+                    % {'host': host, 'e': e})
 
         ips = self.configuration.netapp_controller_ips
         ips = [i.strip() for i in ips.split(",")]
         ips = [x for x in ips if _resolve_host(x)]
         host = utils.resolve_hostname(
             self.configuration.netapp_server_hostname)
-        if not ips:
-            msg = _('Controller ips not valid after resolution.')
-            raise exception.NoValidHost(reason=msg)
         if host in ips:
             LOG.info(_('Embedded mode detected.'))
             system = self._client.list_storage_systems()[0]

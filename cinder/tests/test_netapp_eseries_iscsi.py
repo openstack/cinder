@@ -826,3 +826,50 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
         driver = common.NetAppDriver(configuration=configuration)
         self.assertRaises(exception.NetAppDriverException,
                           driver.check_for_setup_error)
+
+    def test_setup_good_controller_ip(self):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_controller_ips = '127.0.0.1'
+        driver = common.NetAppDriver(configuration=configuration)
+        driver._check_mode_get_or_register_storage_system
+
+    def test_setup_good_controller_ips(self):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_controller_ips = '127.0.0.2,127.0.0.1'
+        driver = common.NetAppDriver(configuration=configuration)
+        driver._check_mode_get_or_register_storage_system
+
+    def test_setup_missing_controller_ip(self):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_controller_ips = None
+        driver = common.NetAppDriver(configuration=configuration)
+        self.assertRaises(exception.InvalidInput,
+                          driver.do_setup, context='context')
+
+    def test_setup_error_invalid_controller_ip(self):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_controller_ips = '987.65.43.21'
+        driver = common.NetAppDriver(configuration=configuration)
+        self.assertRaises(exception.NoValidHost,
+                          driver._check_mode_get_or_register_storage_system)
+
+    def test_setup_error_invalid_first_controller_ip(self):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_controller_ips = '987.65.43.21,127.0.0.1'
+        driver = common.NetAppDriver(configuration=configuration)
+        self.assertRaises(exception.NoValidHost,
+                          driver._check_mode_get_or_register_storage_system)
+
+    def test_setup_error_invalid_second_controller_ip(self):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_controller_ips = '127.0.0.1,987.65.43.21'
+        driver = common.NetAppDriver(configuration=configuration)
+        self.assertRaises(exception.NoValidHost,
+                          driver._check_mode_get_or_register_storage_system)
+
+    def test_setup_error_invalid_both_controller_ips(self):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_controller_ips = '564.124.1231.1,987.65.43.21'
+        driver = common.NetAppDriver(configuration=configuration)
+        self.assertRaises(exception.NoValidHost,
+                          driver._check_mode_get_or_register_storage_system)
