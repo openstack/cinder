@@ -311,6 +311,11 @@
 # value)
 #client_socket_timeout=900
 
+# If False, closes the client socket connection explicitly.
+# Setting it to True to maintain backward compatibility.
+# Recommended setting is set it to False. (boolean value)
+#wsgi_keep_alive=true
+
 # Sets the value of TCP_KEEPALIVE (True/False) for each server
 # socket. (boolean value)
 #tcp_keepalive=true
