@@ -1897,6 +1897,24 @@ class HP3PARBaseDriver(object):
                                                          host, None)
         self.assertEqual(expected_info, vlun_info)
 
+    def test__get_existing_volume_ref_name(self):
+        self.setup_driver()
+        unm_matcher = self.driver.common._get_3par_unm_name(self.volume['id'])
+
+        existing_ref = {'source-name': unm_matcher}
+        result = self.driver.common._get_existing_volume_ref_name(existing_ref)
+        self.assertEqual(unm_matcher, result)
+
+        existing_ref = {'source-id': self.volume['id']}
+        result = self.driver.common._get_existing_volume_ref_name(existing_ref)
+        self.assertEqual(unm_matcher, result)
+
+        existing_ref = {'bad-key': 'foo'}
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.common._get_existing_volume_ref_name,
+            existing_ref)
+
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_manage_existing(self, _mock_volume_types):
         _mock_volume_types.return_value = self.volume_type

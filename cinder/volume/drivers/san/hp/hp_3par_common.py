@@ -157,10 +157,11 @@ class HP3PARCommon(object):
         2.0.24 - Add pools (hp3par_cpg now accepts a list of CPGs)
         2.0.25 - Migrate without losing type settings bug #1356608
         2.0.26 - Don't ignore extra-specs snap_cpg when missing cpg #1368972
+        2.0.27 - Fixing manage source-id error bug #1357075
 
     """
 
-    VERSION = "2.0.26"
+    VERSION = "2.0.27"
 
     stats = {}
 
@@ -321,15 +322,17 @@ class HP3PARCommon(object):
         existing_ref is a dictionary of the form:
         {'source-name': <name of the virtual volume>}
         """
+        target_vol_name = self._get_existing_volume_ref_name(existing_ref)
+
         # Check for the existence of the virtual volume.
         old_comment_str = ""
         try:
-            vol = self.client.getVolume(existing_ref['source-name'])
+            vol = self.client.getVolume(target_vol_name)
             if 'comment' in vol:
                 old_comment_str = vol['comment']
         except hpexceptions.HTTPNotFound:
             err = (_("Virtual volume '%s' doesn't exist on array.") %
-                   existing_ref['source-name'])
+                   target_vol_name)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
@@ -366,12 +369,12 @@ class HP3PARCommon(object):
                 raise exception.ManageExistingVolumeTypeMismatch(reason=reason)
 
         # Update the existing volume with the new name and comments.
-        self.client.modifyVolume(existing_ref['source-name'],
+        self.client.modifyVolume(target_vol_name,
                                  {'newName': new_vol_name,
                                   'comment': json.dumps(new_comment)})
 
         LOG.info(_("Virtual volume '%(ref)s' renamed to '%(new)s'.") %
-                 {'ref': existing_ref['source-name'], 'new': new_vol_name})
+                 {'ref': target_vol_name, 'new': new_vol_name})
 
         retyped = False
         model_update = None
@@ -394,7 +397,7 @@ class HP3PARCommon(object):
                     # Try to undo the rename and clear the new comment.
                     self.client.modifyVolume(
                         new_vol_name,
-                        {'newName': existing_ref['source-name'],
+                        {'newName': target_vol_name,
                          'comment': old_comment_str})
 
         updates = {'display_name': display_name}
@@ -414,26 +417,21 @@ class HP3PARCommon(object):
         existing_ref is a dictionary of the form:
         {'source-name': <name of the virtual volume>}
         """
-        # Check that a valid reference was provided.
-        if 'source-name' not in existing_ref:
-            reason = _("Reference must contain source-name element.")
-            raise exception.ManageExistingInvalidReference(
-                existing_ref=existing_ref,
-                reason=reason)
+        target_vol_name = self._get_existing_volume_ref_name(existing_ref)
 
         # Make sure the reference is not in use.
-        if re.match('osv-*|oss-*|vvs-*', existing_ref['source-name']):
+        if re.match('osv-*|oss-*|vvs-*', target_vol_name):
             reason = _("Reference must be for an unmanaged virtual volume.")
             raise exception.ManageExistingInvalidReference(
-                existing_ref=existing_ref,
+                existing_ref=target_vol_name,
                 reason=reason)
 
         # Check for the existence of the virtual volume.
         try:
-            vol = self.client.getVolume(existing_ref['source-name'])
+            vol = self.client.getVolume(target_vol_name)
         except hpexceptions.HTTPNotFound:
             err = (_("Virtual volume '%s' doesn't exist on array.") %
-                   existing_ref['source-name'])
+                   target_vol_name)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
@@ -452,6 +450,26 @@ class HP3PARCommon(object):
                  {'disp': volume['display_name'],
                   'vol': vol_name,
                   'new': new_vol_name})
+
+    def _get_existing_volume_ref_name(self, existing_ref):
+        """Returns the volume name of an existing reference.
+
+        Checks if an existing volume reference has a source-name or
+        source-id element. If source-name or source-id is not present an
+        error will be thrown.
+        """
+        vol_name = None
+        if 'source-name' in existing_ref:
+            vol_name = existing_ref['source-name']
+        elif 'source-id' in existing_ref:
+            vol_name = self._get_3par_unm_name(existing_ref['source-id'])
+        else:
+            reason = _("Reference must contain source-name or source-id.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason)
+
+        return vol_name
 
     def _extend_volume(self, volume, volume_name, growth_size_mib,
                        _convert_to_base=False):
