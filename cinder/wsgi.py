@@ -267,6 +267,7 @@ class Server(object):
         """
         try:
             if self._server is not None:
+                self._pool.waitall()
                 self._server.wait()
         except greenlet.GreenletExit:
             LOG.info(_("WSGI server has stopped."))
