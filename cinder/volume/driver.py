@@ -1021,7 +1021,8 @@ class ISCSIDriver(VolumeDriver):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
     def terminate_connection(self, volume, connector, **kwargs):
-        pass
+        if CONF.iscsi_helper == 'lioadm':
+            self.target_helper.terminate_connection(volume, connector)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.

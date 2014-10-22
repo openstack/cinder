@@ -594,7 +594,21 @@ class LioAdm(TargetAdmin):
                           connector['initiator'],
                           run_as_root=True)
         except putils.ProcessExecutionError:
-            LOG.error(_("Failed to add initiator iqn %s to target") %
+            LOG.error(_("Failed to add initiator iqn %s to target.") %
+                      connector['initiator'])
+            raise exception.ISCSITargetAttachFailed(volume_id=volume['id'])
+
+    def terminate_connection(self, volume, connector):
+        volume_iqn = volume['provider_location'].split(' ')[1]
+
+        # Delete initiator iqns from target ACL
+        try:
+            self._execute('cinder-rtstool', 'delete-initiator',
+                          volume_iqn,
+                          connector['initiator'],
+                          run_as_root=True)
+        except putils.ProcessExecutionError:
+            LOG.error(_("Failed to delete initiator iqn %s to target.") %
                       connector['initiator'])
             raise exception.ISCSITargetAttachFailed(volume_id=volume['id'])
 

@@ -18,6 +18,8 @@ import shutil
 import string
 import tempfile
 
+from oslo.config import cfg
+
 from cinder.brick.iscsi import iscsi
 from cinder import test
 from cinder.volume import driver
@@ -34,6 +36,8 @@ class TargetAdminTestCase(object):
         self.path = '/foo'
         self.vol_id = 'blaa'
         self.vol_name = 'volume-blaa'
+        self.portal = 'portal:3260,1'
+        self.initiator = 'iqn.1994-05.org.foo.bar:test'
         self.chap_username = 'test_id'
         self.chap_password = 'test_pass'
         self.write_cache = 'off'
@@ -50,7 +54,6 @@ class TargetAdminTestCase(object):
         self.driver = driver.ISCSIDriver()
         self.stubs.Set(iscsi.TgtAdm, '_verify_backing_lun',
                        self.fake_verify_backing_lun)
-        self.driver = driver.ISCSIDriver()
         self.flags(iscsi_target_prefix='iqn.2011-09.org.foo.bar:')
         self.persist_tempdir = tempfile.mkdtemp()
         self.addCleanup(self._cleanup, self.persist_tempdir)
@@ -69,6 +72,7 @@ class TargetAdminTestCase(object):
                 'target_name': self.target_name,
                 'lun': self.lun,
                 'path': self.path,
+                'initiator': self.initiator,
                 'username': self.chap_username,
                 'password': self.chap_password}
 
@@ -110,6 +114,15 @@ class TargetAdminTestCase(object):
                                           self.lun, self.path, chap_auth,
                                           write_cache=self.write_cache)
         target_helper.show_target(self.tid, iqn=self.target_name)
+        if cfg.CONF.iscsi_helper == 'lioadm':
+            volume = {'provider_location': ' '.join([self.portal,
+                                                     self.target_name]),
+                      'provider_auth': ' '.join(['CHAP',
+                                                 self.chap_username,
+                                                 self.chap_password])}
+            connector = {'initiator': self.initiator}
+            target_helper.initialize_connection(volume, connector)
+            target_helper.terminate_connection(volume, connector)
         target_helper.remove_iscsi_target(self.tid, self.lun, self.vol_id,
                                           self.vol_name)
 
@@ -226,6 +239,9 @@ class LioAdmTestCase(test.TestCase, TargetAdminTestCase):
         self.script_template = "\n".join([
             'cinder-rtstool create '
             '%(path)s %(target_name)s %(username)s %(password)s',
+            'cinder-rtstool add-initiator '
+            '%(target_name)s %(username)s %(password)s %(initiator)s',
+            'cinder-rtstool delete-initiator %(target_name)s %(initiator)s',
             'cinder-rtstool delete %(target_name)s'])
 
 
