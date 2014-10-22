@@ -1411,6 +1411,20 @@
 
 
 #
+# Options defined in cinder.volume.drivers.ibm.flashsystem
+#
+
+# Connection protocol should be FC. (string value)
+#flashsystem_connection_protocol=FC
+
+# Connect with multipath (FC only). (boolean value)
+#flashsystem_multipath_enabled=false
+
+# Allows vdisk to multi host mapping. (boolean value)
+#flashsystem_multihostmap_enabled=true
+
+
+#
 # Options defined in cinder.volume.drivers.ibm.gpfs
 #
 
