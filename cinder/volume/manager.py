@@ -1001,6 +1001,11 @@ class VolumeManager(manager.SchedulerDependentManager):
             new_vol_values['volume_type_id'] = new_type_id
         new_vol_values['host'] = host['host']
         new_vol_values['status'] = 'creating'
+
+        # FIXME(jdg): using a : delimeter is confusing to
+        # me below here.  We're adding a string member to a dict
+        # using a :, which is kind of a poor choice in this case
+        # I think
         new_vol_values['migration_status'] = 'target:%s' % volume['id']
         new_vol_values['attach_status'] = 'detached'
         new_volume = self.db.volume_create(ctxt, new_vol_values)
