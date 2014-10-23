@@ -43,12 +43,11 @@ from swiftclient import client as swift
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import units
-
 
 LOG = logging.getLogger(__name__)
 
@@ -157,8 +156,8 @@ class SwiftBackupDriver(BackupDriver):
                                                   CONF.backup_swift_auth))
         if CONF.backup_swift_auth == 'single_user':
             if CONF.backup_swift_user is None:
-                LOG.error(_("single_user auth mode enabled, "
-                            "but %(param)s not set")
+                LOG.error(_LE("single_user auth mode enabled, "
+                              "but %(param)s not set")
                           % {'param': 'backup_swift_user'})
                 raise exception.ParameterNotFound(param='backup_swift_user')
             self.conn = swift.Connection(
@@ -392,7 +391,7 @@ class SwiftBackupDriver(BackupDriver):
             except Exception as err:
                 with excutils.save_and_reraise_exception():
                     LOG.exception(
-                        _("Backup volume metadata to swift failed: %s") %
+                        _LE("Backup volume metadata to swift failed: %s") %
                         six.text_type(err))
                     self.delete(backup)
 
@@ -448,8 +447,9 @@ class SwiftBackupDriver(BackupDriver):
             try:
                 fileno = volume_file.fileno()
             except IOError:
-                LOG.info("volume_file does not support fileno() so skipping "
-                         "fsync()")
+                LOG.info(_LI("volume_file does not support "
+                             "fileno() so skipping"
+                             "fsync()"))
             else:
                 os.fsync(fileno)
 
@@ -514,8 +514,8 @@ class SwiftBackupDriver(BackupDriver):
             try:
                 swift_object_names = self._generate_object_names(backup)
             except Exception:
-                LOG.warn(_('swift error while listing objects, continuing'
-                           ' with delete'))
+                LOG.warn(_LW('swift error while listing objects, continuing'
+                             ' with delete'))
 
             for swift_object_name in swift_object_names:
                 try:
@@ -523,8 +523,9 @@ class SwiftBackupDriver(BackupDriver):
                 except socket.error as err:
                     raise exception.SwiftConnectionFailed(reason=err)
                 except Exception:
-                    LOG.warn(_('swift error while deleting object %s, '
-                               'continuing with delete') % swift_object_name)
+                    LOG.warn(_LW('swift error while deleting object %s, '
+                                 'continuing with delete')
+                             % swift_object_name)
                 else:
                     LOG.debug('deleted swift object: %(swift_object_name)s'
                               ' in container: %(container)s' %

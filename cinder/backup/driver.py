@@ -22,7 +22,7 @@ import six
 
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 
@@ -55,7 +55,7 @@ class BackupMetadataAPI(base.Base):
         try:
             jsonutils.dumps(value)
         except TypeError:
-            LOG.info(_("Value with type=%s is not serializable") %
+            LOG.info(_LI("Value with type=%s is not serializable") %
                      type(value))
             return False
 
@@ -75,8 +75,8 @@ class BackupMetadataAPI(base.Base):
             for key, value in meta:
                 # Exclude fields that are "not JSON serializable"
                 if not self._is_serializable(value):
-                    LOG.info(_("Unable to serialize field '%s' - excluding "
-                               "from backup") % (key))
+                    LOG.info(_LI("Unable to serialize field '%s' - excluding "
+                                 "from backup") % (key))
                     continue
                 container[type_tag][key] = value
 
@@ -98,8 +98,8 @@ class BackupMetadataAPI(base.Base):
             for entry in meta:
                 # Exclude fields that are "not JSON serializable"
                 if not self._is_serializable(meta[entry]):
-                    LOG.info(_("Unable to serialize field '%s' - excluding "
-                               "from backup") % (entry))
+                    LOG.info(_LI("Unable to serialize field '%s' - excluding "
+                                 "from backup") % (entry))
                     continue
                 container[type_tag][entry] = meta[entry]
 
@@ -122,8 +122,8 @@ class BackupMetadataAPI(base.Base):
                 for entry in meta:
                     # Exclude fields that are "not JSON serializable"
                     if not self._is_serializable(entry.value):
-                        LOG.info(_("Unable to serialize field '%s' - "
-                                   "excluding from backup") % (entry))
+                        LOG.info(_LI("Unable to serialize field '%s' - "
+                                     "excluding from backup") % (entry))
                         continue
                     container[type_tag][entry.key] = entry.value
 

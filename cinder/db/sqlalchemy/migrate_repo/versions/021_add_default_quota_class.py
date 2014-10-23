@@ -17,7 +17,7 @@ import datetime
 from oslo.config import cfg
 from sqlalchemy import MetaData, Table
 
-from cinder.i18n import _
+from cinder.i18n import _LE, _LI
 from cinder.openstack.common import log as logging
 
 # Get default values via config.  The defaults will either
@@ -47,8 +47,8 @@ def upgrade(migrate_engine):
     # Do not add entries if there are already 'default' entries.  We don't
     # want to write over something the user added.
     if rows:
-        LOG.info(_("Found existing 'default' entries in the quota_classes "
-                   "table.  Skipping insertion of default values."))
+        LOG.info(_LI("Found existing 'default' entries in the quota_classes "
+                     "table.  Skipping insertion of default values."))
         return
 
     try:
@@ -71,9 +71,9 @@ def upgrade(migrate_engine):
                      'resource': 'gigabytes',
                      'hard_limit': CONF.quota_gigabytes,
                      'deleted': False, })
-        LOG.info(_("Added default quota class data into the DB."))
+        LOG.info(_LI("Added default quota class data into the DB."))
     except Exception:
-        LOG.error(_("Default quota class data not inserted into the DB."))
+        LOG.error(_LE("Default quota class data not inserted into the DB."))
         raise
 
 

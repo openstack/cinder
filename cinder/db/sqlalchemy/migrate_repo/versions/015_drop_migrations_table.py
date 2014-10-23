@@ -13,7 +13,7 @@
 from sqlalchemy import Boolean, Column, DateTime, Integer
 from sqlalchemy import MetaData, String, Table
 
-from cinder.i18n import _
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def upgrade(migrate_engine):
     try:
         table.drop()
     except Exception:
-        LOG.error(_("migrations table not dropped"))
+        LOG.error(_LE("migrations table not dropped"))
         raise
 
 
@@ -59,5 +59,5 @@ def downgrade(migrate_engine):
     try:
         table.create()
     except Exception:
-        LOG.error(_("Table |%s| not created"), repr(table))
+        LOG.error(_LE("Table |%s| not created"), repr(table))
         raise

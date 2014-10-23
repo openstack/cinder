@@ -16,7 +16,7 @@ from migrate import ForeignKeyConstraint
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import MetaData, Integer, String, Table, ForeignKey
 
-from cinder.i18n import _
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ def upgrade(migrate_engine):
     try:
         quota_classes.create()
     except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(quota_classes))
+        LOG.error(_LE("Table |%s| not created!"), repr(quota_classes))
         raise
 
     quota_usages = Table('quota_usages', meta,
@@ -72,7 +72,7 @@ def upgrade(migrate_engine):
     try:
         quota_usages.create()
     except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(quota_usages))
+        LOG.error(_LE("Table |%s| not created!"), repr(quota_usages))
         raise
 
     reservations = Table('reservations', meta,
@@ -103,7 +103,7 @@ def upgrade(migrate_engine):
     try:
         reservations.create()
     except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(reservations))
+        LOG.error(_LE("Table |%s| not created!"), repr(reservations))
         raise
 
 
@@ -125,25 +125,25 @@ def downgrade(migrate_engine):
             fkey = ForeignKeyConstraint(**params)
             fkey.drop()
         except Exception:
-            LOG.error(_("Dropping foreign key reservations_ibfk_1 failed."))
+            LOG.error(_LE("Dropping foreign key reservations_ibfk_1 failed."))
 
     quota_classes = Table('quota_classes', meta, autoload=True)
     try:
         quota_classes.drop()
     except Exception:
-        LOG.error(_("quota_classes table not dropped"))
+        LOG.error(_LE("quota_classes table not dropped"))
         raise
 
     quota_usages = Table('quota_usages', meta, autoload=True)
     try:
         quota_usages.drop()
     except Exception:
-        LOG.error(_("quota_usages table not dropped"))
+        LOG.error(_LE("quota_usages table not dropped"))
         raise
 
     reservations = Table('reservations', meta, autoload=True)
     try:
         reservations.drop()
     except Exception:
-        LOG.error(_("reservations table not dropped"))
+        LOG.error(_LE("reservations table not dropped"))
         raise
