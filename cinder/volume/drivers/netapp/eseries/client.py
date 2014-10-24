@@ -16,6 +16,7 @@
 Client classes for web services.
 """
 
+import copy
 import json
 import requests
 
@@ -116,8 +117,15 @@ class RestClient(WebserviceClient):
     def _invoke(self, method, path, data=None, use_system=True,
                 timeout=None, verify=False, **kwargs):
         """Invokes end point for resource on path."""
-        params = {'m': method, 'p': path, 'd': data, 'sys': use_system,
-                  't': timeout, 'v': verify, 'k': kwargs}
+        scrubbed_data = copy.deepcopy(data)
+        if scrubbed_data:
+            if 'password' in scrubbed_data:
+                scrubbed_data['password'] = "****"
+            if 'storedPassword' in scrubbed_data:
+                scrubbed_data['storedPassword'] = "****"
+
+        params = {'m': method, 'p': path, 'd': scrubbed_data,
+                  'sys': use_system, 't': timeout, 'v': verify, 'k': kwargs}
         LOG.debug(_("Invoking rest with method: %(m)s, path: %(p)s,"
                     " data: %(d)s, use_system: %(sys)s, timeout: %(t)s,"
                     " verify: %(v)s, kwargs: %(k)s.") % (params))
