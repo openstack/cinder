@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-24 06:03+0000\n"
-"PO-Revision-Date: 2014-09-13 22:05+0000\n"
+"POT-Creation-Date: 2014-10-24 06:10+0000\n"
+"PO-Revision-Date: 2014-10-21 00:51+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Korean (Korea) (http://www.transifex.com/projects/p/cinder/"
 "language/ko_KR/)\n"
@@ -46,7 +46,7 @@ msgstr "상위 프로세스가 예기치 않게 정지했습니다. 종료 중"
 #: cinder/openstack/common/service.py:271
 #, python-format
 msgid "Child caught %s, exiting"
-msgstr ""
+msgstr "자식으로 된 %s가 존재함."
 
 #: cinder/openstack/common/service.py:310
 msgid "Forking too fast, sleeping"
@@ -79,7 +79,7 @@ msgstr "%s 발견, 하위 중지 중"
 
 #: cinder/openstack/common/service.py:408
 msgid "Wait called after thread killed.  Cleaning up."
-msgstr ""
+msgstr "쓰레드가 죽기를 기다려서, 지웁니다. "
 
 #: cinder/openstack/common/service.py:424
 #, python-format
