@@ -99,9 +99,10 @@ class NetAppNFSDriver(nfs.NfsDriver):
         share = self._get_volume_location(snapshot.volume_id)
         volume['provider_location'] = share
         path = self.local_path(volume)
+        run_as_root = self._execute_as_root
 
         if self._discover_file_till_timeout(path):
-            self._set_rw_permissions_for_all(path)
+            self._set_rw_permissions(path)
             if vol_size != snap_size:
                 try:
                     self.extend_volume(volume, vol_size)
@@ -110,7 +111,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                         LOG.error(
                             _("Resizing %s failed. Cleaning volume."),
                             volume.name)
-                        self._execute('rm', path, run_as_root=True)
+                        self._execute('rm', path, run_as_root=run_as_root)
         else:
             raise exception.CinderException(
                 _("NFS file %s not discovered.") % volume['name'])
@@ -131,7 +132,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
             return True
 
         self._execute('rm', self._get_volume_path(nfs_mount, snapshot.name),
-                      run_as_root=True)
+                      run_as_root=self._execute_as_root)
 
     def _get_client(self):
         """Creates client for server."""
@@ -209,14 +210,15 @@ class NetAppNFSDriver(nfs.NfsDriver):
         path = self.local_path(volume)
 
         if self._discover_file_till_timeout(path):
-            self._set_rw_permissions_for_all(path)
+            self._set_rw_permissions(path)
             if vol_size != src_vol_size:
                 try:
                     self.extend_volume(volume, vol_size)
                 except Exception as e:
                     LOG.error(
                         _("Resizing %s failed. Cleaning volume."), volume.name)
-                    self._execute('rm', path, run_as_root=True)
+                    self._execute('rm', path,
+                                  run_as_root=self._execute_as_root)
                     raise e
         else:
             raise exception.CinderException(
@@ -283,7 +285,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
             LOG.debug('Image cache cleaning in progress. Returning... ')
             return
         else:
-            #set cleaning to True
+            # Set cleaning to True
             self.cleaning = True
             t = Timer(0, self._clean_image_cache)
             t.start()
@@ -333,7 +335,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
         threshold_minutes = self.configuration.expiry_thres_minutes
         cmd = ['find', mount_fs, '-maxdepth', '1', '-name',
                'img-cache*', '-amin', '+%s' % (threshold_minutes)]
-        res, __ = self._execute(*cmd, run_as_root=True)
+        res, _err = self._execute(*cmd,
+                                  run_as_root=self._execute_as_root)
         if res:
             old_file_paths = res.strip('\n').split('\n')
             mount_fs_len = len(mount_fs)
@@ -369,7 +372,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         try:
             LOG.debug('Deleting file at path %s', path)
             cmd = ['rm', '-f', path]
-            self._execute(*cmd, run_as_root=True)
+            self._execute(*cmd, run_as_root=self._execute_as_root)
             return True
         except Exception as ex:
             LOG.warning(_('Exception during deleting %s'), ex.__str__())
@@ -444,13 +447,16 @@ class NetAppNFSDriver(nfs.NfsDriver):
         cloned = False
         image_location = self._construct_image_nfs_url(image_location)
         share = self._is_cloneable_share(image_location)
+        run_as_root = self._execute_as_root
+
         if share and self._is_share_vol_compatible(volume, share):
             LOG.debug('Share is cloneable %s', share)
             volume['provider_location'] = share
             (__, ___, img_file) = image_location.rpartition('/')
             dir_path = self._get_mount_point_for_share(share)
             img_path = '%s/%s' % (dir_path, img_file)
-            img_info = image_utils.qemu_img_info(img_path)
+            img_info = image_utils.qemu_img_info(img_path,
+                                                 run_as_root=run_as_root)
             if img_info.file_format == 'raw':
                 LOG.debug('Image is raw %s', image_id)
                 self._clone_volume(
@@ -462,8 +468,9 @@ class NetAppNFSDriver(nfs.NfsDriver):
                     _('Image will locally be converted to raw %s'),
                     image_id)
                 dst = '%s/%s' % (dir_path, volume['name'])
-                image_utils.convert_image(img_path, dst, 'raw')
-                data = image_utils.qemu_img_info(dst)
+                image_utils.convert_image(img_path, dst, 'raw',
+                                          run_as_root=run_as_root)
+                data = image_utils.qemu_img_info(dst, run_as_root=run_as_root)
                 if data.file_format != "raw":
                     raise exception.InvalidResults(
                         _("Converted to raw, but"
@@ -479,7 +486,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         LOG.info(_('Performing post clone for %s'), volume['name'])
         vol_path = self.local_path(volume)
         if self._discover_file_till_timeout(vol_path):
-            self._set_rw_permissions_for_all(vol_path)
+            self._set_rw_permissions(vol_path)
             self._resize_image_file(vol_path, volume['size'])
             return True
         raise exception.InvalidResults(
@@ -492,7 +499,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
             return
         else:
             LOG.info(_('Resizing file to %sG'), new_size)
-            image_utils.resize_image(path, new_size)
+            image_utils.resize_image(path, new_size,
+                                     run_as_root=self._execute_as_root)
             if self._is_file_size_equal(path, new_size):
                 return
             else:
@@ -501,7 +509,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def _is_file_size_equal(self, path, size):
         """Checks if file size at path is equal to size."""
-        data = image_utils.qemu_img_info(path)
+        data = image_utils.qemu_img_info(path,
+                                         run_as_root=self._execute_as_root)
         virt_size = data.virtual_size / units.Gi
         if virt_size == size:
             return True
@@ -639,7 +648,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
             if os.path.exists(dst):
                 LOG.warn(_("Destination %s already exists."), dst)
                 return False
-            self._execute('mv', src, dst, run_as_root=True)
+            self._execute('mv', src, dst,
+                          run_as_root=self._execute_as_root)
             return True
 
         try:
@@ -1218,7 +1228,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                     dst_path = os.path.join(
                         self._get_export_path(volume['id']), volume['name'])
                     self._execute(col_path, src_ip, dst_ip,
-                                  src_path, dst_path, run_as_root=False,
+                                  src_path, dst_path,
+                                  run_as_root=self._execute_as_root,
                                   check_exit_code=0)
                     self._register_image_in_cache(volume, image_id)
                     LOG.debug("Copied image from cache to volume %s using"
@@ -1264,6 +1275,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         img_info = image_service.show(context, image_id)
         dst_share = self._get_provider_location(volume['id'])
         self._check_share_can_hold_size(dst_share, img_info['size'])
+        run_as_root = self._execute_as_root
 
         dst_dir = self._get_mount_point_for_share(dst_share)
         dst_img_local = os.path.join(dst_dir, tmp_img_file)
@@ -1274,7 +1286,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                 dst_img_serv_path = os.path.join(
                     self._get_export_path(volume['id']), tmp_img_file)
                 self._execute(col_path, src_ip, dst_ip, src_path,
-                              dst_img_serv_path, run_as_root=False,
+                              dst_img_serv_path, run_as_root=run_as_root,
                               check_exit_code=0)
             else:
                 self._clone_file_dst_exists(dst_share, img_file, tmp_img_file)
@@ -1299,8 +1311,10 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                 self._check_share_can_hold_size(dst_share, img_info['size'])
                 try:
                     image_utils.convert_image(dst_img_local,
-                                              dst_img_conv_local, 'raw')
-                    data = image_utils.qemu_img_info(dst_img_conv_local)
+                                              dst_img_conv_local, 'raw',
+                                              run_as_root=run_as_root)
+                    data = image_utils.qemu_img_info(dst_img_conv_local,
+                                                     run_as_root=run_as_root)
                     if data.file_format != "raw":
                         raise exception.InvalidResults(
                             _("Converted to raw, but format is now %s.")

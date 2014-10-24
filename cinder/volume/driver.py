@@ -506,7 +506,10 @@ class VolumeDriver(object):
         device = connector.connect_volume(conn['data'])
         host_device = device['path']
 
-        if not connector.check_valid_device(host_device):
+        # Secure network file systems will NOT run as root.
+        root_access = not self.secure_file_operations_enabled()
+
+        if not connector.check_valid_device(host_device, root_access):
             raise exception.DeviceUnavailable(path=host_device,
                                               reason=(_("Unable to access "
                                                         "the backend storage "
@@ -548,9 +551,15 @@ class VolumeDriver(object):
 
         try:
             volume_path = attach_info['device']['path']
-            with utils.temporary_chown(volume_path):
+
+            # Secure network file systems will not chown files.
+            if self.secure_file_operations_enabled():
                 with fileutils.file_open(volume_path) as volume_file:
                     backup_service.backup(backup, volume_file)
+            else:
+                with utils.temporary_chown(volume_path):
+                    with fileutils.file_open(volume_path) as volume_file:
+                        backup_service.backup(backup, volume_file)
 
         finally:
             self._detach_volume(context, attach_info, volume, properties)
@@ -567,9 +576,16 @@ class VolumeDriver(object):
 
         try:
             volume_path = attach_info['device']['path']
-            with utils.temporary_chown(volume_path):
+
+            # Secure network file systems will not chown files.
+            if self.secure_file_operations_enabled():
                 with fileutils.file_open(volume_path, 'wb') as volume_file:
                     backup_service.restore(backup, volume['id'], volume_file)
+            else:
+                with utils.temporary_chown(volume_path):
+                    with fileutils.file_open(volume_path, 'wb') as volume_file:
+                        backup_service.restore(backup, volume['id'],
+                                               volume_file)
 
         finally:
             self._detach_volume(context, attach_info, volume, properties)
@@ -827,6 +843,15 @@ class VolumeDriver(object):
         :return: name of the pool where given volume is in.
         """
         return None
+
+    def secure_file_operations_enabled(self):
+        """Determine if driver is running in Secure File Operations mode.
+
+        The Cinder Volume driver needs to query if this driver is running
+        in a secure file operations mode. By default, it is False: any driver
+        that does support secure file operations should override this method.
+        """
+        return False
 
 
 class ISCSIDriver(VolumeDriver):

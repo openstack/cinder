@@ -46,11 +46,19 @@ class DumbVolume(object):
 
 class RemoteFsDriverTestCase(test.TestCase):
     TEST_FILE_NAME = 'test.txt'
+    TEST_EXPORT = 'nas-host1:/export'
+    TEST_MNT_POINT = '/mnt/nas'
 
     def setUp(self):
         super(RemoteFsDriverTestCase, self).setUp()
         self._driver = remotefs.RemoteFSDriver()
         self._mox = mox_lib.Mox()
+        self.configuration = mox_lib.MockObject(conf.Configuration)
+        self.configuration.append_config_values(mox_lib.IgnoreArg())
+        self.configuration.nas_secure_file_permissions = 'false'
+        self.configuration.nas_secure_file_operations = 'false'
+        self._driver = remotefs.RemoteFSDriver(
+            configuration=self.configuration)
         self.addCleanup(self._mox.UnsetStubs)
 
     def test_create_sparsed_file(self):
@@ -107,6 +115,229 @@ class RemoteFsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
+    @mock.patch.object(remotefs, 'LOG')
+    def test_set_rw_permissions_with_secure_file_permissions(self, LOG):
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_EXPORT]
+        drv.configuration.nas_secure_file_permissions = 'true'
+        self.stubs.Set(drv, '_execute', mock.Mock())
+
+        drv._set_rw_permissions(self.TEST_FILE_NAME)
+
+        self.assertFalse(LOG.warn.called)
+
+    @mock.patch.object(remotefs, 'LOG')
+    def test_set_rw_permissions_without_secure_file_permissions(self, LOG):
+        drv = self._driver
+        self.configuration.nas_secure_file_permissions = 'false'
+        self.stubs.Set(drv, '_execute', mock.Mock())
+
+        drv._set_rw_permissions(self.TEST_FILE_NAME)
+
+        self.assertTrue(LOG.warn.called)
+        warn_msg = "%s is being set with open permissions: ugo+rw" % \
+                   self.TEST_FILE_NAME
+        LOG.warn.assert_called_once_with(warn_msg)
+
+    @mock.patch('os.path.join')
+    @mock.patch('os.path.isfile', return_value=False)
+    def test_determine_nas_security_options_when_auto_and_new_install(
+            self,
+            mock_isfile,
+            mock_join):
+        """Test the setting of the NAS Security Option
+
+         In this test case, we will create the marker file. No pre-exxisting
+         Cinder volumes found during bootup.
+         """
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_EXPORT]
+        file_path = '%s/.cinderSecureEnvIndicator' % self.TEST_MNT_POINT
+        is_new_install = True
+
+        drv._ensure_shares_mounted = mock.Mock()
+        nas_mount = drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+        mock_join.return_value = file_path
+
+        secure_file_permissions = 'auto'
+        nas_option = drv._determine_nas_security_option_setting(
+            secure_file_permissions,
+            nas_mount, is_new_install)
+
+        self.assertEqual(nas_option, 'true')
+
+        secure_file_operations = 'auto'
+        nas_option = drv._determine_nas_security_option_setting(
+            secure_file_operations,
+            nas_mount, is_new_install)
+
+        self.assertEqual(nas_option, 'true')
+
+    @mock.patch('os.path.join')
+    @mock.patch('os.path.isfile')
+    def test_determine_nas_security_options_when_auto_and_new_install_exists(
+            self,
+            isfile,
+            join):
+        """Test the setting of the NAS Security Option
+
+        In this test case, the marker file already exists. Cinder volumes
+        found during bootup.
+        """
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_EXPORT]
+        file_path = '%s/.cinderSecureEnvIndicator' % self.TEST_MNT_POINT
+        is_new_install = False
+
+        drv._ensure_shares_mounted = mock.Mock()
+        nas_mount = drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+        join.return_value = file_path
+        isfile.return_value = True
+
+        secure_file_permissions = 'auto'
+        nas_option = drv._determine_nas_security_option_setting(
+            secure_file_permissions,
+            nas_mount, is_new_install)
+
+        self.assertEqual(nas_option, 'true')
+
+        secure_file_operations = 'auto'
+        nas_option = drv._determine_nas_security_option_setting(
+            secure_file_operations,
+            nas_mount, is_new_install)
+
+        self.assertEqual(nas_option, 'true')
+
+    @mock.patch('os.path.join')
+    @mock.patch('os.path.isfile')
+    def test_determine_nas_security_options_when_auto_and_old_install(self,
+                                                                      isfile,
+                                                                      join):
+        """Test the setting of the NAS Security Option
+
+        In this test case, the marker file does not exist. There are also
+        pre-existing Cinder volumes.
+        """
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_EXPORT]
+        file_path = '%s/.cinderSecureEnvIndicator' % self.TEST_MNT_POINT
+        is_new_install = False
+
+        drv._ensure_shares_mounted = mock.Mock()
+        nas_mount = drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+        join.return_value = file_path
+        isfile.return_value = False
+
+        secure_file_permissions = 'auto'
+        nas_option = drv._determine_nas_security_option_setting(
+            secure_file_permissions,
+            nas_mount, is_new_install)
+
+        self.assertEqual(nas_option, 'false')
+
+        secure_file_operations = 'auto'
+        nas_option = drv._determine_nas_security_option_setting(
+            secure_file_operations,
+            nas_mount, is_new_install)
+
+        self.assertEqual(nas_option, 'false')
+
+    def test_determine_nas_security_options_when_admin_set_true(self):
+        """Test the setting of the NAS Security Option
+
+        In this test case, the Admin set the flag to 'true'.
+        """
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_EXPORT]
+        is_new_install = False
+
+        drv._ensure_shares_mounted = mock.Mock()
+        nas_mount = drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+
+        secure_file_permissions = 'true'
+        nas_option = drv._determine_nas_security_option_setting(
+            secure_file_permissions,
+            nas_mount, is_new_install)
+
+        self.assertEqual(nas_option, 'true')
+
+        secure_file_operations = 'true'
+        nas_option = drv._determine_nas_security_option_setting(
+            secure_file_operations,
+            nas_mount, is_new_install)
+
+        self.assertEqual(nas_option, 'true')
+
+    def test_determine_nas_security_options_when_admin_set_false(self):
+        """Test the setting of the NAS Security Option
+
+        In this test case, the Admin set the flag to 'true'.
+        """
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_EXPORT]
+        is_new_install = False
+
+        drv._ensure_shares_mounted = mock.Mock()
+        nas_mount = drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+
+        secure_file_permissions = 'false'
+        nas_option = drv._determine_nas_security_option_setting(
+            secure_file_permissions,
+            nas_mount, is_new_install)
+
+        self.assertEqual(nas_option, 'false')
+
+        secure_file_operations = 'false'
+        nas_option = drv._determine_nas_security_option_setting(
+            secure_file_operations,
+            nas_mount, is_new_install)
+
+        self.assertEqual(nas_option, 'false')
+
+    @mock.patch.object(remotefs, 'LOG')
+    def test_set_nas_security_options(self, LOG):
+        """Test setting of NAS Security options.
+
+        The RemoteFS driver will force set options to false. The derived
+        objects will provide an inherited interface to properly set options.
+        """
+        drv = self._driver
+        is_new_install = False
+
+        drv.set_nas_security_options(is_new_install)
+
+        self.assertEqual(drv.configuration.nas_secure_file_operations, 'false')
+        self.assertEqual(drv.configuration.nas_secure_file_permissions,
+                         'false')
+        self.assertTrue(LOG.warn.called)
+
+    def test_secure_file_operations_enabled_true(self):
+        """Test nas_secure_file_operations = 'true'
+
+        Networked file system based drivers may support secure file
+        operations. This test verifies the settings when secure.
+        """
+        drv = self._driver
+        self.configuration.nas_secure_file_operations = 'true'
+        ret_flag = drv.secure_file_operations_enabled()
+        self.assertTrue(ret_flag)
+
+    def test_secure_file_operations_enabled_false(self):
+        """Test nas_secure_file_operations = 'false'
+
+        Networked file system based drivers may support secure file
+        operations. This test verifies the settings when not secure.
+        """
+        drv = self._driver
+        self.configuration.nas_secure_file_operations = 'false'
+        ret_flag = drv.secure_file_operations_enabled()
+        self.assertFalse(ret_flag)
+
 
 class NfsDriverTestCase(test.TestCase):
     """Test case for NFS driver."""
@@ -135,6 +366,8 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_oversub_ratio = 1.0
         self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
         self.configuration.nfs_mount_options = None
+        self.configuration.nas_secure_file_permissions = 'false'
+        self.configuration.nas_secure_file_operations = 'false'
         self.configuration.volume_dd_blocksize = '1M'
         self._driver = nfs.NfsDriver(configuration=self.configuration)
         self._driver.shares = {}
@@ -176,15 +409,18 @@ class NfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(image_utils, 'fetch_to_raw')
         image_utils.fetch_to_raw(None, None, None, TEST_IMG_SOURCE,
                                  mox_lib.IgnoreArg(),
-                                 size=self.TEST_SIZE_IN_GB)
+                                 size=self.TEST_SIZE_IN_GB,
+                                 run_as_root=True)
 
         mox.StubOutWithMock(image_utils, 'resize_image')
-        image_utils.resize_image(TEST_IMG_SOURCE, self.TEST_SIZE_IN_GB)
+        image_utils.resize_image(TEST_IMG_SOURCE, self.TEST_SIZE_IN_GB,
+                                 run_as_root=True)
 
         mox.StubOutWithMock(image_utils, 'qemu_img_info')
         data = mox_lib.MockAnything()
         data.virtual_size = 1 * units.Gi
-        image_utils.qemu_img_info(TEST_IMG_SOURCE).AndReturn(data)
+        image_utils.qemu_img_info(TEST_IMG_SOURCE,
+                                  run_as_root=True).AndReturn(data)
 
         mox.ReplayAll()
 
@@ -382,11 +618,10 @@ class NfsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
         self.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
-
         mox.StubOutWithMock(os.path, 'exists')
         os.path.exists(self.TEST_SHARES_CONFIG_FILE).AndReturn(True)
         mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mount.nfs', check_exit_code=False, run_as_root=True).\
+        drv._execute('mount.nfs', check_exit_code=False, run_as_root=False).\
             AndRaise(OSError(errno.ENOENT, 'No such file or directory'))
 
         mox.ReplayAll()
@@ -470,10 +705,10 @@ class NfsDriverTestCase(test.TestCase):
         cfg.CONF.set_override('nfs_sparsed_volumes', True)
 
         mox.StubOutWithMock(drv, '_create_sparsed_file')
-        mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
+        mox.StubOutWithMock(drv, '_set_rw_permissions')
 
         drv._create_sparsed_file(IgnoreArg(), IgnoreArg())
-        drv._set_rw_permissions_for_all(IgnoreArg())
+        drv._set_rw_permissions(IgnoreArg())
 
         mox.ReplayAll()
 
@@ -490,10 +725,10 @@ class NfsDriverTestCase(test.TestCase):
         cfg.CONF.set_override('nfs_sparsed_volumes', False)
 
         mox.StubOutWithMock(drv, '_create_regular_file')
-        mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
+        mox.StubOutWithMock(drv, '_set_rw_permissions')
 
         drv._create_regular_file(IgnoreArg(), IgnoreArg())
-        drv._set_rw_permissions_for_all(IgnoreArg())
+        drv._set_rw_permissions(IgnoreArg())
 
         mox.ReplayAll()
 
@@ -702,7 +937,8 @@ class NfsDriverTestCase(test.TestCase):
                                            return_value=True):
                         drv.extend_volume(volume, newSize)
 
-                        resize.assert_called_once_with(path, newSize)
+                        resize.assert_called_once_with(path, newSize,
+                                                       run_as_root=True)
 
     def test_extend_volume_failure(self):
         """Error during extend operation."""
@@ -757,3 +993,50 @@ class NfsDriverTestCase(test.TestCase):
         with mock.patch.object(image_utils, 'qemu_img_info',
                                return_value=data):
             self.assertFalse(drv._is_file_size_equal(path, size))
+
+    @mock.patch.object(nfs, 'LOG')
+    def test_set_nas_security_options_when_true(self, LOG):
+        """Test higher level setting of NAS Security options.
+
+        The NFS driver overrides the base method with a driver specific
+        version.
+        """
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        is_new_install = True
+
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+        drv._determine_nas_security_option_setting = mock.Mock(
+            return_value='true')
+
+        drv.set_nas_security_options(is_new_install)
+
+        self.assertEqual(drv.configuration.nas_secure_file_operations, 'true')
+        self.assertEqual(drv.configuration.nas_secure_file_permissions, 'true')
+        self.assertFalse(LOG.warn.called)
+
+    @mock.patch.object(nfs, 'LOG')
+    def test_set_nas_security_options_when_false(self, LOG):
+        """Test higher level setting of NAS Security options.
+
+        The NFS driver overrides the base method with a driver specific
+        version.
+        """
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        is_new_install = False
+
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+        drv._determine_nas_security_option_setting = mock.Mock(
+            return_value='false')
+
+        drv.set_nas_security_options(is_new_install)
+
+        self.assertEqual(drv.configuration.nas_secure_file_operations, 'false')
+        self.assertEqual(drv.configuration.nas_secure_file_permissions,
+                         'false')
+        self.assertTrue(LOG.warn.called)

@@ -3299,6 +3299,16 @@ class VolumeTestCase(BaseVolumeTestCase):
         # Group is not deleted
         self.assertEqual(cg['status'], 'available')
 
+    def test_secure_file_operations_enabled(self):
+        """Test secure file operations setting for base driver.
+
+        General, non network file system based drivers do not have
+        anything to do with "secure_file_operations". This test verifies that
+        calling the method always returns False.
+        """
+        ret_flag = self.volume.driver.secure_file_operations_enabled()
+        self.assertFalse(ret_flag)
+
 
 class CopyVolumeToImageTestCase(BaseVolumeTestCase):
     def fake_local_path(self, volume):

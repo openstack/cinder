@@ -49,6 +49,25 @@ nas_opts = [
     cfg.StrOpt('nas_private_key',
                default='',
                help='Filename of private key to use for SSH authentication.'),
+    cfg.StrOpt('nas_secure_file_operations',
+               default='auto',
+               help=('Allow network-attached storage systems to operate in a '
+                     'secure environment where root level access is not '
+                     'permitted. If set to False, access is as the root user '
+                     'and insecure. If set to True, access is not as root. '
+                     'If set to auto, a check is done to determine if this is '
+                     'a new installation: True is used if so, otherwise '
+                     'False. Default is auto.')),
+    cfg.StrOpt('nas_secure_file_permissions',
+               default='auto',
+               help=('Set more secure file permissions on network-attached '
+                     'storage volume files to restrict broad other/world '
+                     'access. If set to False, volumes are created with open '
+                     'permissions. If set to True, volumes are created with '
+                     'permissions for the cinder user and group (660). If '
+                     'set to auto, a check is done to determine if '
+                     'this is a new installation: True is used if so, '
+                     'otherwise False. Default is auto.')),
 ]
 
 CONF = cfg.CONF
@@ -67,6 +86,11 @@ class RemoteFSDriver(driver.VolumeDriver):
         super(RemoteFSDriver, self).__init__(*args, **kwargs)
         self.shares = {}
         self._mounted_shares = []
+        self._execute_as_root = True
+        self._is_voldb_empty_at_startup = kwargs.pop('is_vol_db_empty', None)
+
+        if self.configuration:
+            self.configuration.append_config_values(nas_opts)
 
     def check_for_setup_error(self):
         """Just to override parent behavior."""
@@ -87,6 +111,28 @@ class RemoteFSDriver(driver.VolumeDriver):
             'data': data,
             'mount_point_base': self._get_mount_point_base()
         }
+
+    def do_setup(self, context):
+        """Any initialization the volume driver does while starting."""
+        super(RemoteFSDriver, self).do_setup(context)
+
+        # Validate the settings for our secure file options.
+        self.configuration.nas_secure_file_permissions = \
+            self.configuration.nas_secure_file_permissions.lower()
+        self.configuration.nas_secure_file_operations = \
+            self.configuration.nas_secure_file_operations.lower()
+        valid_secure_opts = ['auto', 'true', 'false']
+        secure_options = {'nas_secure_file_permissions':
+                          self.configuration.nas_secure_file_permissions,
+                          'nas_secure_file_operations':
+                          self.configuration.nas_secure_file_operations}
+        for opt_name, opt_value in secure_options.iteritems():
+            if opt_value not in valid_secure_opts:
+                err_parms = {'name': opt_name, 'value': opt_value}
+                msg = _("NAS config '%(name)s=%(value)s' invalid. Must be "
+                        "'auto', 'true', or 'false'") % err_parms
+                LOG.error(msg)
+                raise exception.InvalidConfigurationValue(msg)
 
     def _get_mount_point_base(self):
         """Returns the mount point base for the remote fs.
@@ -132,7 +178,7 @@ class RemoteFSDriver(driver.VolumeDriver):
         else:
             self._create_regular_file(volume_path, volume_size)
 
-        self._set_rw_permissions_for_all(volume_path)
+        self._set_rw_permissions(volume_path)
 
     def _ensure_shares_mounted(self):
         """Look for remote shares in the flags and tries to mount them
@@ -197,12 +243,12 @@ class RemoteFSDriver(driver.VolumeDriver):
     def _delete(self, path):
         # Note(lpetrut): this method is needed in order to provide
         # interoperability with Windows as it will be overridden.
-        self._execute('rm', '-f', path, run_as_root=True)
+        self._execute('rm', '-f', path, run_as_root=self._execute_as_root)
 
     def _create_sparsed_file(self, path, size):
         """Creates file with 0 disk usage."""
         self._execute('truncate', '-s', '%sG' % size,
-                      path, run_as_root=True)
+                      path, run_as_root=self._execute_as_root)
 
     def _create_regular_file(self, path, size):
         """Creates regular file of given size. Takes a lot of time for large
@@ -215,7 +261,7 @@ class RemoteFSDriver(driver.VolumeDriver):
         self._execute('dd', 'if=/dev/zero', 'of=%s' % path,
                       'bs=%dM' % block_size_mb,
                       'count=%d' % block_count,
-                      run_as_root=True)
+                      run_as_root=self._execute_as_root)
 
     def _create_qcow2_file(self, path, size_gb):
         """Creates a QCOW2 file of a given size."""
@@ -223,15 +269,39 @@ class RemoteFSDriver(driver.VolumeDriver):
         self._execute('qemu-img', 'create', '-f', 'qcow2',
                       '-o', 'preallocation=metadata',
                       path, str(size_gb * units.Gi),
-                      run_as_root=True)
+                      run_as_root=self._execute_as_root)
+
+    def _set_rw_permissions(self, path):
+        """Sets access permissions for given NFS path.
+
+        Volume file permissions are set based upon the value of
+        secure_file_permissions: 'true' sets secure access permissions and
+        'false' sets more open (insecure) access permissions.
+
+        :param path: the volume file path.
+        """
+        if self.configuration.nas_secure_file_permissions == 'true':
+            permissions = '660'
+            LOG.debug('File path %s is being set with permissions: %s' %
+                      (path, permissions))
+        else:
+            permissions = 'ugo+rw'
+            parms = {'path': path, 'perm': permissions}
+            LOG.warn(_('%(path)s is being set with open permissions: '
+                       '%(perm)s') % parms)
+
+        self._execute('chmod', permissions, path,
+                      run_as_root=self._execute_as_root)
 
     def _set_rw_permissions_for_all(self, path):
         """Sets 666 permissions for the path."""
-        self._execute('chmod', 'ugo+rw', path, run_as_root=True)
+        self._execute('chmod', 'ugo+rw', path,
+                      run_as_root=self._execute_as_root)
 
     def _set_rw_permissions_for_owner(self, path):
         """Sets read-write permissions to the owner for the path."""
-        self._execute('chmod', 'u+rw', path, run_as_root=True)
+        self._execute('chmod', 'u+rw', path,
+                      run_as_root=self._execute_as_root)
 
     def local_path(self, volume):
         """Get volume path (mounted locally fs path) for given volume
@@ -243,12 +313,15 @@ class RemoteFSDriver(driver.VolumeDriver):
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
+        run_as_root = self._execute_as_root
+
         image_utils.fetch_to_raw(context,
                                  image_service,
                                  image_id,
                                  self.local_path(volume),
                                  self.configuration.volume_dd_blocksize,
-                                 size=volume['size'])
+                                 size=volume['size'],
+                                 run_as_root=run_as_root)
 
         # NOTE (leseb): Set the virtual size of the image
         # the raw conversion overwrote the destination file
@@ -257,9 +330,11 @@ class RemoteFSDriver(driver.VolumeDriver):
         # thus the initial 'size' parameter is not honored
         # this sets the size to the one asked in the first place by the user
         # and then verify the final virtual size
-        image_utils.resize_image(self.local_path(volume), volume['size'])
+        image_utils.resize_image(self.local_path(volume), volume['size'],
+                                 run_as_root=run_as_root)
 
-        data = image_utils.qemu_img_info(self.local_path(volume))
+        data = image_utils.qemu_img_info(self.local_path(volume),
+                                         run_as_root=run_as_root)
         virt_size = data.virtual_size / units.Gi
         if virt_size != volume['size']:
             raise exception.ImageUnacceptable(
@@ -375,6 +450,88 @@ class RemoteFSDriver(driver.VolumeDriver):
     def _ensure_share_mounted(self, share):
         raise NotImplementedError()
 
+    def secure_file_operations_enabled(self):
+        """Determine if driver is operating in Secure File Operations mode.
+
+        The Cinder Volume driver needs to query if this driver is operating
+        in a secure file mode; check our nas_secure_file_operations flag.
+        """
+        if self.configuration.nas_secure_file_operations == 'true':
+            return True
+        return False
+
+    def set_nas_security_options(self, is_new_cinder_install):
+        """Determine the setting to use for Secure NAS options.
+
+        This method must be overridden by child wishing to use secure
+        NAS file operations. This base method will set the NAS security
+        options to false.
+        """
+        doc_html = "http://docs.openstack.org/admin-guide-cloud/content" \
+                   "/nfs_backend.html"
+        self.configuration.nas_secure_file_operations = 'false'
+        LOG.warn(_("The NAS file operations will be run as root: allowing "
+                   "root level access at the storage backend. This is "
+                   "considered an insecure NAS environment. Please see %s for "
+                   "information on a secure NAS configuration.") %
+                 doc_html)
+        self.configuration.nas_secure_file_permissions = 'false'
+        LOG.warn(_("The NAS file permissions mode will be 666 (allowing "
+                   "other/world read & write access). This is considered an "
+                   "insecure NAS environment. Please see %s for information "
+                   "on a secure NFS configuration.") %
+                 doc_html)
+
+    def _determine_nas_security_option_setting(self, nas_option, mount_point,
+                                               is_new_cinder_install):
+        """Determine NAS security option setting when 'auto' is assigned.
+
+        This method determines the final 'true'/'false' setting of an NAS
+        security option when the default value of 'auto' has been detected.
+        If the nas option isn't 'auto' then its current value is used.
+
+        :param nas_option: The NAS security option value loaded from config.
+        :param mount_point: Mount where indicator file is written.
+        :param is_new_cinder_install: boolean for new Cinder installation.
+        :return string: 'true' or 'false' for new option setting.
+        """
+        if nas_option == 'auto':
+            # For auto detection, we first check to see if we have been
+            # through this process before by checking for the existence of
+            # the Cinder secure environment indicator file.
+            file_name = '.cinderSecureEnvIndicator'
+            file_path = os.path.join(mount_point, file_name)
+            if os.path.isfile(file_path):
+                nas_option = 'true'
+                LOG.info(_('Cinder secure environment indicator file exists.'))
+            else:
+                # The indicator file does not exist. If it is a new
+                # installation, set to 'true' and create the indicator file.
+                if is_new_cinder_install:
+                    nas_option = 'true'
+                    try:
+                        with open(file_path, 'w') as fh:
+                            fh.write('Detector file for Cinder secure '
+                                     'environment usage.\n')
+                            fh.write('Do not delete this file.\n')
+
+                        # Set the permissions on our special marker file to
+                        # protect from accidental removal (owner write only).
+                        self._execute('chmod', '640', file_path,
+                                      run_as_root=False)
+                        LOG.info(_('New Cinder secure environment indicator '
+                                   'file created at path %s.') % file_path)
+                    except IOError as err:
+                        LOG.error(_('Failed to created Cinder secure '
+                                    'environment indicator file: %s') %
+                                  format(err))
+                else:
+                    # For existing installs, we default to 'false'. The
+                    # admin can always set the option at the driver config.
+                    nas_option = 'false'
+
+        return nas_option
+
 
 class RemoteFSSnapDriver(RemoteFSDriver):
     """Base class for remotefs drivers implementing qcow2 snapshots.
@@ -455,12 +612,13 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         raise NotImplementedError()
 
     def _img_commit(self, path):
-        self._execute('qemu-img', 'commit', path, run_as_root=True)
+        self._execute('qemu-img', 'commit', path,
+                      run_as_root=self._execute_as_root)
         self._delete(path)
 
     def _rebase_img(self, image, backing_file, volume_format):
         self._execute('qemu-img', 'rebase', '-u', '-b', backing_file, image,
-                      '-F', volume_format, run_as_root=True)
+                      '-F', volume_format, run_as_root=self._execute_as_root)
 
     def _read_info_file(self, info_path, empty_if_missing=False):
         """Return dict of snapshot information.
@@ -530,7 +688,8 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         mount_point = self._get_mount_point_for_share(share)
 
         out, _ = self._execute('df', '--portability', '--block-size', '1',
-                               mount_point, run_as_root=True)
+                               mount_point,
+                               run_as_root=self._execute_as_root)
         out = out.splitlines()[1]
 
         size = int(out.split()[1])
@@ -885,7 +1044,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
 
         command = ['qemu-img', 'create', '-f', 'qcow2', '-o',
                    'backing_file=%s' % backing_path_full_path, new_snap_path]
-        self._execute(*command, run_as_root=True)
+        self._execute(*command, run_as_root=self._execute_as_root)
 
         info = self._qemu_img_info(backing_path_full_path,
                                    snapshot['volume']['name'])
@@ -895,9 +1054,9 @@ class RemoteFSSnapDriver(RemoteFSDriver):
                    '-b', backing_filename,
                    '-F', backing_fmt,
                    new_snap_path]
-        self._execute(*command, run_as_root=True)
+        self._execute(*command, run_as_root=self._execute_as_root)
 
-        self._set_rw_permissions_for_all(new_snap_path)
+        self._set_rw_permissions(new_snap_path)
 
     def _create_snapshot(self, snapshot):
         """Create a snapshot.

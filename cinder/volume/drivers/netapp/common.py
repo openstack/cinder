@@ -30,9 +30,9 @@ from cinder.volume.drivers.netapp.options import netapp_proxy_opts
 LOG = logging.getLogger(__name__)
 
 
-#NOTE(singn): Holds family:{protocol:driver} registration information.
-#Plug in new families and protocols to support new drivers.
-#No other code modification required.
+# NOTE(singn): Holds family:{protocol:driver} registration information.
+# Plug in new families and protocols to support new drivers.
+# No other code modification required.
 netapp_unified_plugin_registry =\
     {'ontap_cluster':
      {
@@ -54,9 +54,9 @@ netapp_unified_plugin_registry =\
      },
      }
 
-#NOTE(singn): Holds family:protocol information.
-#Protocol represents the default protocol driver option
-#in case no protocol is specified by the user in configuration.
+# NOTE(singn): Holds family:protocol information.
+# Protocol represents the default protocol driver option
+# in case no protocol is specified by the user in configuration.
 netapp_family_default =\
     {
         'ontap_cluster': 'nfs',

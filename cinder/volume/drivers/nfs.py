@@ -28,11 +28,11 @@ from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers import remotefs
 
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 
 LOG = logging.getLogger(__name__)
 
-volume_opts = [
+nfs_opts = [
     cfg.StrOpt('nfs_shares_config',
                default='/etc/cinder/nfs_shares',
                help='File with the list of available nfs shares'),
@@ -61,7 +61,7 @@ volume_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(volume_opts)
+CONF.register_opts(nfs_opts)
 
 
 class NfsDriver(remotefs.RemoteFSDriver):
@@ -77,7 +77,7 @@ class NfsDriver(remotefs.RemoteFSDriver):
     def __init__(self, execute=putils.execute, *args, **kwargs):
         self._remotefsclient = None
         super(NfsDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(volume_opts)
+        self.configuration.append_config_values(nfs_opts)
         root_helper = utils.get_root_helper()
         # base bound to instance is used in RemoteFsConnector.
         self.base = getattr(self.configuration,
@@ -127,14 +127,22 @@ class NfsDriver(remotefs.RemoteFSDriver):
 
         self.shares = {}  # address : options
 
-        # Check if mount.nfs is installed
+        # Check if mount.nfs is installed on this system; note that we don't
+        # need to be root to see if the package is installed.
+        package = 'mount.nfs'
         try:
-            self._execute('mount.nfs', check_exit_code=False, run_as_root=True)
+            self._execute(package, check_exit_code=False,
+                          run_as_root=False)
         except OSError as exc:
             if exc.errno == errno.ENOENT:
-                raise exception.NfsException('mount.nfs is not installed')
+                msg = _('%s is not installed') % package
+                raise exception.NfsException(msg)
             else:
                 raise exc
+
+        # Now that all configuration data has been loaded (shares),
+        # we can "set" our final NAS file security options.
+        self.set_nas_security_options(self._is_voldb_empty_at_startup)
 
     def _ensure_share_mounted(self, nfs_share):
         mnt_flags = []
@@ -227,17 +235,19 @@ class NfsDriver(remotefs.RemoteFSDriver):
 
         :param nfs_share: example 172.18.194.100:/var/nfs
         """
+        run_as_root = self._execute_as_root
 
         mount_point = self._get_mount_point_for_share(nfs_share)
 
         df, _ = self._execute('stat', '-f', '-c', '%S %b %a', mount_point,
-                              run_as_root=True)
+                              run_as_root=run_as_root)
         block_size, blocks_total, blocks_avail = map(float, df.split())
         total_available = block_size * blocks_avail
         total_size = block_size * blocks_total
 
         du, _ = self._execute('du', '-sb', '--apparent-size', '--exclude',
-                              '*snapshot*', mount_point, run_as_root=True)
+                              '*snapshot*', mount_point,
+                              run_as_root=run_as_root)
         total_allocated = float(du.split()[0])
         return total_size, total_available, total_allocated
 
@@ -255,13 +265,69 @@ class NfsDriver(remotefs.RemoteFSDriver):
                                               % (volume['id'], new_size))
         path = self.local_path(volume)
         LOG.info(_('Resizing file to %sG...'), new_size)
-        image_utils.resize_image(path, new_size)
+        image_utils.resize_image(path, new_size,
+                                 run_as_root=self._execute_as_root)
         if not self._is_file_size_equal(path, new_size):
             raise exception.ExtendVolumeError(
                 reason='Resizing image file failed.')
 
     def _is_file_size_equal(self, path, size):
         """Checks if file size at path is equal to size."""
-        data = image_utils.qemu_img_info(path)
+        data = image_utils.qemu_img_info(path,
+                                         run_as_root=self._execute_as_root)
         virt_size = data.virtual_size / units.Gi
         return virt_size == size
+
+    def set_nas_security_options(self, is_new_cinder_install):
+        """Determine the setting to use for Secure NAS options.
+
+        Value of each NAS Security option is checked and updated. If the
+        option is currently 'auto', then it is set to either true or false
+        based upon if this is a new Cinder installation. The RemoteFS variable
+        '_execute_as_root' will be updated for this driver.
+
+        :param is_new_cinder_install: bool indication of new Cinder install
+        """
+        doc_html = "http://docs.openstack.org/admin-guide-cloud/content" \
+                   "/nfs_backend.html"
+
+        self._ensure_shares_mounted()
+        if not self._mounted_shares:
+            raise exception.NfsNoSharesMounted()
+
+        nfs_mount = self._get_mount_point_for_share(self._mounted_shares[0])
+
+        self.configuration.nas_secure_file_permissions = \
+            self._determine_nas_security_option_setting(
+                self.configuration.nas_secure_file_permissions,
+                nfs_mount, is_new_cinder_install)
+
+        LOG.debug('NAS variable secure_file_permissions setting is: %s' %
+                  self.configuration.nas_secure_file_permissions)
+
+        if self.configuration.nas_secure_file_permissions == 'false':
+            LOG.warn(_("The NAS file permissions mode will be 666 (allowing "
+                       "other/world read & write access). This is considered "
+                       "an insecure NAS environment. Please see %s for "
+                       "information on a secure NFS configuration.") %
+                     doc_html)
+
+        self.configuration.nas_secure_file_operations = \
+            self._determine_nas_security_option_setting(
+                self.configuration.nas_secure_file_operations,
+                nfs_mount, is_new_cinder_install)
+
+        # If secure NAS, update the '_execute_as_root' flag to not
+        # run as the root user; run as process' user ID.
+        if self.configuration.nas_secure_file_operations == 'true':
+            self._execute_as_root = False
+
+        LOG.debug('NAS variable secure_file_operations setting is: %s' %
+                  self.configuration.nas_secure_file_operations)
+
+        if self.configuration.nas_secure_file_operations == 'false':
+            LOG.warn(_("The NAS file operations will be run as root: allowing "
+                       "root level access at the storage backend. This is "
+                       "considered an insecure NAS environment. Please see %s "
+                       "for information on a secure NAS configuration.") %
+                     doc_html)

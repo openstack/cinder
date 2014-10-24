@@ -832,7 +832,7 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
             .connect_volume(self.fake_connection['data'])\
             .AndReturn({'path': self.fake_dev_path})
 
-        aoe_initiator.check_valid_device(self.fake_dev_path)\
+        aoe_initiator.check_valid_device(self.fake_dev_path, mox.IgnoreArg())\
             .AndReturn(True)
 
         aoe_initiator.disconnect_volume(

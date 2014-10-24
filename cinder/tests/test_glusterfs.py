@@ -98,6 +98,8 @@ class GlusterFsDriverTestCase(test.TestCase):
             self.TEST_MNT_POINT_BASE
         self._configuration.glusterfs_sparsed_volumes = True
         self._configuration.glusterfs_qcow2_volumes = False
+        self._configuration.nas_secure_file_permissions = 'false'
+        self._configuration.nas_secure_file_operations = 'false'
 
         self.stubs = stubout.StubOutForTesting()
         self._driver =\
