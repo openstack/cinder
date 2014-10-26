@@ -47,7 +47,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
 
     def __init__(self, **kwargs):
         """Initializing the client."""
-        super(CiscoFCSanLookupService, self).__init__(self, **kwargs)
+        super(CiscoFCSanLookupService, self).__init__(**kwargs)
         self.configuration = kwargs.get('configuration', None)
         self.create_configuration()
 
@@ -56,8 +56,6 @@ class CiscoFCSanLookupService(FCSanLookupService):
         self.switch_pwd = ""
         self.switch_ip = ""
         self.sshpool = None
-
-        self.fabric_configs = ""
 
     def create_configuration(self):
         """Configuration specific to SAN context values."""
