@@ -154,7 +154,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.18'
+    RPC_API_VERSION = '1.19'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -263,9 +263,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             return False
 
     def init_host(self):
-        """Do any initialization that needs to be run if this is a
-           standalone service.
-        """
+        """Perform any required initialization."""
 
         ctxt = context.get_admin_context()
         LOG.info(_("Starting volume driver %(driver_name)s (%(version)s)") %
@@ -1058,7 +1056,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                                              remote='dest')
                 # The above call is synchronous so we complete the migration
                 self.migrate_volume_completion(ctxt, volume['id'],
-                                               new_volume['id'], error=False)
+                                               new_volume['id'],
+                                               error=False)
             else:
                 nova_api = compute.API()
                 # This is an async call to Nova, which will call the completion
@@ -1132,6 +1131,12 @@ class VolumeManager(manager.SchedulerDependentManager):
             msg = _("Failed to delete migration source vol %(vol)s: %(err)s")
             LOG.error(msg % {'vol': volume_id, 'err': ex})
 
+        # Give driver (new_volume) a chance to update things as needed
+        # Note this needs to go through rpc to the host of the new volume
+        # the current host and driver object is for the "existing" volume
+        rpcapi.update_migrated_volume(ctxt,
+                                      volume,
+                                      new_volume)
         self.db.finish_volume_migration(ctxt, volume_id, new_volume_id)
         self.db.volume_destroy(ctxt, new_volume_id)
         if status_update.get('status') == 'in-use':
@@ -1142,6 +1147,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.db.volume_update(ctxt, volume_id, updates)
 
         if 'in-use' in (status_update.get('status'), volume['status']):
+            # NOTE(jdg): if we're passing the ref here, why are we
+            # also passing in the various fields from that ref?
             rpcapi.attach_volume(ctxt,
                                  volume,
                                  volume['instance_uuid'],
@@ -1974,3 +1981,15 @@ class VolumeManager(manager.SchedulerDependentManager):
             context, cgsnapshot_ref, "delete.end")
 
         return True
+
+    def update_migrated_volume(self, ctxt, volume, new_volume):
+        """Finalize migration process on backend device."""
+
+        model_update = None
+        model_update = self.driver.update_migrated_volume(ctxt,
+                                                          volume,
+                                                          new_volume)
+        if model_update:
+            self.db.volume_update(ctxt.elevated(),
+                                  volume['id'],
+                                  model_update)
