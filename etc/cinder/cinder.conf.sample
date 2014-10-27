@@ -1110,6 +1110,10 @@
 # driver supports it. (string value)
 #driver_client_cert=<None>
 
+# Tell driver to use SSL for connection to backend storage if
+# the driver supports it. (boolean value)
+#driver_use_ssl=false
+
 
 #
 # Options defined in cinder.volume.drivers.block_device
@@ -2199,6 +2203,28 @@
 
 # Path to store VHD backed volumes (string value)
 #windows_iscsi_lun_path=C:\iSCSIVirtualDisks
+
+
+#
+# Options defined in cinder.volume.drivers.xio
+#
+
+# Default storage pool for volumes. (integer value)
+#ise_storage_pool=1
+
+# Raid level for ISE volumes. (integer value)
+#ise_raid=1
+
+# Number of retries (per port) when establishing connection to
+# ISE management port. (integer value)
+#ise_connection_retries=5
+
+# Interval (secs) between retries. (integer value)
+#ise_retry_interval=1
+
+# Number on retries to get completion status after issuing a
+# command to ISE. (integer value)
+#ise_completion_retries=30
 
 
 #

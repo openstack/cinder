@@ -127,6 +127,10 @@ volume_opts = [
                default=None,
                help='The path to the client certificate for verification, '
                     'if the driver supports it.'),
+    cfg.BoolOpt('driver_use_ssl',
+                default=False,
+                help='Tell driver to use SSL for connection to backend '
+                     'storage if the driver supports it.'),
 ]
 
 # for backward compatibility
