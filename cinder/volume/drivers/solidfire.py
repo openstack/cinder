@@ -519,6 +519,15 @@ class SolidFireDriver(SanISCSIDriver):
                   'attributes': attributes,
                   'qos': qos}
 
+        # NOTE(jdg): Check if we're a migration tgt, if so
+        # use the old volume-id here for the SF Name
+        migration_status = volume.get('migration_status', None)
+        if migration_status and 'target' in migration_status:
+            k, v = migration_status.split(':')
+            params['name'] = 'UUID-%s' % v
+            params['attributes']['migration_uuid'] = volume['id']
+            params['attributes']['uuid'] = v
+
         return self._do_volume_create(volume['project_id'], params)
 
     def create_cloned_volume(self, volume, src_vref):
