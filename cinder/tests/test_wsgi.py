@@ -117,6 +117,17 @@ class TestWSGIServer(test.TestCase):
         server.stop()
         server.wait()
 
+    def test_server_pool_waitall(self):
+        # test pools waitall method gets called while stopping server
+        server = cinder.wsgi.Server("test_server", None,
+                                    host="127.0.0.1", port=4444)
+        server.start()
+        with mock.patch.object(server._pool,
+                               'waitall') as mock_waitall:
+            server.stop()
+            server.wait()
+            mock_waitall.assert_called_once_with()
+
     def test_app(self):
         greetings = 'Hello, World!!!'
 
