@@ -58,6 +58,8 @@ class _ExportMixin(object):
         data = {}
         data['location'] = self._iscsi_location(
             conf.iscsi_ip_address, tid, iscsi_name, conf.iscsi_port, lun)
+
+        LOG.debug('Set provider_location to: %s', data['location'])
         data['auth'] = self._iscsi_authentication(
             'CHAP', chap_username, chap_password)
         return data
