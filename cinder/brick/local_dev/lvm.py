@@ -233,7 +233,7 @@ class LVM(executor.Executor):
         return self._supports_lvchange_ignoreskipactivation
 
     @staticmethod
-    def get_all_volumes(root_helper, vg_name=None):
+    def get_all_volumes(root_helper, vg_name=None, lv_name=None):
         """Static method to get all LV's on a system.
 
         :param root_helper: root_helper to use for execute
@@ -245,7 +245,9 @@ class LVM(executor.Executor):
         cmd = ['env', 'LC_ALL=C', 'lvs', '--noheadings', '--unit=g',
                '-o', 'vg_name,name,size', '--nosuffix']
 
-        if vg_name is not None:
+        if lv_name is not None and vg_name is not None:
+            cmd.append("%s/%s" % (vg_name, lv_name))
+        elif vg_name is not None:
             cmd.append(vg_name)
 
         lvs_start = time.time()
@@ -265,13 +267,15 @@ class LVM(executor.Executor):
 
         return lv_list
 
-    def get_volumes(self):
+    def get_volumes(self, lv_name=None):
         """Get all LV's associated with this instantiation (VG).
 
         :returns: List of Dictionaries with LV info
 
         """
-        self.lv_list = self.get_all_volumes(self._root_helper, self.vg_name)
+        self.lv_list = self.get_all_volumes(self._root_helper,
+                                            self.vg_name,
+                                            lv_name)
         return self.lv_list
 
     def get_volume(self, name):
@@ -280,7 +284,7 @@ class LVM(executor.Executor):
         :returns: dict representation of Logical Volume if exists
 
         """
-        ref_list = self.get_volumes()
+        ref_list = self.get_volumes(name)
         for r in ref_list:
             if r['name'] == name:
                 return r
