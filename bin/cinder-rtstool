@@ -81,7 +81,7 @@ def create(backing_device, name, userid, password, initiator_iqns=None):
         pass
 
 
-def add_initiator(target_iqn, initiator_iqn, userid, password):
+def _lookup_target(target_iqn, initiator_iqn):
     try:
         rtsroot = rtslib.root.RTSRoot()
     except rtslib.utils.RTSLibError:
@@ -89,14 +89,14 @@ def add_initiator(target_iqn, initiator_iqn, userid, password):
         raise
 
     # Look for the target
-    target = None
     for t in rtsroot.targets:
         if t.dump()['wwn'] == target_iqn:
-            target = t
-            break
-    if target is None:
-        raise RtstoolError(_('Could not find target %s') % target_iqn)
+            return t
+    raise RtstoolError(_('Could not find target %s') % target_iqn)
 
+
+def add_initiator(target_iqn, initiator_iqn, userid, password):
+    target = _lookup_target(target_iqn, initiator_iqn)
     tpg = target.tpgs.next()  # get the first one
     for acl in tpg.dump()['node_acls']:
         # See if this ACL configuration already exists
@@ -109,6 +109,17 @@ def add_initiator(target_iqn, initiator_iqn, userid, password):
     acl_new.chap_password = password
 
     rtslib.MappedLUN(acl_new, 0, tpg_lun=0)
+
+
+def delete_initiator(target_iqn, initiator_iqn):
+    target = _lookup_target(target_iqn, initiator_iqn)
+    tpg = target.tpgs.next()  # get the first one
+    for acl in tpg.node_acls:
+        if acl.node_wwn == initiator_iqn:
+            acl.delete()
+            return
+    raise RtstoolError(_('Could not find ACL %(acl)s in target %(target)s')
+                       % {'target': target_iqn, 'acl': initiator_iqn})
 
 
 def get_targets():
@@ -147,6 +158,8 @@ def usage():
           " <initiator_iqn,iqn2,iqn3,...>")
     print(sys.argv[0] +
           " add-initiator [target_iqn] [userid] [password] [initiator_iqn]")
+    print(sys.argv[0] +
+          " delete-initiator [target_iqn] [initiator_iqn]")
     print(sys.argv[0] + " get-targets")
     print(sys.argv[0] + " delete [iqn]")
     print(sys.argv[0] + " verify")
@@ -188,6 +201,15 @@ def main(argv=None):
         initiator_iqn = argv[5]
 
         add_initiator(target_iqn, initiator_iqn, userid, password)
+
+    elif argv[1] == 'delete-initiator':
+        if len(argv) < 4:
+            usage()
+
+        target_iqn = argv[2]
+        initiator_iqn = argv[3]
+
+        delete_initiator(target_iqn, initiator_iqn)
 
     elif argv[1] == 'get-targets':
         get_targets()
