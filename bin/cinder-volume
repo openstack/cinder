@@ -71,7 +71,8 @@ if __name__ == '__main__':
             backend_host = getattr(CONF, backend).host
             host = "%s@%s" % (backend_host or CONF.host, backend)
             server = service.Service.create(host=host,
-                                            service_name=backend)
+                                            service_name=backend,
+                                            binary='cinder-volume')
             launcher.launch_service(server)
     else:
         server = service.Service.create(binary='cinder-volume')
