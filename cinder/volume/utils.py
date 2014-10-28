@@ -393,12 +393,6 @@ def supports_thin_provisioning():
         utils.get_root_helper())
 
 
-def get_all_volumes(vg_name=None):
-    return brick_lvm.LVM.get_all_volumes(
-        utils.get_root_helper(),
-        vg_name)
-
-
 def get_all_physical_volumes(vg_name=None):
     return brick_lvm.LVM.get_all_physical_volumes(
         utils.get_root_helper(),
