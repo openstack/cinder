@@ -471,14 +471,14 @@ class VolumeTestCase(BaseVolumeTestCase):
                        fake_list_availability_zones)
 
         # Test backwards compatibility, default_availability_zone not set
-        CONF.set_override('storage_availability_zone', 'az2')
+        self.override_config('storage_availability_zone', 'az2')
         volume = volume_api.create(self.context,
                                    1,
                                    'name',
                                    'description')
         self.assertEqual(volume['availability_zone'], 'az2')
 
-        CONF.set_override('default_availability_zone', 'default-az')
+        self.override_config('default_availability_zone', 'default-az')
         volume = volume_api.create(self.context,
                                    1,
                                    'name',

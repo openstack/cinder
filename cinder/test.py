@@ -185,18 +185,18 @@ class TestCase(testtools.TestCase):
 
         fake_notifier.stub_notifier(self.stubs)
 
-        CONF.set_override('fatal_exception_format_errors', True)
+        self.override_config('fatal_exception_format_errors', True)
         # This will be cleaned up by the NestedTempfile fixture
-        CONF.set_override('lock_path', tempfile.mkdtemp())
-        CONF.set_override('policy_file',
-                          os.path.join(
-                              os.path.abspath(
-                                  os.path.join(
-                                      os.path.dirname(__file__),
-                                      '..',
-                                  )
-                              ),
-                              'cinder/tests/policy.json'))
+        self.override_config('lock_path', tempfile.mkdtemp())
+        self.override_config('policy_file',
+                             os.path.join(
+                                 os.path.abspath(
+                                     os.path.join(
+                                         os.path.dirname(__file__),
+                                         '..',
+                                     )
+                                 ),
+                                 'cinder/tests/policy.json'))
 
     def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""
@@ -221,10 +221,15 @@ class TestCase(testtools.TestCase):
         for key in [k for k in self.__dict__.keys() if k[0] != '_']:
             del self.__dict__[key]
 
+    def override_config(self, name, override, group=None):
+        """Cleanly override CONF variables."""
+        CONF.set_override(name, override, group)
+        self.addCleanup(CONF.clear_override, name, group)
+
     def flags(self, **kw):
         """Override CONF variables for a test."""
         for k, v in kw.iteritems():
-            CONF.set_override(k, v)
+            self.override_config(k, v)
 
     def log_level(self, level):
         """Set logging level to the specified value."""

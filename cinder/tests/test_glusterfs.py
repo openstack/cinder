@@ -152,8 +152,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
     def test_local_path(self):
         """local_path common use case."""
-        CONF.set_override("glusterfs_mount_point_base",
-                          self.TEST_MNT_POINT_BASE)
+        self.override_config("glusterfs_mount_point_base",
+                             self.TEST_MNT_POINT_BASE)
         drv = self._driver
 
         volume = DumbVolume()
@@ -259,8 +259,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(brick.remotefs.remotefs.RemoteFsClient,
                             'get_mount_point')
 
-        CONF.set_override("glusterfs_mount_point_base",
-                          self.TEST_MNT_POINT_BASE)
+        self.override_config("glusterfs_mount_point_base",
+                             self.TEST_MNT_POINT_BASE)
 
         brick.remotefs.remotefs.RemoteFsClient.\
             get_mount_point(self.TEST_EXPORT1).AndReturn(hashed_path)
@@ -422,8 +422,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        CONF.set_override("glusterfs_shares_config",
-                          self.TEST_SHARES_CONFIG_FILE)
+        self.override_config("glusterfs_shares_config",
+                             self.TEST_SHARES_CONFIG_FILE)
 
         mox.StubOutWithMock(os.path, 'exists')
         os.path.exists(self.TEST_SHARES_CONFIG_FILE).AndReturn(True)
@@ -450,8 +450,8 @@ class GlusterFsDriverTestCase(test.TestCase):
         mox = self._mox
         drv = self._driver
 
-        CONF.set_override("glusterfs_shares_config",
-                          self.TEST_SHARES_CONFIG_FILE)
+        self.override_config("glusterfs_shares_config",
+                             self.TEST_SHARES_CONFIG_FILE)
 
         self.stubs.Set(drv, '_load_shares_config',
                        self._fake_load_shares_config)
@@ -561,7 +561,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
         volume = self._simple_volume()
 
-        CONF.set_override('glusterfs_sparsed_volumes', True)
+        self.override_config('glusterfs_sparsed_volumes', True)
 
         mox.StubOutWithMock(drv, '_create_sparsed_file')
         mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
@@ -1475,8 +1475,8 @@ class GlusterFsDriverTestCase(test.TestCase):
     def test_get_backing_chain_for_path(self):
         (mox, drv) = self._mox, self._driver
 
-        CONF.set_override('glusterfs_mount_point_base',
-                          self.TEST_MNT_POINT_BASE)
+        self.override_config('glusterfs_mount_point_base',
+                             self.TEST_MNT_POINT_BASE)
 
         volume = self._simple_volume()
         vol_filename = volume['name']
