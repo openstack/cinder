@@ -62,6 +62,7 @@ import warnings
 warnings.simplefilter('once', DeprecationWarning)
 
 from oslo.config import cfg
+from oslo.db.sqlalchemy import migration
 from oslo import messaging
 
 from cinder import i18n
@@ -71,7 +72,8 @@ i18n.enable_lazy()
 from cinder.common import config  # noqa
 from cinder import context
 from cinder import db
-from cinder.db import migration
+from cinder.db import migration as db_migration
+from cinder.db.sqlalchemy import api as db_api
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
@@ -218,11 +220,13 @@ class DbCommands(object):
           help='Database version')
     def sync(self, version=None):
         """Sync the database up to the most recent version."""
-        return migration.db_sync(version)
+        return db_migration.db_sync(version)
 
     def version(self):
         """Print the current database version."""
-        print(migration.db_version())
+        print(migration.db_version(db_api.get_engine(),
+                                   db_migration.MIGRATE_REPO_PATH,
+                                   db_migration.INIT_VERSION))
 
 
 class VersionCommands(object):

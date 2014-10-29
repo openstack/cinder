@@ -40,5 +40,4 @@ def downgrade(migrate_engine):
 
     volumes = Table('volumes', meta, autoload=True)
     bootable = volumes.columns.bootable
-    #bootable = Column('bootable', Boolean)
     volumes.drop_column(bootable)
