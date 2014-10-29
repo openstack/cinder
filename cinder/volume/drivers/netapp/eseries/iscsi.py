@@ -55,6 +55,26 @@ class Driver(driver.ISCSIDriver):
                       'netapp_storage_pools']
     SLEEP_SECS = 5
     MAX_LUNS_PER_HOST = 255
+    HOST_TYPES = {'aix': 'AIX MPIO',
+                  'avt': 'AVT_4M',
+                  'factoryDefault': 'FactoryDefault',
+                  'hpux': 'HP-UX TPGS',
+                  'linux_atto': 'LnxTPGSALUA',
+                  'linux_dm_mp': 'LnxALUA',
+                  'linux_mpp_rdac': 'Linux',
+                  'linux_pathmanager': 'LnxTPGSALUA_PM',
+                  'macos': 'MacTPGSALUA',
+                  'ontap': 'ONTAP',
+                  'svc': 'SVC',
+                  'solaris_v11': 'SolTPGSALUA',
+                  'solaris_v10': 'Solaris',
+                  'vmware': 'VmwTPGSALUA',
+                  'windows':
+                  'Windows 2000/Server 2003/Server 2008 Non-Clustered',
+                  'windows_atto': 'WinTPGSALUA',
+                  'windows_clustered':
+                  'Windows 2000/Server 2003/Server 2008 Clustered'
+                  }
 
     def __init__(self, *args, **kwargs):
         super(Driver, self).__init__(*args, **kwargs)
@@ -88,6 +108,12 @@ class Driver(driver.ISCSIDriver):
                 raise exception.InvalidInput(reason=msg)
 
     def check_for_setup_error(self):
+        self.host_type =\
+            self.HOST_TYPES.get(self.configuration.netapp_eseries_host_type,
+                                None)
+        if not self.host_type:
+            raise exception.NetAppDriverException(
+                _('Configured host type is not supported.'))
         self._check_storage_system()
         self._populate_system_objects()
 
@@ -516,35 +542,45 @@ class Driver(driver.ISCSIDriver):
     @cinder_utils.synchronized('map_es_volume')
     def _map_volume_to_host(self, vol, initiator):
         """Maps the e-series volume to host with initiator."""
-        host = self._get_or_create_host(initiator)
+        host = self._get_or_create_host(initiator, self.host_type)
         lun = self._get_free_lun(host)
         return self._client.create_volume_mapping(vol['volumeRef'],
                                                   host['hostRef'], lun)
 
-    def _get_or_create_host(self, port_id, host_type='linux'):
+    def _get_or_create_host(self, port_id, host_type):
         """Fetch or create a host by given port."""
         try:
-            return self._get_host_with_port(port_id, host_type)
+            host = self._get_host_with_port(port_id)
+            ht_def = self._get_host_type_definition(host_type)
+            if host.get('hostTypeIndex') == ht_def.get('index'):
+                return host
+            else:
+                try:
+                    return self._client.update_host_type(
+                        host['hostRef'], ht_def)
+                except exception.NetAppDriverException as e:
+                    msg = _("Unable to update host type for host with"
+                            " label %(l)s. %(e)s")
+                    LOG.warn(msg % {'l': host['label'], 'e': e.msg})
+                    return host
         except exception.NotFound as e:
             LOG.warn(_("Message - %s."), e.msg)
             return self._create_host(port_id, host_type)
 
-    def _get_host_with_port(self, port_id, host_type='linux'):
+    def _get_host_with_port(self, port_id):
         """Gets or creates a host with given port id."""
         hosts = self._client.list_hosts()
-        ht_def = self._get_host_type_definition(host_type)
         for host in hosts:
-            if (host.get('hostTypeIndex') == ht_def.get('index')
-                    and host.get('hostSidePorts')):
+            if host.get('hostSidePorts'):
                 ports = host.get('hostSidePorts')
                 for port in ports:
                     if (port.get('type') == 'iscsi'
                             and port.get('address') == port_id):
                         return host
-        msg = _("Host with port %(port)s and type %(type)s not found.")
-        raise exception.NotFound(msg % {'port': port_id, 'type': host_type})
+        msg = _("Host with port %(port)s not found.")
+        raise exception.NotFound(msg % {'port': port_id})
 
-    def _create_host(self, port_id, host_type='linux'):
+    def _create_host(self, port_id, host_type):
         """Creates host on system with given initiator as port_id."""
         LOG.info(_("Creating host with port %s."), port_id)
         label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
@@ -553,7 +589,7 @@ class Driver(driver.ISCSIDriver):
         return self._client.create_host_with_port(label, host_type,
                                                   port_id, port_label)
 
-    def _get_host_type_definition(self, host_type='linux'):
+    def _get_host_type_definition(self, host_type):
         """Gets supported host type if available on storage system."""
         host_types = self._client.list_host_types()
         for ht in host_types:

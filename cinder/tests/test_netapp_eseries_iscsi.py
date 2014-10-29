@@ -184,8 +184,8 @@ class FakeEseriesServerHandler(object):
                       "index" : 5
                     }, {
                       "id" : "6",
-                      "code" : "LNX",
-                      "name" : "Linux",
+                      "code" : "LnxALUA",
+                      "name" : "LnxALUA",
                       "index" : 6
                     }]"""
         elif re.match("^/storage-systems/[0-9a-zA-Z]+/snapshot-groups$", path):
@@ -698,3 +698,59 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
             self.volume_clone_large, self.snapshot)
         self.driver.delete_snapshot(self.snapshot)
         self.driver.delete_volume(self.volume)
+
+    def test_get_host_right_type(self):
+        self.driver._get_host_with_port = mock.Mock(
+            return_value={'hostTypeIndex': 2, 'name': 'test'})
+        self.driver._get_host_type_definition = mock.Mock(
+            return_value={'index': 2, 'name': 'LnxALUA'})
+        host = self.driver._get_or_create_host('port', 'LinuxALUA')
+        self.assertEqual(host, {'hostTypeIndex': 2, 'name': 'test'})
+        self.driver._get_host_with_port.assert_called_once_with('port')
+        self.driver._get_host_type_definition.assert_called_once_with(
+            'LinuxALUA')
+
+    def test_get_host_update_type(self):
+        self.driver._get_host_with_port = mock.Mock(
+            return_value={'hostTypeIndex': 2, 'hostRef': 'test'})
+        self.driver._get_host_type_definition = mock.Mock(
+            return_value={'index': 3, 'name': 'LnxALUA'})
+        self.driver._client.update_host_type = mock.Mock(
+            return_value={'hostTypeIndex': 3, 'hostRef': 'test'})
+        host = self.driver._get_or_create_host('port', 'LinuxALUA')
+        self.assertEqual(host, {'hostTypeIndex': 3, 'hostRef': 'test'})
+        self.driver._get_host_with_port.assert_called_once_with('port')
+        self.driver._get_host_type_definition.assert_called_once_with(
+            'LinuxALUA')
+        self.assertEqual(self.driver._client.update_host_type.call_count, 1)
+
+    def test_get_host_update_type_failed(self):
+        self.driver._get_host_with_port = mock.Mock(
+            return_value={'hostTypeIndex': 2, 'hostRef': 'test',
+                          'label': 'test'})
+        self.driver._get_host_type_definition = mock.Mock(
+            return_value={'index': 3, 'name': 'LnxALUA'})
+        self.driver._client.update_host_type = mock.Mock(
+            side_effect=exception.NetAppDriverException)
+        host = self.driver._get_or_create_host('port', 'LinuxALUA')
+        self.assertEqual(host, {'hostTypeIndex': 2, 'hostRef': 'test',
+                                'label': 'test'})
+        self.driver._get_host_with_port.assert_called_once_with('port')
+        self.driver._get_host_type_definition.assert_called_once_with(
+            'LinuxALUA')
+        self.assertEqual(self.driver._client.update_host_type.call_count, 1)
+
+    def test_get_host_not_found(self):
+        self.driver._get_host_with_port = mock.Mock(
+            side_effect=exception.NotFound)
+        self.driver._create_host = mock.Mock()
+        self.driver._get_or_create_host('port', 'LnxALUA')
+        self.driver._get_host_with_port.assert_called_once_with('port')
+        self.driver._create_host.assert_called_once_with('port', 'LnxALUA')
+
+    def test_setup_error_unsupported_host_type(self):
+        configuration = self._set_config(create_configuration())
+        configuration.netapp_eseries_host_type = 'garbage'
+        driver = common.NetAppDriver(configuration=configuration)
+        self.assertRaises(exception.NetAppDriverException,
+                          driver.check_for_setup_error)
