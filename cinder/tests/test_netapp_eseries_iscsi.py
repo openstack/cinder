@@ -112,6 +112,32 @@ class FakeEseriesServerHandler(object):
                     "currentControllerId": "070000000000000000000001",
                     "protectionInformationCapable": false, "mapped": false,
                     "reconPriority": 1, "protectionType":
+                    "type1Protection"},
+                    {"extremeProtection": false, "pitBaseVolume": true,
+                    "dssMaxSegmentSize": 131072,
+                    "totalSizeInBytes": "1073741824", "raidLevel": "raid6",
+                    "volumeRef": "0200000060080E500023BB34000003FB515C2293",
+                    "listOfMappings": [], "sectorOffset": "15",
+                    "id": "0200000060080E500023BB34000003FB515C2293",
+                    "wwn": "60080E500023BB3400001FC352D14CB2",
+                    "capacity": "2147483648", "mgmtClientAttribute": 0,
+                    "label": "CFDXJ67BLJH25DXCZFZD4NSF54",
+                    "volumeFull": false,
+                    "blkSize": 512, "volumeCopyTarget": false,
+                    "volumeGroupRef":
+                    "0400000060080E500023BB3400001F9F52CECC3F",
+                    "preferredControllerId": "070000000000000000000001",
+                    "currentManager": "070000000000000000000001",
+                    "applicationTagOwned": false, "status": "optimal",
+                    "segmentSize": 131072, "volumeUse": "standardVolume",
+                    "action": "none", "preferredManager":
+                    "070000000000000000000001", "volumeHandle": 15,
+                    "offline": false, "preReadRedundancyCheckEnabled": false,
+                    "dssPreallocEnabled": false, "name": "bdm-vc-test-1",
+                    "worldWideName": "60080E500023BB3400001FC352D14CB2",
+                    "currentControllerId": "070000000000000000000001",
+                    "protectionInformationCapable": false, "mapped": false,
+                    "reconPriority": 1, "protectionType":
                     "type1Protection"}]"""
         elif re.match("^/storage-systems/[0-9a-zA-Z]+/volumes/[0-9A-Za-z]+$",
                       path):
