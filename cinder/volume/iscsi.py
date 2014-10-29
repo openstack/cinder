@@ -109,7 +109,7 @@ class _ExportMixin(object):
 
             msg = _('Detected inconsistency in provider_location id')
             LOG.debug('%s', msg)
-            old_name = self._fix_id_migration(context, volume)
+            old_name = self._fix_id_migration(context, volume, vg_name)
             if 'in-use' in volume['status']:
                 old_name = None
         self.create_iscsi_target(iscsi_name, iscsi_target, 0, volume_path,
