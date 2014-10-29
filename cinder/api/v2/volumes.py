@@ -249,12 +249,15 @@ class VolumeController(wsgi.Controller):
             utils.add_visible_admin_metadata(volume)
 
         limited_list = common.limited(volumes, req)
+        volume_count = len(volumes)
         req.cache_db_volumes(limited_list)
 
         if is_detail:
-            volumes = self._view_builder.detail_list(req, limited_list)
+            volumes = self._view_builder.detail_list(req, limited_list,
+                                                     volume_count)
         else:
-            volumes = self._view_builder.summary_list(req, limited_list)
+            volumes = self._view_builder.summary_list(req, limited_list,
+                                                      volume_count)
         return volumes
 
     def _image_uuid_from_ref(self, image_ref, context):

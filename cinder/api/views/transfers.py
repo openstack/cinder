@@ -29,13 +29,15 @@ class ViewBuilder(common.ViewBuilder):
         """Initialize view builder."""
         super(ViewBuilder, self).__init__()
 
-    def summary_list(self, request, transfers):
+    def summary_list(self, request, transfers, origin_transfer_count):
         """Show a list of transfers without many details."""
-        return self._list_view(self.summary, request, transfers)
+        return self._list_view(self.summary, request, transfers,
+                               origin_transfer_count)
 
-    def detail_list(self, request, transfers):
+    def detail_list(self, request, transfers, origin_transfer_count):
         """Detailed view of a list of transfers ."""
-        return self._list_view(self.detail, request, transfers)
+        return self._list_view(self.detail, request, transfers,
+                               origin_transfer_count)
 
     def summary(self, request, transfer):
         """Generic, non-detailed view of a transfer."""
@@ -74,13 +76,14 @@ class ViewBuilder(common.ViewBuilder):
             }
         }
 
-    def _list_view(self, func, request, transfers):
+    def _list_view(self, func, request, transfers, origin_transfer_count):
         """Provide a view for a list of transfers."""
         transfers_list = [func(request, transfer)['transfer'] for transfer in
                           transfers]
         transfers_links = self._get_collection_links(request,
                                                      transfers,
-                                                     self._collection_name)
+                                                     self._collection_name,
+                                                     origin_transfer_count)
         transfers_dict = dict(transfers=transfers_list)
 
         if transfers_links:

@@ -131,12 +131,15 @@ class VolumeTransferController(wsgi.Controller):
         filters = req.params.copy()
         LOG.debug('Listing volume transfers')
         transfers = self.transfer_api.get_all(context, filters=filters)
+        transfer_count = len(transfers)
         limited_list = common.limited(transfers, req)
 
         if is_detail:
-            transfers = self._view_builder.detail_list(req, limited_list)
+            transfers = self._view_builder.detail_list(req, limited_list,
+                                                       transfer_count)
         else:
-            transfers = self._view_builder.summary_list(req, limited_list)
+            transfers = self._view_builder.summary_list(req, limited_list,
+                                                        transfer_count)
 
         return transfers
 

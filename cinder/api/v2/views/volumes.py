@@ -29,13 +29,15 @@ class ViewBuilder(common.ViewBuilder):
         """Initialize view builder."""
         super(ViewBuilder, self).__init__()
 
-    def summary_list(self, request, volumes):
+    def summary_list(self, request, volumes, volume_count):
         """Show a list of volumes without many details."""
-        return self._list_view(self.summary, request, volumes)
+        return self._list_view(self.summary, request, volumes,
+                               volume_count)
 
-    def detail_list(self, request, volumes):
+    def detail_list(self, request, volumes, volume_count):
         """Detailed view of a list of volumes."""
         return self._list_view(self.detail, request, volumes,
+                               volume_count,
                                coll_name=self._collection_name + '/detail')
 
     def summary(self, request, volume):
@@ -116,12 +118,14 @@ class ViewBuilder(common.ViewBuilder):
         else:
             return volume['volume_type_id']
 
-    def _list_view(self, func, request, volumes, coll_name=_collection_name):
+    def _list_view(self, func, request, volumes, volume_count,
+                   coll_name=_collection_name):
         """Provide a view for a list of volumes.
 
         :param func: Function used to format the volume data
         :param request: API request
-        :param servers: List of volumes in dictionary format
+        :param volumes: List of volumes in dictionary format
+        :param volume_count: Length of the original list of volumes
         :param coll_name: Name of collection, used to generate the next link
                           for a pagination query
         :returns: Volume data in dictionary format
@@ -129,7 +133,8 @@ class ViewBuilder(common.ViewBuilder):
         volumes_list = [func(request, volume)['volume'] for volume in volumes]
         volumes_links = self._get_collection_links(request,
                                                    volumes,
-                                                   coll_name)
+                                                   coll_name,
+                                                   volume_count)
         volumes_dict = dict(volumes=volumes_list)
 
         if volumes_links:
