@@ -449,7 +449,7 @@ class GPFSDriver(driver.VolumeDriver):
         LOG.debug('Update volume attributes with mmchattr to %s.' % options)
         self._execute(*cmd, run_as_root=True)
 
-    def _set_volume_attributes(self, path, metadata):
+    def _set_volume_attributes(self, volume, path, metadata):
         """Set various GPFS attributes for this volume."""
 
         set_pool = False
@@ -477,6 +477,16 @@ class GPFSDriver(driver.VolumeDriver):
         if options:
             self._gpfs_change_attributes(options, path)
 
+        fstype = None
+        fslabel = None
+        for item in metadata:
+            if item['key'] == 'fstype':
+                fstype = item['value']
+            elif item['key'] == 'fslabel':
+                fslabel = item['value']
+        if fstype:
+            self._mkfs(volume, fstype, fslabel)
+
     def create_volume(self, volume):
         """Creates a GPFS volume."""
         # Check if GPFS is mounted
@@ -491,20 +501,10 @@ class GPFSDriver(driver.VolumeDriver):
         # Set the attributes prior to allocating any blocks so that
         # they are allocated according to the policy
         v_metadata = volume.get('volume_metadata')
-        self._set_volume_attributes(volume_path, v_metadata)
+        self._set_volume_attributes(volume, volume_path, v_metadata)
 
         if not self.configuration.gpfs_sparse_volumes:
             self._allocate_file_blocks(volume_path, volume_size)
-
-        fstype = None
-        fslabel = None
-        for item in v_metadata:
-            if item['key'] == 'fstype':
-                fstype = item['value']
-            elif item['key'] == 'fslabel':
-                fslabel = item['value']
-        if fstype:
-            self._mkfs(volume, fstype, fslabel)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a GPFS volume from a snapshot."""
@@ -514,6 +514,8 @@ class GPFSDriver(driver.VolumeDriver):
         self._create_gpfs_copy(src=snapshot_path, dest=volume_path)
         self._set_rw_permission(volume_path)
         self._gpfs_redirect(volume_path)
+        v_metadata = volume.get('volume_metadata')
+        self._set_volume_attributes(volume, volume_path, v_metadata)
         virt_size = self._resize_volume_file(volume, volume['size'])
         return {'size': math.ceil(virt_size / units.Gi)}
 
@@ -524,6 +526,8 @@ class GPFSDriver(driver.VolumeDriver):
         dest = self.local_path(volume)
         self._create_gpfs_clone(src, dest)
         self._set_rw_permission(dest)
+        v_metadata = volume.get('volume_metadata')
+        self._set_volume_attributes(volume, dest, v_metadata)
         virt_size = self._resize_volume_file(volume, volume['size'])
         return {'size': math.ceil(virt_size / units.Gi)}
 

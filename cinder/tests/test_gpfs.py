@@ -644,8 +644,9 @@ class GPFSDriverTestCase(test.TestCase):
         options.extend(['-T', 'test'])
         self.driver._gpfs_change_attributes(options, self.images_dir)
 
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._mkfs')
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._gpfs_change_attributes')
-    def test_set_volume_attributes(self, mock_change_attributes):
+    def test_set_volume_attributes(self, mock_change_attributes, mock_mkfs):
         metadata = [dict([('key', 'data_pool_name'), ('value', 'test')]),
                     dict([('key', 'replicas'), ('value', 'test')]),
                     dict([('key', 'dio'), ('value', 'test')]),
@@ -654,15 +655,22 @@ class GPFSDriverTestCase(test.TestCase):
                     dict([('key', 'write_affinity_failure_group'),
                           ('value', 'test')]),
                     dict([('key', 'test'),
+                          ('value', 'test')]),
+                    dict([('key', 'fstype'),
+                          ('value', 'test')]),
+                    dict([('key', 'fslabel'),
+                          ('value', 'test')]),
+                    dict([('key', 'test'),
                           ('value', 'test')])]
-        self.driver._set_volume_attributes('', metadata)
+
+        self.driver._set_volume_attributes('', '', metadata)
 
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._gpfs_change_attributes')
     def test_set_volume_attributes_no_attributes(self, mock_change_attributes):
         metadata = []
         org_value = self.driver.configuration.gpfs_storage_pool
         self.flags(volume_driver=self.driver_name, gpfs_storage_pool='system')
-        self.driver._set_volume_attributes('', metadata)
+        self.driver._set_volume_attributes('', '', metadata)
         self.flags(volume_driver=self.driver_name,
                    gpfs_storage_pool=org_value)
 
@@ -671,7 +679,7 @@ class GPFSDriverTestCase(test.TestCase):
         metadata = []
         org_value = self.driver.configuration.gpfs_storage_pool
         self.flags(volume_driver=self.driver_name, gpfs_storage_pool='')
-        self.driver._set_volume_attributes('', metadata)
+        self.driver._set_volume_attributes('', '', metadata)
         self.flags(volume_driver=self.driver_name,
                    gpfs_storage_pool=org_value)
 
@@ -695,12 +703,6 @@ class GPFSDriverTestCase(test.TestCase):
         volume['size'] = 1000
         value = {}
         value['value'] = 'test'
-        volume['volume_metadata'] = [dict([('key', 'fstype'),
-                                           ('value', 'test')]),
-                                     dict([('key', 'fslabel'),
-                                           ('value', 'test')]),
-                                     dict([('key', 'test'),
-                                           ('value', 'test')])]
 
         org_value = self.driver.configuration.gpfs_sparse_volumes
         self.flags(volume_driver=self.driver_name, gpfs_sparse_volumes=False)
@@ -728,12 +730,6 @@ class GPFSDriverTestCase(test.TestCase):
         volume['size'] = 1000
         value = {}
         value['value'] = 'test'
-        volume['volume_metadata'] = [dict([('key', 'fstype_'),
-                                           ('value', 'test')]),
-                                     dict([('key', 'fslabel'),
-                                           ('value', 'test')]),
-                                     dict([('key', 'test'),
-                                           ('value', 'test')])]
 
         org_value = self.driver.configuration.gpfs_sparse_volumes
         self.flags(volume_driver=self.driver_name, gpfs_sparse_volumes=True)
@@ -741,7 +737,39 @@ class GPFSDriverTestCase(test.TestCase):
         self.flags(volume_driver=self.driver_name,
                    gpfs_sparse_volumes=org_value)
 
+    @patch('cinder.utils.execute')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._allocate_file_blocks')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._set_volume_attributes')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._set_rw_permission')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._create_sparse_file')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._verify_gpfs_path_state')
+    def test_create_volume_with_metadata(self,
+                                         mock_gpfs_path_state,
+                                         mock_local_path,
+                                         mock_sparse_file,
+                                         mock_rw_permission,
+                                         mock_set_volume_attributes,
+                                         mock_allocate_file_blocks,
+                                         mock_exec):
+        mock_local_path.return_value = 'test'
+        volume = {}
+        volume['size'] = 1000
+        value = {}
+        value['value'] = 'test'
+        mock_set_volume_attributes.return_value = True
+        metadata = [{'key': 'fake_key', 'value': 'fake_value'}]
+
+        org_value = self.driver.configuration.gpfs_sparse_volumes
+        self.flags(volume_driver=self.driver_name, gpfs_sparse_volumes=False)
+        self.driver.create_volume(volume)
+        self.assertEqual(True, self.driver._set_volume_attributes(volume,
+                         'test', metadata))
+        self.flags(volume_driver=self.driver_name,
+                   gpfs_sparse_volumes=org_value)
+
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._resize_volume_file')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._set_volume_attributes')
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._gpfs_redirect')
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._set_rw_permission')
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._create_gpfs_copy')
@@ -751,6 +779,7 @@ class GPFSDriverTestCase(test.TestCase):
                                          mock_create_gpfs_copy,
                                          mock_rw_permission,
                                          mock_gpfs_redirect,
+                                         mock_set_volume_attributes,
                                          mock_resize_volume_file):
         mock_resize_volume_file.return_value = 5 * units.Gi
         volume = {}
@@ -759,6 +788,31 @@ class GPFSDriverTestCase(test.TestCase):
                          {'size': 5.0})
 
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._resize_volume_file')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._set_volume_attributes')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._gpfs_redirect')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._set_rw_permission')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._create_gpfs_copy')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
+    def test_create_volume_from_snapshot_metadata(self,
+                                                  mock_local_path,
+                                                  mock_create_gpfs_copy,
+                                                  mock_rw_permission,
+                                                  mock_gpfs_redirect,
+                                                  mock_set_volume_attributes,
+                                                  mock_resize_volume_file):
+        mock_resize_volume_file.return_value = 5 * units.Gi
+        volume = {}
+        volume['size'] = 1000
+        mock_set_volume_attributes.return_value = True
+        metadata = [{'key': 'fake_key', 'value': 'fake_value'}]
+
+        self.assertEqual(True, self.driver._set_volume_attributes(volume,
+                         'test', metadata))
+        self.assertEqual(self.driver.create_volume_from_snapshot(volume, ''),
+                         {'size': 5.0})
+
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._resize_volume_file')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._set_volume_attributes')
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._set_rw_permission')
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._create_gpfs_clone')
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
@@ -766,10 +820,33 @@ class GPFSDriverTestCase(test.TestCase):
                                   mock_local_path,
                                   mock_create_gpfs_clone,
                                   mock_rw_permission,
+                                  mock_set_volume_attributes,
                                   mock_resize_volume_file):
         mock_resize_volume_file.return_value = 5 * units.Gi
         volume = {}
         volume['size'] = 1000
+        self.assertEqual(self.driver.create_cloned_volume(volume, ''),
+                         {'size': 5.0})
+
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._resize_volume_file')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._set_volume_attributes')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._set_rw_permission')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._create_gpfs_clone')
+    @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
+    def test_create_cloned_volume_with_metadata(self,
+                                                mock_local_path,
+                                                mock_create_gpfs_clone,
+                                                mock_rw_permission,
+                                                mock_set_volume_attributes,
+                                                mock_resize_volume_file):
+        mock_resize_volume_file.return_value = 5 * units.Gi
+        volume = {}
+        volume['size'] = 1000
+        mock_set_volume_attributes.return_value = True
+        metadata = [{'key': 'fake_key', 'value': 'fake_value'}]
+
+        self.assertEqual(True, self.driver._set_volume_attributes(volume,
+                         'test', metadata))
         self.assertEqual(self.driver.create_cloned_volume(volume, ''),
                          {'size': 5.0})
 
