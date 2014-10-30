@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import errno
 import httplib
 import re
@@ -35,12 +36,16 @@ DATA_SERVER_INFO = 0, {
     'metadata': {'vendor': 'ProphetStor',
                  'version': '1.5'}}
 
+DATA_POOLS = 0, {
+    'children': [POOLUUID]
+}
+
 DATA_POOLINFO = 0, {
     'capabilitiesURI': '',
     'children': [],
     'childrenrange': '',
     'completionStatus': 'Complete',
-    'metadata': {'available_capacity': 4194074624,
+    'metadata': {'available_capacity': 4294967296,
                  'ctime': 1390551362349,
                  'vendor': 'prophetstor',
                  'version': '1.5',
@@ -56,7 +61,8 @@ DATA_POOLINFO = 0, {
                  'pool_uuid': POOLUUID,
                  'properties': {'raid_level': 'raid0'},
                  'state': 'Online',
-                 'total_capacity': 4194828288,
+                 'used_capacity': 0,
+                 'total_capacity': 4294967296,
                  'zpool_guid': '8173612007304181810'},
     'objectType': 'application/cdmi-container',
     'percentComplete': 100}
@@ -98,7 +104,8 @@ DATA_IN_GROUP = {'id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
 DATA_IN_VOLUME = {'id': 'abc123',
                   'display_name': 'abc123',
                   'display_description': '',
-                  'size': 1}
+                  'size': 1,
+                  'host': "hostname@backend#%s" % POOLUUID}
 
 DATA_IN_VOLUME_VG = {'id': 'abc123',
                      'display_name': 'abc123',
@@ -106,12 +113,14 @@ DATA_IN_VOLUME_VG = {'id': 'abc123',
                      'size': 1,
                      'consistencygroup_id':
                          'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
-                     'status': 'available'}
+                     'status': 'available',
+                     'host': "hostname@backend#%s" % POOLUUID}
 
 DATA_IN_VOLUME1 = {'id': 'abc456',
                    'display_name': 'abc456',
                    'display_description': '',
-                   'size': 1}
+                   'size': 1,
+                   'host': "hostname@backend#%s" % POOLUUID}
 
 DATA_IN_CG_SNAPSHOT = {
     'consistencygroup_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
@@ -447,16 +456,39 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.DPL_MOCK.get_pool.return_value = DATA_POOLINFO
         self.DPL_MOCK.get_server_info.return_value = DATA_SERVER_INFO
         res = self.dpldriver.get_volume_stats(True)
-        self.assertEqual(res['vendor_name'], 'ProphetStor')
-        self.assertEqual(res['driver_version'], '1.5')
-        self.assertEqual(res['total_capacity_gb'], 3.91)
-        self.assertEqual(res['free_capacity_gb'], 3.91)
-        self.assertEqual(res['reserved_percentage'], 0)
-        self.assertEqual(res['QoS_support'], False)
+        self.assertEqual('ProphetStor', res['vendor_name'])
+        self.assertEqual('1.5', res['driver_version'])
+        pool = res["pools"][0]
+        self.assertEqual(4, pool['total_capacity_gb'])
+        self.assertEqual(4, pool['free_capacity_gb'])
+        self.assertEqual(0, pool['reserved_percentage'])
+        self.assertEqual(False, pool['QoS_support'])
 
     def test_create_volume(self):
         self.DPL_MOCK.create_vdev.return_value = DATA_OUTPUT
         self.dpldriver.create_volume(DATA_IN_VOLUME)
+        self.DPL_MOCK.create_vdev.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
+            DATA_IN_VOLUME['display_name'],
+            DATA_IN_VOLUME['display_description'],
+            self.configuration.dpl_pool,
+            int(DATA_IN_VOLUME['size']) * units.Gi,
+            True)
+
+    def test_create_volume_without_pool(self):
+        fake_volume = copy.deepcopy(DATA_IN_VOLUME)
+        self.DPL_MOCK.create_vdev.return_value = DATA_OUTPUT
+        self.configuration.dpl_pool = ""
+        fake_volume['host'] = "host@backend"  # missing pool
+        self.assertRaises(exception.InvalidHost, self.dpldriver.create_volume,
+                          volume=fake_volume)
+
+    def test_create_volume_with_configuration_pool(self):
+        fake_volume = copy.deepcopy(DATA_IN_VOLUME)
+        fake_volume['host'] = "host@backend"  # missing pool
+
+        self.DPL_MOCK.create_vdev.return_value = DATA_OUTPUT
+        self.dpldriver.create_volume(fake_volume)
         self.DPL_MOCK.create_vdev.assert_called_once_with(
             self._conver_uuid2hex(DATA_IN_VOLUME['id']),
             DATA_IN_VOLUME['display_name'],
@@ -544,13 +576,13 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.DPL_MOCK.get_vdev.return_value = DATA_ASSIGNVDEV
         res = self.dpldriver.initialize_connection(DATA_IN_VOLUME,
                                                    DATA_IN_CONNECTOR)
-        self.assertEqual(res['driver_volume_type'], 'iscsi')
-        self.assertEqual(res['data']['target_lun'], '101')
-        self.assertEqual(res['data']['target_discovered'], True)
-        self.assertEqual(res['data']['target_portal'], '172.31.1.210:3260')
-        self.assertEqual(res['data']['target_iqn'], 'iqn.2013-09.com.'
-                                                    'prophetstor:hypervisor.'
-                                                    '886423051816')
+        self.assertEqual('iscsi', res['driver_volume_type'])
+        self.assertEqual('101', res['data']['target_lun'])
+        self.assertEqual(True, res['data']['target_discovered'])
+        self.assertEqual('172.31.1.210:3260', res['data']['target_portal'])
+        self.assertEqual(
+            'iqn.2013-09.com.prophetstor:hypervisor.886423051816',
+            res['data']['target_iqn'])
 
     def test_terminate_connection(self):
         self.DPL_MOCK.unassign_vdev.return_value = DATA_OUTPUT
@@ -578,25 +610,27 @@ class TestProphetStorDPLDriver(test.TestCase):
     def test_get_pool_info(self):
         self.DPL_MOCK.get_pool.return_value = DATA_POOLINFO
         _, res = self.dpldriver._get_pool_info(POOLUUID)
-        self.assertEqual(res['metadata']['available_capacity'], 4194074624)
-        self.assertEqual(res['metadata']['ctime'], 1390551362349)
-        self.assertEqual(res['metadata']['display_description'],
-                         'Default Pool')
-        self.assertEqual(res['metadata']['display_name'],
-                         'default_pool')
-        self.assertEqual(res['metadata']['event_uuid'],
-                         '4f7c4d679a664857afa4d51f282a516a')
-        self.assertEqual(res['metadata']['physical_device'], {
-                         'cache': [],
-                         'data': ['disk_uuid_0', 'disk_uuid_1', 'disk_uuid_2'],
-                         'log': [],
-                         'spare': []})
-        self.assertEqual(res['metadata']['pool_uuid'], POOLUUID)
-        self.assertEqual(res['metadata']['properties'], {
-                         'raid_level': 'raid0'})
-        self.assertEqual(res['metadata']['state'], 'Online')
-        self.assertEqual(res['metadata']['total_capacity'], 4194828288)
-        self.assertEqual(res['metadata']['zpool_guid'], '8173612007304181810')
+        self.assertEqual(4294967296, res['metadata']['available_capacity'])
+        self.assertEqual(1390551362349, res['metadata']['ctime'])
+        self.assertEqual('Default Pool',
+                         res['metadata']['display_description'])
+        self.assertEqual('default_pool',
+                         res['metadata']['display_name'])
+        self.assertEqual('4f7c4d679a664857afa4d51f282a516a',
+                         res['metadata']['event_uuid'])
+        self.assertEqual(
+            {'cache': [],
+             'data': ['disk_uuid_0', 'disk_uuid_1', 'disk_uuid_2'],
+             'log': [],
+             'spare': []},
+            res['metadata']['physical_device'])
+        self.assertEqual(POOLUUID, res['metadata']['pool_uuid'])
+        self.assertEqual(
+            {'raid_level': 'raid0'},
+            res['metadata']['properties'])
+        self.assertEqual('Online', res['metadata']['state'])
+        self.assertEqual(4294967296, res['metadata']['total_capacity'])
+        self.assertEqual('8173612007304181810', res['metadata']['zpool_guid'])
 
     def test_create_consistency_group(self):
         self.DPL_MOCK.create_vg.return_value = DATA_OUTPUT
