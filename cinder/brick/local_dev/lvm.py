@@ -233,8 +233,8 @@ class LVM(executor.Executor):
         return self._supports_lvchange_ignoreskipactivation
 
     @staticmethod
-    def get_all_volumes(root_helper, vg_name=None, lv_name=None):
-        """Static method to get all LV's on a system.
+    def get_lv_info(root_helper, vg_name=None, lv_name=None):
+        """Retrieve info about LVs (all, in a VG, or a single LV).
 
         :param root_helper: root_helper to use for execute
         :param vg_name: optional, gathers info for only the specified VG
@@ -273,9 +273,9 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with LV info
 
         """
-        self.lv_list = self.get_all_volumes(self._root_helper,
-                                            self.vg_name,
-                                            lv_name)
+        self.lv_list = self.get_lv_info(self._root_helper,
+                                        self.vg_name,
+                                        lv_name)
         return self.lv_list
 
     def get_volume(self, name):
@@ -389,7 +389,9 @@ class LVM(executor.Executor):
         self.vg_uuid = vg_list[0]['uuid']
 
         if self.vg_thin_pool is not None:
-            for lv in self.get_all_volumes(self._root_helper, self.vg_name):
+            for lv in self.get_lv_info(self._root_helper,
+                                       self.vg_name,
+                                       self.vg_thin_pool):
                 if lv['name'] == self.vg_thin_pool:
                     self.vg_thin_pool_size = lv['size']
                     tpfs = self._get_thin_pool_free_space(self.vg_name,
