@@ -59,6 +59,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
       Executes commands relating to Volumes.
     """
 
+    # do not increment this as it may be used in volume type definitions
     VERSION = "1.0.0"
 
     def __init__(self, *args, **kwargs):
@@ -66,6 +67,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         validate_instantiation(**kwargs)
         self._execute = None
         self._context = None
+        self._app_version = kwargs.pop("app_version", "unknown")
         super(NetAppNFSDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(netapp_connection_opts)
         self.configuration.append_config_values(netapp_basicauth_opts)
@@ -971,7 +973,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         data['pools'] = self._get_pool_stats()
 
         self._spawn_clean_cache_job()
-        na_utils.provide_ems(self, self._client, data, netapp_backend)
+        na_utils.provide_ems(self, self._client, netapp_backend,
+                             self._app_version)
         self._stats = data
 
     def _get_pool_stats(self):
@@ -1524,8 +1527,8 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
         data['pools'] = self._get_pool_stats()
 
         self._spawn_clean_cache_job()
-        na_utils.provide_ems(self, self._client, data, netapp_backend,
-                             server_type="7mode")
+        na_utils.provide_ems(self, self._client, netapp_backend,
+                             self._app_version, server_type="7mode")
         self._stats = data
 
     def _get_pool_stats(self):

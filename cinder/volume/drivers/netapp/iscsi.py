@@ -84,6 +84,7 @@ class NetAppLun(object):
 class NetAppDirectISCSIDriver(driver.ISCSIDriver):
     """NetApp Direct iSCSI volume driver."""
 
+    # do not increment this as it may be used in volume type definitions
     VERSION = "1.0.0"
 
     IGROUP_PREFIX = 'openstack-'
@@ -91,6 +92,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
                       'netapp_server_hostname']
 
     def __init__(self, *args, **kwargs):
+        self._app_version = kwargs.pop("app_version", "unknown")
         super(NetAppDirectISCSIDriver, self).__init__(*args, **kwargs)
         validate_instantiation(**kwargs)
         self.configuration.append_config_values(netapp_connection_opts)
@@ -1082,7 +1084,8 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         data['storage_protocol'] = 'iSCSI'
         data['pools'] = self._get_pool_stats()
 
-        na_utils.provide_ems(self, self.client, data, netapp_backend)
+        na_utils.provide_ems(self, self.client, netapp_backend,
+                             self._app_version)
         self._stats = data
 
     def _get_pool_stats(self):
@@ -1495,8 +1498,8 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         data['storage_protocol'] = 'iSCSI'
         data['pools'] = self._get_pool_stats()
 
-        na_utils.provide_ems(self, self.client, data, netapp_backend,
-                             server_type='7mode')
+        na_utils.provide_ems(self, self.client, netapp_backend,
+                             self._app_version, server_type='7mode')
         self._stats = data
 
     def _get_pool_stats(self):
