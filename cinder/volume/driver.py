@@ -115,7 +115,7 @@ iser_opts = [
                default=100,
                help='The maximum number of iser target ids per host'),
     cfg.StrOpt('iser_target_prefix',
-               default='iqn.2010-10.org.iser.openstack:',
+               default='iqn.2010-10.org.openstack:',
                help='prefix for iser volumes'),
     cfg.StrOpt('iser_ip_address',
                default='$my_ip',
@@ -146,6 +146,7 @@ class VolumeDriver(object):
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(volume_opts)
+            self.configuration.append_config_values(iser_opts)
         self.set_execute(execute)
         self._stats = {}
 
@@ -713,8 +714,9 @@ class ISCSIDriver(VolumeDriver):
         except (IndexError, ValueError):
             if (self.configuration.volume_driver in
                     ['cinder.volume.drivers.lvm.LVMISCSIDriver',
+                     'cinder.volume.drivers.lvm.LVMISERDriver',
                      'cinder.volume.drivers.lvm.ThinLVMVolumeDriver'] and
-                    self.configuration.iscsi_helper == 'tgtadm'):
+                    self.configuration.iscsi_helper in ('tgtadm', 'iseradm')):
                 properties['target_lun'] = 1
             else:
                 properties['target_lun'] = 0

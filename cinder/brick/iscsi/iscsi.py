@@ -611,7 +611,7 @@ class ISERTgtAdm(TgtAdm):
                                  """
 
     def __init__(self, root_helper, volumes_dir,
-                 target_prefix='iqn.2010-10.org.iser.openstack:',
+                 target_prefix='iqn.2010-10.org.openstack:',
                  execute=putils.execute):
         super(ISERTgtAdm, self).__init__(root_helper, volumes_dir,
                                          target_prefix, execute)
