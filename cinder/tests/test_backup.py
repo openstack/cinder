@@ -422,7 +422,7 @@ class BackupTestCase(BaseBackupTest):
 
     def test_backup_manager_driver_name(self):
         """"Test mapping between backup services and backup drivers."""
-        cfg.CONF.set_override('backup_driver', "cinder.backup.services.swift")
+        self.override_config('backup_driver', "cinder.backup.services.swift")
         backup_mgr = \
             importutils.import_object(CONF.backup_manager)
         self.assertEqual('cinder.backup.drivers.swift',
@@ -546,8 +546,8 @@ class BackupTestCaseWithVerify(BaseBackupTest):
     """Test Case for backups."""
 
     def setUp(self):
-        CONF.set_override("backup_driver",
-                          "cinder.tests.backup.fake_service_with_verify")
+        self.override_config("backup_driver",
+                             "cinder.tests.backup.fake_service_with_verify")
         super(BackupTestCaseWithVerify, self).setUp()
 
     def test_import_record_with_verify(self):

@@ -835,7 +835,7 @@ class VolumeImageActionsTest(test.TestCase):
                     mock_copy_volume_to_image.side_effect = \
                         self.fake_rpc_copy_volume_to_image
 
-                    CONF.set_override('glance_core_properties', [])
+                    self.override_config('glance_core_properties', [])
 
                     req = fakes.HTTPRequest.blank(
                         '/v2/tenant1/volumes/%s/action' % id)

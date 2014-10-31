@@ -22,7 +22,6 @@ import mox as mox_lib
 from mox import IgnoreArg
 from mox import IsA
 from mox import stubout
-from oslo.config import cfg
 
 from cinder import context
 from cinder import exception
@@ -702,7 +701,7 @@ class NfsDriverTestCase(test.TestCase):
         drv = self._driver
         volume = self._simple_volume()
 
-        cfg.CONF.set_override('nfs_sparsed_volumes', True)
+        self.override_config('nfs_sparsed_volumes', True)
 
         mox.StubOutWithMock(drv, '_create_sparsed_file')
         mox.StubOutWithMock(drv, '_set_rw_permissions')
@@ -722,7 +721,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_sparsed_volumes = False
         volume = self._simple_volume()
 
-        cfg.CONF.set_override('nfs_sparsed_volumes', False)
+        self.override_config('nfs_sparsed_volumes', False)
 
         mox.StubOutWithMock(drv, '_create_regular_file')
         mox.StubOutWithMock(drv, '_set_rw_permissions')

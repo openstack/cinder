@@ -222,7 +222,7 @@ class TestUtils(test.TestCase):
                      "disk size: 0")
 
         utils.is_blk_device(self.TEST_DEV_PATH).AndReturn(True)
-        CONF.set_override('volume_copy_bps_limit', bps_limit)
+        self.override_config('volume_copy_bps_limit', bps_limit)
 
         image_utils.create_temporary_file().AndReturn(self.TEST_DEV_PATH)
 
@@ -449,7 +449,7 @@ class TestUtils(test.TestCase):
                    "disk_size: 196K (200704 bytes)"
 
         if bps_limit:
-            CONF.set_override('volume_copy_bps_limit', bps_limit)
+            self.override_config('volume_copy_bps_limit', bps_limit)
             prefix = ('cgexec', '-g', 'blkio:test')
         else:
             prefix = ()
@@ -486,7 +486,7 @@ class TestUtils(test.TestCase):
                    "cluster_size: 65536\n"\
                    "disk_size: 196K (200704 bytes)"
 
-        CONF.set_override('volume_copy_bps_limit', bps_limit)
+        self.override_config('volume_copy_bps_limit', bps_limit)
         prefix = ('cgexec', '-g', 'blkio:test')
 
         cmd = prefix + ('qemu-img', 'convert', '-O', 'qcow2',
