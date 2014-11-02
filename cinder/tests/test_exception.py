@@ -101,3 +101,26 @@ class CinderExceptionTestCase(test.TestCase):
         exc1 = Exception(msg)
         exc2 = exception.CinderException(kwarg1=exc1)
         self.assertEqual(msg, exc2.kwargs['kwarg1'])
+
+    def test_message_in_format_string(self):
+        class FakeCinderException(exception.CinderException):
+            message = 'FakeCinderException: %(message)s'
+
+        exc = FakeCinderException(message='message')
+        self.assertEqual(unicode(exc), 'FakeCinderException: message')
+
+    def test_message_and_kwarg_in_format_string(self):
+        class FakeCinderException(exception.CinderException):
+            message = 'Error %(code)d: %(message)s'
+
+        exc = FakeCinderException(message='message', code=404)
+        self.assertEqual(unicode(exc), 'Error 404: message')
+
+    def test_message_is_exception_in_format_string(self):
+        class FakeCinderException(exception.CinderException):
+            message = 'Exception: %(message)s'
+
+        msg = 'test message'
+        exc1 = Exception(msg)
+        exc2 = FakeCinderException(message=exc1)
+        self.assertEqual(unicode(exc2), 'Exception: test message')
