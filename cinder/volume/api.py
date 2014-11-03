@@ -280,16 +280,16 @@ class API(base.Base):
             volume_utils.notify_about_volume_usage(context,
                                                    volume, "delete.end")
             return
+        if volume['attach_status'] == "attached":
+            # Volume is still attached, need to detach first
+            raise exception.VolumeAttached(volume_id=volume_id)
+
         if not force and volume['status'] not in ["available", "error",
                                                   "error_restoring",
                                                   "error_extending"]:
             msg = _("Volume status must be available or error, "
                     "but current status is: %s") % volume['status']
             raise exception.InvalidVolume(reason=msg)
-
-        if volume['attach_status'] == "attached":
-            # Volume is still attached, need to detach first
-            raise exception.VolumeAttached(volume_id=volume_id)
 
         if volume['migration_status'] is not None:
             # Volume is migrating, wait until done
