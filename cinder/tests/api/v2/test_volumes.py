@@ -392,6 +392,93 @@ class VolumeApiTest(test.TestCase):
                           req,
                           body)
 
+    def test_volume_create_with_image_name(self):
+        self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
+
+        test_id = "Fedora-x86_64-20-20140618-sda"
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+               "name": "Volume Test Name",
+               "description": "Volume Test Desc",
+               "availability_zone": "nova",
+               "imageRef": test_id}
+        ex = {'volume': {'attachments': [{'device': '/',
+                                          'host_name': None,
+                                          'id': '1',
+                                          'server_id': 'fakeuuid',
+                                          'volume_id': '1'}],
+                         'availability_zone': 'nova',
+                         'bootable': 'false',
+                         'consistencygroup_id': None,
+                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
+                         'description': 'Volume Test Desc',
+                         'encrypted': False,
+                         'id': '1',
+                         'links':
+                         [{'href': 'http://localhost/v2/fakeproject/volumes/1',
+                           'rel': 'self'},
+                          {'href': 'http://localhost/fakeproject/volumes/1',
+                           'rel': 'bookmark'}],
+                         'metadata': {},
+                         'name': 'Volume Test Name',
+                         'replication_status': 'disabled',
+                         'size': '1',
+                         'snapshot_id': None,
+                         'source_volid': None,
+                         'status': 'fakestatus',
+                         'user_id': 'fakeuser',
+                         'volume_type': 'vol_type_name'}}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        res_dict = self.controller.create(req, body)
+        self.assertEqual(ex, res_dict)
+
+    def test_volume_create_with_image_name_has_multiple(self):
+        self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
+
+        test_id = "multi"
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+               "name": "Volume Test Name",
+               "description": "Volume Test Desc",
+               "availability_zone": "nova",
+               "imageRef": test_id}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_volume_create_with_image_name_no_match(self):
+        self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
+
+        test_id = "MissingName"
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+               "name": "Volume Test Name",
+               "description": "Volume Test Desc",
+               "availability_zone": "nova",
+               "imageRef": test_id}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
+
     def test_volume_update(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
