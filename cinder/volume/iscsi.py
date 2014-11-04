@@ -253,16 +253,17 @@ class LioAdm(_ExportMixin, iscsi.LioAdm):
                       vg_name, conf, old_name=None):
         try:
             volume_info = self.db.volume_get(context, volume['id'])
-            (auth_method,
-             auth_user,
-             auth_pass) = volume_info['provider_auth'].split(' ', 3)
-            chap_auth = self._iscsi_authentication(auth_method,
-                                                   auth_user,
-                                                   auth_pass)
         except exception.NotFound:
-            LOG.debug("volume_info:%s", volume_info)
             LOG.info(_("Skipping ensure_export. No iscsi_target "
                        "provision for volume: %s"), volume['id'])
+            return
+
+        (auth_method,
+         auth_user,
+         auth_pass) = volume_info['provider_auth'].split(' ', 3)
+        chap_auth = self._iscsi_authentication(auth_method,
+                                               auth_user,
+                                               auth_pass)
 
         iscsi_target = 1
 
