@@ -25,7 +25,7 @@ from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI, _LW
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 import cinder.policy
@@ -139,9 +139,9 @@ class API(base.Base):
 
             for over in overs:
                 if 'gigabytes' in over:
-                    msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                            "%(s_size)sG backup (%(d_consumed)dG of "
-                            "%(d_quota)dG already consumed)")
+                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                              "%(s_size)sG backup (%(d_consumed)dG of "
+                              "%(d_quota)dG already consumed)")
                     LOG.warn(msg % {'s_pid': context.project_id,
                                     's_size': volume['size'],
                                     'd_consumed': _consumed(over),
@@ -151,9 +151,9 @@ class API(base.Base):
                         consumed=_consumed('backup_gigabytes'),
                         quota=quotas['backup_gigabytes'])
                 elif 'backups' in over:
-                    msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                            "backups (%(d_consumed)d backups "
-                            "already consumed)")
+                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                              "backups (%(d_consumed)d backups "
+                              "already consumed)")
 
                     LOG.warn(msg % {'s_pid': context.project_id,
                                     'd_consumed': _consumed(over)})
@@ -209,8 +209,8 @@ class API(base.Base):
             name = 'restore_backup_%s' % backup_id
             description = 'auto-created_from_restore_from_backup'
 
-            LOG.info(_("Creating volume of %(size)s GB for restore of "
-                       "backup %(backup_id)s"),
+            LOG.info(_LI("Creating volume of %(size)s GB for restore of "
+                         "backup %(backup_id)s"),
                      {'size': size, 'backup_id': backup_id},
                      context=context)
             volume = self.volume_api.create(context, size, name, description)
@@ -236,8 +236,8 @@ class API(base.Base):
                    {'volume_size': volume['size'], 'size': size})
             raise exception.InvalidVolume(reason=msg)
 
-        LOG.info(_("Overwriting volume %(volume_id)s with restore of "
-                   "backup %(backup_id)s"),
+        LOG.info(_LI("Overwriting volume %(volume_id)s with restore of "
+                     "backup %(backup_id)s"),
                  {'volume_id': volume_id, 'backup_id': backup_id},
                  context=context)
 
