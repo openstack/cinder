@@ -26,7 +26,7 @@ from cinder.api.views import backups as backup_views
 from cinder.api import xmlutil
 from cinder import backup as backupAPI
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder import utils
 
@@ -175,7 +175,7 @@ class BackupsController(wsgi.Controller):
         LOG.debug('delete called for member %s', id)
         context = req.environ['cinder.context']
 
-        LOG.info(_('Delete backup with id: %s'), id, context=context)
+        LOG.info(_LI('Delete backup with id: %s'), id, context=context)
 
         try:
             self.backup_api.delete(context, id)
@@ -249,8 +249,8 @@ class BackupsController(wsgi.Controller):
         name = backup.get('name', None)
         description = backup.get('description', None)
 
-        LOG.info(_("Creating backup of volume %(volume_id)s in container"
-                   " %(container)s"),
+        LOG.info(_LI("Creating backup of volume %(volume_id)s in container"
+                     " %(container)s"),
                  {'volume_id': volume_id, 'container': container},
                  context=context)
 
@@ -282,7 +282,7 @@ class BackupsController(wsgi.Controller):
         restore = body['restore']
         volume_id = restore.get('volume_id', None)
 
-        LOG.info(_("Restoring backup %(backup_id)s to volume %(volume_id)s"),
+        LOG.info(_LI("Restoring backup %(backup_id)s to volume %(volume_id)s"),
                  {'backup_id': id, 'volume_id': volume_id},
                  context=context)
 

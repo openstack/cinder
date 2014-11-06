@@ -24,7 +24,7 @@ from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
 from cinder import utils
@@ -112,7 +112,7 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     if image_id:
         d['image_id'] = image_id
 
-    LOG.info(_("vol=%s"), vol, context=context)
+    LOG.info(_LI("vol=%s"), vol, context=context)
 
     if vol.get('volume_metadata'):
         metadata = vol.get('volume_metadata')
@@ -243,7 +243,7 @@ class VolumeController(wsgi.Controller):
         """Delete a volume."""
         context = req.environ['cinder.context']
 
-        LOG.info(_("Delete volume with id: %s"), id, context=context)
+        LOG.info(_LI("Delete volume with id: %s"), id, context=context)
 
         try:
             volume = self.volume_api.get(context, id)
@@ -368,7 +368,7 @@ class VolumeController(wsgi.Controller):
         elif size is None and kwargs['source_volume'] is not None:
             size = kwargs['source_volume']['size']
 
-        LOG.info(_("Create volume of %s GB"), size, context=context)
+        LOG.info(_LI("Create volume of %s GB"), size, context=context)
 
         image_href = None
         image_uuid = None

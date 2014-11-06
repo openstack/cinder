@@ -19,7 +19,7 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder import replication as replicationAPI
 from cinder import volume
@@ -67,8 +67,8 @@ class VolumeReplicationController(wsgi.Controller):
         context = req.environ['cinder.context']
         try:
             vol = self.volume_api.get(context, id)
-            LOG.info(_('Attempting to promote secondary replica to primary'
-                       ' for volume %s.'),
+            LOG.info(_LI('Attempting to promote secondary replica to primary'
+                         ' for volume %s.'),
                      str(id),
                      context=context)
             self.replication_api.promote(context, vol)
@@ -85,8 +85,8 @@ class VolumeReplicationController(wsgi.Controller):
         context = req.environ['cinder.context']
         try:
             vol = self.volume_api.get(context, id)
-            LOG.info(_('Attempting to sync secondary replica with primary'
-                       ' for volume %s.'),
+            LOG.info(_LI('Attempting to sync secondary replica with primary'
+                         ' for volume %s.'),
                      str(id),
                      context=context)
             self.replication_api.reenable(context, vol)

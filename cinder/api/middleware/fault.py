@@ -19,7 +19,7 @@ import webob.exc
 
 from cinder.api.openstack import wsgi
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import wsgi as base_wsgi
@@ -43,7 +43,7 @@ class FaultWrapper(base_wsgi.Middleware):
 
     def _error(self, inner, req):
         if not isinstance(inner, exception.QuotaError):
-            LOG.exception(_("Caught error: %s"), unicode(inner))
+            LOG.exception(_LE("Caught error: %s"), unicode(inner))
         safe = getattr(inner, 'safe', False)
         headers = getattr(inner, 'headers', None)
         status = getattr(inner, 'code', 500)
@@ -51,7 +51,7 @@ class FaultWrapper(base_wsgi.Middleware):
             status = 500
 
         msg_dict = dict(url=req.url, status=status)
-        LOG.info(_("%(url)s returned with HTTP %(status)d") % msg_dict)
+        LOG.info(_LI("%(url)s returned with HTTP %(status)d") % msg_dict)
         outer = self.status_to_type(status)
         if headers:
             outer.headers = headers

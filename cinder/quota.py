@@ -24,7 +24,7 @@ from oslo.config import cfg
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
@@ -780,7 +780,8 @@ class QuotaEngine(object):
             # usage resynchronization and the reservation expiration
             # mechanisms will resolve the issue.  The exception is
             # logged, however, because this is less than optimal.
-            LOG.exception(_("Failed to commit reservations %s") % reservations)
+            LOG.exception(_LE("Failed to commit "
+                              "reservations %s") % reservations)
 
     def rollback(self, context, reservations, project_id=None):
         """Roll back reservations.
@@ -800,8 +801,8 @@ class QuotaEngine(object):
             # usage resynchronization and the reservation expiration
             # mechanisms will resolve the issue.  The exception is
             # logged, however, because this is less than optimal.
-            LOG.exception(_("Failed to roll back reservations "
-                            "%s") % reservations)
+            LOG.exception(_LE("Failed to roll back reservations "
+                              "%s") % reservations)
 
     def destroy_all_by_project(self, context, project_id):
         """Destroy all quotas, usages, and reservations associated with a

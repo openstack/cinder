@@ -22,7 +22,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.views import transfers as transfer_view
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder import transfer as transferAPI
 from cinder import utils
@@ -160,7 +160,7 @@ class VolumeTransferController(wsgi.Controller):
 
         name = transfer.get('name', None)
 
-        LOG.info(_("Creating transfer of volume %s"),
+        LOG.info(_LI("Creating transfer of volume %s"),
                  volume_id,
                  context=context)
 
@@ -194,7 +194,7 @@ class VolumeTransferController(wsgi.Controller):
             msg = _("Incorrect request body format")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        LOG.info(_("Accepting transfer %s"), transfer_id,
+        LOG.info(_LI("Accepting transfer %s"), transfer_id,
                  context=context)
 
         try:
@@ -215,7 +215,7 @@ class VolumeTransferController(wsgi.Controller):
         """Delete a transfer."""
         context = req.environ['cinder.context']
 
-        LOG.info(_("Delete transfer with id: %s"), id, context=context)
+        LOG.info(_LI("Delete transfer with id: %s"), id, context=context)
 
         try:
             self.transfer_api.delete(context, transfer_id=id)

@@ -22,7 +22,7 @@ from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import strutils
 from cinder import utils
@@ -118,7 +118,7 @@ class SnapshotsController(wsgi.Controller):
         """Delete a snapshot."""
         context = req.environ['cinder.context']
 
-        LOG.info(_("Delete snapshot with id: %s"), id, context=context)
+        LOG.info(_LI("Delete snapshot with id: %s"), id, context=context)
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)

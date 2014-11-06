@@ -23,7 +23,7 @@ from cinder.brick.initiator import host_driver
 from cinder.brick.initiator import linuxfc
 from cinder.brick.initiator import linuxscsi
 from cinder.brick.remotefs import remotefs
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
@@ -137,8 +137,8 @@ class InitiatorConnector(executor.Executor):
             out, info = self._execute(*cmd, run_as_root=run_as_root,
                                       root_helper=self._root_helper)
         except putils.ProcessExecutionError as e:
-            LOG.error(_("Failed to access the device on the path "
-                        "%(path)s: %(error)s %(info)s.") %
+            LOG.error(_LE("Failed to access the device on the path "
+                          "%(path)s: %(error)s %(info)s.") %
                       {"path": path, "error": e.stderr,
                        "info": info})
             return False

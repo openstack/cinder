@@ -26,7 +26,7 @@ import webob
 
 from cinder import exception
 from cinder import i18n
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -755,10 +755,10 @@ class ResourceExceptionHandler(object):
                 ex_value, exc_info=exc_info)
             raise Fault(webob.exc.HTTPBadRequest())
         elif isinstance(ex_value, Fault):
-            LOG.info(_("Fault thrown: %s"), unicode(ex_value))
+            LOG.info(_LI("Fault thrown: %s"), unicode(ex_value))
             raise ex_value
         elif isinstance(ex_value, webob.exc.HTTPException):
-            LOG.info(_("HTTP exception thrown: %s"), unicode(ex_value))
+            LOG.info(_LI("HTTP exception thrown: %s"), unicode(ex_value))
             raise Fault(ex_value)
 
         # We didn't handle the exception
