@@ -2569,7 +2569,7 @@
 #
 
 # Authentication url for encryption service. (string value)
-#encryption_auth_url=http://localhost:5000/v2.0
+#encryption_auth_url=http://localhost:5000/v3
 
 # Url for encryption service. (string value)
 #encryption_api_url=http://localhost:9311/v1

@@ -22,8 +22,8 @@ import base64
 import binascii
 
 from barbicanclient import client as barbican_client
-from barbicanclient.common import auth
-from keystoneclient.v2_0 import client as keystone_client
+from keystoneclient.auth import identity
+from keystoneclient import session
 from oslo.config import cfg
 
 from cinder import exception
@@ -42,31 +42,40 @@ LOG = logging.getLogger(__name__)
 class BarbicanKeyManager(key_mgr.KeyManager):
     """Key Manager Interface that wraps the Barbican client API."""
 
-    def _create_connection(self, ctxt):
-        """Creates a connection to the Barbican service.
+    def __init__(self):
+        self._base_url = CONF.keymgr.encryption_api_url
+        # the barbican endpoint can't have the '/v1' on the end
+        self._barbican_endpoint = self._base_url.rpartition('/')[0]
+        self._barbican_client = None
+
+    def _get_barbican_client(self, ctxt):
+        """Creates a client to connect to the Barbican service.
 
         :param ctxt: the user context for authentication
-        :return: a Barbican Connection object
+        :return: a Barbican Client object
         :throws NotAuthorized: if the ctxt is None
         """
 
-        # Confirm context is provided, if not raise not authorized
-        if not ctxt:
-            msg = _("User is not authorized to use key manager.")
-            LOG.error(msg)
-            raise exception.NotAuthorized(msg)
+        if not self._barbican_client:
+            # Confirm context is provided, if not raise not authorized
+            if not ctxt:
+                msg = _("User is not authorized to use key manager.")
+                LOG.error(msg)
+                raise exception.NotAuthorized(msg)
 
-        try:
-            endpoint = CONF.keymgr.encryption_auth_url
-            keystone = keystone_client.Client(token=ctxt.auth_token,
-                                              endpoint=endpoint)
-            keystone_auth = auth.KeystoneAuthV2(keystone=keystone)
-            keystone_auth._barbican_url = CONF.keymgr.encryption_api_url
-            connection = barbican_client.Client(auth_plugin=keystone_auth)
-            return connection
-        except Exception as e:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_("Error creating Barbican client: %s"), (e))
+            try:
+                auth = identity.v3.Token(
+                    auth_url=CONF.keymgr.encryption_auth_url,
+                    token=ctxt.auth_token)
+                sess = session.Session(auth=auth)
+                self._barbican_client = barbican_client.Client(
+                    session=sess,
+                    endpoint=self._barbican_endpoint)
+            except Exception as e:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_("Error creating Barbican client: %s"), (e))
+
+        return self._barbican_client
 
     def create_key(self, ctxt, expiration=None, name='Cinder Volume Key',
                    payload_content_type='application/octet-stream', mode='CBC',
@@ -85,13 +94,18 @@ class BarbicanKeyManager(key_mgr.KeyManager):
         :return: the UUID of the new key
         :throws Exception: if key creation fails
         """
-        connection = self._create_connection(ctxt)
+        barbican_client = self._get_barbican_client(ctxt)
 
         try:
-            order_ref = connection.orders.create(name, payload_content_type,
-                                                 algorithm, length, mode,
-                                                 expiration)
-            order = connection.orders.get(order_ref)
+            key_order = barbican_client.orders.create_key(
+                name,
+                algorithm,
+                length,
+                mode,
+                payload_content_type,
+                expiration)
+            order_ref = key_order.submit()
+            order = barbican_client.orders.get(order_ref)
             secret_uuid = order.secret_ref.rpartition('/')[2]
             return secret_uuid
         except Exception as e:
@@ -123,7 +137,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
         :returns: the UUID of the stored key
         :throws Exception: if key storage fails
         """
-        connection = self._create_connection(ctxt)
+        barbican_client = self._get_barbican_client(ctxt)
 
         try:
             if key.get_algorithm():
@@ -138,11 +152,15 @@ class BarbicanKeyManager(key_mgr.KeyManager):
                 encoded_key = base64.b64encode(binascii.unhexlify(string_key))
             else:
                 encoded_key = key.get_encoded()
-            secret_ref = connection.secrets.store(name, encoded_key,
-                                                  payload_content_type,
-                                                  payload_content_encoding,
-                                                  algorithm, bit_length, mode,
-                                                  expiration)
+            secret = barbican_client.secrets.create(name,
+                                                    encoded_key,
+                                                    payload_content_type,
+                                                    payload_content_encoding,
+                                                    algorithm,
+                                                    bit_length,
+                                                    mode,
+                                                    expiration)
+            secret_ref = secret.store()
             secret_uuid = secret_ref.rpartition('/')[2]
             return secret_uuid
         except Exception as e:
@@ -158,36 +176,40 @@ class BarbicanKeyManager(key_mgr.KeyManager):
         :return: the UUID of the key copy
         :throws Exception: if key copying fails
         """
-        connection = self._create_connection(ctxt)
+        barbican_client = self._get_barbican_client(ctxt)
 
         try:
-            secret_ref = self._create_secret_ref(key_id, connection)
-            meta = self._get_secret_metadata(ctxt, secret_ref)
-            con_type = meta.content_types['default']
-            secret_data = self._get_secret_data(ctxt, secret_ref,
+            secret_ref = self._create_secret_ref(key_id, barbican_client)
+            secret = self._get_secret(ctxt, secret_ref)
+            con_type = secret.content_types['default']
+            secret_data = self._get_secret_data(secret,
                                                 payload_content_type=con_type)
-            key = keymgr_key.SymmetricKey(meta.algorithm, secret_data)
-            copy_uuid = self.store_key(ctxt, key, meta.expiration,
-                                       meta.name, con_type,
+            key = keymgr_key.SymmetricKey(secret.algorithm, secret_data)
+            copy_uuid = self.store_key(ctxt, key, secret.expiration,
+                                       secret.name, con_type,
                                        'base64',
-                                       meta.algorithm, meta.bit_length,
-                                       meta.mode, True)
+                                       secret.algorithm, secret.bit_length,
+                                       secret.mode, True)
             return copy_uuid
         except Exception as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Error copying key: %s"), (e))
 
-    def _create_secret_ref(self, key_id, connection):
+    def _create_secret_ref(self, key_id, barbican_client):
         """Creates the URL required for accessing a secret.
 
         :param key_id: the UUID of the key to copy
-        :param connection: barbican key manager object
+        :param barbican_client: barbican key manager object
 
         :return: the URL of the requested secret
         """
-        return connection.base_url + "/secrets/" + key_id
+        if not key_id:
+            msg = "Key ID is None"
+            raise exception.KeyManagerError(msg)
+        return self._base_url + "/secrets/" + key_id
 
-    def _get_secret_data(self, ctxt, secret_ref,
+    def _get_secret_data(self,
+                         secret,
                          payload_content_type='application/octet-stream'):
         """Retrieves the secret data given a secret_ref and content_type.
 
@@ -199,11 +221,8 @@ class BarbicanKeyManager(key_mgr.KeyManager):
         :returns: the secret data
         :throws Exception: if data cannot be retrieved
         """
-        connection = self._create_connection(ctxt)
-
         try:
-            generated_data = connection.secrets.decrypt(secret_ref,
-                                                        payload_content_type)
+            generated_data = secret.payload
             if payload_content_type == 'application/octet-stream':
                 secret_data = base64.b64encode(generated_data)
             else:
@@ -213,7 +232,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Error getting secret data: %s"), (e))
 
-    def _get_secret_metadata(self, ctxt, secret_ref):
+    def _get_secret(self, ctxt, secret_ref):
         """Creates the URL required for accessing a secret's metadata.
 
         :param ctxt: contains information of the user and the environment for
@@ -224,10 +243,10 @@ class BarbicanKeyManager(key_mgr.KeyManager):
         :throws Exception: if there is an error retrieving the data
         """
 
-        connection = self._create_connection(ctxt)
+        barbican_client = self._get_barbican_client(ctxt)
 
         try:
-            return connection.secrets.get(secret_ref)
+            return barbican_client.secrets.get(secret_ref)
         except Exception as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Error getting secret metadata: %s"), (e))
@@ -244,20 +263,18 @@ class BarbicanKeyManager(key_mgr.KeyManager):
         :return: SymmetricKey representation of the key
         :throws Exception: if key retrieval fails
         """
-        connection = self._create_connection(ctxt)
-
         try:
-            secret_ref = self._create_secret_ref(key_id, connection)
-            secret_data = self._get_secret_data(ctxt, secret_ref,
+            secret_ref = self._create_secret_ref(key_id, barbican_client)
+            secret = self._get_secret(ctxt, secret_ref)
+            secret_data = self._get_secret_data(secret,
                                                 payload_content_type)
             if payload_content_type == 'application/octet-stream':
                 # convert decoded string to list of unsigned ints for each byte
-                secret = array.array('B',
-                                     base64.b64decode(secret_data)).tolist()
+                key_data = array.array('B',
+                                       base64.b64decode(secret_data)).tolist()
             else:
-                secret = secret_data
-            meta = self._get_secret_metadata(ctxt, secret_ref)
-            key = keymgr_key.SymmetricKey(meta.algorithm, secret)
+                key_data = secret_data
+            key = keymgr_key.SymmetricKey(secret.algorithm, key_data)
             return key
         except Exception as e:
             with excutils.save_and_reraise_exception():
@@ -271,11 +288,11 @@ class BarbicanKeyManager(key_mgr.KeyManager):
         :param key_id: the UUID of the key to delete
         :throws Exception: if key deletion fails
         """
-        connection = self._create_connection(ctxt)
+        barbican_client = self._get_barbican_client(ctxt)
 
         try:
-            secret_ref = self._create_secret_ref(key_id, connection)
-            connection.secrets.delete(secret_ref)
+            secret_ref = self._create_secret_ref(key_id, barbican_client)
+            barbican_client.secrets.delete(secret_ref)
         except Exception as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Error deleting key: %s"), (e))
