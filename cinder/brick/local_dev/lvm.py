@@ -25,8 +25,11 @@ import time
 from cinder.brick import exception
 from cinder.brick import executor
 from cinder.i18n import _
+from cinder.openstack.common import excutils
+from cinder.openstack.common.gettextutils import _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
+
 
 LOG = logging.getLogger(__name__)
 
@@ -284,10 +287,22 @@ class LVM(executor.Executor):
         :returns: dict representation of Logical Volume if exists
 
         """
-        ref_list = self.get_volumes(name)
-        for r in ref_list:
-            if r['name'] == name:
-                return r
+        try:
+            ref_list = self.get_volumes(name)
+            for r in ref_list:
+                if r['name'] == name:
+                    return r
+        except putils.ProcessExecutionError as err:
+            # NOTE(joachim): Catch the "notfound" case from the stderr
+            # in order to let the other errors through.
+            with excutils.save_and_reraise_exception(reraise=True) as ctx:
+                if "not found" in err.stderr:
+                    ctx.reraise = False
+                    LOG.warning(
+                        _LW("Caught exception for lvs 'LV not found': %s")
+                        % (name)
+                    )
+        return None
 
     @staticmethod
     def get_all_physical_volumes(root_helper, vg_name=None):
