@@ -23,6 +23,7 @@ import re
 import stat
 import time
 
+from oslo.config import cfg
 import six
 
 from cinder.brick import exception
@@ -34,6 +35,8 @@ from cinder.openstack.common import processutils as putils
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
+
+CONF = cfg.CONF
 
 
 class TargetAdmin(executor.Executor):
@@ -301,7 +304,8 @@ class TgtAdm(TargetAdmin):
                           '--force',
                           '--delete',
                           iqn,
-                          run_as_root=True)
+                          run_as_root=True,
+                          attempts=CONF.num_shell_tries)
         except putils.ProcessExecutionError as e:
             LOG.error(_("Failed to remove iscsi target for volume "
                         "id:%(vol_id)s: %(e)s")
