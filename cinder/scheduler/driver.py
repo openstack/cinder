@@ -20,11 +20,11 @@ Scheduler base class that all Schedulers should inherit from
 """
 
 from oslo.config import cfg
+from oslo.utils import importutils
+from oslo.utils import timeutils
 
 from cinder import db
 from cinder.i18n import _
-from cinder.openstack.common import importutils
-from cinder.openstack.common import timeutils
 from cinder.volume import rpcapi as volume_rpcapi
 
 

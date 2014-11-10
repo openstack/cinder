@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.utils import strutils
 import webob
 
 from cinder.api import extensions
@@ -22,7 +23,6 @@ from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import strutils
 from cinder import quota
 
 

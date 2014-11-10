@@ -18,10 +18,10 @@ Tests For HostManager
 
 import mock
 from oslo.config import cfg
+from oslo.utils import timeutils
 
 from cinder import exception
 from cinder.openstack.common.scheduler import filters
-from cinder.openstack.common import timeutils
 from cinder.scheduler import host_manager
 from cinder import test
 
@@ -84,7 +84,7 @@ class HostManagerTestCase(test.TestCase):
         self.assertEqual(expected, mock_func.call_args_list)
         self.assertEqual(set(result), set(self.fake_hosts))
 
-    @mock.patch('cinder.openstack.common.timeutils.utcnow')
+    @mock.patch('oslo.utils.timeutils.utcnow')
     def test_update_service_capabilities(self, _mock_utcnow):
         service_states = self.host_manager.service_states
         self.assertDictMatch(service_states, {})

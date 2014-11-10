@@ -29,6 +29,8 @@ import os
 import tempfile
 
 from oslo.config import cfg
+from oslo.utils import timeutils
+from oslo.utils import units
 
 from cinder import exception
 from cinder.i18n import _
@@ -36,8 +38,6 @@ from cinder.openstack.common import fileutils
 from cinder.openstack.common import imageutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume import utils as volume_utils
 

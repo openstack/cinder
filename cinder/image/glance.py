@@ -29,12 +29,13 @@ import time
 import glanceclient.exc
 from oslo.config import cfg
 from oslo.serialization import jsonutils
+from oslo.utils import timeutils
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
+
 
 glance_opts = [
     cfg.ListOpt('allowed_direct_url_schemes',

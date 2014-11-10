@@ -14,9 +14,9 @@
 
 
 from oslo.config import cfg
+from oslo.utils import importutils
 
 from cinder import context
-from cinder.openstack.common import importutils
 from cinder import test
 
 

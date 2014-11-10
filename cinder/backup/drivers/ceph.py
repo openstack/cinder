@@ -50,14 +50,14 @@ import time
 
 import eventlet
 from oslo.config import cfg
+from oslo.utils import encodeutils
+from oslo.utils import excutils
+from oslo.utils import units
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
-from cinder.openstack.common import units
 from cinder import utils
 import cinder.volume.drivers.rbd as rbd_driver
 
@@ -103,7 +103,7 @@ class VolumeMetadataBackup(object):
 
     @property
     def name(self):
-        return strutils.safe_encode("backup.%s.meta" % self._backup_id)
+        return encodeutils.safe_encode("backup.%s.meta" % self._backup_id)
 
     @property
     def exists(self):
@@ -182,9 +182,9 @@ class CephBackupDriver(BackupDriver):
             self.rbd_stripe_count = 0
             self.rbd_stripe_unit = 0
 
-        self._ceph_backup_user = strutils.safe_encode(CONF.backup_ceph_user)
-        self._ceph_backup_pool = strutils.safe_encode(CONF.backup_ceph_pool)
-        self._ceph_backup_conf = strutils.safe_encode(CONF.backup_ceph_conf)
+        self._ceph_backup_user = encodeutils.safe_encode(CONF.backup_ceph_user)
+        self._ceph_backup_pool = encodeutils.safe_encode(CONF.backup_ceph_pool)
+        self._ceph_backup_conf = encodeutils.safe_encode(CONF.backup_ceph_conf)
 
     def _validate_string_args(self, *args):
         """Ensure all args are non-None and non-empty."""
@@ -240,7 +240,8 @@ class CephBackupDriver(BackupDriver):
                                   conffile=self._ceph_backup_conf)
         try:
             client.connect()
-            pool_to_open = strutils.safe_encode(pool or self._ceph_backup_pool)
+            pool_to_open = encodeutils.safe_encode(pool or
+                                                   self._ceph_backup_pool)
             ioctx = client.open_ioctx(pool_to_open)
             return client, ioctx
         except self.rados.Error:
@@ -263,13 +264,13 @@ class CephBackupDriver(BackupDriver):
         """
         # Ensure no unicode
         if diff_format:
-            return strutils.safe_encode("volume-%s.backup.base" % volume_id)
+            return encodeutils.safe_encode("volume-%s.backup.base" % volume_id)
         else:
             if backup_id is None:
                 msg = _("Backup id required")
                 raise exception.InvalidParameterValue(msg)
-            return strutils.safe_encode("volume-%s.backup.%s" %
-                                        (volume_id, backup_id))
+            return encodeutils.safe_encode("volume-%s.backup.%s" %
+                                           (volume_id, backup_id))
 
     def _discard_bytes(self, volume, offset, length):
         """Trim length bytes from offset.
@@ -472,7 +473,7 @@ class CephBackupDriver(BackupDriver):
 
             # Since we have deleted the base image we can delete the source
             # volume backup snapshot.
-            src_name = strutils.safe_encode(volume_id)
+            src_name = encodeutils.safe_encode(volume_id)
             if src_name in self.rbd.RBD().list(client.ioctx):
                 LOG.debug("Deleting source volume snapshot '%(snapshot)s' "
                           "for backup %(basename)s." %
@@ -537,15 +538,15 @@ class CephBackupDriver(BackupDriver):
         if from_snap is not None:
             cmd1.extend(['--from-snap', from_snap])
         if src_snap:
-            path = strutils.safe_encode("%s/%s@%s" %
-                                        (src_pool, src_name, src_snap))
+            path = encodeutils.safe_encode("%s/%s@%s" %
+                                           (src_pool, src_name, src_snap))
         else:
-            path = strutils.safe_encode("%s/%s" % (src_pool, src_name))
+            path = encodeutils.safe_encode("%s/%s" % (src_pool, src_name))
 
         cmd1.extend([path, '-'])
 
         cmd2 = ['rbd', 'import-diff'] + dest_ceph_args
-        rbd_path = strutils.safe_encode("%s/%s" % (dest_pool, dest_name))
+        rbd_path = encodeutils.safe_encode("%s/%s" % (dest_pool, dest_name))
         cmd2.extend(['-', rbd_path])
 
         ret, stderr = self._piped_execute(cmd1, cmd2)
@@ -758,8 +759,8 @@ class CephBackupDriver(BackupDriver):
         return backup_snaps
 
     def _get_new_snap_name(self, backup_id):
-        return strutils.safe_encode("backup.%s.snap.%s" %
-                                    (backup_id, time.time()))
+        return encodeutils.safe_encode("backup.%s.snap.%s" %
+                                       (backup_id, time.time()))
 
     def _get_backup_snap_name(self, rbd_image, name, backup_id):
         """Return the name of the snapshot associated with backup_id.
@@ -933,7 +934,7 @@ class CephBackupDriver(BackupDriver):
         with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
             adjust_size = 0
             base_image = self.rbd.Image(client.ioctx,
-                                        strutils.safe_encode(backup_base),
+                                        encodeutils.safe_encode(backup_base),
                                         read_only=True)
             try:
                 if restore_length != base_image.size():
@@ -943,8 +944,8 @@ class CephBackupDriver(BackupDriver):
 
         if adjust_size:
             with rbd_driver.RADOSClient(self, src_pool) as client:
-                dest_image = self.rbd.Image(client.ioctx,
-                                            strutils.safe_encode(restore_vol))
+                restore_vol_encode = encodeutils.safe_encode(restore_vol)
+                dest_image = self.rbd.Image(client.ioctx, restore_vol_encode)
                 try:
                     LOG.debug("Adjusting restore vol size")
                     dest_image.resize(adjust_size)

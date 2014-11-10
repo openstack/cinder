@@ -12,6 +12,8 @@
 
 
 from oslo.config import cfg
+from oslo.utils import timeutils
+from oslo.utils import units
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.utils import misc
@@ -20,8 +22,6 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
 from cinder import policy
 from cinder import quota
 from cinder import utils

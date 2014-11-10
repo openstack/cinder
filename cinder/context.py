@@ -20,10 +20,11 @@
 import copy
 import uuid
 
+from oslo.utils import timeutils
+
 from cinder.i18n import _
 from cinder.openstack.common import local
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 from cinder import policy
 
 

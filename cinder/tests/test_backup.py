@@ -21,14 +21,14 @@ import tempfile
 
 import mock
 from oslo.config import cfg
+from oslo.utils import importutils
+from oslo.utils import timeutils
 
 from cinder.backup import manager
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.backup.fake_service_with_verify import\
     get_backup_driver

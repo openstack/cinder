@@ -21,13 +21,13 @@ import re
 import threading
 
 from oslo.config import cfg
+from oslo.utils import excutils
 import six
 
 from cinder.db.sqlalchemy import api
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib

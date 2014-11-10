@@ -16,10 +16,10 @@
 import datetime
 
 from lxml import etree
+from oslo.utils import timeutils
 
 import cinder.api.contrib.availability_zones
 import cinder.context
-from cinder.openstack.common import timeutils
 import cinder.test
 import cinder.volume.api
 

@@ -10,13 +10,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.utils import excutils
 import taskflow.engines
 from taskflow.patterns import linear_flow
 
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _
-from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import utils

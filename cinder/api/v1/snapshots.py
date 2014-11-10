@@ -15,6 +15,7 @@
 
 """The volumes snapshots api."""
 
+from oslo.utils import strutils
 import webob
 from webob import exc
 
@@ -24,7 +25,6 @@ from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
 from cinder import utils
 from cinder import volume
 

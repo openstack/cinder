@@ -22,11 +22,11 @@ import mox as mox_lib
 from mox import IgnoreArg
 from mox import IsA
 from mox import stubout
+from oslo.utils import units
 
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nfs

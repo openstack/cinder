@@ -19,9 +19,10 @@ Implements operations on volumes residing on VMware datastores.
 
 import urllib
 
+from oslo.utils import units
+
 from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim_util
 

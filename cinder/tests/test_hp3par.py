@@ -20,11 +20,11 @@ import mock
 import ast
 
 from oslo.config import cfg
+from oslo.utils import units
 
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder import test
 from cinder.tests import fake_hp_3par_client as hp3parclient
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon

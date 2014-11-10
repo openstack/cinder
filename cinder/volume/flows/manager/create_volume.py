@@ -13,6 +13,7 @@
 import traceback
 
 from oslo.config import cfg
+from oslo.utils import timeutils
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.utils import misc
@@ -23,7 +24,6 @@ from cinder.i18n import _, _LE, _LI
 from cinder.image import glance
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume.flows import common
 from cinder.volume import utils as volume_utils

@@ -17,11 +17,11 @@
 # Importing full names to not pollute the namespace and cause possible
 # collisions with use of 'from cinder.volume import <foo>' elsewhere.
 
+from oslo.utils import importutils
 
 from cinder.common import config
-import cinder.openstack.common.importutils as import_utils
 
 
 CONF = config.CONF
 
-API = import_utils.import_class(CONF.volume_api_class)
+API = importutils.import_class(CONF.volume_api_class)

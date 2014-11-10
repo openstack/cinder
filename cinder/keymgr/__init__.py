@@ -14,8 +14,7 @@
 #    under the License.
 
 from oslo.config import cfg
-
-from cinder.openstack.common import importutils
+from oslo.utils import importutils
 
 keymgr_opts = [
     cfg.StrOpt('api_class',

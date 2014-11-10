@@ -28,13 +28,13 @@ import os
 import tempfile
 
 from oslo.config import cfg
+from oslo.utils import excutils
+from oslo.utils import units
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import excutils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder.openstack.common import uuidutils
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import api

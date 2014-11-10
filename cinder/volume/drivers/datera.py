@@ -16,12 +16,12 @@
 import json
 
 from oslo.config import cfg
+from oslo.utils import units
 import requests
 
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder.volume.drivers.san import san
 
 LOG = logging.getLogger(__name__)

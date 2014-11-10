@@ -17,11 +17,11 @@ ZFS Storage Appliance Cinder Volume Driver
 import base64
 
 from oslo.config import cfg
+from oslo.utils import units
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log
-from cinder.openstack.common import units
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest

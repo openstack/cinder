@@ -25,6 +25,7 @@ import random
 from oslo.config import cfg
 from oslo.db import exception as db_exc
 from oslo import messaging
+from oslo.utils import importutils
 import osprofiler.notifier
 from osprofiler import profiler
 import osprofiler.web
@@ -33,7 +34,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import processutils

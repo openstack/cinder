@@ -27,6 +27,7 @@ from mox import IgnoreArg
 from mox import IsA
 from mox import stubout
 from oslo.config import cfg
+from oslo.utils import units
 
 from cinder import brick
 from cinder import compute
@@ -37,7 +38,6 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder.openstack.common import imageutils
 from cinder.openstack.common import processutils as putils
-from cinder.openstack.common import units
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf

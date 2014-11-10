@@ -23,16 +23,16 @@ from threading import Timer
 import time
 import uuid
 
+from oslo.utils import excutils
+from oslo.utils import units
 import six
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement

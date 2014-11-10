@@ -18,10 +18,9 @@
 
 
 from oslo.config import cfg
-
-import cinder.openstack.common.importutils
+from oslo.utils import importutils
 
 
 CONF = cfg.CONF
 
-API = cinder.openstack.common.importutils.import_class(CONF.transfer_api_class)
+API = importutils.import_class(CONF.transfer_api_class)

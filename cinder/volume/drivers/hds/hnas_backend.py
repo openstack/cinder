@@ -20,8 +20,9 @@ Hitachi Unified Storage (HUS-HNAS) platform. Backend operations.
 
 import re
 
+from oslo.utils import units
+
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder import utils
 
 LOG = logging.getLogger("cinder.volume.driver")

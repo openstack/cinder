@@ -24,13 +24,13 @@ import random
 import uuid
 
 from oslo.config import cfg
+from oslo.utils import units
 import requests
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import units
 from cinder.volume.drivers.san.san import SanISCSIDriver
 from cinder.volume import qos_specs
 from cinder.volume import volume_types

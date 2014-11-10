@@ -19,8 +19,9 @@ import mock
 
 from json import JSONEncoder
 
+from oslo.utils import units
+
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.zfssa import restclient as client

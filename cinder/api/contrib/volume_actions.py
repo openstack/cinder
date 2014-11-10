@@ -14,6 +14,7 @@
 
 
 from oslo import messaging
+from oslo.utils import strutils
 import webob
 
 from cinder.api import extensions
@@ -22,7 +23,6 @@ from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
 from cinder import utils
 from cinder import volume
 

@@ -25,12 +25,12 @@ from barbicanclient import client as barbican_client
 from keystoneclient.auth import identity
 from keystoneclient import session
 from oslo.config import cfg
+from oslo.utils import excutils
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.keymgr import key as keymgr_key
 from cinder.keymgr import key_mgr
-from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 
 CONF = cfg.CONF

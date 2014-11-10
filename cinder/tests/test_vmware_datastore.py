@@ -18,8 +18,8 @@ Unit tests for datastore module.
 """
 
 import mock
+from oslo.utils import units
 
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume.drivers.vmware import datastore as ds_sel
 from cinder.volume.drivers.vmware import error_util

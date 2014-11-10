@@ -22,6 +22,8 @@ import tempfile
 import urllib
 
 from oslo.config import cfg
+from oslo.utils import encodeutils
+from oslo.utils import units
 import six
 
 from cinder import exception
@@ -29,8 +31,6 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
-from cinder.openstack.common import units
 from cinder.volume import driver
 
 try:
@@ -89,9 +89,9 @@ class RBDImageMetadata(object):
     """RBD image metadata to be used with RBDImageIOWrapper."""
     def __init__(self, image, pool, user, conf):
         self.image = image
-        self.pool = strutils.safe_encode(pool)
-        self.user = strutils.safe_encode(user)
-        self.conf = strutils.safe_encode(conf)
+        self.pool = encodeutils.safe_encode(pool)
+        self.user = encodeutils.safe_encode(user)
+        self.conf = encodeutils.safe_encode(conf)
 
 
 class RBDImageIOWrapper(io.RawIOBase):
@@ -206,10 +206,11 @@ class RBDVolumeProxy(object):
                  read_only=False):
         client, ioctx = driver._connect_to_rados(pool)
         if snapshot is not None:
-            snapshot = strutils.safe_encode(snapshot)
+            snapshot = encodeutils.safe_encode(snapshot)
 
         try:
-            self.volume = driver.rbd.Image(ioctx, strutils.safe_encode(name),
+            self.volume = driver.rbd.Image(ioctx,
+                                           encodeutils.safe_encode(name),
                                            snapshot=snapshot,
                                            read_only=read_only)
         except driver.rbd.Error:
@@ -264,7 +265,7 @@ class RBDDriver(driver.VolumeDriver):
         for attr in ['rbd_user', 'rbd_ceph_conf', 'rbd_pool']:
             val = getattr(self.configuration, attr)
             if val is not None:
-                setattr(self.configuration, attr, strutils.safe_encode(val))
+                setattr(self.configuration, attr, encodeutils.safe_encode(val))
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -294,7 +295,7 @@ class RBDDriver(driver.VolumeDriver):
         client = self.rados.Rados(rados_id=self.configuration.rbd_user,
                                   conffile=self.configuration.rbd_ceph_conf)
         if pool is not None:
-            pool = strutils.safe_encode(pool)
+            pool = encodeutils.safe_encode(pool)
         else:
             pool = self.configuration.rbd_pool
 
@@ -414,8 +415,8 @@ class RBDDriver(driver.VolumeDriver):
         and that clone has rbd_max_clone_depth clones behind it, the source
         volume will be flattened.
         """
-        src_name = strutils.safe_encode(src_vref['name'])
-        dest_name = strutils.safe_encode(volume['name'])
+        src_name = encodeutils.safe_encode(src_vref['name'])
+        dest_name = encodeutils.safe_encode(volume['name'])
         flatten_parent = False
 
         # Do full copy if requested
@@ -501,7 +502,7 @@ class RBDDriver(driver.VolumeDriver):
 
         with RADOSClient(self) as client:
             self.rbd.RBD().create(client.ioctx,
-                                  strutils.safe_encode(volume['name']),
+                                  encodeutils.safe_encode(volume['name']),
                                   size,
                                   order,
                                   old_format=old_format,
@@ -520,10 +521,10 @@ class RBDDriver(driver.VolumeDriver):
         with RADOSClient(self, src_pool) as src_client:
             with RADOSClient(self) as dest_client:
                 self.rbd.RBD().clone(src_client.ioctx,
-                                     strutils.safe_encode(src_image),
-                                     strutils.safe_encode(src_snap),
+                                     encodeutils.safe_encode(src_image),
+                                     encodeutils.safe_encode(src_snap),
                                      dest_client.ioctx,
-                                     strutils.safe_encode(volume['name']),
+                                     encodeutils.safe_encode(volume['name']),
                                      features=self.rbd.RBD_FEATURE_LAYERING)
 
     def _resize(self, volume, **kwargs):
@@ -610,7 +611,7 @@ class RBDDriver(driver.VolumeDriver):
         """Deletes a logical volume."""
         # NOTE(dosaboy): this was broken by commit cbe1d5f. Ensure names are
         #                utf-8 otherwise librbd will barf.
-        volume_name = strutils.safe_encode(volume['name'])
+        volume_name = encodeutils.safe_encode(volume['name'])
         with RADOSClient(self) as client:
             try:
                 rbd_image = self.rbd.Image(client.ioctx, volume_name)
@@ -676,7 +677,7 @@ class RBDDriver(driver.VolumeDriver):
     def create_snapshot(self, snapshot):
         """Creates an rbd snapshot."""
         with RBDVolumeProxy(self, snapshot['volume_name']) as volume:
-            snap = strutils.safe_encode(snapshot['name'])
+            snap = encodeutils.safe_encode(snapshot['name'])
             volume.create_snap(snap)
             if self._supports_layering():
                 volume.protect_snap(snap)
@@ -685,8 +686,8 @@ class RBDDriver(driver.VolumeDriver):
         """Deletes an rbd snapshot."""
         # NOTE(dosaboy): this was broken by commit cbe1d5f. Ensure names are
         #                utf-8 otherwise librbd will barf.
-        volume_name = strutils.safe_encode(snapshot['volume_name'])
-        snap_name = strutils.safe_encode(snapshot['name'])
+        volume_name = encodeutils.safe_encode(snapshot['volume_name'])
+        snap_name = encodeutils.safe_encode(snapshot['name'])
         with RBDVolumeProxy(self, volume_name) as volume:
             if self._supports_layering():
                 try:
@@ -890,8 +891,9 @@ class RBDDriver(driver.VolumeDriver):
         # Raise an exception if we didn't find a suitable rbd image.
         with RADOSClient(self) as client:
             rbd_name = existing_ref['source-name']
-            self.rbd.RBD().rename(client.ioctx, strutils.safe_encode(rbd_name),
-                                  strutils.safe_encode(volume['name']))
+            self.rbd.RBD().rename(client.ioctx,
+                                  encodeutils.safe_encode(rbd_name),
+                                  encodeutils.safe_encode(volume['name']))
 
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of an existing image for manage_existing.
@@ -909,7 +911,7 @@ class RBDDriver(driver.VolumeDriver):
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref, reason=reason)
 
-        rbd_name = strutils.safe_encode(existing_ref['source-name'])
+        rbd_name = encodeutils.safe_encode(existing_ref['source-name'])
 
         with RADOSClient(self) as client:
             # Raise an exception if we didn't find a suitable rbd image.

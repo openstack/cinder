@@ -21,12 +21,11 @@ SQLAlchemy models for cinder data.
 
 from oslo.config import cfg
 from oslo.db.sqlalchemy import models
+from oslo.utils import timeutils
 from sqlalchemy import Column, Integer, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship, backref, validates
-
-from cinder.openstack.common import timeutils
 
 
 CONF = cfg.CONF

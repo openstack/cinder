@@ -24,6 +24,8 @@ import datetime
 import functools
 
 from oslo.config import cfg
+from oslo.utils import excutils
+from oslo.utils import timeutils
 import six
 
 from cinder import context
@@ -33,9 +35,7 @@ from cinder import flow_utils
 from cinder.i18n import _
 from cinder.image import glance
 from cinder import keymgr
-from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils
 import cinder.policy
 from cinder import quota

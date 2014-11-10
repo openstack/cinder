@@ -36,16 +36,16 @@ from xml.sax import expatreader
 from xml.sax import saxutils
 
 from oslo.config import cfg
+from oslo.utils import importutils
+from oslo.utils import timeutils
 import six
 
 from cinder.brick.initiator import connector
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import importutils
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder.openstack.common import timeutils
 
 
 CONF = cfg.CONF

@@ -18,8 +18,7 @@
 
 
 from oslo.config import cfg
-
-from cinder.openstack.common import importutils
+from oslo.utils import importutils
 
 
 db_driver_opt = cfg.StrOpt('db_driver',
