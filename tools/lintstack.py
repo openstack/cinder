@@ -46,6 +46,12 @@ ignore_messages = ["An attribute affected in cinder.tests",
 # checked elsewhere. We also ignore cinder.tests for now due to high false
 # positive rate.
 ignore_modules = ["cinder/openstack/common/", "cinder/tests/"]
+# Note(thangp): E1101 should be ignored for only cinder.object modules.
+# E1101 is error code related to accessing a non-existent member of an
+# object, but should be ignored because the object member is created
+# dynamically.
+objects_ignore_codes = ["E1101"]
+objects_ignore_modules = ["cinder/objects/"]
 
 KNOWN_PYLINT_EXCEPTIONS_FILE = "tools/pylint_exceptions"
 
@@ -100,6 +106,10 @@ class LintOutput(object):
         if any(self.filename.startswith(name) for name in ignore_modules):
             return True
         if any(msg in self.message for msg in ignore_messages):
+            return True
+        if (self.code in objects_ignore_codes and
+            any(self.filename.startswith(name)
+                for name in objects_ignore_modules)):
             return True
         return False
 

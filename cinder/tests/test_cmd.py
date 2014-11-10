@@ -398,12 +398,13 @@ class TestCinderManageCmd(test.TestCase):
             service_get_all.assert_called_once_with(mock.sentinel.ctxt)
             self.assertEqual(expected_out, fake_out.getvalue())
 
+    @mock.patch('cinder.objects.base.CinderObjectSerializer')
     @mock.patch('cinder.rpc.get_client')
     @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.rpc.initialized', return_value=False)
     @mock.patch('oslo.messaging.Target')
     def test_volume_commands_init(self, messaging_target, rpc_initialized,
-                                  rpc_init, get_client):
+                                  rpc_init, get_client, object_serializer):
         CONF.set_override('volume_topic', 'fake-topic')
         mock_target = messaging_target.return_value
         mock_rpc_client = get_client.return_value
@@ -414,7 +415,8 @@ class TestCinderManageCmd(test.TestCase):
         rpc_initialized.assert_called_once_with()
         rpc_init.assert_called_once_with(CONF)
         messaging_target.assert_called_once_with(topic='fake-topic')
-        get_client.assert_called_once_with(mock_target)
+        get_client.assert_called_once_with(mock_target,
+                                           serializer=object_serializer())
         self.assertEqual(mock_rpc_client, rpc_client)
 
     @mock.patch('cinder.db.volume_get')

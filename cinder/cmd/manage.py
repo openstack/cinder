@@ -76,6 +76,7 @@ from cinder import db
 from cinder.db import migration as db_migration
 from cinder.db.sqlalchemy import api as db_api
 from cinder.i18n import _
+from cinder.objects import base as objects_base
 from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import utils
@@ -271,7 +272,9 @@ class VolumeCommands(object):
             if not rpc.initialized():
                 rpc.init(CONF)
                 target = messaging.Target(topic=CONF.volume_topic)
-                self._client = rpc.get_client(target)
+                serializer = objects_base.CinderObjectSerializer()
+                self._client = rpc.get_client(target, serializer=serializer)
+
         return self._client
 
     @args('volume_id',

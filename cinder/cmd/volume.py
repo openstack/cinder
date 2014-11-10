@@ -21,6 +21,8 @@ import os
 
 import eventlet
 
+from cinder import objects
+
 if os.name == 'nt':
     # eventlet monkey patching the os module causes subprocess.Popen to fail
     # on Windows when using pipes due to missing non-blocking IO support.
@@ -54,6 +56,7 @@ CONF = cfg.CONF
 
 
 def main():
+    objects.register_all()
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
     logging.setup("cinder")

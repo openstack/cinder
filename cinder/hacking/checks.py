@@ -29,7 +29,8 @@ Guidelines for writing new hacking checks
 
 """
 
-UNDERSCORE_IMPORT_FILES = []
+# NOTE(thangp): Ignore N323 pep8 error caused by importing cinder objects
+UNDERSCORE_IMPORT_FILES = ['./cinder/objects/__init__.py']
 
 translated_log = re.compile(
     r"(.)*LOG\.(audit|error|info|warn|warning|critical|exception)"

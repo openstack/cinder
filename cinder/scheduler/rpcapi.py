@@ -20,6 +20,7 @@ from oslo import messaging
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
+from cinder.objects import base as objects_base
 from cinder import rpc
 
 
@@ -48,7 +49,9 @@ class SchedulerAPI(object):
         super(SchedulerAPI, self).__init__()
         target = messaging.Target(topic=CONF.scheduler_topic,
                                   version=self.RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.7')
+        serializer = objects_base.CinderObjectSerializer()
+        self.client = rpc.get_client(target, version_cap='1.7',
+                                     serializer=serializer)
 
     def create_consistencygroup(self, ctxt, topic, group_id,
                                 request_spec_list=None,

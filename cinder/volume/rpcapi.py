@@ -20,6 +20,7 @@ from oslo import messaging
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
+from cinder.objects import base as objects_base
 from cinder import rpc
 from cinder.volume import utils
 
@@ -66,7 +67,8 @@ class VolumeAPI(object):
         super(VolumeAPI, self).__init__()
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, '1.19')
+        serializer = objects_base.CinderObjectSerializer()
+        self.client = rpc.get_client(target, '1.19', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
