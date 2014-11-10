@@ -22,7 +22,9 @@ from oslo_serialization import jsonutils
 
 from cinder import context
 from cinder import db
+from cinder import objects
 from cinder import test
+from cinder.tests import fake_snapshot
 from cinder.volume import rpcapi as volume_rpcapi
 
 
@@ -43,6 +45,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         volume = db.volume_create(self.context, vol)
 
         snpshot = {
+            'id': 1,
             'volume_id': 'fake_id',
             'status': "creating",
             'progress': '0%',
@@ -53,6 +56,8 @@ class VolumeRpcAPITestCase(test.TestCase):
         self.fake_volume = jsonutils.to_primitive(volume)
         self.fake_volume_metadata = volume["volume_metadata"]
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
+        self.fake_snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context,
+                                                                 **snpshot)
         self.fake_reservations = ["RESERVATION"]
 
     def test_serialized_volume_has_id(self):
@@ -86,6 +91,7 @@ class VolumeRpcAPITestCase(test.TestCase):
             snapshot = expected_msg['snapshot']
             del expected_msg['snapshot']
             expected_msg['snapshot_id'] = snapshot['id']
+            expected_msg['snapshot'] = snapshot
         if 'host' in expected_msg:
             del expected_msg['host']
         if 'dest_host' in expected_msg:
@@ -133,7 +139,12 @@ class VolumeRpcAPITestCase(test.TestCase):
             self.assertEqual(arg, expected_arg)
 
         for kwarg, value in self.fake_kwargs.items():
-            self.assertEqual(value, expected_msg[kwarg])
+            if isinstance(value, objects.Snapshot):
+                expected_snapshot = expected_msg[kwarg].obj_to_primitive()
+                snapshot = value.obj_to_primitive()
+                self.assertEqual(expected_snapshot, snapshot)
+            else:
+                self.assertEqual(expected_msg[kwarg], value)
 
     def test_create_volume(self):
         self._test_volume_api('create_volume',
@@ -177,12 +188,12 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('create_snapshot',
                               rpc_method='cast',
                               volume=self.fake_volume,
-                              snapshot=self.fake_snapshot)
+                              snapshot=self.fake_snapshot_obj)
 
     def test_delete_snapshot(self):
         self._test_volume_api('delete_snapshot',
                               rpc_method='cast',
-                              snapshot=self.fake_snapshot,
+                              snapshot=self.fake_snapshot_obj,
                               host='fake_host')
 
     def test_attach_volume_to_instance(self):

@@ -137,7 +137,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        size_in_g = volume.get('size', volume.get('volume_size', None))
+        size_in_g = volume.get('volume_size') or volume.get('size')
         if size_in_g is None:
             msg = (_LE("Size for volume: %s not found, "
                    "cannot secure delete.") % volume['id'])

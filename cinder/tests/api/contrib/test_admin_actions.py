@@ -13,6 +13,7 @@
 import ast
 
 import fixtures
+import mock
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
@@ -30,6 +31,7 @@ from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.tests import cast_as_call
+from cinder.tests import fake_snapshot
 from cinder.volume import api as volume_api
 from cinder.volume.targets import tgt
 
@@ -354,12 +356,20 @@ class AdminActionsTest(test.TestCase):
         # volume is deleted
         self.assertRaises(exception.NotFound, db.volume_get, ctx, volume['id'])
 
-    def test_force_delete_snapshot(self):
+    @mock.patch.object(volume_api.API, 'delete_snapshot', return_value=True)
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    @mock.patch.object(db, 'snapshot_get')
+    @mock.patch.object(db, 'volume_get')
+    def test_force_delete_snapshot(self, volume_get, snapshot_get, get_by_id,
+                                   delete_snapshot):
         ctx = context.RequestContext('admin', 'fake', True)
-        snapshot = stubs.stub_snapshot(1, host='foo')
-        self.stubs.Set(db, 'volume_get', lambda x, y: snapshot)
-        self.stubs.Set(db, 'snapshot_get', lambda x, y: snapshot)
-        self.stubs.Set(volume_api.API, 'delete_snapshot', lambda *x, **y: True)
+        volume = stubs.stub_volume(1)
+        snapshot = stubs.stub_snapshot(1)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
+        volume_get.return_value = volume
+        snapshot_get.return_value = snapshot
+        get_by_id.return_value = snapshot_obj
+
         path = '/v2/fake/snapshots/%s/action' % snapshot['id']
         req = webob.Request.blank(path)
         req.method = 'POST'

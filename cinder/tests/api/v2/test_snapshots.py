@@ -16,15 +16,19 @@
 import datetime
 
 from lxml import etree
+import mock
 import webob
 
 from cinder.api.v2 import snapshots
+from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
+from cinder.tests import fake_snapshot
+from cinder.tests import fake_volume
 from cinder import volume
 
 
@@ -156,10 +160,28 @@ class SnapshotApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, body)
 
-    def test_snapshot_update(self):
-        self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
-        self.stubs.Set(volume.api.API, "update_snapshot",
-                       stubs.stub_snapshot_update)
+    @mock.patch.object(volume.api.API, "update_snapshot",
+                       side_effect=stubs.stub_snapshot_update)
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_snapshot_update(self, snapshot_get_by_id, volume_get_by_id,
+                             snapshot_metadata_get, update_snapshot):
+        snapshot = {
+            'id': UUID,
+            'volume_id': 1,
+            'status': 'available',
+            'volume_size': 100,
+            'display_name': 'Default name',
+            'display_description': 'Default description',
+            'expected_attrs': ['metadata'],
+        }
+        ctx = context.RequestContext('admin', 'fake', True)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_get_by_id.return_value = snapshot_obj
+        volume_get_by_id.return_value = fake_volume_obj
+
         updates = {
             "name": "Updated Test Name",
         }
@@ -169,12 +191,12 @@ class SnapshotApiTest(test.TestCase):
         expected = {
             'snapshot': {
                 'id': UUID,
-                'volume_id': 12,
-                'status': 'available',
+                'volume_id': '1',
+                'status': u'available',
                 'size': 100,
                 'created_at': None,
-                'name': 'Updated Test Name',
-                'description': 'Default description',
+                'name': u'Updated Test Name',
+                'description': u'Default description',
                 'metadata': {},
             }
         }
@@ -202,9 +224,27 @@ class SnapshotApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.update, req,
                           'not-the-uuid', body)
 
-    def test_snapshot_delete(self):
-        self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
-        self.stubs.Set(volume.api.API, "delete_snapshot", stub_snapshot_delete)
+    @mock.patch.object(volume.api.API, "delete_snapshot",
+                       side_effect=stubs.stub_snapshot_update)
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_snapshot_delete(self, snapshot_get_by_id, volume_get_by_id,
+                             snapshot_metadata_get, delete_snapshot):
+        snapshot = {
+            'id': UUID,
+            'volume_id': 1,
+            'status': 'available',
+            'volume_size': 100,
+            'display_name': 'Default name',
+            'display_description': 'Default description',
+            'expected_attrs': ['metadata'],
+        }
+        ctx = context.RequestContext('admin', 'fake', True)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_get_by_id.return_value = snapshot_obj
+        volume_get_by_id.return_value = fake_volume_obj
 
         snapshot_id = UUID
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % snapshot_id)
@@ -218,8 +258,26 @@ class SnapshotApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
                           req, snapshot_id)
 
-    def test_snapshot_show(self):
-        self.stubs.Set(volume.api.API, "get_snapshot", stub_snapshot_get)
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_snapshot_show(self, snapshot_get_by_id, volume_get_by_id,
+                           snapshot_metadata_get):
+        snapshot = {
+            'id': UUID,
+            'volume_id': 1,
+            'status': 'available',
+            'volume_size': 100,
+            'display_name': 'Default name',
+            'display_description': 'Default description',
+            'expected_attrs': ['metadata'],
+        }
+        ctx = context.RequestContext('admin', 'fake', True)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_get_by_id.return_value = snapshot_obj
+        volume_get_by_id.return_value = fake_volume_obj
+
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
         resp_dict = self.controller.show(req, UUID)
 
@@ -245,7 +303,8 @@ class SnapshotApiTest(test.TestCase):
         resp_snapshot = resp_snapshots.pop()
         self.assertEqual(resp_snapshot['id'], UUID)
 
-    def test_snapshot_list_by_status(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_snapshot_list_by_status(self, snapshot_metadata_get):
         def stub_snapshot_get_all_by_project(context, project_id):
             return [
                 stubs.stub_snapshot(1, display_name='backup1',
@@ -278,7 +337,8 @@ class SnapshotApiTest(test.TestCase):
         resp = self.controller.index(req)
         self.assertEqual(len(resp['snapshots']), 0)
 
-    def test_snapshot_list_by_volume(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value={})
+    def test_snapshot_list_by_volume(self, snapshot_metadata_get):
         def stub_snapshot_get_all_by_project(context, project_id):
             return [
                 stubs.stub_snapshot(1, volume_id='vol1', status='creating'),
@@ -307,7 +367,8 @@ class SnapshotApiTest(test.TestCase):
         self.assertEqual(resp['snapshots'][0]['volume_id'], 'vol1')
         self.assertEqual(resp['snapshots'][0]['status'], 'available')
 
-    def test_snapshot_list_by_name(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value={})
+    def test_snapshot_list_by_name(self, snapshot_metadata_get):
         def stub_snapshot_get_all_by_project(context, project_id):
             return [
                 stubs.stub_snapshot(1, display_name='backup1'),
@@ -331,7 +392,9 @@ class SnapshotApiTest(test.TestCase):
         resp = self.controller.index(req)
         self.assertEqual(len(resp['snapshots']), 0)
 
-    def test_admin_list_snapshots_limited_to_project(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_admin_list_snapshots_limited_to_project(self,
+                                                     snapshot_metadata_get):
         req = fakes.HTTPRequest.blank('/v2/fake/snapshots',
                                       use_admin_context=True)
         res = self.controller.index(req)
@@ -365,20 +428,24 @@ class SnapshotApiTest(test.TestCase):
         # non_admin case
         list_snapshots_with_limit_and_offset(is_admin=False)
 
-    def test_admin_list_snapshots_all_tenants(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_admin_list_snapshots_all_tenants(self, snapshot_metadata_get):
         req = fakes.HTTPRequest.blank('/v2/fake/snapshots?all_tenants=1',
                                       use_admin_context=True)
         res = self.controller.index(req)
         self.assertIn('snapshots', res)
         self.assertEqual(3, len(res['snapshots']))
 
-    def test_all_tenants_non_admin_gets_all_tenants(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_all_tenants_non_admin_gets_all_tenants(self,
+                                                    snapshot_metadata_get):
         req = fakes.HTTPRequest.blank('/v2/fake/snapshots?all_tenants=1')
         res = self.controller.index(req)
         self.assertIn('snapshots', res)
         self.assertEqual(1, len(res['snapshots']))
 
-    def test_non_admin_get_by_project(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_non_admin_get_by_project(self, snapshot_metadata_get):
         req = fakes.HTTPRequest.blank('/v2/fake/snapshots')
         res = self.controller.index(req)
         self.assertIn('snapshots', res)

@@ -149,11 +149,11 @@ def locked_snapshot_operation(f):
     snapshot e.g. delete SnapA while create volume VolA from SnapA is in
     progress.
     """
-    def lso_inner1(inst, context, snapshot_id, **kwargs):
-        @utils.synchronized("%s-%s" % (snapshot_id, f.__name__), external=True)
+    def lso_inner1(inst, context, snapshot, **kwargs):
+        @utils.synchronized("%s-%s" % (snapshot.id, f.__name__), external=True)
         def lso_inner2(*_args, **_kwargs):
             return f(*_args, **_kwargs)
-        return lso_inner2(inst, context, snapshot_id, **kwargs)
+        return lso_inner2(inst, context, snapshot, **kwargs)
     return lso_inner1
 
 
@@ -540,15 +540,13 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         return True
 
-    def create_snapshot(self, context, volume_id, snapshot_id):
+    def create_snapshot(self, context, volume_id, snapshot):
         """Creates and exports the snapshot."""
-        caller_context = context
         context = context.elevated()
-        snapshot_ref = self.db.snapshot_get(context, snapshot_id)
-        LOG.info(_LI("snapshot %s: creating"), snapshot_ref['id'])
+        LOG.info(_LI("snapshot %s: creating"), snapshot.id)
 
         self._notify_about_snapshot_usage(
-            context, snapshot_ref, "create.start")
+            context, snapshot, "create.start")
 
         try:
             # NOTE(flaper87): Verify the driver is enabled
@@ -557,28 +555,27 @@ class VolumeManager(manager.SchedulerDependentManager):
             utils.require_driver_initialized(self.driver)
 
             LOG.debug("snapshot %(snap_id)s: creating",
-                      {'snap_id': snapshot_ref['id']})
+                      {'snap_id': snapshot.id})
 
             # Pass context so that drivers that want to use it, can,
             # but it is not a requirement for all drivers.
-            snapshot_ref['context'] = caller_context
+            snapshot.context = context
 
-            model_update = self.driver.create_snapshot(snapshot_ref)
+            model_update = self.driver.create_snapshot(snapshot)
             if model_update:
-                self.db.snapshot_update(context, snapshot_ref['id'],
-                                        model_update)
+                snapshot.update(model_update)
+                snapshot.save(context)
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.snapshot_update(context,
-                                        snapshot_ref['id'],
-                                        {'status': 'error'})
+                snapshot.status = 'error'
+                snapshot.save(context)
 
         vol_ref = self.db.volume_get(context, volume_id)
         if vol_ref.bootable:
             try:
                 self.db.volume_glance_metadata_copy_to_snapshot(
-                    context, snapshot_ref['id'], volume_id)
+                    context, snapshot.id, volume_id)
             except exception.GlanceMetadataNotFound:
                 # If volume is not created from image, No glance metadata
                 # would be available for that volume in
@@ -589,32 +586,28 @@ class VolumeManager(manager.SchedulerDependentManager):
                                   " metadata using the provided volumes"
                                   " %(volume_id)s metadata") %
                               {'volume_id': volume_id,
-                               'snapshot_id': snapshot_id})
-                self.db.snapshot_update(context,
-                                        snapshot_ref['id'],
-                                        {'status': 'error'})
+                               'snapshot_id': snapshot.id})
+                snapshot.status = 'error'
+                snapshot.save(context)
                 raise exception.MetadataCopyFailure(reason=ex)
 
-        snapshot_ref = self.db.snapshot_update(context,
-                                               snapshot_ref['id'],
-                                               {'status': 'available',
-                                                'progress': '100%'})
+        snapshot.status = 'available'
+        snapshot.progress = '100%'
+        snapshot.save(context)
 
-        LOG.info(_LI("snapshot %s: created successfully"), snapshot_ref['id'])
-        self._notify_about_snapshot_usage(context, snapshot_ref, "create.end")
-        return snapshot_id
+        LOG.info(_("snapshot %s: created successfully"), snapshot.id)
+        self._notify_about_snapshot_usage(context, snapshot, "create.end")
+        return snapshot.id
 
     @locked_snapshot_operation
-    def delete_snapshot(self, context, snapshot_id):
+    def delete_snapshot(self, context, snapshot):
         """Deletes and unexports snapshot."""
-        caller_context = context
         context = context.elevated()
-        snapshot_ref = self.db.snapshot_get(context, snapshot_id)
-        project_id = snapshot_ref['project_id']
+        project_id = snapshot.project_id
 
-        LOG.info(_LI("snapshot %s: deleting"), snapshot_ref['id'])
+        LOG.info(_("snapshot %s: deleting"), snapshot.id)
         self._notify_about_snapshot_usage(
-            context, snapshot_ref, "delete.start")
+            context, snapshot, "delete.start")
 
         try:
             # NOTE(flaper87): Verify the driver is enabled
@@ -622,25 +615,24 @@ class VolumeManager(manager.SchedulerDependentManager):
             # and the snapshot status updated.
             utils.require_driver_initialized(self.driver)
 
-            LOG.debug("snapshot %s: deleting", snapshot_ref['id'])
+            LOG.debug("snapshot %s: deleting", snapshot.id)
 
             # Pass context so that drivers that want to use it, can,
             # but it is not a requirement for all drivers.
-            snapshot_ref['context'] = caller_context
+            snapshot.context = context
+            snapshot.save()
 
-            self.driver.delete_snapshot(snapshot_ref)
+            self.driver.delete_snapshot(snapshot)
         except exception.SnapshotIsBusy:
             LOG.error(_LE("Cannot delete snapshot %s: snapshot is busy"),
-                      snapshot_ref['id'])
-            self.db.snapshot_update(context,
-                                    snapshot_ref['id'],
-                                    {'status': 'available'})
+                      snapshot.id)
+            snapshot.status = 'available'
+            snapshot.save()
             return True
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.snapshot_update(context,
-                                        snapshot_ref['id'],
-                                        {'status': 'error_deleting'})
+                snapshot.status = 'error_deleting'
+                snapshot.save()
 
         # Get reservations
         try:
@@ -649,9 +641,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             else:
                 reserve_opts = {
                     'snapshots': -1,
-                    'gigabytes': -snapshot_ref['volume_size'],
+                    'gigabytes': -snapshot.volume_size,
                 }
-            volume_ref = self.db.volume_get(context, snapshot_ref['volume_id'])
+            volume_ref = self.db.volume_get(context, snapshot.volume_id)
             QUOTAS.add_volume_type_opts(context,
                                         reserve_opts,
                                         volume_ref.get('volume_type_id'))
@@ -661,10 +653,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         except Exception:
             reservations = None
             LOG.exception(_LE("Failed to update usages deleting snapshot"))
-        self.db.volume_glance_metadata_delete_by_snapshot(context, snapshot_id)
-        self.db.snapshot_destroy(context, snapshot_id)
-        LOG.info(_LI("snapshot %s: deleted successfully"), snapshot_ref['id'])
-        self._notify_about_snapshot_usage(context, snapshot_ref, "delete.end")
+        self.db.volume_glance_metadata_delete_by_snapshot(context, snapshot.id)
+        snapshot.destroy(context)
+        LOG.info(_LI("snapshot %s: deleted successfully"), snapshot.id)
+        self._notify_about_snapshot_usage(context, snapshot, "delete.end")
 
         # Commit the reservations
         if reservations:
