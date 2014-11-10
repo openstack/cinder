@@ -761,18 +761,6 @@
 
 
 #
-# Options defined in cinder.openstack.common.lockutils
-#
-
-# Whether to disable inter-process locks (boolean value)
-#disable_process_locking=false
-
-# Directory to use for lock files. Default to a temp directory
-# (string value)
-#lock_path=<None>
-
-
-#
 # Options defined in cinder.openstack.common.log
 #
 

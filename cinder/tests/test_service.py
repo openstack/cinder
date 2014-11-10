@@ -22,6 +22,7 @@ Unit Tests for remote procedure calls using queue
 
 import mock
 import mox
+from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.db import exception as db_exc
 
@@ -29,7 +30,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import manager
-from cinder.openstack.common import processutils
 from cinder import service
 from cinder import test
 from cinder import wsgi

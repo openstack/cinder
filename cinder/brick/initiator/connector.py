@@ -17,6 +17,9 @@ import os
 import socket
 import time
 
+from oslo.concurrency import lockutils
+from oslo.concurrency import processutils as putils
+
 from cinder.brick import exception
 from cinder.brick import executor
 from cinder.brick.initiator import host_driver
@@ -24,10 +27,8 @@ from cinder.brick.initiator import linuxfc
 from cinder.brick.initiator import linuxscsi
 from cinder.brick.remotefs import remotefs
 from cinder.i18n import _, _LE
-from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
 

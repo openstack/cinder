@@ -21,6 +21,8 @@ import random
 import re
 import time
 
+from oslo.concurrency import lockutils
+from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.serialization import jsonutils as json
 from oslo.utils import excutils
@@ -30,10 +32,8 @@ import six
 from cinder import exception
 from cinder.exception import EMCVnxCLICmdError
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import processutils
 from cinder import utils
 from cinder.volume.configuration import Configuration
 from cinder.volume.drivers.san import san

@@ -11,9 +11,11 @@
 # under the License.
 
 import ast
-import tempfile
 
+import fixtures
+from oslo.concurrency import lockutils
 from oslo.config import cfg
+from oslo.config import fixture as config_fixture
 from oslo.serialization import jsonutils
 from oslo.utils import timeutils
 import webob
@@ -45,10 +47,13 @@ class AdminActionsTest(test.TestCase):
     def setUp(self):
         super(AdminActionsTest, self).setUp()
 
-        self.tempdir = tempfile.mkdtemp()
+        self.tempdir = self.useFixture(fixtures.TempDir()).path
+        self.fixture = self.useFixture(config_fixture.Config(lockutils.CONF))
+        self.fixture.config(lock_path=self.tempdir,
+                            group='oslo_concurrency')
+        self.fixture.config(disable_process_locking=True,
+                            group='oslo_concurrency')
         self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
-        self.flags(lock_path=self.tempdir,
-                   disable_process_locking=True)
 
         self.volume_api = volume_api.API()
         cast_as_call.mock_cast_as_call(self.volume_api.volume_rpcapi.client)

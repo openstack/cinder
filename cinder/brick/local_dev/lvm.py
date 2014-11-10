@@ -22,13 +22,13 @@ import math
 import re
 import time
 
+from oslo.concurrency import processutils as putils
 from oslo.utils import excutils
 
 from cinder.brick import exception
 from cinder.brick import executor
 from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
 
 
 LOG = logging.getLogger(__name__)

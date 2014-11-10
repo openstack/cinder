@@ -24,13 +24,14 @@ inline callbacks.
 import logging
 import os
 import shutil
-import tempfile
 import uuid
 
 import fixtures
 import mock
 import mox
+from oslo.concurrency import lockutils
 from oslo.config import cfg
+from oslo.config import fixture as config_fixture
 from oslo.messaging import conffixture as messaging_conffixture
 from oslo.utils import strutils
 from oslo.utils import timeutils
@@ -187,7 +188,11 @@ class TestCase(testtools.TestCase):
 
         self.override_config('fatal_exception_format_errors', True)
         # This will be cleaned up by the NestedTempfile fixture
-        self.override_config('lock_path', tempfile.mkdtemp())
+        lock_path = self.useFixture(fixtures.TempDir()).path
+        self.fixture = self.useFixture(
+            config_fixture.Config(lockutils.CONF))
+        self.fixture.config(lock_path=lock_path,
+                            group='oslo_concurrency')
         self.override_config('policy_file',
                              os.path.join(
                                  os.path.abspath(

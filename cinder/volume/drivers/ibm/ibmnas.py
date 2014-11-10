@@ -32,6 +32,7 @@ Notes:
 import os
 import re
 
+from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.utils import units
 
@@ -39,7 +40,6 @@ from cinder import exception
 from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import utils
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers.remotefs import nas_opts

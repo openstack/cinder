@@ -18,6 +18,7 @@ import os
 import stat
 import time
 
+from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.utils import units
 
@@ -29,7 +30,6 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 

@@ -19,10 +19,10 @@ import contextlib
 import os
 import tempfile
 
+from oslo.concurrency import processutils
 from oslo.utils import units
 
 from cinder.image import image_utils
-from cinder.openstack.common import processutils
 from cinder import test
 from cinder.volume.drivers.sheepdog import SheepdogDriver
 

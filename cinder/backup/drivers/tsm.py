@@ -29,13 +29,13 @@ import json
 import os
 import stat
 
+from oslo.concurrency import processutils
 from oslo.config import cfg
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
 from cinder.i18n import _LE, _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import utils
 
 LOG = logging.getLogger(__name__)

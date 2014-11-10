@@ -22,13 +22,13 @@ import random
 import re
 
 from eventlet import greenthread
+from oslo.concurrency import processutils
 from oslo.utils import excutils
 import six
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import ssh_utils
 from cinder import utils
 import cinder.zonemanager.drivers.cisco.fc_zone_constants as ZoneConstant

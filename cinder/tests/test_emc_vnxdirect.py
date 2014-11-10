@@ -17,9 +17,9 @@ import os
 import re
 
 import mock
+from oslo.concurrency import processutils
 
 from cinder import exception
-from cinder.openstack.common import processutils
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.emc.emc_cli_fc import EMCCLIFCDriver
@@ -1155,7 +1155,7 @@ Time Remaining:  0 second(s)
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch(
-        "cinder.openstack.common.processutils.execute",
+        "oslo.concurrency.processutils.execute",
         mock.Mock(
             return_value=(
                 "fakeportal iqn.1992-04.fake.com:fake.apm00123907237.a8", 0)))
@@ -2474,7 +2474,7 @@ class EMCVNXCLIDriverFCTestCase(test.TestCase):
             return None
 
     @mock.patch(
-        "cinder.openstack.common.processutils.execute",
+        "oslo.concurrency.processutils.execute",
         mock.Mock(
             return_value=(
                 "fakeportal iqn.1992-04.fake.com:fake.apm00123907237.a8", 0)))

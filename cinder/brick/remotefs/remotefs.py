@@ -19,12 +19,12 @@ import hashlib
 import os
 import re
 
+from oslo.concurrency import processutils as putils
 import six
 
 from cinder.brick import exception
 from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
 
