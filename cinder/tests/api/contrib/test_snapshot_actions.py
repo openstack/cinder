@@ -12,10 +12,10 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from oslo.serialization import jsonutils
 import webob
 
 from cinder import db
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs

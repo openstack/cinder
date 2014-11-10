@@ -21,13 +21,13 @@ from xml.dom import minidom
 from xml.parsers import expat
 
 from lxml import etree
+from oslo.serialization import jsonutils
 import six
 import webob
 
 from cinder import exception
 from cinder import i18n
 from cinder.i18n import _, _LI
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import wsgi

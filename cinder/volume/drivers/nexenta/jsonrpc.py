@@ -23,8 +23,9 @@
 
 import urllib2
 
+from oslo.serialization import jsonutils
+
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers import nexenta
 

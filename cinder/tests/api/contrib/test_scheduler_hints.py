@@ -15,9 +15,10 @@
 
 import datetime
 
+from oslo.serialization import jsonutils
+
 import cinder
 from cinder.api.openstack import wsgi
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs

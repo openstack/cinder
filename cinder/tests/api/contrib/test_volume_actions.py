@@ -19,12 +19,12 @@ import uuid
 import mock
 from oslo.config import cfg
 from oslo import messaging
+from oslo.serialization import jsonutils
 import webob
 
 from cinder.api.contrib import volume_actions
 from cinder import exception
 from cinder.image.glance import GlanceImageService
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs

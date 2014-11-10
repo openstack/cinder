@@ -17,12 +17,12 @@
 import uuid
 
 import mock
+from oslo.serialization import jsonutils
 
 from cinder.backup import driver
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.backup import fake_service
 

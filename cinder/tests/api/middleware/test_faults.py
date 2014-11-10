@@ -18,6 +18,7 @@ from xml.dom import minidom
 
 import mock
 from oslo.i18n import _lazy
+from oslo.serialization import jsonutils
 import webob.dec
 import webob.exc
 
@@ -26,7 +27,6 @@ from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder import i18n as cinder_i18n
 from cinder.i18n import _
-from cinder.openstack.common import jsonutils
 from cinder import test
 
 

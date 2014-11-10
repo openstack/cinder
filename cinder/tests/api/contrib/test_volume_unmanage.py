@@ -13,11 +13,11 @@
 #   under the License.
 
 import mock
+from oslo.serialization import jsonutils
 import webob
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
 
