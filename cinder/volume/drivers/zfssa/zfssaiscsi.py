@@ -20,7 +20,7 @@ from oslo.config import cfg
 from oslo.utils import units
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -246,7 +246,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                            snapshot['volume_name'],
                                            snapshot['name'])
         if has_clones:
-            LOG.error(_('Snapshot %s: has clones') % snapshot['name'])
+            LOG.error(_LE('Snapshot %s: has clones') % snapshot['name'])
             raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
 
         self.zfssa.delete_snapshot(lcfg.zfssa_pool,
@@ -360,9 +360,9 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         try:
             self.create_volume_from_snapshot(volume, zfssa_snapshot)
         except exception.VolumeBackendAPIException:
-            LOG.error(_('Clone Volume:'
-                        '%(volume)s failed from source volume:'
-                        '%(src_vref)s')
+            LOG.error(_LE('Clone Volume:'
+                          '%(volume)s failed from source volume:'
+                          '%(src_vref)s')
                       % {'volume': volume['name'],
                          'src_vref': src_vref['name']})
             # Cleanup snapshot

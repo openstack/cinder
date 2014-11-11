@@ -21,7 +21,7 @@ if sys.platform == 'win32':
 
 from cinder.brick.remotefs import remotefs
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ class WindowsRemoteFsClient(remotefs.RemoteFsClient):
                                 options.get('pass'))
 
         try:
-            LOG.info(_('Mounting share: %s') % smbfs_share)
+            LOG.info(_LI('Mounting share: %s') % smbfs_share)
             self.smb_conn.Msft_SmbMapping.Create(**smb_opts)
         except wmi.x_wmi as exc:
             err_msg = (_(
@@ -134,7 +134,7 @@ class WindowsRemoteFsClient(remotefs.RemoteFsClient):
                                                ctypes.pointer(total_bytes),
                                                ctypes.pointer(free_bytes))
         if retcode == 0:
-            LOG.error(_("Could not get share %s capacity info.") %
+            LOG.error(_LE("Could not get share %s capacity info.") %
                       smbfs_share)
             return 0, 0
         return total_bytes.value, free_bytes.value

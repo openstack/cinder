@@ -26,7 +26,7 @@ from oslo.config import cfg
 from oslo.utils import units
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
@@ -123,7 +123,7 @@ class GPFSDriver(driver.VolumeDriver):
             (out, err) = self._execute('mmgetstate', '-Y', run_as_root=True)
             return out
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Failed to issue mmgetstate command, error: %s.') %
+            LOG.error(_LE('Failed to issue mmgetstate command, error: %s.') %
                       exc.stderr)
             raise exception.VolumeBackendAPIException(data=exc.stderr)
 
@@ -134,7 +134,7 @@ class GPFSDriver(driver.VolumeDriver):
         state_token = lines[0].split(':').index('state')
         gpfs_state = lines[1].split(':')[state_token]
         if gpfs_state != 'active':
-            LOG.error(_('GPFS is not active.  Detailed output: %s.') % out)
+            LOG.error(_LE('GPFS is not active.  Detailed output: %s.') % out)
             exception_message = (_('GPFS is not running, state: %s.') %
                                  gpfs_state)
             raise exception.VolumeBackendAPIException(data=exception_message)
@@ -147,8 +147,8 @@ class GPFSDriver(driver.VolumeDriver):
             filesystem = lines[1].split()[0]
             return filesystem
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Failed to issue df command for path %(path)s, '
-                        'error: %(error)s.') %
+            LOG.error(_LE('Failed to issue df command for path %(path)s, '
+                          'error: %(error)s.') %
                       {'path': path,
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)
@@ -163,7 +163,7 @@ class GPFSDriver(driver.VolumeDriver):
             cluster_id = lines[1].split(':')[value_token]
             return cluster_id
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Failed to issue mmlsconfig command, error: %s.') %
+            LOG.error(_LE('Failed to issue mmlsconfig command, error: %s.') %
                       exc.stderr)
             raise exception.VolumeBackendAPIException(data=exc.stderr)
 
@@ -174,8 +174,8 @@ class GPFSDriver(driver.VolumeDriver):
             (out, err) = self._execute('mmlsattr', '-L', path,
                                        run_as_root=True)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Failed to issue mmlsattr command on path %(path)s, '
-                        'error: %(error)s') %
+            LOG.error(_LE('Failed to issue mmlsattr command on path %(path)s, '
+                          'error: %(error)s') %
                       {'path': path,
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)
@@ -232,8 +232,8 @@ class GPFSDriver(driver.VolumeDriver):
             (out, err) = self._execute('mmlsfs', filesystem, '-V', '-Y',
                                        run_as_root=True)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Failed to issue mmlsfs command for path %(path)s, '
-                        'error: %(error)s.') %
+            LOG.error(_LE('Failed to issue mmlsfs command for path %(path)s, '
+                          'error: %(error)s.') %
                       {'path': path,
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)
@@ -252,7 +252,7 @@ class GPFSDriver(driver.VolumeDriver):
             (out, err) = self._execute('mmlsconfig', 'minreleaseLeveldaemon',
                                        '-Y', run_as_root=True)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Failed to issue mmlsconfig command, error: %s.') %
+            LOG.error(_LE('Failed to issue mmlsconfig command, error: %s.') %
                       exc.stderr)
             raise exception.VolumeBackendAPIException(data=exc.stderr)
 
@@ -269,8 +269,9 @@ class GPFSDriver(driver.VolumeDriver):
         try:
             self._execute('mmlsattr', directory, run_as_root=True)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Failed to issue mmlsattr command for path %(path)s, '
-                        'error: %(error)s.') %
+            LOG.error(_LE('Failed to issue mmlsattr command '
+                          'for path %(path)s, '
+                          'error: %(error)s.') %
                       {'path': directory,
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)

@@ -20,7 +20,7 @@ from oslo.concurrency import processutils as putils
 
 from cinder.brick.iscsi import iscsi
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume import utils
 
@@ -73,8 +73,8 @@ class _ExportMixin(object):
         try:
             iscsi_target = self._get_iscsi_target(context, volume['id'])
         except exception.NotFound:
-            LOG.info(_("Skipping remove_export. No iscsi_target "
-                       "provisioned for volume: %s"), volume['id'])
+            LOG.info(_LI("Skipping remove_export. No iscsi_target "
+                         "provisioned for volume: %s"), volume['id'])
             return
         try:
 
@@ -88,8 +88,8 @@ class _ExportMixin(object):
             self.show_target(iscsi_target, iqn=iqn)
 
         except Exception:
-            LOG.info(_("Skipping remove_export. No iscsi_target "
-                       "is presently exported for volume: %s"), volume['id'])
+            LOG.info(_LI("Skipping remove_export. No iscsi_target "
+                         "is presently exported for volume: %s"), volume['id'])
             return
 
         self.remove_iscsi_target(iscsi_target, 0, volume['id'], volume['name'])
@@ -99,8 +99,8 @@ class _ExportMixin(object):
         iscsi_target = self._get_target_for_ensure_export(context,
                                                           volume['id'])
         if iscsi_target is None:
-            LOG.info(_("Skipping remove_export. No iscsi_target "
-                       "provisioned for volume: %s"), volume['id'])
+            LOG.info(_LI("Skipping remove_export. No iscsi_target "
+                         "provisioned for volume: %s"), volume['id'])
             return
         chap_auth = None
         # Check for https://bugs.launchpad.net/cinder/+bug/1065702
@@ -244,8 +244,8 @@ class LioAdm(_ExportMixin, iscsi.LioAdm):
             iscsi_target = self.db.volume_get_iscsi_target_num(context,
                                                                volume['id'])
         except exception.NotFound:
-            LOG.info(_("Skipping remove_export. No iscsi_target "
-                       "provisioned for volume: %s"), volume['id'])
+            LOG.info(_LI("Skipping remove_export. No iscsi_target "
+                         "provisioned for volume: %s"), volume['id'])
             return
 
         self.remove_iscsi_target(iscsi_target, 0, volume['id'], volume['name'])
@@ -255,8 +255,8 @@ class LioAdm(_ExportMixin, iscsi.LioAdm):
         try:
             volume_info = self.db.volume_get(context, volume['id'])
         except exception.NotFound:
-            LOG.info(_("Skipping ensure_export. No iscsi_target "
-                       "provision for volume: %s"), volume['id'])
+            LOG.info(_LI("Skipping ensure_export. No iscsi_target "
+                         "provision for volume: %s"), volume['id'])
             return
 
         (auth_method,

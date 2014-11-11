@@ -30,7 +30,7 @@ from oslo.utils import excutils
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder import ssh_utils
 from cinder import utils
@@ -168,7 +168,7 @@ class TseriesCommon():
             try:
                 tree.write(filename, 'UTF-8')
             except Exception as err:
-                LOG.info(_('_get_login_info: %s') % err)
+                LOG.info(_LI('_get_login_info: %s') % err)
 
         return logininfo
 
@@ -464,9 +464,9 @@ class TseriesCommon():
                             self.ssh_pool.ip = ip1
                             old_ip = ip0
 
-                    LOG.info(_('_execute_cli: Can not connect to IP '
-                               '%(old)s, try to connect to the other '
-                               'IP %(new)s.')
+                    LOG.info(_LI('_execute_cli: Can not connect to IP '
+                                 '%(old)s, try to connect to the other '
+                                 'IP %(new)s.')
                              % {'old': old_ip, 'new': self.ssh_pool.ip})
 
                 if not ssh_client:
@@ -499,7 +499,7 @@ class TseriesCommon():
                 else:
                     if ssh_client:
                         self.ssh_pool.remove(ssh_client)
-                    LOG.error(_('_execute_cli: %s') % err)
+                    LOG.error(_LE('_execute_cli: %s') % err)
                     raise err
 
     def _reset_transport_timeout(self, ssh, time):
@@ -931,7 +931,7 @@ class TseriesCommon():
         """Map a volume to a host."""
         # Map a LUN to a host if not mapped.
         if not self._check_volume_created(volume_id):
-            LOG.error(_('map_volume: Volume %s was not found.') % volume_id)
+            LOG.error(_LE('map_volume: Volume %s was not found.') % volume_id)
             raise exception.VolumeNotFound(volume_id=volume_id)
 
         hostlun_id = None
@@ -1100,11 +1100,12 @@ class TseriesCommon():
             host_name = HOST_NAME_PREFIX + host_name
             host_id = self._get_host_id(host_name, self.hostgroup_id)
             if host_id is None:
-                LOG.error(_('remove_map: Host %s does not exist.') % host_name)
+                LOG.error(_LE('remove_map: Host %s does '
+                              'not exist.') % host_name)
                 raise exception.HostNotFound(host=host_name)
 
         if not self._check_volume_created(volume_id):
-            LOG.error(_('remove_map: Volume %s does not exist.') % volume_id)
+            LOG.error(_LE('remove_map: Volume %s does not exist.') % volume_id)
             raise exception.VolumeNotFound(volume_id=volume_id)
 
         map_id = None
@@ -1309,8 +1310,8 @@ class DoradoCommon(TseriesCommon):
                 elif re.search('Dorado5100$', line):
                     return 'Dorado5100'
                 else:
-                    LOG.error(_('_get_device_type: The driver only supports '
-                                'Dorado5100 and Dorado 2100 G2 now.'))
+                    LOG.error(_LE('_get_device_type: The driver only supports '
+                                  'Dorado5100 and Dorado 2100 G2 now.'))
                     raise exception.InvalidResults()
 
     def _get_lun_distribution_info(self, luns):

@@ -35,7 +35,7 @@ except ImportError:
     hpexceptions = None
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder import utils
 import cinder.volume.driver
@@ -255,8 +255,8 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                 self.common.client.getHostVLUNs(hostname)
             except hpexceptions.HTTPNotFound:
                 # No more exports for this host.
-                LOG.info(_("Need to remove FC Zone, building initiator "
-                         "target map"))
+                LOG.info(_LI("Need to remove FC Zone, building initiator "
+                             "target map"))
 
                 target_wwns, init_targ_map, _numPaths = \
                     self._build_initiator_target_map(connector)
