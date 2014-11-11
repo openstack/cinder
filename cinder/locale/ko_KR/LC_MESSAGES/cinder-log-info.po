@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-10-24 06:10+0000\n"
-"PO-Revision-Date: 2014-10-21 00:51+0000\n"
+"POT-Creation-Date: 2014-11-11 06:09+0000\n"
+"PO-Revision-Date: 2014-11-04 11:01+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Korean (Korea) (http://www.transifex.com/projects/p/cinder/"
 "language/ko_KR/)\n"
@@ -18,6 +18,187 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+
+#: cinder/backup/api.py:212
+#, python-format
+msgid "Creating volume of %(size)s GB for restore of backup %(backup_id)s"
+msgstr "%(backup_id)s 백업 복원을 위해 %(size)sGB의 볼륨 작성"
+
+#: cinder/backup/api.py:239
+#, python-format
+msgid "Overwriting volume %(volume_id)s with restore of backup %(backup_id)s"
+msgstr "%(volume_id)s 볼륨을 %(backup_id)s 백업의 복원으로 겹쳐씀"
+
+#: cinder/backup/driver.py:58
+#, python-format
+msgid "Value with type=%s is not serializable"
+msgstr ""
+
+#: cinder/backup/driver.py:78 cinder/backup/driver.py:101
+#: cinder/backup/driver.py:125
+#, python-format
+msgid "Unable to serialize field '%s' - excluding from backup"
+msgstr ""
+
+#: cinder/backup/manager.py:118
+#, python-format
+msgid "Backend not found in hostname (%s) so using default."
+msgstr ""
+
+#: cinder/backup/manager.py:169
+#, python-format
+msgid "Starting volume driver %(driver_name)s (%(version)s)."
+msgstr ""
+
+#: cinder/backup/manager.py:195
+msgid "Cleaning up incomplete backup operations."
+msgstr ""
+
+#: cinder/backup/manager.py:201
+#, python-format
+msgid "Resetting volume %s to available (was backing-up)."
+msgstr ""
+
+#: cinder/backup/manager.py:206
+#, python-format
+msgid "Resetting volume %s to error_restoring (was restoring-backup)."
+msgstr ""
+
+#: cinder/backup/manager.py:218
+#, python-format
+msgid "Resetting backup %s to error (was creating)."
+msgstr ""
+
+#: cinder/backup/manager.py:224
+#, python-format
+msgid "Resetting backup %s to  available (was restoring)."
+msgstr ""
+
+#: cinder/backup/manager.py:230
+#, python-format
+msgid "Resuming delete on backup: %s."
+msgstr ""
+
+#: cinder/backup/manager.py:238
+#, python-format
+msgid "Create backup started, backup: %(backup_id)s volume: %(volume_id)s."
+msgstr ""
+
+#: cinder/backup/manager.py:296
+#, python-format
+msgid "Create backup finished. backup: %s."
+msgstr ""
+
+#: cinder/backup/manager.py:300
+#, python-format
+msgid "Restore backup started, backup: %(backup_id)s volume: %(volume_id)s."
+msgstr ""
+
+#: cinder/backup/manager.py:334
+#, python-format
+msgid ""
+"Volume: %(vol_id)s, size: %(vol_size)d is larger than backup: %(backup_id)s, "
+"size: %(backup_size)d, continuing with restore."
+msgstr ""
+
+#: cinder/backup/manager.py:376
+#, python-format
+msgid ""
+"Restore backup finished, backup %(backup_id)s restored to volume "
+"%(volume_id)s."
+msgstr ""
+
+#: cinder/backup/manager.py:395
+#, python-format
+msgid "Delete backup started, backup: %s."
+msgstr ""
+
+#: cinder/backup/manager.py:455
+#, python-format
+msgid "Delete backup finished, backup %s deleted."
+msgstr ""
+
+#: cinder/backup/manager.py:470
+#, python-format
+msgid "Export record started, backup: %s."
+msgstr ""
+
+#: cinder/backup/manager.py:506
+#, python-format
+msgid "Export record finished, backup %s exported."
+msgstr ""
+
+#: cinder/backup/manager.py:525
+#, python-format
+msgid "Import record started, backup_url: %s."
+msgstr ""
+
+#: cinder/backup/manager.py:604
+#, python-format
+msgid "Import record id %s metadata from driver finished."
+msgstr ""
+
+#: cinder/backup/manager.py:617
+#, python-format
+msgid ""
+"Reset backup status started, backup_id: %(backup_id)s, status: %(status)s."
+msgstr ""
+
+#: cinder/backup/manager.py:633
+#, python-format
+msgid "Backup service: %s."
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:180
+msgid ""
+"RBD striping not supported - ignoring configuration settings for rbd striping"
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:435
+#, python-format
+msgid ""
+"Backup base image of volume %(volume)s still has %(snapshots)s snapshots so "
+"skipping base image delete."
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:442
+#, python-format
+msgid "Deleting backup base image='%(basename)s' of volume %(volume)s."
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:451
+#, python-format
+msgid ""
+"Backup image of volume %(volume)s is busy, retrying %(retries)s more time(s) "
+"in %(delay)ss."
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:1086
+#, python-format
+msgid ""
+"No restore point found for backup='%(backup)s' of volume %(volume)s - "
+"forcing full copy."
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:1197
+#, python-format
+msgid ""
+"Delete of backup '%(backup)s' for volume '%(volume)s' finished with warning."
+msgstr ""
+
+#: cinder/backup/drivers/swift.py:450
+msgid "volume_file does not support fileno() so skippingfsync()"
+msgstr ""
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/021_add_default_quota_class.py:50
+msgid ""
+"Found existing 'default' entries in the quota_classes table.  Skipping "
+"insertion of default values."
+msgstr ""
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/021_add_default_quota_class.py:74
+msgid "Added default quota class data into the DB."
+msgstr ""
 
 #: cinder/openstack/common/eventlet_backdoor.py:140
 #, python-format
