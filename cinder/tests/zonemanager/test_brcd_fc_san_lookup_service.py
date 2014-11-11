@@ -42,6 +42,8 @@ _device_map_to_verify = {
         'initiator_port_wwn_list': ['10008c7cff523b01'],
         'target_port_wwn_list': ['20240002ac000a50']}}
 
+CONF = cfg.CONF
+
 
 class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
                                  test.TestCase):
@@ -77,16 +79,14 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
 
     @mock.patch.object(paramiko.hostkeys.HostKeys, 'load')
     def test_create_ssh_client(self, load_mock):
-        mock_args = {}
-        mock_args['known_hosts_file'] = 'dummy_host_key_file'
-        mock_args['missing_key_policy'] = paramiko.RejectPolicy()
-        ssh_client = self.create_ssh_client(**mock_args)
+        CONF.ssh_hosts_key_file = 'dummy_host_key_file'
+        CONF.strict_ssh_host_key_policy = True
+        ssh_client = self.create_ssh_client()
         self.assertEqual(ssh_client._host_keys_filename, 'dummy_host_key_file')
         self.assertTrue(isinstance(ssh_client._policy, paramiko.RejectPolicy))
-        mock_args = {}
-        ssh_client = self.create_ssh_client(**mock_args)
-        self.assertIsNone(ssh_client._host_keys_filename)
-        self.assertTrue(isinstance(ssh_client._policy, paramiko.WarningPolicy))
+        CONF.strict_ssh_host_key_policy = False
+        ssh_client = self.create_ssh_client()
+        self.assertTrue(isinstance(ssh_client._policy, paramiko.AutoAddPolicy))
 
     @mock.patch.object(brcd_lookup.BrcdFCSanLookupService,
                        'get_nameserver_info')
