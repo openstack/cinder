@@ -16,7 +16,7 @@
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.emc import emc_vmax_utils
 
@@ -490,7 +490,7 @@ class EMCVMAXProvision(object):
                     rc = self._terminate_migrate_session(
                         conn, volumeInstanceName)
                 except Exception as ex:
-                    LOG.error(_("Exception: %s") % six.text_type(ex))
+                    LOG.error(_LE("Exception: %s") % six.text_type(ex))
                     exceptionMessage = (_(
                         "Failed to terminate migrate session"))
                     LOG.error(exceptionMessage)
@@ -501,7 +501,7 @@ class EMCVMAXProvision(object):
                         conn, storageRelocationServiceInstanceName,
                         volumeInstanceName, targetPoolInstanceName)
                 except Exception as ex:
-                    LOG.error(_("Exception: %s") % six.text_type(ex))
+                    LOG.error(_LE("Exception: %s") % six.text_type(ex))
                     exceptionMessage = (_(
                         "Failed to migrate volume for the second time"))
                     LOG.error(exceptionMessage)
@@ -509,7 +509,7 @@ class EMCVMAXProvision(object):
                         data=exceptionMessage)
 
             else:
-                LOG.error(_("Exception: %s") % six.text_type(ex))
+                LOG.error(_LE("Exception: %s") % six.text_type(ex))
                 exceptionMessage = (_(
                     "Failed to migrate volume for the first time"))
                 LOG.error(exceptionMessage)

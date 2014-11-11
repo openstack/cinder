@@ -27,7 +27,7 @@ import six
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
@@ -110,9 +110,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
                     self.extend_volume(volume, vol_size)
                 except Exception:
                     with excutils.save_and_reraise_exception():
-                        LOG.error(
-                            _("Resizing %s failed. Cleaning volume."),
-                            volume.name)
+                        LOG.error(_LE("Resizing %s failed. Cleaning volume."),
+                                  volume.name)
                         self._execute('rm', path, run_as_root=run_as_root)
         else:
             raise exception.CinderException(
@@ -186,8 +185,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 tries = tries + 1
                 if tries >= self.configuration.num_shell_tries:
                     raise
-                LOG.exception(_("Recovering from a failed execute.  "
-                                "Try number %s"), tries)
+                LOG.exception(_LE("Recovering from a failed execute.  "
+                                  "Try number %s"), tries)
                 time.sleep(tries ** 2)
 
     def _get_volume_path(self, nfs_share, volume_name):
@@ -217,8 +216,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 try:
                     self.extend_volume(volume, vol_size)
                 except Exception as e:
-                    LOG.error(
-                        _("Resizing %s failed. Cleaning volume."), volume.name)
+                    LOG.error(_LE("Resizing %s failed. "
+                                  "Cleaning volume. "), volume.name)
                     self._execute('rm', path,
                                   run_as_root=self._execute_as_root)
                     raise e
@@ -236,23 +235,22 @@ class NetAppNFSDriver(nfs.NfsDriver):
         """Fetch the image from image_service and write it to the volume."""
         super(NetAppNFSDriver, self).copy_image_to_volume(
             context, volume, image_service, image_id)
-        LOG.info(_('Copied image to volume %s using regular download.'),
+        LOG.info(_LI('Copied image to volume %s using regular download.'),
                  volume['name'])
         self._register_image_in_cache(volume, image_id)
 
     def _register_image_in_cache(self, volume, image_id):
         """Stores image in the cache."""
         file_name = 'img-cache-%s' % image_id
-        LOG.info(_("Registering image in cache %s"), file_name)
+        LOG.info(_LI("Registering image in cache %s"), file_name)
         try:
             self._do_clone_rel_img_cache(
                 volume['name'], file_name,
                 volume['provider_location'], file_name)
         except Exception as e:
-            LOG.warn(
-                _('Exception while registering image %(image_id)s'
-                  ' in cache. Exception: %(exc)s')
-                % {'image_id': image_id, 'exc': e.__str__()})
+            LOG.warn(_LW('Exception while registering image %(image_id)s'
+                         ' in cache. Exception: %(exc)s')
+                     % {'image_id': image_id, 'exc': e.__str__()})
 
     def _find_image_in_cache(self, image_id):
         """Finds image in cache and returns list of shares with file name."""
@@ -276,7 +274,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
             dir = self._get_mount_point_for_share(share)
             file_path = '%s/%s' % (dir, dst)
             if not os.path.exists(file_path):
-                LOG.info(_('Cloning from cache to destination %s'), dst)
+                LOG.info(_LI('Cloning from cache to destination %s'), dst)
                 self._clone_volume(src, dst, volume_id=None, share=share)
         _do_clone()
 
@@ -306,7 +304,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                         self._get_capacity_info(share)
                     avl_percent = int((total_avl / total_size) * 100)
                     if avl_percent <= thres_size_perc_start:
-                        LOG.info(_('Cleaning cache for share %s.'), share)
+                        LOG.info(_LI('Cleaning cache for share %s.'), share)
                         eligible_files = self._find_old_cache_files(share)
                         threshold_size = int(
                             (thres_size_perc_stop * total_size) / 100)
@@ -318,10 +316,9 @@ class NetAppNFSDriver(nfs.NfsDriver):
                     else:
                         continue
                 except Exception as e:
-                    LOG.warn(_(
-                        'Exception during cache cleaning'
-                        ' %(share)s. Message - %(ex)s')
-                        % {'share': share, 'ex': e.__str__()})
+                    LOG.warn(_LW('Exception during cache cleaning'
+                                 ' %(share)s. Message - %(ex)s')
+                             % {'share': share, 'ex': e.__str__()})
                     continue
         finally:
             LOG.debug('Image cache cleaning done.')
@@ -377,7 +374,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
             self._execute(*cmd, run_as_root=self._execute_as_root)
             return True
         except Exception as ex:
-            LOG.warning(_('Exception during deleting %s'), ex.__str__())
+            LOG.warning(_LW('Exception during deleting %s'), ex.__str__())
             return False
 
     def clone_image(self, volume, image_location, image_id, image_meta):
@@ -409,8 +406,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 post_clone = self._post_clone_image(volume)
         except Exception as e:
             msg = e.msg if getattr(e, 'msg', None) else e.__str__()
-            LOG.info(_('Image cloning unsuccessful for image'
-                       ' %(image_id)s. Message: %(msg)s')
+            LOG.info(_LI('Image cloning unsuccessful for image'
+                         ' %(image_id)s. Message: %(msg)s')
                      % {'image_id': image_id, 'msg': msg})
             vol_path = self.local_path(volume)
             volume['provider_location'] = None
@@ -425,7 +422,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
     def _clone_from_cache(self, volume, image_id, cache_result):
         """Clones a copy from image cache."""
         cloned = False
-        LOG.info(_('Cloning image %s from cache'), image_id)
+        LOG.info(_LI('Cloning image %s from cache'), image_id)
         for res in cache_result:
             # Repeat tries in other shares if failed in some
             (share, file_name) = res
@@ -439,13 +436,13 @@ class NetAppNFSDriver(nfs.NfsDriver):
                     volume['provider_location'] = share
                     break
                 except Exception:
-                    LOG.warn(_('Unexpected exception during'
-                               ' image cloning in share %s'), share)
+                    LOG.warn(_LW('Unexpected exception during'
+                                 ' image cloning in share %s'), share)
         return cloned
 
     def _direct_nfs_clone(self, volume, image_location, image_id):
         """Clone directly in nfs share."""
-        LOG.info(_('Checking image clone %s from glance share.'), image_id)
+        LOG.info(_LI('Checking image clone %s from glance share.'), image_id)
         cloned = False
         image_location = self._construct_image_nfs_url(image_location)
         share = self._is_cloneable_share(image_location)
@@ -466,9 +463,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
                     volume_id=None, share=share)
                 cloned = True
             else:
-                LOG.info(
-                    _('Image will locally be converted to raw %s'),
-                    image_id)
+                LOG.info(_LI('Image will locally be converted to raw %s'),
+                         image_id)
                 dst = '%s/%s' % (dir_path, volume['name'])
                 image_utils.convert_image(img_path, dst, 'raw',
                                           run_as_root=run_as_root)
@@ -485,7 +481,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def _post_clone_image(self, volume):
         """Do operations post image cloning."""
-        LOG.info(_('Performing post clone for %s'), volume['name'])
+        LOG.info(_LI('Performing post clone for %s'), volume['name'])
         vol_path = self.local_path(volume)
         if self._discover_file_till_timeout(vol_path):
             self._set_rw_permissions(vol_path)
@@ -500,7 +496,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         if self._is_file_size_equal(path, new_size):
             return
         else:
-            LOG.info(_('Resizing file to %sG'), new_size)
+            LOG.info(_LI('Resizing file to %sG'), new_size)
             image_utils.resize_image(path, new_size,
                                      run_as_root=self._execute_as_root)
             if self._is_file_size_equal(path, new_size):
@@ -530,7 +526,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 return True
             else:
                 if retry_seconds <= 0:
-                    LOG.warn(_('Discover file retries exhausted.'))
+                    LOG.warn(_LW('Discover file retries exhausted.'))
                     return False
                 else:
                     time.sleep(sleep_interval)
@@ -588,7 +584,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
                               share_candidates)
                     return self._share_match_for_ip(ip, share_candidates)
         except Exception:
-            LOG.warn(_("Unexpected exception while short listing used share."))
+            LOG.warn(_LW("Unexpected exception while short "
+                         "listing used share."))
         return None
 
     def _construct_image_nfs_url(self, image_location):
@@ -628,7 +625,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
-        LOG.info(_('Extending volume %s.'), volume['name'])
+        LOG.info(_LI('Extending volume %s.'), volume['name'])
         path = self.local_path(volume)
         self._resize_image_file(path, new_size)
 
@@ -648,7 +645,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         @utils.synchronized(dest_path, external=True)
         def _move_file(src, dst):
             if os.path.exists(dst):
-                LOG.warn(_("Destination %s already exists."), dst)
+                LOG.warn(_LW("Destination %s already exists."), dst)
                 return False
             self._execute('mv', src, dst,
                           run_as_root=self._execute_as_root)
@@ -657,7 +654,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         try:
             return _move_file(source_path, dest_path)
         except Exception as e:
-            LOG.warn(_('Exception moving file %(src)s. Message - %(e)s')
+            LOG.warn(_LW('Exception moving file %(src)s. Message - %(e)s')
                      % {'src': source_path, 'e': e})
         return False
 
@@ -776,11 +773,11 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         self.stale_vols = set()
         if self.vserver:
             self.ssc_enabled = True
-            LOG.info(_("Shares on vserver %s will only"
-                       " be used for provisioning.") % (self.vserver))
+            LOG.info(_LI("Shares on vserver %s will only"
+                         " be used for provisioning.") % (self.vserver))
         else:
             self.ssc_enabled = False
-            LOG.warn(_("No vserver set in config. SSC will be disabled."))
+            LOG.warn(_LW("No vserver set in config. SSC will be disabled."))
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
@@ -829,15 +826,15 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
 
         try:
             volume['provider_location'] = share
-            LOG.info(_('casted to %s') % volume['provider_location'])
+            LOG.info(_LI('casted to %s') % volume['provider_location'])
             self._do_create_volume(volume)
             if qos_policy_group:
                 self._set_qos_policy_group_on_volume(volume, share,
                                                      qos_policy_group)
             return {'provider_location': volume['provider_location']}
         except Exception as ex:
-            LOG.error(_("Exception creating vol %(name)s on "
-                        "share %(share)s. Details: %(ex)s")
+            LOG.error(_LE("Exception creating vol %(name)s on "
+                          "share %(share)s. Details: %(ex)s")
                       % {'name': volume['name'],
                          'share': volume['provider_location'],
                          'ex': ex})
@@ -1049,7 +1046,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
     def refresh_ssc_vols(self, vols):
         """Refreshes ssc_vols with latest entries."""
         if not self._mounted_shares:
-            LOG.warn(_("No shares found hence skipping ssc refresh."))
+            LOG.warn(_LW("No shares found hence skipping ssc refresh."))
             return
         mnt_share_vols = set()
         vs_ifs = self._get_vserver_ips(self.vserver)
@@ -1179,14 +1176,15 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             if (major == 1 and minor >= 20 and col_path):
                 self._try_copyoffload(context, volume, image_service, image_id)
                 copy_success = True
-                LOG.info(_('Copied image %(img)s to volume %(vol)s using copy'
-                           ' offload workflow.')
+                LOG.info(_LI('Copied image %(img)s to '
+                             'volume %(vol)s using copy'
+                             ' offload workflow.')
                          % {'img': image_id, 'vol': volume['id']})
             else:
                 LOG.debug("Copy offload either not configured or"
                           " unsupported.")
         except Exception as e:
-            LOG.exception(_('Copy offload workflow unsuccessful. %s'), e)
+            LOG.exception(_LE('Copy offload workflow unsuccessful. %s'), e)
         finally:
             if not copy_success:
                 super(NetAppDirectCmodeNfsDriver, self).copy_image_to_volume(
@@ -1247,7 +1245,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                 copied = True
                 break
             except Exception as e:
-                LOG.exception(_('Error in workflow copy from cache. %s.'), e)
+                LOG.exception(_LE('Error in workflow copy '
+                                  'from cache. %s.'), e)
         return copied
 
     def _clone_file_dst_exists(self, share, src_name, dst_name,
@@ -1398,14 +1397,14 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
             raise exception.InvalidHost(reason=msg)
 
         volume['provider_location'] = share
-        LOG.info(_('Creating volume at location %s')
+        LOG.info(_LI('Creating volume at location %s')
                  % volume['provider_location'])
 
         try:
             self._do_create_volume(volume)
         except Exception as ex:
-            LOG.error(_("Exception creating vol %(name)s on "
-                        "share %(share)s. Details: %(ex)s")
+            LOG.error(_LE("Exception creating vol %(name)s on "
+                          "share %(share)s. Details: %(ex)s")
                       % {'name': volume['name'],
                          'share': volume['provider_location'],
                          'ex': six.text_type(ex)})
