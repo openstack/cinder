@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-24 06:03+0000\n"
-"PO-Revision-Date: 2014-09-13 22:05+0000\n"
+"POT-Creation-Date: 2014-11-11 06:09+0000\n"
+"PO-Revision-Date: 2014-11-10 13:52+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Chinese (Taiwan) (http://www.transifex.com/projects/p/cinder/"
 "language/zh_TW/)\n"
@@ -18,6 +18,101 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+
+#: cinder/backup/manager.py:445
+msgid "Failed to update usages deleting backup"
+msgstr ""
+
+#: cinder/backup/manager.py:629
+msgid "Backup driver has not been initialized"
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:459
+#, python-format
+msgid ""
+"Max retries reached deleting backup %(basename)s image of volume %(volume)s."
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:495
+#, python-format
+msgid "Pipe1 failed - %s "
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:509
+#, python-format
+msgid "Pipe2 failed - %s "
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:973
+msgid "Differential restore failed, trying full restore"
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:1175
+#, python-format
+msgid "Restore to volume %(volume)s finished with error - %(error)s."
+msgstr ""
+
+#: cinder/backup/drivers/swift.py:159
+#, python-format
+msgid "single_user auth mode enabled, but %(param)s not set"
+msgstr ""
+
+#: cinder/backup/drivers/swift.py:394
+#, python-format
+msgid "Backup volume metadata to swift failed: %s"
+msgstr ""
+
+#: cinder/backup/drivers/tsm.py:252
+#, python-format
+msgid ""
+"backup: %(vol_id)s failed to remove backup hardlink from %(vpath)s to "
+"%(bpath)s.\n"
+"stdout: %(out)s\n"
+" stderr: %(err)s."
+msgstr ""
+
+#: cinder/backup/drivers/tsm.py:531
+#, python-format
+msgid ""
+"delete: %(vol_id)s failed with stdout: %(out)s\n"
+" stderr: %(err)s"
+msgstr ""
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:50
+#: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:75
+#: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:106
+#, python-format
+msgid "Table |%s| not created!"
+msgstr "未建立表格 |%s|！"
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:128
+msgid "Dropping foreign key reservations_ibfk_1 failed."
+msgstr ""
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:134
+msgid "quota_classes table not dropped"
+msgstr "未捨棄 quota_classes 表格"
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:141
+msgid "quota_usages table not dropped"
+msgstr "未捨棄 quota_usages 表格"
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py:148
+msgid "reservations table not dropped"
+msgstr "未捨棄預約表格"
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/015_drop_migrations_table.py:32
+msgid "migrations table not dropped"
+msgstr ""
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/015_drop_migrations_table.py:62
+#, python-format
+msgid "Table |%s| not created"
+msgstr ""
+
+#: cinder/db/sqlalchemy/migrate_repo/versions/021_add_default_quota_class.py:76
+msgid "Default quota class data not inserted into the DB."
+msgstr ""
 
 #: cinder/openstack/common/excutils.py:76
 #, python-format

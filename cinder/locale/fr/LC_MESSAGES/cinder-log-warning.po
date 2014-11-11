@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-10-07 06:05+0000\n"
-"PO-Revision-Date: 2014-09-24 10:06+0000\n"
+"POT-Creation-Date: 2014-11-11 06:09+0000\n"
+"PO-Revision-Date: 2014-11-10 22:31+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: French (http://www.transifex.com/projects/p/cinder/language/"
 "fr/)\n"
@@ -18,6 +18,51 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: cinder/backup/api.py:142
+#, python-format
+msgid ""
+"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG backup "
+"(%(d_consumed)dG of %(d_quota)dG already consumed)"
+msgstr ""
+
+#: cinder/backup/api.py:154
+#, python-format
+msgid ""
+"Quota exceeded for %(s_pid)s, tried to create backups (%(d_consumed)d "
+"backups already consumed)"
+msgstr ""
+
+#: cinder/backup/manager.py:592
+#, python-format
+msgid ""
+"Backup service %(service)s does not support verify. Backup id %(id)s is not "
+"verified. Skipping verify."
+msgstr ""
+
+#: cinder/backup/drivers/ceph.py:1187
+#, python-format
+msgid ""
+"RBD image for backup %(backup)s of volume %(volume)s not found. Deleting "
+"backup metadata."
+msgstr ""
+
+#: cinder/backup/drivers/swift.py:517
+msgid "swift error while listing objects, continuing with delete"
+msgstr ""
+"Erreur Swift error lors de la création de la liste d'objets, poursuivre avec "
+"la suppression"
+
+#: cinder/backup/drivers/swift.py:526
+#, python-format
+msgid "swift error while deleting object %s, continuing with delete"
+msgstr ""
+"Erreur Swift lors de la suppression de l'objet %s, poursuivre la suppression"
+
+#: cinder/brick/local_dev/lvm.py:302
+#, python-format
+msgid "Caught exception for lvs 'LV not found': %s"
+msgstr ""
 
 #: cinder/openstack/common/loopingcall.py:87
 #, python-format
