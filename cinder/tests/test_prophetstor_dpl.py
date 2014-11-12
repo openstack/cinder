@@ -90,7 +90,7 @@ DATA_OUTPUT = 0, None
 
 MOD_OUTPUT = {'status': 'available'}
 
-DATA_IN_GROUP = {'id': 'group123',
+DATA_IN_GROUP = {'id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
                  'name': 'group123',
                  'description': 'des123',
                  'status': ''}
@@ -104,7 +104,8 @@ DATA_IN_VOLUME_VG = {'id': 'abc123',
                      'display_name': 'abc123',
                      'display_description': '',
                      'size': 1,
-                     'consistencygroup_id': 'group123',
+                     'consistencygroup_id':
+                         'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
                      'status': 'available'}
 
 DATA_IN_VOLUME1 = {'id': 'abc456',
@@ -112,22 +113,24 @@ DATA_IN_VOLUME1 = {'id': 'abc456',
                    'display_description': '',
                    'size': 1}
 
-DATA_IN_CG_SNAPSHOT = {'consistencygroup_id': 'group123',
-                       'id': 'cgsnapshot1',
-                       'name': 'cgsnapshot1',
-                       'description': 'cgsnapshot1',
-                       'status': ''}
+DATA_IN_CG_SNAPSHOT = {
+    'consistencygroup_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
+    'id': 'cgsnapshot1',
+    'name': 'cgsnapshot1',
+    'description': 'cgsnapshot1',
+    'status': ''}
 
 DATA_IN_SNAPSHOT = {'id': 'snapshot1',
                     'volume_id': 'abc123',
                     'display_name': 'snapshot1',
                     'display_description': ''}
 
-DATA_OUT_SNAPSHOT_CG = {'id': 'snapshot1',
-                        'volume_id': 'abc123',
-                        'display_name': 'snapshot1',
-                        'display_description': '',
-                        'cgsnapshot_id': 'cgsnapshot1'}
+DATA_OUT_SNAPSHOT_CG = {
+    'id': 'snapshot1',
+    'volume_id': 'abc123',
+    'display_name': 'snapshot1',
+    'display_description': '',
+    'cgsnapshot_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee'}
 
 
 class TestProphetStorDPLVolume(test.TestCase):
@@ -484,6 +487,17 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.DPL_MOCK.delete_vdev.assert_called_once_with(
             self._conver_uuid2hex(DATA_IN_VOLUME['id']))
 
+    def test_delete_volume_of_group(self):
+        self.DPL_MOCK.delete_vdev.return_value = DATA_OUTPUT
+        self.DPL_MOCK.leave_vg.return_volume = DATA_OUTPUT
+        self.dpldriver.delete_volume(DATA_IN_VOLUME_VG)
+        self.DPL_MOCK.leave_vg.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME_VG['id']),
+            self._conver_uuid2hex(DATA_IN_GROUP['id'])
+        )
+        self.DPL_MOCK.delete_vdev.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME['id']))
+
     def test_create_volume_from_snapshot(self):
         self.DPL_MOCK.create_vdev_from_snapshot.return_value = DATA_OUTPUT
         self.dpldriver.create_volume_from_snapshot(DATA_IN_VOLUME,
@@ -589,7 +603,7 @@ class TestProphetStorDPLDriver(test.TestCase):
         model_update = self.dpldriver.create_consistencygroup(self.context,
                                                               DATA_IN_GROUP)
         self.DPL_MOCK.create_vg.assert_called_once_with(
-            DATA_IN_GROUP['id'], DATA_IN_GROUP['name'],
+            self._conver_uuid2hex(DATA_IN_GROUP['id']), DATA_IN_GROUP['name'],
             DATA_IN_GROUP['description'])
         self.assertDictMatch({'status': 'available'}, model_update)
 
