@@ -26,6 +26,7 @@ from cinder.openstack.common import log
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
+from cinder.volume import volume_types
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -69,6 +70,11 @@ ZFSSA_OPTS = [
 ]
 
 CONF.register_opts(ZFSSA_OPTS)
+
+ZFSSA_LUN_SPECS = {'zfssa:volblocksize',
+                   'zfssa:sparse',
+                   'zfssa:compression',
+                   'zfssa:logbias'}
 
 
 def factory_zfssa():
@@ -213,15 +219,13 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         LOG.debug('zfssa.create_volume: volume=' + volume['name'])
         lcfg = self.configuration
         volsize = str(volume['size']) + 'g'
+        specs = self._get_voltype_specs(volume)
         self.zfssa.create_lun(lcfg.zfssa_pool,
                               lcfg.zfssa_project,
                               volume['name'],
                               volsize,
-                              targetgroup=lcfg.zfssa_target_group,
-                              volblocksize=lcfg.zfssa_lun_volblocksize,
-                              sparse=lcfg.zfssa_lun_sparse,
-                              compression=lcfg.zfssa_lun_compression,
-                              logbias=lcfg.zfssa_lun_logbias)
+                              lcfg.zfssa_target_group,
+                              specs)
 
     def delete_volume(self, volume):
         """Deletes a volume with the given volume['name']."""
@@ -429,3 +433,30 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                           lcfg.zfssa_project,
                                           volume['name'],
                                           '')
+
+    def _get_voltype_specs(self, volume):
+        """Get specs suitable for volume creation."""
+        vtype = volume.get('volume_type_id', None)
+        extra_specs = None
+        if vtype:
+            extra_specs = volume_types.get_volume_type_extra_specs(vtype)
+
+        return self._get_specs(extra_specs)
+
+    def _get_specs(self, xspecs):
+        """Return a dict with extra specs and/or config values."""
+        result = {}
+        for spc in ZFSSA_LUN_SPECS:
+            val = None
+            prop = spc.split(':')[1]
+            cfg = 'zfssa_lun_' + prop
+            if xspecs:
+                val = xspecs.pop(spc, None)
+
+            if val is None:
+                val = self.configuration.safe_get(cfg)
+
+            if val is not None and val != '':
+                result.update({prop: val})
+
+        return result

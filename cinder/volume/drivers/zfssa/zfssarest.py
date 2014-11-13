@@ -384,12 +384,10 @@ class ZFSSAApi(object):
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
-    def create_lun(self, pool, project, lun, volsize, targetgroup,
-                   volblocksize='8k', sparse=False, compression=None,
-                   logbias=None):
+    def create_lun(self, pool, project, lun, volsize, targetgroup, specs):
+
         """Create a LUN.
-           required - pool, project, lun, volsize, targetgroup.
-           optional - volblocksize, sparse, compression, logbias
+           specs - contains volume properties (e.g blocksize, compression).
         """
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
               project + '/luns'
@@ -397,14 +395,10 @@ class ZFSSAApi(object):
             'name': lun,
             'volsize': volsize,
             'targetgroup': targetgroup,
-            'initiatorgroup': 'com.sun.ms.vss.hg.maskAll',
-            'volblocksize': volblocksize,
-            'sparse': sparse
+            'initiatorgroup': 'com.sun.ms.vss.hg.maskAll'
         }
-        if compression and compression != '':
-            arg.update({'compression': compression})
-        if logbias and logbias != '':
-            arg.update({'logbias': logbias})
+        if specs:
+            arg.update(specs)
 
         ret = self.rclient.post(svc, arg)
         if ret.status != restclient.Status.CREATED:
