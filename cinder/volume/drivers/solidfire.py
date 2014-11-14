@@ -166,7 +166,7 @@ class SolidFireDriver(SanISCSIDriver):
                             data=json.dumps(payload),
                             auth=(endpoint['login'], endpoint['passwd']),
                             verify=False,
-                            timeout=2)
+                            timeout=30)
 
         response = req.json()
         req.close()
