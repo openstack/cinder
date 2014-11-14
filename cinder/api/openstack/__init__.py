@@ -128,13 +128,3 @@ class APIRouter(base_wsgi.Router):
 
     def _setup_routes(self, mapper, ext_mgr):
         raise NotImplementedError
-
-
-class FaultWrapper(base_wsgi.Middleware):
-
-    def __init__(self, application):
-        LOG.warn(_('cinder.api.openstack:FaultWrapper is deprecated. Please '
-                   'use cinder.api.middleware.fault:FaultWrapper instead.'))
-        # Avoid circular imports from here. Can I just remove this class?
-        from cinder.api.middleware import fault
-        super(FaultWrapper, self).__init__(fault.FaultWrapper(application))
