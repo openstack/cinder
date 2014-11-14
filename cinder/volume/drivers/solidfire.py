@@ -169,6 +169,7 @@ class SolidFireDriver(SanISCSIDriver):
                             timeout=2)
 
         response = req.json()
+        req.close()
         if (('error' in response) and
                 (response['error']['name'] in self.retryable_errors)):
             msg = ('Retryable error (%s) encountered during '
