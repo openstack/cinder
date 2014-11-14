@@ -20,7 +20,9 @@ This driver requires Purity version 3.4.0 or later.
 
 import cookielib
 import json
+import re
 import urllib2
+import uuid
 
 from oslo.config import cfg
 
@@ -43,6 +45,9 @@ PURE_OPTS = [
 CONF = cfg.CONF
 CONF.register_opts(PURE_OPTS)
 
+INVALID_CHARACTERS = re.compile(r"[^-a-zA-Z0-9]")
+GENERATED_NAME = re.compile(r".*-[a-f0-9]{32}-cinder$")
+
 
 def _get_vol_name(volume):
     """Return the name of the volume Purity will use."""
@@ -53,6 +58,15 @@ def _get_snap_name(snapshot):
     """Return the name of the snapshot that Purity will use."""
     return "{0}-cinder.{1}".format(snapshot["volume_name"],
                                    snapshot["name"])
+
+
+def _generate_purity_host_name(name):
+    """Return a valid Purity host name based on the name passed in."""
+    if len(name) > 23:
+        name = name[0:23]
+    name = INVALID_CHARACTERS.sub("-", name)
+    name = name.lstrip("-")
+    return "{name}-{uuid}-cinder".format(name=name, uuid=uuid.uuid4().hex)
 
 
 class PureISCSIDriver(san.SanISCSIDriver):
@@ -205,31 +219,36 @@ class PureISCSIDriver(san.SanISCSIDriver):
 
     def _connect(self, volume, connector):
         """Connect the host and volume; return dict describing connection."""
-        host_name = self._get_host_name(connector)
         vol_name = _get_vol_name(volume)
+        host = self._get_host(connector)
+        if host:
+            host_name = host["name"]
+            LOG.info(_("Re-using existing purity host {host_name!r}"
+                       ).format(host_name=host_name))
+        else:
+            host_name = _generate_purity_host_name(connector["host"])
+            iqn = connector["initiator"]
+            LOG.info(_("Creating host object {host_name!r} with IQN: {iqn}."
+                       ).format(host_name=host_name, iqn=iqn))
+            self._array.create_host(host_name, iqnlist=[iqn])
+
         return self._array.connect_host(host_name, vol_name)
 
-    def _get_host_name(self, connector):
-        """Return dictionary describing the Purity host with initiator IQN."""
+    def _get_host(self, connector):
+        """Return dict describing existing Purity host object or None."""
         hosts = self._array.list_hosts()
         for host in hosts:
             if connector["initiator"] in host["iqn"]:
-                return host["name"]
-        raise exception.PureDriverException(
-            reason=(_("No host object on target array with IQN: ") +
-                    connector["initiator"]))
+                return host
+        return None
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""
         LOG.debug("Enter PureISCSIDriver.terminate_connection.")
         vol_name = _get_vol_name(volume)
-        message = _("Disconnection failed with message: {0}")
-        try:
-            host_name = self._get_host_name(connector)
-        except exception.PureDriverException as err:
-            # Happens if the host object is missing.
-            LOG.error(message.format(err.msg))
-        else:
+        host = self._get_host(connector)
+        if host:
+            host_name = host["name"]
             try:
                 self._array.disconnect_host(host_name, vol_name)
             except exception.PureAPIException as err:
@@ -237,7 +256,17 @@ class PureISCSIDriver(san.SanISCSIDriver):
                     if err.kwargs["code"] == 400:
                         # Happens if the host and volume are not connected.
                         ctxt.reraise = False
-                        LOG.error(message.format(err.msg))
+                        LOG.error(_("Disconnection failed with message: {msg}."
+                                    ).format(msg=err.msg))
+            if (GENERATED_NAME.match(host_name) and not host["hgroup"] and
+                not self._array.list_host_connections(host_name,
+                                                      private=True)):
+                LOG.info(_("Deleting unneeded host {host_name!r}.").format(
+                    host_name=host_name))
+                self._array.delete_host(host_name)
+        else:
+            LOG.error(_("Unable to find host object in Purity with IQN: "
+                        "{iqn}.").format(iqn=connector["initiator"]))
         LOG.debug("Leave PureISCSIDriver.terminate_connection.")
 
     def get_volume_stats(self, refresh=False):
@@ -386,6 +415,21 @@ class FlashArray(object):
         """Return a list of dictionaries describing each host."""
         return self._http_request("GET", "host", kwargs)
 
+    def list_host_connections(self, host, **kwargs):
+        """Return a list of dictionaries describing connected volumes."""
+        return self._http_request("GET", "host/{host_name}/volume".format(
+            host_name=host), kwargs)
+
+    def create_host(self, host, **kwargs):
+        """Create a host."""
+        return self._http_request("POST", "host/{host_name}".format(
+            host_name=host), kwargs)
+
+    def delete_host(self, host):
+        """Delete a host."""
+        return self._http_request("DELETE", "host/{host_name}".format(
+            host_name=host))
+
     def connect_host(self, host, volume, **kwargs):
         """Create a connection between a host and a volume."""
         return self._http_request("POST",
@@ -396,6 +440,11 @@ class FlashArray(object):
         """Delete a connection between a host and a volume."""
         return self._http_request("DELETE",
                                   "host/{0}/volume/{1}".format(host, volume))
+
+    def set_host(self, host, **kwargs):
+        """Set an attribute of a host."""
+        return self._http_request("PUT", "host/{host_name}".format(
+            host_name=host), kwargs)
 
     def list_ports(self, **kwargs):
         """Return a list of dictionaries describing ports."""

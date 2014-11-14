@@ -33,7 +33,13 @@ API_TOKEN = "12345678-abcd-1234-abcd-1234567890ab"
 VOLUME_BACKEND_NAME = "Pure_iSCSI"
 PORT_NAMES = ["ct0.eth2", "ct0.eth3", "ct1.eth2", "ct1.eth3"]
 ISCSI_IPS = ["10.0.0." + str(i + 1) for i in range(len(PORT_NAMES))]
-HOST_NAME = "pure-host"
+HOSTNAME = "computenode1"
+PURE_HOST_NAME = pure._generate_purity_host_name(HOSTNAME)
+PURE_HOST = {"name": PURE_HOST_NAME,
+             "hgroup": None,
+             "iqn": [],
+             "wwn": [],
+             }
 REST_VERSION = "1.2"
 VOLUME_ID = "abcdabcd-1234-abcd-1234-abcdeffedcba"
 VOLUME = {"name": "volume-" + VOLUME_ID,
@@ -62,7 +68,7 @@ SNAPSHOT = {"name": "snapshot-" + SNAPSHOT_ID,
             "display_name": "fake_snapshot",
             }
 INITIATOR_IQN = "iqn.1993-08.org.debian:01:222"
-CONNECTOR = {"initiator": INITIATOR_IQN}
+CONNECTOR = {"initiator": INITIATOR_IQN, "host": HOSTNAME}
 TARGET_IQN = "iqn.2010-06.com.purestorage:flasharray.12345abc"
 TARGET_PORT = "3260"
 ISCSI_PORTS = [{"name": name,
@@ -128,6 +134,19 @@ class PureISCSIDriverTestCase(test.TestCase):
             self.assertRaises(exception.PureDriverException,
                               func, *args, **kwargs)
             mock_func.side_effect = None
+
+    def test_generate_purity_host_name(self):
+        generate = pure._generate_purity_host_name
+        result = generate("really-long-string-thats-a-bit-too-long")
+        self.assertTrue(result.startswith("really-long-string-that-"))
+        self.assertTrue(result.endswith("-cinder"))
+        self.assertEqual(len(result), 63)
+        self.assertTrue(pure.GENERATED_NAME.match(result))
+        result = generate("!@#$%^-invalid&*")
+        self.assertTrue(result.startswith("invalid---"))
+        self.assertTrue(result.endswith("-cinder"))
+        self.assertEqual(len(result), 49)
+        self.assertTrue(pure.GENERATED_NAME.match(result))
 
     def test_create_volume(self):
         self.driver.create_volume(VOLUME)
@@ -244,7 +263,6 @@ class PureISCSIDriverTestCase(test.TestCase):
                                           "-t", "sendtargets",
                                           "-p", ISCSI_PORTS[1]["portal"]])
         self.assertFalse(mock_choose_port.called)
-        mock_iscsiadm.reset_mock()
         mock_iscsiadm.side_effect = [processutils.ProcessExecutionError, None]
         mock_choose_port.return_value = ISCSI_PORTS[2]
         self.assertEqual(self.driver._get_target_iscsi_port(), ISCSI_PORTS[2])
@@ -264,51 +282,94 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.assert_error_propagates([mock_iscsiadm, self.array.list_ports],
                                      self.driver._choose_target_iscsi_port)
 
-    @mock.patch(DRIVER_OBJ + "._get_host_name", autospec=True)
-    def test_connect(self, mock_host):
+    @mock.patch(DRIVER_OBJ + "._get_host", autospec=True)
+    @mock.patch(DRIVER_PATH + "._generate_purity_host_name", autospec=True)
+    def test_connect(self, mock_generate, mock_host):
         vol_name = VOLUME["name"] + "-cinder"
         result = {"vol": vol_name, "lun": 1}
-        mock_host.return_value = HOST_NAME
+        # Branch where host already exists
+        mock_host.return_value = PURE_HOST
         self.array.connect_host.return_value = {"vol": vol_name, "lun": 1}
         real_result = self.driver._connect(VOLUME, CONNECTOR)
         self.assertEqual(result, real_result)
         mock_host.assert_called_with(self.driver, CONNECTOR)
-        self.array.connect_host.assert_called_with(HOST_NAME, vol_name)
-        self.assert_error_propagates([mock_host, self.array.connect_host],
-                                     self.driver._connect,
-                                     VOLUME, CONNECTOR)
+        self.assertFalse(mock_generate.called)
+        self.assertFalse(self.array.create_host.called)
+        self.array.connect_host.assert_called_with(PURE_HOST_NAME, vol_name)
+        # Branch where new host is created
+        mock_host.return_value = None
+        mock_generate.return_value = PURE_HOST_NAME
+        real_result = self.driver._connect(VOLUME, CONNECTOR)
+        mock_host.assert_called_with(self.driver, CONNECTOR)
+        mock_generate.assert_called_with(HOSTNAME)
+        self.array.create_host.assert_called_with(PURE_HOST_NAME,
+                                                  iqnlist=[INITIATOR_IQN])
+        self.assertEqual(result, real_result)
+        # Branch where host is needed
+        mock_generate.reset_mock()
+        self.array.reset_mock()
+        self.assert_error_propagates(
+            [mock_host, mock_generate, self.array.connect_host,
+             self.array.create_host],
+            self.driver._connect, VOLUME, CONNECTOR)
 
-    def test_get_host_name(self):
-        good_host = {"name": HOST_NAME,
-                     "iqn": ["another-wrong-iqn", INITIATOR_IQN]}
+    def test_get_host(self):
+        good_host = PURE_HOST.copy()
+        good_host.update(iqn=["another-wrong-iqn", INITIATOR_IQN])
         bad_host = {"name": "bad-host", "iqn": ["wrong-iqn"]}
         self.array.list_hosts.return_value = [bad_host]
-        self.assertRaises(exception.PureDriverException,
-                          self.driver._get_host_name, CONNECTOR)
+        real_result = self.driver._get_host(CONNECTOR)
+        self.assertIs(real_result, None)
         self.array.list_hosts.return_value.append(good_host)
-        real_result = self.driver._get_host_name(CONNECTOR)
-        self.assertEqual(real_result, good_host["name"])
+        real_result = self.driver._get_host(CONNECTOR)
+        self.assertEqual(real_result, good_host)
         self.assert_error_propagates([self.array.list_hosts],
-                                     self.driver._get_host_name, CONNECTOR)
+                                     self.driver._get_host, CONNECTOR)
 
-    @mock.patch(DRIVER_OBJ + "._get_host_name", autospec=True)
+    @mock.patch(DRIVER_OBJ + "._get_host", autospec=True)
     def test_terminate_connection(self, mock_host):
         vol_name = VOLUME["name"] + "-cinder"
-        mock_host.return_value = HOST_NAME
+        mock_host.return_value = {"name": "some-host"}
+        # Branch with manually created host
         self.driver.terminate_connection(VOLUME, CONNECTOR)
-        self.array.disconnect_host.assert_called_with(HOST_NAME, vol_name)
+        self.array.disconnect_host.assert_called_with("some-host", vol_name)
+        self.assertFalse(self.array.list_host_connections.called)
+        self.assertFalse(self.array.delete_host.called)
+        # Branch with host added to host group
+        self.array.reset_mock()
+        mock_host.return_value = PURE_HOST.copy()
+        mock_host.return_value.update(hgroup="some-group")
+        self.driver.terminate_connection(VOLUME, CONNECTOR)
+        self.array.disconnect_host.assert_called_with(PURE_HOST_NAME, vol_name)
+        self.assertFalse(self.array.list_host_connections.called)
+        self.assertFalse(self.array.delete_host.called)
+        # Branch with host still having connected volumes
+        self.array.reset_mock()
+        self.array.list_host_connections.return_value = [
+            {"lun": 2, "name": PURE_HOST_NAME, "vol": "some-vol"}]
+        mock_host.return_value = PURE_HOST
+        self.driver.terminate_connection(VOLUME, CONNECTOR)
+        self.array.disconnect_host.assert_called_with(PURE_HOST_NAME, vol_name)
+        self.array.list_host_connections.assert_called_with(PURE_HOST_NAME,
+                                                            private=True)
+        self.assertFalse(self.array.delete_host.called)
+        # Branch where host gets deleted
+        self.array.reset_mock()
+        self.array.list_host_connections.return_value = []
+        self.driver.terminate_connection(VOLUME, CONNECTOR)
+        self.array.disconnect_host.assert_called_with(PURE_HOST_NAME, vol_name)
+        self.array.list_host_connections.assert_called_with(PURE_HOST_NAME,
+                                                            private=True)
+        self.array.delete_host.assert_called_with(PURE_HOST_NAME)
+        # Branch where connection is missing and the host is still deleted
+        self.array.reset_mock()
         self.array.disconnect_host.side_effect = exception.PureAPIException(
             code=400, reason="reason")
         self.driver.terminate_connection(VOLUME, CONNECTOR)
-        self.array.disconnect_host.assert_called_with(HOST_NAME, vol_name)
-        self.array.disconnect_host.side_effect = None
-        self.array.disconnect_host.reset_mock()
-        mock_host.side_effect = exception.PureDriverException(reason="reason")
-        self.assertFalse(self.array.disconnect_host.called)
-        mock_host.side_effect = None
-        self.assert_error_propagates(
-            [self.array.disconnect_host],
-            self.driver.terminate_connection, VOLUME, CONNECTOR)
+        self.array.disconnect_host.assert_called_with(PURE_HOST_NAME, vol_name)
+        self.array.list_host_connections.assert_called_with(PURE_HOST_NAME,
+                                                            private=True)
+        self.array.delete_host.assert_called_with(PURE_HOST_NAME)
 
     def test_get_volume_stats(self):
         self.assertEqual(self.driver.get_volume_stats(), {})
