@@ -17,6 +17,7 @@
 #
 
 
+from oslo.config import cfg
 import paramiko
 
 from cinder import exception
@@ -29,6 +30,8 @@ import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
 from cinder.zonemanager.fc_san_lookup_service import FCSanLookupService
 
 LOG = logging.getLogger(__name__)
+
+CONF = cfg.CONF
 
 
 class BrcdFCSanLookupService(FCSanLookupService):
@@ -46,7 +49,7 @@ class BrcdFCSanLookupService(FCSanLookupService):
         super(BrcdFCSanLookupService, self).__init__(**kwargs)
         self.configuration = kwargs.get('configuration', None)
         self.create_configuration()
-        self.client = self.create_ssh_client(**kwargs)
+        self.client = self.create_ssh_client()
 
     def create_configuration(self):
         """Configuration specific to SAN context values."""
@@ -61,16 +64,16 @@ class BrcdFCSanLookupService(FCSanLookupService):
             self.fabric_configs = fabric_opts.load_fabric_configurations(
                 fabric_names)
 
-    def create_ssh_client(self, **kwargs):
+    def create_ssh_client(self):
         ssh_client = paramiko.SSHClient()
-        known_hosts_file = kwargs.get('known_hosts_file', None)
-        if known_hosts_file is None:
-            ssh_client.load_system_host_keys()
+        known_hosts_file = CONF.ssh_hosts_key_file
+        if not known_hosts_file:
+            raise exception.ParameterNotFound(param='ssh_hosts_key_file')
+        ssh_client.load_host_keys(known_hosts_file)
+        if CONF.strict_ssh_host_key_policy:
+            missing_key_policy = paramiko.RejectPolicy()
         else:
-            ssh_client.load_host_keys(known_hosts_file)
-        missing_key_policy = kwargs.get('missing_key_policy', None)
-        if missing_key_policy is None:
-            missing_key_policy = paramiko.WarningPolicy()
+            missing_key_policy = paramiko.AutoAddPolicy()
         ssh_client.set_missing_host_key_policy(missing_key_policy)
         return ssh_client
 
