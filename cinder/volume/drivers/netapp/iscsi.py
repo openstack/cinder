@@ -29,7 +29,7 @@ import uuid
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
@@ -346,8 +346,8 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
                 self.extend_volume(volume, volume['size'])
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(
-                        _("Resizing %s failed. Cleaning volume."), new_name)
+                    LOG.error(_LE("Resizing %s failed. "
+                                  "Cleaning volume."), new_name)
                     self.delete_volume(volume)
 
     def terminate_connection(self, volume, connector, **kwargs):
@@ -579,9 +579,9 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             attr = getattr(self._get_lun_from_table(name), attr)
             return attr
         except exception.VolumeNotFound as e:
-            LOG.error(_("Message: %s"), e.msg)
+            LOG.error(_LE("Message: %s"), e.msg)
         except Exception as e:
-            LOG.error(_("Error getting lun attribute. Exception: %s"),
+            LOG.error(_LE("Error getting lun attribute. Exception: %s"),
                       e.__str__())
         return None
 
@@ -600,8 +600,8 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
                 self.extend_volume(volume, volume['size'])
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(
-                        _("Resizing %s failed. Cleaning volume."), new_name)
+                    LOG.error(_LE("Resizing %s failed. "
+                                  "Cleaning volume."), new_name)
                     self.delete_volume(volume)
 
     def get_volume_stats(self, refresh=False):
@@ -638,13 +638,13 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
                 self._do_sub_clone_resize(path, new_size_bytes)
             self.lun_table[name].size = new_size_bytes
         else:
-            LOG.info(_("No need to extend volume %s"
-                       " as it is already the requested new size."), name)
+            LOG.info(_LI("No need to extend volume %s"
+                         " as it is already the requested new size."), name)
 
     def _do_direct_resize(self, path, new_size_bytes, force=True):
         """Uses the resize api to resize the lun."""
         seg = path.split("/")
-        LOG.info(_("Resizing lun %s directly to new size."), seg[-1])
+        LOG.info(_LI("Resizing lun %s directly to new size."), seg[-1])
         lun_resize = NaElement("lun-resize")
         lun_resize.add_new_child('path', path)
         lun_resize.add_new_child('size', new_size_bytes)
@@ -671,7 +671,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             geometry['max_resize'] =\
                 result.get_child_content("max-resize-size")
         except Exception as e:
-            LOG.error(_("Lun %(path)s geometry failed. Message - %(msg)s")
+            LOG.error(_LE("Lun %(path)s geometry failed. Message - %(msg)s")
                       % {'path': path, 'msg': e.message})
         return geometry
 
@@ -715,7 +715,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             after a successful clone.
         """
         seg = path.split("/")
-        LOG.info(_("Resizing lun %s using sub clone to new size."), seg[-1])
+        LOG.info(_LI("Resizing lun %s using sub clone to new size."), seg[-1])
         name = seg[-1]
         vol_name = seg[2]
         lun = self._get_lun_from_table(name)
@@ -745,7 +745,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         """Try post sub clone resize in a transactional manner."""
         st_tm_mv, st_nw_mv, st_del_old = None, None, None
         seg = path.split("/")
-        LOG.info(_("Post clone resize lun %s"), seg[-1])
+        LOG.info(_LI("Post clone resize lun %s"), seg[-1])
         new_lun = 'new-%s' % (seg[-1])
         tmp_lun = 'tmp-%s' % (seg[-1])
         tmp_path = "/vol/%s/%s" % (seg[2], tmp_lun)
@@ -765,12 +765,12 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
                     raise exception.VolumeBackendAPIException(
                         data=msg % (seg[-1]))
                 elif st_del_old is None:
-                    LOG.error(_("Failure deleting staged tmp lun %s."),
+                    LOG.error(_LE("Failure deleting staged tmp lun %s."),
                               tmp_lun)
                 else:
-                    LOG.error(_("Unknown exception in"
-                                " post clone resize lun %s."), seg[-1])
-                    LOG.error(_("Exception details: %s") % (e.__str__()))
+                    LOG.error(_LE("Unknown exception in"
+                                  " post clone resize lun %s."), seg[-1])
+                    LOG.error(_LE("Exception details: %s") % (e.__str__()))
 
     def _get_lun_block_count(self, path):
         """Gets block counts for the lun."""
@@ -1231,8 +1231,8 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
             volume_name = vol.get_child_content('name')
             if self._get_vol_option(volume_name, 'root') == 'true':
                 return volume_name
-        LOG.warn(_('Could not determine root volume name '
-                   'on %s.') % self._get_owner())
+        LOG.warn(_LW('Could not determine root volume name '
+                     'on %s.') % self._get_owner())
         return None
 
     def _get_igroup_by_initiator(self, initiator):
@@ -1310,8 +1310,8 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
                     if luns:
                         lun_list.extend(luns)
                 except NaApiError:
-                    LOG.warn(_("Error finding luns for volume %s."
-                               " Verify volume exists.") % (vol))
+                    LOG.warn(_LW("Error finding luns for volume %s."
+                                 " Verify volume exists.") % (vol))
         else:
             luns = self._get_vol_luns(None)
             lun_list.extend(luns)
@@ -1570,14 +1570,14 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
             try:
                 job_set = set_safe_attr(self, 'vol_refresh_running', True)
                 if not job_set:
-                    LOG.warn(
-                        _("Volume refresh job already running. Returning..."))
+                    LOG.warn(_LW("Volume refresh job already "
+                                 "running. Returning..."))
                     return
                 self.vol_refresh_voluntary = False
                 self.vols = self._get_filer_volumes()
                 self.vol_refresh_time = timeutils.utcnow()
             except Exception as e:
-                LOG.warn(_("Error refreshing volume info. Message: %s"),
+                LOG.warn(_LW("Error refreshing volume info. Message: %s"),
                          six.text_type(e))
             finally:
                 set_safe_attr(self, 'vol_refresh_running', False)

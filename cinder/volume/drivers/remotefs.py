@@ -23,7 +23,7 @@ import tempfile
 from oslo.config import cfg
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
@@ -158,7 +158,7 @@ class RemoteFSDriver(driver.VolumeDriver):
 
         volume['provider_location'] = self._find_share(volume['size'])
 
-        LOG.info(_('casted to %s') % volume['provider_location'])
+        LOG.info(_LI('casted to %s') % volume['provider_location'])
 
         self._do_create_volume(volume)
 
@@ -195,7 +195,7 @@ class RemoteFSDriver(driver.VolumeDriver):
                 self._ensure_share_mounted(share)
                 mounted_shares.append(share)
             except Exception as exc:
-                LOG.error(_('Exception during mounting %s') % (exc,))
+                LOG.error(_LE('Exception during mounting %s') % (exc,))
 
         self._mounted_shares = mounted_shares
 
@@ -210,8 +210,9 @@ class RemoteFSDriver(driver.VolumeDriver):
         :param volume: volume reference
         """
         if not volume['provider_location']:
-            LOG.warn(_('Volume %s does not have provider_location specified, '
-                     'skipping'), volume['name'])
+            LOG.warn(_LW('Volume %s does not have '
+                         'provider_location specified, '
+                         'skipping'), volume['name'])
             return
 
         self._ensure_share_mounted(volume['provider_location'])
@@ -287,8 +288,8 @@ class RemoteFSDriver(driver.VolumeDriver):
         else:
             permissions = 'ugo+rw'
             parms = {'path': path, 'perm': permissions}
-            LOG.warn(_('%(path)s is being set with open permissions: '
-                       '%(perm)s') % parms)
+            LOG.warn(_LW('%(path)s is being set with open permissions: '
+                         '%(perm)s') % parms)
 
         self._execute('chmod', permissions, path,
                       run_as_root=self._execute_as_root)
@@ -376,8 +377,8 @@ class RemoteFSDriver(driver.VolumeDriver):
             share_opts = share_info[1].strip() if len(share_info) > 1 else None
 
             if not re.match(self.SHARE_FORMAT_REGEX, share_address):
-                LOG.warn(_("Share %s ignored due to invalid format.  Must be "
-                           "of form address:/export.") % share_address)
+                LOG.warn(_LW("Share %s ignored due to invalid format. Must be "
+                             "of form address:/export.") % share_address)
                 continue
 
             self.shares[share_address] = share_opts
@@ -437,7 +438,7 @@ class RemoteFSDriver(driver.VolumeDriver):
             self._execute(*cmd, run_as_root=True)
         except putils.ProcessExecutionError as exc:
             if ensure and 'already mounted' in exc.stderr:
-                LOG.warn(_("%s is already mounted"), share)
+                LOG.warn(_LW("%s is already mounted"), share)
             else:
                 raise
 
@@ -470,16 +471,17 @@ class RemoteFSDriver(driver.VolumeDriver):
         doc_html = "http://docs.openstack.org/admin-guide-cloud/content" \
                    "/nfs_backend.html"
         self.configuration.nas_secure_file_operations = 'false'
-        LOG.warn(_("The NAS file operations will be run as root: allowing "
-                   "root level access at the storage backend. This is "
-                   "considered an insecure NAS environment. Please see %s for "
-                   "information on a secure NAS configuration.") %
+        LOG.warn(_LW("The NAS file operations will be run as root: allowing "
+                     "root level access at the storage backend. This is "
+                     "considered an insecure NAS environment. "
+                     "Please see %s for information on a secure NAS "
+                     "configuration.") %
                  doc_html)
         self.configuration.nas_secure_file_permissions = 'false'
-        LOG.warn(_("The NAS file permissions mode will be 666 (allowing "
-                   "other/world read & write access). This is considered an "
-                   "insecure NAS environment. Please see %s for information "
-                   "on a secure NFS configuration.") %
+        LOG.warn(_LW("The NAS file permissions mode will be 666 (allowing "
+                     "other/world read & write access). This is considered an "
+                     "insecure NAS environment. Please see %s for information "
+                     "on a secure NFS configuration.") %
                  doc_html)
 
     def _determine_nas_security_option_setting(self, nas_option, mount_point,
@@ -503,7 +505,8 @@ class RemoteFSDriver(driver.VolumeDriver):
             file_path = os.path.join(mount_point, file_name)
             if os.path.isfile(file_path):
                 nas_option = 'true'
-                LOG.info(_('Cinder secure environment indicator file exists.'))
+                LOG.info(_LI('Cinder secure environment '
+                             'indicator file exists.'))
             else:
                 # The indicator file does not exist. If it is a new
                 # installation, set to 'true' and create the indicator file.
@@ -519,11 +522,11 @@ class RemoteFSDriver(driver.VolumeDriver):
                         # protect from accidental removal (owner write only).
                         self._execute('chmod', '640', file_path,
                                       run_as_root=False)
-                        LOG.info(_('New Cinder secure environment indicator '
-                                   'file created at path %s.') % file_path)
+                        LOG.info(_LI('New Cinder secure environment indicator'
+                                     ' file created at path %s.') % file_path)
                     except IOError as err:
-                        LOG.error(_('Failed to created Cinder secure '
-                                    'environment indicator file: %s') %
+                        LOG.error(_LE('Failed to created Cinder secure '
+                                      'environment indicator file: %s') %
                                   format(err))
                 else:
                     # For existing installs, we default to 'false'. The
@@ -772,7 +775,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         return snap_info['active']
 
     def _create_cloned_volume(self, volume, src_vref):
-        LOG.info(_('Cloning volume %(src)s to volume %(dst)s') %
+        LOG.info(_LI('Cloning volume %(src)s to volume %(dst)s') %
                  {'src': src_vref['id'],
                   'dst': volume['id']})
 
@@ -816,7 +819,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         if (snapshot_file == active_file):
             return
 
-        LOG.info(_('Deleting stale snapshot: %s') % snapshot['id'])
+        LOG.info(_LI('Deleting stale snapshot: %s') % snapshot['id'])
         self._delete(snapshot_path)
         del(snap_info[snapshot['id']])
         self._write_info_file(info_path, snap_info)
@@ -856,8 +859,8 @@ class RemoteFSSnapDriver(RemoteFSDriver):
             # exist, do not attempt to delete.
             # (This happens, for example, if snapshot_create failed due to lack
             # of permission to write to the share.)
-            LOG.info(_('Snapshot record for %s is not present, allowing '
-                       'snapshot_delete to proceed.') % snapshot['id'])
+            LOG.info(_LI('Snapshot record for %s is not present, allowing '
+                         'snapshot_delete to proceed.') % snapshot['id'])
             return
 
         snapshot_file = snap_info[snapshot['id']]

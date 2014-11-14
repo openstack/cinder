@@ -23,7 +23,7 @@ from xml.etree import ElementTree as ETree
 from oslo.config import cfg
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LE, _LI
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
@@ -70,7 +70,7 @@ def _xml_read(root, element, check=None):
 
     try:
         val = root.findtext(element)
-        LOG.info(_("%(element)s: %(val)s")
+        LOG.info(_LI("%(element)s: %(val)s")
                  % {'element': element,
                     'val': val})
         if val:
@@ -81,9 +81,10 @@ def _xml_read(root, element, check=None):
     except ETree.ParseError:
         if check:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("XML exception reading parameter: %s") % element)
+                LOG.error(_LE("XML exception reading "
+                              "parameter: %s") % element)
         else:
-            LOG.info(_("XML exception reading parameter: %s") % element)
+            LOG.info(_LI("XML exception reading parameter: %s") % element)
             return None
 
 
@@ -144,7 +145,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         self.type = 'HNAS'
 
         self.platform = self.type.lower()
-        LOG.info(_("Backend type: %s") % self.type)
+        LOG.info(_LI("Backend type: %s") % self.type)
         self.bend = factory_bend(self.type)
 
     def _array_info_get(self):
@@ -202,8 +203,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         if label not in self.config['services'].keys():
             # default works if no match is found
             label = 'default'
-            LOG.info(_("Using default: instead of %s") % label)
-            LOG.info(_("Available services: %s")
+            LOG.info(_LI("Using default: instead of %s") % label)
+            LOG.info(_LI("Available services: %s")
                      % self.config['services'].keys())
 
         if label in self.config['services'].keys():
@@ -215,7 +216,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
             if self.config['chap_enabled'] == 'True':
                 # it may not exist, create and set secret
                 if 'iscsi_secret' not in svc:
-                    LOG.info(_("Retrieving secret for service: %s")
+                    LOG.info(_LI("Retrieving secret for service: %s")
                              % label)
 
                     out = self.bend.get_targetsecret(self.config['hnas_cmd'],
@@ -249,7 +250,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                 svc['iscsi_secret'] = ""
 
             if 'iscsi_target' not in svc:
-                LOG.info(_("Retrieving target for service: %s") % label)
+                LOG.info(_LI("Retrieving target for service: %s") % label)
 
                 out = self.bend.get_targetiqn(self.config['hnas_cmd'],
                                               self.config['mgmt_ip0'],
@@ -266,9 +267,9 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                        svc['port'], svc['hdp'], svc['iscsi_target'],
                        svc['iscsi_secret'])
         else:
-            LOG.info(_("Available services: %s")
+            LOG.info(_LI("Available services: %s")
                      % self.config['services'].keys())
-            LOG.error(_("No configuration found for service: %s")
+            LOG.error(_LE("No configuration found for service: %s")
                       % label)
             raise exception.ParameterNotFound(param=label)
 
@@ -308,7 +309,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         hnas_stat['QoS_support'] = False
         hnas_stat['reserved_percentage'] = 0
 
-        LOG.info(_("stats: stats: %s") % hnas_stat)
+        LOG.info(_LI("stats: stats: %s") % hnas_stat)
         return hnas_stat
 
     def _get_hdp_list(self):
@@ -331,7 +332,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                     hdp_list.extend(inf[1:2])
 
         # returns a list of HDP IDs
-        LOG.info(_("HDP list: %s") % hdp_list)
+        LOG.info(_LI("HDP list: %s") % hdp_list)
         return hdp_list
 
     def _check_hdp_list(self):
@@ -346,7 +347,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
         for hdp in lst:
             if hdp not in hdpl:
-                LOG.error(_("HDP not found: %s") % hdp)
+                LOG.error(_LE("HDP not found: %s") % hdp)
                 err = "HDP not found: " + hdp
                 raise exception.ParameterNotFound(param=err)
             # status, verify corresponding status is Normal
@@ -382,18 +383,19 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         self._check_hdp_list()
 
         iscsi_info = self._get_iscsi_info()
-        LOG.info(_("do_setup: %s") % iscsi_info)
+        LOG.info(_LI("do_setup: %s") % iscsi_info)
         for svc in self.config['services'].keys():
             svc_ip = self.config['services'][svc]['iscsi_ip']
             if svc_ip in iscsi_info.keys():
-                LOG.info(_("iSCSI portal found for service: %s") % svc_ip)
+                LOG.info(_LI("iSCSI portal found for service: %s") % svc_ip)
                 self.config['services'][svc]['port'] = \
                     iscsi_info[svc_ip]['port']
                 self.config['services'][svc]['ctl'] = iscsi_info[svc_ip]['ctl']
                 self.config['services'][svc]['iscsi_port'] = \
                     iscsi_info[svc_ip]['iscsi_port']
             else:          # config iscsi address not found on device!
-                LOG.error(_("iSCSI portal not found for service: %s") % svc_ip)
+                LOG.error(_LE("iSCSI portal not found "
+                              "for service: %s") % svc_ip)
                 raise exception.ParameterNotFound(param=svc_ip)
 
     def ensure_export(self, context, volume):
@@ -439,13 +441,13 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                                   '%s' % (int(volume['size']) * units.Ki),
                                   volume['name'])
 
-        LOG.info(_("create_volume: create_lu returns %s") % out)
+        LOG.info(_LI("create_volume: create_lu returns %s") % out)
 
         lun = self.arid + '.' + out.split()[1]
         sz = int(out.split()[5])
 
         # Example: 92210013.volume-44d7e29b-2aa4-4606-8bc4-9601528149fd
-        LOG.info(_("LUN %(lun)s of size %(sz)s MB is created.")
+        LOG.info(_LI("LUN %(lun)s of size %(sz)s MB is created.")
                  % {'lun': lun, 'sz': sz})
         return {'provider_location': lun}
 
@@ -496,7 +498,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                              '%s' % (new_size * units.Ki),
                              volume['name'])
 
-        LOG.info(_("LUN %(lun)s extended to %(size)s GB.")
+        LOG.info(_LI("LUN %(lun)s extended to %(size)s GB.")
                  % {'lun': lun, 'size': new_size})
 
     def delete_volume(self, volume):
@@ -678,7 +680,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         myid = self.arid
 
         if arid != myid:
-            LOG.error(_('Array mismatch %(myid)s vs %(arid)s')
+            LOG.error(_LE('Array mismatch %(myid)s vs %(arid)s')
                       % {'myid': myid,
                          'arid': arid})
             msg = 'Array id mismatch in delete snapshot'

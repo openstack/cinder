@@ -28,7 +28,7 @@ import re
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
 from cinder.volume.drivers import nexenta
@@ -145,8 +145,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             try:
                 nms.folder.destroy('%s/%s' % (vol, folder))
             except nexenta.NexentaException:
-                LOG.warning(_("Cannot destroy created folder: "
-                              "%(vol)s/%(folder)s"),
+                LOG.warning(_LW("Cannot destroy created folder: "
+                                "%(vol)s/%(folder)s"),
                             {'vol': vol, 'folder': folder})
             raise exc
 
@@ -175,8 +175,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             try:
                 nms.folder.destroy('%s/%s' % (vol, folder), '')
             except nexenta.NexentaException:
-                LOG.warning(_("Cannot destroy cloned folder: "
-                              "%(vol)s/%(folder)s"),
+                LOG.warning(_LW("Cannot destroy cloned folder: "
+                                "%(vol)s/%(folder)s"),
                             {'vol': vol, 'folder': folder})
             raise
 
@@ -188,7 +188,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         :param volume: new volume reference
         :param src_vref: source volume reference
         """
-        LOG.info(_('Creating clone of volume: %s'), src_vref['id'])
+        LOG.info(_LI('Creating clone of volume: %s'), src_vref['id'])
         snapshot = {'volume_name': src_vref['name'],
                     'volume_id': src_vref['id'],
                     'name': self._get_clone_snapshot_name(volume)}
@@ -199,13 +199,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         try:
             return self.create_volume_from_snapshot(volume, snapshot)
         except nexenta.NexentaException:
-            LOG.error(_('Volume creation failed, deleting created snapshot '
-                        '%(volume_name)s@%(name)s'), snapshot)
+            LOG.error(_LE('Volume creation failed, deleting created snapshot '
+                          '%(volume_name)s@%(name)s'), snapshot)
             try:
                 self.delete_snapshot(snapshot)
             except (nexenta.NexentaException, exception.SnapshotIsBusy):
-                LOG.warning(_('Failed to delete zfs snapshot '
-                              '%(volume_name)s@%(name)s'), snapshot)
+                LOG.warning(_LW('Failed to delete zfs snapshot '
+                                '%(volume_name)s@%(name)s'), snapshot)
             raise
 
     def delete_volume(self, volume):
@@ -226,8 +226,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 nms.folder.destroy(folder, '-r')
             except nexenta.NexentaException as exc:
                 if 'does not exist' in exc.args[0]:
-                    LOG.info(_('Folder %s does not exist, it was '
-                               'already deleted.'), folder)
+                    LOG.info(_LI('Folder %s does not exist, it was '
+                                 'already deleted.'), folder)
                     return
                 raise
             origin = props.get('origin')
@@ -236,8 +236,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     nms.snapshot.destroy(origin, '')
                 except nexenta.NexentaException as exc:
                     if 'does not exist' in exc.args[0]:
-                        LOG.info(_('Snapshot %s does not exist, it was '
-                                   'already deleted.'), origin)
+                        LOG.info(_LI('Snapshot %s does not exist, it was '
+                                     'already deleted.'), origin)
                         return
                     raise
 
@@ -267,8 +267,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             nms.snapshot.destroy('%s@%s' % (folder, snapshot['name']), '')
         except nexenta.NexentaException as exc:
             if 'does not exist' in exc.args[0]:
-                LOG.info(_('Snapshot %s does not exist, it was '
-                           'already deleted.'), '%s@%s' % (folder, snapshot))
+                LOG.info(_LI('Snapshot %s does not exist, it was '
+                             'already deleted.'), '%s@%s' % (folder, snapshot))
                 return
             raise
 
@@ -297,8 +297,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         block_size_mb = 1
         block_count = size * units.Gi / (block_size_mb * units.Mi)
 
-        LOG.info(_('Creating regular file: %s.'
-                   'This may take some time.') % path)
+        LOG.info(_LI('Creating regular file: %s.'
+                     'This may take some time.') % path)
 
         nms.appliance.execute(
             'dd if=/dev/zero of=%(path)s bs=%(bs)dM count=%(count)d' % {
@@ -308,7 +308,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             }
         )
 
-        LOG.info(_('Regular file: %s created.') % path)
+        LOG.info(_LI('Regular file: %s created.') % path)
 
     def _set_rw_permissions_for_all(self, nms, path):
         """Sets 666 permissions for the path.

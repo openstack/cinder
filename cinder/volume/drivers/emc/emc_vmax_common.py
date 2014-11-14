@@ -19,7 +19,7 @@ from oslo.config import cfg
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.emc import emc_vmax_fast
 from cinder.volume.drivers.emc import emc_vmax_masking
@@ -79,7 +79,7 @@ class EMCVMAXCommon(object):
     def __init__(self, prtcl, configuration=None):
 
         if not pywbemAvailable:
-            LOG.info(_(
+            LOG.info(_LI(
                 'Module PyWBEM not installed.  '
                 'Install PyWBEM using the python-pywbem package.'))
 
@@ -176,10 +176,11 @@ class EMCVMAXCommon(object):
         # add the volume to the default storage group created for
         # volumes in pools associated with this fast policy
         if extraSpecs[FASTPOLICY]:
-            LOG.info(_("Adding volume: %(volumeName)s to default storage group"
-                       " for FAST policy: %(fastPolicyName)s ")
-                     % {'volumeName': volumeName,
-                        'fastPolicyName': extraSpecs[FASTPOLICY]})
+            LOG.info(_LI("Adding volume: %(volumeName)s to "
+                         "default storage group "
+                         "for FAST policy: %(fastPolicyName)s "),
+                     {'volumeName': volumeName,
+                      'fastPolicyName': extraSpecs[FASTPOLICY]})
             defaultStorageGroupInstanceName = (
                 self._get_or_create_default_storage_group(
                     self.conn, storageSystemName, volumeDict,
@@ -197,9 +198,9 @@ class EMCVMAXCommon(object):
                 volumeDict, volumeName, storageConfigService,
                 storageSystemName, extraSpecs[FASTPOLICY])
 
-        LOG.info(_("Leaving create_volume: %(volumeName)s  "
-                   "Return code: %(rc)lu "
-                   "volume dict: %(name)s")
+        LOG.info(_LI("Leaving create_volume: %(volumeName)s  "
+                     "Return code: %(rc)lu "
+                     "volume dict: %(name)s")
                  % {'volumeName': volumeName,
                     'rc': rc,
                     'name': volumeDict})
@@ -231,12 +232,12 @@ class EMCVMAXCommon(object):
 
         :param volume: volume Object
         """
-        LOG.info(_("Deleting Volume: %(volume)s")
+        LOG.info(_LI("Deleting Volume: %(volume)s")
                  % {'volume': volume['name']})
 
         rc, volumeName = self._delete_volume(volume)
-        LOG.info(_("Leaving delete_volume: %(volumename)s  Return code: "
-                   "%(rc)lu")
+        LOG.info(_LI("Leaving delete_volume: %(volumename)s  Return code: "
+                     "%(rc)lu")
                  % {'volumename': volumeName,
                     'rc': rc})
 
@@ -257,7 +258,7 @@ class EMCVMAXCommon(object):
         :param snapshot: snapshot object
         :param volume: volume Object to create snapshot from
         """
-        LOG.info(_("Delete Snapshot: %(snapshotName)s ")
+        LOG.info(_LI("Delete Snapshot: %(snapshotName)s ")
                  % {'snapshotName': snapshot['name']})
         rc, snapshotName = self._delete_volume(snapshot)
         LOG.debug("Leaving delete_snapshot: %(snapshotname)s  Return code: "
@@ -296,13 +297,13 @@ class EMCVMAXCommon(object):
         """
         extraSpecs = self._initial_setup(volume)
         volumename = volume['name']
-        LOG.info(_("Unmap volume: %(volume)s")
+        LOG.info(_LI("Unmap volume: %(volume)s")
                  % {'volume': volumename})
 
         device_info = self.find_device_number(volume, connector)
         device_number = device_info['hostlunid']
         if device_number is None:
-            LOG.info(_("Volume %s is not mapped. No volume to unmap.")
+            LOG.info(_LI("Volume %s is not mapped. No volume to unmap.")
                      % (volumename))
             return
 
@@ -349,7 +350,7 @@ class EMCVMAXCommon(object):
         extraSpecs = self._initial_setup(volume)
 
         volumeName = volume['name']
-        LOG.info(_("Initialize connection: %(volume)s")
+        LOG.info(_LI("Initialize connection: %(volume)s")
                  % {'volume': volumeName})
         self.conn = self._get_ecom_connection()
         deviceInfoDict = self._wrap_find_device_number(volume, connector)
@@ -357,8 +358,8 @@ class EMCVMAXCommon(object):
                 deviceInfoDict['hostlunid'] is not None):
             # Device is already mapped so we will leave the state as is
             deviceNumber = deviceInfoDict['hostlunid']
-            LOG.info(_("Volume %(volume)s is already mapped. "
-                       "The device number is  %(deviceNumber)s ")
+            LOG.info(_LI("Volume %(volume)s is already mapped. "
+                         "The device number is  %(deviceNumber)s ")
                      % {'volume': volumeName,
                         'deviceNumber': deviceNumber})
         else:
@@ -372,7 +373,7 @@ class EMCVMAXCommon(object):
             if 'hostlunid' not in deviceInfoDict:
                 # Did not successfully attach to host,
                 # so a rollback for FAST is required
-                LOG.error(_("Error Attaching volume %(vol)s ")
+                LOG.error(_LE("Error Attaching volume %(vol)s ")
                           % {'vol': volumeName})
                 if rollbackDict['fastPolicyName'] is not None:
                     (
@@ -409,7 +410,7 @@ class EMCVMAXCommon(object):
         self._initial_setup(volume)
 
         volumename = volume['name']
-        LOG.info(_("Terminate connection: %(volume)s")
+        LOG.info(_LI("Terminate connection: %(volume)s")
                  % {'volume': volumename})
 
         self.conn = self._get_ecom_connection()
@@ -563,14 +564,14 @@ class EMCVMAXCommon(object):
 
         poolName = self.utils.parse_pool_name_from_file(emcConfigFileName)
         if poolName is None:
-            LOG.error(_(
+            LOG.error(_LE(
                 "PoolName %(poolName)s must be in the file "
                 "%(emcConfigFileName)s ")
                 % {'poolName': poolName,
                    'emcConfigFileName': emcConfigFileName})
         arrayName = self.utils.parse_array_name_from_file(emcConfigFileName)
         if arrayName is None:
-            LOG.error(_(
+            LOG.error(_LE(
                 "Array Serial Number %(arrayName)s must be in the file "
                 "%(emcConfigFileName)s ")
                 % {'arrayName': arrayName,
@@ -603,10 +604,10 @@ class EMCVMAXCommon(object):
             total_capacity_gb, free_capacity_gb = (
                 self.fast.get_capacities_associated_to_policy(
                     self.conn, arrayName, fastPolicyName))
-            LOG.info(
+            LOG.info(_LI(
                 "FAST: capacity stats for policy %(fastPolicyName)s on "
                 "array %(arrayName)s (total_capacity_gb=%(total_capacity_gb)lu"
-                ", free_capacity_gb=%(free_capacity_gb)lu"
+                ", free_capacity_gb=%(free_capacity_gb)lu")
                 % {'fastPolicyName': fastPolicyName,
                    'arrayName': arrayName,
                    'total_capacity_gb': total_capacity_gb,
@@ -614,10 +615,10 @@ class EMCVMAXCommon(object):
         else:  # NON-FAST
             total_capacity_gb, free_capacity_gb = (
                 self.utils.get_pool_capacities(self.conn, poolName, arrayName))
-            LOG.info(
+            LOG.info(_LI(
                 "NON-FAST: capacity stats for pool %(poolName)s on array "
                 "%(arrayName)s (total_capacity_gb=%(total_capacity_gb)lu, "
-                "free_capacity_gb=%(free_capacity_gb)lu"
+                "free_capacity_gb=%(free_capacity_gb)lu")
                 % {'poolName': poolName,
                    'arrayName': arrayName,
                    'total_capacity_gb': total_capacity_gb,
@@ -665,7 +666,7 @@ class EMCVMAXCommon(object):
 
         volumeName = volume['name']
         volumeStatus = volume['status']
-        LOG.info(_("Migrating using retype Volume: %(volume)s")
+        LOG.info(_LI("Migrating using retype Volume: %(volume)s")
                  % {'volume': volumeName})
 
         extraSpecs = self._initial_setup(volume)
@@ -673,8 +674,8 @@ class EMCVMAXCommon(object):
 
         volumeInstance = self._find_lun(volume)
         if volumeInstance is None:
-            LOG.error(_("Volume %(name)s not found on the array. "
-                        "No volume to migrate using retype.")
+            LOG.error(_LE("Volume %(name)s not found on the array. "
+                          "No volume to migrate using retype.")
                       % {'name': volumeName})
             return False
 
@@ -685,8 +686,8 @@ class EMCVMAXCommon(object):
                 volumeName, volumeStatus))
 
         if not isValid:
-            LOG.error(_("Volume %(name)s is not suitable for storage "
-                        "assisted migration using retype")
+            LOG.error(_LE("Volume %(name)s is not suitable for storage "
+                          "assisted migration using retype")
                       % {'name': volumeName})
             return False
         if volume['host'] != host['host']:
@@ -713,12 +714,12 @@ class EMCVMAXCommon(object):
         :returns: boolean True/False
         :returns: list
         """
-        LOG.warn(_("The VMAX plugin only supports Retype.  "
-                   "If a pool based migration is necessary "
-                   "this will happen on a Retype "
-                   "From the command line: "
-                   "cinder --os-volume-api-version 2 retype "
-                   "<volumeId> <volumeType> --migration-policy on-demand"))
+        LOG.warn(_LW("The VMAX plugin only supports Retype.  "
+                     "If a pool based migration is necessary "
+                     "this will happen on a Retype "
+                     "From the command line: "
+                     "cinder --os-volume-api-version 2 retype "
+                     "<volumeId> <volumeType> --migration-policy on-demand"))
         return True, {}
 
     def _migrate_volume(
@@ -747,10 +748,10 @@ class EMCVMAXCommon(object):
         if moved is False and sourceFastPolicyName is not None:
             # Return the volume to the default source fast policy storage
             # group because the migrate was unsuccessful
-            LOG.warn(_("Failed to migrate: %(volumeName)s from "
-                       "default source storage group "
-                       "for FAST policy: %(sourceFastPolicyName)s "
-                       "Attempting cleanup... ")
+            LOG.warn(_LW("Failed to migrate: %(volumeName)s from "
+                         "default source storage group "
+                         "for FAST policy: %(sourceFastPolicyName)s "
+                         "Attempting cleanup... ")
                      % {'volumeName': volumeName,
                         'sourceFastPolicyName': sourceFastPolicyName})
             if sourcePoolInstanceName == self.utils.get_assoc_pool_from_volume(
@@ -773,8 +774,8 @@ class EMCVMAXCommon(object):
             if not self._migrate_volume_fast_target(
                     volumeInstance, storageSystemName,
                     targetFastPolicyName, volumeName):
-                LOG.warn(_("Attempting a rollback of: %(volumeName)s to "
-                           "original pool %(sourcePoolInstanceName)s ")
+                LOG.warn(_LW("Attempting a rollback of: %(volumeName)s to "
+                             "original pool %(sourcePoolInstanceName)s ")
                          % {'volumeName': volumeName,
                             'sourcePoolInstanceName': sourcePoolInstanceName})
                 self._migrate_rollback(
@@ -804,7 +805,7 @@ class EMCVMAXCommon(object):
         :returns: int, the return code from migrate operation
         """
 
-        LOG.warn(_("_migrate_rollback on : %(volumeName)s from ")
+        LOG.warn(_LW("_migrate_rollback on : %(volumeName)s from ")
                  % {'volumeName': volumeName})
 
         storageRelocationService = self.utils.find_storage_relocation_service(
@@ -842,7 +843,7 @@ class EMCVMAXCommon(object):
         :returns: int, the return code from migrate operation
         """
 
-        LOG.warn(_("_migrate_cleanup on : %(volumeName)s from ")
+        LOG.warn(_LW("_migrate_cleanup on : %(volumeName)s from ")
                  % {'volumeName': volumeName})
 
         controllerConfigurationService = (
@@ -891,8 +892,8 @@ class EMCVMAXCommon(object):
         :returns: boolean True/False
         """
         falseRet = False
-        LOG.info(_("Adding volume: %(volumeName)s to default storage group "
-                   "for FAST policy: %(fastPolicyName)s ")
+        LOG.info(_LI("Adding volume: %(volumeName)s to default storage group "
+                     "for FAST policy: %(fastPolicyName)s ")
                  % {'volumeName': volumeName,
                     'fastPolicyName': targetFastPolicyName})
 
@@ -972,7 +973,7 @@ class EMCVMAXCommon(object):
         except Exception as e:
             # rollback by deleting the volume if adding the volume to the
             # default storage group were to fail
-            LOG.error(_("Exception: %s") % six.text_type(e))
+            LOG.error(_LE("Exception: %s") % six.text_type(e))
             exceptionMessage = (_("Error migrating volume: %(volumename)s. "
                                   "to target pool  %(targetPoolName)s. ")
                                 % {'volumename': volumeName,
@@ -1030,7 +1031,7 @@ class EMCVMAXCommon(object):
                     conn, controllerConfigurationService,
                     volumeInstance.path, volumeName, sourceFastPolicyName))
         except Exception as ex:
-            LOG.error(_("Exception: %s") % six.text_type(ex))
+            LOG.error(_LE("Exception: %s") % six.text_type(ex))
             exceptionMessage = (_("Failed to remove: %(volumename)s. "
                                   "from the default storage group for "
                                   "FAST policy %(fastPolicyName)s. ")
@@ -1096,7 +1097,7 @@ class EMCVMAXCommon(object):
         """
         falseRet = (False, None, None)
         if 'location_info' not in host['capabilities']:
-            LOG.error(_('Error getting target pool name and array'))
+            LOG.error(_LE('Error getting target pool name and array'))
             return falseRet
         info = host['capabilities']['location_info']
 
@@ -1108,8 +1109,8 @@ class EMCVMAXCommon(object):
             targetPoolName = infoDetail[1]
             targetFastPolicy = infoDetail[2]
         except Exception:
-            LOG.error(_("Error parsing target pool name, array, "
-                        "and fast policy"))
+            LOG.error(_LE("Error parsing target pool name, array, "
+                          "and fast policy"))
 
         if targetArraySerialNumber not in sourceArraySerialNumber:
             errorMessage = (_(
@@ -1419,7 +1420,7 @@ class EMCVMAXCommon(object):
                 rc, targetEndpoints = self.provision.get_target_endpoints(
                     self.conn, storageHardwareService, hardwareIdInstance)
             except Exception as ex:
-                LOG.error(_("Exception: %s") % six.text_type(ex))
+                LOG.error(_LE("Exception: %s") % six.text_type(ex))
                 errorMessage = (_(
                     "Unable to get target endpoints for hardwareId "
                     "%(hardwareIdInstance)s")
@@ -1438,7 +1439,7 @@ class EMCVMAXCommon(object):
                     if not any(d == wwn for d in targetWwns):
                         targetWwns.append(wwn)
             else:
-                LOG.error(_(
+                LOG.error(_LE(
                     "Target end points do not exist for hardware Id : "
                     "%(hardwareIdInstance)s ")
                     % {'hardwareIdInstance': hardwareIdInstance})
@@ -1726,7 +1727,7 @@ class EMCVMAXCommon(object):
         except Exception as e:
             # rollback by deleting the volume if adding the volume to the
             # default storage group were to fail
-            LOG.error(_("Exception: %s") % six.text_type(e))
+            LOG.error(_LE("Exception: %s") % six.text_type(e))
             errorMessage = (_(
                 "Rolling back %(volumeName)s by deleting it. ")
                 % {'volumeName': volumeName})
@@ -1882,8 +1883,9 @@ class EMCVMAXCommon(object):
         sourceName = sourceVolume['name']
         cloneName = cloneVolume['name']
 
-        LOG.info(_("Create a Clone from Volume: Clone Volume: %(cloneName)s  "
-                   "Source Volume: %(sourceName)s")
+        LOG.info(_LI("Create a Clone from Volume: Clone "
+                     "Volume: %(cloneName)s  "
+                     "Source Volume: %(sourceName)s")
                  % {'cloneName': cloneName,
                     'sourceName': sourceName})
 
@@ -1987,8 +1989,8 @@ class EMCVMAXCommon(object):
 
         volumeInstance = self._find_lun(volume)
         if volumeInstance is None:
-            LOG.error(_("Volume %(name)s not found on the array. "
-                        "No volume to delete.")
+            LOG.error(_LE("Volume %(name)s not found on the array. "
+                          "No volume to delete.")
                       % {'name': volumeName})
             return errorRet
 
@@ -2058,7 +2060,7 @@ class EMCVMAXCommon(object):
                            'fastPolicyName': fastPolicyName})
                     LOG.error(errorMsg)
 
-            LOG.error(_("Exception: %s") % six.text_type(e))
+            LOG.error(_LE("Exception: %s") % six.text_type(e))
             errorMessage = (_("Failed to delete volume %(volumeName)s")
                             % {'volumeName': volumeName})
             LOG.error(errorMessage)
@@ -2081,9 +2083,10 @@ class EMCVMAXCommon(object):
             self.masking.get_associated_masking_group_from_device(
                 self.conn, volumeInstanceName))
         if storageGroupInstanceName is not None:
-            LOG.warn(_("Pre check for deletion "
-                       "Volume: %(volumeName)s is part of a storage group "
-                       "Attempting removal from %(storageGroupInstanceName)s ")
+            LOG.warn(_LW("Pre check for deletion "
+                         "Volume: %(volumeName)s is part of a storage group "
+                         "Attempting removal "
+                         "from %(storageGroupInstanceName)s ")
                      % {'volumeName': volumeName,
                         'storageGroupInstanceName': storageGroupInstanceName})
             self.provision.remove_device_from_storage_group(
