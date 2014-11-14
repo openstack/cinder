@@ -59,11 +59,15 @@ class ScalityDriver(driver.VolumeDriver):
 
     VERSION = '1.0.0'
 
+    def __init__(self, *args, **kwargs):
+        super(ScalityDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(volume_opts)
+
     def _check_prerequisites(self):
         """Sanity checks before attempting to mount SOFS."""
 
         # config is mandatory
-        config = CONF.scality_sofs_config
+        config = self.configuration.scality_sofs_config
         if not config:
             msg = _("Value required for 'scality_sofs_config'")
             LOG.warn(msg)
@@ -94,8 +98,8 @@ class ScalityDriver(driver.VolumeDriver):
                 raise
 
     def _mount_sofs(self):
-        config = CONF.scality_sofs_config
-        mount_path = CONF.scality_sofs_mount_point
+        config = self.configuration.scality_sofs_config
+        mount_path = self.configuration.scality_sofs_mount_point
         sysdir = os.path.join(mount_path, 'sys')
 
         self._makedirs(mount_path)
@@ -126,16 +130,16 @@ class ScalityDriver(driver.VolumeDriver):
         """Any initialization the volume driver does while starting."""
         self._check_prerequisites()
         self._mount_sofs()
-        voldir = os.path.join(CONF.scality_sofs_mount_point,
-                              CONF.scality_sofs_volume_dir)
+        voldir = os.path.join(self.configuration.scality_sofs_mount_point,
+                              self.configuration.scality_sofs_volume_dir)
         if not os.path.isdir(voldir):
             self._makedirs(voldir)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
         self._check_prerequisites()
-        voldir = os.path.join(CONF.scality_sofs_mount_point,
-                              CONF.scality_sofs_volume_dir)
+        voldir = os.path.join(self.configuration.scality_sofs_mount_point,
+                              self.configuration.scality_sofs_volume_dir)
         if not os.path.isdir(voldir):
             msg = _("Cannot find volume dir for Scality SOFS at '%s'") % voldir
             LOG.warn(msg)
@@ -165,8 +169,8 @@ class ScalityDriver(driver.VolumeDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        volume_path = os.path.join(CONF.scality_sofs_mount_point,
-                                   CONF.scality_sofs_volume_dir,
+        volume_path = os.path.join(self.configuration.scality_sofs_mount_point,
+                                   self.configuration.scality_sofs_volume_dir,
                                    snapshot['volume_name'])
         snapshot_path = self.local_path(snapshot)
         self._create_file(snapshot_path,
@@ -178,11 +182,11 @@ class ScalityDriver(driver.VolumeDriver):
         os.remove(self.local_path(snapshot))
 
     def _sofs_path(self, volume):
-        return os.path.join(CONF.scality_sofs_volume_dir,
+        return os.path.join(self.configuration.scality_sofs_volume_dir,
                             volume['name'])
 
     def local_path(self, volume):
-        return os.path.join(CONF.scality_sofs_mount_point,
+        return os.path.join(self.configuration.scality_sofs_mount_point,
                             self._sofs_path(volume))
 
     def ensure_export(self, context, volume):
@@ -241,7 +245,7 @@ class ScalityDriver(driver.VolumeDriver):
                                  image_service,
                                  image_id,
                                  self.local_path(volume),
-                                 CONF.volume_dd_blocksize,
+                                 self.configuration.volume_dd_blocksize,
                                  size=volume['size'])
         self.create_volume(volume)
 

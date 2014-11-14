@@ -29,6 +29,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import units
 from cinder import test
 from cinder import utils
+from cinder.volume import configuration as conf
 from cinder.volume.drivers import scality
 
 
@@ -93,10 +94,10 @@ class ScalityDriverTestCase(test.TestCase):
                 raise
 
     def _configure_driver(self):
-        scality.CONF.scality_sofs_config = self.TEST_CONFIG
-        scality.CONF.scality_sofs_mount_point = self.TEST_MOUNT
-        scality.CONF.scality_sofs_volume_dir = self.TEST_VOLDIR
-        scality.CONF.volume_dd_blocksize = '1M'
+        self.configuration.scality_sofs_config = self.TEST_CONFIG
+        self.configuration.scality_sofs_mount_point = self.TEST_MOUNT
+        self.configuration.scality_sofs_volume_dir = self.TEST_VOLDIR
+        self.configuration.volume_dd_blocksize = '1M'
 
     def _execute_wrapper(self, cmd, *args, **kwargs):
         try:
@@ -116,8 +117,6 @@ class ScalityDriverTestCase(test.TestCase):
         self.stubs.Set(os, 'access', _access_wrapper)
 
     def setUp(self):
-        super(ScalityDriverTestCase, self).setUp()
-
         self.tempdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tempdir)
 
@@ -132,25 +131,26 @@ class ScalityDriverTestCase(test.TestCase):
                                            self.TEST_VOLDIR,
                                            self.TEST_CLONENAME)
 
-        self._driver = scality.ScalityDriver()
-        self._driver.set_execute(self._execute_wrapper)
         self._mox = mox_lib.Mox()
+        self.configuration = mox_lib.MockObject(conf.Configuration)
+        self._configure_driver()
+        super(ScalityDriverTestCase, self).setUp()
 
+        self._driver = scality.ScalityDriver(configuration=self.configuration)
+        self._driver.set_execute(self._execute_wrapper)
         self._create_fake_mount()
         self._create_fake_config()
         self.addCleanup(self._remove_fake_config)
 
-        self._configure_driver()
-
     def test_setup_no_config(self):
         """Missing SOFS configuration shall raise an error."""
-        scality.CONF.scality_sofs_config = None
+        self.configuration.scality_sofs_config = None
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver.do_setup, None)
 
     def test_setup_missing_config(self):
         """Non-existent SOFS configuration file shall raise an error."""
-        scality.CONF.scality_sofs_config = 'nonexistent.conf'
+        self.configuration.scality_sofs_config = 'nonexistent.conf'
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver.do_setup, None)
 
