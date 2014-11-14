@@ -27,7 +27,7 @@ from cinder.api.v2.views import volumes as volume_views
 from cinder.api import xmlutil
 from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
 from cinder import utils
@@ -183,7 +183,7 @@ class VolumeController(wsgi.Controller):
         """Delete a volume."""
         context = req.environ['cinder.context']
 
-        LOG.info(_("Delete volume with id: %s"), id, context=context)
+        LOG.info(_LI("Delete volume with id: %s"), id, context=context)
 
         try:
             volume = self.volume_api.get(context, id)
@@ -367,7 +367,7 @@ class VolumeController(wsgi.Controller):
         elif size is None and kwargs['source_replica'] is not None:
             size = kwargs['source_replica']['size']
 
-        LOG.info(_("Create volume of %s GB"), size, context=context)
+        LOG.info(_LI("Create volume of %s GB"), size, context=context)
 
         if self.ext_mgr.is_loaded('os-image-create'):
             image_href = volume.get('imageRef')

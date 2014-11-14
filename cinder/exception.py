@@ -28,7 +28,7 @@ from oslo.config import cfg
 import six
 import webob.exc
 
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 
 
@@ -90,7 +90,7 @@ class CinderException(Exception):
                 exc_info = sys.exc_info()
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                LOG.exception(_('Exception in string format operation'))
+                LOG.exception(_LE('Exception in string format operation'))
                 for name, value in kwargs.iteritems():
                     LOG.error("%s: %s" % (name, value))
                 if CONF.fatal_exception_format_errors:

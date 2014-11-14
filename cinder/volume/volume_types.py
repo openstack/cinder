@@ -26,7 +26,7 @@ from oslo.db import exception as db_exc
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 
 
@@ -42,7 +42,7 @@ def create(context, name, extra_specs=None):
                                          dict(name=name,
                                               extra_specs=extra_specs))
     except db_exc.DBError as e:
-        LOG.exception(_('DB error: %s') % e)
+        LOG.exception(_LE('DB error: %s') % e)
         raise exception.VolumeTypeCreateFailed(name=name,
                                                extra_specs=extra_specs)
     return type_ref

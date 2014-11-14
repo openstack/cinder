@@ -36,7 +36,7 @@ import webob.dec
 import webob.exc
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import network_utils
@@ -186,7 +186,7 @@ class Server(object):
                                {'host': host, 'port': port})
 
         (self._host, self._port) = self._socket.getsockname()[0:2]
-        LOG.info(_("%(name)s listening on %(_host)s:%(_port)s") %
+        LOG.info(_LI("%(name)s listening on %(_host)s:%(_port)s") %
                  {'name': self.name, '_host': self._host, '_port': self._port})
 
     def start(self):
@@ -231,8 +231,9 @@ class Server(object):
                                              **ssl_kwargs)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_("Failed to start %(name)s on %(_host)s:"
-                                "%(_port)s with SSL support.") % self.__dict__)
+                    LOG.error(_LE("Failed to start %(name)s on %(_host)s:"
+                                  "%(_port)s with SSL "
+                                  "support.") % self.__dict__)
 
         wsgi_kwargs = {
             'func': eventlet.wsgi.server,
@@ -264,7 +265,7 @@ class Server(object):
         :returns: None
 
         """
-        LOG.info(_("Stopping WSGI server."))
+        LOG.info(_LI("Stopping WSGI server."))
         if self._server is not None:
             # Resize pool to stop new requests from being processed
             self._pool.resize(0)
@@ -283,7 +284,7 @@ class Server(object):
                 self._pool.waitall()
                 self._server.wait()
         except greenlet.GreenletExit:
-            LOG.info(_("WSGI server has stopped."))
+            LOG.info(_LI("WSGI server has stopped."))
 
     def reset(self):
         """Reset server greenpool size to default.

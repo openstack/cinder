@@ -22,7 +22,7 @@ import time
 from oslo.config import cfg
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.image import image_utils
 from cinder.openstack.common import excutils
 from cinder.openstack.common import fileutils
@@ -228,8 +228,8 @@ class VolumeDriver(object):
                         self._is_non_recoverable(ex.stderr, non_recoverable):
                     raise
 
-                LOG.exception(_("Recovering from a failed execute.  "
-                                "Try number %s"), tries)
+                LOG.exception(_LE("Recovering from a failed execute.  "
+                                  "Try number %s"), tries)
                 time.sleep(tries ** 2)
 
     def _detach_volume(self, context, attach_info, volume, properties,
@@ -262,8 +262,8 @@ class VolumeDriver(object):
                 LOG.debug(("volume %s: removing export"), volume['id'])
                 self.remove_export(context, volume)
             except Exception as ex:
-                LOG.exception(_("Error detaching volume %(volume)s, "
-                                "due to remove export failure."),
+                LOG.exception(_LE("Error detaching volume %(volume)s, "
+                                  "due to remove export failure."),
                               {"volume": volume['id']})
                 raise exception.RemoveExportException(volume=volume['id'],
                                                       reason=ex)
@@ -471,9 +471,9 @@ class VolumeDriver(object):
                                                    model_update)
             except exception.CinderException as ex:
                 if model_update:
-                    LOG.exception(_("Failed updating model of volume "
-                                    "%(volume_id)s with driver provided model "
-                                    "%(model)s") %
+                    LOG.exception(_LE("Failed updating model of volume "
+                                      "%(volume_id)s with driver provided "
+                                      "model %(model)s") %
                                   {'volume_id': volume['id'],
                                    'model': model_update})
                     raise exception.ExportFailure(reason=ex)

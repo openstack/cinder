@@ -21,7 +21,7 @@ WSGI middleware for OpenStack API controllers.
 import routes
 
 from cinder.api.openstack import wsgi
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder import wsgi as base_wsgi
 
@@ -111,8 +111,8 @@ class APIRouter(base_wsgi.Router):
             controller = extension.controller
 
             if collection not in self.resources:
-                LOG.warning(_('Extension %(ext_name)s: Cannot extend '
-                              'resource %(collection)s: No such resource'),
+                LOG.warning(_LW('Extension %(ext_name)s: Cannot extend '
+                                'resource %(collection)s: No such resource'),
                             {'ext_name': extension.extension.name,
                              'collection': collection})
                 continue

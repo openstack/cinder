@@ -22,7 +22,7 @@ import re
 import six
 
 from cinder.brick import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils as putils
 
@@ -93,7 +93,7 @@ class RemoteFsClient(object):
         mount_path = self.get_mount_point(share)
 
         if mount_path in self._read_mounts():
-            LOG.info(_('Already mounted: %s') % mount_path)
+            LOG.info(_LI('Already mounted: %s') % mount_path)
             return
 
         self._execute('mkdir', '-p', mount_path, check_exit_code=0)
