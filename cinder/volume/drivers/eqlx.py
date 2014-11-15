@@ -24,7 +24,7 @@ import greenlet
 from oslo.config import cfg
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LW, _LI
 from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
@@ -206,7 +206,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                 while attempts > 0:
                     attempts -= 1
                     try:
-                        LOG.info(_('EQL-driver: executing "%s".'), command)
+                        LOG.info(_LI('EQL-driver: executing "%s".'), command)
                         return self._ssh_execute(
                             ssh, command,
                             timeout=self.configuration.eqlx_cli_timeout)
@@ -222,7 +222,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Error running SSH command: "%s".'), command)
+                LOG.error(_LE('Error running SSH command: "%s".'), command)
 
     def check_for_setup_error(self):
         super(DellEQLSanISCSIDriver, self).check_for_setup_error()
@@ -336,11 +336,11 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                     out_tup = line.rstrip().partition(' ')
                     self._group_ip = out_tup[-1]
 
-            LOG.info(_('EQL-driver: Setup is complete, group IP is "%s".'),
+            LOG.info(_LI('EQL-driver: Setup is complete, group IP is "%s".'),
                      self._group_ip)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to setup the Dell EqualLogic driver.'))
+                LOG.error(_LE('Failed to setup the Dell EqualLogic driver.'))
 
     def create_volume(self, volume):
         """Create a volume."""
@@ -357,7 +357,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             return self._get_volume_data(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to create volume "%s".'), volume['name'])
+                LOG.error(_LE('Failed to create volume "%s".'), volume['name'])
 
     def add_multihost_access(self, volume):
         """Add multihost-access to a volume. Needed for live migration."""
@@ -367,7 +367,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             self._eql_execute(*cmd)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to add multihost-access'
+                LOG.error(_LE('Failed to add multihost-access'
                           ' for volume "%s".'),
                           volume['name'])
 
@@ -378,11 +378,11 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             self._eql_execute('volume', 'select', volume['name'], 'offline')
             self._eql_execute('volume', 'delete', volume['name'])
         except exception.VolumeNotFound:
-            LOG.warn(_('Volume %s was not found while trying to delete it.'),
+            LOG.warn(_LW('Volume %s was not found while trying to delete it.'),
                      volume['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to delete volume "%s".'), volume['name'])
+                LOG.error(_LE('Failed to delete volume "%s".'), volume['name'])
 
     def create_snapshot(self, snapshot):
         """"Create snapshot of existing volume on appliance."""
@@ -397,7 +397,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                               snapshot['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to create snapshot of volume "%s".'),
+                LOG.error(_LE('Failed to create snapshot of volume "%s".'),
                           snapshot['volume_name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -411,7 +411,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             return self._get_volume_data(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to create volume from snapshot "%s".'),
+                LOG.error(_LE('Failed to create volume from snapshot "%s".'),
                           snapshot['name'])
 
     def create_cloned_volume(self, volume, src_vref):
@@ -424,7 +424,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             return self._get_volume_data(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to create clone of volume "%s".'),
+                LOG.error(_LE('Failed to create clone of volume "%s".'),
                           volume['name'])
 
     def delete_snapshot(self, snapshot):
@@ -434,10 +434,10 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                               'snapshot', 'delete', snapshot['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to delete snapshot %(snap)s of '
+                LOG.error(_LE('Failed to delete snapshot %(snap)s of '
                           'volume %(vol)s.'),
                           {'snap': snapshot['name'],
-                          'vol': snapshot['volume_name']})
+                           'vol': snapshot['volume_name']})
 
     def initialize_connection(self, volume, connector):
         """Restrict access to a volume."""
@@ -455,7 +455,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             }
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to initialize connection'
+                LOG.error(_LE('Failed to initialize connection'
                           ' to volume "%s".'),
                           volume['name'])
 
@@ -470,7 +470,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                                   'access', 'delete', connection_id)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to terminate connection'
+                LOG.error(_LE('Failed to terminate connection'
                           ' to volume "%s".'),
                           volume['name'])
 
@@ -492,11 +492,11 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         try:
             self._check_volume(volume)
         except exception.VolumeNotFound:
-            LOG.warn(_('Volume %s is not found!, it may have been deleted.'),
+            LOG.warn(_LW('Volume %s is not found!, it may have been deleted.'),
                      volume['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to ensure export of volume "%s".'),
+                LOG.error(_LE('Failed to ensure export of volume "%s".'),
                           volume['name'])
 
     def remove_export(self, context, volume):
@@ -515,7 +515,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                               'size', "%sG" % new_size)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to extend_volume %(name)s from '
+                LOG.error(_LE('Failed to extend_volume %(name)s from '
                           '%(current_size)sGB to %(new_size)sGB.'),
                           {'name': volume['name'],
                           'current_size': volume['size'],
