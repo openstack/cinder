@@ -24,7 +24,7 @@ import six
 
 encryption_opts = [
     cfg.StrOpt('encryption_auth_url',
-               default='http://localhost:5000/v2.0',
+               default='http://localhost:5000/v3',
                help='Authentication url for encryption service.'),
     cfg.StrOpt('encryption_api_url',
                default='http://localhost:9311/v1',
