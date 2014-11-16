@@ -997,13 +997,16 @@ class SSHPoolTestCase(test.TestCase):
             mock_open.assert_called_once_with(default_file, 'a')
             ssh_pool.remove(ssh)
 
+    @mock.patch('os.path.isfile', return_value=False)
     @mock.patch('__builtin__.open')
     @mock.patch('paramiko.SSHClient')
-    def test_ssh_missing_hosts_key_file(self, mock_sshclient, mock_open):
+    def test_ssh_missing_hosts_key_file(self, mock_sshclient, mock_open,
+                                        mock_isfile):
         mock_sshclient.return_value = FakeSSHClient()
 
         CONF.ssh_hosts_key_file = '/tmp/blah'
 
+        self.assertNotIn(CONF.state_path, CONF.ssh_hosts_key_file)
         self.assertRaises(exception.InvalidInput,
                           ssh_utils.SSHPool,
                           "127.0.0.1", 22, 10,
