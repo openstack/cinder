@@ -232,26 +232,31 @@ class TestWSGIService(test.TestCase):
         self.assertEqual(test_service.server._pool.size,
                          1000)
 
-    def test_workers_set_default(self):
+    @mock.patch('cinder.wsgi.Server')
+    def test_workers_set_default(self, wsgi_server):
         test_service = service.WSGIService("osapi_volume")
         self.assertEqual(test_service.workers, processutils.get_worker_count())
 
-    def test_workers_set_good_user_setting(self):
+    @mock.patch('cinder.wsgi.Server')
+    def test_workers_set_good_user_setting(self, wsgi_server):
         self.override_config('osapi_volume_workers', 8)
         test_service = service.WSGIService("osapi_volume")
         self.assertEqual(test_service.workers, 8)
 
-    def test_workers_set_zero_user_setting(self):
+    @mock.patch('cinder.wsgi.Server')
+    def test_workers_set_zero_user_setting(self, wsgi_server):
         self.override_config('osapi_volume_workers', 0)
         test_service = service.WSGIService("osapi_volume")
         # If a value less than 1 is used, defaults to number of procs available
         self.assertEqual(test_service.workers, processutils.get_worker_count())
 
-    def test_workers_set_negative_user_setting(self):
+    @mock.patch('cinder.wsgi.Server')
+    def test_workers_set_negative_user_setting(self, wsgi_server):
         self.override_config('osapi_volume_workers', -1)
         self.assertRaises(exception.InvalidInput,
                           service.WSGIService,
                           "osapi_volume")
+        self.assertFalse(wsgi_server.called)
 
 
 class OSCompatibilityTestCase(test.TestCase):
