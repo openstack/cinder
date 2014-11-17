@@ -58,7 +58,6 @@ class LVM(executor.Executor):
         super(LVM, self).__init__(execute=executor, root_helper=root_helper)
         self.vg_name = vg_name
         self.pv_list = []
-        self.lv_list = []
         self.vg_size = 0.0
         self.vg_free_space = 0.0
         self.vg_lv_count = 0
@@ -287,10 +286,9 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with LV info
 
         """
-        self.lv_list = self.get_lv_info(self._root_helper,
-                                        self.vg_name,
-                                        lv_name)
-        return self.lv_list
+        return self.get_lv_info(self._root_helper,
+                                self.vg_name,
+                                lv_name)
 
     def get_volume(self, name):
         """Get reference object of volume specified by name.
