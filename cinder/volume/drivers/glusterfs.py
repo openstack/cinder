@@ -24,7 +24,7 @@ from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import compute
 from cinder import db
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
@@ -125,7 +125,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
             try:
                 self._do_umount(True, share)
             except Exception as exc:
-                LOG.warning(_('Exception during unmounting %s') % (exc))
+                LOG.warning(_LE('Exception during unmounting %s') % (exc))
 
     def _do_umount(self, ignore_not_mounted, share):
         mount_path = self._get_mount_point_for_share(share)
@@ -134,9 +134,9 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
             self._execute(*command, run_as_root=True)
         except processutils.ProcessExecutionError as exc:
             if ignore_not_mounted and 'not mounted' in exc.stderr:
-                LOG.info(_("%s is already umounted"), share)
+                LOG.info(_LI("%s is already umounted"), share)
             else:
-                LOG.error(_("Failed to umount %(share)s, reason=%(stderr)s"),
+                LOG.error(_LE("Failed to umount %(share)s, reason=%(stderr)s"),
                           {'share': share, 'stderr': exc.stderr})
                 raise
 
@@ -145,7 +145,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
             self._unmount_shares()
         except processutils.ProcessExecutionError as exc:
             if 'target is busy' in exc.stderr:
-                LOG.warn(_("Failed to refresh mounts, reason=%s") %
+                LOG.warn(_LW("Failed to refresh mounts, reason=%s") %
                          exc.stderr)
             else:
                 raise
@@ -179,7 +179,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         volume['provider_location'] = self._find_share(volume['size'])
 
-        LOG.info(_('casted to %s') % volume['provider_location'])
+        LOG.info(_LI('casted to %s') % volume['provider_location'])
 
         self._do_create_volume(volume)
 
@@ -234,8 +234,9 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         """Deletes a logical volume."""
 
         if not volume['provider_location']:
-            LOG.warn(_('Volume %s does not have provider_location specified, '
-                     'skipping'), volume['name'])
+            LOG.warn(_LW('Volume %s does not have '
+                         'provider_location specified, '
+                         'skipping'), volume['name'])
             return
 
         self._ensure_share_mounted(volume['provider_location'])
@@ -313,7 +314,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                 snapshot['id'],
                 delete_info)
         except Exception as e:
-            LOG.error(_('Call to Nova delete snapshot failed'))
+            LOG.error(_LE('Call to Nova delete snapshot failed'))
             LOG.exception(e)
             raise e
 
@@ -477,7 +478,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                 self._ensure_share_mounted(share)
                 self._mounted_shares.append(share)
             except Exception as exc:
-                LOG.error(_('Exception during mounting %s') % (exc,))
+                LOG.error(_LE('Exception during mounting %s') % (exc,))
 
         LOG.debug('Available shares: %s' % self._mounted_shares)
 
@@ -601,7 +602,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                 connection_info)
             LOG.debug('nova call result: %s' % result)
         except Exception as e:
-            LOG.error(_('Call to Nova to create snapshot failed'))
+            LOG.error(_LE('Call to Nova to create snapshot failed'))
             LOG.exception(e)
             raise e
 

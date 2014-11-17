@@ -367,8 +367,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             self._eql_execute(*cmd)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to add multihost-access'
-                          ' for volume "%s".'),
+                LOG.error(_LE('Failed to add multihost-access '
+                              'for volume "%s".'),
                           volume['name'])
 
     def delete_volume(self, volume):
@@ -382,7 +382,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                      volume['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to delete volume "%s".'), volume['name'])
+                LOG.error(_LE('Failed to delete '
+                              'volume "%s".'), volume['name'])
 
     def create_snapshot(self, snapshot):
         """"Create snapshot of existing volume on appliance."""
@@ -435,7 +436,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to delete snapshot %(snap)s of '
-                          'volume %(vol)s.'),
+                              'volume %(vol)s.'),
                           {'snap': snapshot['name'],
                            'vol': snapshot['volume_name']})
 
@@ -455,8 +456,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             }
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to initialize connection'
-                          ' to volume "%s".'),
+                LOG.error(_LE('Failed to initialize connection '
+                              'to volume "%s".'),
                           volume['name'])
 
     def terminate_connection(self, volume, connector, force=False, **kwargs):
@@ -470,8 +471,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                                   'access', 'delete', connection_id)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Failed to terminate connection'
-                          ' to volume "%s".'),
+                LOG.error(_LE('Failed to terminate connection '
+                              'to volume "%s".'),
                           volume['name'])
 
     def create_export(self, context, volume):
@@ -516,9 +517,9 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to extend_volume %(name)s from '
-                          '%(current_size)sGB to %(new_size)sGB.'),
+                              '%(current_size)sGB to %(new_size)sGB.'),
                           {'name': volume['name'],
-                          'current_size': volume['size'],
+                           'current_size': volume['size'],
                            'new_size': new_size})
 
     def local_path(self, volume):

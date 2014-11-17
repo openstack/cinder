@@ -33,7 +33,7 @@ import urllib2
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -85,18 +85,19 @@ class XtremIOVolumeDriver(san.SanDriver):
             if exc.code == 400 and hasattr(exc, 'read'):
                 error = json.load(exc)
                 if error['message'].endswith('obj_not_found'):
-                    LOG.warning(_("object %(key)s of type %(typ)s not found"),
+                    LOG.warning(_LW("object %(key)s of "
+                                    "type %(typ)s not found"),
                                 {'key': key, 'typ': object_type})
                     raise exception.NotFound()
                 elif error['message'] == 'vol_obj_name_not_unique':
-                    LOG.error(_("can't create 2 volumes with the same name"))
+                    LOG.error(_LE("can't create 2 volumes with the same name"))
                     msg = (_('Volume by this name already exists'))
                     raise exception.VolumeBackendAPIException(data=msg)
-            LOG.error(_('Bad response from XMS, %s'), exc.read())
+            LOG.error(_LE('Bad response from XMS, %s'), exc.read())
             msg = (_('Exception: %s') % six.text_type(exc))
             raise exception.VolumeDriverException(message=msg)
         if response.code >= 300:
-            LOG.error(_('bad API response, %s'), response.msg)
+            LOG.error(_LE('bad API response, %s'), response.msg)
             msg = (_('bad response from XMS got http code %(code)d, %(msg)s') %
                    {'code': response.code, 'msg': response.msg})
             raise exception.VolumeBackendAPIException(data=msg)
@@ -148,7 +149,7 @@ class XtremIOVolumeDriver(san.SanDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         else:
-            LOG.info(_('XtremIO SW version %s'), sys['sys-sw-version'])
+            LOG.info(_LI('XtremIO SW version %s'), sys['sys-sw-version'])
 
     def create_volume(self, volume):
         "Creates a volume"
@@ -177,7 +178,7 @@ class XtremIOVolumeDriver(san.SanDriver):
         try:
             self.req('volumes', 'DELETE', name=volume['id'])
         except exception.NotFound:
-            LOG.info(_("volume %s doesn't exist"), volume['id'])
+            LOG.info(_LI("volume %s doesn't exist"), volume['id'])
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -191,7 +192,7 @@ class XtremIOVolumeDriver(san.SanDriver):
         try:
             self.req('volumes', 'DELETE', name=snapshot.id)
         except exception.NotFound:
-            LOG.info(_("snapshot %s doesn't exist"), snapshot.id)
+            LOG.info(_LI("snapshot %s doesn't exist"), snapshot.id)
 
     def _update_volume_stats(self):
         self._stats = {'volume_backend_name': self.backend_name,
@@ -235,10 +236,10 @@ class XtremIOVolumeDriver(san.SanDriver):
             lm_name = '%s_%s_%s' % (str(vol['index']),
                                     str(ig['index']) if ig else 'any',
                                     str(tg['index']))
-            LOG.info(_('removing lun map %s'), lm_name)
+            LOG.info(_LI('removing lun map %s'), lm_name)
             self.req('lun-maps', 'DELETE', name=lm_name)
         except exception.NotFound:
-            LOG.warning(_("terminate_connection: lun map not found"))
+            LOG.warning(_LW("terminate_connection: lun map not found"))
 
     def _find_lunmap(self, ig_name, vol_name):
         try:
@@ -271,17 +272,17 @@ class XtremIOVolumeDriver(san.SanDriver):
             res = self.req('lun-maps', 'POST', {'ig-id': ig['ig-id'][2],
                                                 'vol-id': volume['id']})
             lunmap = self._obj_from_result(res)
-            LOG.info(_('created lunmap\n%s'), lunmap)
+            LOG.info(_LI('created lunmap\n%s'), lunmap)
         except urllib2.HTTPError as exc:
             if exc.code == 400:
                 error = json.load(exc)
                 if 'already_mapped' in error.message:
-                    LOG.info(_('volume already mapped,'
-                               ' trying to retrieve it %(ig)s, %(vol)d'),
+                    LOG.info(_LI('volume already mapped,'
+                                 ' trying to retrieve it %(ig)s, %(vol)d'),
                              {'ig': ig['ig-id'][1], 'vol': volume['id']})
                     lunmap = self._find_lunmap(ig['ig-id'][1], volume['id'])
                 elif error.message == 'vol_obj_not_found':
-                    LOG.error(_("Can't find volume to map %s"), volume['id'])
+                    LOG.error(_LE("Can't find volume to map %s"), volume['id'])
                     raise exception.VolumeNotFound(volume_id=volume['id'])
                 else:
                     raise
@@ -350,8 +351,8 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
                                    'password']
                 # delete the initiator to create a new one with password
                 if not chap_passwd:
-                    LOG.info(_('initiator has no password while using chap,'
-                             'removing it'))
+                    LOG.info(_LI('initiator has no password while using chap,'
+                                 'removing it'))
                     self.req('initiators', 'DELETE', name=initiator)
                     # check if the initiator already exists
                     raise exception.NotFound()

@@ -25,7 +25,7 @@ from oslo.config import cfg
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
@@ -174,7 +174,8 @@ class RBDImageIOWrapper(io.RawIOBase):
         try:
             self._rbd_meta.image.flush()
         except AttributeError:
-            LOG.warning(_("flush() not supported in this version of librbd"))
+            LOG.warning(_LW("flush() not supported in "
+                            "this version of librbd"))
 
     def fileno(self):
         """RBD does not have support for fileno() so we raise IOError.
@@ -212,7 +213,7 @@ class RBDVolumeProxy(object):
                                            snapshot=snapshot,
                                            read_only=read_only)
         except driver.rbd.Error:
-            LOG.exception(_("error opening rbd image %s"), name)
+            LOG.exception(_LE("error opening rbd image %s"), name)
             driver._disconnect_from_rados(client, ioctx)
             raise
         self.driver = driver
@@ -306,7 +307,7 @@ class RBDDriver(driver.VolumeDriver):
             ioctx = client.open_ioctx(pool)
             return client, ioctx
         except self.rados.Error as exc:
-            LOG.error("error connecting to ceph cluster.")
+            LOG.error(_LE("error connecting to ceph cluster."))
             # shutdown cannot raise an exception
             client.shutdown()
             raise exception.VolumeBackendAPIException(data=str(exc))
@@ -366,7 +367,7 @@ class RBDDriver(driver.VolumeDriver):
             stats['free_capacity_gb'] = new_stats['kb_avail'] / units.Mi
         except self.rados.Error:
             # just log and return unknown capacities
-            LOG.exception(_('error refreshing volume stats'))
+            LOG.exception(_LE('error refreshing volume stats'))
         self._stats = stats
 
     def get_volume_stats(self, refresh=False):
@@ -614,7 +615,7 @@ class RBDDriver(driver.VolumeDriver):
             try:
                 rbd_image = self.rbd.Image(client.ioctx, volume_name)
             except self.rbd.ImageNotFound:
-                LOG.info(_("volume %s no longer exists in backend")
+                LOG.info(_LI("volume %s no longer exists in backend")
                          % (volume_name))
                 return
 

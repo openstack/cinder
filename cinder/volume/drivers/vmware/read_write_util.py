@@ -26,7 +26,7 @@ import urllib2
 import netaddr
 import six.moves.urllib.parse as urlparse
 
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim_util
@@ -206,7 +206,7 @@ class VMwareHTTPWriteVmdk(VMwareHTTPFile):
             msg = _("Could not retrieve URL from lease.")
             LOG.exception(msg)
             raise error_util.VimException(msg)
-        LOG.info(_("Opening vmdk url: %s for write.") % url)
+        LOG.info(_LI("Opening vmdk url: %s for write.") % url)
 
         # Prepare the http connection to the vmdk url
         cookies = session.vim.client.options.transport.cookiejar
@@ -299,7 +299,7 @@ class VMwareHTTPReadVmdk(VMwareHTTPFile):
             msg = _("Could not retrieve URL from lease.")
             LOG.exception(msg)
             raise error_util.VimException(msg)
-        LOG.info(_("Opening vmdk url: %s for read.") % url)
+        LOG.info(_LI("Opening vmdk url: %s for read.") % url)
 
         cookies = session.vim.client.options.transport.cookiejar
         headers = {'User-Agent': USER_AGENT,

@@ -26,7 +26,7 @@ import six
 
 from cinder import exception
 from cinder.exception import EMCVnxCLICmdError
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import excutils
 from cinder.openstack.common import jsonutils as json
 from cinder.openstack.common import lockutils
@@ -210,8 +210,8 @@ class CommandLineHelper(object):
         self.primary_storage_ip = self.active_storage_ip
         self.secondary_storage_ip = configuration.san_secondary_ip
         if self.secondary_storage_ip == self.primary_storage_ip:
-            LOG.warn(_("san_secondary_ip is configured as "
-                       "the same value as san_ip."))
+            LOG.warn(_LE("san_secondary_ip is configured as "
+                         "the same value as san_ip."))
             self.secondary_storage_ip = None
         if not configuration.san_ip:
             err_msg = _('san_ip: Mandatory field configuration. '
@@ -235,7 +235,7 @@ class CommandLineHelper(object):
         # if there is security file path provided, use this security file
         if storage_vnx_security_file:
             self.credentials = ('-secfilepath', storage_vnx_security_file)
-            LOG.info(_("Using security file in %s for authentication") %
+            LOG.info(_LI("Using security file in %s for authentication") %
                      storage_vnx_security_file)
         # if there is a username/password provided, use those in the cmd line
         elif storage_username is not None and len(storage_username) > 0 and\
@@ -243,19 +243,19 @@ class CommandLineHelper(object):
             self.credentials = ('-user', storage_username,
                                 '-password', storage_password,
                                 '-scope', storage_auth_type)
-            LOG.info(_("Plain text credentials are being used for "
-                       "authentication"))
+            LOG.info(_LI("Plain text credentials are being used for "
+                         "authentication"))
         else:
-            LOG.info(_("Neither security file nor plain "
-                       "text credentials are specified. Security file under "
-                       "home directory will be used for authentication "
-                       "if present."))
+            LOG.info(_LI("Neither security file nor plain "
+                         "text credentials are specified. Security file under "
+                         "home directory will be used for authentication "
+                         "if present."))
 
         self.iscsi_initiator_map = None
         if configuration.iscsi_initiators:
             self.iscsi_initiator_map = \
                 json.loads(configuration.iscsi_initiators)
-            LOG.info(_("iscsi_initiators: %s"), self.iscsi_initiator_map)
+            LOG.info(_LI("iscsi_initiators: %s"), self.iscsi_initiator_map)
 
         # extra spec constants
         self.pool_spec = 'storagetype:pool'
@@ -310,7 +310,7 @@ class CommandLineHelper(object):
         except EMCVnxCLICmdError as ex:
             with excutils.save_and_reraise_exception():
                 self.delete_lun(name)
-                LOG.error(_("Error on enable compression on lun %s.")
+                LOG.error(_LE("Error on enable compression on lun %s.")
                           % six.text_type(ex))
 
         # handle consistency group
@@ -321,8 +321,8 @@ class CommandLineHelper(object):
         except EMCVnxCLICmdError as ex:
             with excutils.save_and_reraise_exception():
                 self.delete_lun(name)
-                LOG.error(_("Error on adding lun to consistency"
-                            " group. %s") % six.text_type(ex))
+                LOG.error(_LE("Error on adding lun to consistency"
+                              " group. %s") % six.text_type(ex))
         return data
 
     @log_enter_exit
@@ -331,8 +331,8 @@ class CommandLineHelper(object):
         if rc != 0:
             # Ignore the error that due to retry
             if rc == 4 and out.find('(0x712d8d04)') >= 0:
-                LOG.warn(_('LUN already exists, LUN name %(name)s. '
-                           'Message: %(msg)s') %
+                LOG.warn(_LW('LUN already exists, LUN name %(name)s. '
+                             'Message: %(msg)s') %
                          {'name': name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(cmd, rc, out)
@@ -359,8 +359,8 @@ class CommandLineHelper(object):
         if rc != 0:
             # Ignore the error that due to retry
             if rc == 9 and out.find("not exist") >= 0:
-                LOG.warn(_("LUN is already deleted, LUN name %(name)s. "
-                           "Message: %(msg)s") %
+                LOG.warn(_LW("LUN is already deleted, LUN name %(name)s. "
+                             "Message: %(msg)s") %
                          {'name': name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(command_delete_lun, rc, out)
@@ -406,8 +406,8 @@ class CommandLineHelper(object):
         if rc != 0:
             # Ignore the error that due to retry
             if rc == 4 and out.find("(0x712d8e04)") >= 0:
-                LOG.warn(_("LUN %(name)s is already expanded. "
-                           "Message: %(msg)s") %
+                LOG.warn(_LW("LUN %(name)s is already expanded. "
+                             "Message: %(msg)s") %
                          {'name': name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(command_expand_lun, rc, out)
@@ -463,8 +463,8 @@ class CommandLineHelper(object):
             # Ignore the error if consistency group already exists
             if (rc == 33 and
                     out.find("(0x716d8021)") >= 0):
-                LOG.warn(_('Consistency group %(name)s already '
-                           'exists. Message: %(msg)s') %
+                LOG.warn(_LW('Consistency group %(name)s already '
+                             'exists. Message: %(msg)s') %
                          {'name': cg_name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(command_create_cg, rc, out)
@@ -532,18 +532,18 @@ class CommandLineHelper(object):
         if rc != 0:
             # Ignore the error if CG doesn't exist
             if rc == 13 and out.find(self.CLI_RESP_PATTERN_CG_NOT_FOUND) >= 0:
-                LOG.warn(_("CG %(cg_name)s does not exist. "
-                           "Message: %(msg)s") %
+                LOG.warn(_LW("CG %(cg_name)s does not exist. "
+                             "Message: %(msg)s") %
                          {'cg_name': cg_name, 'msg': out})
             elif rc == 1 and out.find("0x712d8801") >= 0:
-                LOG.warn(_("CG %(cg_name)s is deleting. "
-                           "Message: %(msg)s") %
+                LOG.warn(_LW("CG %(cg_name)s is deleting. "
+                             "Message: %(msg)s") %
                          {'cg_name': cg_name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(delete_cg_cmd, rc, out)
         else:
-            LOG.info(_('Consistency group %s was deleted '
-                       'successfully.') % cg_name)
+            LOG.info(_LI('Consistency group %s was deleted '
+                         'successfully.') % cg_name)
 
     @log_enter_exit
     def create_cgsnapshot(self, cgsnapshot):
@@ -562,8 +562,8 @@ class CommandLineHelper(object):
             # Ignore the error if cgsnapshot already exists
             if (rc == 5 and
                     out.find("(0x716d8005)") >= 0):
-                LOG.warn(_('Cgsnapshot name %(name)s already '
-                           'exists. Message: %(msg)s') %
+                LOG.warn(_LW('Cgsnapshot name %(name)s already '
+                             'exists. Message: %(msg)s') %
                          {'name': snap_name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(create_cg_snap_cmd, rc, out)
@@ -580,8 +580,8 @@ class CommandLineHelper(object):
             # Ignore the error if cgsnapshot does not exist.
             if (rc == 5 and
                     out.find(self.CLI_RESP_PATTERN_SNAP_NOT_FOUND) >= 0):
-                LOG.warn(_('Snapshot %(name)s for consistency group '
-                           'does not exist. Message: %(msg)s') %
+                LOG.warn(_LW('Snapshot %(name)s for consistency group '
+                             'does not exist. Message: %(msg)s') %
                          {'name': snap_name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(delete_cg_snap_cmd, rc, out)
@@ -601,8 +601,8 @@ class CommandLineHelper(object):
                 # Ignore the error that due to retry
                 if (rc == 5 and
                         out.find("(0x716d8005)") >= 0):
-                    LOG.warn(_('Snapshot %(name)s already exists. '
-                               'Message: %(msg)s') %
+                    LOG.warn(_LW('Snapshot %(name)s already exists. '
+                                 'Message: %(msg)s') %
                              {'name': name, 'msg': out})
                 else:
                     raise EMCVnxCLICmdError(command_create_snapshot, rc, out)
@@ -621,21 +621,21 @@ class CommandLineHelper(object):
             if rc != 0:
                 # Ignore the error that due to retry
                 if rc == 5 and out.find("not exist") >= 0:
-                    LOG.warn(_("Snapshot %(name)s may deleted already. "
-                               "Message: %(msg)s") %
+                    LOG.warn(_LW("Snapshot %(name)s may deleted already. "
+                                 "Message: %(msg)s") %
                              {'name': name, 'msg': out})
                     return True
                 # The snapshot cannot be destroyed because it is
                 # attached to a snapshot mount point. Wait
                 elif rc == 3 and out.find("(0x716d8003)") >= 0:
-                    LOG.warn(_("Snapshot %(name)s is in use, retry. "
-                               "Message: %(msg)s") %
+                    LOG.warn(_LW("Snapshot %(name)s is in use, retry. "
+                                 "Message: %(msg)s") %
                              {'name': name, 'msg': out})
                     return False
                 else:
                     raise EMCVnxCLICmdError(command_delete_snapshot, rc, out)
             else:
-                LOG.info(_('Snapshot %s was deleted successfully.') %
+                LOG.info(_LI('Snapshot %s was deleted successfully.') %
                          name)
                 return True
 
@@ -655,8 +655,8 @@ class CommandLineHelper(object):
         if rc != 0:
             # Ignore the error that due to retry
             if rc == 4 and out.find("(0x712d8d04)") >= 0:
-                LOG.warn(_("Mount point %(name)s already exists. "
-                           "Message: %(msg)s") %
+                LOG.warn(_LW("Mount point %(name)s already exists. "
+                             "Message: %(msg)s") %
                          {'name': name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(command_create_mount_point, rc, out)
@@ -674,9 +674,9 @@ class CommandLineHelper(object):
         if rc != 0:
             # Ignore the error that due to retry
             if rc == 85 and out.find('(0x716d8055)') >= 0:
-                LOG.warn(_("Snapshot %(snapname)s is attached to snapshot "
-                           "mount point %(mpname)s already. "
-                           "Message: %(msg)s") %
+                LOG.warn(_LW("Snapshot %(snapname)s is attached to snapshot "
+                             "mount point %(mpname)s already. "
+                             "Message: %(msg)s") %
                          {'snapname': snapshot_name,
                           'mpname': name,
                           'msg': out})
@@ -728,9 +728,9 @@ class CommandLineHelper(object):
         except EMCVnxCLICmdError as ex:
             migration_succeed = False
             if self._is_sp_unavailable_error(ex.out):
-                LOG.warn(_("Migration command may get network timeout. "
-                           "Double check whether migration in fact "
-                           "started successfully. Message: %(msg)s") %
+                LOG.warn(_LW("Migration command may get network timeout. "
+                             "Double check whether migration in fact "
+                             "started successfully. Message: %(msg)s") %
                          {'msg': ex.out})
                 command_migrate_list = ('migrate', '-list',
                                         '-source', src_id)
@@ -739,7 +739,7 @@ class CommandLineHelper(object):
                     migration_succeed = True
 
             if not migration_succeed:
-                LOG.warn(_("Start migration failed. Message: %s") %
+                LOG.warn(_LW("Start migration failed. Message: %s") %
                          ex.out)
                 LOG.debug("Delete temp LUN after migration "
                           "start failed. LUN: %s" % dst_name)
@@ -822,8 +822,8 @@ class CommandLineHelper(object):
         if rc != 0:
             # Ignore the error that due to retry
             if rc == 66 and out.find("name already in use") >= 0:
-                LOG.warn(_('Storage group %(name)s already exists. '
-                           'Message: %(msg)s') %
+                LOG.warn(_LW('Storage group %(name)s already exists. '
+                             'Message: %(msg)s') %
                          {'name': name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(command_create_storage_group, rc, out)
@@ -839,9 +839,9 @@ class CommandLineHelper(object):
             # Ignore the error that due to retry
             if rc == 83 and out.find("group name or UID does not "
                                      "match any storage groups") >= 0:
-                LOG.warn(_("Storage group %(name)s doesn't exist, "
-                           "may have already been deleted. "
-                           "Message: %(msg)s") %
+                LOG.warn(_LW("Storage group %(name)s doesn't exist, "
+                             "may have already been deleted. "
+                             "Message: %(msg)s") %
                          {'name': name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(command_delete_storage_group, rc, out)
@@ -871,8 +871,8 @@ class CommandLineHelper(object):
             if rc == 116 and \
                 re.search("host is not.*connected to.*storage group",
                           out) is not None:
-                LOG.warn(_("Host %(host)s has already disconnected from "
-                           "storage group %(sgname)s. Message: %(msg)s") %
+                LOG.warn(_LW("Host %(host)s has already disconnected from "
+                             "storage group %(sgname)s. Message: %(msg)s") %
                          {'host': hostname, 'sgname': sg_name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(command_host_disconnect, rc, out)
@@ -891,9 +891,9 @@ class CommandLineHelper(object):
             if rc == 66 and \
                     re.search("LUN.*already.*added to.*Storage Group",
                               out) is not None:
-                LOG.warn(_("LUN %(lun)s has already added to "
-                           "Storage Group %(sgname)s. "
-                           "Message: %(msg)s") %
+                LOG.warn(_LW("LUN %(lun)s has already added to "
+                             "Storage Group %(sgname)s. "
+                             "Message: %(msg)s") %
                          {'lun': alu, 'sgname': sg_name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(command_add_hlu, rc, out)
@@ -911,8 +911,8 @@ class CommandLineHelper(object):
             # Ignore the error that due to retry
             if rc == 66 and\
                     out.find("No such Host LUN in this Storage Group") >= 0:
-                LOG.warn(_("HLU %(hlu)s has already been removed from "
-                           "%(sgname)s. Message: %(msg)s") %
+                LOG.warn(_LW("HLU %(hlu)s has already been removed from "
+                             "%(sgname)s. Message: %(msg)s") %
                          {'hlu': hlu, 'sgname': sg_name, 'msg': out})
             else:
                 raise EMCVnxCLICmdError(command_remove_hlu, rc, out)
@@ -1002,8 +1002,8 @@ class CommandLineHelper(object):
                 try:
                     return propertyDescriptor.converter(m.group(1))
                 except ValueError:
-                    LOG.error(_("Invalid value for %(key)s, "
-                                "value is %(value)s.") %
+                    LOG.error(_LE("Invalid value for %(key)s, "
+                                  "value is %(value)s.") %
                               {'key': propertyDescriptor.key,
                                'value': m.group(1)})
                     return None
@@ -1045,7 +1045,7 @@ class CommandLineHelper(object):
                     pool, self.POOL_FREE_CAPACITY)
                 temp_cache.append(obj)
         except Exception as ex:
-            LOG.error(_("Error happened during storage pool querying, %s.")
+            LOG.error(_LE("Error happened during storage pool querying, %s.")
                       % ex)
             # NOTE: Do not want to continue raise the exception
             # as the pools may temporarly unavailable
@@ -1066,8 +1066,8 @@ class CommandLineHelper(object):
             if m:
                 data['array_serial'] = m.group(1)
             else:
-                LOG.warn(_("No array serial number returned, "
-                           "set as unknown."))
+                LOG.warn(_LW("No array serial number returned, "
+                             "set as unknown."))
         else:
             raise EMCVnxCLICmdError(command_get_array_serial, rc, out)
 
@@ -1245,7 +1245,7 @@ class CommandLineHelper(object):
                 LOG.debug("See available iSCSI target: %s",
                           connection_pingnode)
                 return True
-        LOG.warn(_("See unavailable iSCSI target: %s"), connection_pingnode)
+        LOG.warn(_LW("See unavailable iSCSI target: %s"), connection_pingnode)
         return False
 
     @log_enter_exit
@@ -1372,8 +1372,8 @@ class CommandLineHelper(object):
             self.active_storage_ip == self.primary_storage_ip else\
             self.primary_storage_ip
 
-        LOG.info(_('Toggle storage_vnx_ip_address from %(old)s to '
-                   '%(new)s.') %
+        LOG.info(_LI('Toggle storage_vnx_ip_address from %(old)s to '
+                     '%(new)s.') %
                  {'old': old_ip,
                   'new': self.primary_storage_ip})
         return True
@@ -1451,13 +1451,13 @@ class EMCVnxCliBase(object):
                 FCSanLookupService(configuration=configuration)
         self.max_retries = 5
         if self.destroy_empty_sg:
-            LOG.warn(_("destroy_empty_storage_group: True. "
-                       "Empty storage group will be deleted "
-                       "after volume is detached."))
+            LOG.warn(_LW("destroy_empty_storage_group: True. "
+                         "Empty storage group will be deleted "
+                         "after volume is detached."))
         if not self.itor_auto_reg:
-            LOG.info(_("initiator_auto_registration: False. "
-                       "Initiator auto registration is not enabled. "
-                       "Please register initiator manually."))
+            LOG.info(_LI("initiator_auto_registration: False. "
+                         "Initiator auto registration is not enabled. "
+                         "Please register initiator manually."))
         self.hlu_set = set(xrange(1, self.max_luns_per_sg + 1))
         self._client = CommandLineHelper(self.configuration)
         self.array_serial = None
@@ -1488,10 +1488,10 @@ class EMCVnxCliBase(object):
         if not provisioning:
             provisioning = 'thick'
 
-        LOG.info(_('Create Volume: %(volume)s  Size: %(size)s '
-                   'pool: %(pool)s '
-                   'provisioning: %(provisioning)s '
-                   'tiering: %(tiering)s.')
+        LOG.info(_LI('Create Volume: %(volume)s  Size: %(size)s '
+                     'pool: %(pool)s '
+                     'provisioning: %(provisioning)s '
+                     'tiering: %(tiering)s.')
                  % {'volume': volumename,
                     'size': volumesize,
                     'pool': pool,
@@ -1536,7 +1536,7 @@ class EMCVnxCliBase(object):
         """check whether an extra spec's value is valid."""
 
         if not extra_spec or not valid_values:
-            LOG.error(_('The given extra_spec or valid_values is None.'))
+            LOG.error(_LE('The given extra_spec or valid_values is None.'))
         elif extra_spec not in valid_values:
             msg = _("The extra_spec: %s is invalid.") % extra_spec
             LOG.error(msg)
@@ -1614,9 +1614,9 @@ class EMCVnxCliBase(object):
         false_ret = (False, None)
 
         if 'location_info' not in host['capabilities']:
-            LOG.warn(_("Failed to get target_pool_name and "
-                       "target_array_serial. 'location_info' "
-                       "is not in host['capabilities']."))
+            LOG.warn(_LW("Failed to get target_pool_name and "
+                         "target_array_serial. 'location_info' "
+                         "is not in host['capabilities']."))
             return false_ret
 
         # mandatory info should be ok
@@ -1627,8 +1627,8 @@ class EMCVnxCliBase(object):
             target_pool_name = info_detail[0]
             target_array_serial = info_detail[1]
         except AttributeError:
-            LOG.warn(_("Error on parsing target_pool_name/"
-                       "target_array_serial."))
+            LOG.warn(_LW("Error on parsing target_pool_name/"
+                         "target_array_serial."))
             return false_ret
 
         if len(target_pool_name) == 0:
@@ -1745,8 +1745,8 @@ class EMCVnxCliBase(object):
                         volume, target_pool_name, new_type)[0]:
                     return True
                 else:
-                    LOG.warn(_('Storage-assisted migration failed during '
-                               'retype.'))
+                    LOG.warn(_LW('Storage-assisted migration failed during '
+                                 'retype.'))
                     return False
             else:
                 # migration is invalid
@@ -1860,7 +1860,7 @@ class EMCVnxCliBase(object):
         snapshotname = snapshot['name']
         volumename = snapshot['volume_name']
 
-        LOG.info(_('Create snapshot: %(snapshot)s: volume: %(volume)s')
+        LOG.info(_LI('Create snapshot: %(snapshot)s: volume: %(volume)s')
                  % {'snapshot': snapshotname,
                     'volume': volumename})
 
@@ -1872,7 +1872,7 @@ class EMCVnxCliBase(object):
 
         snapshotname = snapshot['name']
 
-        LOG.info(_('Delete Snapshot: %(snapshot)s')
+        LOG.info(_LI('Delete Snapshot: %(snapshot)s')
                  % {'snapshot': snapshotname})
 
         self._client.delete_snapshot(snapshotname)
@@ -1965,8 +1965,8 @@ class EMCVnxCliBase(object):
     @log_enter_exit
     def create_consistencygroup(self, context, group):
         """Create a consistency group."""
-        LOG.info(_('Start to create consistency group: %(group_name)s '
-                   'id: %(id)s') %
+        LOG.info(_LI('Start to create consistency group: %(group_name)s '
+                     'id: %(id)s') %
                  {'group_name': group['name'], 'id': group['id']})
 
         model_update = {'status': 'available'}
@@ -1988,7 +1988,7 @@ class EMCVnxCliBase(object):
 
         model_update = {}
         model_update['status'] = group['status']
-        LOG.info(_('Start to delete consistency group: %(cg_name)s')
+        LOG.info(_LI('Start to delete consistency group: %(cg_name)s')
                  % {'cg_name': cg_name})
         try:
             self._client.delete_consistencygroup(cg_name)
@@ -2016,8 +2016,8 @@ class EMCVnxCliBase(object):
             context, cgsnapshot_id)
 
         model_update = {}
-        LOG.info(_('Start to create cgsnapshot for consistency group'
-                   ': %(group_name)s') %
+        LOG.info(_LI('Start to create cgsnapshot for consistency group'
+                     ': %(group_name)s') %
                  {'group_name': cgsnapshot['consistencygroup_id']})
 
         try:
@@ -2043,8 +2043,8 @@ class EMCVnxCliBase(object):
 
         model_update = {}
         model_update['status'] = cgsnapshot['status']
-        LOG.info(_('Delete cgsnapshot %(snap_name)s for consistency group: '
-                   '%(group_name)s') % {'snap_name': cgsnapshot['id'],
+        LOG.info(_LI('Delete cgsnapshot %(snap_name)s for consistency group: '
+                     '%(group_name)s') % {'snap_name': cgsnapshot['id'],
                  'group_name': cgsnapshot['consistencygroup_id']})
 
         try:
@@ -2102,7 +2102,7 @@ class EMCVnxCliBase(object):
                 # SG was not created or was destroyed by another concurrent
                 # operation before connected.
                 # Create SG and try to connect again
-                LOG.warn(_('Storage Group %s is not found. Create it.'),
+                LOG.warn(_LW('Storage Group %s is not found. Create it.'),
                          storage_group)
                 self.assure_storage_group(storage_group)
                 self._client.connect_host_to_storage_group(
@@ -2192,8 +2192,8 @@ class EMCVnxCliBase(object):
     def _register_iscsi_initiator(self, ip, host, initiator_uids):
         for initiator_uid in initiator_uids:
             iscsi_targets = self._client.get_iscsi_targets()
-            LOG.info(_('Get ISCSI targets %(tg)s to register '
-                       'initiator %(in)s.')
+            LOG.info(_LI('Get ISCSI targets %(tg)s to register '
+                         'initiator %(in)s.')
                      % ({'tg': iscsi_targets,
                          'in': initiator_uid}))
 
@@ -2217,7 +2217,7 @@ class EMCVnxCliBase(object):
     def _register_fc_initiator(self, ip, host, initiator_uids):
         for initiator_uid in initiator_uids:
             fc_targets = self._client.get_fc_targets()
-            LOG.info(_('Get FC targets %(tg)s to register initiator %(in)s.')
+            LOG.info(_LI('Get FC targets %(tg)s to register initiator %(in)s.')
                      % ({'tg': fc_targets,
                          'in': initiator_uid}))
 
@@ -2432,23 +2432,23 @@ class EMCVnxCliBase(object):
                 lun_map = self.get_lun_map(hostname)
             except EMCVnxCLICmdError as ex:
                 if ex.rc == 83:
-                    LOG.warn(_("Storage Group %s is not found. "
-                               "terminate_connection() is unnecessary."),
+                    LOG.warn(_LW("Storage Group %s is not found. "
+                                 "terminate_connection() is unnecessary."),
                              hostname)
                     return True
             try:
                 lun_id = self.get_lun_id(volume)
             except EMCVnxCLICmdError as ex:
                 if ex.rc == 9:
-                    LOG.warn(_("Volume %s is not found. "
-                               "It has probably been removed in VNX.")
+                    LOG.warn(_LW("Volume %s is not found. "
+                                 "It has probably been removed in VNX.")
                              % volume_name)
 
             if lun_id in lun_map:
                 self._client.remove_hlu_from_storagegroup(
                     lun_map[lun_id], hostname)
             else:
-                LOG.warn(_("Volume %(vol)s was not in Storage Group %(sg)s.")
+                LOG.warn(_LW("Volume %(vol)s was not in Storage Group %(sg)s.")
                          % {'vol': volume_name, 'sg': hostname})
             if self.destroy_empty_sg or self.zonemanager_lookup_service:
                 try:
@@ -2456,8 +2456,8 @@ class EMCVnxCliBase(object):
                     if not lun_map:
                         LOG.debug("Storage Group %s was empty.", hostname)
                         if self.destroy_empty_sg:
-                            LOG.info(_("Storage Group %s was empty, "
-                                       "destroy it."), hostname)
+                            LOG.info(_LI("Storage Group %s was empty, "
+                                         "destroy it."), hostname)
                             self._client.disconnect_host_from_storage_group(
                                 hostname, hostname)
                             self._client.delete_storage_group(hostname)
@@ -2466,7 +2466,7 @@ class EMCVnxCliBase(object):
                         LOG.debug("Storage Group %s not empty,", hostname)
                         return False
                 except Exception:
-                    LOG.warn(_("Failed to destroy Storage Group %s."),
+                    LOG.warn(_LW("Failed to destroy Storage Group %s."),
                              hostname)
             else:
                 return False
@@ -2585,7 +2585,7 @@ class EMCVnxCliPool(EMCVnxCliBase):
             if m is not None:
                 result = True if 'Enabled' == m.group(1) else False
             else:
-                LOG.error(_("Error parsing output for FastCache Command."))
+                LOG.error(_LE("Error parsing output for FastCache Command."))
         return result
 
     @log_enter_exit

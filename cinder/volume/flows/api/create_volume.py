@@ -18,7 +18,7 @@ from taskflow.utils import misc
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import units
@@ -533,7 +533,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             #
             # NOTE(harlowja): Being unable to destroy a volume is pretty
             # bad though!!
-            LOG.exception(_("Failed destroying volume entry %s"), vol_id)
+            LOG.exception(_LE("Failed destroying volume entry %s"), vol_id)
 
 
 class QuotaReserveTask(flow_utils.CinderTask):
@@ -617,8 +617,8 @@ class QuotaReserveTask(flow_utils.CinderTask):
         except exception.CinderException:
             # We are already reverting, therefore we should silence this
             # exception since a second exception being active will be bad.
-            LOG.exception(_("Failed rolling back quota for"
-                            " %s reservations"), reservations)
+            LOG.exception(_LE("Failed rolling back quota for"
+                              " %s reservations"), reservations)
 
 
 class QuotaCommitTask(flow_utils.CinderTask):
@@ -663,8 +663,8 @@ class QuotaCommitTask(flow_utils.CinderTask):
                 QUOTAS.commit(context, reservations,
                               project_id=context.project_id)
         except Exception:
-            LOG.exception(_("Failed to update quota for deleting volume: %s"),
-                          volume['id'])
+            LOG.exception(_LE("Failed to update quota for deleting "
+                              "volume: %s"), volume['id'])
 
 
 class VolumeCastTask(flow_utils.CinderTask):
@@ -763,11 +763,11 @@ class VolumeCastTask(flow_utils.CinderTask):
         volume_id = kwargs['volume_id']
         common.restore_source_status(context, self.db, kwargs)
         common.error_out_volume(context, self.db, volume_id)
-        LOG.error(_("Volume %s: create failed"), volume_id)
+        LOG.error(_LE("Volume %s: create failed"), volume_id)
         exc_info = False
         if all(flow_failures[-1].exc_info):
             exc_info = flow_failures[-1].exc_info
-        LOG.error(_('Unexpected build error:'), exc_info=exc_info)
+        LOG.error(_LE('Unexpected build error:'), exc_info=exc_info)
 
 
 def get_flow(scheduler_rpcapi, volume_rpcapi, db_api,

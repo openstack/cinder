@@ -21,7 +21,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume import volume_types
@@ -57,7 +57,7 @@ class EMCVMAXUtils(object):
 
     def __init__(self, prtcl):
         if not pywbemAvailable:
-            LOG.info(_(
+            LOG.info(_LI(
                 'Module PyWBEM not installed.  '
                 'Install PyWBEM using the python-pywbem package.'))
         self.protocol = prtcl
@@ -290,8 +290,9 @@ class EMCVMAXUtils(object):
             if self._is_job_finished(conn, job):
                 raise loopingcall.LoopingCallDone()
             if self.retries > JOB_RETRIES:
-                LOG.error(_("_wait_for_job_complete failed after %(retries)d "
-                          "tries") % {'retries': self.retries})
+                LOG.error(_LE("_wait_for_job_complete "
+                              "failed after %(retries)d "
+                              "tries") % {'retries': self.retries})
 
                 raise loopingcall.LoopingCallDone()
             try:
@@ -300,7 +301,7 @@ class EMCVMAXUtils(object):
                     if self._is_job_finished(conn, job):
                         self.wait_for_job_called = True
             except Exception as e:
-                LOG.error(_("Exception: %s") % six.text_type(e))
+                LOG.error(_LE("Exception: %s") % six.text_type(e))
                 exceptionMessage = (_("Issue encountered waiting for job."))
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
@@ -349,7 +350,7 @@ class EMCVMAXUtils(object):
             if self._is_sync_complete(conn, syncName):
                 raise loopingcall.LoopingCallDone()
             if self.retries > JOB_RETRIES:
-                LOG.error(_("_wait_for_sync failed after %(retries)d tries")
+                LOG.error(_LE("_wait_for_sync failed after %(retries)d tries")
                           % {'retries': self.retries})
                 raise loopingcall.LoopingCallDone()
             try:
@@ -358,7 +359,7 @@ class EMCVMAXUtils(object):
                     if self._is_sync_complete(conn, syncName):
                         self.wait_for_sync_called = True
             except Exception as e:
-                LOG.error(_("Exception: %s") % six.text_type(e))
+                LOG.error(_LE("Exception: %s") % six.text_type(e))
                 exceptionMessage = (_("Issue encountered waiting for "
                                       "synchronization."))
                 LOG.error(exceptionMessage)
@@ -661,7 +662,7 @@ class EMCVMAXUtils(object):
                       % {'fileName': fileName,
                          'fastPolicyName': fastPolicyName})
         else:
-            LOG.info(_("Fast Policy not found."))
+            LOG.info(_LI("Fast Policy not found."))
         return fastPolicyName
 
     def parse_array_name_from_file(self, fileName):

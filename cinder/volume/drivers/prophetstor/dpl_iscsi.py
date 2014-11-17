@@ -16,7 +16,7 @@
 import errno
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 import cinder.volume.driver
 from cinder.volume.drivers.prophetstor import dplcommon
@@ -156,6 +156,6 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
                         (backend_name or 'DPLISCSIDriver')
                     self._stats = data
             except Exception as exc:
-                LOG.warning(_('Cannot get volume status '
-                              '%(exc)%s.') % {'exc': exc})
+                LOG.warning(_LW('Cannot get volume status '
+                                '%(exc)%s.') % {'exc': exc})
         return self._stats

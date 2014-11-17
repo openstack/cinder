@@ -27,7 +27,7 @@ from oslo.config import cfg
 from cinder.brick import exception as brick_exception
 from cinder.brick.local_dev import lvm as lvm
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
@@ -227,8 +227,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
             return True
 
         if self.vg.lv_has_snapshot(volume['name']):
-            LOG.error(_('Unabled to delete due to existing snapshot '
-                        'for volume: %s') % volume['name'])
+            LOG.error(_LE('Unabled to delete due to existing snapshot '
+                          'for volume: %s') % volume['name'])
             raise exception.VolumeIsBusy(volume_name=volume['name'])
 
         self._delete_volume(volume)
@@ -244,8 +244,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """Deletes a snapshot."""
         if self._volume_not_present(self._escape_snapshot(snapshot['name'])):
             # If the snapshot isn't present, then don't attempt to delete
-            LOG.warning(_("snapshot: %s not found, "
-                          "skipping delete operations") % snapshot['name'])
+            LOG.warning(_LW("snapshot: %s not found, "
+                            "skipping delete operations") % snapshot['name'])
             return True
 
         # TODO(yamahata): zeroing out the whole snapshot triggers COW.
@@ -282,7 +282,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         mirror_count = 0
         if self.configuration.lvm_mirrors:
             mirror_count = self.configuration.lvm_mirrors
-        LOG.info(_('Creating clone of volume: %s') % src_vref['id'])
+        LOG.info(_LI('Creating clone of volume: %s') % src_vref['id'])
         volume_name = src_vref['name']
         temp_id = 'tmp-snap-%s' % volume['id']
         temp_snapshot = {'volume_name': volume_name,
@@ -346,8 +346,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         LOG.debug("Updating volume stats")
         if self.vg is None:
-            LOG.warning(_('Unable to update stats on non-initialized '
-                          'Volume Group: %s'), self.configuration.volume_group)
+            LOG.warning(_LW('Unable to update stats on non-initialized '
+                            'Volume Group: %s'), self.configuration.
+                        volume_group)
             return
 
         self.vg.update_volume_group_info()
@@ -523,8 +524,8 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                 if attempts == 0:
                     raise
                 else:
-                    LOG.warning(_('Error creating iSCSI target, retrying '
-                                  'creation for target: %s') % iscsi_name)
+                    LOG.warning(_LW('Error creating iSCSI target, retrying '
+                                    'creation for target: %s') % iscsi_name)
         return tid
 
     def ensure_export(self, context, volume):

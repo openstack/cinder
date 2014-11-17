@@ -17,7 +17,7 @@ from taskflow.patterns import linear_flow
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder.volume.flows.api import create_volume as create_api
 from cinder.volume.flows import common as flow_common
@@ -43,8 +43,8 @@ class PrepareForQuotaReservationTask(flow_utils.CinderTask):
         volume_id = volume_ref['id']
         if not self.driver.initialized:
             driver_name = self.driver.__class__.__name__
-            LOG.error(_("Unable to manage existing volume. "
-                        "Volume driver %s not initialized.") % driver_name)
+            LOG.error(_LE("Unable to manage existing volume. "
+                          "Volume driver %s not initialized.") % driver_name)
             flow_common.error_out_volume(context, self.db, volume_id,
                                          reason=_("Volume driver %s "
                                                   "not initialized.") %
