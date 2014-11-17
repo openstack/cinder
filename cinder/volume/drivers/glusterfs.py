@@ -55,6 +55,48 @@ volume_opts = [
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
+lock_tag = 'glusterfs'
+
+
+def locked_volume_id_operation(f, external=False):
+    """Lock decorator for volume operations.
+
+       Takes a named lock prior to executing the operation. The lock is named
+       with the id of the volume. This lock can then be used
+       by other operations to avoid operation conflicts on shared volumes.
+
+       May be applied to methods of signature:
+          method(<self>, volume, *, **)
+    """
+
+    def lvo_inner1(inst, volume, *args, **kwargs):
+        @utils.synchronized('%s-%s' % (lock_tag, volume['id']),
+                            external=external)
+        def lvo_inner2(*_args, **_kwargs):
+            return f(*_args, **_kwargs)
+        return lvo_inner2(inst, volume, *args, **kwargs)
+    return lvo_inner1
+
+
+def locked_volume_id_snapshot_operation(f, external=False):
+    """Lock decorator for volume operations that use snapshot objects.
+
+       Takes a named lock prior to executing the operation. The lock is named
+       with the id of the volume. This lock can then be used
+       by other operations to avoid operation conflicts on shared volumes.
+
+       May be applied to methods of signature:
+          method(<self>, snapshot, *, **)
+    """
+
+    def lso_inner1(inst, snapshot, *args, **kwargs):
+        @utils.synchronized('%s-%s' % (lock_tag, snapshot['volume']['id']),
+                            external=external)
+        def lso_inner2(*_args, **_kwargs):
+            return f(*_args, **_kwargs)
+        return lso_inner2(inst, snapshot, *args, **kwargs)
+    return lso_inner1
+
 
 class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
     """Gluster based cinder driver. Creates file on Gluster share for using it
@@ -166,12 +208,12 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                           hashed)
         return path
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_operation
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         self._create_cloned_volume(volume, src_vref)
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_operation
     def create_volume(self, volume):
         """Creates a volume."""
 
@@ -185,7 +227,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         return {'provider_location': volume['provider_location']}
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_operation
     def create_volume_from_snapshot(self, volume, snapshot):
         self._create_volume_from_snapshot(volume, snapshot)
 
@@ -229,7 +271,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         self._set_rw_permissions_for_all(path_to_new_vol)
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_operation
     def delete_volume(self, volume):
         """Deletes a logical volume."""
 
@@ -254,7 +296,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         info_path = self._local_path_volume_info(volume)
         fileutils.delete_if_exists(info_path)
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_snapshot_operation
     def create_snapshot(self, snapshot):
         """Apply locking to the create snapshot operation."""
 
@@ -264,7 +306,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         return next(f for f in backing_chain
                     if f.get('backing-filename', '') == snapshot_file)
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_snapshot_operation
     def delete_snapshot(self, snapshot):
         """Apply locking to the delete snapshot operation."""
         self._delete_snapshot(snapshot)
@@ -380,7 +422,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def validate_connector(self, connector):
         pass
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_operation
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
 
@@ -412,12 +454,29 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         """Disallow connection from connector."""
         pass
 
-    @utils.synchronized('glusterfs', external=False)
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        self._copy_volume_to_image(context, volume, image_service,
-                                   image_meta)
+        """Copy the volume to the specified image.
 
-    @utils.synchronized('glusterfs', external=False)
+           Warning: parameter order is non-standard to assist with locking
+           decorators.
+        """
+
+        return self._copy_volume_to_image_with_lock(volume,
+                                                    context,
+                                                    image_service,
+                                                    image_meta)
+
+    @locked_volume_id_operation
+    def _copy_volume_to_image_with_lock(self, volume, context,
+                                        image_service, image_meta):
+        """Call private method for this, which handles per-volume locking."""
+
+        return self._copy_volume_to_image(context,
+                                          volume,
+                                          image_service,
+                                          image_meta)
+
+    @locked_volume_id_operation
     def extend_volume(self, volume, size_gb):
         volume_path = self.local_path(volume)
         volume_filename = os.path.basename(volume_path)
