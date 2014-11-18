@@ -667,7 +667,7 @@ class DPLVolume(object):
         metadata = {}
         params = {}
         url = '/%s/%s/' % (DPL_OBJ_VOLUMEGROUP, groupID)
-        metadata['volume_group_operation'] = 'level'
+        metadata['volume_group_operation'] = 'leave'
         metadata['volume'] = []
         metadata['volume'].append(volumeID)
         params['metadata'] = metadata
@@ -831,8 +831,10 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                  {'group_name': group['name'], 'id': group['id']})
         model_update = {'status': 'available'}
         try:
-            ret, output = self.dpl.create_vg(group['id'], group['name'],
-                                             group['description'])
+            ret, output = self.dpl.create_vg(
+                self._conver_uuid2hex(group['id']),
+                group['name'],
+                group['description'])
             if ret:
                 msg = _('Failed to create consistency group '
                         '%(id)s:%(ret)s.') % {'id': group['id'],
@@ -1156,6 +1158,7 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
     def delete_volume(self, volume):
         """Deletes a volume."""
+        ret = 0
         if volume.get('consistencygroup_id', None):
             msg = ''
             try:
