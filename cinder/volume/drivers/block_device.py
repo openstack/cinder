@@ -16,6 +16,7 @@
 import os
 
 from oslo.config import cfg
+from oslo.utils import importutils
 
 from cinder import context
 from cinder.db.sqlalchemy import api
@@ -39,18 +40,21 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
-class BlockDeviceDriver(driver.ISCSIDriver):
-    VERSION = '1.0.0'
+class BlockDeviceDriver(driver.VolumeDriver):
+    VERSION = '2.0.0'
 
     def __init__(self, *args, **kwargs):
-        self.target_helper = self.get_target_helper(kwargs.get('db'))
         super(BlockDeviceDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
-
-    def set_execute(self, execute):
-        super(BlockDeviceDriver, self).set_execute(execute)
-        if self.target_helper is not None:
-            self.target_helper.set_execute(execute)
+        self.backend_name = \
+            self.configuration.safe_get('volume_backend_name') or "BlockDev"
+        target_driver =\
+            self.target_mapping[self.configuration.safe_get('iscsi_helper')]
+        self.target_driver = importutils.import_object(
+            target_driver,
+            configuration=self.configuration,
+            db=self.db,
+            executor=self._execute)
 
     def check_for_setup_error(self):
         pass
@@ -61,46 +65,6 @@ class BlockDeviceDriver(driver.ISCSIDriver):
         return {
             'provider_location': device,
         }
-
-    def initialize_connection(self, volume, connector):
-        if connector['host'] != volume['host']:
-            return super(BlockDeviceDriver, self). \
-                initialize_connection(volume, connector)
-        else:
-            return {
-                'driver_volume_type': 'local',
-                'data': {'device_path': self.local_path(volume)},
-            }
-
-    def terminate_connection(self, volume, connector, **kwargs):
-        pass
-
-    def create_export(self, context, volume):
-        """Creates an export for a logical volume."""
-        volume_path = self.local_path(volume)
-        data = self.target_helper.create_export(context,
-                                                volume,
-                                                volume_path,
-                                                self.configuration)
-        return {
-            'provider_location': data['location'] + ' ' + volume_path,
-            'provider_auth': data['auth'],
-        }
-
-    def remove_export(self, context, volume):
-        self.target_helper.remove_export(context, volume)
-
-    def ensure_export(self, context, volume):
-        volume_name = volume['name']
-
-        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
-                               volume_name)
-        volume_path = self.local_path(volume)
-
-        # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
-        # should clean this all up at some point in the future
-        self.target_helper.ensure_export(context, volume, iscsi_name,
-                                         volume_path)
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
@@ -221,3 +185,36 @@ class BlockDeviceDriver(driver.ISCSIDriver):
             return possible_device
         else:
             raise exception.CinderException(_("No big enough free disk"))
+
+    # #######  Interface methods for DataPath (Target Driver) ########
+
+    def ensure_export(self, context, volume):
+        volume_name = volume['name']
+        volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
+                                      volume_name)
+        model_update = \
+            self.target_driver.ensure_export(context,
+                                             volume,
+                                             volume_path=volume_path)
+        return model_update
+
+    def create_export(self, context, volume):
+        volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
+                                      volume['name'])
+        export_info = self.target_driver.create_export(context,
+                                                       volume,
+                                                       volume_path)
+        return {'provider_location': export_info['location'],
+                'provider_auth': export_info['auth'], }
+
+    def remove_export(self, context, volume):
+        self.target_driver.remove_export(context, volume)
+
+    def initialize_connection(self, volume, connector):
+        return self.target_driver.initialize_connection(volume, connector)
+
+    def validate_connector(self, connector):
+        return self.target_driver.validate_connector(connector)
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        pass

@@ -48,6 +48,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.sf_emulate_512 = True
         self.configuration.sf_account_prefix = 'cinder'
         self.configuration.reserved_percentage = 25
+        self.configuration.iscsi_helper = None
 
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
