@@ -71,10 +71,10 @@
     "consistencygroup:get": "group:nobody",
     "consistencygroup:get_all": "group:nobody",
 
-    "consistencygroup:create_cgsnapshot" : "",
-    "consistencygroup:delete_cgsnapshot": "",
-    "consistencygroup:get_cgsnapshot": "",
-    "consistencygroup:get_all_cgsnapshots": "",
+    "consistencygroup:create_cgsnapshot" : "group:nobody",
+    "consistencygroup:delete_cgsnapshot": "group:nobody",
+    "consistencygroup:get_cgsnapshot": "group:nobody",
+    "consistencygroup:get_all_cgsnapshots": "group:nobody",
 
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api"
 }
