@@ -120,7 +120,7 @@ class SolidFireDriver(SanISCSIDriver):
     cluster_stats = {}
     retry_exc_tuple = (exception.SolidFireRetryableException,
                        requests.exceptions.ConnectionError)
-    retryable_errors = ['xDBVersionMisMatch',
+    retryable_errors = ['xDBVersionMismatch',
                         'xMaxSnapshotsPerVolumeExceeded',
                         'xMaxClonesPerVolumeExceeded',
                         'xMaxSnapshotsPerNodeExceeded',
