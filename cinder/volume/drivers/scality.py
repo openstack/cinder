@@ -26,9 +26,11 @@ from oslo.utils import units
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.image import image_utils
+from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
+from cinder import utils
 from cinder.volume import driver
 
 
@@ -283,8 +285,30 @@ class ScalityDriver(driver.VolumeDriver):
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
-        raise NotImplementedError()
+        volume = self.db.volume_get(context, backup['volume_id'])
+        volume_local_path = self.local_path(volume)
+        LOG.info(_LI('Begin backup of volume %s.') % volume['name'])
+
+        qemu_img_info = image_utils.qemu_img_info(volume_local_path)
+        if qemu_img_info.file_format != 'raw':
+            msg = _('Backup is only supported for raw-formatted '
+                    'SOFS volumes.')
+            raise exception.InvalidVolume(msg)
+
+        if qemu_img_info.backing_file is not None:
+            msg = _('Backup is only supported for SOFS volumes '
+                    'without backing file.')
+            raise exception.InvalidVolume(msg)
+
+        with utils.temporary_chown(volume_local_path):
+            with fileutils.file_open(volume_local_path) as volume_file:
+                backup_service.backup(backup, volume_file)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
-        raise NotImplementedError()
+        LOG.info(_LI('Restoring backup %(backup)s to volume %(volume)s.') %
+                 {'backup': backup['id'], 'volume': volume['name']})
+        volume_local_path = self.local_path(volume)
+        with utils.temporary_chown(volume_local_path):
+            with fileutils.file_open(volume_local_path, 'wb') as volume_file:
+                backup_service.restore(backup, volume['id'], volume_file)
