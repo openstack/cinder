@@ -401,7 +401,7 @@ class FlashArrayBaseTestCase(test.TestCase):
         array = FakeFlashArray()
         array._target = TARGET
         array._rest_version = REST_VERSION
-        array._root_url = "https://{0}/api/{1}/".format(TARGET, REST_VERSION)
+        array._root_url = "https://%s/api/%s/" % (TARGET, REST_VERSION)
         array._api_token = API_TOKEN
         self.array = array
 
@@ -447,9 +447,9 @@ class FlashArrayHttpRequestTestCase(FlashArrayBaseTestCase):
         super(FlashArrayHttpRequestTestCase, self).setUp()
         self.method = "POST"
         self.path = "path"
-        self.path_template = "https://{0}/api/{1}/{2}"
-        self.full_path = self.path_template.format(TARGET, REST_VERSION,
-                                                   self.path)
+        self.path_template = "https://%s/api/%s/%s"
+        self.full_path = self.path_template % (TARGET, REST_VERSION,
+                                               self.path)
         self.headers = {"Content-Type": "application/json"}
         self.data = {"list": [1, 2, 3]}
         self.data_json = json.dumps(self.data)
@@ -486,10 +486,9 @@ class FlashArrayHttpRequestTestCase(FlashArrayBaseTestCase):
             self.method, self.path, self.data)
         self.assertEqual(self.result, real_result)
         expected = [self.make_call(),
-                    self.make_call(
-                        "POST", self.path_template.format(
-                            TARGET, REST_VERSION, "auth/session"),
-                        json.dumps({"api_token": API_TOKEN})),
+                    self.make_call("POST", self.path_template %
+                                   (TARGET, REST_VERSION, "auth/session"),
+                                   json.dumps({"api_token": API_TOKEN})),
                     self.make_call()]
         self.assertEqual(self.array._opener.open.call_args_list, expected)
         self.array._opener.open.reset_mock()
@@ -514,8 +513,8 @@ class FlashArrayHttpRequestTestCase(FlashArrayBaseTestCase):
             self.method, self.path, self.data)
         self.assertEqual(self.result, real_result)
         expected = [self.make_call(),
-                    self.make_call(path=self.path_template.format(
-                        TARGET, "1.1", self.path))]
+                    self.make_call(path=self.path_template %
+                                   (TARGET, "1.1", self.path))]
         self.assertEqual(self.array._opener.open.call_args_list, expected)
         mock_choose.assert_called_with(self.array)
         self.array._opener.open.side_effect = error
@@ -570,7 +569,7 @@ class FlashArrayHttpRequestTestCase(FlashArrayBaseTestCase):
         result = self.array._choose_rest_version()
         self.assertEqual(result, "1.1")
         self.array._opener.open.assert_called_with(FakeRequest(
-            "GET", "https://{0}/api/api_version".format(TARGET),
+            "GET", "https://%s/api/api_version" % TARGET,
             headers=self.headers), "null")
         self.array._opener.open.reset_mock()
         self.response.read.return_value = '{"version": ["0.1", "1.3"]}'
