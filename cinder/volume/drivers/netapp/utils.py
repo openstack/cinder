@@ -139,6 +139,27 @@ def log_extra_spec_warnings(extra_specs):
             LOG.warning(msg % args)
 
 
+def get_iscsi_connection_properties(lun_id, volume, iqn,
+                                    address, port):
+
+        properties = {}
+        properties['target_discovered'] = False
+        properties['target_portal'] = '%s:%s' % (address, port)
+        properties['target_iqn'] = iqn
+        properties['target_lun'] = int(lun_id)
+        properties['volume_id'] = volume['id']
+        auth = volume['provider_auth']
+        if auth:
+            (auth_method, auth_username, auth_secret) = auth.split()
+            properties['auth_method'] = auth_method
+            properties['auth_username'] = auth_username
+            properties['auth_password'] = auth_secret
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': properties,
+        }
+
+
 class hashabledict(dict):
     """A hashable dictionary that is comparable (i.e. in unit tests, etc.)"""
     def __hash__(self):

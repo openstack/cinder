@@ -519,7 +519,6 @@ class NetAppBlockStorageLibrary(object):
         msg = _("Mapped LUN %(name)s to the initiator %(initiator_name)s")
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)
-        iqn = self.zapi_client.get_iscsi_service_details()
         target_details_list = self.zapi_client.get_iscsi_target_details()
         msg = _("Successfully fetched target details for LUN %(name)s and "
                 "initiator %(initiator_name)s")
@@ -537,32 +536,22 @@ class NetAppBlockStorageLibrary(object):
         if not target_details:
             target_details = target_details_list[0]
 
+        (address, port) = (target_details['address'], target_details['port'])
+
         if not target_details['address'] and target_details['port']:
             msg = _('Failed to get target portal for the LUN %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
+
+        iqn = self.zapi_client.get_iscsi_service_details()
         if not iqn:
             msg = _('Failed to get target IQN for the LUN %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
 
-        properties = {}
-        properties['target_discovered'] = False
-        (address, port) = (target_details['address'], target_details['port'])
-        properties['target_portal'] = '%s:%s' % (address, port)
-        properties['target_iqn'] = iqn
-        properties['target_lun'] = lun_id
-        properties['volume_id'] = volume['id']
+        properties = na_utils.get_iscsi_connection_properties(lun_id, volume,
+                                                              iqn, address,
+                                                              port)
 
-        auth = volume['provider_auth']
-        if auth:
-            (auth_method, auth_username, auth_secret) = auth.split()
-            properties['auth_method'] = auth_method
-            properties['auth_username'] = auth_username
-            properties['auth_password'] = auth_secret
-
-        return {
-            'driver_volume_type': 'iscsi',
-            'data': properties,
-        }
+        return properties
 
     def terminate_connection_iscsi(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance.
@@ -648,7 +637,7 @@ class NetAppBlockStorageLibrary(object):
 
         target_info = {'driver_volume_type': 'fibre_channel',
                        'data': {'target_discovered': True,
-                                'target_lun': lun_id,
+                                'target_lun': int(lun_id),
                                 'target_wwn': target_wwpns,
                                 'access_mode': 'rw',
                                 'initiator_target_map': initiator_target_map}}

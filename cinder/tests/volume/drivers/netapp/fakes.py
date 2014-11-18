@@ -1,4 +1,5 @@
-# Copyright (c) - 2014, Clinton Knight.  All rights reserved.
+# Copyright (c) - 2014, Clinton Knight  All rights reserved.
+# Copyright (c) - 2014, Rushil Chugh  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -42,3 +43,27 @@ def create_configuration_eseries():
     config = create_configuration()
     config.append_config_values(na_opts.netapp_eseries_opts)
     return config
+
+ISCSI_FAKE_LUN_ID = 1
+
+ISCSI_FAKE_IQN = 'iqn.1993-08.org.debian:01:10'
+
+ISCSI_FAKE_ADDRESS = '10.63.165.216'
+
+ISCSI_FAKE_PORT = '2232'
+
+ISCSI_FAKE_VOLUME = {'id': 'fake_id'}
+
+ISCSI_FAKE_TARGET = {}
+ISCSI_FAKE_TARGET['address'] = ISCSI_FAKE_ADDRESS
+ISCSI_FAKE_TARGET['port'] = ISCSI_FAKE_PORT
+
+ISCSI_FAKE_VOLUME = {'id': 'fake_id', 'provider_auth': 'None stack password'}
+
+FC_ISCSI_TARGET_INFO_DICT = {'target_discovered': False,
+                             'target_portal': '10.63.165.216:2232',
+                             'target_iqn': ISCSI_FAKE_IQN,
+                             'target_lun': ISCSI_FAKE_LUN_ID,
+                             'volume_id': ISCSI_FAKE_VOLUME['id'],
+                             'auth_method': 'None', 'auth_username': 'stack',
+                             'auth_password': 'password'}

@@ -58,7 +58,7 @@ FC_FABRIC_MAP = {'fabricB':
                   'initiator_port_wwn_list': ['21000024ff406cc3']}}
 
 FC_TARGET_INFO = {'driver_volume_type': 'fibre_channel',
-                  'data': {'target_lun': '1',
+                  'data': {'target_lun': 1,
                            'initiator_target_map': FC_I_T_MAP,
                            'access_mode': 'rw',
                            'target_wwn': FC_TARGET_WWPNS,
