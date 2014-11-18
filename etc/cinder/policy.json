@@ -6,6 +6,8 @@
     "admin_api": "is_admin:True",
 
     "volume:create": "",
+    "volume:delete": "",
+    "volume:get": "",
     "volume:get_all": "",
     "volume:get_volume_metadata": "",
     "volume:get_volume_admin_metadata": "rule:admin_api",
