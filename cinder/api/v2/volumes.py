@@ -122,7 +122,8 @@ class CommonDeserializer(wsgi.MetadataXMLDeserializer):
 
         attributes = ['name', 'description', 'size',
                       'volume_type', 'availability_zone', 'imageRef',
-                      'snapshot_id', 'source_volid', 'consistencygroup_id']
+                      'image_id', 'snapshot_id', 'source_volid',
+                      'consistencygroup_id']
         for attr in attributes:
             if volume_node.getAttribute(attr):
                 volume[attr] = volume_node.getAttribute(attr)
@@ -289,6 +290,10 @@ class VolumeController(wsgi.Controller):
         if volume.get('description'):
             volume['display_description'] = volume.get('description')
             del volume['description']
+
+        if 'image_id' in volume:
+            volume['imageRef'] = volume.get('image_id')
+            del volume['image_id']
 
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:
