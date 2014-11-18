@@ -23,6 +23,7 @@ Unit Tests for remote procedure calls using queue
 import mock
 import mox
 from oslo.config import cfg
+from oslo.db import exception as db_exc
 
 from cinder import context
 from cinder import db
@@ -148,8 +149,9 @@ class ServiceTestCase(test.TestCase):
                                        binary).AndRaise(exception.NotFound())
         service.db.service_create(mox.IgnoreArg(),
                                   service_create).AndReturn(service_ref)
-        service.db.service_get(mox.IgnoreArg(),
-                               mox.IgnoreArg()).AndRaise(Exception())
+        service.db.service_get(
+            mox.IgnoreArg(),
+            mox.IgnoreArg()).AndRaise(db_exc.DBConnectionError())
 
         self.mox.ReplayAll()
         serv = service.Service(host,

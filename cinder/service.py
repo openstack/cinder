@@ -23,6 +23,7 @@ import os
 import random
 
 from oslo.config import cfg
+from oslo.db import exception as db_exc
 from oslo import messaging
 import osprofiler.notifier
 from osprofiler import profiler
@@ -304,8 +305,7 @@ class Service(service.Service):
                 self.model_disconnected = False
                 LOG.error(_('Recovered model server connection!'))
 
-        # TODO(vish): this should probably only catch connection errors
-        except Exception:  # pylint: disable=W0702
+        except db_exc.DBConnectionError:
             if not getattr(self, 'model_disconnected', False):
                 self.model_disconnected = True
                 LOG.exception(_('model server went away'))
