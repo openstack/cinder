@@ -386,8 +386,8 @@ class RBDDriver(driver.VolumeDriver):
         """
         parent_volume = self.rbd.Image(client.ioctx, volume_name)
         try:
-            pool, parent, snap = self._get_clone_info(parent_volume,
-                                                      volume_name)
+            _pool, parent, _snap = self._get_clone_info(parent_volume,
+                                                        volume_name)
         finally:
             parent_volume.close()
 
@@ -440,8 +440,8 @@ class RBDDriver(driver.VolumeDriver):
             try:
                 # First flatten source volume if required.
                 if flatten_parent:
-                    pool, parent, snap = self._get_clone_info(src_volume,
-                                                              src_name)
+                    _pool, parent, snap = self._get_clone_info(src_volume,
+                                                               src_name)
                     # Flatten source volume
                     LOG.debug("flattening source volume %s" % (src_name))
                     src_volume.flatten()
@@ -639,9 +639,9 @@ class RBDDriver(driver.VolumeDriver):
                     raise exception.VolumeIsBusy(volume_name=volume_name)
 
                 # Determine if this volume is itself a clone
-                pool, parent, parent_snap = self._get_clone_info(rbd_image,
-                                                                 volume_name,
-                                                                 clone_snap)
+                _pool, parent, parent_snap = self._get_clone_info(rbd_image,
+                                                                  volume_name,
+                                                                  clone_snap)
             finally:
                 rbd_image.close()
 
@@ -780,7 +780,7 @@ class RBDDriver(driver.VolumeDriver):
         if image_location is None or not self._is_cloneable(
                 image_location, image_meta):
             return ({}, False)
-        prefix, pool, image, snapshot = self._parse_location(image_location)
+        _prefix, pool, image, snapshot = self._parse_location(image_location)
         self._clone(volume, pool, image, snapshot)
         self._resize(volume)
         return {'provider_location': None}, True

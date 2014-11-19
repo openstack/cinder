@@ -1539,9 +1539,9 @@ class GPFSDriverTestCase(test.TestCase):
         volume_types.get_volume_type(ctxt, old_type_ref['id'])
         new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
 
-        diff, equal = volume_types.volume_types_diff(ctxt,
-                                                     old_type_ref['id'],
-                                                     new_type_ref['id'])
+        diff, _equal = volume_types.volume_types_diff(ctxt,
+                                                      old_type_ref['id'],
+                                                      new_type_ref['id'])
 
         volume = {}
         volume['name'] = 'test'

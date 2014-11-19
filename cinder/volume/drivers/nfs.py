@@ -168,7 +168,7 @@ class NfsDriver(remotefs.RemoteFSDriver):
         for nfs_share in self._mounted_shares:
             if not self._is_share_eligible(nfs_share, volume_size_in_gib):
                 continue
-            total_size, total_available, total_allocated = \
+            _total_size, _total_available, total_allocated = \
                 self._get_capacity_info(nfs_share)
             if target_share is not None:
                 if target_share_reserved > total_allocated:

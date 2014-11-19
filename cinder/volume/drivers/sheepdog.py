@@ -55,7 +55,7 @@ class SheepdogDriver(driver.VolumeDriver):
             #NOTE(francois-charlier) Since 0.24 'collie cluster info -r'
             #  gives short output, but for compatibility reason we won't
             #  use it and just check if 'running' is in the output.
-            (out, err) = self._execute('collie', 'cluster', 'info')
+            (out, _err) = self._execute('collie', 'cluster', 'info')
             if 'status: running' not in out:
                 exception_message = (_("Sheepdog is not working: %s") % out)
                 raise exception.VolumeBackendAPIException(

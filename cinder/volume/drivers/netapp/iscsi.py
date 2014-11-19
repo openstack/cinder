@@ -424,7 +424,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         for lun in api_luns:
             meta_dict = self._create_lun_meta(lun)
             path = lun.get_child_content('path')
-            (rest, splitter, name) = path.rpartition('/')
+            (_rest, _splitter, name) = path.rpartition('/')
             handle = self._create_lun_handle(meta_dict)
             size = lun.get_child_content('size')
             discovered_lun = NetAppLun(handle, name,
@@ -462,7 +462,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
             msg_fmt = {'code': code, 'message': message}
             exc_info = sys.exc_info()
             LOG.warn(msg % msg_fmt)
-            (igroup, lun_id) = self._find_mapped_lun_igroup(path, initiator)
+            (_igroup, lun_id) = self._find_mapped_lun_igroup(path, initiator)
             if lun_id is not None:
                 return lun_id
             else:
@@ -470,7 +470,7 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
 
     def _unmap_lun(self, path, initiator):
         """Unmaps a lun from given initiator."""
-        (igroup_name, lun_id) = self._find_mapped_lun_igroup(path, initiator)
+        (igroup_name, _lun_id) = self._find_mapped_lun_igroup(path, initiator)
         lun_unmap = NaElement.create_node_with_children(
             'lun-unmap',
             **{'path': path, 'initiator-group': igroup_name})
@@ -990,7 +990,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
         zbc = block_count
         if z_calls == 0:
             z_calls = 1
-        for call in range(0, z_calls):
+        for _call in range(0, z_calls):
             if zbc > z_limit:
                 block_count = z_limit
                 zbc -= z_limit
@@ -1005,7 +1005,7 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
                 block_ranges = NaElement("block-ranges")
                 segments = int(math.ceil(block_count / float(bc_limit)))
                 bc = block_count
-                for segment in range(0, segments):
+                for _segment in range(0, segments):
                     if bc > bc_limit:
                         block_count = bc_limit
                         bc -= bc_limit
@@ -1356,7 +1356,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         """Clone LUN with the given handle to the new name."""
         metadata = self._get_lun_attr(name, 'metadata')
         path = metadata['Path']
-        (parent, splitter, name) = path.rpartition('/')
+        (parent, _splitter, name) = path.rpartition('/')
         clone_path = '%s/%s' % (parent, new_name)
         # zAPI can only handle 2^24 blocks per range
         bc_limit = 2 ** 24  # 8GB
@@ -1367,7 +1367,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         zbc = block_count
         if z_calls == 0:
             z_calls = 1
-        for call in range(0, z_calls):
+        for _call in range(0, z_calls):
             if zbc > z_limit:
                 block_count = z_limit
                 zbc -= z_limit
@@ -1383,7 +1383,7 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
                 bc_limit = 2 ** 24  # 8GB
                 segments = int(math.ceil(block_count / float(bc_limit)))
                 bc = block_count
-                for segment in range(0, segments):
+                for _segment in range(0, segments):
                     if bc > bc_limit:
                         block_count = bc_limit
                         bc -= bc_limit

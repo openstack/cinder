@@ -103,7 +103,7 @@ class LVM(executor.Executor):
 
         """
         exists = False
-        (out, err) = self._execute(
+        (out, _err) = self._execute(
             'env', 'LC_ALL=C', 'vgs', '--noheadings', '-o', 'name',
             self.vg_name, root_helper=self._root_helper, run_as_root=True)
 
@@ -119,8 +119,8 @@ class LVM(executor.Executor):
         self._execute(*cmd, root_helper=self._root_helper, run_as_root=True)
 
     def _get_vg_uuid(self):
-        (out, err) = self._execute('env', 'LC_ALL=C', 'vgs', '--noheadings',
-                                   '-o uuid', self.vg_name)
+        (out, _err) = self._execute('env', 'LC_ALL=C', 'vgs', '--noheadings',
+                                    '-o uuid', self.vg_name)
         if out is not None:
             return out.split()
         else:
@@ -173,9 +173,9 @@ class LVM(executor.Executor):
         """
 
         cmd = ['env', 'LC_ALL=C', 'vgs', '--version']
-        (out, err) = putils.execute(*cmd,
-                                    root_helper=root_helper,
-                                    run_as_root=True)
+        (out, _err) = putils.execute(*cmd,
+                                     root_helper=root_helper,
+                                     run_as_root=True)
         lines = out.split('\n')
 
         for line in lines:
@@ -253,9 +253,9 @@ class LVM(executor.Executor):
             cmd.append(vg_name)
 
         lvs_start = time.time()
-        (out, err) = putils.execute(*cmd,
-                                    root_helper=root_helper,
-                                    run_as_root=True)
+        (out, _err) = putils.execute(*cmd,
+                                     root_helper=root_helper,
+                                     run_as_root=True)
         total_time = time.time() - lvs_start
         if total_time > 60:
             LOG.warning(_LW('Took %s seconds to get logical volumes.'),
@@ -318,9 +318,9 @@ class LVM(executor.Executor):
                '--separator', ':',
                '--nosuffix']
 
-        (out, err) = putils.execute(*cmd,
-                                    root_helper=root_helper,
-                                    run_as_root=True)
+        (out, _err) = putils.execute(*cmd,
+                                     root_helper=root_helper,
+                                     run_as_root=True)
 
         pvs = out.split()
         if vg_name is not None:
@@ -362,9 +362,9 @@ class LVM(executor.Executor):
             cmd.append(vg_name)
 
         start_vgs = time.time()
-        (out, err) = putils.execute(*cmd,
-                                    root_helper=root_helper,
-                                    run_as_root=True)
+        (out, _err) = putils.execute(*cmd,
+                                     root_helper=root_helper,
+                                     run_as_root=True)
         total_time = time.time() - start_vgs
         if total_time > 60:
             LOG.warning(_LW('Took %s seconds to get '
@@ -639,7 +639,7 @@ class LVM(executor.Executor):
                       run_as_root=True)
 
     def lv_has_snapshot(self, name):
-        out, err = self._execute(
+        out, _err = self._execute(
             'env', 'LC_ALL=C', 'lvdisplay', '--noheading',
             '-C', '-o', 'Attr', '%s/%s' % (self.vg_name, name),
             root_helper=self._root_helper, run_as_root=True)

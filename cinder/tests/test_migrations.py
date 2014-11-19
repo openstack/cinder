@@ -237,7 +237,7 @@ class TestMigrations(test.TestCase):
         Walks all version scripts for each tested database, ensuring
         that there are no errors in the version scripts for each engine
         """
-        for key, engine in self.engines.items():
+        for _key, engine in self.engines.items():
             self._walk_versions(engine, self.snake_walk)
 
     def test_mysql_connect_fail(self):
@@ -469,7 +469,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_005(self):
         """Test that adding source_volid column works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -485,7 +485,7 @@ class TestMigrations(test.TestCase):
                                   sqlalchemy.types.VARCHAR)
 
     def _metadatas(self, upgrade_to, downgrade_to=None):
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -536,7 +536,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_008(self):
         """Test that adding and removing the backups table works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -598,7 +598,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_009(self):
         """Test adding snapshot_metadata table works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -640,7 +640,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_010(self):
         """Test adding transfers table works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -683,7 +683,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_011(self):
         """Test adding transfers table works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -727,7 +727,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_012(self):
         """Test that adding attached_host column works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -753,7 +753,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_013(self):
         """Test that adding provider_geometry column works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -779,7 +779,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_014(self):
         """Test that adding _name_id column works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -805,7 +805,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_015(self):
         """Test removing migrations table works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -821,7 +821,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_016(self):
         """Test that dropping xen storage manager tables works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -849,7 +849,7 @@ class TestMigrations(test.TestCase):
         """Test that added encryption information works correctly."""
 
         # upgrade schema
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -902,7 +902,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_018(self):
         """Test that added qos_specs table works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -940,7 +940,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_019(self):
         """Test that adding migration_status column works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -966,7 +966,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_020(self):
         """Test adding volume_admin_metadata table works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -1006,7 +1006,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_021(self):
         """Test adding default data for quota classes works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -1037,7 +1037,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_022(self):
         """Test that adding disabled_reason column works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -1063,7 +1063,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_023(self):
         """Test that adding reservations index works correctly."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -1096,7 +1096,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_024(self):
         """Test adding replication columns to volume table."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -1129,7 +1129,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_025(self):
         """Test adding table and columns for consistencygroups."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())
@@ -1264,7 +1264,7 @@ class TestMigrations(test.TestCase):
 
     def test_migration_026(self):
         """Test adding default data for consistencygroups quota class."""
-        for (key, engine) in self.engines.items():
+        for (_key, engine) in self.engines.items():
             migration_api.version_control(engine,
                                           TestMigrations.REPOSITORY,
                                           migration.db_initial_version())

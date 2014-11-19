@@ -258,7 +258,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                 LOG.info(_("Need to remove FC Zone, building initiator "
                          "target map"))
 
-                target_wwns, init_targ_map, numPaths = \
+                target_wwns, init_targ_map, _numPaths = \
                     self._build_initiator_target_map(connector)
 
                 info['data'] = {'target_wwn': target_wwns,
@@ -296,7 +296,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                     init_targ_map[initiator] += fabric['target_port_wwn_list']
                     init_targ_map[initiator] = list(set(
                         init_targ_map[initiator]))
-                    for target in init_targ_map[initiator]:
+                    for _target in init_targ_map[initiator]:
                         numPaths += 1
             target_wwns = list(set(target_wwns))
         else:

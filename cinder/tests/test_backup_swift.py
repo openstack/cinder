@@ -80,7 +80,7 @@ class BackupSwiftTestCase(test.TestCase):
         self._create_volume_db_entry()
         self.volume_file = tempfile.NamedTemporaryFile()
         self.addCleanup(self.volume_file.close)
-        for i in xrange(0, 128):
+        for _i in xrange(0, 128):
             self.volume_file.write(os.urandom(1024))
 
     def test_backup_swift_url(self):

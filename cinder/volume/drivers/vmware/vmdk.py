@@ -1127,7 +1127,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
             if disk_conversion:
                 # Clone the temporary backing for disk type conversion.
-                (host, rp, folder, summary) = self._select_ds_for_volume(
+                (host, _rp, _folder, summary) = self._select_ds_for_volume(
                     volume)
                 datastore = summary.datastore
                 LOG.debug("Cloning temporary backing: %s for disk type "
@@ -1163,7 +1163,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
         try:
             # find host in which to create the volume
-            (host, rp, folder, summary) = self._select_ds_for_volume(volume)
+            (_host, rp, folder, summary) = self._select_ds_for_volume(volume)
         except error_util.VimException as excep:
             err_msg = (_("Exception in _select_ds_for_volume: "
                          "%s."), excep)
@@ -1646,7 +1646,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                   {'name': name,
                    'path': tmp_file_path})
 
-        (host, rp, folder, summary) = self._select_ds_for_volume(volume)
+        (_host, rp, folder, summary) = self._select_ds_for_volume(volume)
         LOG.debug("Selected datastore: %(ds)s for backing: %(name)s.",
                   {'ds': summary.name,
                    'name': name})
@@ -1708,7 +1708,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         renamed = False
         try:
             # Find datastore for clone.
-            (host, rp, folder, summary) = self._select_ds_for_volume(volume)
+            (_host, _rp, _folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
 
             disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
@@ -1981,7 +1981,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         datastore = None
         if not clone_type == volumeops.LINKED_CLONE_TYPE:
             # Pick a datastore where to create the full clone under any host
-            (host, rp, folder, summary) = self._select_ds_for_volume(volume)
+            (_host, _rp, _folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
         clone = self.volumeops.clone_backing(volume['name'], backing,
                                              snapshot, clone_type, datastore)

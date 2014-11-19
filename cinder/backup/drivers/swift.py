@@ -247,7 +247,7 @@ class SwiftBackupDriver(BackupDriver):
         LOG.debug('_read_metadata started, container name: %(container)s, '
                   'metadata filename: %(filename)s' %
                   {'container': container, 'filename': filename})
-        (resp, body) = self.conn.get_object(container, filename)
+        (_resp, body) = self.conn.get_object(container, filename)
         metadata = json.loads(body)
         LOG.debug('_read_metadata finished (%s)' % metadata)
         return metadata
@@ -427,7 +427,7 @@ class SwiftBackupDriver(BackupDriver):
                           'volume_id': volume_id,
                       })
             try:
-                (resp, body) = self.conn.get_object(container, object_name)
+                (_resp, body) = self.conn.get_object(container, object_name)
             except socket.error as err:
                 raise exception.SwiftConnectionFailed(reason=err)
             compression_algorithm = metadata_object[object_name]['compression']

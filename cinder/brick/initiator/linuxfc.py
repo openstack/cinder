@@ -39,9 +39,9 @@ class LinuxFibreChannel(linuxscsi.LinuxSCSI):
         """Get the Fibre Channel HBA information."""
         out = None
         try:
-            out, err = self._execute('systool', '-c', 'fc_host', '-v',
-                                     run_as_root=True,
-                                     root_helper=self._root_helper)
+            out, _err = self._execute('systool', '-c', 'fc_host', '-v',
+                                      run_as_root=True,
+                                      root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
             # This handles the case where rootwrap is used
             # and systool is not installed

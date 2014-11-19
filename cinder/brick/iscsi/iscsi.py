@@ -113,7 +113,7 @@ class TgtAdm(TargetAdmin):
         self.volumes_dir = volumes_dir
 
     def _get_target(self, iqn):
-        (out, err) = self._execute('tgt-admin', '--show', run_as_root=True)
+        (out, _err) = self._execute('tgt-admin', '--show', run_as_root=True)
         lines = out.split('\n')
         for line in lines:
             if iqn in line:
@@ -128,7 +128,7 @@ class TgtAdm(TargetAdmin):
         capture = False
         target_info = []
 
-        (out, err) = self._execute('tgt-admin', '--show', run_as_root=True)
+        (out, _err) = self._execute('tgt-admin', '--show', run_as_root=True)
         lines = out.split('\n')
 
         for line in lines:
@@ -506,9 +506,9 @@ class LioAdm(TargetAdmin):
             raise
 
     def _get_target(self, iqn):
-        (out, err) = self._execute('cinder-rtstool',
-                                   'get-targets',
-                                   run_as_root=True)
+        (out, _err) = self._execute('cinder-rtstool',
+                                    'get-targets',
+                                    run_as_root=True)
         lines = out.split('\n')
         for line in lines:
             if iqn in line:
@@ -585,7 +585,7 @@ class LioAdm(TargetAdmin):
     def initialize_connection(self, volume, connector):
         volume_iqn = volume['provider_location'].split(' ')[1]
 
-        (auth_method, auth_user, auth_pass) = \
+        (_auth_method, auth_user, auth_pass) = \
             volume['provider_auth'].split(' ', 3)
 
         # Add initiator iqns to target ACL
