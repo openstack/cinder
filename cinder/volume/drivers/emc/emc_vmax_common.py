@@ -1136,7 +1136,7 @@ class EMCVMAXCommon(object):
             LOG.error(errorMessage)
             return falseRet
 
-        LOG.info("Volume status is: %s" % volumeStatus)
+        LOG.info(_LI("Volume status is: %s"), volumeStatus)
         if (host['capabilities']['storage_protocol'] != self.protocol and
                 (volumeStatus != 'available' and volumeStatus != 'retyping')):
             errorMessage = (_(
@@ -1164,7 +1164,7 @@ class EMCVMAXCommon(object):
         # If there are no extra specs then the default case is assumed
         if extraSpecs:
             configGroup = self.configuration.config_group
-            LOG.info("configGroup of current host: %s" % configGroup)
+            LOG.info(_LI("configGroup of current host: %s"), configGroup)
 
         configurationFile = self._register_config_file_from_config_group(
             configGroup)
@@ -2154,9 +2154,9 @@ class EMCVMAXCommon(object):
         volumename = volume['name']
         vol_instance = self._find_lun(volume)
         if vol_instance is None:
-            msg = ("Volume %(name)s not found on the array. "
-                   "Cannot determine if there are volumes mapped."
-                   % {'name': volumename})
+            msg = (_("Volume %(name)s not found on the array. "
+                     "Cannot determine if there are volumes mapped."),
+                   {'name': volumename})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -2202,9 +2202,10 @@ class EMCVMAXCommon(object):
         targetWwns = []
         mvInstanceName = self.get_masking_view_by_volume(volume)
         targetWwns = self.masking.get_target_wwns(self.conn, mvInstanceName)
-        LOG.info("Target wwns in masking view %(maskingView)s: %(targetWwns)s"
-                 % {'maskingView': mvInstanceName,
-                    'targetWwns': str(targetWwns)})
+        LOG.info(_LI("Target wwns in masking view %(maskingView)s: "
+                     "%(targetWwns)s"),
+                 {'maskingView': mvInstanceName,
+                  'targetWwns': str(targetWwns)})
         return targetWwns
 
     def get_port_group_from_masking_view(self, maskingViewInstanceName):
