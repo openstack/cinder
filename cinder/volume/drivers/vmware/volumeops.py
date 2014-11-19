@@ -996,7 +996,7 @@ class VMwareVolumeOps(object):
         return self._get_parent(backing, 'Folder')
 
     def _get_clone_spec(self, datastore, disk_move_type, snapshot, backing,
-                        disk_type):
+                        disk_type, host=None):
         """Get the clone spec.
 
         :param datastore: Reference to datastore
@@ -1004,6 +1004,7 @@ class VMwareVolumeOps(object):
         :param snapshot: Reference to snapshot
         :param backing: Source backing VM
         :param disk_type: Disk type of clone
+        :param host: Target host
         :return: Clone spec
         """
         if disk_type is not None:
@@ -1011,7 +1012,7 @@ class VMwareVolumeOps(object):
         else:
             disk_device = None
 
-        relocate_spec = self._get_relocate_spec(datastore, None, None,
+        relocate_spec = self._get_relocate_spec(datastore, None, host,
                                                 disk_move_type, disk_type,
                                                 disk_device)
         cf = self._session.vim.client.factory
@@ -1025,7 +1026,7 @@ class VMwareVolumeOps(object):
         return clone_spec
 
     def clone_backing(self, name, backing, snapshot, clone_type, datastore,
-                      disk_type=None):
+                      disk_type=None, host=None):
         """Clone backing.
 
         If the clone_type is 'full', then a full clone of the source volume
@@ -1038,19 +1039,22 @@ class VMwareVolumeOps(object):
         :param clone_type: Whether a full clone or linked clone is to be made
         :param datastore: Reference to the datastore entity
         :param disk_type: Disk type of the clone
+        :param host: Target host
         """
         LOG.debug("Creating a clone of backing: %(back)s, named: %(name)s, "
                   "clone type: %(type)s from snapshot: %(snap)s on "
-                  "datastore: %(ds)s with disk type: %(disk_type)s.",
+                  "host: %(host)s, datastore: %(ds)s with disk type: "
+                  "%(disk_type)s.",
                   {'back': backing, 'name': name, 'type': clone_type,
-                   'snap': snapshot, 'ds': datastore, 'disk_type': disk_type})
+                   'snap': snapshot, 'ds': datastore, 'disk_type': disk_type,
+                   'host': host})
         folder = self._get_folder(backing)
         if clone_type == LINKED_CLONE_TYPE:
             disk_move_type = 'createNewChildDiskBacking'
         else:
             disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
         clone_spec = self._get_clone_spec(datastore, disk_move_type, snapshot,
-                                          backing, disk_type)
+                                          backing, disk_type, host)
         task = self._session.invoke_api(self._session.vim, 'CloneVM_Task',
                                         backing, folder=folder, name=name,
                                         spec=clone_spec)
