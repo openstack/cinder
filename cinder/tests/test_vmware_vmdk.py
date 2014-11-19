@@ -1051,7 +1051,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         select_ds_for_volume.assert_called_once_with(volume)
         vops.clone_backing.assert_called_once_with(
             volume['name'], backing, None, volumeops.FULL_CLONE_TYPE,
-            summary.datastore, disk_type)
+            summary.datastore, disk_type, mock.sentinel.host)
         vops.delete_backing.assert_called_once_with(backing)
         self.assertFalse(extend_disk.called)
 
@@ -1554,7 +1554,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vops.rename_backing.assert_called_once_with(backing, uuid)
         vops.clone_backing.assert_called_once_with(
             vol['name'], backing, None, volumeops.FULL_CLONE_TYPE,
-            datastore, vmdk.THIN_VMDK_TYPE)
+            datastore, vmdk.THIN_VMDK_TYPE, host)
         delete_temp_backing.assert_called_once_with(backing)
         vops.change_backing_profile.assert_called_once_with(clone,
                                                             profile_id)
@@ -1766,7 +1766,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         summary = mock.Mock()
         summary.datastore = mock.sentinel.datastore
-        select_ds.return_value = (mock.ANY, mock.ANY, mock.ANY, summary)
+        select_ds.return_value = (mock.sentinel.host, mock.ANY, mock.ANY,
+                                  summary)
 
         disk_type = vmdk.THIN_VMDK_TYPE
         get_disk_type.return_value = disk_type
@@ -1783,7 +1784,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
             context, src_uuid, volume, tmp_file_path, backup_size)
         vops.clone_backing.assert_called_once_with(
             volume['name'], src, None, volumeops.FULL_CLONE_TYPE,
-            summary.datastore, disk_type)
+            summary.datastore, disk_type, mock.sentinel.host)
         delete_temp_backing.assert_called_once_with(src)
 
         create_backing.reset_mock()
@@ -1805,7 +1806,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
             context, src_uuid, volume, tmp_file_path, backup_size)
         vops.clone_backing.assert_called_once_with(
             dest_uuid, src, None, volumeops.FULL_CLONE_TYPE,
-            summary.datastore, disk_type)
+            summary.datastore, disk_type, mock.sentinel.host)
         exp_rename_calls = [mock.call(backing, tmp_uuid),
                             mock.call(dest, volume['name'])]
         self.assertEqual(exp_rename_calls, vops.rename_backing.call_args_list)
@@ -2132,7 +2133,8 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                     fake_backing,
                                                     fake_snapshot,
                                                     fake_type,
-                                                    None)
+                                                    None,
+                                                    host=None)
         # If the volume size is greater than the original snapshot size,
         # _extend_vmdk_virtual_disk will be called.
         _extend_vmdk_virtual_disk.assert_called_with(fake_volume['name'],
@@ -2177,7 +2179,8 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                     fake_backing,
                                                     fake_snapshot,
                                                     volumeops.FULL_CLONE_TYPE,
-                                                    fake_datastore)
+                                                    fake_datastore,
+                                                    host=fake_host)
         # If the volume size is greater than the original snapshot size,
         # _extend_vmdk_virtual_disk will be called.
         _extend_vmdk_virtual_disk.assert_called_with(fake_volume['name'],
