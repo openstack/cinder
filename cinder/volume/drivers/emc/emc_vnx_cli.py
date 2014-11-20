@@ -22,13 +22,13 @@ import re
 import time
 
 from oslo.config import cfg
+from oslo.serialization import jsonutils as json
 import six
 
 from cinder import exception
 from cinder.exception import EMCVnxCLICmdError
 from cinder.i18n import _
 from cinder.openstack.common import excutils
-from cinder.openstack.common import jsonutils as json
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall

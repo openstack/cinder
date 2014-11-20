@@ -17,12 +17,12 @@
 import iso8601
 from lxml import etree
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 import webob
 
 from cinder.api import extensions
 from cinder.api.v1 import router
 from cinder.api import xmlutil
-from cinder.openstack.common import jsonutils
 from cinder import test
 
 

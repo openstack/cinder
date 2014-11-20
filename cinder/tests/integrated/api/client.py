@@ -13,11 +13,11 @@
 #    under the License.
 
 import netaddr
+from oslo.serialization import jsonutils
 import requests
 import six.moves.urllib.parse as urlparse
 
 from cinder.i18n import _
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 
 

@@ -14,6 +14,7 @@ import ast
 import tempfile
 
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 import webob
 from webob import exc
 
@@ -22,7 +23,6 @@ from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.api import fakes

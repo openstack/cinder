@@ -21,6 +21,7 @@ import httplib
 from xml.dom import minidom
 
 from lxml import etree
+from oslo.serialization import jsonutils
 import six
 import webob
 
@@ -28,7 +29,6 @@ from cinder.api.v1 import limits
 from cinder.api import views
 from cinder.api import xmlutil
 import cinder.context
-from cinder.openstack.common import jsonutils
 from cinder import test
 
 

@@ -18,8 +18,8 @@ Client side of the volume RPC API.
 
 from oslo.config import cfg
 from oslo import messaging
+from oslo.serialization import jsonutils
 
-from cinder.openstack.common import jsonutils
 from cinder import rpc
 from cinder.volume import utils
 

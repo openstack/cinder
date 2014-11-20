@@ -16,10 +16,10 @@ Tests For Scheduler Host Filters.
 """
 
 import mock
+from oslo.serialization import jsonutils
 
 from cinder import context
 from cinder import db
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common.scheduler import filters
 from cinder import test
 from cinder.tests.scheduler import fakes

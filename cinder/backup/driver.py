@@ -18,12 +18,12 @@
 import abc
 
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 import six
 
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 
 service_opts = [

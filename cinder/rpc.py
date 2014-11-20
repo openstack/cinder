@@ -28,11 +28,11 @@ __all__ = [
 
 from oslo.config import cfg
 from oslo import messaging
+from oslo.serialization import jsonutils
 from osprofiler import profiler
 
 import cinder.context
 import cinder.exception
-from cinder.openstack.common import jsonutils
 
 CONF = cfg.CONF
 TRANSPORT = None

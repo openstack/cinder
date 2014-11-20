@@ -30,6 +30,7 @@ import eventlet
 import mock
 import mox
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 from stevedore import extension
 from taskflow.engines.action_engine import engine
 
@@ -43,7 +44,6 @@ from cinder.image import image_utils
 from cinder import keymgr
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import importutils
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import units

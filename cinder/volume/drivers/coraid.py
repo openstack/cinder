@@ -27,11 +27,11 @@ import urllib
 import urllib2
 
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
