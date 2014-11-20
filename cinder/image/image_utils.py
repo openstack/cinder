@@ -389,11 +389,13 @@ def rename_file(src, dst):
 
 @contextlib.contextmanager
 def temporary_file(*args, **kwargs):
+    tmp = None
     try:
         tmp = create_temporary_file(*args, **kwargs)
         yield tmp
     finally:
-        fileutils.delete_if_exists(tmp)
+        if tmp:
+            fileutils.delete_if_exists(tmp)
 
 
 def temporary_dir():
