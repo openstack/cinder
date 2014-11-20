@@ -19,7 +19,7 @@
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -57,8 +57,9 @@ def restore_source_status(context, db, volume_spec):
     except exception.CinderException:
         # NOTE(harlowja): Don't let this cause further exceptions since this is
         # a non-critical failure.
-        LOG.exception(_("Failed setting source volume %(source_volid)s back to"
-                        " its initial %(source_status)s status") %
+        LOG.exception(_LE("Failed setting source "
+                          "volume %(source_volid)s back to"
+                          " its initial %(source_status)s status") %
                       {'source_status': source_status,
                        'source_volid': source_volid})
 
@@ -89,6 +90,6 @@ def error_out_volume(context, db, volume_id, reason=None):
         db.volume_update(context, volume_id, update)
     except exception.CinderException:
         # Don't let this cause further exceptions.
-        LOG.exception(_("Failed updating volume %(volume_id)s with"
-                        " %(update)s") % {'volume_id': volume_id,
-                                          'update': update})
+        LOG.exception(_LE("Failed updating volume %(volume_id)s with"
+                          " %(update)s") % {'volume_id': volume_id,
+                                            'update': update})

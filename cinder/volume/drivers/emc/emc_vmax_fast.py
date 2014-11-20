@@ -15,7 +15,7 @@
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.emc import emc_vmax_provision
 from cinder.volume.drivers.emc import emc_vmax_utils
@@ -401,7 +401,8 @@ class EMCVMAXFast(object):
 
         if len(storageTierInstanceNames) == 0:
             storageTierInstanceNames = None
-            LOG.warn(_("Unable to get storage tiers from tier policy rule  "))
+            LOG.warn(_LW("Unable to get storage tiers "
+                         "from tier policy rule  "))
 
         return storageTierInstanceNames
 
@@ -509,7 +510,7 @@ class EMCVMAXFast(object):
                     storageGroupInstanceName, tierPolicyRuleInstanceName,
                     storageGroupName, fastPolicyName)
             except Exception as ex:
-                LOG.error(_("Exception: %s") % six.text_type(ex))
+                LOG.error(_LE("Exception: %s") % six.text_type(ex))
                 errorMessage = (_(
                     "Failed to add storage group %(storageGroupInstanceName)s "
                     " to tier policy rule %(tierPolicyRuleInstanceName)s")
@@ -576,14 +577,14 @@ class EMCVMAXFast(object):
             if rc != 0L:
                 rc, errordesc = self.utils.wait_for_job_complete(conn, job)
                 if rc != 0L:
-                    LOG.error(_("Error disassociating storage group from "
+                    LOG.error(_LE("Error disassociating storage group from "
                               "policy: %s") % errordesc)
                 else:
                     LOG.debug("Disassociated storage group from policy %s")
             else:
                 LOG.debug("ModifyStorageTierPolicyRule completed")
         except Exception as e:
-            LOG.info(_("Storage group not associated with the policy %s")
+            LOG.info(_LI("Storage group not associated with the policy %s")
                      % six.text_type(e))
 
     def get_pool_associated_to_policy(
@@ -651,7 +652,7 @@ class EMCVMAXFast(object):
             isTieringPolicySupported = self.is_tiering_policy_enabled(
                 conn, tierPolicyServiceInstanceName)
         except Exception as e:
-            LOG.error(_("Exception: %s") % six.text_type(e))
+            LOG.error(_LE("Exception: %s") % six.text_type(e))
             return False
 
         return isTieringPolicySupported

@@ -25,7 +25,7 @@ from six import wraps
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import units
@@ -295,8 +295,8 @@ class SolidFireDriver(SanISCSIDriver):
             iteration_count += 1
 
         if not found_volume:
-            LOG.error(_('Failed to retrieve volume SolidFire-'
-                        'ID: %s in get_by_account!') % sf_volume_id)
+            LOG.error(_LE('Failed to retrieve volume SolidFire-'
+                          'ID: %s in get_by_account!') % sf_volume_id)
             raise exception.VolumeNotFound(volume_id=sf_volume_id)
 
         model_update = {}
@@ -405,8 +405,8 @@ class SolidFireDriver(SanISCSIDriver):
                    if i.key == 'sf-qos' and i.value in valid_presets]
         if len(presets) > 0:
             if len(presets) > 1:
-                LOG.warning(_('More than one valid preset was '
-                              'detected, using %s') % presets[0])
+                LOG.warning(_LW('More than one valid preset was '
+                                'detected, using %s') % presets[0])
             qos = self.sf_qos_dict[presets[0]]
         else:
             # look for explicit settings
@@ -467,10 +467,10 @@ class SolidFireDriver(SanISCSIDriver):
             # NOTE(jdg): Previously we would raise here, but there are cases
             # where this might be a cleanup for a failed delete.
             # Until we get better states we'll just log an error
-            LOG.error(_("Volume %s, not found on SF Cluster."), uuid)
+            LOG.error(_LE("Volume %s, not found on SF Cluster."), uuid)
 
         if found_count > 1:
-            LOG.error(_("Found %(count)s volumes mapped to id: %(uuid)s.") %
+            LOG.error(_LE("Found %(count)s volumes mapped to id: %(uuid)s.") %
                       {'count': found_count,
                        'uuid': uuid})
             raise exception.DuplicateSfVolumeNames(vol_name=uuid)
@@ -552,11 +552,11 @@ class SolidFireDriver(SanISCSIDriver):
 
         sfaccount = self._get_sfaccount(volume['project_id'])
         if sfaccount is None:
-            LOG.error(_("Account for Volume ID %s was not found on "
-                        "the SolidFire Cluster while attempting "
-                        "delete_volume operation!") % volume['id'])
-            LOG.error(_("This usually means the volume was never "
-                        "successfully created."))
+            LOG.error(_LE("Account for Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "delete_volume operation!") % volume['id'])
+            LOG.error(_LE("This usually means the volume was never "
+                          "successfully created."))
             return
 
         params = {'accountID': sfaccount['accountID']}
@@ -571,9 +571,9 @@ class SolidFireDriver(SanISCSIDriver):
                 msg = _("Failed to delete SolidFire Volume: %s") % data
                 raise exception.SolidFireAPIException(msg)
         else:
-            LOG.error(_("Volume ID %s was not found on "
-                        "the SolidFire Cluster while attempting "
-                        "delete_volume operation!"), volume['id'])
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "delete_volume operation!"), volume['id'])
 
         LOG.debug("Leaving SolidFire delete_volume")
 
@@ -646,9 +646,9 @@ class SolidFireDriver(SanISCSIDriver):
         sf_vol = self._get_sf_volume(volume['id'], params)
 
         if sf_vol is None:
-            LOG.error(_("Volume ID %s was not found on "
-                        "the SolidFire Cluster while attempting "
-                        "extend_volume operation!"), volume['id'])
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "extend_volume operation!"), volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         params = {
@@ -674,7 +674,7 @@ class SolidFireDriver(SanISCSIDriver):
         # of stats data, this is just one of the calls
         results = self._issue_api_request('GetClusterCapacity', params)
         if 'result' not in results:
-            LOG.error(_('Failed to get updated stats'))
+            LOG.error(_LE('Failed to get updated stats'))
 
         results = results['result']['clusterCapacity']
         free_capacity =\
@@ -711,9 +711,9 @@ class SolidFireDriver(SanISCSIDriver):
 
         sf_vol = self._get_sf_volume(volume['id'], params)
         if sf_vol is None:
-            LOG.error(_("Volume ID %s was not found on "
-                        "the SolidFire Cluster while attempting "
-                        "attach_volume operation!"), volume['id'])
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "attach_volume operation!"), volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         attributes = sf_vol['attributes']
@@ -737,9 +737,9 @@ class SolidFireDriver(SanISCSIDriver):
 
         sf_vol = self._get_sf_volume(volume['id'], params)
         if sf_vol is None:
-            LOG.error(_("Volume ID %s was not found on "
-                        "the SolidFire Cluster while attempting "
-                        "detach_volume operation!"), volume['id'])
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "detach_volume operation!"), volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         attributes = sf_vol['attributes']
@@ -762,9 +762,9 @@ class SolidFireDriver(SanISCSIDriver):
         params = {'accountID': sfaccount['accountID']}
         sf_vol = self._get_sf_volume(volume['id'], params)
         if sf_vol is None:
-            LOG.error(_("Volume ID %s was not found on "
-                        "the SolidFire Cluster while attempting "
-                        "accept_transfer operation!"), volume['id'])
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "accept_transfer operation!"), volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
         if new_project != volume['project_id']:
             # do a create_sfaccount here as this tenant
@@ -908,9 +908,9 @@ class SolidFireDriver(SanISCSIDriver):
         LOG.debug("Enter SolidFire unmanage...")
         sfaccount = self._get_sfaccount(volume['project_id'])
         if sfaccount is None:
-            LOG.error(_("Account for Volume ID %s was not found on "
-                        "the SolidFire Cluster while attempting "
-                        "unmanage operation!") % volume['id'])
+            LOG.error(_LE("Account for Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "unmanage operation!") % volume['id'])
             raise exception.SolidFireAPIException("Failed to find account "
                                                   "for volume.")
 

@@ -29,7 +29,7 @@ from oslo.config import cfg
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import units
@@ -244,8 +244,8 @@ class FJDXCommon(object):
                 errordesc = RETCODE_dic[six.text_type(rc)]
 
             if rc != 0L:
-                LOG.error(_('Error Create Volume: %(volumename)s.  '
-                          'Return code: %(rc)lu.  Error: %(error)s')
+                LOG.error(_LE('Error Create Volume: %(volumename)s.  '
+                              'Return code: %(rc)lu.  Error: %(error)s')
                           % {'volumename': volumename,
                              'rc': rc,
                              'error': errordesc})
@@ -516,8 +516,8 @@ class FJDXCommon(object):
 
         vol_instance = self._find_lun(volume)
         if vol_instance is None:
-            LOG.error(_('Volume %(name)s not found on the array. '
-                        'No volume to delete.')
+            LOG.error(_LE('Volume %(name)s not found on the array. '
+                          'No volume to delete.')
                       % {'name': volumename})
             return
 
@@ -593,8 +593,8 @@ class FJDXCommon(object):
 
         repservice = self._find_replication_service(storage_system)
         if repservice is None:
-            LOG.error(_("Cannot find Replication Service to create snapshot "
-                        "for volume %s.") % volumename)
+            LOG.error(_LE("Cannot find Replication Service to create snapshot "
+                          "for volume %s.") % volumename)
             exception_message = (_("Cannot find Replication Service to "
                                    "create snapshot for volume %s.")
                                  % volumename)
@@ -716,8 +716,8 @@ class FJDXCommon(object):
         sync_name, storage_system =\
             self._find_storage_sync_sv_sv(snapshot, volume, False)
         if sync_name is None:
-            LOG.error(_('Snapshot: %(snapshot)s: volume: %(volume)s '
-                        'not found on the array. No snapshot to delete.')
+            LOG.error(_LE('Snapshot: %(snapshot)s: volume: %(volume)s '
+                          'not found on the array. No snapshot to delete.')
                       % {'snapshot': snapshotname,
                          'volume': volumename})
             return
@@ -789,8 +789,8 @@ class FJDXCommon(object):
                                 'volume': volumename})
                     raise loopingcall.LoopingCallDone()
                 if int(time.time()) - start >= wait_timeout:
-                    LOG.warn(_('Snapshot: %(snapshot)s: volume: %(volume)s. '
-                               'Snapshot deleted but cleanup timed out.')
+                    LOG.warn(_LW('Snapshot: %(snapshot)s: volume: %(volume)s. '
+                                 'Snapshot deleted but cleanup timed out.')
                              % {'snapshot': snapshotname,
                                 'volume': volumename})
                     raise loopingcall.LoopingCallDone()
@@ -802,9 +802,9 @@ class FJDXCommon(object):
                              % {'snapshot': snapshotname,
                                 'volume': volumename})
                 else:
-                    LOG.warn(_('Snapshot: %(snapshot)s: volume: %(volume)s. '
-                               'Snapshot deleted but error during cleanup. '
-                               'Error: %(error)s')
+                    LOG.warn(_LW('Snapshot: %(snapshot)s: volume: %(volume)s. '
+                                 'Snapshot deleted but error during cleanup. '
+                                 'Error: %(error)s')
                              % {'snapshot': snapshotname,
                                 'volume': volumename,
                                 'error': six.text_type(ex.args)})

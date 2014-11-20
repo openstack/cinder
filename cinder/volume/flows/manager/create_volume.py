@@ -19,7 +19,7 @@ from taskflow.utils import misc
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI
 from cinder.image import glance
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
@@ -187,7 +187,7 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
             return
 
         common.error_out_volume(context, self.db, volume_id)
-        LOG.error(_("Volume %s: create failed"), volume_id)
+        LOG.error(_LE("Volume %s: create failed"), volume_id)
 
 
 class ExtractVolumeSpecTask(flow_utils.CinderTask):
@@ -485,19 +485,19 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         try:
             copy_image_to_volume(context, volume_ref, image_service, image_id)
         except processutils.ProcessExecutionError as ex:
-            LOG.error(_("Failed to copy image %(image_id)s to volume: "
-                        "%(volume_id)s, error: %(error)s") %
+            LOG.error(_LE("Failed to copy image %(image_id)s to volume: "
+                          "%(volume_id)s, error: %(error)s") %
                       {'volume_id': volume_id,
                        'error': ex.stderr, 'image_id': image_id})
             raise exception.ImageCopyFailure(reason=ex.stderr)
         except exception.ImageUnacceptable as ex:
-            LOG.error(_("Failed to copy image to volume: %(volume_id)s, "
-                        "error: %(error)s") % {'volume_id': volume_id,
-                                               'error': ex})
+            LOG.error(_LE("Failed to copy image to volume: %(volume_id)s, "
+                          "error: %(error)s") %
+                      {'volume_id': volume_id, 'error': ex})
             raise exception.ImageUnacceptable(ex)
         except Exception as ex:
-            LOG.error(_("Failed to copy image %(image_id)s to "
-                        "volume: %(volume_id)s, error: %(error)s") %
+            LOG.error(_LE("Failed to copy image %(image_id)s to "
+                          "volume: %(volume_id)s, error: %(error)s") %
                       {'volume_id': volume_id, 'error': ex,
                        'image_id': image_id})
             if not isinstance(ex, exception.ImageCopyFailure):
@@ -606,16 +606,16 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # we can't do anything if the driver didn't init
         if not self.driver.initialized:
             driver_name = self.driver.__class__.__name__
-            LOG.error(_("Unable to create volume. "
-                        "Volume driver %s not initialized") % driver_name)
+            LOG.error(_LE("Unable to create volume. "
+                          "Volume driver %s not initialized") % driver_name)
             # NOTE(flaper87): Set the error status before
             # raising any exception.
             self.db.volume_update(context, volume_id, dict(status='error'))
             raise exception.DriverNotInitialized()
 
         create_type = volume_spec.pop('type', None)
-        LOG.info(_("Volume %(volume_id)s: being created as %(create_type)s "
-                   "with specification: %(volume_spec)s") %
+        LOG.info(_LI("Volume %(volume_id)s: being created as %(create_type)s "
+                     "with specification: %(volume_spec)s") %
                  {'volume_spec': volume_spec, 'volume_id': volume_id,
                   'create_type': create_type})
         if create_type == 'raw':

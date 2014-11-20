@@ -27,7 +27,7 @@ import time
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import units
@@ -88,7 +88,7 @@ class DPLCommand(object):
                 payload = json.dumps(params, ensure_ascii=False)
                 payload.encode('utf-8')
             except Exception:
-                LOG.error(_('JSON encode params error: %s.'),
+                LOG.error(_LE('JSON encode params error: %s.'),
                           six.text_type(params))
                 retcode = errno.EINVAL
         for i in range(CONNECTION_RETRY):
@@ -100,11 +100,11 @@ class DPLCommand(object):
                     retcode = 0
                     break
             except IOError as ioerr:
-                LOG.error(_('Connect to Flexvisor error: %s.'),
+                LOG.error(_LE('Connect to Flexvisor error: %s.'),
                           six.text_type(ioerr))
                 retcode = errno.ENOTCONN
             except Exception as e:
-                LOG.error(_('Connect to Flexvisor failed: %s.'),
+                LOG.error(_LE('Connect to Flexvisor failed: %s.'),
                           six.text_type(e))
                 retcode = errno.EFAULT
 
@@ -128,7 +128,7 @@ class DPLCommand(object):
                     retcode = errno.ENOTCONN
                 continue
             except Exception as e:
-                LOG.error(_('Failed to send request: %s.'),
+                LOG.error(_LE('Failed to send request: %s.'),
                           six.text_type(e))
                 retcode = errno.EFAULT
                 break
@@ -137,7 +137,7 @@ class DPLCommand(object):
                 try:
                     response = connection.getresponse()
                     if response.status == httplib.SERVICE_UNAVAILABLE:
-                        LOG.error(_('The Flexvisor service is unavailable.'))
+                        LOG.error(_LE('The Flexvisor service is unavailable.'))
                         time.sleep(1)
                         retry -= 1
                         retcode = errno.ENOPROTOOPT
@@ -151,7 +151,7 @@ class DPLCommand(object):
                     retcode = errno.EFAULT
                     continue
                 except Exception as e:
-                    LOG.error(_('Failed to get response: %s.'),
+                    LOG.error(_LE('Failed to get response: %s.'),
                               six.text_type(e.message))
                     retcode = errno.EFAULT
                     break
@@ -160,8 +160,8 @@ class DPLCommand(object):
                 response.status == httplib.NOT_FOUND:
             retcode = errno.ENODATA
         elif retcode == 0 and response.status not in expected_status:
-            LOG.error(_('%(method)s %(url)s unexpected response status: '
-                        '%(response)s (expects: %(expects)s).')
+            LOG.error(_LE('%(method)s %(url)s unexpected response status: '
+                          '%(response)s (expects: %(expects)s).')
                       % {'method': method,
                          'url': url,
                          'response': httplib.responses[response.status],
@@ -179,11 +179,11 @@ class DPLCommand(object):
                 data = response.read()
                 data = json.loads(data)
             except (TypeError, ValueError) as e:
-                LOG.error(_('Call to json.loads() raised an exception: %s.'),
+                LOG.error(_LE('Call to json.loads() raised an exception: %s.'),
                           six.text_type(e))
                 retcode = errno.ENOEXEC
             except Exception as e:
-                LOG.error(_('Read response raised an exception: %s.'),
+                LOG.error(_LE('Read response raised an exception: %s.'),
                           six.text_type(e))
                 retcode = errno.ENOEXEC
         elif retcode == 0 and \
@@ -193,11 +193,11 @@ class DPLCommand(object):
                 data = response.read()
                 data = json.loads(data)
             except (TypeError, ValueError) as e:
-                LOG.error(_('Call to json.loads() raised an exception: %s.'),
+                LOG.error(_LE('Call to json.loads() raised an exception: %s.'),
                           six.text_type(e))
                 retcode = errno.ENOEXEC
             except Exception as e:
-                LOG.error(_('Read response raised an exception: %s.'),
+                LOG.error(_LE('Read response raised an exception: %s.'),
                           six.text_type(e))
                 retcode = errno.ENOEXEC
 
@@ -826,8 +826,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
     def create_consistencygroup(self, context, group):
         """Creates a consistencygroup."""
-        LOG.info(_('Start to create consistency group: %(group_name)s '
-                   'id: %(id)s') %
+        LOG.info(_LI('Start to create consistency group: %(group_name)s '
+                     'id: %(id)s') %
                  {'group_name': group['name'], 'id': group['id']})
         model_update = {'status': 'available'}
         try:
@@ -857,7 +857,7 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             context, group['id'])
         model_update = {}
         model_update['status'] = group['status']
-        LOG.info(_('Start to delete consistency group: %(cg_name)s')
+        LOG.info(_LI('Start to delete consistency group: %(cg_name)s')
                  % {'cg_name': group['id']})
         try:
             self.dpl.delete_vg(self._conver_uuid2hex(group['id']))
@@ -888,8 +888,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             context, cgsnapshot_id)
 
         model_update = {}
-        LOG.info(_('Start to create cgsnapshot for consistency group'
-                   ': %(group_name)s') %
+        LOG.info(_LI('Start to create cgsnapshot for consistency group'
+                     ': %(group_name)s') %
                  {'group_name': cgId})
 
         try:
@@ -920,8 +920,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
         model_update = {}
         model_update['status'] = cgsnapshot['status']
-        LOG.info(_('Delete cgsnapshot %(snap_name)s for consistency group: '
-                   '%(group_name)s') % {'snap_name': cgsnapshot['id'],
+        LOG.info(_LI('Delete cgsnapshot %(snap_name)s for consistency group: '
+                     '%(group_name)s') % {'snap_name': cgsnapshot['id'],
                  'group_name': cgsnapshot['consistencygroup_id']})
 
         try:
@@ -1364,7 +1364,7 @@ class DPLCOMMONDriver(driver.VolumeDriver):
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         self.context = context
-        LOG.info(_('Activate Flexvisor cinder volume driver.'))
+        LOG.info(_LI('Activate Flexvisor cinder volume driver.'))
 
     def check_for_setup_error(self):
         """Check DPL can connect properly."""
@@ -1387,8 +1387,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     ret = 0
                     output = status.get('output', {})
             else:
-                LOG.error(_('Flexvisor failed to get pool info '
-                          '(failed to get event)%s.') % (poolid))
+                LOG.error(_LE('Flexvisor failed to get pool info '
+                              '(failed to get event)%s.') % (poolid))
                 raise exception.VolumeBackendAPIException(
                     data="failed to get event")
         elif ret != 0:
