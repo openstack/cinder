@@ -736,6 +736,36 @@ class RBDTestCase(test.TestCase):
 
         self.mox.VerifyAll()
 
+    @common_mocks
+    def test_retype(self):
+        context = {}
+        diff = {'encryption': {},
+                'extra_specs': {}}
+        fake_volume = {'name': 'testvolume',
+                       'host': 'currenthost'}
+        fake_type = 'high-IOPS'
+
+        # no support for migration
+        host = {'host': 'anotherhost'}
+        self.assertFalse(self.driver.retype(context, fake_volume,
+                                            fake_type, diff, host))
+        host = {'host': 'currenthost'}
+
+        # no support for changing encryption
+        diff['encryption'] = {'non-empty': 'non-empty'}
+        self.assertFalse(self.driver.retype(context, fake_volume,
+                                            fake_type, diff, host))
+        diff['encryption'] = {}
+
+        # no support for changing extra_specs
+        diff['extra_specs'] = {'non-empty': 'non-empty'}
+        self.assertFalse(self.driver.retype(context, fake_volume,
+                                            fake_type, diff, host))
+        diff['extra_specs'] = {}
+
+        self.assertTrue(self.driver.retype(context, fake_volume,
+                                           fake_type, diff, host))
+
     def test_rbd_volume_proxy_init(self):
         mock_driver = mock.Mock(name='driver')
         mock_driver._connect_to_rados.return_value = (None, None)
