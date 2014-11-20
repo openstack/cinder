@@ -894,8 +894,9 @@ class StorwizeSVCDriver(san.SanDriver):
 
             # If volume is replicated, can't copy
             if new_type_replication:
-                msg = (_('Unable to retype: Volume %s is replicated.'),
-                       volume['id'])
+                msg = (_('Unable to retype: Current action needs volume-copy,'
+                         ' it is not allowed when new type is replication.'
+                         ' Volume = %s'), volume['id'])
                 raise exception.VolumeDriverException(message=msg)
 
             retype_iogrp_property(volume,
