@@ -149,7 +149,7 @@ class RequestContext(object):
 
     def elevated(self, read_deleted=None, overwrite=False):
         """Return a version of this context with admin flag set."""
-        context = copy.copy(self)
+        context = self.deepcopy()
         context.is_admin = True
 
         if 'admin' not in context.roles:
