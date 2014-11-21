@@ -22,7 +22,7 @@ import uuid
 from oslo.config import cfg
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san.hp import hp_msa_client as msa
 
@@ -39,7 +39,14 @@ CONF.register_opts(hpmsa_opt)
 
 
 class HPMSACommon(object):
-    VERSION = "0.1"
+    """Class that contains common code for MSA drivers.
+
+    Version history:
+        0.1 - First release
+        0.2 - Added Logging Markers
+
+    """
+    VERSION = "0.2"
 
     stats = {}
 
@@ -64,12 +71,12 @@ class HPMSACommon(object):
         try:
             self.client.login()
         except msa.HPMSAConnectionError as ex:
-            msg = (_("Failed to connect to MSA Array (%(host)s): %(err)s") %
+            msg = (_LE("Failed to connect to MSA Array (%(host)s): %(err)s") %
                    {'host': self.config.san_ip, 'err': ex})
             LOG.error(msg)
             raise exception.HPMSAConnectionError(reason=msg)
         except msa.HPMSAAuthenticationError:
-            msg = _("Failed to log on MSA Array (invalid login?)")
+            msg = _LE("Failed to log on MSA Array (invalid login?)")
             LOG.error(msg)
             raise exception.HPMSAConnectionError(reason=msg)
 
@@ -123,7 +130,7 @@ class HPMSACommon(object):
     def check_flags(self, options, required_flags):
         for flag in required_flags:
             if not getattr(options, flag, None):
-                msg = _('%s configuration option is not set') % flag
+                msg = _LE('%s configuration option is not set') % flag
                 LOG.error(msg)
                 raise exception.InvalidInput(reason=msg)
 
@@ -164,7 +171,7 @@ class HPMSACommon(object):
         """
         if volume['status'] != "available" or \
            volume['attach_status'] == "attached":
-            msg = _("Volume must be detached to perform a clone operation.")
+            msg = _LE("Volume must be detached to perform a clone operation.")
             LOG.error(msg)
             raise exception.VolumeAttached(volume_id=volume['id'])
 
@@ -241,7 +248,7 @@ class HPMSACommon(object):
             vdisk_stats = self.client.vdisk_stats(self.config.msa_vdisk)
             stats.update(vdisk_stats)
         except msa.HPMSARequestError:
-            err = (_("Unable to get stats for VDisk (%s)")
+            err = (_LE("Unable to get stats for VDisk (%s)")
                    % self.config.msa_vdisk)
             LOG.error(err)
             raise exception.Invalid(reason=err)
@@ -250,7 +257,7 @@ class HPMSACommon(object):
 
     def _assert_connector_ok(self, connector):
         if not connector['wwpns']:
-            msg = _("Connector doesn't provide wwpns")
+            msg = _LE("Connector doesn't provide wwpns")
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
