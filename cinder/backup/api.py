@@ -20,13 +20,13 @@ Handles all requests relating to the volume backups service.
 
 from eventlet import greenthread
 from oslo.config import cfg
+from oslo.utils import excutils
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
-from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
 import cinder.policy
 from cinder import quota

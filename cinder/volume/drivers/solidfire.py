@@ -20,6 +20,8 @@ import string
 import time
 
 from oslo.config import cfg
+from oslo.utils import timeutils
+from oslo.utils import units
 import requests
 from six import wraps
 
@@ -27,8 +29,6 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
 from cinder.volume.drivers.san.san import SanISCSIDriver
 from cinder.volume import qos_specs
 from cinder.volume import volume_types

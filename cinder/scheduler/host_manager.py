@@ -20,6 +20,7 @@ Manage hosts in the current zone.
 import UserDict
 
 from oslo.config import cfg
+from oslo.utils import timeutils
 
 from cinder import db
 from cinder import exception
@@ -27,7 +28,6 @@ from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common.scheduler import weights
-from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume import utils as vol_utils
 

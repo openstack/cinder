@@ -30,6 +30,8 @@ import eventlet
 import eventlet.wsgi
 import greenlet
 from oslo.config import cfg
+from oslo.utils import excutils
+from oslo.utils import netutils
 from paste import deploy
 import routes.middleware
 import webob.dec
@@ -37,9 +39,7 @@ import webob.exc
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import network_utils
 from cinder import utils
 
 
@@ -208,11 +208,11 @@ class Server(object):
         # NOTE(praneshp): Call set_tcp_keepalive in oslo to set
         # tcp keepalive parameters. Sockets can hang around forever
         # without keepalive
-        network_utils.set_tcp_keepalive(dup_socket,
-                                        CONF.tcp_keepalive,
-                                        CONF.tcp_keepidle,
-                                        CONF.tcp_keepalive_count,
-                                        CONF.tcp_keepalive_interval)
+        netutils.set_tcp_keepalive(dup_socket,
+                                   CONF.tcp_keepalive,
+                                   CONF.tcp_keepidle,
+                                   CONF.tcp_keepalive_count,
+                                   CONF.tcp_keepalive_interval)
 
         if self._use_ssl:
             try:

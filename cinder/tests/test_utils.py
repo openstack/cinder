@@ -22,6 +22,7 @@ import uuid
 
 import mock
 from oslo.config import cfg
+from oslo.utils import timeutils
 import paramiko
 import six
 
@@ -30,7 +31,6 @@ from cinder.brick.initiator import connector
 from cinder.brick.initiator import linuxfc
 from cinder import exception
 from cinder.openstack.common import processutils as putils
-from cinder.openstack.common import timeutils
 from cinder import ssh_utils
 from cinder import test
 from cinder import utils
@@ -390,7 +390,7 @@ class GenericUtilsTestCase(test.TestCase):
                 self.assertEqual(fake_execute.uid, 2)
             self.assertEqual(fake_execute.uid, os.getuid())
 
-    @mock.patch('cinder.openstack.common.timeutils.utcnow')
+    @mock.patch('oslo.utils.timeutils.utcnow')
     def test_service_is_up(self, mock_utcnow):
         fts_func = datetime.datetime.fromtimestamp
         fake_now = 1000

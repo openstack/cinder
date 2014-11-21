@@ -19,15 +19,15 @@ import math
 
 from Crypto.Random import random
 from oslo.config import cfg
+from oslo.utils import strutils
+from oslo.utils import timeutils
+from oslo.utils import units
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder.openstack.common import strutils
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
 from cinder import rpc
 from cinder import utils
 

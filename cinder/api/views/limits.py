@@ -15,7 +15,7 @@
 
 import datetime
 
-from cinder.openstack.common import timeutils
+from oslo.utils import timeutils
 
 
 class ViewBuilder(object):

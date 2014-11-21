@@ -18,8 +18,8 @@ Test suite for VMware VMDK driver volumeops module.
 """
 
 import mock
+from oslo.utils import units
 
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import vim_util

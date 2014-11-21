@@ -15,11 +15,11 @@
 #
 """Unit tests for OpenStack Cinder volume drivers."""
 import mock
+from oslo.utils import units
 
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder import test
 from cinder.tests import fake_hp_lefthand_client as hplefthandclient
 from cinder.volume.drivers.san.hp import hp_lefthand_iscsi

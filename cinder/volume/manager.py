@@ -42,6 +42,9 @@ import time
 from oslo.config import cfg
 from oslo import messaging
 from oslo.serialization import jsonutils
+from oslo.utils import excutils
+from oslo.utils import importutils
+from oslo.utils import timeutils
 from osprofiler import profiler
 
 from cinder import compute
@@ -51,11 +54,8 @@ from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import glance
 from cinder import manager
-from cinder.openstack.common import excutils
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import periodic_task
-from cinder.openstack.common import timeutils
 from cinder.openstack.common import uuidutils
 from cinder import quota
 from cinder import utils

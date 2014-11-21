@@ -15,6 +15,7 @@
 
 """The QoS specs extension"""
 
+from oslo.utils import strutils
 import six
 import webob
 
@@ -25,7 +26,6 @@ from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
 from cinder import rpc
 from cinder import utils
 from cinder.volume import qos_specs

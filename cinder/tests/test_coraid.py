@@ -20,12 +20,12 @@ import mock
 import mox
 from oslo.config import cfg
 from oslo.serialization import jsonutils
+from oslo.utils import units
 
 from cinder.brick.initiator import connector
 from cinder import exception
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf

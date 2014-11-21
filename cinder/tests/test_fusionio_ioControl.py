@@ -17,14 +17,14 @@ import copy
 import json
 
 import mock
+from oslo.utils import timeutils
+from oslo.utils import units
 import requests
 
 from cinder import context
 from cinder.db.sqlalchemy.models import VolumeMetadata
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.fusionio.ioControl import FIOconnection

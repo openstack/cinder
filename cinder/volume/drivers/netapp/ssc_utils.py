@@ -20,12 +20,12 @@ Storage service catalog utility functions and classes for NetApp systems.
 import copy
 from threading import Timer
 
+from oslo.utils import timeutils
 import six
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp import api

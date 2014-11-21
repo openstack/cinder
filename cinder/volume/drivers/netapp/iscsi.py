@@ -26,14 +26,14 @@ import sys
 import time
 import uuid
 
+from oslo.utils import excutils
+from oslo.utils import timeutils
+from oslo.utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.api import NaApiError

@@ -23,15 +23,15 @@ import re
 import time
 
 import mock
+from oslo.utils import excutils
+from oslo.utils import importutils
+from oslo.utils import units
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import excutils
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder.openstack.common import units
 from cinder import test
 from cinder.tests import utils as testutils
 from cinder import utils

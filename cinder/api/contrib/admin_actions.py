@@ -12,6 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from oslo.utils import strutils
 import webob
 from webob import exc
 
@@ -22,7 +23,6 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
 from cinder import rpc
 from cinder import volume
 

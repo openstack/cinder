@@ -32,6 +32,8 @@ import mock
 import mox
 from oslo.config import cfg
 from oslo.messaging import conffixture as messaging_conffixture
+from oslo.utils import strutils
+from oslo.utils import timeutils
 import stubout
 import testtools
 from testtools import matchers
@@ -40,8 +42,6 @@ from cinder.common import config  # noqa Need to register global_opts
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder.openstack.common import log as oslo_logging
-from cinder.openstack.common import strutils
-from cinder.openstack.common import timeutils
 from cinder import rpc
 from cinder import service
 from cinder.tests import conf_fixture

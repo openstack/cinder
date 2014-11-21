@@ -20,6 +20,7 @@ import datetime
 
 import mock
 from oslo.config import cfg
+from oslo.utils import timeutils
 
 from cinder import backup
 from cinder import context
@@ -27,7 +28,6 @@ from cinder import db
 from cinder.db.sqlalchemy import api as sqa_api
 from cinder.db.sqlalchemy import models as sqa_models
 from cinder import exception
-from cinder.openstack.common import timeutils
 from cinder import quota
 from cinder import test
 import cinder.tests.image.fake

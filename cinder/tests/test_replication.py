@@ -17,11 +17,11 @@ Tests for Volume replication code.
 
 import mock
 from oslo.config import cfg
+from oslo.utils import importutils
 
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import importutils
 from cinder import test
 from cinder.tests import utils as test_utils
 

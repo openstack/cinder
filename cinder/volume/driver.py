@@ -20,11 +20,11 @@ Drivers for volumes.
 import time
 
 from oslo.config import cfg
+from oslo.utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder.image import image_utils
-from cinder.openstack.common import excutils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils

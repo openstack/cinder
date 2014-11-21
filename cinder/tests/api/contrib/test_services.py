@@ -16,6 +16,7 @@
 
 from datetime import datetime
 
+from oslo.utils import timeutils
 import webob.exc
 
 from cinder.api.contrib import services
@@ -23,7 +24,6 @@ from cinder.api import extensions
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import timeutils
 from cinder import policy
 from cinder import test
 from cinder.tests.api import fakes

@@ -14,11 +14,10 @@
 
 
 from oslo.config import cfg
-
-import cinder.openstack.common.importutils
+from oslo.utils import importutils
 
 
 CONF = cfg.CONF
 
 cls = CONF.replication_api_class
-API = cinder.openstack.common.importutils.import_class(cls)
+API = importutils.import_class(cls)

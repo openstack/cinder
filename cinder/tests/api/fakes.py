@@ -15,6 +15,7 @@
 
 import uuid
 
+from oslo.utils import timeutils
 import routes
 import webob
 import webob.dec
@@ -28,7 +29,6 @@ from cinder.api.v2 import limits
 from cinder.api.v2 import router
 from cinder.api import versions
 from cinder import context
-from cinder.openstack.common import timeutils
 from cinder import wsgi
 
 

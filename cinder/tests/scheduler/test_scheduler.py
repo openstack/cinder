@@ -278,7 +278,7 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         self.context = context.RequestContext('fake_user', 'fake_project')
 
     @mock.patch('cinder.db.volume_update')
-    @mock.patch('cinder.openstack.common.timeutils.utcnow')
+    @mock.patch('oslo.utils.timeutils.utcnow')
     def test_volume_host_update_db(self, _mock_utcnow, _mock_vol_update):
         _mock_utcnow.return_value = 'fake-now'
         driver.volume_update_db(self.context, 31337, 'fake_host')

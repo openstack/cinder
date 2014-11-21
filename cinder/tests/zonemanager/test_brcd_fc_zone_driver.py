@@ -21,11 +21,11 @@
 
 import mock
 from oslo.config import cfg
+from oslo.utils import importutils
 import paramiko
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf

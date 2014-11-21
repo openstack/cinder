@@ -17,9 +17,9 @@ import httplib
 import re
 
 import mock
+from oslo.utils import units
 
 from cinder import exception
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.prophetstor import dpl_iscsi as DPLDRIVER

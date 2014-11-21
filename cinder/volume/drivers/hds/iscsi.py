@@ -21,12 +21,12 @@ iSCSI Cinder Volume driver for Hitachi Unified Storage (HUS-HNAS) platform.
 from xml.etree import ElementTree as ETree
 
 from oslo.config import cfg
+from oslo.utils import excutils
+from oslo.utils import units
 
 from cinder import exception
 from cinder.i18n import _LE, _LI
-from cinder.openstack.common import excutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder.volume import driver
 from cinder.volume.drivers.hds.hnas_backend import HnasBackend
 from cinder.volume import utils

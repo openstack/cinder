@@ -16,13 +16,13 @@
 import datetime
 
 from lxml import etree
+from oslo.utils import timeutils
 import webob.exc
 
 from cinder.api.contrib import hosts as os_hosts
 from cinder import context
 from cinder import db
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 from cinder import test
 
 

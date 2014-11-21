@@ -22,10 +22,10 @@ import os
 
 import mock
 import mox
+from oslo.utils import units
 
 from cinder import exception
 from cinder.image import glance
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration
 from cinder.volume.drivers.vmware import api

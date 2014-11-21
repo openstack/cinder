@@ -35,6 +35,8 @@ Volume backups can be created, restored, deleted and listed.
 
 from oslo.config import cfg
 from oslo import messaging
+from oslo.utils import excutils
+from oslo.utils import importutils
 
 from cinder.backup import driver
 from cinder.backup import rpcapi as backup_rpcapi
@@ -42,8 +44,6 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import manager
-from cinder.openstack.common import excutils
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder import quota
 from cinder import rpc

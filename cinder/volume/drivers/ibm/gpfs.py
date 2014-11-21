@@ -22,6 +22,7 @@ import re
 import shutil
 
 from oslo.config import cfg
+from oslo.utils import units
 
 from cinder import exception
 from cinder.i18n import _
@@ -29,7 +30,6 @@ from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import processutils
-from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume import driver
 
