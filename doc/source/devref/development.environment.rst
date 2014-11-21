@@ -54,19 +54,17 @@ Linux Systems
 
 .. note::
 
-  This section is tested for Cinder on Ubuntu (12.04-64) and
-  Fedora-based (RHEL 6.1) distributions. Feel free to add notes and
-  change according to your experiences or operating system.
+  Feel free to add notes and change according to your experiences or operating system.
 
 Install the prerequisite packages.
 
-On Ubuntu::
+On Ubuntu (tested on 12.04-64 and 14.04-64)::
 
-  sudo apt-get install python-dev libssl-dev python-pip git-core libmysqlclient-dev libpq-dev libffi-dev
+  sudo apt-get install python-dev libssl-dev python-pip git-core libmysqlclient-dev libpq-dev libffi-dev libxslt-dev
 
-On Fedora-based distributions (e.g., Fedora/RHEL/CentOS/Scientific Linux)::
+On Fedora-based distributions e.g., Fedora/RHEL/CentOS/Scientific Linux (tested on CentOS 6.5)::
 
-  sudo yum install python-devel openssl-devel python-pip git libmysqlclient-dev libqp-dev
+  sudo yum install python-virtualenv openssl-devel python-pip git gcc libffi-devel libxslt-devel mysql-devel postgresql-devel
 
 On openSUSE-based distributions (SLES 12, openSUSE 13.1, Factory or Tumbleweed)::
 
