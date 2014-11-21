@@ -27,7 +27,7 @@ from oslo.utils import excutils
 
 from cinder.brick import exception
 from cinder.brick import executor
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 
 
@@ -241,6 +241,7 @@ class LVM(executor.Executor):
 
         :param root_helper: root_helper to use for execute
         :param vg_name: optional, gathers info for only the specified VG
+        :param lv_name: optional, gathers info for only the specified LV
         :returns: List of Dictionaries with LV info
 
         """
@@ -254,12 +255,22 @@ class LVM(executor.Executor):
             cmd.append(vg_name)
 
         lvs_start = time.time()
-        (out, _err) = putils.execute(*cmd,
-                                     root_helper=root_helper,
-                                     run_as_root=True)
+        try:
+            (out, _err) = putils.execute(*cmd,
+                                         root_helper=root_helper,
+                                         run_as_root=True)
+        except putils.ProcessExecutionError as err:
+            with excutils.save_and_reraise_exception(reraise=True) as ctx:
+                if "not found" in err.stderr:
+                    ctx.reraise = False
+                    msg = _LI("'Not found' when querying LVM info. "
+                              "(vg_name=%(vg)s, lv_name=%(lv)s")
+                    LOG.info(msg, {'vg': vg_name, 'lv': lv_name})
+                    out = None
+
         total_time = time.time() - lvs_start
         if total_time > 60:
-            LOG.warning(_LW('Took %s seconds to get logical volumes.'),
+            LOG.warning(_LW('Took %s seconds to get logical volume info.'),
                         total_time)
 
         lv_list = []
@@ -287,21 +298,10 @@ class LVM(executor.Executor):
         :returns: dict representation of Logical Volume if exists
 
         """
-        try:
-            ref_list = self.get_volumes(name)
-            for r in ref_list:
-                if r['name'] == name:
-                    return r
-        except putils.ProcessExecutionError as err:
-            # NOTE(joachim): Catch the "notfound" case from the stderr
-            # in order to let the other errors through.
-            with excutils.save_and_reraise_exception(reraise=True) as ctx:
-                if "not found" in err.stderr:
-                    ctx.reraise = False
-                    LOG.warning(
-                        _LW("Caught exception for lvs 'LV not found': %s")
-                        % (name)
-                    )
+        ref_list = self.get_volumes(name)
+        for r in ref_list:
+            if r['name'] == name:
+                return r
         return None
 
     @staticmethod
