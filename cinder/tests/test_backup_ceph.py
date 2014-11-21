@@ -21,6 +21,7 @@ import tempfile
 import uuid
 
 import mock
+from oslo.concurrency import processutils
 from oslo.serialization import jsonutils
 import six
 
@@ -31,7 +32,6 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import test
 from cinder.volume.drivers import rbd as rbddriver
 

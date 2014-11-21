@@ -27,6 +27,7 @@ add_connection and delete_connection interfaces.
 :zone_name_prefix: Used by: class: 'FCZoneDriver'. Defaults to 'openstack'
 """
 
+from oslo.concurrency import lockutils
 from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import importutils
@@ -34,7 +35,6 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.zonemanager.drivers.cisco import cisco_fabric_opts as fabric_opts
 from cinder.zonemanager.drivers.fc_zone_driver import FCZoneDriver

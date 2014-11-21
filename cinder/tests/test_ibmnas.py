@@ -180,7 +180,7 @@ class IBMNASDriverTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_ssh_operation')
-    @mock.patch('cinder.openstack.common.processutils.execute')
+    @mock.patch('oslo.concurrency.processutils.execute')
     def test_create_ibmnas_snap_mount_point_provided(self, mock_ssh,
                                                      mock_execute):
         """Create ibmnas snap if mount point is provided."""
@@ -195,7 +195,7 @@ class IBMNASDriverTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_ssh_operation')
-    @mock.patch('cinder.openstack.common.processutils.execute')
+    @mock.patch('oslo.concurrency.processutils.execute')
     def test_create_ibmnas_snap_nas_gpfs(self, mock_execute, mock_ssh):
         """Create ibmnas snap if mount point is provided."""
 
@@ -300,7 +300,7 @@ class IBMNASDriverTestCase(test.TestCase):
                           self.TEST_EXTEND_SIZE_IN_GB)
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver._run_ssh')
-    @mock.patch('cinder.openstack.common.processutils.execute')
+    @mock.patch('oslo.concurrency.processutils.execute')
     def test_delete_snapfiles(self, mock_execute, mock_ssh):
         """Delete_snapfiles test case."""
 
@@ -316,7 +316,7 @@ class IBMNASDriverTestCase(test.TestCase):
                               self.TEST_MNT_POINT)
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver._run_ssh')
-    @mock.patch('cinder.openstack.common.processutils.execute')
+    @mock.patch('oslo.concurrency.processutils.execute')
     def test_delete_snapfiles_nas_gpfs(self, mock_execute, mock_ssh):
         """Delete_snapfiles for gpfs-nas platform test case."""
 
@@ -397,7 +397,7 @@ class IBMNASDriverTestCase(test.TestCase):
                 '_get_provider_location')
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_get_mount_point_for_share')
-    @mock.patch('cinder.openstack.common.processutils.execute')
+    @mock.patch('oslo.concurrency.processutils.execute')
     def test_delete_snapshot(self, mock_execute, mock_mount, mock_provider):
         """Delete snapshot simple test case."""
 

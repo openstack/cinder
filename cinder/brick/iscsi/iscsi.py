@@ -23,6 +23,7 @@ import re
 import stat
 import time
 
+from oslo.concurrency import processutils as putils
 from oslo.config import cfg
 import six
 
@@ -31,7 +32,6 @@ from cinder.brick import executor
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
 from cinder import utils
 
 LOG = logging.getLogger(__name__)

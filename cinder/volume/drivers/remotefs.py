@@ -20,6 +20,7 @@ import os
 import re
 import tempfile
 
+from oslo.concurrency import processutils as putils
 from oslo.config import cfg
 from oslo.utils import units
 
@@ -27,7 +28,6 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
 from cinder.volume import driver
 
 LOG = logging.getLogger(__name__)

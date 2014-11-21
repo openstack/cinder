@@ -18,7 +18,7 @@
    and root_helper settings, so this provides that hook.
 """
 
-from cinder.openstack.common import processutils as putils
+from oslo.concurrency import processutils as putils
 
 
 class Executor(object):

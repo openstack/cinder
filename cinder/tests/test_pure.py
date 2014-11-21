@@ -17,10 +17,10 @@ import json
 import urllib2
 
 import mock
+from oslo.concurrency import processutils
 from oslo.utils import units
 
 from cinder import exception
-from cinder.openstack.common import processutils
 from cinder import test
 from cinder.volume.drivers import pure
 

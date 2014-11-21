@@ -21,12 +21,12 @@ operations on the SAN.
 """
 
 from lxml import etree
+from oslo.concurrency import processutils
 from oslo.utils import units
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder.volume.drivers.san.san import SanISCSIDriver
 
 

@@ -24,6 +24,7 @@ import re
 import urllib2
 import uuid
 
+from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import units
@@ -31,7 +32,6 @@ from oslo.utils import units
 from cinder import exception
 from cinder.i18n import _LE, _LI, _LW
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import utils
 from cinder.volume.drivers.san import san
 

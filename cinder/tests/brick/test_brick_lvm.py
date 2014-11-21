@@ -14,11 +14,11 @@
 #    under the License.
 
 import mox
+from oslo.concurrency import processutils
 
 from cinder.brick import exception
 from cinder.brick.local_dev import lvm as brick
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import test
 from cinder.volume import configuration as conf
 

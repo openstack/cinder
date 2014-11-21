@@ -15,8 +15,8 @@
 import platform
 
 import mock
+from oslo.concurrency import processutils as putils
 
-from cinder.openstack.common import processutils as putils
 from cinder import test
 from cinder import version
 from cinder.volume.drivers.netapp import utils as na_utils

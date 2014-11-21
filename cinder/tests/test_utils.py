@@ -21,6 +21,7 @@ import tempfile
 import uuid
 
 import mock
+from oslo.concurrency import processutils as putils
 from oslo.config import cfg
 from oslo.utils import timeutils
 import paramiko
@@ -30,7 +31,6 @@ import cinder
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import linuxfc
 from cinder import exception
-from cinder.openstack.common import processutils as putils
 from cinder import ssh_utils
 from cinder import test
 from cinder import utils

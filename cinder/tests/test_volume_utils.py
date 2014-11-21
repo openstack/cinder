@@ -19,6 +19,7 @@ import os
 import re
 
 import mock
+from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.utils import importutils
 
@@ -26,7 +27,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import test
 from cinder.tests import fake_notifier
 from cinder import utils

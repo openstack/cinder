@@ -16,12 +16,12 @@
 import time
 
 import mox
+from oslo.concurrency import processutils
 import paramiko
 
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import eqlx

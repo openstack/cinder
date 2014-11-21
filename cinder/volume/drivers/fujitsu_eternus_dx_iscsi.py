@@ -17,12 +17,12 @@
 ISCSI Drivers for ETERNUS DX arrays based on SMI-S.
 
 """
+from oslo.concurrency import lockutils
 import six
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers import fujitsu_eternus_dx_common

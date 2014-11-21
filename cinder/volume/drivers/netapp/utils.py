@@ -28,6 +28,7 @@ import platform
 import socket
 import uuid
 
+from oslo.concurrency import processutils as putils
 from oslo.utils import timeutils
 import six
 
@@ -35,7 +36,6 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
 from cinder import utils
 from cinder import version
 from cinder.volume.drivers.netapp.api import NaApiError

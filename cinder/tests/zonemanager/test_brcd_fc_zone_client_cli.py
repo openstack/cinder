@@ -21,10 +21,10 @@
 
 import mock
 from mock import patch
+from oslo.concurrency import processutils
 
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import test
 from cinder.zonemanager.drivers.brocade.brcd_fc_zone_client_cli \
     import BrcdFCZoneClientCLI
