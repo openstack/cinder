@@ -18,6 +18,7 @@ import datetime
 
 from lxml import etree
 from oslo.config import cfg
+import six
 import six.moves.urllib.parse as urlparse
 import webob
 
@@ -1382,9 +1383,11 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.delete,
-                          req, 1)
+        exp = self.assertRaises(webob.exc.HTTPBadRequest,
+                                self.controller.delete,
+                                req, 1)
+        expect_msg = "Volume cannot be deleted while in attached state"
+        self.assertEqual(expect_msg, six.text_type(exp))
 
     def test_volume_delete_no_volume(self):
         self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
