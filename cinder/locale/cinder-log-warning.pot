@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 2015.1.dev158.g8414a9e\n"
+"Project-Id-Version: cinder 2015.1.dev215.gc16ca64\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-11-11 06:09+0000\n"
+"POT-Creation-Date: 2014-11-20 06:09+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,13 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
+
+#: cinder/api/openstack/__init__.py:114
+#, python-format
+msgid ""
+"Extension %(ext_name)s: Cannot extend resource %(collection)s: No such "
+"resource"
+msgstr ""
 
 #: cinder/backup/api.py:142
 #, python-format
@@ -54,9 +61,37 @@ msgstr ""
 msgid "swift error while deleting object %s, continuing with delete"
 msgstr ""
 
-#: cinder/brick/local_dev/lvm.py:302
+#: cinder/brick/iscsi/iscsi.py:148
+msgid "Attempting recreate of backing lun..."
+msgstr ""
+
+#: cinder/brick/iscsi/iscsi.py:246
+#, python-format
+msgid "Failed to create iscsi target for volume id:%(vol_id)s: %(e)s"
+msgstr ""
+
+#: cinder/brick/iscsi/iscsi.py:290
+#, python-format
+msgid "Volume path %s does not exist, nothing to remove."
+msgstr ""
+
+#: cinder/brick/iscsi/iscsi.py:326
+msgid "Silent failure of target removal detected, retry...."
+msgstr ""
+
+#: cinder/brick/local_dev/lvm.py:261
+#, python-format
+msgid "Took %s seconds to get logical volumes."
+msgstr ""
+
+#: cinder/brick/local_dev/lvm.py:301
 #, python-format
 msgid "Caught exception for lvs 'LV not found': %s"
+msgstr ""
+
+#: cinder/brick/local_dev/lvm.py:370
+#, python-format
+msgid "Took %s seconds to get volume groups."
 msgstr ""
 
 #: cinder/openstack/common/loopingcall.py:87
@@ -79,5 +114,281 @@ msgstr ""
 #: cinder/openstack/common/service.py:364
 #, python-format
 msgid "pid %d not in child list"
+msgstr ""
+
+#: cinder/volume/drivers/eqlx.py:381
+#, python-format
+msgid "Volume %s was not found while trying to delete it."
+msgstr ""
+
+#: cinder/volume/drivers/eqlx.py:495
+#, python-format
+msgid "Volume %s is not found!, it may have been deleted."
+msgstr ""
+
+#: cinder/volume/drivers/pure.py:194
+#, python-format
+msgid ""
+"iSCSI discovery of port %(port_name)s at %(port_portal)s failed with "
+"error: %(err_msg)s"
+msgstr ""
+
+#: cinder/volume/drivers/remotefs.py:213
+#, python-format
+msgid "Volume %s does not have provider_location specified, skipping"
+msgstr ""
+
+#: cinder/volume/drivers/remotefs.py:291
+#, python-format
+msgid "%(path)s is being set with open permissions: %(perm)s"
+msgstr ""
+
+#: cinder/volume/drivers/remotefs.py:380
+#, python-format
+msgid "Share %s ignored due to invalid format. Must be of form address:/export."
+msgstr ""
+
+#: cinder/volume/drivers/remotefs.py:441
+#, python-format
+msgid "%s is already mounted"
+msgstr ""
+
+#: cinder/volume/drivers/remotefs.py:474
+#, python-format
+msgid ""
+"The NAS file operations will be run as root: allowing root level access "
+"at the storage backend. This is considered an insecure NAS environment. "
+"Please see %s for information on a secure NAS configuration."
+msgstr ""
+
+#: cinder/volume/drivers/remotefs.py:481
+#, python-format
+msgid ""
+"The NAS file permissions mode will be 666 (allowing other/world read & "
+"write access). This is considered an insecure NAS environment. Please see"
+" %s for information on a secure NFS configuration."
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_common.py:717
+msgid ""
+"The VMAX plugin only supports Retype.  If a pool based migration is "
+"necessary this will happen on a Retype From the command line: cinder "
+"--os-volume-api-version 2 retype <volumeId> <volumeType> --migration-"
+"policy on-demand"
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_common.py:751
+#, python-format
+msgid ""
+"Failed to migrate: %(volumeName)s from default source storage group for "
+"FAST policy: %(sourceFastPolicyName)s Attempting cleanup... "
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_common.py:777
+#, python-format
+msgid ""
+"Attempting a rollback of: %(volumeName)s to original pool "
+"%(sourcePoolInstanceName)s "
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_common.py:808
+#, python-format
+msgid "_migrate_rollback on : %(volumeName)s from "
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_common.py:846
+#, python-format
+msgid "_migrate_cleanup on : %(volumeName)s from "
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2086
+#, python-format
+msgid ""
+"Pre check for deletion Volume: %(volumeName)s is part of a storage group "
+"Attempting removal from %(storageGroupInstanceName)s "
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:185
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:693
+#, python-format
+msgid "Volume: %(volumeName)s is already part of storage group %(sgGroupName)s "
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:256
+#, python-format
+msgid ""
+"The volume is already part of storage group: "
+"%(storageGroupInstanceName)s. "
+msgstr ""
+
+#: cinder/volume/drivers/netapp/iscsi.py:1234
+#, python-format
+msgid "Could not determine root volume name on %s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/iscsi.py:1313
+#, python-format
+msgid "Error finding luns for volume %s. Verify volume exists."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/iscsi.py:1573
+msgid "Volume refresh job already running. Returning..."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/iscsi.py:1580
+#, python-format
+msgid "Error refreshing volume info. Message: %s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/nfs.py:251
+#, python-format
+msgid ""
+"Exception while registering image %(image_id)s in cache. Exception: "
+"%(exc)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/nfs.py:319
+#, python-format
+msgid "Exception during cache cleaning %(share)s. Message - %(ex)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/nfs.py:377
+#, python-format
+msgid "Exception during deleting %s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/nfs.py:439
+#, python-format
+msgid "Unexpected exception during image cloning in share %s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/nfs.py:529
+msgid "Discover file retries exhausted."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/nfs.py:587
+msgid "Unexpected exception while short listing used share."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/nfs.py:649
+#, python-format
+msgid "Destination %s already exists."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/nfs.py:658
+#, python-format
+msgid "Exception moving file %(src)s. Message - %(e)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/nfs.py:781
+msgid "No vserver set in config. SSC will be disabled."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/nfs.py:1050
+msgid "No shares found hence skipping ssc refresh."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/iscsi.py:432
+msgid "Snapshot volume not found."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/iscsi.py:473
+#, python-format
+msgid "Failure deleting job %s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/iscsi.py:476
+#, python-format
+msgid "Volume copy job for src vol %s not found."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/iscsi.py:490
+#, python-format
+msgid "Failure deleting temp snapshot %s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/iscsi.py:534
+#, python-format
+msgid "Snapshot %s already deleted."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/iscsi.py:656
+#, python-format
+msgid "Message - %s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/iscsi.py:810
+msgid "Returning as clean tmp vol job already running."
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/iscsi.py:181
+#, python-format
+msgid "Cannot delete snapshot %(origin)s: %(exc)s"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/iscsi.py:207
+#: cinder/volume/drivers/nexenta/nfs.py:207
+#, python-format
+msgid "Failed to delete zfs snapshot %(volume_name)s@%(name)s"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/iscsi.py:269
+#, python-format
+msgid "Remote NexentaStor appliance at %s should be SSH-bound."
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/iscsi.py:289
+#, python-format
+msgid ""
+"Cannot send source snapshot %(src)s to destination %(dst)s. Reason: "
+"%(exc)s"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/iscsi.py:297
+#, python-format
+msgid ""
+"Cannot delete temporary source snapshot %(src)s on NexentaStor Appliance:"
+" %(exc)s"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/iscsi.py:303
+#, python-format
+msgid "Cannot delete source volume %(volume)s on NexentaStor Appliance: %(exc)s"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/iscsi.py:313
+#, python-format
+msgid ""
+"Cannot delete temporary destination snapshot %(dst)s on NexentaStor "
+"Appliance: %(exc)s"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/iscsi.py:552
+#, python-format
+msgid ""
+"Got error trying to destroy target group %(target_group)s, assuming it is"
+" already gone: %(exc)s"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/iscsi.py:560
+#, python-format
+msgid ""
+"Got error trying to delete target %(target)s, assuming it is already "
+"gone: %(exc)s"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/nfs.py:148
+#, python-format
+msgid "Cannot destroy created folder: %(vol)s/%(folder)s"
+msgstr ""
+
+#: cinder/volume/drivers/nexenta/nfs.py:178
+#, python-format
+msgid "Cannot destroy cloned folder: %(vol)s/%(folder)s"
+msgstr ""
+
+#: cinder/volume/drivers/vmware/datastore.py:217
+#, python-format
+msgid "Unable to fetch datastores connected to host %s."
 msgstr ""
 
