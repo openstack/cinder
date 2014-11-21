@@ -874,6 +874,13 @@
 # (string value)
 #policy_default_rule=default
 
+# Directories where policy configuration files are stored.
+# They can be relative to any directory in the search path
+# defined by the config_dir option, or absolute paths. The
+# file defined by policy_file must exist for these directories
+# to be searched. (multi valued)
+#policy_dirs=policy.d
+
 
 #
 # Options defined in cinder.scheduler.driver
