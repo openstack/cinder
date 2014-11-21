@@ -1058,7 +1058,6 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         orig_elevated = self.context.elevated
 
-        ctxt_deepcopy = self.context.deepcopy()
         gthreads = []
 
         def mock_elevated(*args, **kwargs):
@@ -1067,7 +1066,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
             # we expect this to block and then fail
             t = eventlet.spawn(self.volume.create_volume,
-                               ctxt_deepcopy,
+                               self.context,
                                volume_id=dst_vol_id, source_volid=src_vol_id)
             gthreads.append(t)
 
@@ -1107,7 +1106,6 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         orig_elevated = self.context.elevated
 
-        ctxt_deepcopy = self.context.deepcopy()
         gthreads = []
 
         def mock_elevated(*args, **kwargs):
@@ -1115,7 +1113,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.stubs.Set(self.context, 'elevated', orig_elevated)
 
             # We expect this to block and then fail
-            t = eventlet.spawn(self.volume.create_volume, ctxt_deepcopy,
+            t = eventlet.spawn(self.volume.create_volume, self.context,
                                volume_id=dst_vol_id, snapshot_id=snap_id)
             gthreads.append(t)
 
@@ -2585,26 +2583,6 @@ class VolumeTestCase(BaseVolumeTestCase):
             volumes_reserved = 0
 
         self.assertEqual(volumes_reserved, 100)
-
-    def test_create_volume_from_unelevated_context(self):
-        """Test context does't change after volume creation failure."""
-        def fake_create_volume(*args, **kwargs):
-            raise exception.CinderException('fake exception')
-
-        # create context for testing
-        ctxt = self.context.deepcopy()
-        if 'admin' in ctxt.roles:
-            ctxt.roles.remove('admin')
-            ctxt.is_admin = False
-        # create one copy of context for future comparison
-        self.saved_ctxt = ctxt.deepcopy()
-
-        self.stubs.Set(self.volume.driver, 'create_volume', fake_create_volume)
-
-        volume_src = tests_utils.create_volume(self.context,
-                                               **self.volume_params)
-        self.assertRaises(exception.CinderException,
-                          self.volume.create_volume, ctxt, volume_src['id'])
 
     @mock.patch(
         'cinder.volume.driver.VolumeDriver.create_replica_test_volume')

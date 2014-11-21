@@ -347,8 +347,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                       source_replicaid=None, consistencygroup_id=None):
 
         """Creates the volume."""
-        context_saved = context.deepcopy()
-        context = context.elevated()
+        context_elevated = context.elevated()
         if filter_properties is None:
             filter_properties = {}
 
@@ -356,7 +355,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             # NOTE(flaper87): Driver initialization is
             # verified by the task itself.
             flow_engine = create_volume.get_flow(
-                context,
+                context_elevated,
                 self.db,
                 self.driver,
                 self.scheduler_rpcapi,
@@ -368,7 +367,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 source_replicaid=source_replicaid,
                 consistencygroup_id=consistencygroup_id,
                 allow_reschedule=allow_reschedule,
-                reschedule_context=context_saved,
+                reschedule_context=context,
                 request_spec=request_spec,
                 filter_properties=filter_properties)
         except Exception:
