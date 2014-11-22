@@ -130,9 +130,15 @@ class PureISCSIDriver(san.SanISCSIDriver):
             self._array.extend_volume(vol_name, vol_size)
 
     def delete_volume(self, volume):
-        """Deletes a volume."""
+        """Disconnect all hosts and delete the volume"""
         LOG.debug("Enter PureISCSIDriver.delete_volume.")
         vol_name = _get_vol_name(volume)
+
+        connected_hosts = self._array.list_volume_hosts(vol_name)
+        for host_info in connected_hosts:
+            host_name = host_info["host"]
+            self._disconnect_host(host_name, vol_name)
+
         try:
             self._array.destroy_volume(vol_name)
         except exception.PureAPIException as err:
@@ -252,26 +258,30 @@ class PureISCSIDriver(san.SanISCSIDriver):
         host = self._get_host(connector)
         if host:
             host_name = host["name"]
-            try:
-                self._array.disconnect_host(host_name, vol_name)
-            except exception.PureAPIException as err:
-                with excutils.save_and_reraise_exception() as ctxt:
-                    if err.kwargs["code"] == 400:
-                        # Happens if the host and volume are not connected.
-                        ctxt.reraise = False
-                        LOG.error(_LE("Disconnection failed "
-                                      "with message: {msg}."
-                                      ).format(msg=err.msg))
-            if (GENERATED_NAME.match(host_name) and not host["hgroup"] and
-                not self._array.list_host_connections(host_name,
-                                                      private=True)):
-                LOG.info(_LI("Deleting unneeded host %(host_name)r.") %
-                         {"host_name": host_name})
-                self._array.delete_host(host_name)
+            self._disconnect_host(host_name, vol_name)
         else:
             LOG.error(_LE("Unable to find host object in Purity with IQN: "
                           "{iqn}.").format(iqn=connector["initiator"]))
         LOG.debug("Leave PureISCSIDriver.terminate_connection.")
+
+    def _disconnect_host(self, host_name, vol_name):
+        LOG.debug("Enter PureISCSIDriver._disconnect_host.")
+        try:
+            self._array.disconnect_host(host_name, vol_name)
+        except exception.PureAPIException as err:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if err.kwargs["code"] == 400:
+                    # Happens if the host and volume are not connected.
+                    ctxt.reraise = False
+                    LOG.error(_LE("Disconnection failed with message: "
+                                  "%(msg)s.") % {"msg": err.msg})
+        if (GENERATED_NAME.match(host_name) and
+            not self._array.list_host_connections(host_name,
+                                                  private=True)):
+            LOG.info(_LI("Deleting unneeded host %(host_name)r.") %
+                     {"host_name": host_name})
+            self._array.delete_host(host_name)
+        LOG.debug("Leave PureISCSIDriver._disconnect_host.")
 
     def get_volume_stats(self, refresh=False):
         """Return the current state of the volume service.
@@ -448,3 +458,7 @@ class FlashArray(object):
     def list_ports(self, **kwargs):
         """Return a list of dictionaries describing ports."""
         return self._http_request("GET", "port", kwargs)
+
+    def list_volume_hosts(self, volume):
+        """Return a list of dictionaries describing connected hosts."""
+        return self._http_request("GET", "volume/%s/host" % volume)
