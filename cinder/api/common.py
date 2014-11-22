@@ -16,6 +16,7 @@
 
 import os
 import re
+import urllib
 
 from oslo.config import cfg
 import six.moves.urllib.parse as urlparse
@@ -197,16 +198,6 @@ def remove_version_from_href(href):
     return urlparse.urlunsplit(parsed_url)
 
 
-def dict_to_query_str(params):
-    # TODO(throughnothing): we should just use urllib.urlencode instead of this
-    # But currently we don't work with urlencoded url's
-    param_str = ""
-    for key, val in params.iteritems():
-        param_str = param_str + '='.join([str(key), str(val)]) + '&'
-
-    return param_str.rstrip('&')
-
-
 class ViewBuilder(object):
     """Model API responses as dictionaries."""
 
@@ -227,7 +218,7 @@ class ViewBuilder(object):
         url = os.path.join(prefix,
                            request.environ["cinder.context"].project_id,
                            collection_name)
-        return "%s?%s" % (url, dict_to_query_str(params))
+        return "%s?%s" % (url, urllib.urlencode(params))
 
     def _get_href_link(self, request, identifier):
         """Return an href string pointing to this object."""
