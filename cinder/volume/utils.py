@@ -411,7 +411,7 @@ DEFAULT_PASSWORD_SYMBOLS = ('23456789',  # Removed: 0,1
                             'abcdefghijkmnopqrstuvwxyz')  # Removed: l
 
 
-def generate_password(length=20, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
+def generate_password(length=16, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
     """Generate a random password from the supplied symbol groups.
 
     At least one symbol from each group will be included. Unpredictable
