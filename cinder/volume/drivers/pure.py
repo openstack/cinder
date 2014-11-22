@@ -146,8 +146,8 @@ class PureISCSIDriver(san.SanISCSIDriver):
                 if err.kwargs["code"] == 400:
                     # Happens if the volume does not exist.
                     ctxt.reraise = False
-                    LOG.error(_LE("Volume deletion failed with message: {0}"
-                                  ).format(err.msg))
+                    LOG.error(_LE("Volume deletion failed with message: %s") %
+                              err.msg)
         LOG.debug("Leave PureISCSIDriver.delete_volume.")
 
     def create_snapshot(self, snapshot):
@@ -168,8 +168,8 @@ class PureISCSIDriver(san.SanISCSIDriver):
                 if err.kwargs["code"] == 400:
                     # Happens if the snapshot does not exist.
                     ctxt.reraise = False
-                    LOG.error(_LE("Snapshot deletion failed with message: {0}"
-                                  ).format(err.msg))
+                    LOG.error(_LE("Snapshot deletion failed with message:"
+                                  " %s") % err.msg)
         LOG.debug("Leave PureISCSIDriver.delete_snapshot.")
 
     def initialize_connection(self, volume, connector):
@@ -197,9 +197,11 @@ class PureISCSIDriver(san.SanISCSIDriver):
             self._run_iscsiadm_bare(["-m", "discovery", "-t", "sendtargets",
                                      "-p", self._iscsi_port["portal"]])
         except processutils.ProcessExecutionError as err:
-            LOG.warn(_LW("iSCSI discovery of port {0[name]} at {0[portal]} "
-                         "failed with error: {1}").format(self._iscsi_port,
-                                                          err.stderr))
+            LOG.warn(_LW("iSCSI discovery of port %(port_name)s at "
+                         "%(port_portal)s failed with error: %(err_msg)s") %
+                     {"port_name": self._iscsi_port["name"],
+                      "port_portal": self._iscsi_port["portal"],
+                      "err_msg": err.stderr})
             self._iscsi_port = self._choose_target_iscsi_port()
         return self._iscsi_port
 
@@ -261,7 +263,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
             self._disconnect_host(host_name, vol_name)
         else:
             LOG.error(_LE("Unable to find host object in Purity with IQN: "
-                          "{iqn}.").format(iqn=connector["initiator"]))
+                          "%(iqn)s.") % {"iqn": connector["initiator"]})
         LOG.debug("Leave PureISCSIDriver.terminate_connection.")
 
     def _disconnect_host(self, host_name, vol_name):
