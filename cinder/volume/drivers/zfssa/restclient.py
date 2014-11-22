@@ -21,7 +21,7 @@ import StringIO
 import time
 import urllib2
 
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log
 
 LOG = log.getLogger(__name__)
@@ -279,21 +279,21 @@ class RestClientURL(object):
                 if err.code == httplib.NOT_FOUND:
                     LOG.debug('REST Not Found: %s' % err.code)
                 else:
-                    LOG.error(_('REST Not Available: %s') % err.code)
+                    LOG.error(_LE('REST Not Available: %s') % err.code)
 
                 if err.code == httplib.SERVICE_UNAVAILABLE and \
                    retry < maxreqretries:
                     retry += 1
                     time.sleep(1)
-                    LOG.error(_('Server Busy retry request: %s') % retry)
+                    LOG.error(_LE('Server Busy retry request: %s') % retry)
                     continue
                 if (err.code == httplib.UNAUTHORIZED or
                     err.code == httplib.INTERNAL_SERVER_ERROR) and \
                    '/access/v1' not in zfssaurl:
                     try:
-                        LOG.error(_('Authorizing request: '
-                                    '%(zfssaurl)s'
-                                    'retry: %(retry)d .')
+                        LOG.error(_LE('Authorizing request: '
+                                      '%(zfssaurl)s'
+                                      'retry: %(retry)d .')
                                   % {'zfssaurl': zfssaurl,
                                      'retry': retry})
                         self._authorize()
@@ -308,7 +308,7 @@ class RestClientURL(object):
                 return RestResult(err=err)
 
             except urllib2.URLError as err:
-                LOG.error(_('URLError: %s') % err.reason)
+                LOG.error(_LE('URLError: %s') % err.reason)
                 raise RestClientError(-1, name="ERR_URLError",
                                       message=err.reason)
 

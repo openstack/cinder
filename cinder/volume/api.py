@@ -32,7 +32,7 @@ from cinder import context
 from cinder.db import base
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.image import glance
 from cinder import keymgr
 from cinder.openstack.common import log as logging
@@ -237,7 +237,7 @@ class API(base.Base):
                                                  availability_zones,
                                                  create_what)
         except Exception:
-            LOG.exception(_("Failed to create api volume flow"))
+            LOG.exception(_LE("Failed to create api volume flow"))
             raise exception.CinderException(
                 _("Failed to create api volume flow"))
 
@@ -271,7 +271,8 @@ class API(base.Base):
                                               **reserve_opts)
             except Exception:
                 reservations = None
-                LOG.exception(_("Failed to update quota for deleting volume"))
+                LOG.exception(_LE("Failed to update quota for "
+                                  "deleting volume"))
             self.db.volume_destroy(context.elevated(), volume_id)
 
             if reservations:

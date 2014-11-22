@@ -25,7 +25,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.ibm.storwize_svc import ssh as storwize_ssh
@@ -471,8 +471,8 @@ class StorwizeHelpers(object):
                 key = 'protocol'
                 words = value.split()
                 if not (words and len(words) == 2 and words[0] == '<in>'):
-                    LOG.error(_('Protocol must be specified as '
-                                '\'<in> iSCSI\' or \'<in> FC\'.'))
+                    LOG.error(_LE('Protocol must be specified as '
+                                  '\'<in> iSCSI\' or \'<in> FC\'.'))
                 del words[0]
                 value = words[0]
 
@@ -486,8 +486,8 @@ class StorwizeHelpers(object):
                 key = 'replication'
                 words = value.split()
                 if not (words and len(words) == 2 and words[0] == '<is>'):
-                    LOG.error(_('Replication must be specified as '
-                                '\'<is> True\' or \'<is> False\'.'))
+                    LOG.error(_LE('Replication must be specified as '
+                                  '\'<is> True\' or \'<is> False\'.'))
                 del words[0]
                 value = words[0]
 

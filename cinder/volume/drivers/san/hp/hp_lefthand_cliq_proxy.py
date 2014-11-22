@@ -25,7 +25,7 @@ from oslo.concurrency import processutils
 from oslo.utils import units
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san.san import SanISCSIDriver
 
@@ -317,7 +317,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         try:
             self._cliq_get_volume_info(volume['name'])
         except processutils.ProcessExecutionError:
-            LOG.error(_("Volume did not exist. It will not be deleted"))
+            LOG.error(_LE("Volume did not exist. It will not be deleted"))
             return
         self._cliq_run_xml("deleteVolume", cliq_args)
 
@@ -329,7 +329,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         try:
             self._cliq_get_snapshot_info(snapshot['name'])
         except processutils.ProcessExecutionError:
-            LOG.error(_("Snapshot did not exist. It will not be deleted"))
+            LOG.error(_LE("Snapshot did not exist. It will not be deleted"))
             return
         try:
             self._cliq_run_xml("deleteSnapshot", cliq_args)

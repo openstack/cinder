@@ -36,7 +36,7 @@ except ImportError:
     hpexceptions = None
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder import utils
 import cinder.volume.driver
@@ -511,7 +511,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             vol_name = self.common._get_3par_vol_name(volume['id'])
             self.common.client.getVolume(vol_name)
         except hpexceptions.HTTPNotFound:
-            LOG.error(_("Volume %s doesn't exist on array.") % vol_name)
+            LOG.error(_LE("Volume %s doesn't exist on array.") % vol_name)
         else:
             metadata = self.common.client.getAllVolumeMetaData(vol_name)
 

@@ -20,7 +20,7 @@ from oslo.utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder.volume.driver import ISCSIDriver
 from cinder.volume import utils
@@ -185,7 +185,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             volume_info = self.client.getVolumeByName(volume['name'])
             self.client.deleteVolume(volume_info['id'])
         except hpexceptions.HTTPNotFound:
-            LOG.error(_("Volume did not exist. It will not be deleted"))
+            LOG.error(_LE("Volume did not exist. It will not be deleted"))
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
 
@@ -218,7 +218,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             snap_info = self.client.getSnapshotByName(snapshot['name'])
             self.client.deleteSnapshot(snap_info['id'])
         except hpexceptions.HTTPNotFound:
-            LOG.error(_("Snapshot did not exist. It will not be deleted"))
+            LOG.error(_LE("Snapshot did not exist. It will not be deleted"))
         except hpexceptions.HTTPServerError as ex:
             in_use_msg = 'cannot be deleted because it is a clone point'
             if in_use_msg in ex.get_description():
@@ -357,8 +357,8 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                 client_value = value_map[value]
                 client_options[client_key] = client_value
             except KeyError:
-                LOG.error(_("'%(value)s' is an invalid value "
-                            "for extra spec '%(key)s'") %
+                LOG.error(_LE("'%(value)s' is an invalid value "
+                              "for extra spec '%(key)s'") %
                           {'value': value, 'key': key})
         return client_options
 

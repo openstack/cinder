@@ -43,7 +43,7 @@ from oslo.utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import utils
@@ -289,7 +289,7 @@ class StorwizeSVCDriver(san.SanDriver):
         """
         volume_defined = self._helpers.is_vdisk_defined(volume['name'])
         if not volume_defined:
-            LOG.error(_('ensure_export: Volume %s not found on storage')
+            LOG.error(_LE('ensure_export: Volume %s not found on storage')
                       % volume['name'])
 
     def create_export(self, ctxt, volume):
@@ -383,8 +383,8 @@ class StorwizeSVCDriver(san.SanDriver):
             preferred_node = volume_attributes['preferred_node_id']
             IO_group = volume_attributes['IO_group_id']
         except KeyError as e:
-            LOG.error(_('Did not find expected column name in '
-                        'lsvdisk: %s') % e)
+            LOG.error(_LE('Did not find expected column name in '
+                          'lsvdisk: %s') % e)
             msg = (_('initialize_connection: Missing volume '
                      'attribute for volume %s') % volume_name)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -482,10 +482,11 @@ class StorwizeSVCDriver(san.SanDriver):
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.terminate_connection(volume, connector)
-                LOG.error(_('initialize_connection: Failed to collect return '
-                            'properties for volume %(vol)s and connector '
-                            '%(conn)s.\n') % {'vol': volume,
-                                              'conn': connector})
+                LOG.error(_LE('initialize_connection: Failed '
+                              'to collect return '
+                              'properties for volume %(vol)s and connector '
+                              '%(conn)s.\n') % {'vol': volume,
+                                                'conn': connector})
 
         LOG.debug('leave: initialize_connection:\n volume: %(vol)s\n '
                   'connector %(conn)s\n properties: %(prop)s'

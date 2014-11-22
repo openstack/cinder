@@ -24,7 +24,7 @@ from oslo.config import cfg
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 from cinder import utils
 import cinder.volume.driver
@@ -186,7 +186,7 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
                                   % {'port': port, 'gid': gid})
                         break
             if gid is None:
-                LOG.error(_('Failed to add target(port: %s)') % port)
+                LOG.error(_LE('Failed to add target(port: %s)') % port)
                 continue
             try:
                 if added_hostgroup:

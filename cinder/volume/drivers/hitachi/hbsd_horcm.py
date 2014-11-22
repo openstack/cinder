@@ -26,7 +26,7 @@ from oslo.utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import utils
@@ -214,7 +214,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
             raise loopingcall.LoopingCallDone()
 
         if self.shutdown_horcm(inst):
-            LOG.error(_("Failed to shutdown horcm."))
+            LOG.error(_LE("Failed to shutdown horcm."))
             raise loopingcall.LoopingCallDone()
 
     @horcm_synchronized
@@ -275,14 +275,14 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         if time.time() - start >= EXEC_MAX_WAITTIME:
-            LOG.error(_("horcm command timeout."))
+            LOG.error(_LE("horcm command timeout."))
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         if (ret == EX_ENAUTH and
                 not re.search("-login %s %s" % (user, passwd), args)):
             _ret, _stdout, _stderr = self.comm_login()
             if _ret:
-                LOG.error(_("Failed to authenticate user."))
+                LOG.error(_LE("Failed to authenticate user."))
                 raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         elif ret in HORCM_ERROR:
@@ -291,11 +291,11 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
                 if self.check_horcm(inst) != HORCM_RUNNING:
                     _ret, _stdout, _stderr = self.start_horcm(inst)
             if _ret and _ret != HORCM_RUNNING:
-                LOG.error(_("Failed to start horcm."))
+                LOG.error(_LE("Failed to start horcm."))
                 raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         elif ret not in COMMAND_IO_TO_RAID:
-            LOG.error(_("Unexpected error occurs in horcm."))
+            LOG.error(_LE("Unexpected error occurs in horcm."))
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
     def exec_raidcom(self, cmd, args, printflag=True):

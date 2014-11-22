@@ -27,7 +27,7 @@ import six
 from cinder.db.sqlalchemy import api
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
@@ -718,7 +718,7 @@ class HBSDCommon(object):
             total_gb, free_gb = self.command.comm_get_dp_pool(
                 self.configuration.hitachi_pool_id)
         except Exception as ex:
-            LOG.error(_('Failed to update volume status: %s') %
+            LOG.error(_LE('Failed to update volume status: %s') %
                       six.text_type(ex))
             return None
 

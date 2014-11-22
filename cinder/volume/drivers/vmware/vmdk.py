@@ -32,7 +32,7 @@ from oslo.utils import excutils
 from oslo.utils import units
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
@@ -1887,7 +1887,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         if vc_version and vc_version >= self.PBM_ENABLED_VC_VERSION:
             self.pbm_wsdl = self._get_pbm_wsdl_location(vc_version)
             if not self.pbm_wsdl:
-                LOG.error(_("Not able to configure PBM for VC server: %s"),
+                LOG.error(_LE("Not able to configure PBM for VC server: %s"),
                           vc_version)
                 raise error_util.VMwareDriverException()
             self._storage_policy_enabled = True
