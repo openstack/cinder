@@ -236,4 +236,4 @@ class BackupMetadataAPITestCase(test.TestCase):
         with mock.patch.object(jsonutils, 'dumps') as mock_dumps:
             mock_dumps.side_effect = TypeError
             self.assertFalse(self.bak_meta_api._is_serializable(data))
-            mock_dumps.assert_called_once()
+            mock_dumps.assert_called_once_with(data)

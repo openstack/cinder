@@ -1858,7 +1858,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             mock_qemu_img_info.assert_called_once_with(volume_path)
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path)
-            mock_create_temporary_file.assert_once_called_with()
+            self.assertEqual(1, mock_create_temporary_file.call_count)
 
     def test_copy_volume_to_image_qcow2_image(self):
         """Upload a qcow2 image file which has to be converted to raw first."""
@@ -1903,7 +1903,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 volume_path, upload_path, 'raw')
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path)
-            mock_create_temporary_file.assert_once_called_with()
+            self.assertEqual(1, mock_create_temporary_file.call_count)
 
     def test_copy_volume_to_image_snapshot_exists(self):
         """Upload an active snapshot which has to be converted to raw first."""
@@ -1950,4 +1950,4 @@ class GlusterFsDriverTestCase(test.TestCase):
                 volume_path, upload_path, 'raw')
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path)
-            mock_create_temporary_file.assert_once_called_with()
+            self.assertEqual(1, mock_create_temporary_file.call_count)

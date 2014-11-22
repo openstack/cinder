@@ -60,7 +60,7 @@ class TestFCZoneManager(test.TestCase):
                 as add_connection_mock:
             self.zm.driver.get_san_context.return_value = fabric_map
             self.zm.add_connection(init_target_map)
-            self.zm.driver.get_san_context.assert_called_once(target_list)
+            self.zm.driver.get_san_context.assert_called_once_with(target_list)
             add_connection_mock.assert_called_once_with(fabric_name,
                                                         init_target_map)
 

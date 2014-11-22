@@ -302,7 +302,7 @@ class VHDUtilsTestCase(test.TestCase):
             open_access_mask=vhdutils.VIRTUAL_DISK_ACCESS_GET_INFO)
         self._vhdutils._get_vhd_info_member.assert_called_with(
             self._FAKE_FILE_HANDLE, fake_info_member)
-        self._vhdutils._close.assert_called_once()
+        self._vhdutils._close.assert_called_once_with(self._FAKE_FILE_HANDLE)
 
     def test_parse_vhd_info(self):
         fake_physical_size = self._FAKE_VHD_SIZE + 1
