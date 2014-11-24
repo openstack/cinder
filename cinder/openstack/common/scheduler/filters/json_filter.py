@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import operator
 
+from oslo.serialization import jsonutils
 import six
 
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common.scheduler import filters
 
 
@@ -104,7 +103,7 @@ class JsonFilter(filters.BaseHostFilter):
         if obj is None:
             return None
         for item in path[1:]:
-            obj = obj.get(item, None)
+            obj = obj.get(item)
             if obj is None:
                 return None
         return obj
