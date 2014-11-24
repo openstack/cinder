@@ -15,6 +15,7 @@
 import six
 
 from cinder import context
+from cinder.i18n import _LI
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vmax_common
@@ -182,7 +183,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         loc = volume['provider_location']
         name = eval(loc)
         storage_system = name['keybindings']['SystemName']
-        LOG.info("Start FC detach process for volume: %(volume)s"
+        LOG.info(_LI("Start FC detach process for volume: %(volume)s")
                  % {'volume': volume['name']})
 
         target_wwns, init_targ_map = self._build_initiator_target_map(
@@ -192,15 +193,15 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         portGroupInstanceName = self.common.get_port_group_from_masking_view(
             mvInstanceName)
 
-        LOG.info("Found port group: %(portGroup)s "
-                 "in masking view %(maskingView)s"
-                 % {'portGroup': portGroupInstanceName,
-                    'maskingView': mvInstanceName})
+        LOG.info(_LI("Found port group: %(portGroup)s "
+                     "in masking view %(maskingView)s"),
+                 {'portGroup': portGroupInstanceName,
+                  'maskingView': mvInstanceName})
 
         self.common.terminate_connection(volume, connector)
 
-        LOG.info("Looking for masking views still associated with"
-                 "Port Group %s" % portGroupInstanceName)
+        LOG.info(_LI("Looking for masking views still associated with"
+                     "Port Group %s"), portGroupInstanceName)
         mvInstances = self.common.get_masking_views_by_port_group(
             portGroupInstanceName)
         if len(mvInstances) > 0:

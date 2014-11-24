@@ -813,7 +813,7 @@ class EMCVMAXMasking(object):
                     " %(fastPolicyName)s. ")
                     % {'volumeName': volumeName,
                        'fastPolicyName': fastPolicyName})
-                LOG.warn("No storage group found. " + infoMessage)
+                LOG.warning(_LW("No storage group found. %s"), infoMessage)
                 assocDefaultStorageGroupName = (
                     self.fast
                     .add_volume_to_default_storage_group_for_fast_policy(
@@ -1410,10 +1410,10 @@ class EMCVMAXMasking(object):
             ResultClass='Symm_FCSCSIProtocolEndpoint')
         numberOfPorts = len(targetPortInstanceNames)
         if numberOfPorts <= 0:
-            LOG.warn("No target ports found in "
-                     "masking view %(maskingView)s"
-                     % {'numPorts': len(targetPortInstanceNames),
-                        'maskingView': mvInstanceName})
+            LOG.warning(_LW("No target ports found in "
+                            "masking view %(maskingView)s"),
+                        {'numPorts': len(targetPortInstanceNames),
+                         'maskingView': mvInstanceName})
         for targetPortInstanceName in targetPortInstanceNames:
             targetWwns.append(targetPortInstanceName['Name'])
         return targetWwns
@@ -1456,5 +1456,5 @@ class EMCVMAXMasking(object):
                          'mv': maskingViewInstanceName})
             return portGroupInstanceNames[0]
         else:
-            LOG.warn("No port group found in masking view %(mv)s"
-                     % {'mv': maskingViewInstanceName})
+            LOG.warning(_LW("No port group found in masking view %(mv)s"),
+                        {'mv': maskingViewInstanceName})
