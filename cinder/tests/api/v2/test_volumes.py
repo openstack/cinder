@@ -96,7 +96,7 @@ class VolumeApiTest(test.TestCase):
                          'availability_zone': 'zone1:host1',
                          'bootable': 'false',
                          'consistencygroup_id': None,
-                         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                          'description': 'Volume Test Desc',
                          'id': '1',
                          'links':
@@ -230,7 +230,7 @@ class VolumeApiTest(test.TestCase):
                          'availability_zone': 'nova',
                          'bootable': 'false',
                          'consistencygroup_id': None,
-                         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                          'description': 'Volume Test Desc',
                          'encrypted': False,
                          'id': '1',
@@ -320,7 +320,7 @@ class VolumeApiTest(test.TestCase):
                          'availability_zone': 'nova',
                          'bootable': 'false',
                          'consistencygroup_id': None,
-                         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                          'description': 'Volume Test Desc',
                          'encrypted': False,
                          'id': '1',
@@ -428,7 +428,7 @@ class VolumeApiTest(test.TestCase):
                 'source_volid': None,
                 'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
@@ -482,7 +482,7 @@ class VolumeApiTest(test.TestCase):
                 'source_volid': None,
                 'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
@@ -539,7 +539,7 @@ class VolumeApiTest(test.TestCase):
                 'source_volid': None,
                 'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
@@ -591,7 +591,7 @@ class VolumeApiTest(test.TestCase):
                          "readonly": "False",
                          "attached_mode": "rw"},
             'id': '1',
-            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1,
             'links': [
                 {
@@ -653,7 +653,7 @@ class VolumeApiTest(test.TestCase):
             'metadata': {'key': 'value',
                          'readonly': 'True'},
             'id': '1',
-            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1,
             'links': [
                 {
@@ -759,7 +759,7 @@ class VolumeApiTest(test.TestCase):
                     'source_volid': None,
                     'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
                     'id': '1',
-                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                     'size': 1,
                     'links': [
                         {
@@ -821,7 +821,7 @@ class VolumeApiTest(test.TestCase):
                     'source_volid': None,
                     'metadata': {'key': 'value', 'readonly': 'True'},
                     'id': '1',
-                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                     'size': 1,
                     'links': [
                         {
@@ -1222,7 +1222,7 @@ class VolumeApiTest(test.TestCase):
                 'source_volid': None,
                 'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
@@ -1265,7 +1265,7 @@ class VolumeApiTest(test.TestCase):
                 'source_volid': None,
                 'metadata': {'readonly': 'False'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
@@ -1333,7 +1333,7 @@ class VolumeApiTest(test.TestCase):
                 'metadata': {'key': 'value',
                              'readonly': 'True'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {

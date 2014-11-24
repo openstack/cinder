@@ -96,7 +96,7 @@ class VolumeApiTest(test.TestCase):
                                'source_volid': None,
                                'metadata': {},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': 100,
                                'encrypted': False}}
@@ -188,7 +188,7 @@ class VolumeApiTest(test.TestCase):
                                'source_volid': None,
                                'metadata': {},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': '1'}}
         body = {"volume": vol}
@@ -272,7 +272,7 @@ class VolumeApiTest(test.TestCase):
             'metadata': {'attached_mode': 'rw',
                          'readonly': 'False'},
             'id': '1',
-            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1}}
         self.assertEqual(res_dict, expected)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
@@ -309,7 +309,7 @@ class VolumeApiTest(test.TestCase):
                          "readonly": "False",
                          "attached_mode": "rw"},
             'id': '1',
-            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1
         }}
         self.assertEqual(res_dict, expected)
@@ -358,7 +358,7 @@ class VolumeApiTest(test.TestCase):
             'metadata': {'key': 'value',
                          'readonly': 'True'},
             'id': '1',
-            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1}}
         self.assertEqual(res_dict, expected)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
@@ -412,7 +412,7 @@ class VolumeApiTest(test.TestCase):
                                  'metadata': {'attached_mode': 'rw',
                                               'readonly': 'False'},
                                  'id': '1',
-                                 'created_at': datetime.datetime(1, 1, 1,
+                                 'created_at': datetime.datetime(1900, 1, 1,
                                                                  1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
@@ -452,7 +452,7 @@ class VolumeApiTest(test.TestCase):
                                  'metadata': {'key': 'value',
                                               'readonly': 'True'},
                                  'id': '1',
-                                 'created_at': datetime.datetime(1, 1, 1,
+                                 'created_at': datetime.datetime(1900, 1, 1,
                                                                  1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
@@ -481,7 +481,7 @@ class VolumeApiTest(test.TestCase):
                                  'metadata': {'attached_mode': 'rw',
                                               'readonly': 'False'},
                                  'id': '1',
-                                 'created_at': datetime.datetime(1, 1, 1,
+                                 'created_at': datetime.datetime(1900, 1, 1,
                                                                  1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
@@ -521,7 +521,7 @@ class VolumeApiTest(test.TestCase):
                                  'metadata': {'key': 'value',
                                               'readonly': 'True'},
                                  'id': '1',
-                                 'created_at': datetime.datetime(1, 1, 1,
+                                 'created_at': datetime.datetime(1900, 1, 1,
                                                                  1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
@@ -548,7 +548,7 @@ class VolumeApiTest(test.TestCase):
                                'metadata': {'attached_mode': 'rw',
                                             'readonly': 'False'},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
@@ -575,7 +575,7 @@ class VolumeApiTest(test.TestCase):
                                'source_volid': None,
                                'metadata': {'readonly': 'False'},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
@@ -606,7 +606,7 @@ class VolumeApiTest(test.TestCase):
                                'metadata': {'attached_mode': 'rw',
                                             'readonly': 'False'},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
@@ -683,7 +683,7 @@ class VolumeApiTest(test.TestCase):
                                'metadata': {'key': 'value',
                                             'readonly': 'True'},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
