@@ -170,7 +170,7 @@ class Deprecated(driver.VolumeDriver):
         link = "https://communities.netapp.com/groups/openstack"
         msg = _("The configured NetApp driver is deprecated."
                 " Please refer the link to resolve the issue '%s'.")
-        LOG.warn(msg % link)
+        LOG.warning(msg % link)
 
     def check_for_setup_error(self):
         pass

@@ -16,7 +16,6 @@
 Volume driver for NetApp NFS storage.
 """
 
-import copy
 import os
 import re
 from threading import Timer
@@ -34,9 +33,10 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import utils
-from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
 from cinder.volume.drivers.netapp.api import NaServer
+from cinder.volume.drivers.netapp.client import cmode
+from cinder.volume.drivers.netapp.client import seven_mode
 from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
 from cinder.volume.drivers.netapp.options import netapp_cluster_opts
 from cinder.volume.drivers.netapp.options import netapp_connection_opts
@@ -248,9 +248,9 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 volume['name'], file_name,
                 volume['provider_location'], file_name)
         except Exception as e:
-            LOG.warn(_LW('Exception while registering image %(image_id)s'
-                         ' in cache. Exception: %(exc)s')
-                     % {'image_id': image_id, 'exc': e.__str__()})
+            LOG.warning(_LW('Exception while registering image %(image_id)s'
+                            ' in cache. Exception: %(exc)s')
+                        % {'image_id': image_id, 'exc': e.__str__()})
 
     def _find_image_in_cache(self, image_id):
         """Finds image in cache and returns list of shares with file name."""
@@ -296,11 +296,11 @@ class NetAppNFSDriver(nfs.NfsDriver):
             LOG.debug('Image cache cleaning in progress.')
             thres_size_perc_start =\
                 self.configuration.thres_avl_size_perc_start
-            thres_size_perc_stop =\
+            thres_size_perc_stop = \
                 self.configuration.thres_avl_size_perc_stop
             for share in getattr(self, '_mounted_shares', []):
                 try:
-                    total_size, total_avl, _total_alc =\
+                    total_size, total_avl, _total_alc = \
                         self._get_capacity_info(share)
                     avl_percent = int((total_avl / total_size) * 100)
                     if avl_percent <= thres_size_perc_start:
@@ -316,9 +316,9 @@ class NetAppNFSDriver(nfs.NfsDriver):
                     else:
                         continue
                 except Exception as e:
-                    LOG.warn(_LW('Exception during cache cleaning'
-                                 ' %(share)s. Message - %(ex)s')
-                             % {'share': share, 'ex': e.__str__()})
+                    LOG.warning(_LW('Exception during cache cleaning'
+                                    ' %(share)s. Message - %(ex)s')
+                                % {'share': share, 'ex': e.__str__()})
                     continue
         finally:
             LOG.debug('Image cache cleaning done.')
@@ -361,6 +361,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                         if self._delete_file(file_path):
                             return True
                         return False
+
                     if _do_delete():
                         bytes_to_free = bytes_to_free - int(f[1])
                         if bytes_to_free <= 0:
@@ -436,8 +437,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
                     volume['provider_location'] = share
                     break
                 except Exception:
-                    LOG.warn(_LW('Unexpected exception during'
-                                 ' image cloning in share %s'), share)
+                    LOG.warning(_LW('Unexpected exception during'
+                                    ' image cloning in share %s'), share)
         return cloned
 
     def _direct_nfs_clone(self, volume, image_location, image_id):
@@ -472,7 +473,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 if data.file_format != "raw":
                     raise exception.InvalidResults(
                         _("Converted to raw, but"
-                            " format is now %s") % data.file_format)
+                          " format is now %s") % data.file_format)
                 else:
                     cloned = True
                     self._register_image_in_cache(
@@ -526,7 +527,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
                 return True
             else:
                 if retry_seconds <= 0:
-                    LOG.warn(_LW('Discover file retries exhausted.'))
+                    LOG.warning(_LW('Discover file retries exhausted.'))
                     return False
                 else:
                     time.sleep(sleep_interval)
@@ -547,7 +548,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         """
         conn, dr = None, None
         if image_location:
-            nfs_loc_pattern =\
+            nfs_loc_pattern = \
                 ('^nfs://(([\w\-\.]+:{1}[\d]+|[\w\-\.]+)(/[^\/].*)'
                  '*(/[^\/\\\\]+)$)')
             matched = re.match(nfs_loc_pattern, image_location, flags=0)
@@ -584,8 +585,8 @@ class NetAppNFSDriver(nfs.NfsDriver):
                               share_candidates)
                     return self._share_match_for_ip(ip, share_candidates)
         except Exception:
-            LOG.warn(_LW("Unexpected exception while short "
-                         "listing used share."))
+            LOG.warning(_LW("Unexpected exception while short "
+                            "listing used share."))
         return None
 
     def _construct_image_nfs_url(self, image_location):
@@ -643,10 +644,11 @@ class NetAppNFSDriver(nfs.NfsDriver):
 
     def _move_nfs_file(self, source_path, dest_path):
         """Moves source to destination."""
+
         @utils.synchronized(dest_path, external=True)
         def _move_file(src, dst):
             if os.path.exists(dst):
-                LOG.warn(_LW("Destination %s already exists."), dst)
+                LOG.warning(_LW("Destination %s already exists."), dst)
                 return False
             self._execute('mv', src, dst,
                           run_as_root=self._execute_as_root)
@@ -655,12 +657,12 @@ class NetAppNFSDriver(nfs.NfsDriver):
         try:
             return _move_file(source_path, dest_path)
         except Exception as e:
-            LOG.warn(_LW('Exception moving file %(src)s. Message - %(e)s')
-                     % {'src': source_path, 'e': e})
+            LOG.warning(_LW('Exception moving file %(src)s. Message - %(e)s')
+                        % {'src': source_path, 'e': e})
         return False
 
 
-class NetAppDirectNfsDriver (NetAppNFSDriver):
+class NetAppDirectNfsDriver(NetAppNFSDriver):
     """Executes commands related to volumes on NetApp filer."""
 
     def __init__(self, *args, **kwargs):
@@ -707,14 +709,6 @@ class NetAppDirectNfsDriver (NetAppNFSDriver):
         if not isinstance(elem, NaElement):
             raise ValueError('Expects NaElement')
 
-    def _get_ontapi_version(self):
-        """Gets the supported ontapi version."""
-        ontapi_version = NaElement('system-get-ontapi-version')
-        res = self._client.invoke_successfully(ontapi_version, False)
-        major = res.get_child_content('major-version')
-        minor = res.get_child_content('minor-version')
-        return (major, minor)
-
     def _get_export_ip_path(self, volume_id=None, share=None):
         """Returns export ip and path.
 
@@ -755,7 +749,7 @@ class NetAppDirectNfsDriver (NetAppNFSDriver):
                 'apparent_available': apparent_available}
 
 
-class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
+class NetAppDirectCmodeNfsDriver(NetAppDirectNfsDriver):
     """Executes commands related to volumes on c mode."""
 
     def __init__(self, *args, **kwargs):
@@ -767,41 +761,26 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         """Do the customized set up on client for cluster mode."""
         # Default values to run first api
         client.set_api_version(1, 15)
-        (major, minor) = self._get_ontapi_version()
-        client.set_api_version(major, minor)
         self.vserver = self.configuration.netapp_vserver
+        self.zapi_client = cmode.Client(client, self.vserver)
+        (major, minor) = self.zapi_client.get_ontapi_version()
+        client.set_api_version(major, minor)
         self.ssc_vols = None
         self.stale_vols = set()
         if self.vserver:
             self.ssc_enabled = True
             LOG.info(_LI("Shares on vserver %s will only"
-                         " be used for provisioning.") % (self.vserver))
+                         " be used for provisioning.") % self.vserver)
         else:
             self.ssc_enabled = False
-            LOG.warn(_LW("No vserver set in config. SSC will be disabled."))
+            LOG.warning(_LW("No vserver set in config. "
+                            "SSC will be disabled."))
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
         super(NetAppDirectCmodeNfsDriver, self).check_for_setup_error()
         if self.ssc_enabled:
             ssc_utils.check_ssc_api_permissions(self._client)
-
-    def _invoke_successfully(self, na_element, vserver=None):
-        """Invoke the api for successful result.
-
-        If vserver is present then invokes vserver api
-        else Cluster api.
-        :param vserver: vserver name.
-        """
-
-        self._is_naelement(na_element)
-        server = copy.copy(self._client)
-        if vserver:
-            server.set_vserver(vserver)
-        else:
-            server.set_vserver(None)
-        result = server.invoke_successfully(na_element, True)
-        return result
 
     def create_volume(self, volume):
         """Creates a volume.
@@ -850,48 +829,29 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
     def _set_qos_policy_group_on_volume(self, volume, share, qos_policy_group):
         target_path = '%s' % (volume['name'])
         export_path = share.split(':')[1]
-        flex_vol_name = self._get_vol_by_junc_vserver(self.vserver,
-                                                      export_path)
-        file_assign_qos = NaElement.create_node_with_children(
-            'file-assign-qos',
-            **{'volume': flex_vol_name,
-               'qos-policy-group-name': qos_policy_group,
-               'file': target_path,
-               'vserver': self.vserver})
-        self._invoke_successfully(file_assign_qos)
+        flex_vol_name = self.zapi_client.get_vol_by_junc_vserver(self.vserver,
+                                                                 export_path)
+        self.zapi_client.file_assign_qos(flex_vol_name,
+                                         qos_policy_group,
+                                         target_path)
 
     def _clone_volume(self, volume_name, clone_name,
                       volume_id, share=None):
         """Clones mounted volume on NetApp Cluster."""
         (vserver, exp_volume) = self._get_vserver_and_exp_vol(volume_id, share)
-        self._clone_file(exp_volume, volume_name, clone_name, vserver)
+        self.zapi_client.clone_file(exp_volume, volume_name, clone_name,
+                                    vserver)
         share = share if share else self._get_provider_location(volume_id)
         self._post_prov_deprov_in_ssc(share)
 
     def _get_vserver_and_exp_vol(self, volume_id=None, share=None):
         """Gets the vserver and export volume for share."""
         (host_ip, export_path) = self._get_export_ip_path(volume_id, share)
-        ifs = self._get_if_info_by_ip(host_ip)
+        ifs = self.zapi_client.get_if_info_by_ip(host_ip)
         vserver = ifs[0].get_child_content('vserver')
-        exp_volume = self._get_vol_by_junc_vserver(vserver, export_path)
+        exp_volume = self.zapi_client.get_vol_by_junc_vserver(vserver,
+                                                              export_path)
         return (vserver, exp_volume)
-
-    def _get_if_info_by_ip(self, ip):
-        """Gets the network interface info by ip."""
-        net_if_iter = NaElement('net-interface-get-iter')
-        net_if_iter.add_new_child('max-records', '10')
-        query = NaElement('query')
-        net_if_iter.add_child_elem(query)
-        query.add_node_with_children(
-            'net-interface-info', **{'address': na_utils.resolve_hostname(ip)})
-        result = self._invoke_successfully(net_if_iter)
-        if result.get_child_content('num-records') and\
-                int(result.get_child_content('num-records')) >= 1:
-            attr_list = result.get_child_by_name('attributes-list')
-            return attr_list.get_children()
-        raise exception.NotFound(
-            _('No interface found on cluster for ip %s')
-            % (ip))
 
     def _get_vserver_ips(self, vserver):
         """Get ips for the vserver."""
@@ -906,51 +866,6 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                 ifs = attr_list.get_children()
                 if_list.extend(ifs)
         return if_list
-
-    def _get_vol_by_junc_vserver(self, vserver, junction):
-        """Gets the volume by junction path and vserver."""
-        vol_iter = NaElement('volume-get-iter')
-        vol_iter.add_new_child('max-records', '10')
-        query = NaElement('query')
-        vol_iter.add_child_elem(query)
-        vol_attrs = NaElement('volume-attributes')
-        query.add_child_elem(vol_attrs)
-        vol_attrs.add_node_with_children(
-            'volume-id-attributes',
-            **{'junction-path': junction,
-                'owning-vserver-name': vserver})
-        des_attrs = NaElement('desired-attributes')
-        des_attrs.add_node_with_children('volume-attributes',
-                                         **{'volume-id-attributes': None})
-        vol_iter.add_child_elem(des_attrs)
-        result = self._invoke_successfully(vol_iter, vserver)
-        if result.get_child_content('num-records') and\
-                int(result.get_child_content('num-records')) >= 1:
-            attr_list = result.get_child_by_name('attributes-list')
-            vols = attr_list.get_children()
-            vol_id = vols[0].get_child_by_name('volume-id-attributes')
-            return vol_id.get_child_content('name')
-        msg_fmt = {'vserver': vserver, 'junction': junction}
-        raise exception.NotFound(_("""No volume on cluster with vserver
-                                   %(vserver)s and junction path %(junction)s
-                                   """) % msg_fmt)
-
-    def _clone_file(self, volume, src_path, dest_path, vserver=None,
-                    dest_exists=False):
-        """Clones file on vserver."""
-        msg = _("""Cloning with params volume %(volume)s, src %(src_path)s,
-                    dest %(dest_path)s, vserver %(vserver)s""")
-        msg_fmt = {'volume': volume, 'src_path': src_path,
-                   'dest_path': dest_path, 'vserver': vserver}
-        LOG.debug(msg % msg_fmt)
-        clone_create = NaElement.create_node_with_children(
-            'clone-create',
-            **{'volume': volume, 'source-path': src_path,
-                'destination-path': dest_path})
-        major, minor = self._client.get_api_version()
-        if major == 1 and minor >= 20 and dest_exists:
-            clone_create.add_new_child('destination-exists', 'true')
-        self._invoke_successfully(clone_create, vserver)
 
     def _update_volume_stats(self):
         """Retrieve stats info from vserver."""
@@ -1047,7 +962,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
     def refresh_ssc_vols(self, vols):
         """Refreshes ssc_vols with latest entries."""
         if not self._mounted_shares:
-            LOG.warn(_LW("No shares found hence skipping ssc refresh."))
+            LOG.warning(_LW("No shares found hence skipping ssc refresh."))
             return
         mnt_share_vols = set()
         vs_ifs = self._get_vserver_ips(self.vserver)
@@ -1082,21 +997,10 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
             volume_id=None, share=share)
         for file in old_files:
             path = '/vol/%s/%s' % (exp_volume, file)
-            u_bytes = self._get_cluster_file_usage(path, vserver)
+            u_bytes = self.zapi_client.get_file_usage(path, vserver)
             file_list.append((file, u_bytes))
         LOG.debug('Shortlisted del elg files %s', file_list)
         return file_list
-
-    def _get_cluster_file_usage(self, path, vserver):
-        """Gets the file unique bytes."""
-        LOG.debug('Getting file usage for %s', path)
-        file_use = NaElement.create_node_with_children(
-            'file-usage-get', **{'path': path})
-        res = self._invoke_successfully(file_use, vserver)
-        bytes = res.get_child_content('unique-bytes')
-        LOG.debug('file-usage for path %(path)s is %(bytes)s'
-                  % {'path': path, 'bytes': bytes})
-        return bytes
 
     def _share_match_for_ip(self, ip, shares):
         """Returns the share that is served by ip.
@@ -1119,7 +1023,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
     def _get_vserver_for_ip(self, ip):
         """Get vserver for the mentioned ip."""
         try:
-            ifs = self._get_if_info_by_ip(ip)
+            ifs = self.zapi_client.get_if_info_by_ip(ip)
             vserver = ifs[0].get_child_content('vserver')
             return vserver
         except Exception:
@@ -1254,8 +1158,8 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                                dest_exists=False):
         """Clone file even if dest exists."""
         (vserver, exp_volume) = self._get_vserver_and_exp_vol(share=share)
-        self._clone_file(exp_volume, src_name, dst_name, vserver,
-                         dest_exists=dest_exists)
+        self.zapi_client.clone_file(exp_volume, src_name, dst_name, vserver,
+                                    dest_exists=dest_exists)
 
     def _copy_from_img_service(self, context, volume, image_service,
                                image_id):
@@ -1273,7 +1177,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         dst_ip = self._get_ip_verify_on_cluster(self._get_host_ip(
             volume['id']))
         # tmp file is required to deal with img formats
-        tmp_img_file = str(uuid.uuid4())
+        tmp_img_file = six.text_type(uuid.uuid4())
         col_path = self.configuration.netapp_copyoffload_tool_path
         img_info = image_service.show(context, image_id)
         dst_share = self._get_provider_location(volume['id'])
@@ -1307,7 +1211,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                           % {'img': image_id, 'vol': volume['id']})
             else:
                 LOG.debug('Image will be converted to raw %s.', image_id)
-                img_conv = str(uuid.uuid4())
+                img_conv = six.text_type(uuid.uuid4())
                 dst_img_conv_local = os.path.join(dst_dir, img_conv)
 
                 # Checking against image size which is approximate check
@@ -1340,7 +1244,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
                 self._delete_file(dst_img_local)
 
 
-class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
+class NetAppDirect7modeNfsDriver(NetAppDirectNfsDriver):
     """Executes commands related to volumes on 7 mode."""
 
     def __init__(self, *args, **kwargs):
@@ -1348,7 +1252,8 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
 
     def _do_custom_setup(self, client):
         """Do the customized set up on client if any for 7 mode."""
-        (major, minor) = self._get_ontapi_version()
+        self.zapi_client = seven_mode.Client(client)
+        (major, minor) = self.zapi_client.get_ontapi_version()
         client.set_api_version(major, minor)
 
     def check_for_setup_error(self):
@@ -1364,23 +1269,6 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
             msg = _("Api version could not be determined.")
             raise exception.VolumeBackendAPIException(data=msg)
         super(NetAppDirect7modeNfsDriver, self).check_for_setup_error()
-
-    def _invoke_successfully(self, na_element, vfiler=None):
-        """Invoke the api for successful result.
-
-        If vfiler is present then invokes vfiler api
-        else filer api.
-        :param vfiler: vfiler name.
-        """
-
-        self._is_naelement(na_element)
-        server = copy.copy(self._client)
-        if vfiler:
-            server.set_vfiler(vfiler)
-        else:
-            server.set_vfiler(None)
-        result = server.invoke_successfully(na_element, True)
-        return result
 
     def create_volume(self, volume):
         """Creates a volume.
@@ -1419,97 +1307,10 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
                       volume_id, share=None):
         """Clones mounted volume with NetApp filer."""
         (_host_ip, export_path) = self._get_export_ip_path(volume_id, share)
-        storage_path = self._get_actual_path_for_export(export_path)
+        storage_path = self.zapi_client.get_actual_path_for_export(export_path)
         target_path = '%s/%s' % (storage_path, clone_name)
-        (clone_id, vol_uuid) = self._start_clone('%s/%s' % (storage_path,
-                                                            volume_name),
-                                                 target_path)
-        if vol_uuid:
-            try:
-                self._wait_for_clone_finish(clone_id, vol_uuid)
-            except NaApiError as e:
-                if e.code != 'UnknownCloneId':
-                    self._clear_clone(clone_id)
-                raise e
-
-    def _get_actual_path_for_export(self, export_path):
-        """Gets the actual path on the filer for export path."""
-        storage_path = NaElement.create_node_with_children(
-            'nfs-exportfs-storage-path', **{'pathname': export_path})
-        result = self._invoke_successfully(storage_path, None)
-        if result.get_child_content('actual-pathname'):
-            return result.get_child_content('actual-pathname')
-        raise exception.NotFound(_('No storage path found for export path %s')
-                                 % (export_path))
-
-    def _start_clone(self, src_path, dest_path):
-        """Starts the clone operation.
-
-        :returns: clone-id
-        """
-
-        msg_fmt = {'src_path': src_path, 'dest_path': dest_path}
-        LOG.debug("""Cloning with src %(src_path)s, dest %(dest_path)s"""
-                  % msg_fmt)
-        clone_start = NaElement.create_node_with_children(
-            'clone-start',
-            **{'source-path': src_path,
-                'destination-path': dest_path,
-                'no-snap': 'true'})
-        result = self._invoke_successfully(clone_start, None)
-        clone_id_el = result.get_child_by_name('clone-id')
-        cl_id_info = clone_id_el.get_child_by_name('clone-id-info')
-        vol_uuid = cl_id_info.get_child_content('volume-uuid')
-        clone_id = cl_id_info.get_child_content('clone-op-id')
-        return (clone_id, vol_uuid)
-
-    def _wait_for_clone_finish(self, clone_op_id, vol_uuid):
-        """Waits till a clone operation is complete or errored out."""
-        clone_ls_st = NaElement('clone-list-status')
-        clone_id = NaElement('clone-id')
-        clone_ls_st.add_child_elem(clone_id)
-        clone_id.add_node_with_children('clone-id-info',
-                                        **{'clone-op-id': clone_op_id,
-                                            'volume-uuid': vol_uuid})
-        task_running = True
-        while task_running:
-            result = self._invoke_successfully(clone_ls_st, None)
-            status = result.get_child_by_name('status')
-            ops_info = status.get_children()
-            if ops_info:
-                state = ops_info[0].get_child_content('clone-state')
-                if state == 'completed':
-                    task_running = False
-                elif state == 'failed':
-                    code = ops_info[0].get_child_content('error')
-                    reason = ops_info[0].get_child_content('reason')
-                    raise NaApiError(code, reason)
-                else:
-                    time.sleep(1)
-            else:
-                raise NaApiError(
-                    'UnknownCloneId',
-                    'No clone operation for clone id %s found on the filer'
-                    % (clone_id))
-
-    def _clear_clone(self, clone_id):
-        """Clear the clone information.
-
-        Invoke this in case of failed clone.
-        """
-
-        clone_clear = NaElement.create_node_with_children(
-            'clone-clear',
-            **{'clone-id': clone_id})
-        retry = 3
-        while retry:
-            try:
-                self._invoke_successfully(clone_clear, None)
-                break
-            except Exception:
-                # Filer might be rebooting
-                time.sleep(5)
-            retry = retry - 1
+        self.zapi_client.clone_file('%s/%s' % (storage_path, volume_name),
+                                    target_path)
 
     def _update_volume_stats(self):
         """Retrieve stats info from vserver."""
@@ -1568,31 +1369,19 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
     def _shortlist_del_eligible_files(self, share, old_files):
         """Prepares list of eligible files to be deleted from cache."""
         file_list = []
-        exp_volume = self._get_actual_path_for_export(share)
+        exp_volume = self.zapi_client.get_actual_path_for_export(share)
         for file in old_files:
             path = '/vol/%s/%s' % (exp_volume, file)
-            u_bytes = self._get_filer_file_usage(path)
+            u_bytes = self.zapi_client.get_file_usage(path)
             file_list.append((file, u_bytes))
         LOG.debug('Shortlisted del elg files %s', file_list)
         return file_list
 
-    def _get_filer_file_usage(self, path):
-        """Gets the file unique bytes."""
-        LOG.debug('Getting file usage for %s', path)
-        file_use = NaElement.create_node_with_children(
-            'file-usage-get', **{'path': path})
-        res = self._invoke_successfully(file_use)
-        bytes = res.get_child_content('unique-bytes')
-        LOG.debug('file-usage for path %(path)s is %(bytes)s'
-                  % {'path': path, 'bytes': bytes})
-        return bytes
-
     def _is_filer_ip(self, ip):
         """Checks whether ip is on the same filer."""
         try:
-            ifconfig = NaElement('net-ifconfig-get')
-            res = self._invoke_successfully(ifconfig, None)
-            if_info = res.get_child_by_name('interface-config-info')
+            ifconfig = self.zapi_client.get_ifconfig()
+            if_info = ifconfig.get_child_by_name('interface-config-info')
             if if_info:
                 ifs = if_info.get_children()
                 for intf in ifs:

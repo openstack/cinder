@@ -1,4 +1,4 @@
-# Copyright (c) 2014 NetApp, Inc.
+# Copyright (c) - 2014, Alex Meade.  All rights reserved.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -19,8 +19,10 @@ Mock unit tests for the NetApp iSCSI driver
 import uuid
 
 import mock
+import six
 
 from cinder import exception
+from cinder.i18n import _
 from cinder import test
 from cinder.tests.test_netapp import create_configuration
 import cinder.volume.drivers.netapp.api as ntapi
@@ -35,6 +37,12 @@ import cinder.volume.drivers.netapp.ssc_utils as ssc_utils
 import cinder.volume.drivers.netapp.utils as na_utils
 
 
+FAKE_VOLUME = six.text_type(uuid.uuid4())
+FAKE_LUN = six.text_type(uuid.uuid4())
+FAKE_SIZE = '1024'
+FAKE_METADATA = {'OsType': 'linux', 'SpaceReserved': 'true'}
+
+
 class NetAppDirectISCSIDriverTestCase(test.TestCase):
 
     def setUp(self):
@@ -43,10 +51,7 @@ class NetAppDirectISCSIDriverTestCase(test.TestCase):
         self.driver = ntap_iscsi.NetAppDirectISCSIDriver(
             configuration=configuration)
         self.driver.client = mock.Mock()
-        self.fake_volume = str(uuid.uuid4())
-        self.fake_lun = str(uuid.uuid4())
-        self.fake_size = '1024'
-        self.fake_metadata = {'OsType': 'linux', 'SpaceReserved': 'true'}
+        self.driver.zapi_client = mock.Mock()
         self.mock_request = mock.Mock()
 
     def _set_config(self, configuration):
@@ -112,7 +117,7 @@ class NetAppDirectISCSIDriverTestCase(test.TestCase):
                                    'host': 'hostname@backend#vol1'})
         warn_msg = 'Extra spec netapp:raid_type is obsolete.  ' \
                    'Use netapp_raid_type instead.'
-        na_utils.LOG.warn.assert_called_once_with(warn_msg)
+        na_utils.LOG.warning.assert_called_once_with(warn_msg)
 
     @mock.patch.object(iscsiDriver, 'create_lun', mock.Mock())
     @mock.patch.object(iscsiDriver, '_create_lun_handle', mock.Mock())
@@ -128,66 +133,28 @@ class NetAppDirectISCSIDriverTestCase(test.TestCase):
                                    'host': 'hostname@backend#vol1'})
         warn_msg = 'Extra spec netapp_thick_provisioned is deprecated.  ' \
                    'Use netapp_thin_provisioned instead.'
-        na_utils.LOG.warn.assert_called_once_with(warn_msg)
-
-    def test_create_lun(self):
-        expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
-
-        with mock.patch.object(ntapi.NaElement, 'create_node_with_children',
-                               return_value=self.mock_request
-                               ) as mock_create_node:
-            self.driver.create_lun(self.fake_volume,
-                                   self.fake_lun,
-                                   self.fake_size,
-                                   self.fake_metadata)
-
-            mock_create_node.assert_called_once_with(
-                'lun-create-by-size',
-                **{'path': expected_path,
-                   'size': self.fake_size,
-                   'ostype': self.fake_metadata['OsType'],
-                   'space-reservation-enabled':
-                   self.fake_metadata['SpaceReserved']})
-            self.driver.client.invoke_successfully.assert_called_once_with(
-                mock.ANY, True)
-
-    def test_create_lun_with_qos_policy_group(self):
-        expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
-        expected_qos_group = 'qos_1'
-
-        with mock.patch.object(ntapi.NaElement, 'create_node_with_children',
-                               return_value=self.mock_request
-                               ) as mock_create_node:
-            self.driver.create_lun(self.fake_volume,
-                                   self.fake_lun,
-                                   self.fake_size,
-                                   self.fake_metadata,
-                                   qos_policy_group=expected_qos_group)
-
-            mock_create_node.assert_called_once_with(
-                'lun-create-by-size',
-                **{'path': expected_path, 'size': self.fake_size,
-                    'ostype': self.fake_metadata['OsType'],
-                    'space-reservation-enabled':
-                    self.fake_metadata['SpaceReserved']})
-            self.mock_request.add_new_child.assert_called_once_with(
-                'qos-policy-group', expected_qos_group)
-            self.driver.client.invoke_successfully.assert_called_once_with(
-                mock.ANY, True)
-
-    def test_create_lun_raises_on_failure(self):
-        self.driver.client.invoke_successfully = mock.Mock(
-            side_effect=ntapi.NaApiError)
-        self.assertRaises(ntapi.NaApiError,
-                          self.driver.create_lun,
-                          self.fake_volume,
-                          self.fake_lun,
-                          self.fake_size,
-                          self.fake_metadata)
+        na_utils.LOG.warning.assert_called_once_with(warn_msg)
 
     def test_update_volume_stats_is_abstract(self):
         self.assertRaises(NotImplementedError,
                           self.driver._update_volume_stats)
+
+    def test_initialize_connection_no_target_details_found(self):
+        fake_volume = {'name': 'mock-vol'}
+        fake_connector = {'initiator': 'iqn.mock'}
+        self.driver._map_lun = mock.Mock(return_value='mocked-lun-id')
+        self.driver.zapi_client.get_iscsi_service_details = mock.Mock(
+            return_value='mocked-iqn')
+        self.driver.zapi_client.get_target_details = mock.Mock(return_value=[])
+        expected = (_('No iscsi target details were found for LUN %s')
+                    % fake_volume['name'])
+        try:
+            self.driver.initialize_connection(fake_volume, fake_connector)
+        except exception.VolumeBackendAPIException as exc:
+            if expected not in six.text_type(exc):
+                self.fail(_('Expected exception message is missing'))
+        else:
+            self.fail(_('VolumeBackendAPIException not raised'))
 
 
 class NetAppiSCSICModeTestCase(test.TestCase):
@@ -198,59 +165,21 @@ class NetAppiSCSICModeTestCase(test.TestCase):
         self.driver = ntap_iscsi.NetAppDirectCmodeISCSIDriver(
             configuration=mock.Mock())
         self.driver.client = mock.Mock()
+        self.driver.zapi_client = mock.Mock()
         self.driver.vserver = mock.Mock()
         self.driver.ssc_vols = None
 
     def tearDown(self):
         super(NetAppiSCSICModeTestCase, self).tearDown()
 
-    def test_clone_lun_multiple_zapi_calls(self):
-        """Test for when lun clone requires more than one zapi call."""
-
-        # Max block-ranges per call = 32, max blocks per range = 2^24
-        # Force 2 calls
-        bc = 2 ** 24 * 32 * 2
-        self.driver._get_lun_attr = mock.Mock(return_value={'Volume':
-                                                            'fakeLUN'})
-        self.driver.client.invoke_successfully = mock.Mock()
-        lun = ntapi.NaElement.create_node_with_children(
-            'lun-info',
-            **{'alignment': 'indeterminate',
-               'block-size': '512',
-               'comment': '',
-               'creation-timestamp': '1354536362',
-               'is-space-alloc-enabled': 'false',
-               'is-space-reservation-enabled': 'true',
-               'mapped': 'false',
-               'multiprotocol-type': 'linux',
-               'online': 'true',
-               'path': '/vol/fakeLUN/lun1',
-               'prefix-size': '0',
-               'qtree': '',
-               'read-only': 'false',
-               'serial-number': '2FfGI$APyN68',
-               'share-state': 'none',
-               'size': '20971520',
-               'size-used': '0',
-               'staging': 'false',
-               'suffix-size': '0',
-               'uuid': 'cec1f3d7-3d41-11e2-9cf4-123478563412',
-               'volume': 'fakeLUN',
-               'vserver': 'fake_vserver'})
-        self.driver._get_lun_by_args = mock.Mock(return_value=[lun])
-        self.driver._add_lun_to_table = mock.Mock()
-        self.driver._update_stale_vols = mock.Mock()
-
-        self.driver._clone_lun('fakeLUN', 'newFakeLUN', block_count=bc)
-
-        self.assertEqual(2, self.driver.client.invoke_successfully.call_count)
-
     def test_clone_lun_zero_block_count(self):
         """Test for when clone lun is not passed a block count."""
 
         self.driver._get_lun_attr = mock.Mock(return_value={'Volume':
                                                             'fakeLUN'})
-        self.driver.client.invoke_successfully = mock.Mock()
+        self.driver.zapi_client = mock.Mock()
+        self.driver.zapi_client.get_lun_by_args.return_value = [
+            mock.Mock(spec=ntapi.NaElement)]
         lun = ntapi.NaElement.create_node_with_children(
             'lun-info',
             **{'alignment': 'indeterminate',
@@ -281,7 +210,9 @@ class NetAppiSCSICModeTestCase(test.TestCase):
 
         self.driver._clone_lun('fakeLUN', 'newFakeLUN')
 
-        self.assertEqual(1, self.driver.client.invoke_successfully.call_count)
+        self.driver.zapi_client.clone_lun.assert_called_once_with(
+            'fakeLUN', 'fakeLUN', 'newFakeLUN', 'true', block_count=0,
+            dest_block=0, src_block=0)
 
     @mock.patch.object(ssc_utils, 'refresh_cluster_ssc', mock.Mock())
     @mock.patch.object(iscsiCmodeDriver, '_get_pool_stats', mock.Mock())
@@ -289,6 +220,20 @@ class NetAppiSCSICModeTestCase(test.TestCase):
     def test_vol_stats_calls_provide_ems(self):
         self.driver.get_volume_stats(refresh=True)
         self.assertEqual(na_utils.provide_ems.call_count, 1)
+
+    def test_create_lun(self):
+        self.driver._update_stale_vols = mock.Mock()
+
+        self.driver.create_lun(FAKE_VOLUME,
+                               FAKE_LUN,
+                               FAKE_SIZE,
+                               FAKE_METADATA)
+
+        self.driver.zapi_client.create_lun.assert_called_once_with(
+            FAKE_VOLUME, FAKE_LUN, FAKE_SIZE,
+            FAKE_METADATA, None)
+
+        self.assertEqual(1, self.driver._update_stale_vols.call_count)
 
 
 class NetAppiSCSI7ModeTestCase(test.TestCase):
@@ -299,66 +244,15 @@ class NetAppiSCSI7ModeTestCase(test.TestCase):
         self.driver = ntap_iscsi.NetAppDirect7modeISCSIDriver(
             configuration=mock.Mock())
         self.driver.client = mock.Mock()
+        self.driver.zapi_client = mock.Mock()
         self.driver.vfiler = mock.Mock()
 
     def tearDown(self):
         super(NetAppiSCSI7ModeTestCase, self).tearDown()
 
-    def test_clone_lun_multiple_zapi_calls(self):
-        """Test for when lun clone requires more than one zapi call."""
-
-        # Max block-ranges per call = 32, max blocks per range = 2^24
-        # Force 2 calls
-        bc = 2 ** 24 * 32 * 2
-        self.driver._get_lun_attr = mock.Mock(return_value={'Volume':
-                                                            'fakeLUN',
-                                                            'Path':
-                                                            '/vol/fake/lun1'})
-        self.driver.client.invoke_successfully = mock.Mock(
-            return_value=mock.MagicMock())
-        lun = ntapi.NaElement.create_node_with_children(
-            'lun-info',
-            **{'alignment': 'indeterminate',
-               'block-size': '512',
-               'comment': '',
-               'creation-timestamp': '1354536362',
-               'is-space-alloc-enabled': 'false',
-               'is-space-reservation-enabled': 'true',
-               'mapped': 'false',
-               'multiprotocol-type': 'linux',
-               'online': 'true',
-               'path': '/vol/fakeLUN/lun1',
-               'prefix-size': '0',
-               'qtree': '',
-               'read-only': 'false',
-               'serial-number': '2FfGI$APyN68',
-               'share-state': 'none',
-               'size': '20971520',
-               'size-used': '0',
-               'staging': 'false',
-               'suffix-size': '0',
-               'uuid': 'cec1f3d7-3d41-11e2-9cf4-123478563412',
-               'volume': 'fakeLUN',
-               'vserver': 'fake_vserver'})
-        self.driver._get_lun_by_args = mock.Mock(return_value=[lun])
-        self.driver._add_lun_to_table = mock.Mock()
-        self.driver._update_stale_vols = mock.Mock()
-        self.driver._check_clone_status = mock.Mock()
-        self.driver._set_space_reserve = mock.Mock()
-
-        self.driver._clone_lun('fakeLUN', 'newFakeLUN', block_count=bc)
-
-        self.assertEqual(2, self.driver.client.invoke_successfully.call_count)
-
     def test_clone_lun_zero_block_count(self):
         """Test for when clone lun is not passed a block count."""
 
-        self.driver._get_lun_attr = mock.Mock(return_value={'Volume':
-                                                            'fakeLUN',
-                                                            'Path':
-                                                            '/vol/fake/lun1'})
-        self.driver.client.invoke_successfully = mock.Mock(
-            return_value=mock.MagicMock())
         lun = ntapi.NaElement.create_node_with_children(
             'lun-info',
             **{'alignment': 'indeterminate',
@@ -370,7 +264,7 @@ class NetAppiSCSI7ModeTestCase(test.TestCase):
                'mapped': 'false',
                'multiprotocol-type': 'linux',
                'online': 'true',
-               'path': '/vol/fakeLUN/lun1',
+               'path': '/vol/fakeLUN/fakeLUN',
                'prefix-size': '0',
                'qtree': '',
                'read-only': 'false',
@@ -383,15 +277,17 @@ class NetAppiSCSI7ModeTestCase(test.TestCase):
                'uuid': 'cec1f3d7-3d41-11e2-9cf4-123478563412',
                'volume': 'fakeLUN',
                'vserver': 'fake_vserver'})
-        self.driver._get_lun_by_args = mock.Mock(return_value=[lun])
+        self.driver._get_lun_attr = mock.Mock(return_value={
+            'Volume': 'fakeLUN', 'Path': '/vol/fake/fakeLUN'})
+        self.driver.zapi_client = mock.Mock()
+        self.driver.zapi_client.get_lun_by_args.return_value = [lun]
         self.driver._add_lun_to_table = mock.Mock()
-        self.driver._update_stale_vols = mock.Mock()
-        self.driver._check_clone_status = mock.Mock()
-        self.driver._set_space_reserve = mock.Mock()
 
         self.driver._clone_lun('fakeLUN', 'newFakeLUN')
 
-        self.assertEqual(1, self.driver.client.invoke_successfully.call_count)
+        self.driver.zapi_client.clone_lun.assert_called_once_with(
+            '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',
+            'newFakeLUN', 'true', block_count=0, dest_block=0, src_block=0)
 
     @mock.patch.object(iscsi7modeDriver, '_refresh_volume_info', mock.Mock())
     @mock.patch.object(iscsi7modeDriver, '_get_pool_stats', mock.Mock())
@@ -399,3 +295,17 @@ class NetAppiSCSI7ModeTestCase(test.TestCase):
     def test_vol_stats_calls_provide_ems(self):
         self.driver.get_volume_stats(refresh=True)
         self.assertEqual(na_utils.provide_ems.call_count, 1)
+
+    def test_create_lun(self):
+        self.driver.vol_refresh_voluntary = False
+
+        self.driver.create_lun(FAKE_VOLUME,
+                               FAKE_LUN,
+                               FAKE_SIZE,
+                               FAKE_METADATA)
+
+        self.driver.zapi_client.create_lun.assert_called_once_with(
+            FAKE_VOLUME, FAKE_LUN, FAKE_SIZE,
+            FAKE_METADATA, None)
+
+        self.assertTrue(self.driver.vol_refresh_voluntary)

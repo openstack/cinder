@@ -22,6 +22,7 @@ Contains classes required to issue api calls to ONTAP and OnCommand DFM.
 import urllib2
 
 from lxml import etree
+import six
 
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
@@ -121,7 +122,8 @@ class NaServer(object):
         try:
             self._api_major_version = int(major)
             self._api_minor_version = int(minor)
-            self._api_version = str(major) + "." + str(minor)
+            self._api_version = six.text_type(major) + "." + \
+                six.text_type(minor)
         except ValueError:
             raise ValueError('Major and minor versions must be integers')
         self._refresh_conn = True
@@ -138,7 +140,7 @@ class NaServer(object):
             int(port)
         except ValueError:
             raise ValueError('Port must be integer')
-        self._port = str(port)
+        self._port = six.text_type(port)
         self._refresh_conn = True
 
     def get_port(self):
@@ -437,7 +439,7 @@ class NaElement(object):
                     child.add_child_elem(value)
                     self.add_child_elem(child)
                 elif isinstance(value, (str, int, float, long)):
-                    self.add_new_child(key, str(value))
+                    self.add_new_child(key, six.text_type(value))
                 elif isinstance(value, (list, tuple, dict)):
                     child = NaElement(key)
                     child.translate_struct(value)
@@ -487,7 +489,7 @@ class NaElement(object):
                     child.translate_struct(data_struct[k])
                 else:
                     if data_struct[k]:
-                        child.set_content(str(data_struct[k]))
+                        child.set_content(six.text_type(data_struct[k]))
                 self.add_child_elem(child)
         else:
             raise ValueError(_('Type cannot be converted into NaElement.'))
