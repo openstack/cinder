@@ -1,5 +1,4 @@
-# Copyright (c) 2013 Huawei Technologies Co., Ltd.
-# Copyright (c) 2013 OpenStack Foundation
+# Copyright (c) 2013 - 2014 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,62 +13,75 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Volume Drivers for Huawei OceanStor HVS storage arrays.
+Volume Drivers for Huawei OceanStor 18000 storage arrays.
 """
 
 from cinder.volume import driver
-from cinder.volume.drivers.huawei.rest_common import HVSCommon
+from cinder.volume.drivers.huawei.rest_common import RestCommon
 from cinder.zonemanager import utils as fczm_utils
 
 
-class HuaweiHVSISCSIDriver(driver.ISCSIDriver):
-    """ISCSI driver for Huawei OceanStor HVS storage arrays."""
+class Huawei18000ISCSIDriver(driver.ISCSIDriver):
+    """ISCSI driver for Huawei OceanStor 18000 storage arrays.
 
-    VERSION = '1.0.0'
+    Version history:
+        1.0.0 - Initial driver
+        1.1.0 - Provide Huawei OceanStor 18000 storage volume driver.
+    """
+
+    VERSION = "1.1.0"
 
     def __init__(self, *args, **kwargs):
-        super(HuaweiHVSISCSIDriver, self).__init__(*args, **kwargs)
+        super(Huawei18000ISCSIDriver, self).__init__(*args, **kwargs)
 
     def do_setup(self, context):
         """Instantiate common class and log in storage system."""
-        self.common = HVSCommon(configuration=self.configuration)
+        self.common = RestCommon(configuration=self.configuration)
+        return self.common.login()
 
     def check_for_setup_error(self):
-        """Check configuration  file."""
-        self.common._check_conf_file()
-        self.common.login()
+        """Check configuration file."""
+        return self.common._check_conf_file()
 
     def create_volume(self, volume):
         """Create a volume."""
-        self.common.create_volume(volume)
+        lun_info = self.common.create_volume(volume)
+        return {'provider_location': lun_info['ID'],
+                'lun_info': lun_info}
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot."""
-        self.common.create_volume_from_snapshot(volume, snapshot)
+        lun_info = self.common.create_volume_from_snapshot(volume, snapshot)
+        return {'provider_location': lun_info['ID'],
+                'lun_info': lun_info}
 
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of the specified volume."""
-        self.common.create_cloned_volume(volume, src_vref)
+        lun_info = self.common.create_cloned_volume(volume, src_vref)
+        return {'provider_location': lun_info['ID'],
+                'lun_info': lun_info}
 
     def extend_volume(self, volume, new_size):
         """Extend a volume."""
-        self.common.extend_volume(volume, new_size)
+        return self.common.extend_volume(volume, new_size)
 
     def delete_volume(self, volume):
         """Delete a volume."""
-        self.common.delete_volume(volume)
+        return self.common.delete_volume(volume)
 
     def create_snapshot(self, snapshot):
         """Create a snapshot."""
-        self.common.create_snapshot(snapshot)
+        lun_info = self.common.create_snapshot(snapshot)
+        return {'provider_location': lun_info['ID'],
+                'lun_info': lun_info}
 
     def delete_snapshot(self, snapshot):
         """Delete a snapshot."""
-        self.common.delete_snapshot(snapshot)
+        return self.common.delete_snapshot(snapshot)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats."""
-        data = self.common.update_volume_stats(refresh)
+        data = self.common.update_volume_stats()
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or self.__class__.__name__
         data['storage_protocol'] = 'iSCSI'
@@ -82,7 +94,7 @@ class HuaweiHVSISCSIDriver(driver.ISCSIDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate the map."""
-        self.common.terminate_connection(volume, connector, **kwargs)
+        self.common.terminate_connection_iscsi(volume, connector)
 
     def create_export(self, context, volume):
         """Export the volume."""
@@ -97,54 +109,67 @@ class HuaweiHVSISCSIDriver(driver.ISCSIDriver):
         pass
 
 
-class HuaweiHVSFCDriver(driver.FibreChannelDriver):
-    """FC driver for Huawei OceanStor HVS storage arrays."""
+class Huawei18000FCDriver(driver.FibreChannelDriver):
+    """FC driver for Huawei OceanStor 18000 storage arrays.
 
-    VERSION = '1.0.0'
+    Version history:
+        1.0.0 - Initial driver
+        1.1.0 - Provide Huawei OceanStor 18000 storage volume driver.
+    """
+
+    VERSION = "1.1.0"
 
     def __init__(self, *args, **kwargs):
-        super(HuaweiHVSFCDriver, self).__init__(*args, **kwargs)
+        super(Huawei18000FCDriver, self).__init__(*args, **kwargs)
 
     def do_setup(self, context):
         """Instantiate common class and log in storage system."""
-        self.common = HVSCommon(configuration=self.configuration)
-        self.common.login()
+        self.common = RestCommon(configuration=self.configuration)
+        return self.common.login()
 
     def check_for_setup_error(self):
-        """Check configuration  file."""
-        self.common._check_conf_file()
+        """Check configuration file."""
+        return self.common._check_conf_file()
 
     def create_volume(self, volume):
         """Create a volume."""
-        self.common.create_volume(volume)
+        lun_info = self.common.create_volume(volume)
+        return {'provider_location': lun_info['ID'],
+                'lun_info': lun_info}
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot."""
-        self.common.create_volume_from_snapshot(volume, snapshot)
+        lun_info = self.common.create_volume_from_snapshot(volume, snapshot)
+        return {'provider_location': lun_info['ID'],
+                'lun_info': lun_info}
 
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of the specified volume."""
-        self.common.create_cloned_volume(volume, src_vref)
+        lun_info = self.common.create_cloned_volume(volume, src_vref)
+        return {'provider_location': lun_info['ID'],
+                'lun_info': lun_info}
 
     def extend_volume(self, volume, new_size):
         """Extend a volume."""
-        self.common.extend_volume(volume, new_size)
+        return self.common.extend_volume(volume, new_size)
 
     def delete_volume(self, volume):
         """Delete a volume."""
-        self.common.delete_volume(volume)
+        return self.common.delete_volume(volume)
 
     def create_snapshot(self, snapshot):
         """Create a snapshot."""
-        self.common.create_snapshot(snapshot)
+        lun_info = self.common.create_snapshot(snapshot)
+        return {'provider_location': lun_info['ID'],
+                'lun_info': lun_info}
 
     def delete_snapshot(self, snapshot):
         """Delete a snapshot."""
-        self.common.delete_snapshot(snapshot)
+        return self.common.delete_snapshot(snapshot)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats."""
-        data = self.common.update_volume_stats(refresh)
+        data = self.common.update_volume_stats()
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or self.__class__.__name__
         data['storage_protocol'] = 'FC'
@@ -159,7 +184,7 @@ class HuaweiHVSFCDriver(driver.FibreChannelDriver):
     @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate the map."""
-        self.common.terminate_connection(volume, connector, **kwargs)
+        return self.common.terminate_connection_fc(volume, connector)
 
     def create_export(self, context, volume):
         """Export the volume."""
