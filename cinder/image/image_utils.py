@@ -372,6 +372,10 @@ def coalesce_vhd(vhd_path):
 
 
 def create_temporary_file(*args, **kwargs):
+    if (CONF.image_conversion_dir and not
+            os.path.exists(CONF.image_conversion_dir)):
+        os.makedirs(CONF.image_conversion_dir)
+
     fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir, *args, **kwargs)
     os.close(fd)
     return tmp
