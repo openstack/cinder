@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 2015.1.dev247.gec9f1ad\n"
+"Project-Id-Version: cinder 2015.1.dev265.g24ce46b\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-11-23 06:08+0000\n"
+"POT-Creation-Date: 2014-11-24 06:08+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -99,9 +99,19 @@ msgstr ""
 msgid "task %(func_name)s run outlasted interval by %(delay).2f sec"
 msgstr ""
 
+#: cinder/openstack/common/policy.py:258
+#, python-format
+msgid "Can not find policy directory: %s"
+msgstr ""
+
 #: cinder/openstack/common/service.py:364
 #, python-format
 msgid "pid %d not in child list"
+msgstr ""
+
+#: cinder/tests/test_netapp_nfs.py:364
+#, python-format
+msgid "Share %(share)s and file name %(file_name)s"
 msgstr ""
 
 #: cinder/volume/manager.py:177
@@ -109,24 +119,24 @@ msgstr ""
 msgid "Driver path %s is deprecated, update your configuration to the new path."
 msgstr ""
 
-#: cinder/volume/manager.py:836
+#: cinder/volume/manager.py:835
 #, python-format
 msgid "Deleting image %(image_id)s in %(image_status)s state."
 msgstr ""
 
-#: cinder/volume/manager.py:842
+#: cinder/volume/manager.py:841
 #, python-format
 msgid "Error occurred while deleting image %s."
 msgstr ""
 
-#: cinder/volume/manager.py:1239
+#: cinder/volume/manager.py:1238
 #, python-format
 msgid ""
 "Unable to update stats, %(driver_name)s -%(driver_version)s "
 "%(config_group)s driver is uninitialized."
 msgstr ""
 
-#: cinder/volume/manager.py:1628
+#: cinder/volume/manager.py:1627
 #, python-format
 msgid ""
 "Unable to update volume replication status, %(driver_name)s "
@@ -283,6 +293,21 @@ msgstr ""
 msgid ""
 "The volume is already part of storage group: "
 "%(storageGroupInstanceName)s. "
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:816
+#, python-format
+msgid "No storage group found. %s"
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:1413
+#, python-format
+msgid "No target ports found in masking view %(maskingView)s"
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:1459
+#, python-format
+msgid "No port group found in masking view %(mv)s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_vnx_cli.py:334
@@ -463,21 +488,21 @@ msgstr ""
 msgid "Volume %s does not have provider_location specified, skipping."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:1234
+#: cinder/volume/drivers/netapp/iscsi.py:217
+#, python-format
+msgid "No entry in LUN table for volume/snapshot %(name)s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/iscsi.py:892
 #, python-format
 msgid "Could not determine root volume name on %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:1313
-#, python-format
-msgid "Error finding luns for volume %s. Verify volume exists."
-msgstr ""
-
-#: cinder/volume/drivers/netapp/iscsi.py:1573
+#: cinder/volume/drivers/netapp/iscsi.py:1057
 msgid "Volume refresh job already running. Returning..."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:1580
+#: cinder/volume/drivers/netapp/iscsi.py:1064
 #, python-format
 msgid "Error refreshing volume info. Message: %s"
 msgstr ""
@@ -494,40 +519,91 @@ msgstr ""
 msgid "Exception during cache cleaning %(share)s. Message - %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:377
+#: cinder/volume/drivers/netapp/nfs.py:378
 #, python-format
 msgid "Exception during deleting %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:439
+#: cinder/volume/drivers/netapp/nfs.py:440
 #, python-format
 msgid "Unexpected exception during image cloning in share %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:529
+#: cinder/volume/drivers/netapp/nfs.py:530
 msgid "Discover file retries exhausted."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:587
+#: cinder/volume/drivers/netapp/nfs.py:588
 msgid "Unexpected exception while short listing used share."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:649
+#: cinder/volume/drivers/netapp/nfs.py:651
 #, python-format
 msgid "Destination %s already exists."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:658
+#: cinder/volume/drivers/netapp/nfs.py:660
 #, python-format
 msgid "Exception moving file %(src)s. Message - %(e)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:781
+#: cinder/volume/drivers/netapp/nfs.py:776
 msgid "No vserver set in config. SSC will be disabled."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:1050
+#: cinder/volume/drivers/netapp/nfs.py:965
 msgid "No shares found hence skipping ssc refresh."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/ssc_utils.py:508
+msgid "ssc job in progress. Returning... "
+msgstr ""
+
+#: cinder/volume/drivers/netapp/ssc_utils.py:520
+msgid "refresh stale ssc job in progress. Returning... "
+msgstr ""
+
+#: cinder/volume/drivers/netapp/ssc_utils.py:623
+#, python-format
+msgid ""
+"The user does not have access or sufficient privileges to use all netapp "
+"apis. The following extra_specs will fail or be ignored: %s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/utils.py:143
+#, python-format
+msgid "Failed to invoke ems. Message : %s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/utils.py:156
+msgid ""
+"It is not the recommended way to use drivers by NetApp. Please use "
+"NetAppDriver to achieve the functionality."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/utils.py:384
+#, python-format
+msgid "Extra spec %(old)s is obsolete.  Use %(new)s instead."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/utils.py:389
+#, python-format
+msgid "Extra spec %(old)s is deprecated.  Use %(new)s instead."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/client/base.py:90
+#, python-format
+msgid "Error mapping lun. Code :%(code)s, Message:%(message)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/client/base.py:103
+#, python-format
+msgid "Error unmapping lun. Code :%(code)s, Message:%(message)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/client/seven_mode.py:78
+#, python-format
+msgid "Error finding luns for volume %s. Verify volume exists."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/eseries/iscsi.py:432
@@ -554,9 +630,19 @@ msgstr ""
 msgid "Snapshot %s already deleted."
 msgstr ""
 
+#: cinder/volume/drivers/netapp/eseries/iscsi.py:651
+#, python-format
+msgid "Unable to update host type for host with label %(l)s. %(e)s"
+msgstr ""
+
 #: cinder/volume/drivers/netapp/eseries/iscsi.py:656
 #, python-format
 msgid "Message - %s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/iscsi.py:777
+#, python-format
+msgid "No storage pool found with available capacity %s."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/eseries/iscsi.py:810
@@ -629,9 +715,26 @@ msgstr ""
 msgid "Cannot destroy cloned folder: %(vol)s/%(folder)s"
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dpl_iscsi.py:159
+#: cinder/volume/drivers/prophetstor/dpl_iscsi.py:154
 #, python-format
 msgid "Cannot get volume status %(exc)%s."
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dplcommon.py:1183
+#, python-format
+msgid "Flexvisor failed to delete volume %(id)s from the group %(vgid)s."
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dplcommon.py:1188
+#, python-format
+msgid ""
+"Flexvisor failed to delete volume %(id)s from group %(vgid)s due to "
+"%(status)s."
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dplcommon.py:1364
+#, python-format
+msgid "Failed to query pool %(id)s status %(ret)d."
 msgstr ""
 
 #: cinder/volume/drivers/vmware/datastore.py:218

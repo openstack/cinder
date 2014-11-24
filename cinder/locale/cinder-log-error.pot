@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 2015.1.dev247.gec9f1ad\n"
+"Project-Id-Version: cinder 2015.1.dev265.g24ce46b\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-11-23 06:08+0000\n"
+"POT-Creation-Date: 2014-11-24 06:08+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -247,16 +247,6 @@ msgstr ""
 msgid "Default quota class data not inserted into the DB."
 msgstr ""
 
-#: cinder/openstack/common/excutils.py:76
-#, python-format
-msgid "Original exception being dropped: %s"
-msgstr ""
-
-#: cinder/openstack/common/excutils.py:105
-#, python-format
-msgid "Unexpected exception occurred %d time(s)... retrying."
-msgstr ""
-
 #: cinder/openstack/common/loopingcall.py:95
 msgid "in fixed duration looping call"
 msgstr ""
@@ -270,19 +260,14 @@ msgstr ""
 msgid "Error during %(full_task_name)s: %(e)s"
 msgstr ""
 
-#: cinder/openstack/common/policy.py:508
+#: cinder/openstack/common/policy.py:546 cinder/openstack/common/policy.py:826
 #, python-format
 msgid "Failed to understand rule %s"
 msgstr ""
 
-#: cinder/openstack/common/policy.py:518
+#: cinder/openstack/common/policy.py:556
 #, python-format
 msgid "No handler for matches of kind %s"
-msgstr ""
-
-#: cinder/openstack/common/policy.py:788
-#, python-format
-msgid "Failed to understand rule %r"
 msgstr ""
 
 #: cinder/openstack/common/service.py:188
@@ -307,12 +292,12 @@ msgstr ""
 msgid "Recovering from a failed execute.  Try number %s"
 msgstr ""
 
-#: cinder/volume/driver.py:265 cinder/volume/manager.py:779
+#: cinder/volume/driver.py:265 cinder/volume/manager.py:778
 #, python-format
 msgid "Error detaching volume %(volume)s, due to remove export failure."
 msgstr ""
 
-#: cinder/volume/driver.py:474 cinder/volume/manager.py:912
+#: cinder/volume/driver.py:474 cinder/volume/manager.py:911
 #, python-format
 msgid ""
 "Failed updating model of volume %(volume_id)s with driver provided model "
@@ -341,97 +326,97 @@ msgid ""
 "%(name)s"
 msgstr ""
 
-#: cinder/volume/manager.py:375
+#: cinder/volume/manager.py:374
 msgid "Failed to create manager volume flow"
 msgstr ""
 
-#: cinder/volume/manager.py:469
+#: cinder/volume/manager.py:468
 #, python-format
 msgid "Cannot delete volume %s: volume is busy"
 msgstr ""
 
-#: cinder/volume/manager.py:496
+#: cinder/volume/manager.py:495
 msgid "Failed to update usages deleting volume"
 msgstr ""
 
-#: cinder/volume/manager.py:567 cinder/volume/manager.py:1875
+#: cinder/volume/manager.py:566 cinder/volume/manager.py:1874
 #, python-format
 msgid ""
 "Failed updating %(snapshot_id)s metadata using the provided volumes "
 "%(volume_id)s metadata"
 msgstr ""
 
-#: cinder/volume/manager.py:612
+#: cinder/volume/manager.py:611
 #, python-format
 msgid "Cannot delete snapshot %s: snapshot is busy"
 msgstr ""
 
-#: cinder/volume/manager.py:642 cinder/volume/manager.py:1975
+#: cinder/volume/manager.py:641 cinder/volume/manager.py:1974
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: cinder/volume/manager.py:775
+#: cinder/volume/manager.py:774
 #, python-format
 msgid "Error detaching volume %(volume)s, due to uninitialized driver."
 msgstr ""
 
-#: cinder/volume/manager.py:811
+#: cinder/volume/manager.py:810
 #, python-format
 msgid "Error occurred while uploading volume %(volume_id)s to image %(image_id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1000
+#: cinder/volume/manager.py:999
 #, python-format
 msgid ""
 "Failed updating model of volume %(volume_id)s with drivers update "
 "%(model)s during xfr."
 msgstr ""
 
-#: cinder/volume/manager.py:1347
+#: cinder/volume/manager.py:1346
 #, python-format
 msgid "volume %s: Error trying to extend volume"
 msgstr ""
 
-#: cinder/volume/manager.py:1426
+#: cinder/volume/manager.py:1425
 msgid "Failed to update usages while retyping volume."
 msgstr ""
 
-#: cinder/volume/manager.py:1462
+#: cinder/volume/manager.py:1461
 #, python-format
 msgid ""
 "Volume %s: driver error when trying to retype, falling back to generic "
 "mechanism."
 msgstr ""
 
-#: cinder/volume/manager.py:1529
+#: cinder/volume/manager.py:1528
 msgid "Failed to create manage_existing flow."
 msgstr ""
 
-#: cinder/volume/manager.py:1561
+#: cinder/volume/manager.py:1560
 #, python-format
 msgid "Failed to promote replica for volume %(id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1593
+#: cinder/volume/manager.py:1592
 #, python-format
 msgid "Failed to sync replica for volume %(id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1646
+#: cinder/volume/manager.py:1645
 #, python-format
 msgid "Error checking replication status for volume %s"
 msgstr ""
 
-#: cinder/volume/manager.py:1678
+#: cinder/volume/manager.py:1677
 #, python-format
 msgid "Consistency group %s: create failed"
 msgstr ""
 
-#: cinder/volume/manager.py:1770
+#: cinder/volume/manager.py:1769
 msgid "Failed to update usages deleting consistency groups."
 msgstr ""
 
-#: cinder/volume/manager.py:1787
+#: cinder/volume/manager.py:1786
 msgid "Failed to update usages deleting volume."
 msgstr ""
 
@@ -1039,39 +1024,34 @@ msgid ""
 "host mapping."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:349
-#: cinder/volume/drivers/netapp/iscsi.py:603
+#: cinder/volume/drivers/netapp/iscsi.py:340
+#: cinder/volume/drivers/netapp/iscsi.py:505
 #: cinder/volume/drivers/netapp/nfs.py:113
 #, python-format
 msgid "Resizing %s failed. Cleaning volume."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:582
+#: cinder/volume/drivers/netapp/iscsi.py:484
 #, python-format
 msgid "Message: %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:584
+#: cinder/volume/drivers/netapp/iscsi.py:486
 #, python-format
 msgid "Error getting lun attribute. Exception: %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:674
-#, python-format
-msgid "Lun %(path)s geometry failed. Message - %(msg)s"
-msgstr ""
-
-#: cinder/volume/drivers/netapp/iscsi.py:768
+#: cinder/volume/drivers/netapp/iscsi.py:615
 #, python-format
 msgid "Failure deleting staged tmp lun %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:771
+#: cinder/volume/drivers/netapp/iscsi.py:618
 #, python-format
 msgid "Unknown exception in post clone resize lun %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:773
+#: cinder/volume/drivers/netapp/iscsi.py:620
 #, python-format
 msgid "Exception details: %s"
 msgstr ""
@@ -1081,20 +1061,30 @@ msgstr ""
 msgid "Resizing %s failed. Cleaning volume. "
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:837
-#: cinder/volume/drivers/netapp/nfs.py:1407
+#: cinder/volume/drivers/netapp/nfs.py:816
+#: cinder/volume/drivers/netapp/nfs.py:1295
 #, python-format
 msgid "Exception creating vol %(name)s on share %(share)s. Details: %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:1188
+#: cinder/volume/drivers/netapp/nfs.py:1092
 #, python-format
 msgid "Copy offload workflow unsuccessful. %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:1249
+#: cinder/volume/drivers/netapp/nfs.py:1153
 #, python-format
 msgid "Error in workflow copy from cache. %s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/client/base.py:59
+#, python-format
+msgid "Error provisioning volume %(lun_name)s on %(volume_name)s. Details: %(ex)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/client/base.py:162
+#, python-format
+msgid "Lun %(path)s geometry failed. Message - %(msg)s"
 msgstr ""
 
 #: cinder/volume/drivers/netapp/eseries/iscsi.py:146
@@ -1128,57 +1118,98 @@ msgstr ""
 msgid "No headers in server response"
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dplcommon.py:91
+#: cinder/volume/drivers/prophetstor/dpl_fc.py:59
+#, python-format
+msgid "Failed to get fiber channel info from storage due to %(stat)s"
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dpl_fc.py:83
+#, python-format
+msgid "Failed to get fiber channel target from storage server due to %(stat)s"
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dpl_fc.py:102
+#, python-format
+msgid "Failed to get target wwpns from storage due to %(stat)s"
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dpl_fc.py:121
+msgid "Failed to get sns table"
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dpl_fc.py:150
+#, python-format
+msgid ""
+"Volume %(volumeid)s failed to send assign command, ret: %(status)s "
+"output: %(output)s"
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dpl_fc.py:293
+#, python-format
+msgid "Failed to export fiber channel target due to %s"
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dplcommon.py:93
 #, python-format
 msgid "JSON encode params error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dplcommon.py:103
+#: cinder/volume/drivers/prophetstor/dplcommon.py:105
 #, python-format
 msgid "Connect to Flexvisor error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dplcommon.py:107
+#: cinder/volume/drivers/prophetstor/dplcommon.py:109
 #, python-format
 msgid "Connect to Flexvisor failed: %s."
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dplcommon.py:131
+#: cinder/volume/drivers/prophetstor/dplcommon.py:133
 #, python-format
 msgid "Failed to send request: %s."
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dplcommon.py:140
+#: cinder/volume/drivers/prophetstor/dplcommon.py:142
 msgid "The Flexvisor service is unavailable."
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dplcommon.py:154
+#: cinder/volume/drivers/prophetstor/dplcommon.py:156
 #, python-format
 msgid "Failed to get response: %s."
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dplcommon.py:163
+#: cinder/volume/drivers/prophetstor/dplcommon.py:165
 #, python-format
 msgid ""
 "%(method)s %(url)s unexpected response status: %(response)s (expects: "
 "%(expects)s)."
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dplcommon.py:182
-#: cinder/volume/drivers/prophetstor/dplcommon.py:196
+#: cinder/volume/drivers/prophetstor/dplcommon.py:184
+#: cinder/volume/drivers/prophetstor/dplcommon.py:198
 #, python-format
 msgid "Call to json.loads() raised an exception: %s."
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dplcommon.py:186
-#: cinder/volume/drivers/prophetstor/dplcommon.py:200
+#: cinder/volume/drivers/prophetstor/dplcommon.py:188
+#: cinder/volume/drivers/prophetstor/dplcommon.py:202
 #, python-format
 msgid "Read response raised an exception: %s."
 msgstr ""
 
-#: cinder/volume/drivers/prophetstor/dplcommon.py:1390
+#: cinder/volume/drivers/prophetstor/dplcommon.py:1337
 #, python-format
-msgid "Flexvisor failed to get pool info (failed to get event)%s."
+msgid "Flexvisor failed to get pool list.(Error: %d)"
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dplcommon.py:1341
+#, python-format
+msgid "Flexvisor failed to get pool list due to %s."
+msgstr ""
+
+#: cinder/volume/drivers/prophetstor/dplcommon.py:1395
+#, python-format
+msgid "Failed to get server info due to %(state)s."
 msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:501
