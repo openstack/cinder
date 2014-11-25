@@ -133,21 +133,20 @@ class PureISCSIDriver(san.SanISCSIDriver):
         """Disconnect all hosts and delete the volume"""
         LOG.debug("Enter PureISCSIDriver.delete_volume.")
         vol_name = _get_vol_name(volume)
-
-        connected_hosts = self._array.list_volume_hosts(vol_name)
-        for host_info in connected_hosts:
-            host_name = host_info["host"]
-            self._disconnect_host(host_name, vol_name)
-
         try:
+            connected_hosts = self._array.list_volume_hosts(vol_name)
+            for host_info in connected_hosts:
+                host_name = host_info["host"]
+                self._disconnect_host(host_name, vol_name)
             self._array.destroy_volume(vol_name)
         except exception.PureAPIException as err:
             with excutils.save_and_reraise_exception() as ctxt:
-                if err.kwargs["code"] == 400:
+                if err.kwargs["code"] == 400 and \
+                        "Volume does not exist" in err.msg:
                     # Happens if the volume does not exist.
                     ctxt.reraise = False
-                    LOG.error(_LE("Volume deletion failed with message: %s") %
-                              err.msg)
+                    LOG.warn(_LW("Volume deletion failed with message: %s")
+                             % err.msg)
         LOG.debug("Leave PureISCSIDriver.delete_volume.")
 
     def create_snapshot(self, snapshot):
