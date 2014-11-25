@@ -71,6 +71,7 @@ class CinderException(Exception):
 
     def __init__(self, message=None, **kwargs):
         self.kwargs = kwargs
+        self.kwargs['message'] = message
 
         if 'code' not in self.kwargs:
             try:
@@ -82,7 +83,7 @@ class CinderException(Exception):
             if isinstance(v, Exception):
                 self.kwargs[k] = six.text_type(v)
 
-        if not message:
+        if self._should_format():
             try:
                 message = self.message % kwargs
 
@@ -105,6 +106,9 @@ class CinderException(Exception):
         # overshadowed by the class' message attribute
         self.msg = message
         super(CinderException, self).__init__(message)
+
+    def _should_format(self):
+        return self.kwargs['message'] is None or '%(message)' in self.message
 
     def __unicode__(self):
         return unicode(self.msg)
