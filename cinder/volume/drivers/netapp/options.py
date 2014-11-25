@@ -90,15 +90,7 @@ netapp_cluster_opts = [
                default=None,
                help=('This option specifies the virtual storage server '
                      '(Vserver) name on the storage cluster on which '
-                     'provisioning of block storage volumes should occur. If '
-                     'using the NFS storage protocol, this parameter is '
-                     'mandatory for storage service catalog support (utilized'
-                     ' by Cinder volume type extra_specs support). If this '
-                     'option is specified, the exports belonging to the '
-                     'Vserver will only be used for provisioning in the '
-                     'future. Block storage volumes on exports not belonging '
-                     'to the Vserver specified by this option will continue '
-                     'to function normally.')), ]
+                     'provisioning of block storage volumes should occur.')), ]
 
 netapp_7mode_opts = [
     cfg.StrOpt('netapp_vfiler',

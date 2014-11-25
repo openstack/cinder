@@ -1,5 +1,7 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2014 Andrew Kerr.  All rights reserved.
+# All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -312,3 +314,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         warn_msg = 'Extra spec netapp_thick_provisioned is deprecated.  ' \
                    'Use netapp_thin_provisioned instead.'
         na_utils.LOG.warning.assert_called_once_with(warn_msg)
+
+    @mock.patch.object(na_utils, 'check_flags')
+    def test_do_setup(self, mock_check_flags):
+        self.library.do_setup(mock.Mock())
+
+        self.assertTrue(mock_check_flags.called)
