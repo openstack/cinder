@@ -79,6 +79,16 @@ def stub_volume_create(self, context, size, name, description, snapshot,
     return vol
 
 
+def stub_image_service_detail(self, context, **kwargs):
+    filters = kwargs.get('filters', {'name': ''})
+    if filters['name'] == "Fedora-x86_64-20-20140618-sda":
+        return [{'id': "c905cedb-7281-47e4-8a62-f26bc5fc4c77"}]
+    elif filters['name'] == "multi":
+        return [{'id': "c905cedb-7281-47e4-8a62-f26bc5fc4c77"},
+                {'id': "c905cedb-abcd-47e4-8a62-f26bc5fc4c77"}]
+    return []
+
+
 def stub_volume_create_from_image(self, context, size, name, description,
                                   snapshot, volume_type, metadata,
                                   availability_zone):
