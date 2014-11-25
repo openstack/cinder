@@ -88,10 +88,15 @@ class BrickLvmTestCase(test.TestCase):
             data += "  fake-vg-3:10.00:10.00:0:"\
                     "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z3\n"
         elif ('env, LC_ALL=C, lvs, --noheadings, '
+              '--unit=g, -o, vg_name,name,size, --nosuffix, '
+              'fake-vg/lv-nothere' in cmd_string):
+            raise processutils.ProcessExecutionError(
+                stderr="One or more specified logical volume(s) not found.")
+        elif ('env, LC_ALL=C, lvs, --noheadings, '
               '--unit=g, -o, vg_name,name,size' in cmd_string):
             if 'fake-unknown' in cmd_string:
                 raise processutils.ProcessExecutionError(
-                    stderr="One of more volume(s) not found."
+                    stderr="One or more volume(s) not found."
                 )
             data = "  fake-vg fake-1 1.00g\n"
             data += "  fake-vg fake-2 1.00g\n"
@@ -153,6 +158,13 @@ class BrickLvmTestCase(test.TestCase):
 
     def test_get_volume_none(self):
         self.assertEqual(self.vg.get_volume('fake-unknown'), None)
+
+    def test_get_lv_info_notfound(self):
+        self.assertEqual(
+            self.vg.get_lv_info(
+                'sudo', vg_name='fake-vg', lv_name='lv-nothere'),
+            []
+        )
 
     def test_get_all_physical_volumes(self):
         # Filtered VG version
