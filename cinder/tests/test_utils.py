@@ -511,7 +511,7 @@ class GenericUtilsTestCase(test.TestCase):
         mock_channel = mock.Mock()
         mock_client.invoke_shell.return_value = mock_channel
         utils.create_channel(mock_client, test_width, test_height)
-        mock_client.invoke_shell.assert_called_once()
+        mock_client.invoke_shell.assert_called_once_with()
         mock_channel.resize_pty.assert_called_once_with(test_width,
                                                         test_height)
 
@@ -899,8 +899,6 @@ class SSHPoolTestCase(test.TestCase):
     @mock.patch('paramiko.SSHClient')
     def test_single_ssh_connect(self, mock_sshclient, mock_pkey, mock_isfile,
                                 mock_open):
-        mock_sshclient.return_value = FakeSSHClient()
-
         CONF.ssh_hosts_key_file = '/var/lib/cinder/ssh_known_hosts'
 
         # create with password
@@ -916,7 +914,7 @@ class SSHPoolTestCase(test.TestCase):
             second_id = ssh.id
 
         self.assertEqual(first_id, second_id)
-        mock_sshclient.connect.assert_called_once()
+        self.assertEqual(1, mock_sshclient.return_value.connect.call_count)
 
         # create with private key
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
@@ -924,7 +922,7 @@ class SSHPoolTestCase(test.TestCase):
                                     privatekey="test",
                                     min_size=1,
                                     max_size=1)
-        mock_sshclient.connect.assert_called_once()
+        self.assertEqual(2, mock_sshclient.return_value.connect.call_count)
 
         # attempt to create with no password or private key
         self.assertRaises(paramiko.SSHException,

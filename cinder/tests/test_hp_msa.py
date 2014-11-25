@@ -496,7 +496,7 @@ class TestHPMSAFC(test.TestCase):
                                'data': {'target_wwn': ['id1'],
                                         'target_lun': 1,
                                         'target_discovered': True}})
-        mock_ports.assert_called_once()
+        mock_ports.assert_called_once_with()
 
     @mock.patch.object(hp_msa_common.HPMSACommon, 'client_logout')
     @mock.patch.object(hp_msa_common.HPMSACommon, 'unmap_volume')

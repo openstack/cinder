@@ -90,25 +90,26 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
     @mock.patch.object(BrcdFCZoneClientCLI, 'get_active_zone_set')
     @mock.patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
     @mock.patch.object(BrcdFCZoneClientCLI, '_cfg_save')
-    def test_add_zones_new_zone_no_activate(self, get_active_zs_mock,
+    def test_add_zones_new_zone_no_activate(self, cfg_save_mock,
                                             apply_zone_change_mock,
-                                            cfg_save_mock):
+                                            get_active_zs_mock):
         get_active_zs_mock.return_value = active_zoneset
         self.add_zones(new_zones, False, None)
-        get_active_zs_mock.assert_called_once()
-        apply_zone_change_mock.assert_called_twice()
-        cfg_save_mock.assert_called_once()
+        get_active_zs_mock.assert_called_once_with()
+        self.assertEqual(3, apply_zone_change_mock.call_count)
+        cfg_save_mock.assert_called_once_with()
 
     @mock.patch.object(BrcdFCZoneClientCLI, 'get_active_zone_set')
     @mock.patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
     @mock.patch.object(BrcdFCZoneClientCLI, 'activate_zoneset')
-    def test_add_zones_new_zone_activate(self, get_active_zs_mock,
+    def test_add_zones_new_zone_activate(self, activate_zoneset_mock,
                                          apply_zone_change_mock,
-                                         activate_zoneset_mock):
+                                         get_active_zs_mock):
         get_active_zs_mock.return_value = active_zoneset
         self.add_zones(new_zone, True, active_zoneset)
-        apply_zone_change_mock.assert_called_once()
-        activate_zoneset_mock.assert_called_once()
+        self.assertEqual(2, apply_zone_change_mock.call_count)
+        activate_zoneset_mock.assert_called_once_with(
+            active_zoneset['active_zone_config'])
 
     @mock.patch.object(BrcdFCZoneClientCLI, '_ssh_execute')
     def test_activate_zoneset(self, ssh_execute_mock):
@@ -124,27 +125,27 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
 
     @mock.patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
     @mock.patch.object(BrcdFCZoneClientCLI, '_cfg_save')
-    def test_delete_zones_activate_false(self, apply_zone_change_mock,
-                                         cfg_save_mock):
-        with mock.patch.object(self, '_zone_delete') \
-                as zone_delete_mock:
+    def test_delete_zones_activate_false(self, cfg_save_mock,
+                                         apply_zone_change_mock):
+        with mock.patch.object(self, '_zone_delete') as zone_delete_mock:
             self.delete_zones(zone_names_to_delete, False,
                               active_zoneset_multiple_zones)
-            apply_zone_change_mock.assert_called_once()
+            self.assertEqual(1, apply_zone_change_mock.call_count)
             zone_delete_mock.assert_called_once_with(zone_names_to_delete)
-            cfg_save_mock.assert_called_once()
+            cfg_save_mock.assert_called_once_with()
 
     @patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
     @patch.object(BrcdFCZoneClientCLI, 'activate_zoneset')
-    def test_delete_zones_activate_true(self, apply_zone_change_mock,
-                                        activate_zs_mock):
+    def test_delete_zones_activate_true(self, activate_zs_mock,
+                                        apply_zone_change_mock):
         with mock.patch.object(self, '_zone_delete') \
                 as zone_delete_mock:
             self.delete_zones(zone_names_to_delete, True,
                               active_zoneset_multiple_zones)
-            apply_zone_change_mock.assert_called_once()
+            self.assertEqual(1, apply_zone_change_mock.call_count)
             zone_delete_mock.assert_called_once_with(zone_names_to_delete)
-            activate_zs_mock.assert_called_once()
+            activate_zs_mock.assert_called_once_with(
+                active_zoneset['active_zone_config'])
 
     @patch.object(BrcdFCZoneClientCLI, '_get_switch_info')
     def test_get_nameserver_info(self, get_switch_info_mock):
@@ -180,7 +181,7 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
                 as is_trans_abortable_mock:
             is_trans_abortable_mock.return_value = True
             self._cfg_trans_abort()
-            is_trans_abortable_mock.assert_called_once()
+            is_trans_abortable_mock.assert_called_once_with()
             apply_zone_change_mock.assert_called_once_with(cmd_list)
 
     @patch.object(BrcdFCZoneClientCLI, '_run_ssh')

@@ -108,7 +108,7 @@ class SmbFsTestCase(test.TestCase):
             else:
                 self._smbfs_driver.do_setup(None)
                 self.assertEqual(self._smbfs_driver.shares, {})
-                fake_ensure_mounted.assert_called_once()
+                fake_ensure_mounted.assert_called_once_with()
 
     def test_setup_missing_shares_config_option(self):
         fake_config = copy.copy(self._FAKE_SMBFS_CONFIG)
