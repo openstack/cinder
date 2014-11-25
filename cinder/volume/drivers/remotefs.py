@@ -377,8 +377,8 @@ class RemoteFSDriver(driver.VolumeDriver):
             share_opts = share_info[1].strip() if len(share_info) > 1 else None
 
             if not re.match(self.SHARE_FORMAT_REGEX, share_address):
-                LOG.warn(_LW("Share %s ignored due to invalid format. Must be "
-                             "of form address:/export.") % share_address)
+                LOG.error(_LE("Share %s ignored due to invalid format. Must "
+                              "be of form address:/export.") % share_address)
                 continue
 
             self.shares[share_address] = share_opts
