@@ -1,5 +1,4 @@
-# Copyright (c) 2014 NetApp, Inc.
-# All Rights Reserved.
+# Copyright (c) 2014 NetApp, Inc.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -31,11 +30,12 @@ from cinder.openstack.common import log as logging
 from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import client
+from cinder.volume.drivers.netapp.eseries import utils
 from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
 from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_eseries_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
-from cinder.volume.drivers.netapp import utils
+from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 
 
@@ -49,11 +49,11 @@ CONF.register_opts(netapp_eseries_opts)
 CONF.register_opts(netapp_transport_opts)
 
 
-class Driver(driver.ISCSIDriver):
+class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
     """Executes commands relating to Volumes."""
 
     VERSION = "1.0.0"
-    required_flags = ['netapp_server_hostname', 'netapp_controller_ips',
+    REQUIRED_FLAGS = ['netapp_server_hostname', 'netapp_controller_ips',
                       'netapp_login', 'netapp_password',
                       'netapp_storage_pools']
     SLEEP_SECS = 5
@@ -80,8 +80,8 @@ class Driver(driver.ISCSIDriver):
                   }
 
     def __init__(self, *args, **kwargs):
-        super(Driver, self).__init__(*args, **kwargs)
-        utils.validate_instantiation(**kwargs)
+        super(NetAppEseriesISCSIDriver, self).__init__(*args, **kwargs)
+        na_utils.validate_instantiation(**kwargs)
         self.configuration.append_config_values(netapp_basicauth_opts)
         self.configuration.append_config_values(netapp_connection_opts)
         self.configuration.append_config_values(netapp_transport_opts)
@@ -94,7 +94,8 @@ class Driver(driver.ISCSIDriver):
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
-        self._check_flags()
+        na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
+
         port = self.configuration.netapp_server_port
         scheme = self.configuration.netapp_transport_type.lower()
         if port is None:
@@ -102,6 +103,7 @@ class Driver(driver.ISCSIDriver):
                 port = 8080
             elif scheme == 'https':
                 port = 8443
+
         self._client = client.RestClient(
             scheme=scheme,
             host=self.configuration.netapp_server_hostname,
@@ -111,36 +113,34 @@ class Driver(driver.ISCSIDriver):
             password=self.configuration.netapp_password)
         self._check_mode_get_or_register_storage_system()
 
-    def _check_flags(self):
-        """Ensure that the flags we care about are set."""
-        required_flags = self.required_flags
-        for flag in required_flags:
-            if not getattr(self.configuration, flag, None):
-                msg = _('%s is not set.') % flag
-                raise exception.InvalidInput(reason=msg)
-        if not self.configuration.use_multipath_for_image_xfer:
-            msg = _('Production use of "%(backend)s" backend requires the '
-                    'Cinder controller to have multipathing properly set up '
-                    'and the configuration option "%(mpflag)s" to be set to '
-                    '"True".') % {'backend': self._backend_name,
-                                  'mpflag': 'use_multipath_for_image_xfer'}
-            LOG.warning(msg)
-
     def check_for_setup_error(self):
+        self._check_host_type()
+        self._check_multipath()
+        self._check_storage_system()
+        self._populate_system_objects()
+
+    def _check_host_type(self):
         self.host_type =\
             self.HOST_TYPES.get(self.configuration.netapp_eseries_host_type,
                                 None)
         if not self.host_type:
             raise exception.NetAppDriverException(
                 _('Configured host type is not supported.'))
-        self._check_storage_system()
-        self._populate_system_objects()
+
+    def _check_multipath(self):
+        if not self.configuration.use_multipath_for_image_xfer:
+            msg = _LW('Production use of "%(backend)s" backend requires the '
+                      'Cinder controller to have multipathing properly set up '
+                      'and the configuration option "%(mpflag)s" to be set to '
+                      '"True".') % {'backend': self._backend_name,
+                                    'mpflag': 'use_multipath_for_image_xfer'}
+            LOG.warning(msg)
 
     def _check_mode_get_or_register_storage_system(self):
         """Does validity checks for storage system registry and health."""
         def _resolve_host(host):
             try:
-                ip = utils.resolve_hostname(host)
+                ip = na_utils.resolve_hostname(host)
                 return ip
             except socket.gaierror as e:
                 LOG.error(_LE('Error resolving host %(host)s. Error - %(e)s.')
@@ -150,7 +150,7 @@ class Driver(driver.ISCSIDriver):
         ips = self.configuration.netapp_controller_ips
         ips = [i.strip() for i in ips.split(",")]
         ips = [x for x in ips if _resolve_host(x)]
-        host = utils.resolve_hostname(
+        host = na_utils.resolve_hostname(
             self.configuration.netapp_server_hostname)
         if not ips:
             msg = _('Controller ips not valid after resolution.')
@@ -687,14 +687,14 @@ class Driver(driver.ISCSIDriver):
         raise exception.NotFound(_("Host type %s not supported.") % host_type)
 
     def _get_free_lun(self, host, maps=None):
-        """Gets free lun for given host."""
+        """Gets free LUN for given host."""
         ref = host['hostRef']
         luns = maps or self._get_vol_mapping_for_host_frm_array(ref)
         used_luns = set(map(lambda lun: int(lun['lun']), luns))
         for lun in xrange(self.MAX_LUNS_PER_HOST):
             if lun not in used_luns:
                 return lun
-        msg = _("No free luns. Host might exceeded max luns.")
+        msg = _("No free LUNs. Host might exceeded max LUNs.")
         raise exception.NetAppDriverException(msg)
 
     def _get_vol_mapping_for_host_frm_array(self, host_ref):
@@ -806,7 +806,7 @@ class Driver(driver.ISCSIDriver):
     def _garbage_collect_tmp_vols(self):
         """Removes tmp vols with no snapshots."""
         try:
-            if not utils.set_safe_attr(self, 'clean_job_running', True):
+            if not na_utils.set_safe_attr(self, 'clean_job_running', True):
                 LOG.warning(_LW('Returning as clean tmp '
                                 'vol job already running.'))
                 return
@@ -819,4 +819,4 @@ class Driver(driver.ISCSIDriver):
                         LOG.debug("Error deleting vol with label %s.",
                                   label)
         finally:
-            utils.set_safe_attr(self, 'clean_job_running', False)
+            na_utils.set_safe_attr(self, 'clean_job_running', False)

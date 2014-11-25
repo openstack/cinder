@@ -1,5 +1,5 @@
-# Copyright (c) 2014 NetApp, Inc.
-# All Rights Reserved.
+# Copyright (c) 2014 NetApp, Inc.  All rights reserved.
+# Copyright (c) 2014 Navneet Singh.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -22,7 +22,7 @@ import requests
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 
 
@@ -71,8 +71,8 @@ class WebserviceClient(object):
         # Catching error conditions other than the perceived ones.
         # Helps propagating only known exceptions back to the caller.
         except Exception as e:
-            LOG.exception(_("Unexpected error while invoking web service."
-                            " Error - %s."), e)
+            LOG.exception(_LE("Unexpected error while invoking web service."
+                              " Error - %s."), e)
             raise exception.NetAppDriverException(
                 _("Invoking web service failed."))
         self._eval_response(response)

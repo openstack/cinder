@@ -1,4 +1,3 @@
-
 # Copyright (c) 2012 NetApp, Inc.
 # All Rights Reserved.
 #
@@ -26,20 +25,18 @@ import mock
 import six
 
 from cinder import exception
-from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.netapp.api import NaElement
-from cinder.volume.drivers.netapp.api import NaServer
 from cinder.volume.drivers.netapp import common
+from cinder.volume.drivers.netapp.dataontap.client import client_base
+from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp.options import netapp_7mode_opts
 from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
 from cinder.volume.drivers.netapp.options import netapp_cluster_opts
 from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_provisioning_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
-from cinder.volume.drivers.netapp import ssc_utils
 
 LOG = logging.getLogger("cinder.volume.driver")
 
@@ -525,7 +522,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
                 'id': 'lun1', 'provider_auth': None, 'project_id': 'project',
                 'display_name': None, 'display_description': 'lun1',
                 'volume_type_id': None, 'host': 'hostname@backend#vol1'}
-    vol1 = ssc_utils.NetAppVolume('lun1', 'openstack')
+    vol1 = ssc_cmode.NetAppVolume('lun1', 'openstack')
     vol1.state['vserver_root'] = False
     vol1.state['status'] = 'online'
     vol1.state['junction_active'] = True
@@ -553,15 +550,13 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
 
     def _custom_setup(self):
         self.stubs.Set(
-            ssc_utils, 'refresh_cluster_ssc',
+            ssc_cmode, 'refresh_cluster_ssc',
             lambda a, b, c, synchronous: None)
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(httplib, 'HTTPConnection',
                        FakeDirectCmodeHTTPConnection)
         driver.do_setup(context='')
-        client = driver.client
-        client.set_api_version(1, 15)
         self.driver = driver
         self.driver.ssc_vols = self.ssc_map
 
@@ -576,52 +571,65 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         return configuration
 
     def test_connect(self):
+        self.driver.library.zapi_client = mock.MagicMock()
+        self.driver.library.zapi_client.get_ontapi_version.return_value = \
+            (1, 20)
         self.driver.check_for_setup_error()
 
     def test_do_setup_all_default(self):
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
-        driver._do_custom_setup = mock.Mock()
         driver.do_setup(context='')
-        self.assertEqual('80', driver.client.get_port())
-        self.assertEqual('http', driver.client.get_transport_type())
+        na_server = driver.library.zapi_client.get_connection()
+        self.assertEqual('80', na_server.get_port())
+        self.assertEqual('http', na_server.get_transport_type())
 
+    @mock.patch.object(client_base.Client, 'get_ontapi_version',
+                       mock.Mock(return_value=(1, 20)))
     def test_do_setup_http_default_port(self):
         configuration = self._set_config(create_configuration())
         configuration.netapp_transport_type = 'http'
         driver = common.NetAppDriver(configuration=configuration)
-        driver._do_custom_setup = mock.Mock()
         driver.do_setup(context='')
-        self.assertEqual('80', driver.client.get_port())
-        self.assertEqual('http', driver.client.get_transport_type())
+        na_server = driver.library.zapi_client.get_connection()
+        self.assertEqual('80', na_server.get_port())
+        self.assertEqual('http', na_server.get_transport_type())
 
+    @mock.patch.object(client_base.Client, 'get_ontapi_version',
+                       mock.Mock(return_value=(1, 20)))
     def test_do_setup_https_default_port(self):
         configuration = self._set_config(create_configuration())
         configuration.netapp_transport_type = 'https'
         driver = common.NetAppDriver(configuration=configuration)
-        driver._do_custom_setup = mock.Mock()
+        driver.library._get_root_volume_name = mock.Mock()
         driver.do_setup(context='')
-        self.assertEqual('443', driver.client.get_port())
-        self.assertEqual('https', driver.client.get_transport_type())
+        na_server = driver.library.zapi_client.get_connection()
+        self.assertEqual('443', na_server.get_port())
+        self.assertEqual('https', na_server.get_transport_type())
 
+    @mock.patch.object(client_base.Client, 'get_ontapi_version',
+                       mock.Mock(return_value=(1, 20)))
     def test_do_setup_http_non_default_port(self):
         configuration = self._set_config(create_configuration())
         configuration.netapp_server_port = 81
         driver = common.NetAppDriver(configuration=configuration)
-        driver._do_custom_setup = mock.Mock()
         driver.do_setup(context='')
-        self.assertEqual('81', driver.client.get_port())
-        self.assertEqual('http', driver.client.get_transport_type())
+        na_server = driver.library.zapi_client.get_connection()
+        self.assertEqual('81', na_server.get_port())
+        self.assertEqual('http', na_server.get_transport_type())
 
+    @mock.patch.object(client_base.Client, 'get_ontapi_version',
+                       mock.Mock(return_value=(1, 20)))
     def test_do_setup_https_non_default_port(self):
         configuration = self._set_config(create_configuration())
         configuration.netapp_transport_type = 'https'
         configuration.netapp_server_port = 446
         driver = common.NetAppDriver(configuration=configuration)
-        driver._do_custom_setup = mock.Mock()
+        driver.library._get_root_volume_name = mock.Mock()
         driver.do_setup(context='')
-        self.assertEqual('446', driver.client.get_port())
-        self.assertEqual('https', driver.client.get_transport_type())
+        na_server = driver.library.zapi_client.get_connection()
+        self.assertEqual('446', na_server.get_port())
+        self.assertEqual('https', na_server.get_transport_type())
 
     def test_create_destroy(self):
         self.driver.create_volume(self.volume)
@@ -669,10 +677,8 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             raise AssertionError('Target portal is none')
 
     def test_vol_stats(self):
-        self.driver.get_volume_stats(refresh=True)
-        stats = self.driver._stats
+        stats = self.driver.get_volume_stats(refresh=True)
         self.assertEqual(stats['vendor_name'], 'NetApp')
-        self.assertTrue(stats['pools'][0]['pool_name'])
 
     def test_create_vol_snapshot_diff_size_resize(self):
         self.driver.create_volume(self.volume)
@@ -1174,10 +1180,8 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
         self.stubs.Set(httplib, 'HTTPConnection',
                        FakeDirect7modeHTTPConnection)
         driver.do_setup(context='')
-        client = driver.client
-        client.set_api_version(1, 9)
+        driver.root_volume_name = 'root'
         self.driver = driver
-        self.driver.root_volume_name = 'root'
 
     def _set_config(self, configuration):
         configuration.netapp_storage_family = 'ontap_7mode'
@@ -1195,15 +1199,22 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
         self.driver.delete_volume(self.volume)
         self.driver.volume_list = []
 
+    def test_connect(self):
+        self.driver.driver.library.zapi_client = mock.MagicMock()
+        self.driver.driver.library.zapi_client.get_ontapi_version.\
+            return_value = (1, 20)
+        self.driver.check_for_setup_error()
+
     def test_check_for_setup_error_version(self):
         drv = self.driver
-        delattr(drv.client, '_api_version')
+        drv.zapi_client = mock.Mock()
+        drv.zapi_client.get_ontapi_version.return_value = None
 
         # check exception raises when version not found
         self.assertRaises(exception.VolumeBackendAPIException,
                           drv.check_for_setup_error)
 
-        drv.client.set_api_version(1, 8)
+        drv.zapi_client.get_ontapi_version.return_value = (1, 8)
 
         # check exception raises when not supported version
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -1224,8 +1235,6 @@ class NetAppDirect7modeISCSIDriverTestCase_WV(
         self.stubs.Set(httplib, 'HTTPConnection',
                        FakeDirect7modeHTTPConnection)
         driver.do_setup(context='')
-        client = driver.client
-        client.set_api_version(1, 9)
         self.driver = driver
         self.driver.root_volume_name = 'root'
 
@@ -1239,132 +1248,3 @@ class NetAppDirect7modeISCSIDriverTestCase_WV(
         configuration.netapp_server_port = None
         configuration.netapp_vfiler = 'openstack'
         return configuration
-
-
-class NetAppApiElementTransTests(test.TestCase):
-    """Test case for NetApp api element translations."""
-
-    def setUp(self):
-        super(NetAppApiElementTransTests, self).setUp()
-
-    def test_translate_struct_dict_unique_key(self):
-        """Tests if dict gets properly converted to NaElements."""
-        root = NaElement('root')
-        child = {'e1': 'v1', 'e2': 'v2', 'e3': 'v3'}
-        root.translate_struct(child)
-        self.assertEqual(len(root.get_children()), 3)
-        self.assertEqual(root.get_child_content('e1'), 'v1')
-        self.assertEqual(root.get_child_content('e2'), 'v2')
-        self.assertEqual(root.get_child_content('e3'), 'v3')
-
-    def test_translate_struct_dict_nonunique_key(self):
-        """Tests if list/dict gets properly converted to NaElements."""
-        root = NaElement('root')
-        child = [{'e1': 'v1', 'e2': 'v2'}, {'e1': 'v3'}]
-        root.translate_struct(child)
-        self.assertEqual(len(root.get_children()), 3)
-        children = root.get_children()
-        for c in children:
-            if c.get_name() == 'e1':
-                self.assertIn(c.get_content(), ['v1', 'v3'])
-            else:
-                self.assertEqual(c.get_content(), 'v2')
-
-    def test_translate_struct_list(self):
-        """Tests if list gets properly converted to NaElements."""
-        root = NaElement('root')
-        child = ['e1', 'e2']
-        root.translate_struct(child)
-        self.assertEqual(len(root.get_children()), 2)
-        self.assertIsNone(root.get_child_content('e1'))
-        self.assertIsNone(root.get_child_content('e2'))
-
-    def test_translate_struct_tuple(self):
-        """Tests if tuple gets properly converted to NaElements."""
-        root = NaElement('root')
-        child = ('e1', 'e2')
-        root.translate_struct(child)
-        self.assertEqual(len(root.get_children()), 2)
-        self.assertIsNone(root.get_child_content('e1'))
-        self.assertIsNone(root.get_child_content('e2'))
-
-    def test_translate_invalid_struct(self):
-        """Tests if invalid data structure raises exception."""
-        root = NaElement('root')
-        child = 'random child element'
-        self.assertRaises(ValueError, root.translate_struct, child)
-
-    def test_setter_builtin_types(self):
-        """Tests str, int, float get converted to NaElement."""
-        root = NaElement('root')
-        root['e1'] = 'v1'
-        root['e2'] = 1
-        root['e3'] = 2.0
-        root['e4'] = 8l
-        self.assertEqual(len(root.get_children()), 4)
-        self.assertEqual(root.get_child_content('e1'), 'v1')
-        self.assertEqual(root.get_child_content('e2'), '1')
-        self.assertEqual(root.get_child_content('e3'), '2.0')
-        self.assertEqual(root.get_child_content('e4'), '8')
-
-    def test_setter_na_element(self):
-        """Tests na_element gets appended as child."""
-        root = NaElement('root')
-        root['e1'] = NaElement('nested')
-        self.assertEqual(len(root.get_children()), 1)
-        e1 = root.get_child_by_name('e1')
-        self.assertIsInstance(e1, NaElement)
-        self.assertIsInstance(e1.get_child_by_name('nested'), NaElement)
-
-    def test_setter_child_dict(self):
-        """Tests dict is appended as child to root."""
-        root = NaElement('root')
-        root['d'] = {'e1': 'v1', 'e2': 'v2'}
-        e1 = root.get_child_by_name('d')
-        self.assertIsInstance(e1, NaElement)
-        sub_ch = e1.get_children()
-        self.assertEqual(len(sub_ch), 2)
-        for c in sub_ch:
-            self.assertIn(c.get_name(), ['e1', 'e2'])
-            if c.get_name() == 'e1':
-                self.assertEqual(c.get_content(), 'v1')
-            else:
-                self.assertEqual(c.get_content(), 'v2')
-
-    def test_setter_child_list_tuple(self):
-        """Tests list/tuple are appended as child to root."""
-        root = NaElement('root')
-        root['l'] = ['l1', 'l2']
-        root['t'] = ('t1', 't2')
-        l = root.get_child_by_name('l')
-        self.assertIsInstance(l, NaElement)
-        t = root.get_child_by_name('t')
-        self.assertIsInstance(t, NaElement)
-        for le in l.get_children():
-            self.assertIn(le.get_name(), ['l1', 'l2'])
-        for te in t.get_children():
-            self.assertIn(te.get_name(), ['t1', 't2'])
-
-    def test_setter_no_value(self):
-        """Tests key with None value."""
-        root = NaElement('root')
-        root['k'] = None
-        self.assertIsNone(root.get_child_content('k'))
-
-    def test_setter_invalid_value(self):
-        """Tests invalid value raises exception."""
-        root = NaElement('root')
-        try:
-            root['k'] = NaServer('localhost')
-        except Exception as e:
-            if not isinstance(e, TypeError):
-                self.fail(_('Error not a TypeError.'))
-
-    def test_setter_invalid_key(self):
-        """Tests invalid value raises exception."""
-        root = NaElement('root')
-        try:
-            root[None] = 'value'
-        except Exception as e:
-            if not isinstance(e, KeyError):
-                self.fail(_('Error not a KeyError.'))

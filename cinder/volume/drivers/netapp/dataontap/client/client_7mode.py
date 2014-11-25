@@ -1,5 +1,5 @@
-# Copyright (c) - 2014, Alex Meade.  All rights reserved.
-# All Rights Reserved.
+# Copyright (c) 2014 Alex Meade.  All rights reserved.
+# Copyright (c) 2014 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -23,17 +23,23 @@ import six
 from cinder import exception
 from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
-from cinder.volume.drivers.netapp import api as netapp_api
-from cinder.volume.drivers.netapp.client import base
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+from cinder.volume.drivers.netapp.dataontap.client import client_base
 
 
 LOG = logging.getLogger(__name__)
 
 
-class Client(base.Client):
+class Client(client_base.Client):
 
-    def __init__(self, connection, volume_list=None):
-        super(Client, self).__init__(connection)
+    def __init__(self, volume_list=None, **kwargs):
+        super(Client, self).__init__(**kwargs)
+        vfiler = kwargs.get('vfiler', None)
+        self.connection.set_vfiler(vfiler)
+
+        (major, minor) = self.get_ontapi_version(cached=False)
+        self.connection.set_api_version(major, minor)
+
         self.volume_list = volume_list
 
     def _invoke_vfiler_api(self, na_element, vfiler):
@@ -66,7 +72,7 @@ class Client(base.Client):
         return result.get_child_content('node-name')
 
     def get_lun_list(self):
-        """Gets the list of luns on filer."""
+        """Gets the list of LUNs on filer."""
         lun_list = []
         if self.volume_list:
             for vol in self.volume_list:
@@ -75,15 +81,15 @@ class Client(base.Client):
                     if luns:
                         lun_list.extend(luns)
                 except netapp_api.NaApiError:
-                    LOG.warning(_LW("Error finding luns for volume %s."
-                                    " Verify volume exists.") % (vol))
+                    LOG.warning(_LW("Error finding LUNs for volume %s."
+                                    " Verify volume exists.") % vol)
         else:
             luns = self._get_vol_luns(None)
             lun_list.extend(luns)
         return lun_list
 
     def _get_vol_luns(self, vol_name):
-        """Gets the luns for a volume."""
+        """Gets the LUNs for a volume."""
         api = netapp_api.NaElement('lun-list-info')
         if vol_name:
             api.add_new_child('volume-name', vol_name)
@@ -132,7 +138,7 @@ class Client(base.Client):
         zbc = block_count
         if z_calls == 0:
             z_calls = 1
-        for call in range(0, z_calls):
+        for _call in range(0, z_calls):
             if zbc > z_limit:
                 block_count = z_limit
                 zbc -= z_limit
@@ -148,7 +154,7 @@ class Client(base.Client):
                 bc_limit = 2 ** 24  # 8GB
                 segments = int(math.ceil(block_count / float(bc_limit)))
                 bc = block_count
-                for segment in range(0, segments):
+                for _segment in range(0, segments):
                     if bc > bc_limit:
                         block_count = bc_limit
                         bc -= bc_limit
@@ -213,7 +219,7 @@ class Client(base.Client):
                         clone_ops_info.get_child_content('reason'))
 
     def get_lun_by_args(self, **args):
-        """Retrieves luns with specified args."""
+        """Retrieves LUNs with specified args."""
         lun_info = netapp_api.NaElement.create_node_with_children(
             'lun-list-info', **args)
         result = self.connection.invoke_successfully(lun_info, True)
@@ -221,7 +227,7 @@ class Client(base.Client):
         return luns.get_children()
 
     def get_filer_volumes(self, volume=None):
-        """Returns list of filer volumes in api format."""
+        """Returns list of filer volumes in API format."""
         vol_request = netapp_api.NaElement('volume-list-info')
         res = self.connection.invoke_successfully(vol_request, True)
         volumes = res.get_child_by_name('volumes')

@@ -1,5 +1,5 @@
-# Copyright (c) - 2014, Alex Meade.  All rights reserved.
-# All Rights Reserved.
+# Copyright (c) 2014 Alex Meade.  All rights reserved.
+# Copyright (c) 2014 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -22,25 +22,34 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.volume.drivers.netapp import api as netapp_api
-from cinder.volume.drivers.netapp.client import base
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
 LOG = logging.getLogger(__name__)
 
 
-class Client(base.Client):
+class Client(client_base.Client):
 
-    def __init__(self, connection, vserver):
-        super(Client, self).__init__(connection)
-        self.vserver = vserver
+    def __init__(self, **kwargs):
+        super(Client, self).__init__(**kwargs)
+        self.vserver = kwargs.get('vserver', None)
+        self.connection.set_vserver(self.vserver)
+
+        # Default values to run first api
+        self.connection.set_api_version(1, 15)
+        (major, minor) = self.get_ontapi_version(cached=False)
+        self.connection.set_api_version(major, minor)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
         server.set_vserver(vserver)
         result = server.invoke_successfully(na_element, True)
         return result
+
+    def set_vserver(self, vserver):
+        self.connection.set_vserver(vserver)
 
     def get_target_details(self):
         """Gets the target portal details."""
@@ -74,9 +83,9 @@ class Client(base.Client):
         return None
 
     def get_lun_list(self):
-        """Gets the list of luns on filer.
+        """Gets the list of LUNs on filer.
 
-        Gets the luns from cluster with vserver.
+        Gets the LUNs from cluster with vserver.
         """
 
         luns = []
@@ -102,7 +111,7 @@ class Client(base.Client):
         return luns
 
     def get_lun_map(self, path):
-        """Gets the lun map by lun path."""
+        """Gets the LUN map by LUN path."""
         tag = None
         map_list = []
         while True:
@@ -188,7 +197,7 @@ class Client(base.Client):
         zbc = block_count
         if z_calls == 0:
             z_calls = 1
-        for call in range(0, z_calls):
+        for _call in range(0, z_calls):
             if zbc > z_limit:
                 block_count = z_limit
                 zbc -= z_limit
@@ -203,7 +212,7 @@ class Client(base.Client):
                 block_ranges = netapp_api.NaElement("block-ranges")
                 segments = int(math.ceil(block_count / float(bc_limit)))
                 bc = block_count
-                for segment in range(0, segments):
+                for _segment in range(0, segments):
                     if bc > bc_limit:
                         block_count = bc_limit
                         bc -= bc_limit
@@ -225,7 +234,7 @@ class Client(base.Client):
             self.connection.invoke_successfully(clone_create, True)
 
     def get_lun_by_args(self, **args):
-        """Retrieves lun with specified args."""
+        """Retrieves LUN with specified args."""
         lun_iter = netapp_api.NaElement('lun-get-iter')
         lun_iter.add_new_child('max-records', '100')
         query = netapp_api.NaElement('query')
@@ -236,7 +245,7 @@ class Client(base.Client):
         return attr_list.get_children()
 
     def file_assign_qos(self, flex_vol, qos_policy_group, file_path):
-        """Retrieves lun with specified args."""
+        """Retrieves LUN with specified args."""
         file_assign_qos = netapp_api.NaElement.create_node_with_children(
             'file-assign-qos',
             **{'volume': flex_vol,
@@ -252,7 +261,8 @@ class Client(base.Client):
         query = netapp_api.NaElement('query')
         net_if_iter.add_child_elem(query)
         query.add_node_with_children(
-            'net-interface-info', **{'address': na_utils.resolve_hostname(ip)})
+            'net-interface-info',
+            **{'address': na_utils.resolve_hostname(ip)})
         result = self.connection.invoke_successfully(net_if_iter, True)
         num_records = result.get_child_content('num-records')
         if num_records and int(num_records) >= 1:
@@ -316,3 +326,79 @@ class Client(base.Client):
         LOG.debug('file-usage for path %(path)s is %(bytes)s'
                   % {'path': path, 'bytes': unique_bytes})
         return unique_bytes
+
+    def get_vserver_ips(self, vserver):
+        """Get ips for the vserver."""
+        result = netapp_api.invoke_api(
+            self.connection, api_name='net-interface-get-iter',
+            is_iter=True, tunnel=vserver)
+        if_list = []
+        for res in result:
+            records = res.get_child_content('num-records')
+            if records > 0:
+                attr_list = res['attributes-list']
+                ifs = attr_list.get_children()
+                if_list.extend(ifs)
+        return if_list
+
+    def check_apis_on_cluster(self, api_list=None):
+        """Checks API availability and permissions on cluster.
+
+        Checks API availability and permissions for executing user.
+        Returns a list of failed apis.
+        """
+        api_list = api_list or []
+        failed_apis = []
+        if api_list:
+            api_version = self.connection.get_api_version()
+            if api_version:
+                major, minor = api_version
+                if major == 1 and minor < 20:
+                    for api_name in api_list:
+                        na_el = netapp_api.NaElement(api_name)
+                        try:
+                            self.connection.invoke_successfully(na_el)
+                        except Exception as e:
+                            if isinstance(e, netapp_api.NaApiError):
+                                if (e.code == netapp_api.NaErrors
+                                        ['API_NOT_FOUND'].code or
+                                    e.code == netapp_api.NaErrors
+                                        ['INSUFFICIENT_PRIVS'].code):
+                                    failed_apis.append(api_name)
+                elif major == 1 and minor >= 20:
+                    failed_apis = copy.copy(api_list)
+                    result = netapp_api.invoke_api(
+                        self.connection,
+                        api_name='system-user-capability-get-iter',
+                        api_family='cm',
+                        additional_elems=None,
+                        is_iter=True)
+                    for res in result:
+                        attr_list = res.get_child_by_name('attributes-list')
+                        if attr_list:
+                            capabilities = attr_list.get_children()
+                            for capability in capabilities:
+                                op_list = capability.get_child_by_name(
+                                    'operation-list')
+                                if op_list:
+                                    ops = op_list.get_children()
+                                    for op in ops:
+                                        apis = op.get_child_content(
+                                            'api-name')
+                                        if apis:
+                                            api_list = apis.split(',')
+                                            for api_name in api_list:
+                                                if (api_name and
+                                                        api_name.strip()
+                                                        in failed_apis):
+                                                    failed_apis.remove(
+                                                        api_name)
+                                        else:
+                                            continue
+                else:
+                    msg = _("Unsupported Clustered Data ONTAP version.")
+                    raise exception.VolumeBackendAPIException(data=msg)
+            else:
+                msg = _("Data ONTAP API version could not be determined.")
+                raise exception.VolumeBackendAPIException(data=msg)
+        return failed_apis
