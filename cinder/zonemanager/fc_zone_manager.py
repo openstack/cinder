@@ -35,7 +35,7 @@ from oslo.config import cfg
 from oslo.utils import importutils
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume import configuration as config
 from cinder.zonemanager import fc_common
@@ -142,14 +142,14 @@ class ZoneManager(fc_common.FCCommon):
                     i_t_map = {initiator: t_list}
                     valid_i_t_map = self.get_valid_initiator_target_map(
                         i_t_map, True)
-                    LOG.info(_("Final filtered map for fabric: %s"),
+                    LOG.info(_LI("Final filtered map for fabric: %s"),
                              {fabric: valid_i_t_map})
 
                     # Call driver to add connection control
                     self.driver.add_connection(fabric, valid_i_t_map)
 
-            LOG.info(_("Add Connection: Finished iterating "
-                       "over all target list"))
+            LOG.info(_LI("Add Connection: Finished iterating "
+                         "over all target list"))
         except Exception as e:
             msg = _("Failed adding connection for fabric=%(fabric)s: "
                     "Error:%(err)s") % {'fabric': connected_fabric,
@@ -172,7 +172,7 @@ class ZoneManager(fc_common.FCCommon):
         try:
             for initiator in initiator_target_map.keys():
                 target_list = initiator_target_map[initiator]
-                LOG.info(_("Delete connection Target List:%s"),
+                LOG.info(_LI("Delete connection Target List:%s"),
                          {initiator: target_list})
 
                 # get SAN context for the target list
@@ -188,8 +188,8 @@ class ZoneManager(fc_common.FCCommon):
                     i_t_map = {initiator: t_list}
                     valid_i_t_map = self.get_valid_initiator_target_map(
                         i_t_map, False)
-                    LOG.info(_("Final filtered map for delete "
-                               "connection: %s"), valid_i_t_map)
+                    LOG.info(_LI("Final filtered map for delete "
+                                 "connection: %s"), valid_i_t_map)
 
                     # Call driver to delete connection control
                     if len(valid_i_t_map) > 0:
@@ -239,6 +239,6 @@ class ZoneManager(fc_common.FCCommon):
             if t_list:
                 filtered_i_t_map[initiator] = t_list
             else:
-                LOG.info(_("No targets to add or remove connection for "
-                           "I: %s"), initiator)
+                LOG.info(_LI("No targets to add or remove connection for "
+                             "I: %s"), initiator)
         return filtered_i_t_map

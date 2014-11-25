@@ -18,7 +18,7 @@
 
 import math
 
-from cinder.i18n import _
+from cinder.i18n import _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 
@@ -41,8 +41,8 @@ class CapacityFilter(filters.BaseHostFilter):
 
         if host_state.free_capacity_gb is None:
             # Fail Safe
-            LOG.error(_("Free capacity not set: "
-                        "volume node info collection broken."))
+            LOG.error(_LE("Free capacity not set: "
+                          "volume node info collection broken."))
             return False
 
         free_space = host_state.free_capacity_gb
@@ -59,9 +59,9 @@ class CapacityFilter(filters.BaseHostFilter):
                     "requested": volume_size,
                     "available": free}
         if free < volume_size:
-            LOG.warning(_("Insufficient free space for volume creation "
-                          "on host %(host)s (requested / avail): "
-                          "%(requested)s/%(available)s") % msg_args)
+            LOG.warning(_LW("Insufficient free space for volume creation "
+                            "on host %(host)s (requested / avail): "
+                            "%(requested)s/%(available)s") % msg_args)
         else:
             LOG.debug("Sufficient free space for volume creation "
                       "on host %(host)s (requested / avail): "

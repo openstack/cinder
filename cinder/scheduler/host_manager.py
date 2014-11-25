@@ -24,7 +24,7 @@ from oslo.utils import timeutils
 
 from cinder import db
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common.scheduler import weights
@@ -471,8 +471,8 @@ class HostManager(object):
         # remove non-active hosts from host_state_map
         nonactive_hosts = set(self.host_state_map.keys()) - active_hosts
         for host in nonactive_hosts:
-            LOG.info(_("Removing non-active host: %(host)s from "
-                       "scheduler cache.") % {'host': host})
+            LOG.info(_LI("Removing non-active host: %(host)s from "
+                         "scheduler cache.") % {'host': host})
             del self.host_state_map[host]
 
         # build a pool_state map and return that map instead of host_state_map

@@ -42,7 +42,7 @@ from sqlalchemy.sql import func
 from cinder.common import sqlalchemyutils
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import uuidutils
 
@@ -889,8 +889,8 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                     usages[resource].reserved += delta
 
     if unders:
-        LOG.warning(_("Change will make usage less than 0 for the following "
-                      "resources: %s") % unders)
+        LOG.warning(_LW("Change will make usage less than 0 for the following "
+                        "resources: %s") % unders)
     if overs:
         usages = dict((k, dict(in_use=v['in_use'], reserved=v['reserved']))
                       for k, v in usages.items())

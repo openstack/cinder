@@ -19,7 +19,7 @@ Utility functions related to the Zone Manager.
 """
 import logging
 
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log
 from cinder.volume.configuration import Configuration
 from cinder.volume import manager
@@ -37,8 +37,8 @@ def create_zone_manager():
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Zone Manager enabled.")
         zm = fc_zone_manager.ZoneManager(configuration=config)
-        LOG.info(_("Using FC Zone Manager %(zm_version)s,"
-                   " Driver %(drv_name)s %(drv_version)s.") %
+        LOG.info(_LI("Using FC Zone Manager %(zm_version)s,"
+                     " Driver %(drv_name)s %(drv_version)s.") %
                  {'zm_version': zm.get_version(),
                   'drv_name': zm.driver.__class__.__name__,
                   'drv_version': zm.driver.get_version()})
@@ -54,7 +54,7 @@ def create_lookup_service():
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Lookup Service enabled.")
         lookup = fc_san_lookup_service.FCSanLookupService(configuration=config)
-        LOG.info(_("Using FC lookup service %s") % lookup.lookup_service)
+        LOG.info(_LI("Using FC lookup service %s") % lookup.lookup_service)
         return lookup
     else:
         LOG.debug("FC Lookup Service not enabled in cinder.conf.")

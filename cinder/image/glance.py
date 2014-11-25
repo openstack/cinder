@@ -33,7 +33,7 @@ from oslo.utils import timeutils
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 
 
@@ -130,7 +130,7 @@ class GlanceClientWrapper(object):
         self.version = version
 
         if CONF.glance_num_retries < 0:
-            LOG.warning(_(
+            LOG.warning(_LW(
                 "glance_num_retries shouldn't be a negative value. "
                 "The number of retries will be set to 0 until this is"
                 "corrected in the cinder.conf."))
