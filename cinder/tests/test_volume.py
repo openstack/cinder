@@ -323,9 +323,9 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(volume.status, "error")
         db.volume_destroy(context.get_admin_context(), volume_id)
 
-    @mock.patch.object(QUOTAS, 'reserve')
-    @mock.patch.object(QUOTAS, 'commit')
     @mock.patch.object(QUOTAS, 'rollback')
+    @mock.patch.object(QUOTAS, 'commit')
+    @mock.patch.object(QUOTAS, 'reserve')
     def test_delete_driver_not_initialized(self, reserve, commit, rollback):
         # NOTE(flaper87): Set initialized to False
         self.volume.driver._initialized = False
@@ -1368,8 +1368,8 @@ class VolumeTestCase(BaseVolumeTestCase):
     @mock.patch.object(db, 'volume_get')
     @mock.patch.object(db, 'volume_update')
     def test_initialize_connection_export_failure(self,
-                                                  _mock_volume_get,
                                                   _mock_volume_update,
+                                                  _mock_volume_get,
                                                   _mock_create_export):
         """Test exception path for create_export failure."""
         _fake_admin_meta = {'fake-key': 'fake-value'}

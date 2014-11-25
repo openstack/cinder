@@ -277,11 +277,11 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                      'name': 'testvolume',
                      'sid': 'a9b9aba7'})
 
-    @mock.patch(NIMBLE_RANDOM)
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*', False))
+    @mock.patch(NIMBLE_RANDOM)
     def test_create_cloned_volume(self, mock_random):
         mock_random.sample.return_value = 'abcdefghijkl'
         self.mock_client_service.service.snapVol.return_value = \
@@ -471,11 +471,11 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             self.mock_client_service.method_calls,
             expected_call_list)
 
-    @mock.patch(NIMBLE_RANDOM)
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    @mock.patch(NIMBLE_RANDOM)
     def test_initialize_connection_igroup_not_exist(self, mock_random):
         mock_random.sample.return_value = 'abcdefghijkl'
         self.mock_client_service.service.getInitiatorGrpList.return_value = \
