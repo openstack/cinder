@@ -1143,7 +1143,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         except Exception:
             # Delete backing and virtual disk created from image.
             with excutils.save_and_reraise_exception():
-                LOG.exception(_("Error occured while creating volume: %(id)s"
+                LOG.exception(_("Error occurred while creating volume: %(id)s"
                                 " from image: %(image_id)s."),
                               {'id': volume['id'],
                                'image_id': image_id})
