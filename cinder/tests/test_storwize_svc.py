@@ -2382,11 +2382,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.delete_volume(clone)
         self._assert_vol_exists(clone['name'], False)
 
-    # Note defined in python 2.6, so define here...
-    def assertLessEqual(self, a, b, msg=None):
-        if not a <= b:
-            self.fail('%s not less than or equal to %s' % (repr(a), repr(b)))
-
     def test_storwize_svc_get_volume_stats(self):
         self._set_flag('reserved_percentage', 25)
         stats = self.driver.get_volume_stats()

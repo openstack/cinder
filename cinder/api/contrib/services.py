@@ -105,7 +105,7 @@ class ServiceController(wsgi.Controller):
         svcs = []
         for svc in services:
             delta = now - (svc['updated_at'] or svc['created_at'])
-            alive = abs(utils.total_seconds(delta)) <= CONF.service_down_time
+            alive = abs(delta.total_seconds()) <= CONF.service_down_time
             art = (alive and "up") or "down"
             active = 'enabled'
             if svc['disabled']:

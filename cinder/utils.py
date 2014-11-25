@@ -479,15 +479,6 @@ def make_dev_path(dev, partition=None, base='/dev'):
     return path
 
 
-def total_seconds(td):
-    """Local total_seconds implementation for compatibility with python 2.6."""
-    if hasattr(td, 'total_seconds'):
-        return td.total_seconds()
-    else:
-        return ((td.days * 86400 + td.seconds) * 10 ** 6 +
-                td.microseconds) / 10.0 ** 6
-
-
 def sanitize_hostname(hostname):
     """Return a hostname which conforms to RFC-952 and RFC-1123 specs."""
     if isinstance(hostname, unicode):
@@ -512,7 +503,7 @@ def service_is_up(service):
     """Check whether a service is up based on last heartbeat."""
     last_heartbeat = service['updated_at'] or service['created_at']
     # Timestamps in DB are UTC.
-    elapsed = total_seconds(timeutils.utcnow() - last_heartbeat)
+    elapsed = (timeutils.utcnow() - last_heartbeat).total_seconds()
     return abs(elapsed) <= CONF.service_down_time
 
 
