@@ -1199,7 +1199,7 @@ class API(base.Base):
             for qos_id in [old_vol_type_qos_id, vol_type_qos_id]:
                 if qos_id:
                     specs = qos_specs.get_qos_specs(context.elevated(), qos_id)
-                    if specs['qos_specs']['consumer'] != 'back-end':
+                    if specs['consumer'] != 'back-end':
                         msg = _('Retype cannot change front-end qos specs for '
                                 'in-use volumes')
                         raise exception.InvalidInput(reason=msg)
