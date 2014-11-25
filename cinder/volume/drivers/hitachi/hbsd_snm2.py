@@ -586,7 +586,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
 
     def _wait_for_add_chap_user(self, cmd, auth_username,
                                 auth_password, start):
-        # Don't move 'import pexpect' to the begining of the file so that
+        # Don't move 'import pexpect' to the beginning of the file so that
         # a tempest can work.
         import pexpect
 
