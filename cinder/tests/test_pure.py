@@ -199,6 +199,24 @@ class PureISCSIDriverTestCase(test.TestCase):
             self.driver.create_cloned_volume, VOLUME, SRC_VOL)
         SRC_VOL["size"] = 2  # reset size
 
+    def test_delete_volume_already_deleted(self):
+        self.array.list_volume_hosts.side_effect = exception.PureAPIException(
+            code=400, reason="Volume does not exist")
+        self.driver.delete_volume(VOLUME)
+        self.assertFalse(self.array.destroy_volume.called)
+        self.array.list_volume_hosts.side_effect = None
+        self.assert_error_propagates([self.array.destroy_volume],
+                                     self.driver.delete_volume, VOLUME)
+        # Testing case where array.destroy_volume returns an exception
+        #  because volume already deleted
+        self.array.destroy_volume.side_effect = exception.PureAPIException(
+            code=400, reason="Volume does not exist")
+        self.driver.delete_volume(VOLUME)
+        self.assertTrue(self.array.destroy_volume.called)
+        self.array.destroy_volume.side_effect = None
+        self.assert_error_propagates([self.array.destroy_volume],
+                                     self.driver.delete_volume, VOLUME)
+
     def test_delete_volume(self):
         vol_name = VOLUME["name"] + "-cinder"
         self.driver.delete_volume(VOLUME)
