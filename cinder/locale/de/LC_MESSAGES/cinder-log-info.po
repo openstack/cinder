@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Cinder\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-11-24 06:08+0000\n"
-"PO-Revision-Date: 2014-11-24 05:22+0000\n"
+"POT-Creation-Date: 2014-11-26 06:10+0000\n"
+"PO-Revision-Date: 2014-11-25 22:51+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/cinder/language/"
 "de/)\n"
@@ -151,12 +151,12 @@ msgstr "Momentaufnahme mit folgender ID löschen: %s"
 msgid "vol=%s"
 msgstr "vol=%s"
 
-#: cinder/api/v1/volumes.py:246 cinder/api/v2/volumes.py:187
+#: cinder/api/v1/volumes.py:246 cinder/api/v2/volumes.py:188
 #, python-format
 msgid "Delete volume with id: %s"
 msgstr "Datenträger mit folgender ID löschen: %s"
 
-#: cinder/api/v1/volumes.py:371 cinder/api/v2/volumes.py:375
+#: cinder/api/v1/volumes.py:371 cinder/api/v2/volumes.py:401
 #, python-format
 msgid "Create volume of %s GB"
 msgstr "Datenträger mit %s GB erstellen"
@@ -336,12 +336,12 @@ msgstr ""
 msgid "volume_file does not support fileno() so skippingfsync()"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:207
+#: cinder/brick/iscsi/iscsi.py:207 cinder/volume/targets/tgt.py:196
 #, python-format
 msgid "Creating iscsi_target for: %s"
 msgstr "Erstellung von iscsi_target für: %s"
 
-#: cinder/brick/iscsi/iscsi.py:286
+#: cinder/brick/iscsi/iscsi.py:286 cinder/volume/targets/tgt.py:332
 #, python-format
 msgid "Removing iscsi_target for: %s"
 msgstr "Entfernen von iscsi_target für: %s"
@@ -351,15 +351,20 @@ msgstr "Entfernen von iscsi_target für: %s"
 msgid "Removing iscsi_target for volume: %s"
 msgstr "Entfernen von iscsi_target für Datenträger: %s"
 
-#: cinder/brick/iscsi/iscsi.py:525
+#: cinder/brick/iscsi/iscsi.py:525 cinder/volume/targets/lio.py:91
 #, python-format
 msgid "Creating iscsi_target for volume: %s"
 msgstr "Erstellung von iscsi_target für Datenträger: %s"
 
-#: cinder/brick/iscsi/iscsi.py:561
+#: cinder/brick/iscsi/iscsi.py:561 cinder/volume/targets/lio.py:127
 #, python-format
 msgid "Removing iscsi_target: %s"
 msgstr "Entfernen von iscsi_target: %s"
+
+#: cinder/brick/local_dev/lvm.py:266
+#, python-format
+msgid "'Not found' when querying LVM info. (vg_name=%(vg)s, lv_name=%(lv)s"
+msgstr ""
 
 #: cinder/brick/remotefs/remotefs.py:96
 #, python-format
@@ -392,68 +397,69 @@ msgstr ""
 msgid "Skipping periodic task %(task)s because it is disabled"
 msgstr "Überspringe periodische Aufgabe %(task)s weil sie deaktiviert ist"
 
-#: cinder/openstack/common/service.py:176
+#: cinder/openstack/common/service.py:174
 #, python-format
 msgid "Caught %s, exiting"
 msgstr "%s abgefangen. Vorgang wird beendet"
 
-#: cinder/openstack/common/service.py:240
+#: cinder/openstack/common/service.py:232
 msgid "Parent process has died unexpectedly, exiting"
 msgstr ""
 "Übergeordneter Prozess wurde unerwartet abgebrochen. Vorgang wird beendet"
 
-#: cinder/openstack/common/service.py:271
+#: cinder/openstack/common/service.py:263
 #, python-format
 msgid "Child caught %s, exiting"
 msgstr "Untergeordnetes Element %s abgefangen; Vorgang wird beendet"
 
-#: cinder/openstack/common/service.py:310
+#: cinder/openstack/common/service.py:302
 msgid "Forking too fast, sleeping"
 msgstr "Verzweigung zu schnell; im Ruhemodus"
 
-#: cinder/openstack/common/service.py:329
+#: cinder/openstack/common/service.py:321
 #, python-format
 msgid "Started child %d"
 msgstr "Untergeordnetes Element %d gestartet"
 
-#: cinder/openstack/common/service.py:339
+#: cinder/openstack/common/service.py:331
 #, python-format
 msgid "Starting %d workers"
 msgstr "Starten von %d Workers"
 
-#: cinder/openstack/common/service.py:356
+#: cinder/openstack/common/service.py:348
 #, python-format
 msgid "Child %(pid)d killed by signal %(sig)d"
 msgstr "Untergeordnetes Element %(pid)d durch Signal %(sig)d abgebrochen"
 
-#: cinder/openstack/common/service.py:360
+#: cinder/openstack/common/service.py:352
 #, python-format
 msgid "Child %(pid)s exited with status %(code)d"
 msgstr "Untergeordnete %(pid)s mit Status %(code)d beendet"
 
-#: cinder/openstack/common/service.py:399
+#: cinder/openstack/common/service.py:391
 #, python-format
 msgid "Caught %s, stopping children"
 msgstr "%s abgefangen, untergeordnete Elemente werden gestoppt"
 
-#: cinder/openstack/common/service.py:408
+#: cinder/openstack/common/service.py:400
 msgid "Wait called after thread killed.  Cleaning up."
 msgstr "Warten aufgerufen nach dem der Thread abgebrochen wurde. Bereinige."
 
-#: cinder/openstack/common/service.py:424
+#: cinder/openstack/common/service.py:416
 #, python-format
 msgid "Waiting on %d children to exit"
 msgstr "Warten auf Beenden von %d untergeordneten Elementen"
 
 #: cinder/volume/iscsi.py:76 cinder/volume/iscsi.py:102
-#: cinder/volume/iscsi.py:247
+#: cinder/volume/iscsi.py:247 cinder/volume/targets/lio.py:40
+#: cinder/volume/targets/tgt.py:303
 #, python-format
 msgid "Skipping remove_export. No iscsi_target provisioned for volume: %s"
 msgstr ""
 "'remove_export' wird übersprungen. Kein 'iscsi_target' bereitgestellt für "
 "Datenträger: %s"
 
-#: cinder/volume/iscsi.py:91
+#: cinder/volume/iscsi.py:91 cinder/volume/targets/tgt.py:318
 #, python-format
 msgid ""
 "Skipping remove_export. No iscsi_target is presently exported for volume: %s"
@@ -461,7 +467,7 @@ msgstr ""
 "'remove_export' wird übersprungen. Aktuell ist kein 'iscsi_target' "
 "exportiert für Datenträger: %s"
 
-#: cinder/volume/iscsi.py:258
+#: cinder/volume/iscsi.py:258 cinder/volume/targets/lio.py:59
 #, python-format
 msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
 msgstr ""
@@ -616,7 +622,7 @@ msgstr "%s ist bereits ausgehängt"
 
 #: cinder/volume/drivers/glusterfs.py:182
 #: cinder/volume/drivers/remotefs.py:161
-#: cinder/volume/drivers/netapp/nfs.py:809
+#: cinder/volume/drivers/netapp/dataontap/nfs_cmode.py:104
 #, python-format
 msgid "casted to %s"
 msgstr "Cast auf %s"
@@ -1209,7 +1215,7 @@ msgid "LUN %(lun)s extended to %(size)s GB."
 msgstr "LUN %(lun)s erweitert auf %(size)s GB."
 
 #: cinder/volume/drivers/hds/nfs.py:216
-#: cinder/volume/drivers/netapp/nfs.py:500
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:487
 #, python-format
 msgid "Resizing file to %sG"
 msgstr ""
@@ -1236,89 +1242,144 @@ msgstr ""
 msgid "Initialized driver for IBMNAS Platform: %s."
 msgstr "Initialisierter Treiber für die IBMNAS-Plattform: %s."
 
-#: cinder/volume/drivers/netapp/iscsi.py:543
+#: cinder/volume/drivers/netapp/common.py:73
+#, python-format
+msgid "OpenStack OS Version Info: %(info)s"
+msgstr "OpenStack OS Versionsinformation: %(info)s"
+
+#: cinder/volume/drivers/netapp/common.py:113
+#, python-format
+msgid "Requested unified config: %(storage_family)s and %(storage_protocol)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/common.py:133
+#, python-format
+msgid ""
+"NetApp driver of family %(storage_family)s and protocol %(storage_protocol)s "
+"loaded"
+msgstr ""
+"NetApp-Treiber der Familie %(storage_family)s und Protokoll "
+"%(storage_protocol)s geladen"
+
+#: cinder/volume/drivers/netapp/utils.py:204
+#, python-format
+msgid "No rpm info found for %(pkg)s package."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/utils.py:213
+#, python-format
+msgid "Could not run rpm command: %(msg)s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/utils.py:224
+#, python-format
+msgid "No dpkg-query info found for %(pkg)s package."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/utils.py:242
+#, python-format
+msgid "Could not run dpkg-query command: %(msg)s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:400
 #, python-format
 msgid "No need to extend volume %s as it is already the requested new size."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:564
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:421
 #, python-format
-msgid "Resizing lun %s using sub clone to new size."
+msgid "Resizing LUN %s to new size using clone operation."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:595
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:453
 #, python-format
-msgid "Post clone resize lun %s"
+msgid "Post clone resize LUN %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:238
-#, python-format
-msgid "Copied image to volume %s using regular download."
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:245
-#, python-format
-msgid "Registering image in cache %s"
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:277
-#, python-format
-msgid "Cloning from cache to destination %s"
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:307
-#, python-format
-msgid "Cleaning cache for share %s."
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:410
-#, python-format
-msgid "Image cloning unsuccessful for image %(image_id)s. Message: %(msg)s"
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:426
-#, python-format
-msgid "Cloning image %s from cache"
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:446
-#, python-format
-msgid "Checking image clone %s from glance share."
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:467
-#, python-format
-msgid "Image will locally be converted to raw %s"
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:485
-#, python-format
-msgid "Performing post clone for %s"
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:629
-#, python-format
-msgid "Extending volume %s."
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:772
-#, python-format
-msgid "Shares on vserver %s will only be used for provisioning."
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:1084
-#, python-format
-msgid "Copied image %(img)s to volume %(vol)s using copy offload workflow."
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:1289
+#: cinder/volume/drivers/netapp/dataontap/nfs_7mode.py:85
 #, python-format
 msgid "Creating volume at location %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/client/base.py:134
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:226
 #, python-format
-msgid "Resizing lun %s directly to new size."
+msgid "Copied image to volume %s using regular download."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:233
+#, python-format
+msgid "Registering image in cache %s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:265
+#, python-format
+msgid "Cloning from cache to destination %s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:295
+#, python-format
+msgid "Cleaning cache for share %s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:396
+#, python-format
+msgid "Image cloning unsuccessful for image %(image_id)s. Message: %(msg)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:412
+#, python-format
+msgid "Cloning image %s from cache"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:432
+#, python-format
+msgid "Checking image clone %s from glance share."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:454
+#, python-format
+msgid "Image will locally be converted to raw %s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:472
+#, python-format
+msgid "Performing post clone for %s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:616
+#, python-format
+msgid "Extending volume %s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/nfs_cmode.py:364
+#, python-format
+msgid "Copied image %(img)s to volume %(vol)s using copy offload workflow."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:424
+#, python-format
+msgid "Running stale ssc refresh job for %(server)s and vserver %(vs)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:458
+#, python-format
+msgid ""
+"Successfully completed stale refresh job for %(server)s and vserver %(vs)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:485
+#, python-format
+msgid "Running cluster latest ssc job for %(server)s and vserver %(vs)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:491
+#, python-format
+msgid "Successfully completed ssc job for %(server)s and vserver %(vs)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:156
+#, python-format
+msgid "Resizing LUN %s directly to new size."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/eseries/iscsi.py:159
@@ -1533,89 +1594,99 @@ msgstr ""
 msgid "Activate Flexvisor cinder volume driver."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:271
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:266
+#, python-format
+msgid "Disconnect from 3PAR REST and SSH %s"
+msgstr ""
+
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:268
+#, python-format
+msgid "logout Done %s"
+msgstr ""
+
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:278
 #, python-format
 msgid "HP3PARCommon %(common_ver)s, hp3parclient %(rest_ver)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:376
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:383
 #, python-format
 msgid "Virtual volume '%(ref)s' renamed to '%(new)s'."
 msgstr "Virtuelles Volumen '%(ref)s' umbenannt in '%(new)s'."
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:382
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:389
 #, python-format
 msgid "Virtual volume %(disp)s '%(new)s' is being retyped."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:389
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:396
 #, python-format
 msgid "Virtual volume %(disp)s successfully retyped to %(new_type)s."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:408
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:415
 #, python-format
 msgid "Virtual volume %(disp)s '%(new)s' is now being managed."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:450
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:457
 #, python-format
 msgid ""
 "Virtual volume %(disp)s '%(vol)s' is no longer managed. Volume renamed to "
 "'%(new)s'."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1474
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1481
 #, python-format
 msgid "3PAR driver cannot perform migration. Retype exception: %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1539
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1546
 #, python-format
 msgid "Completed: convert_to_base_volume: id=%s."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1653
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1660
 #, python-format
 msgid "Modifying %(volume_name)s userCPG from %(old_cpg)s to %(new_cpg)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1674
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1681
 #, python-format
 msgid ""
 "Converting %(volume_name)s to full provisioning with userCPG=%(new_cpg)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1679
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1686
 #, python-format
 msgid ""
 "Converting %(volume_name)s to thin provisioning with userCPG=%(new_cpg)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1695
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1702
 #, python-format
 msgid "tunevv failed because the volume '%s' has snapshots."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1972
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1979
 #, python-format
 msgid ""
 "Modifying %(volume_name)s snap_cpg from %(old_snap_cpg)s to %(new_snap_cpg)s."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1983
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1990
 #, python-format
 msgid "Modifying %s comments."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1992
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1999
 #, python-format
 msgid ""
 "Retype revert %(volume_name)s snap_cpg from %(new_snap_cpg)s back to "
 "%(old_snap_cpg)s."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_fc.py:258
+#: cinder/volume/drivers/san/hp/hp_3par_fc.py:259
 msgid "Need to remove FC Zone, building initiator target map"
 msgstr ""
 
@@ -1675,32 +1746,32 @@ msgstr ""
 msgid "Successfully deleted snapshot: %(name)s of backing: %(backing)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/volumeops.py:1062
+#: cinder/volume/drivers/vmware/volumeops.py:1066
 #, python-format
 msgid "Successfully created clone: %s."
 msgstr "Erfolgreich erstellter Klon: %s."
 
-#: cinder/volume/drivers/vmware/volumeops.py:1112
+#: cinder/volume/drivers/vmware/volumeops.py:1116
 #, python-format
 msgid "Renaming backing VM: %(backing)s to %(new_name)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/volumeops.py:1121
+#: cinder/volume/drivers/vmware/volumeops.py:1125
 #, python-format
 msgid "Backing VM: %(backing)s renamed to %(new_name)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/volumeops.py:1166
+#: cinder/volume/drivers/vmware/volumeops.py:1170
 #, python-format
 msgid "Successfully deleted file: %s."
 msgstr "Erfolgreich gelöschte Datei: %s."
 
-#: cinder/volume/drivers/vmware/volumeops.py:1315
+#: cinder/volume/drivers/vmware/volumeops.py:1319
 #, python-format
 msgid "Successfully copied disk at: %(src)s to: %(dest)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/volumeops.py:1333
+#: cinder/volume/drivers/vmware/volumeops.py:1337
 #, python-format
 msgid "Deleted vmdk file: %s."
 msgstr "Gelöschte vmdk-Datei: %s."

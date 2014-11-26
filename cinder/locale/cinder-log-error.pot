@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 2015.1.dev265.g24ce46b\n"
+"Project-Id-Version: cinder 2015.1.dev307.g200a505\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-11-24 06:08+0000\n"
+"POT-Creation-Date: 2014-11-26 06:10+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
 
-#: cinder/exception.py:93
+#: cinder/exception.py:94
 msgid "Exception in string format operation"
 msgstr ""
 
@@ -111,14 +111,14 @@ msgstr ""
 msgid "Failed to access the device on the path %(path)s: %(error)s %(info)s."
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:166
+#: cinder/brick/iscsi/iscsi.py:166 cinder/volume/targets/tgt.py:110
 #, python-format
 msgid ""
 "Failed to recover attempt to create iscsi backing lun for volume "
 "id:%(vol_id)s: %(e)s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:257
+#: cinder/brick/iscsi/iscsi.py:257 cinder/volume/targets/tgt.py:246
 #, python-format
 msgid ""
 "Failed to create iscsi target for volume id:%(vol_id)s. Please ensure "
@@ -126,6 +126,7 @@ msgid ""
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:309 cinder/brick/iscsi/iscsi.py:333
+#: cinder/volume/targets/tgt.py:354 cinder/volume/targets/tgt.py:377
 #, python-format
 msgid "Failed to remove iscsi target for volume id:%(vol_id)s: %(e)s"
 msgstr ""
@@ -135,16 +136,17 @@ msgstr ""
 msgid "Failed to create iscsi target for volume id:%(vol_id)s: %(e)s"
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:505
+#: cinder/brick/iscsi/iscsi.py:505 cinder/volume/targets/lio.py:71
 msgid "cinder-rtstool is not installed correctly"
 msgstr ""
 
 #: cinder/brick/iscsi/iscsi.py:545 cinder/brick/iscsi/iscsi.py:554
+#: cinder/volume/targets/lio.py:111 cinder/volume/targets/lio.py:120
 #, python-format
 msgid "Failed to create iscsi target for volume id:%s."
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:571
+#: cinder/brick/iscsi/iscsi.py:571 cinder/volume/targets/lio.py:137
 #, python-format
 msgid "Failed to remove iscsi target for volume id:%s."
 msgstr ""
@@ -154,7 +156,7 @@ msgstr ""
 msgid "Failed to add initiator iqn %s to target."
 msgstr ""
 
-#: cinder/brick/iscsi/iscsi.py:614
+#: cinder/brick/iscsi/iscsi.py:614 cinder/volume/targets/lio.py:192
 #, python-format
 msgid "Failed to delete initiator iqn %s to target."
 msgstr ""
@@ -270,11 +272,7 @@ msgstr ""
 msgid "No handler for matches of kind %s"
 msgstr ""
 
-#: cinder/openstack/common/service.py:188
-msgid "Exception during rpc cleanup."
-msgstr ""
-
-#: cinder/openstack/common/service.py:277
+#: cinder/openstack/common/service.py:269
 msgid "Unhandled exception"
 msgstr ""
 
@@ -287,7 +285,7 @@ msgid "Failed to update quota for deleting volume"
 msgstr ""
 
 #: cinder/volume/driver.py:231 cinder/volume/drivers/hds/nfs.py:352
-#: cinder/volume/drivers/netapp/nfs.py:188
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:175
 #, python-format
 msgid "Recovering from a failed execute.  Try number %s"
 msgstr ""
@@ -618,6 +616,23 @@ msgstr ""
 
 #: cinder/volume/drivers/rbd.py:371 cinder/volume/drivers/sheepdog.py:179
 msgid "error refreshing volume stats"
+msgstr ""
+
+#: cinder/volume/drivers/rbd.py:711
+msgid "Retype with host migration not supported"
+msgstr ""
+
+#: cinder/volume/drivers/rbd.py:715
+msgid "Retype of encryption type not supported"
+msgstr ""
+
+#: cinder/volume/drivers/rbd.py:719
+msgid "Retype of extra_specs not supported"
+msgstr ""
+
+#: cinder/volume/drivers/remotefs.py:380
+#, python-format
+msgid "Share %s ignored due to invalid format. Must be of form address:/export."
 msgstr ""
 
 #: cinder/volume/drivers/remotefs.py:528
@@ -1024,67 +1039,67 @@ msgid ""
 "host mapping."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:340
-#: cinder/volume/drivers/netapp/iscsi.py:505
-#: cinder/volume/drivers/netapp/nfs.py:113
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:222
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:364
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:104
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:207
 #, python-format
 msgid "Resizing %s failed. Cleaning volume."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:484
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:342
 #, python-format
 msgid "Message: %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:486
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:344
 #, python-format
-msgid "Error getting lun attribute. Exception: %s"
+msgid "Error getting LUN attribute. Exception: %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:615
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:473
 #, python-format
-msgid "Failure deleting staged tmp lun %s."
+msgid "Failure deleting staged tmp LUN %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:618
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:476
 #, python-format
-msgid "Unknown exception in post clone resize lun %s."
+msgid "Unknown exception in post clone resize LUN %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/iscsi.py:620
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:478
 #, python-format
 msgid "Exception details: %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:219
-#, python-format
-msgid "Resizing %s failed. Cleaning volume. "
-msgstr ""
-
-#: cinder/volume/drivers/netapp/nfs.py:816
-#: cinder/volume/drivers/netapp/nfs.py:1295
+#: cinder/volume/drivers/netapp/dataontap/nfs_7mode.py:91
 #, python-format
 msgid "Exception creating vol %(name)s on share %(share)s. Details: %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:1092
+#: cinder/volume/drivers/netapp/dataontap/nfs_cmode.py:371
 #, python-format
 msgid "Copy offload workflow unsuccessful. %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/nfs.py:1153
+#: cinder/volume/drivers/netapp/dataontap/nfs_cmode.py:433
 #, python-format
 msgid "Error in workflow copy from cache. %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/client/base.py:59
+#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:81
 #, python-format
 msgid "Error provisioning volume %(lun_name)s on %(volume_name)s. Details: %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/client/base.py:162
+#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:184
 #, python-format
-msgid "Lun %(path)s geometry failed. Message - %(msg)s"
+msgid "LUN %(path)s geometry failed. Message - %(msg)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/client.py:74
+#, python-format
+msgid "Unexpected error while invoking web service. Error - %s."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/eseries/iscsi.py:146
@@ -1212,48 +1227,48 @@ msgstr ""
 msgid "Failed to get server info due to %(state)s."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:501
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:508
 #, python-format
 msgid "Error extending volume: %(vol)s. Exception: %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:877
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:884
 #, python-format
 msgid "Error creating QOS rule %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1325
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1332
 #, python-format
 msgid "Error extending volume %(id)s. Ex: %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1437
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1444
 #, python-format
 msgid "Error attaching volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1445
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1452
 #, python-format
 msgid "Error detaching volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2002
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2009
 #, python-format
 msgid "Exception during snapCPG revert: %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2070
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2077
 #, python-format
 msgid "Unexpected error when retype() tried to deleteVolumeSet(%s)"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2091
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2094
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2098
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2101
 #, python-format
 msgid "Unexpected error when retype() revert tried to deleteVolumeSet(%s)"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2102
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2109
 #, python-format
 msgid ""
 "%(exception)s: Exception during revert of retype for volume "
@@ -1261,14 +1276,14 @@ msgid ""
 " restored."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2113
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2120
 #, python-format
 msgid ""
 "%(exception)s: Exception during revert of retype for volume "
 "%(volume_name)s. Failed to remove from new volume set %(new_vvs)s."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_iscsi.py:514
+#: cinder/volume/drivers/san/hp/hp_3par_iscsi.py:532
 #, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr ""
@@ -1324,12 +1339,12 @@ msgstr ""
 msgid "Error occurred while selecting datastore."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1890
+#: cinder/volume/drivers/vmware/vmdk.py:1892
 #, python-format
 msgid "Not able to configure PBM for VC server: %s"
 msgstr ""
 
-#: cinder/volume/drivers/vmware/volumeops.py:1200
+#: cinder/volume/drivers/vmware/volumeops.py:1204
 #, python-format
 msgid "Virtual disk device of backing: %s not found."
 msgstr ""
@@ -1427,5 +1442,20 @@ msgstr ""
 #: cinder/volume/flows/manager/manage_existing.py:46
 #, python-format
 msgid "Unable to manage existing volume. Volume driver %s not initialized."
+msgstr ""
+
+#: cinder/volume/targets/iscsi.py:145
+#, python-format
+msgid "ISCSI discovery attempt failed for:%s"
+msgstr ""
+
+#: cinder/volume/targets/lio.py:113 cinder/volume/targets/lio.py:139
+#, python-format
+msgid "%s"
+msgstr ""
+
+#: cinder/volume/targets/lio.py:166
+#, python-format
+msgid "Failed to add initiator iqn %s to target"
 msgstr ""
 
