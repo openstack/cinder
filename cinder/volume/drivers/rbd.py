@@ -696,6 +696,31 @@ class RBDDriver(driver.VolumeDriver):
                     raise exception.SnapshotIsBusy(snapshot_name=snap_name)
             volume.remove_snap(snap_name)
 
+    def retype(self, context, volume, new_type, diff, host):
+        """Retypes a volume, allows QoS change only."""
+        LOG.debug('Retype volume request %(vol)s to be %(type)s '
+                  '(host: %(host)s), diff %(diff)s.',
+                  {
+                      'vol': volume['name'],
+                      'type': new_type,
+                      'host': host,
+                      'diff': diff
+                  })
+
+        if volume['host'] != host['host']:
+            LOG.error(_LE('Retype with host migration not supported'))
+            return False
+
+        if diff['encryption']:
+            LOG.error(_LE('Retype of encryption type not supported'))
+            return False
+
+        if diff['extra_specs']:
+            LOG.error(_LE('Retype of extra_specs not supported'))
+            return False
+
+        return True
+
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
         pass
