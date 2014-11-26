@@ -31,18 +31,19 @@ from oslo_config import cfg
 from oslo_utils import excutils
 from oslo_utils import units
 from oslo_utils import uuidutils
+from oslo_vmware import api
+from oslo_vmware import exceptions
+from oslo_vmware import image_transfer
+from oslo_vmware import pbm
+from oslo_vmware import vim_util
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
-from cinder.volume.drivers.vmware import api
 from cinder.volume.drivers.vmware import datastore as hub
-from cinder.volume.drivers.vmware import error_util
-from cinder.volume.drivers.vmware import vim
-from cinder.volume.drivers.vmware import vim_util
-from cinder.volume.drivers.vmware import vmware_images
 from cinder.volume.drivers.vmware import volumeops
 from cinder.volume import volume_types
 
@@ -304,11 +305,11 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         try:
             # find if any host can accommodate the volume
             self._select_ds_for_volume(volume)
-        except error_util.VimException as excep:
+        except exceptions.VimException as excep:
             msg = _("Not able to find a suitable datastore for the volume: "
                     "%s.") % volume['name']
             LOG.exception(msg)
-            raise error_util.VimFaultException([excep], msg)
+            raise exceptions.VimFaultException([excep], msg)
         LOG.debug("Verified volume %s can be created.", volume['name'])
 
     def create_volume(self, volume):
@@ -401,7 +402,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                     "from the datastores: %(dss)s.") % {'size': size_bytes,
                                                         'dss': datastores}
             LOG.error(msg)
-            raise error_util.VimException(msg)
+            raise exceptions.VimException(msg)
 
         LOG.debug("Selected datastore: %(datastore)s with %(host_count)d "
                   "connected host(s) for the volume." %
@@ -435,15 +436,16 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         LOG.debug("Filter datastores matching storage profile %(profile)s: "
                   "%(dss)s.",
                   {'profile': storage_profile, 'dss': datastores})
-        profileId = self.volumeops.retrieve_profile_id(storage_profile)
+        profileId = pbm.get_profile_id_by_name(self.session, storage_profile)
         if not profileId:
             msg = _("No such storage profile '%s; is defined in vCenter.")
             LOG.error(msg, storage_profile)
-            raise error_util.VimException(msg % storage_profile)
+            raise exceptions.VimException(msg % storage_profile)
         pbm_cf = self.session.pbm.client.factory
-        hubs = vim_util.convert_datastores_to_hubs(pbm_cf, datastores)
-        filtered_hubs = self.volumeops.filter_matching_hubs(hubs, profileId)
-        return vim_util.convert_hubs_to_datastores(filtered_hubs, datastores)
+        hubs = pbm.convert_datastores_to_hubs(pbm_cf, datastores)
+        filtered_hubs = pbm.filter_hubs_by_profile(self.session, hubs,
+                                                   profileId)
+        return pbm.filter_datastores_by_hubs(filtered_hubs, datastores)
 
     def _get_folder_ds_summary(self, volume, resource_pool, datastores):
         """Get folder and best datastore summary where volume can be placed.
@@ -467,7 +469,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 msg = _("Aborting since none of the datastores match the "
                         "given storage profile %s.")
                 LOG.error(msg, storage_profile)
-                raise error_util.VimException(msg % storage_profile)
+                raise exceptions.VimException(msg % storage_profile)
         elif storage_profile:
             LOG.warn(_LW("Ignoring storage profile %s requirement for this "
                          "volume since policy based placement is "
@@ -504,7 +506,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         storage_profile = self._get_storage_profile(volume)
         profile_id = None
         if self._storage_policy_enabled and storage_profile:
-            profile = self.volumeops.retrieve_profile_id(storage_profile)
+            profile = pbm.get_profile_id_by_name(self.session, storage_profile)
             if profile:
                 profile_id = profile.uniqueId
         return profile_id
@@ -584,7 +586,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                                                     rp, dss)
                     selected_host = host
                     break
-                except error_util.VimException as excep:
+                except exceptions.VimException as excep:
                     LOG.warn(_LW("Unable to find suitable datastore for volume"
                                  " of size: %(vol)s GB under host: %(host)s. "
                                  "More details: %(excep)s") %
@@ -598,7 +600,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         msg = _("Unable to find host to accommodate a disk of size: %s "
                 "in the inventory.") % volume['size']
         LOG.error(msg)
-        raise error_util.VimException(msg)
+        raise exceptions.VimException(msg)
 
     def _create_backing_in_inventory(self, volume, create_params=None):
         """Creates backing under any suitable host.
@@ -625,7 +627,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                                    create_params)
                     if backing:
                         break
-                except error_util.VimException as excep:
+                except exceptions.VimException as excep:
                     LOG.warn(_LW("Unable to find suitable datastore for "
                                  "volume: %(vol)s under host: %(host)s. "
                                  "More details: %(excep)s") %
@@ -638,7 +640,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
         msg = _("Unable to create volume: %s in the inventory.")
         LOG.error(msg % volume['name'])
-        raise error_util.VimException(msg % volume['name'])
+        raise exceptions.VimException(msg % volume['name'])
 
     def _initialize_connection(self, volume, connector):
         """Get information of volume's backing.
@@ -654,7 +656,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         backing = self.volumeops.get_backing(volume['name'])
         if 'instance' in connector:
             # The instance exists
-            instance = vim.get_moref(connector['instance'], 'VirtualMachine')
+            instance = vim_util.get_moref(connector['instance'],
+                                          'VirtualMachine')
             LOG.debug("The instance: %s for which initialize connection "
                       "is called, exists." % instance)
             # Get host managing the instance
@@ -922,16 +925,18 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         LOG.debug("Copying image: %(image_id)s to %(path)s.",
                   {'image_id': image_id,
                    'path': upload_file_path})
-        vmware_images.fetch_flat_image(context,
-                                       timeout,
-                                       image_service,
-                                       image_id,
-                                       image_size=image_size_in_bytes,
-                                       host=host_ip,
-                                       data_center_name=dc_name,
-                                       datastore_name=ds_name,
-                                       cookies=cookies,
-                                       file_path=upload_file_path)
+        # TODO(vbala): add config option to override non-default port
+        image_transfer.download_flat_image(context,
+                                           timeout,
+                                           image_service,
+                                           image_id,
+                                           image_size=image_size_in_bytes,
+                                           host=host_ip,
+                                           port=443,
+                                           data_center_name=dc_name,
+                                           datastore_name=ds_name,
+                                           cookies=cookies,
+                                           file_path=upload_file_path)
         LOG.debug("Image: %(image_id)s copied to %(path)s.",
                   {'image_id': image_id,
                    'path': upload_file_path})
@@ -943,7 +948,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         try:
             self.volumeops.delete_vmdk_file(
                 descriptor_ds_file_path, dc_ref)
-        except error_util.VimException:
+        except exceptions.VimException:
             LOG.warn(_LW("Error occurred while deleting temporary "
                          "disk: %s."),
                      descriptor_ds_file_path,
@@ -956,7 +961,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             self.volumeops.copy_vmdk_file(
                 dc_ref, src_path.get_descriptor_ds_file_path(),
                 dest_path.get_descriptor_ds_file_path())
-        except error_util.VimException:
+        except exceptions.VimException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Error occurred while copying %(src)s to "
                                   "%(dst)s."),
@@ -1029,7 +1034,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 try:
                     self.volumeops.delete_file(
                         path.get_descriptor_ds_file_path(), dc_ref)
-                except error_util.VimException:
+                except exceptions.VimException:
                     LOG.warn(_LW("Error occurred while deleting "
                                  "descriptor: %s."),
                              path.get_descriptor_ds_file_path(),
@@ -1058,7 +1063,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         LOG.debug("Deleting backing: %s.", backing)
         try:
             self.volumeops.delete_backing(backing)
-        except error_util.VimException:
+        except exceptions.VimException:
             LOG.warn(_LW("Error occurred while deleting backing: %s."),
                      backing,
                      exc_info=True)
@@ -1168,7 +1173,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         try:
             # find host in which to create the volume
             (_host, rp, folder, summary) = self._select_ds_for_volume(volume)
-        except error_util.VimException as excep:
+        except exceptions.VimException as excep:
             err_msg = (_("Exception in _select_ds_for_volume: "
                          "%s."), excep)
             raise exception.VolumeBackendAPIException(data=err_msg)
@@ -1201,17 +1206,20 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             host_ip = self.configuration.vmware_host_ip
             LOG.debug("Fetching glance image: %(id)s to server: %(host)s." %
                       {'id': image_id, 'host': host_ip})
-            vmware_images.fetch_stream_optimized_image(context, timeout,
-                                                       image_service,
-                                                       image_id,
-                                                       session=self.session,
-                                                       host=host_ip,
-                                                       resource_pool=rp,
-                                                       vm_folder=folder,
-                                                       vm_create_spec=
-                                                       vm_import_spec,
-                                                       image_size=image_size)
-        except exception.CinderException as excep:
+            image_transfer.download_stream_optimized_image(
+                context,
+                timeout,
+                image_service,
+                image_id,
+                session=self.session,
+                host=host_ip,
+                port=443,
+                resource_pool=rp,
+                vm_folder=folder,
+                vm_import_spec=vm_import_spec,
+                image_size=image_size)
+        except (exceptions.VimException,
+                exceptions.VMwareDriverException) as excep:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Exception in copy_image_to_volume: %s."),
                               excep)
@@ -1252,7 +1260,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         try:
             self.volumeops.extend_virtual_disk(new_size_in_gb,
                                                root_vmdk_path, datacenter)
-        except error_util.VimException:
+        except exceptions.VimException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Unable to extend the size of the "
                                   "vmdk virtual disk at the path %s."),
@@ -1302,7 +1310,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 self._create_volume_from_non_stream_optimized_image(
                     context, volume, image_service, image_id,
                     image_size_in_bytes, image_adapter_type, image_disk_type)
-        except exception.CinderException as excep:
+        except (exceptions.VimException,
+                exceptions.VMwareDriverException) as excep:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Exception in copying the image to the "
                                   "volume: %s."), excep)
@@ -1361,16 +1370,20 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         timeout = self.configuration.vmware_image_transfer_timeout_secs
         host_ip = self.configuration.vmware_host_ip
 
-        vmware_images.upload_image(context, timeout, image_service,
-                                   image_meta['id'],
-                                   volume['project_id'],
-                                   session=self.session,
-                                   host=host_ip,
-                                   vm=backing,
-                                   vmdk_file_path=vmdk_file_path,
-                                   vmdk_size=volume['size'] * units.Gi,
-                                   image_name=image_meta['name'],
-                                   image_version=1)
+        image_transfer.upload_image(context,
+                                    timeout,
+                                    image_service,
+                                    image_meta['id'],
+                                    volume['project_id'],
+                                    session=self.session,
+                                    host=host_ip,
+                                    port=443,
+                                    vm=backing,
+                                    vmdk_file_path=vmdk_file_path,
+                                    vmdk_size=volume['size'] * units.Gi,
+                                    image_name=image_meta['name'],
+                                    image_version=1,
+                                    is_public=True)
         LOG.info(_LI("Done copying volume %(vol)s to a new image %(img)s") %
                  {'vol': volume['name'], 'img': image_meta['name']})
 
@@ -1504,7 +1517,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                         host)
                     self._delete_temp_backing(backing)
                     backing = new_backing
-                except error_util.VimException:
+                except exceptions.VimException:
                     with excutils.save_and_reraise_exception():
                         LOG.exception(_LE("Error occurred while cloning "
                                           "backing:"
@@ -1520,7 +1533,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                             try:
                                 self.volumeops.rename_backing(backing,
                                                               volume['name'])
-                            except error_util.VimException:
+                            except exceptions.VimException:
                                 LOG.warn(_LW("Changing backing: %(backing)s "
                                              "name from %(new_name)s to "
                                              "%(old_name)s failed."),
@@ -1561,14 +1574,14 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                          "to size %(size)s GB.") %
                      {'vol': vol_name, 'size': new_size})
             return
-        except error_util.VimFaultException:
+        except exceptions.VimFaultException:
             LOG.info(_LI("Relocating volume %s vmdk to a different "
                          "datastore since trying to extend vmdk file "
                          "in place failed."), vol_name)
         # If in place extend fails, then try to relocate the volume
         try:
             (host, rp, folder, summary) = self._select_ds_for_volume(new_size)
-        except error_util.VimException:
+        except exceptions.VimException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Not able to find a different datastore to "
                                   "place the extended volume %s."), vol_name)
@@ -1583,7 +1596,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                             host)
             self._extend_vmdk_virtual_disk(vol_name, new_size)
             self.volumeops.move_backing_to_folder(backing, folder)
-        except error_util.VimException:
+        except exceptions.VimException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Not able to relocate volume %s for "
                                   "extending."), vol_name)
@@ -1610,9 +1623,15 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         vmdk_ds_file_path = self.volumeops.get_vmdk_path(backing)
 
         with fileutils.file_open(tmp_file_path, "wb") as tmp_file:
-            vmware_images.download_stream_optimized_disk(
-                context, timeout, tmp_file, session=self.session,
-                host=host_ip, vm=backing, vmdk_file_path=vmdk_ds_file_path,
+            image_transfer.copy_stream_optimized_disk(
+                context,
+                timeout,
+                tmp_file,
+                session=self.session,
+                host=host_ip,
+                port=443,
+                vm=backing,
+                vmdk_file_path=vmdk_ds_file_path,
                 vmdk_size=volume['size'] * units.Gi)
 
     def backup_volume(self, context, backup, backup_service):
@@ -1675,10 +1694,17 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         host_ip = self.configuration.vmware_host_ip
         try:
             with fileutils.file_open(tmp_file_path, "rb") as tmp_file:
-                vm_ref = vmware_images.upload_stream_optimized_disk(
-                    context, timeout, tmp_file, session=self.session,
-                    host=host_ip, resource_pool=rp, vm_folder=folder,
-                    vm_create_spec=vm_import_spec, vmdk_size=file_size_bytes)
+                vm_ref = image_transfer.download_stream_optimized_data(
+                    context,
+                    timeout,
+                    tmp_file,
+                    session=self.session,
+                    host=host_ip,
+                    port=443,
+                    resource_pool=rp,
+                    vm_folder=folder,
+                    vm_import_spec=vm_import_spec,
+                    image_size=file_size_bytes)
                 LOG.debug("Created backing: %(name)s from virtual disk: "
                           "%(path)s.",
                           {'name': name,
@@ -1740,7 +1766,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
             LOG.debug("Deleted old backing and renamed clone for restoring "
                       "backup.")
-        except (error_util.VimException, error_util.VMwareDriverException):
+        except (exceptions.VimException, exceptions.VMwareDriverException):
             with excutils.save_and_reraise_exception():
                 if dest is not None:
                     # Copy happened; we need to delete the clone.
@@ -1750,7 +1776,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                         try:
                             self.volumeops.rename_backing(backing,
                                                           volume['name'])
-                        except error_util.VimException:
+                        except exceptions.VimException:
                             LOG.warn(_LW("Cannot undo volume rename; old name "
                                          "was %(old_name)s and new name is "
                                          "%(new_name)s."),
@@ -1840,26 +1866,8 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
                                                  password, api_retry_count,
                                                  task_poll_interval,
                                                  wsdl_loc=wsdl_loc,
-                                                 pbm_wsdl=pbm_wsdl)
+                                                 pbm_wsdl_loc=pbm_wsdl)
         return self._session
-
-    def _get_pbm_wsdl_location(self, vc_version):
-        """Return PBM WSDL file location corresponding to VC version."""
-        if not vc_version:
-            return
-        ver = str(vc_version).split('.')
-        major_minor = ver[0]
-        if len(ver) >= 2:
-            major_minor = major_minor + '.' + ver[1]
-        curr_dir = os.path.abspath(os.path.dirname(__file__))
-        pbm_service_wsdl = os.path.join(curr_dir, 'wsdl', major_minor,
-                                        'pbmService.wsdl')
-        if not os.path.exists(pbm_service_wsdl):
-            LOG.warn(_LW("PBM WSDL file %s is missing!"), pbm_service_wsdl)
-            return
-        pbm_wsdl = 'file://' + pbm_service_wsdl
-        LOG.info(_LI("Using PBM WSDL location: %s"), pbm_wsdl)
-        return pbm_wsdl
 
     def _get_vc_version(self):
         """Connect to VC server and fetch version.
@@ -1872,9 +1880,9 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             LOG.info(_LI("Using overridden vmware_host_version from config: "
                          "%s"), version_str)
         else:
-            version_str = self.session.vim.service_content.about.version
+            version_str = vim_util.get_vc_version(self.session)
             LOG.info(_LI("Fetched VC server version: %s"), version_str)
-        # convert version_str to LooseVersion and return
+        # Convert version_str to LooseVersion and return.
         version = None
         try:
             version = dist_version.LooseVersion(version_str)
@@ -1892,11 +1900,12 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         # Enable pbm only if VC version is greater than 5.5
         vc_version = self._get_vc_version()
         if vc_version and vc_version >= self.PBM_ENABLED_VC_VERSION:
-            self.pbm_wsdl = self._get_pbm_wsdl_location(vc_version)
+            self.pbm_wsdl = pbm.get_pbm_wsdl_location(
+                six.text_type(vc_version))
             if not self.pbm_wsdl:
                 LOG.error(_LE("Not able to configure PBM for VC server: %s"),
                           vc_version)
-                raise error_util.VMwareDriverException()
+                raise exceptions.VMwareDriverException()
             self._storage_policy_enabled = True
             # Destroy current session so that it is recreated with pbm enabled
             self._session = None

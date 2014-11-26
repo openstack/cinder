@@ -19,10 +19,11 @@ Test suite for VMware VMDK driver volumeops module.
 
 import mock
 from oslo_utils import units
+from oslo_vmware import exceptions
+from oslo_vmware import vim_util
 
 from cinder import test
-from cinder.volume.drivers.vmware import error_util
-from cinder.volume.drivers.vmware import vim_util
+from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 from cinder.volume.drivers.vmware import volumeops
 
 
@@ -319,7 +320,7 @@ class VolumeOpsTestCase(test.TestCase):
                                                    host_mounts,
                                                    host_mounts,
                                                    resource_pool]
-            self.assertRaises(error_util.VimException,
+            self.assertRaises(exceptions.VimException,
                               self.vops.get_dss_rp,
                               host)
 
@@ -1194,7 +1195,7 @@ class VolumeOpsTestCase(test.TestCase):
 
         # Test with no disk device.
         invoke_api.return_value = []
-        self.assertRaises(error_util.VirtualDiskNotFoundException,
+        self.assertRaises(vmdk_exceptions.VirtualDiskNotFoundException,
                           self.vops.get_vmdk_path,
                           backing)
 
@@ -1213,7 +1214,7 @@ class VolumeOpsTestCase(test.TestCase):
         # Test with no disk device.
         invoke_api.return_value = []
 
-        self.assertRaises(error_util.VirtualDiskNotFoundException,
+        self.assertRaises(vmdk_exceptions.VirtualDiskNotFoundException,
                           self.vops.get_disk_size,
                           mock.sentinel.backing)
 
@@ -1325,84 +1326,6 @@ class VolumeOpsTestCase(test.TestCase):
                                            eagerZero=False)
         self.session.wait_for_task.assert_called_once_with(task)
 
-    def test_get_all_profiles(self):
-        profile_ids = [1, 2]
-        methods = ['PbmQueryProfile', 'PbmRetrieveContent']
-
-        def invoke_api_side_effect(module, method, *args, **kwargs):
-            self.assertEqual(self.session.pbm, module)
-            self.assertEqual(methods.pop(0), method)
-            self.assertEqual(self.session.pbm.service_content.profileManager,
-                             args[0])
-            if method == 'PbmQueryProfile':
-                self.assertEqual('STORAGE',
-                                 kwargs['resourceType'].resourceType)
-                return profile_ids
-            self.assertEqual(profile_ids, kwargs['profileIds'])
-
-        self.session.invoke_api.side_effect = invoke_api_side_effect
-        self.vops.get_all_profiles()
-
-        self.assertEqual(2, self.session.invoke_api.call_count)
-
-        # Clear side effects.
-        self.session.invoke_api.side_effect = None
-
-    def test_get_all_profiles_with_no_profiles(self):
-        self.session.invoke_api.return_value = []
-        res_type = mock.sentinel.res_type
-        self.session.pbm.client.factory.create.return_value = res_type
-
-        profiles = self.vops.get_all_profiles()
-        self.session.invoke_api.assert_called_once_with(
-            self.session.pbm,
-            'PbmQueryProfile',
-            self.session.pbm.service_content.profileManager,
-            resourceType=res_type)
-        self.assertEqual([], profiles)
-
-    def _create_profile(self, profile_id, name):
-        profile = mock.Mock()
-        profile.profileId = profile_id
-        profile.name = name
-        return profile
-
-    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
-                'get_all_profiles')
-    def test_retrieve_profile_id(self, get_all_profiles):
-        profiles = [self._create_profile(str(i), 'profile-%d' % i)
-                    for i in range(0, 10)]
-        get_all_profiles.return_value = profiles
-
-        exp_profile_id = '5'
-        profile_id = self.vops.retrieve_profile_id(
-            'profile-%s' % exp_profile_id)
-        self.assertEqual(exp_profile_id, profile_id)
-        get_all_profiles.assert_called_once_with()
-
-    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
-                'get_all_profiles')
-    def test_retrieve_profile_id_with_invalid_profile(self, get_all_profiles):
-        profiles = [self._create_profile(str(i), 'profile-%d' % i)
-                    for i in range(0, 10)]
-        get_all_profiles.return_value = profiles
-
-        profile_id = self.vops.retrieve_profile_id('profile-%s' % (i + 1))
-        self.assertIsNone(profile_id)
-        get_all_profiles.assert_called_once_with()
-
-    def test_filter_matching_hubs(self):
-        hubs = mock.Mock()
-        profile_id = 'profile-0'
-
-        self.vops.filter_matching_hubs(hubs, profile_id)
-        self.session.invoke_api.assert_called_once_with(
-            self.session.pbm,
-            'PbmQueryMatchingHub',
-            self.session.pbm.service_content.placementSolver,
-            hubsToSearch=hubs,
-            profile=profile_id)
-
 
 class VirtualDiskPathTest(test.TestCase):
     """Unit tests for VirtualDiskPath."""
@@ -1454,7 +1377,7 @@ class VirtualDiskTypeTest(test.TestCase):
         volumeops.VirtualDiskType.validate("thick")
         volumeops.VirtualDiskType.validate("thin")
         volumeops.VirtualDiskType.validate("eagerZeroedThick")
-        self.assertRaises(error_util.InvalidDiskTypeException,
+        self.assertRaises(vmdk_exceptions.InvalidDiskTypeException,
                           volumeops.VirtualDiskType.validate,
                           "preallocated")
 
@@ -1468,7 +1391,7 @@ class VirtualDiskTypeTest(test.TestCase):
         self.assertEqual("eagerZeroedThick",
                          volumeops.VirtualDiskType.get_virtual_disk_type(
                              "eagerZeroedThick"))
-        self.assertRaises(error_util.InvalidDiskTypeException,
+        self.assertRaises(vmdk_exceptions.InvalidDiskTypeException,
                           volumeops.VirtualDiskType.get_virtual_disk_type,
                           "preallocated")
 
@@ -1489,7 +1412,7 @@ class VirtualDiskAdapterTypeTest(test.TestCase):
         volumeops.VirtualDiskAdapterType.validate("busLogic")
         volumeops.VirtualDiskAdapterType.validate("lsiLogicsas")
         volumeops.VirtualDiskAdapterType.validate("ide")
-        self.assertRaises(error_util.InvalidAdapterTypeException,
+        self.assertRaises(vmdk_exceptions.InvalidAdapterTypeException,
                           volumeops.VirtualDiskAdapterType.validate,
                           "pvscsi")
 
@@ -1506,7 +1429,7 @@ class VirtualDiskAdapterTypeTest(test.TestCase):
         self.assertEqual("ide",
                          volumeops.VirtualDiskAdapterType.get_adapter_type(
                              "ide"))
-        self.assertRaises(error_util.InvalidAdapterTypeException,
+        self.assertRaises(vmdk_exceptions.InvalidAdapterTypeException,
                           volumeops.VirtualDiskAdapterType.get_adapter_type,
                           "pvscsi")
 
@@ -1527,7 +1450,7 @@ class ControllerTypeTest(test.TestCase):
         self.assertEqual(volumeops.ControllerType.IDE,
                          volumeops.ControllerType.get_controller_type(
                              'ide'))
-        self.assertRaises(error_util.InvalidAdapterTypeException,
+        self.assertRaises(vmdk_exceptions.InvalidAdapterTypeException,
                           volumeops.ControllerType.get_controller_type,
                           'invalid_type')
 

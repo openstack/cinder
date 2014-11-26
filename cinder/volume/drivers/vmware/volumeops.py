@@ -20,11 +20,13 @@ Implements operations on volumes residing on VMware datastores.
 import urllib
 
 from oslo_utils import units
+from oslo_vmware import exceptions
+from oslo_vmware import vim_util
 
 from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
-from cinder.volume.drivers.vmware import error_util
-from cinder.volume.drivers.vmware import vim_util
+from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
+
 
 LOG = logging.getLogger(__name__)
 LINKED_CLONE_TYPE = 'linked'
@@ -159,7 +161,7 @@ class VirtualDiskType(object):
         :raises: InvalidDiskTypeException
         """
         if not VirtualDiskType.is_valid(extra_spec_disk_type):
-            raise error_util.InvalidDiskTypeException(
+            raise vmdk_exceptions.InvalidDiskTypeException(
                 disk_type=extra_spec_disk_type)
 
     @staticmethod
@@ -206,7 +208,7 @@ class VirtualDiskAdapterType(object):
         :raises: InvalidAdapterTypeException
         """
         if not VirtualDiskAdapterType.is_valid(extra_spec_adapter_type):
-            raise error_util.InvalidAdapterTypeException(
+            raise vmdk_exceptions.InvalidAdapterTypeException(
                 invalid_type=extra_spec_adapter_type)
 
     @staticmethod
@@ -250,7 +252,8 @@ class ControllerType(object):
         """
         if adapter_type in ControllerType.CONTROLLER_TYPE_DICT:
             return ControllerType.CONTROLLER_TYPE_DICT[adapter_type]
-        raise error_util.InvalidAdapterTypeException(invalid_type=adapter_type)
+        raise vmdk_exceptions.InvalidAdapterTypeException(
+            invalid_type=adapter_type)
 
     @staticmethod
     def is_scsi_controller(controller_type):
@@ -462,7 +465,7 @@ class VMwareVolumeOps(object):
         if not valid_dss:
             msg = _("There are no valid datastores attached to %s.") % host
             LOG.error(msg)
-            raise error_util.VimException(msg)
+            raise exceptions.VimException(msg)
         else:
             LOG.debug("Valid datastores are: %s", valid_dss)
         return (valid_dss, resource_pool)
@@ -1205,7 +1208,7 @@ class VMwareVolumeOps(object):
 
         LOG.error(_LE("Virtual disk device of "
                       "backing: %s not found."), backing)
-        raise error_util.VirtualDiskNotFoundException()
+        raise vmdk_exceptions.VirtualDiskNotFoundException()
 
     def get_vmdk_path(self, backing):
         """Get the vmdk file name of the backing.
@@ -1337,57 +1340,3 @@ class VMwareVolumeOps(object):
         LOG.debug("Initiated deleting vmdk file via task: %s." % task)
         self._session.wait_for_task(task)
         LOG.info(_LI("Deleted vmdk file: %s.") % vmdk_file_path)
-
-    def get_all_profiles(self):
-        """Get all profiles defined in current VC.
-
-        :return: PbmProfile data objects from VC
-        """
-        LOG.debug("Get all profiles defined in current VC.")
-        pbm = self._session.pbm
-        profile_manager = pbm.service_content.profileManager
-        res_type = pbm.client.factory.create('ns0:PbmProfileResourceType')
-        res_type.resourceType = 'STORAGE'
-        profiles = []
-        profileIds = self._session.invoke_api(pbm, 'PbmQueryProfile',
-                                              profile_manager,
-                                              resourceType=res_type)
-        LOG.debug("Got profile IDs: %s", profileIds)
-
-        if profileIds:
-            profiles = self._session.invoke_api(pbm, 'PbmRetrieveContent',
-                                                profile_manager,
-                                                profileIds=profileIds)
-        return profiles
-
-    def retrieve_profile_id(self, profile_name):
-        """Get the profile uuid from current VC for given profile name.
-
-        :param profile_name: profile name as string
-        :return: profile id as string
-        """
-        LOG.debug("Trying to retrieve profile id for %s", profile_name)
-        for profile in self.get_all_profiles():
-            if profile.name == profile_name:
-                profileId = profile.profileId
-                LOG.debug("Got profile id %(id)s for profile %(name)s.",
-                          {'id': profileId, 'name': profile_name})
-                return profileId
-
-    def filter_matching_hubs(self, hubs, profile_id):
-        """Filter and return only hubs that match given profile.
-
-        :param hubs: PbmPlacementHub morefs candidates
-        :param profile_id: profile id string
-        :return: subset of hubs that match given profile_id
-        """
-        LOG.debug("Filtering hubs %(hubs)s that match profile "
-                  "%(profile)s.", {'hubs': hubs, 'profile': profile_id})
-        pbm = self._session.pbm
-        placement_solver = pbm.service_content.placementSolver
-        filtered_hubs = self._session.invoke_api(pbm, 'PbmQueryMatchingHub',
-                                                 placement_solver,
-                                                 hubsToSearch=hubs,
-                                                 profile=profile_id)
-        LOG.debug("Filtered hubs: %s", filtered_hubs)
-        return filtered_hubs
