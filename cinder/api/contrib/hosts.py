@@ -107,7 +107,7 @@ def _list_hosts(req, service=None):
     hosts = []
     for host in services:
         delta = curr_time - (host['updated_at'] or host['created_at'])
-        alive = abs(utils.total_seconds(delta)) <= CONF.service_down_time
+        alive = abs(delta.total_seconds()) <= CONF.service_down_time
         status = (alive and "available") or "unavailable"
         active = 'enabled'
         if host['disabled']:
