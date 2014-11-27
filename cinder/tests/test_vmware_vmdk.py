@@ -1957,43 +1957,60 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self.assertEqual(LooseVersion('6.0.1'), version)
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_vc_version')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                'session', new_callable=mock.PropertyMock)
+    def test_do_setup_with_pbm_disabled(self, session, get_vc_version):
+        session_obj = mock.Mock(name='session')
+        session.return_value = session_obj
+        get_vc_version.return_value = LooseVersion('5.0')
+
+        self._driver.do_setup(mock.ANY)
+
+        self.assertFalse(self._driver._storage_policy_enabled)
+        get_vc_version.assert_called_once_with()
+        self.assertEqual(session_obj, self._driver.volumeops._session)
+        self.assertEqual(session_obj, self._driver.ds_sel._session)
+
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_pbm_wsdl_location')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_vc_version')
+    def test_do_setup_with_invalid_pbm_wsdl(self, get_vc_version,
+                                            get_pbm_wsdl_location):
+        vc_version = LooseVersion('5.5')
+        get_vc_version.return_value = vc_version
+        get_pbm_wsdl_location.return_value = None
+
+        self.assertRaises(error_util.VMwareDriverException,
+                          self._driver.do_setup,
+                          mock.ANY)
+
+        self.assertFalse(self._driver._storage_policy_enabled)
+        get_vc_version.assert_called_once_with()
+        get_pbm_wsdl_location.assert_called_once_with(vc_version)
+
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_pbm_wsdl_location')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_vc_version')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'session', new_callable=mock.PropertyMock)
-    def test_do_setup(self, session, _get_vc_version, _get_pbm_wsdl_location):
-        session = session.return_value
+    def test_do_setup(self, session, get_vc_version, get_pbm_wsdl_location):
+        session_obj = mock.Mock(name='session')
+        session.return_value = session_obj
 
-        # pbm is disabled
-        vc_version = LooseVersion('5.0')
-        _get_vc_version.return_value = vc_version
-        self._driver.do_setup(mock.ANY)
-        self.assertFalse(self._driver._storage_policy_enabled)
-        _get_vc_version.assert_called_once_with()
-
-        # pbm is enabled and invalid pbm wsdl location
         vc_version = LooseVersion('5.5')
-        _get_vc_version.reset_mock()
-        _get_vc_version.return_value = vc_version
-        _get_pbm_wsdl_location.return_value = None
-        self.assertRaises(error_util.VMwareDriverException,
-                          self._driver.do_setup,
-                          mock.ANY)
-        self.assertFalse(self._driver._storage_policy_enabled)
-        _get_vc_version.assert_called_once_with()
-        _get_pbm_wsdl_location.assert_called_once_with(vc_version)
+        get_vc_version.return_value = vc_version
+        get_pbm_wsdl_location.return_value = 'file:///pbm.wsdl'
 
-        # pbm is enabled and valid pbm wsdl location
-        vc_version = LooseVersion('5.5')
-        _get_vc_version.reset_mock()
-        _get_vc_version.return_value = vc_version
-        _get_pbm_wsdl_location.reset_mock()
-        _get_pbm_wsdl_location.return_value = 'fake_pbm_location'
         self._driver.do_setup(mock.ANY)
+
         self.assertTrue(self._driver._storage_policy_enabled)
-        _get_vc_version.assert_called_once_with()
-        _get_pbm_wsdl_location.assert_called_once_with(vc_version)
+        get_vc_version.assert_called_once_with()
+        get_pbm_wsdl_location.assert_called_once_with(vc_version)
+        self.assertEqual(session_obj, self._driver.volumeops._session)
+        self.assertEqual(session_obj, self._driver.ds_sel._session)
 
     @mock.patch.object(VMDK_DRIVER, '_extend_volumeops_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, '_create_backing_in_inventory')
