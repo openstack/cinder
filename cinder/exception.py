@@ -880,3 +880,8 @@ class ISCSITargetRemoveFailed(CinderException):
 
 class ISCSITargetAttachFailed(CinderException):
     message = _("Failed to attach iSCSI target for volume %(volume_id)s.")
+
+
+# X-IO driver exception.
+class XIODriverException(VolumeDriverException):
+    message = _("X-IO Volume Driver exception!")
