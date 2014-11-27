@@ -133,6 +133,8 @@ class FakeObj(object):
         self.obj = obj
 
 
+# TODO(vbala) Split test methods handling multiple cases into multiple methods,
+# each handling a specific case.
 class VMwareEsxVmdkDriverTestCase(test.TestCase):
     """Test class for VMwareEsxVmdkDriver."""
 
@@ -1530,6 +1532,27 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vops.move_backing_to_folder.assert_called_once_with(backing, folder)
         vops.change_backing_profile.assert_called_once_with(backing,
                                                             profile_id)
+
+        # Modify the previous case with no profile change.
+        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
+                                                   vmdk.THIN_VMDK_TYPE,
+                                                   'gold-1',
+                                                   'gold-1']
+        ds_sel.select_datastore.reset_mock()
+        vops.relocate_backing.reset_mock()
+        vops.move_backing_to_folder.reset_mock()
+        vops.change_backing_profile.reset_mock()
+
+        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
+                                            host))
+        exp_req = {hub.DatastoreSelector.HARD_ANTI_AFFINITY_DS: [ds_value],
+                   hub.DatastoreSelector.PROFILE_NAME: 'gold-1',
+                   hub.DatastoreSelector.SIZE_BYTES: units.Gi}
+        ds_sel.select_datastore.assert_called_once_with(exp_req)
+        vops.relocate_backing.assert_called_once_with(
+            backing, candidate_ds, rp, host, vmdk.THIN_VMDK_TYPE)
+        vops.move_backing_to_folder.assert_called_once_with(backing, folder)
+        self.assertFalse(vops.change_backing_profile.called)
 
         # Test with disk type conversion, profile change, backing with
         # no snapshots and candidate datastore which is same as the backing
