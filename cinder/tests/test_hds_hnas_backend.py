@@ -143,6 +143,25 @@ x86_64_linux-bart_libc-2.7_release\n\
 Date: Feb 22 2013, 04:10:09\n\
 \n"
 
+HNAS_RESULT19 = "  ID          Label     Size           Used  Snapshots  \
+Deduped          Avail  Thin  ThinSize  ThinAvail              FS Type\n\
+----  -------------  -------  -------------  ---------  -------  -------------\
+----  --------  ---------  -------------------\n\
+1025     fs01-husvm   250 GB  47.1 GB (19%)   0 B (0%)       NA   203 GB (81%)\
+  No                       4 KB,WFS-2,128 DSBs\n\
+1047  manage_test02  19.9 GB  9.29 GB (47%)   0 B (0%)       NA  10.6 GB (53%)\
+  No                       4 KB,WFS-2,128 DSBs\n\
+\n"
+
+HNAS_RESULT20 = "\n\
+Alias               : test_iqn                                       \n\
+Globally unique name: iqn.2014-12.10.10.10.10:evstest1.cinder-silver \n\
+Comment             :                                                \n\
+Secret              :                                                \n\
+Authentication      : Enabled                                        \n\
+Logical units       : No logical units.                              \n\
+\n"
+
 HNAS_CMDS = {
     ('ssc', '-u', 'supervisor', '-p', 'supervisor', '0.0.0.0', 'evsfs',
      u'list'): ["%s" % HNAS_RESULT1, ""],
@@ -226,14 +245,26 @@ class HDSHNASBendTest(test.TestCase):
         self.assertIn('11.1.3225.01', out)
         self.assertIn('83-68-96-AA-DA-5D', out)
 
-    @mock.patch.object(utils, 'execute', side_effect=m_execute)
-    def test_get_hdp_info(self, m_execute):
-        out = self.hnas_bend.get_hdp_info("ssc", "0.0.0.0", "supervisor",
+    @mock.patch.object(utils, 'execute')
+    def test_get_hdp_info(self, m_exec):
+        # tests when there is two or more evs
+        m_exec.return_value = (HNAS_RESULT5, "")
+        out = self.hnas_bend.get_hdp_info("ssh", "0.0.0.0", "supervisor",
                                           "supervisor")
 
         self.assertEqual(len(out.split('\n')), 10)
         self.assertIn('gold', out)
         self.assertIn('silver', out)
+        line1 = out.split('\n')[0]
+        self.assertEqual(len(line1.split()), 12)
+
+        # test when there is only one evs
+        m_exec.return_value = (HNAS_RESULT19, "")
+        out = self.hnas_bend.get_hdp_info("ssh", "0.0.0.0", "supervisor",
+                                          "supervisor")
+        self.assertEqual(len(out.split('\n')), 3)
+        self.assertIn('fs01-husvm', out)
+        self.assertIn('manage_test02', out)
         line1 = out.split('\n')[0]
         self.assertEqual(len(line1.split()), 12)
 
@@ -315,10 +346,19 @@ class HDSHNASBendTest(test.TestCase):
                                         "supervisor", "test_iqn",
                                         "test_hdp", "test_secret")
 
-    @mock.patch.object(utils, 'execute', side_effect=m_execute)
-    def test_get_targetsecret(self, m_execute):
-        out = self.hnas_bend.get_targetsecret("ssc", "0.0.0.0", "supervisor",
+    @mock.patch.object(utils, 'execute')
+    def test_get_targetsecret(self, m_exec):
+        # test when target has secret
+        m_exec.return_value = (HNAS_RESULT12, "")
+        out = self.hnas_bend.get_targetsecret("ssh", "0.0.0.0", "supervisor",
                                               "supervisor", "test_iqn",
                                               "test_hdp")
 
         self.assertEqual('test_secret', out)
+
+        # test when target don't have secret
+        m_exec.return_value = (HNAS_RESULT20, "")
+        out = self.hnas_bend.get_targetsecret("ssh", "0.0.0.0", "supervisor",
+                                              "supervisor", "test_iqn",
+                                              "test_hdp")
+        self.assertEqual('', out)

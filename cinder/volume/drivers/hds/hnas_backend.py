@@ -107,16 +107,26 @@ class HnasBackend():
                                  ip0, 'df', '-a',
                                  check_exit_code=True)
         lines = out.split('\n')
+        single_evs = True
 
         newout = ""
         for line in lines:
             if 'Not mounted' in line:
                 continue
+            if 'not' not in line and 'EVS' in line:
+                single_evs = False
             if 'GB' in line or 'TB' in line:
                 inf = line.split()
-                (fsid, fslabel, capacity, used, perstr) = \
-                    (inf[0], inf[1], inf[3], inf[5], inf[7])
-                (availunit, usedunit) = (inf[4], inf[6])
+
+                if not single_evs:
+                    (fsid, fslabel, capacity) = (inf[0], inf[1], inf[3])
+                    (used, perstr) = (inf[5], inf[7])
+                    (availunit, usedunit) = (inf[4], inf[6])
+                else:
+                    (fsid, fslabel, capacity) = (inf[0], inf[1], inf[2])
+                    (used, perstr) = (inf[4], inf[6])
+                    (availunit, usedunit) = (inf[3], inf[5])
+
                 if usedunit == 'GB':
                     usedmultiplier = units.Ki
                 else:
@@ -605,9 +615,12 @@ class HnasBackend():
         lines = out.split('\n')
         for line in lines:
             if 'Secret' in line:
-                secret = line.split()[2]
+                if len(line.split()) > 2:
+                    secret = line.split()[2]
             if 'Authentication' in line:
                 enabled = line.split()[2]
 
         if enabled == 'Enabled':
             return secret
+        else:
+            return ""
