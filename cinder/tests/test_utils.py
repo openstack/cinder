@@ -603,6 +603,49 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertIsNone(dev)
 
 
+class GetDiskOfPartitionTestCase(test.TestCase):
+    def test_devpath_is_diskpath(self):
+        devpath = '/some/path'
+        st_mock = mock.Mock()
+        output = utils._get_disk_of_partition(devpath, st_mock)
+        self.assertEqual('/some/path', output[0])
+        self.assertIs(st_mock, output[1])
+
+        with mock.patch('os.stat') as mock_stat:
+            devpath = '/some/path'
+            output = utils._get_disk_of_partition(devpath)
+            mock_stat.assert_called_once_with(devpath)
+            self.assertEqual(devpath, output[0])
+            self.assertIs(mock_stat.return_value, output[1])
+
+    @mock.patch('os.stat', side_effect=OSError)
+    def test_stat_oserror(self, mock_stat):
+        st_mock = mock.Mock()
+        devpath = '/some/path1'
+        output = utils._get_disk_of_partition(devpath, st_mock)
+        mock_stat.assert_called_once_with('/some/path')
+        self.assertEqual(devpath, output[0])
+        self.assertIs(st_mock, output[1])
+
+    @mock.patch('stat.S_ISBLK', return_value=True)
+    @mock.patch('os.stat')
+    def test_diskpath_is_block_device(self, mock_stat, mock_isblk):
+        st_mock = mock.Mock()
+        devpath = '/some/path1'
+        output = utils._get_disk_of_partition(devpath, st_mock)
+        self.assertEqual('/some/path', output[0])
+        self.assertEqual(mock_stat.return_value, output[1])
+
+    @mock.patch('stat.S_ISBLK', return_value=False)
+    @mock.patch('os.stat')
+    def test_diskpath_is_not_block_device(self, mock_stat, mock_isblk):
+        st_mock = mock.Mock()
+        devpath = '/some/path1'
+        output = utils._get_disk_of_partition(devpath, st_mock)
+        self.assertEqual(devpath, output[0])
+        self.assertEqual(st_mock, output[1])
+
+
 class MonkeyPatchTestCase(test.TestCase):
     """Unit test for utils.monkey_patch()."""
     def setUp(self):
