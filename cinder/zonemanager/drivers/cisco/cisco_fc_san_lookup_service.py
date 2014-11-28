@@ -177,7 +177,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
         cli_output = None
         nsinfo_list = []
         try:
-            cmd = ZoneConstant.FCNS_SHOW + fabric_vsan + ' | no-more'
+            cmd = ([ZoneConstant.FCNS_SHOW, fabric_vsan, ' | no-more'])
             cli_output = self._get_switch_info(cmd)
         except exception.FCSanLookupServiceException:
             with excutils.save_and_reraise_exception():
