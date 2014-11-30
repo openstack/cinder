@@ -27,6 +27,8 @@ from oslo.utils import units
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
+from cinder.openstack.common import fileutils
+from cinder.openstack.common import imageutils
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
@@ -286,3 +288,59 @@ class ScalityDriverTestCase(test.TestCase):
         self.mox.ReplayAll()
 
         self._driver.extend_volume(self.TEST_VOLUME, self.TEST_NEWSIZE)
+
+    def test_backup_volume(self):
+        self.mox.StubOutWithMock(self._driver, 'db')
+        self.mox.StubOutWithMock(self._driver.db, 'volume_get')
+
+        volume = {'id': '2', 'name': self.TEST_VOLNAME}
+        self._driver.db.volume_get(context, volume['id']).AndReturn(volume)
+
+        info = imageutils.QemuImgInfo()
+        info.file_format = 'raw'
+        self.mox.StubOutWithMock(image_utils, 'qemu_img_info')
+        image_utils.qemu_img_info(self.TEST_VOLPATH).AndReturn(info)
+
+        self.mox.StubOutWithMock(utils, 'temporary_chown')
+        mock_tempchown = self.mox.CreateMockAnything()
+        utils.temporary_chown(self.TEST_VOLPATH).AndReturn(mock_tempchown)
+        mock_tempchown.__enter__()
+        mock_tempchown.__exit__(None, None, None)
+
+        self.mox.StubOutWithMock(fileutils, 'file_open')
+        mock_fileopen = self.mox.CreateMockAnything()
+        fileutils.file_open(self.TEST_VOLPATH).AndReturn(mock_fileopen)
+        mock_fileopen.__enter__()
+        mock_fileopen.__exit__(None, None, None)
+
+        backup = {'volume_id': volume['id']}
+        mock_servicebackup = self.mox.CreateMockAnything()
+        mock_servicebackup.backup(backup, mox_lib.IgnoreArg())
+
+        self.mox.ReplayAll()
+        self._driver.backup_volume(context, backup, mock_servicebackup)
+        self.mox.VerifyAll()
+
+    def test_restore_backup(self):
+        volume = {'id': '2', 'name': self.TEST_VOLNAME}
+
+        self.mox.StubOutWithMock(utils, 'temporary_chown')
+        mock_tempchown = self.mox.CreateMockAnything()
+        utils.temporary_chown(self.TEST_VOLPATH).AndReturn(mock_tempchown)
+        mock_tempchown.__enter__()
+        mock_tempchown.__exit__(None, None, None)
+
+        self.mox.StubOutWithMock(fileutils, 'file_open')
+        mock_fileopen = self.mox.CreateMockAnything()
+        fileutils.file_open(self.TEST_VOLPATH, 'wb').AndReturn(mock_fileopen)
+        mock_fileopen.__enter__()
+        mock_fileopen.__exit__(None, None, None)
+
+        backup = {'id': 123, 'volume_id': volume['id']}
+        mock_servicebackup = self.mox.CreateMockAnything()
+        mock_servicebackup.restore(backup, volume['id'], mox_lib.IgnoreArg())
+
+        self.mox.ReplayAll()
+        self._driver.restore_backup(context, backup, volume,
+                                    mock_servicebackup)
+        self.mox.VerifyAll()
