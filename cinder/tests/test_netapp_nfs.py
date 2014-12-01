@@ -14,6 +14,7 @@
 #    under the License.
 """Unit tests for the NetApp-specific NFS driver module."""
 
+from itertools import chain
 import os
 
 from lxml import etree
@@ -53,6 +54,8 @@ CONNECTION_INFO = {'hostname': 'fake_host',
                    'port': 443,
                    'username': 'admin',
                    'password': 'passw0rd'}
+SEVEN_MODE_CONNECTION_INFO = dict(chain(CONNECTION_INFO.items(),
+                                        {'vfiler': 'test_vfiler'}.items()))
 FAKE_VSERVER = 'fake_vserver'
 
 
@@ -66,6 +69,7 @@ def create_configuration():
     configuration.netapp_server_port = CONNECTION_INFO['port']
     configuration.netapp_login = CONNECTION_INFO['username']
     configuration.netapp_password = CONNECTION_INFO['password']
+    configuration.netapp_vfiler = SEVEN_MODE_CONNECTION_INFO['vfiler']
     return configuration
 
 
@@ -1219,7 +1223,7 @@ class NetApp7modeNfsDriverTestCase(NetAppCmodeNfsDriverTestCase):
     def test_do_setup(self, mock_client_init, mock_super_do_setup):
         context = mock.Mock()
         self._driver.do_setup(context)
-        mock_client_init.assert_called_once_with(**CONNECTION_INFO)
+        mock_client_init.assert_called_once_with(**SEVEN_MODE_CONNECTION_INFO)
         mock_super_do_setup.assert_called_once_with(context)
 
     @mock.patch.object(nfs_base.NetAppNfsDriver, 'check_for_setup_error')

@@ -252,7 +252,8 @@ class Client(client_base.Client):
         """Gets the actual path on the filer for export path."""
         storage_path = netapp_api.NaElement.create_node_with_children(
             'nfs-exportfs-storage-path', **{'pathname': export_path})
-        result = self.connection.invoke_successfully(storage_path)
+        result = self.connection.invoke_successfully(storage_path,
+                                                     enable_tunneling=True)
         if result.get_child_content('actual-pathname'):
             return result.get_child_content('actual-pathname')
         raise exception.NotFound(_('No storage path found for export path %s')
@@ -267,7 +268,8 @@ class Client(client_base.Client):
             **{'source-path': src_path,
                'destination-path': dest_path,
                'no-snap': 'true'})
-        result = self.connection.invoke_successfully(clone_start)
+        result = self.connection.invoke_successfully(clone_start,
+                                                     enable_tunneling=True)
         clone_id_el = result.get_child_by_name('clone-id')
         cl_id_info = clone_id_el.get_child_by_name('clone-id-info')
         vol_uuid = cl_id_info.get_child_content('volume-uuid')
@@ -291,7 +293,8 @@ class Client(client_base.Client):
                                            'volume-uuid': vol_uuid})
         task_running = True
         while task_running:
-            result = self.connection.invoke_successfully(clone_ls_st)
+            result = self.connection.invoke_successfully(clone_ls_st,
+                                                         enable_tunneling=True)
             status = result.get_child_by_name('status')
             ops_info = status.get_children()
             if ops_info:
@@ -322,7 +325,8 @@ class Client(client_base.Client):
         retry = 3
         while retry:
             try:
-                self.connection.invoke_successfully(clone_clear)
+                self.connection.invoke_successfully(clone_clear,
+                                                    enable_tunneling=True)
                 break
             except netapp_api.NaApiError:
                 # Filer might be rebooting

@@ -61,6 +61,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
         self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
         self.configuration.append_config_values(na_opts.netapp_transport_opts)
         self.configuration.append_config_values(na_opts.netapp_img_cache_opts)
+        self.configuration.append_config_values(na_opts.netapp_nfs_extra_opts)
 
     def set_execute(self, execute):
         self._execute = execute
