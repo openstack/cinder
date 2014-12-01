@@ -471,7 +471,11 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertRaises(exception.SSHInjectionThreat,
                           utils.check_ssh_injection,
                           with_unquoted_space)
-        with_danger_char = ['||', 'my_name@name_of_remote_computer']
+        with_danger_chars = ['||', 'my_name@name_of_remote_computer']
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection,
+                          with_danger_chars)
+        with_danger_char = [';', 'my_name@name_of_remote_computer']
         self.assertRaises(exception.SSHInjectionThreat,
                           utils.check_ssh_injection,
                           with_danger_char)
