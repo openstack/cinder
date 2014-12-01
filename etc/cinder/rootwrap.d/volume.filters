@@ -14,6 +14,19 @@ vgs: EnvFilter, env, root, LC_ALL=C, vgs
 lvs: EnvFilter, env, root, LC_ALL=C, lvs
 lvdisplay: EnvFilter, env, root, LC_ALL=C, lvdisplay
 
+# cinder/brick/local_dev/lvm.py: 'pvresize', '--setphysicalvolumesize', sizestr, pvname
+pvresize: CommandFilter, pvresize, root
+
+# cinder/brick/local_dev/lvm.py: 'vgcreate', vg_name, pv_list
+vgcreate: CommandFilter, vgcreate, root
+
+# cinder/brick/local_dev/lvm.py: 'vgremove', '-f', vgname
+vgremove: CommandFilter, vgremove, root
+
+# cinder/brick/local_dev/lvm.py: 'vgchange', '-an', vgname
+# cinder/brick/local_dev/lvm.py: 'vgchange', '-ay', vgname
+vgchange: CommandFilter, vgchange, root
+
 # cinder/volume/driver.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
 # cinder/volume/driver.py: 'lvcreate', '-L', ...
 lvcreate: CommandFilter, lvcreate, root
@@ -28,6 +41,7 @@ lvremove: CommandFilter, lvremove, root
 lvrename: CommandFilter, lvrename, root
 
 # cinder/volume/driver.py: 'lvextend', '-L' '%(new_size)s', '%(lv_name)s' ...
+# cinder/volume/driver.py: 'lvextend', '-L' '%(new_size)s', '%(thin_pool)s' ...
 lvextend: CommandFilter, lvextend, root
 
 # cinder/brick/local_dev/lvm.py: 'lvchange -a y -K <lv>'

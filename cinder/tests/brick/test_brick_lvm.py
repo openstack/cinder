@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
 import mox
 from oslo.concurrency import processutils
 
@@ -119,6 +120,14 @@ class BrickLvmTestCase(test.TestCase):
         elif 'lvcreate, -T, -V, ' in cmd_string:
             pass
         elif 'lvcreate, --name, ' in cmd_string:
+            pass
+        elif 'vgremove, -f, ' in cmd_string:
+            pass
+        elif 'pvresize, ' in cmd_string:
+            pass
+        elif 'lvextend, ' in cmd_string:
+            pass
+        elif 'lvchange, ' in cmd_string:
             pass
         else:
             raise AssertionError('unexpected command called: %s' % cmd_string)
@@ -284,3 +293,71 @@ class BrickLvmTestCase(test.TestCase):
 
     def test_get_mirrored_available_capacity(self):
         self.assertEqual(self.vg.vg_mirror_free_space(1), 2.0)
+
+    def test_activate_vg(self):
+        executor = mock.MagicMock()
+        self.vg.set_execute(executor)
+        self.vg.activate_vg()
+        executor.assert_called_once_with('vgchange', '-ay',
+                                         self.configuration.volume_group_name,
+                                         root_helper=self.vg._root_helper,
+                                         run_as_root=True)
+
+    def test_deactivate_vg(self):
+        executor = mock.MagicMock()
+        self.vg.set_execute(executor)
+        self.vg.deactivate_vg()
+        executor.assert_called_once_with('vgchange', '-an',
+                                         self.configuration.volume_group_name,
+                                         root_helper=self.vg._root_helper,
+                                         run_as_root=True)
+
+    def test_destroy_vg(self):
+        executor = mock.MagicMock()
+        self.vg.set_execute(executor)
+        self.vg.destroy_vg()
+        executor.assert_called_once_with('vgremove', '-f',
+                                         self.configuration.volume_group_name,
+                                         root_helper=self.vg._root_helper,
+                                         run_as_root=True)
+
+    def test_pv_resize(self):
+        executor = mock.MagicMock()
+        self.vg.set_execute(executor)
+        self.vg.pv_resize('fake-pv', '50G')
+        executor.assert_called_once_with('pvresize',
+                                         '--setphysicalvolumesize',
+                                         '50G', 'fake-pv',
+                                         root_helper=self.vg._root_helper,
+                                         run_as_root=True)
+
+    def test_extend_thinpool_nothin(self):
+        executor =\
+            mock.MagicMock(side_effect=Exception('Unexpected call to execute'))
+        self.vg.set_execute(executor)
+        thin_calc =\
+            mock.MagicMock(
+                side_effect=
+                Exception('Unexpected call to _calculate_thin_pool_size'))
+        self.vg._calculate_thin_pool_size = thin_calc
+        self.vg.extend_thinpool()
+
+    def test_extend_thinpool_thin(self):
+        self.stubs.Set(processutils, 'execute', self.fake_execute)
+        self.thin_vg = brick.LVM(self.configuration.volume_group_name,
+                                 'sudo',
+                                 False, None,
+                                 'thin',
+                                 self.fake_execute)
+        self.assertTrue(self.thin_vg.supports_thin_provisioning('sudo'))
+        self.thin_vg.update_volume_group_info = mock.MagicMock()
+        with mock.patch('oslo.concurrency.processutils.execute'):
+            executor = mock.MagicMock()
+            self.thin_vg._execute = executor
+            self.thin_vg.extend_thinpool()
+            executor.assert_called_once_with('lvextend',
+                                             '-L', '9.5g',
+                                             'fake-vg/fake-vg-pool',
+                                             root_helper=self.vg._root_helper,
+                                             run_as_root=True)
+            self.thin_vg.update_volume_group_info.assert_called_once_with()

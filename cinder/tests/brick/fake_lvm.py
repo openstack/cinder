@@ -24,6 +24,15 @@ class FakeBrickLVM(object):
         self.vg_free_space = '5.00'
         self.vg_name = vg_name
 
+    def activate_vg(self):
+        pass
+
+    def deactivate_vg(self):
+        pass
+
+    def destroy_vg(self):
+        pass
+
     def supports_thin_provisioning():
         return False
 
@@ -64,4 +73,10 @@ class FakeBrickLVM(object):
         pass
 
     def rename_volume(self, lv_name, new_name):
+        pass
+
+    def pv_resize(self, pv_name, new_size_str):
+        pass
+
+    def extend_thinpool(self):
         pass
