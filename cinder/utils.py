@@ -168,7 +168,7 @@ def check_ssh_injection(cmd_list):
         # Second, check whether danger character in command. So the shell
         # special operator must be a single argument.
         for c in ssh_injection_pattern:
-            if arg == c:
+            if c not in arg:
                 continue
 
             result = arg.find(c)
