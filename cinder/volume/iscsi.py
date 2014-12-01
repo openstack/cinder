@@ -42,6 +42,8 @@ class _ExportMixin(object):
                                                        volume,
                                                        max_targets)
 
+        # Verify we haven't setup a CHAP creds file already
+        # if DNE no big deal, we'll just create it
         current_chap_auth = self._get_target_chap_auth(iscsi_name)
         if current_chap_auth:
             (chap_username, chap_password) = current_chap_auth
