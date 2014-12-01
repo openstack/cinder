@@ -23,7 +23,7 @@ from oslo.utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder import ssh_utils
 from cinder import utils
@@ -181,8 +181,8 @@ class CiscoFCSanLookupService(FCSanLookupService):
             cli_output = self._get_switch_info(cmd)
         except exception.FCSanLookupServiceException:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Failed collecting show fcns database for"
-                            " fabric"))
+                LOG.error(_LE("Failed collecting show fcns database for"
+                              " fabric"))
         if cli_output:
             nsinfo_list = self._parse_ns_output(cli_output)
 
@@ -266,7 +266,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
                         cmd=command)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error running SSH command: %s") % command)
+                LOG.error(_LE("Error running SSH command: %s") % command)
 
     def _ssh_execute(self, cmd_list, check_exit_code=True, attempts=1):
         """Execute cli with status update.

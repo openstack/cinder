@@ -28,7 +28,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder import manager
 from cinder.openstack.common import log as logging
 from cinder import quota
@@ -105,8 +105,8 @@ class SchedulerManager(manager.Manager):
                                        {'status': 'error'})
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_("Failed to create consistency group "
-                                "%(group_id)s."),
+                LOG.exception(_LE("Failed to create consistency group "
+                                  "%(group_id)s."),
                               {'group_id': group_id})
                 db.consistencygroup_update(context, group_id,
                                            {'status': 'error'})
@@ -124,7 +124,8 @@ class SchedulerManager(manager.Manager):
                                                  snapshot_id,
                                                  image_id)
         except Exception:
-            LOG.exception(_("Failed to create scheduler manager volume flow"))
+            LOG.exception(_LE("Failed to create scheduler "
+                              "manager volume flow"))
             raise exception.CinderException(
                 _("Failed to create scheduler manager volume flow"))
 

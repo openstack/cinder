@@ -36,7 +36,7 @@ from oslo.utils import excutils
 from oslo.utils import importutils
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
 from cinder.zonemanager.drivers.fc_zone_driver import FCZoneDriver
@@ -134,15 +134,15 @@ class BrcdFCZoneDriver(FCZoneDriver):
         :param initiator_target_map: Mapping of initiator to list of targets
         """
         LOG.debug("Add connection for Fabric:%s", fabric)
-        LOG.info(_("BrcdFCZoneDriver - Add connection "
-                   "for I-T map: %s"), initiator_target_map)
+        LOG.info(_LI("BrcdFCZoneDriver - Add connection "
+                     "for I-T map: %s"), initiator_target_map)
         zoning_policy = self.configuration.zoning_policy
         zoning_policy_fab = self.fabric_configs[fabric].safe_get(
             'zoning_policy')
         if zoning_policy_fab:
             zoning_policy = zoning_policy_fab
 
-        LOG.info(_("Zoning policy for Fabric %s"), zoning_policy)
+        LOG.info(_LI("Zoning policy for Fabric %s"), zoning_policy)
         cli_client = self._get_cli_client(fabric)
         cfgmap_from_fabric = self._get_active_zone_set(cli_client)
 
@@ -169,8 +169,8 @@ class BrcdFCZoneDriver(FCZoneDriver):
                         zone_map[zone_name] = zone_members
                     else:
                         # This is I-T zoning, skip if zone already exists.
-                        LOG.info(_("Zone exists in I-T mode. "
-                                   "Skipping zone creation %s"), zone_name)
+                        LOG.info(_LI("Zone exists in I-T mode. "
+                                     "Skipping zone creation %s"), zone_name)
             elif zoning_policy == 'initiator':
                 zone_members = [self.get_formatted_wwn(initiator)]
                 for t in t_list:
@@ -192,7 +192,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                 LOG.error(msg)
                 raise exception.FCZoneDriverException(msg)
 
-            LOG.info(_("Zone map to add: %s"), zone_map)
+            LOG.info(_LI("Zone map to add: %s"), zone_map)
 
             if len(zone_map) > 0:
                 try:
@@ -220,7 +220,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
         :param initiator_target_map: Mapping of initiator to list of targets
         """
         LOG.debug("Delete connection for fabric:%s", fabric)
-        LOG.info(_("BrcdFCZoneDriver - Delete connection for I-T map: %s"),
+        LOG.info(_LI("BrcdFCZoneDriver - Delete connection for I-T map: %s"),
                  initiator_target_map)
         zoning_policy = self.configuration.zoning_policy
         zoning_policy_fab = self.fabric_configs[fabric].safe_get(
@@ -228,7 +228,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
         if zoning_policy_fab:
             zoning_policy = zoning_policy_fab
 
-        LOG.info(_("Zoning policy for fabric %s"), zoning_policy)
+        LOG.info(_LI("Zoning policy for fabric %s"), zoning_policy)
         conn = self._get_cli_client(fabric)
         cfgmap_from_fabric = self._get_active_zone_set(conn)
 
@@ -292,8 +292,8 @@ class BrcdFCZoneDriver(FCZoneDriver):
                     else:
                         zones_to_delete.append(zone_name)
             else:
-                LOG.info(_("Zoning Policy: %s, not "
-                           "recognized"), zoning_policy)
+                LOG.info(_LI("Zoning Policy: %s, not "
+                             "recognized"), zoning_policy)
             LOG.debug("Final Zone map to update: %s", zone_map)
             LOG.debug("Final Zone list to delete: %s", zones_to_delete)
             try:
@@ -360,8 +360,8 @@ class BrcdFCZoneDriver(FCZoneDriver):
                         LOG.error(msg)
                         raise exception.FCZoneDriverException(msg)
                     with excutils.save_and_reraise_exception():
-                        LOG.error(_("Error getting name server "
-                                    "info: %s"), ex)
+                        LOG.error(_LE("Error getting name server "
+                                      "info: %s"), ex)
                 except Exception as e:
                     msg = (_("Failed to get name server info:%s") % e)
                     LOG.error(msg)
@@ -371,7 +371,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                     nsinfo)
 
                 if visible_targets:
-                    LOG.info(_("Filtered targets for SAN is: %s"),
+                    LOG.info(_LI("Filtered targets for SAN is: %s"),
                              {fabric_name: visible_targets})
                     # getting rid of the ':' before returning
                     for idx, elem in enumerate(visible_targets):

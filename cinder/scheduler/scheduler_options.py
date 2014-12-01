@@ -27,7 +27,7 @@ import os
 from oslo.config import cfg
 from oslo.utils import timeutils
 
-from cinder.i18n import _
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 
 
@@ -66,8 +66,8 @@ class SchedulerOptions(object):
         try:
             return os.path.getmtime(filename)
         except os.error as e:
-            LOG.exception(_("Could not stat scheduler options file "
-                            "%(filename)s: '%(e)s'"),
+            LOG.exception(_LE("Could not stat scheduler options file "
+                              "%(filename)s: '%(e)s'"),
                           {'filename': filename, 'e': e})
             raise
 
@@ -76,7 +76,7 @@ class SchedulerOptions(object):
         try:
             return json.load(handle)
         except ValueError as e:
-            LOG.exception(_("Could not decode scheduler options: '%s'") % e)
+            LOG.exception(_LE("Could not decode scheduler options: '%s'") % e)
             return {}
 
     def _get_time_now(self):
