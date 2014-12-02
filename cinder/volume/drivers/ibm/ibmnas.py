@@ -127,14 +127,14 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def _get_provider_location(self, volume_id):
         """Returns provider location for given volume."""
-        LOG.debug("Enter _get_provider_location: volume_id %s" % volume_id)
+        LOG.debug("Enter _get_provider_location: volume_id %s", volume_id)
         volume = self.db.volume_get(self._context, volume_id)
         LOG.debug("Exit _get_provider_location")
         return volume['provider_location']
 
     def _get_export_path(self, volume_id):
         """Returns NFS export path for the given volume."""
-        LOG.debug("Enter _get_export_path: volume_id %s" % volume_id)
+        LOG.debug("Enter _get_export_path: volume_id %s", volume_id)
         return self._get_provider_location(volume_id).split(':')[1]
 
     def _update_volume_stats(self):
@@ -175,8 +175,8 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def _create_ibmnas_snap(self, src, dest, mount_path):
         """Create volume clones and snapshots."""
-        LOG.debug("Enter _create_ibmnas_snap: src %(src)s, dest %(dest)s"
-                  % {'src': src, 'dest': dest})
+        LOG.debug("Enter _create_ibmnas_snap: src %(src)s, dest %(dest)s",
+                  {'src': src, 'dest': dest})
         if self.configuration.ibmnas_platform_type == 'gpfs-nas':
             ssh_cmd = ['mmclone', 'snap', src, dest]
             self._ssh_operation(ssh_cmd)
@@ -201,9 +201,9 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
     def _create_ibmnas_copy(self, src, dest, snap):
         """Create a cloned volume, parent & the clone both remain writable."""
         LOG.debug('Enter _create_ibmnas_copy: src %(src)s, dest %(dest)s, '
-                  'snap %(snap)s' % {'src': src,
-                                     'dest': dest,
-                                     'snap': snap})
+                  'snap %(snap)s', {'src': src,
+                                    'dest': dest,
+                                    'snap': snap})
         if self.configuration.ibmnas_platform_type == 'gpfs-nas':
             ssh_cmd = ['mmclone', 'snap', src, snap]
             self._ssh_operation(ssh_cmd)
@@ -216,7 +216,7 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def _resize_volume_file(self, path, new_size):
         """Resize the image file on share to new size."""
-        LOG.debug("Resizing file to %sG." % new_size)
+        LOG.debug("Resizing file to %sG.", new_size)
         try:
             image_utils.resize_image(path, new_size, run_as_root=True)
         except processutils.ProcessExecutionError as e:
@@ -230,15 +230,15 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
-        LOG.debug("Extending volume %s" % volume['name'])
+        LOG.debug("Extending volume %s", volume['name'])
         path = self.local_path(volume)
         self._resize_volume_file(path, new_size)
 
     def _delete_snapfiles(self, fchild, mount_point):
         LOG.debug('Enter _delete_snapfiles: fchild %(fchild)s, '
-                  'mount_point %(mount_point)s'
-                  % {'fchild': fchild,
-                     'mount_point': mount_point})
+                  'mount_point %(mount_point)s',
+                  {'fchild': fchild,
+                   'mount_point': mount_point})
         if self.configuration.ibmnas_platform_type == 'gpfs-nas':
             ssh_cmd = ['mmclone', 'show', fchild]
         else:
