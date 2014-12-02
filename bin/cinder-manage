@@ -252,13 +252,12 @@ class VolumeCommands(object):
     def __init__(self):
         self._client = None
 
-    @property
     def rpc_client(self):
-        if not rpc.initialized():
-            rpc.init(CONF)
-            target = messaging.Target(topic=CONF.volume_topic)
-            self._client = rpc.get_client(target)
-
+        if self._client is None:
+            if not rpc.initialized():
+                rpc.init(CONF)
+                target = messaging.Target(topic=CONF.volume_topic)
+                self._client = rpc.get_client(target)
         return self._client
 
     @args('volume_id',
@@ -282,7 +281,7 @@ class VolumeCommands(object):
             print(_("Detach volume from instance and then try again."))
             return
 
-        cctxt = self.rpc_client.prepare(server=host)
+        cctxt = self.rpc_client().prepare(server=host)
         cctxt.cast(ctxt, "delete_volume", volume_id=volume['id'])
 
     @args('--currenthost', required=True, help='Existing volume host name')
