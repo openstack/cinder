@@ -1237,6 +1237,19 @@ class DBAPIBackupTestCase(BaseTest):
         self._assertEqualObjects(updated_values, updated_backup,
                                  self._ignored_keys)
 
+    def test_backup_update_with_fail_reason_truncation(self):
+        updated_values = self._get_values(one=True)
+        fail_reason = '0' * 512
+        updated_values['fail_reason'] = fail_reason
+
+        update_id = self.created[1]['id']
+        updated_backup = db.backup_update(self.ctxt, update_id,
+                                          updated_values)
+
+        updated_values['fail_reason'] = fail_reason[:255]
+        self._assertEqualObjects(updated_values, updated_backup,
+                                 self._ignored_keys)
+
     def test_backup_destroy(self):
         for backup in self.created:
             db.backup_destroy(self.ctxt, backup['id'])
