@@ -254,10 +254,21 @@ class TgtAdm(TargetAdmin):
             LOG.warning(_LW("Failed to create iscsi target for volume "
                             "id:%(vol_id)s: %(e)s")
                         % {'vol_id': vol_id, 'e': e})
-
-            #Don't forget to remove the persistent file we created
-            os.unlink(volume_path)
-            raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
+            if "target already exists" in err:
+                LOG.warning(_LW('Create iscsi target failed for '
+                                'target already exists'))
+                # NOTE(jdg):  We've run into some cases where the cmd being
+                # sent was not correct.  May be related to using the
+                # executor direclty?
+                # Adding the additional Warning message above to provide
+                # a very cleary marker for ER, and if the tgt exists let's
+                # just try and use it and move along.
+                # Ref bug: #1398078
+                pass
+            else:
+                # Don't forget to remove the persistent file we created
+                os.unlink(volume_path)
+                raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
