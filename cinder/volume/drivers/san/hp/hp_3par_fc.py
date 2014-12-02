@@ -74,10 +74,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.9 - Add support for pools with model update
         2.0.10 - Migrate without losing type settings bug #1356608
         2.0.11 - Removing locks bug #1381190
+        2.0.12 - Fix queryHost call to specify wwns bug #1398206
 
     """
 
-    VERSION = "2.0.11"
+    VERSION = "2.0.12"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -319,7 +320,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         """
         # first search for an existing host
         host_found = None
-        hosts = common.client.queryHost(wwns)
+        hosts = common.client.queryHost(wwns=wwns)
 
         LOG.warn(_LW("Found HOSTS %s") % pprint.pformat(hosts))
         if hosts and hosts['members']:

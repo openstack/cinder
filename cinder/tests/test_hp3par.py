@@ -2684,7 +2684,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
                 mock.call.getCPG(HP3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
-                mock.ANY,
+                mock.call.queryHost(wwns=['123456789012345',
+                                          '123456789054321']),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.getPorts(),
                 mock.call.createVLUN(
@@ -3049,7 +3050,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
                 mock.call.getCPG(HP3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
-                mock.call.queryHost(['123456789012345', '123456789054321']),
+                mock.call.queryHost(wwns=['123456789012345',
+                                          '123456789054321']),
                 mock.call.createHost(
                     self.FAKE_HOST,
                     FCWwns=['123456789012345', '123456789054321'],
@@ -3091,7 +3093,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
                 mock.call.getCPG(HP3PAR_CPG),
                 mock.call.getHost('fakehost'),
-                mock.call.queryHost(['123456789012345', '123456789054321']),
+                mock.call.queryHost(wwns=['123456789012345',
+                                          '123456789054321']),
                 mock.call.getHost('fakehost.foo')]
 
             mock_client.assert_has_calls(expected)
@@ -3258,7 +3261,11 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.getHost.side_effect = [
             hpexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST}]
-        mock_client.findHost.return_value = self.FAKE_HOST
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': self.FAKE_HOST
+            }]
+        }
         mock_client.getHostVLUNs.return_value = [
             {'active': True,
              'volumeName': self.VOLUME_3PAR_NAME,
@@ -3281,7 +3288,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
                 mock.call.getCPG(HP3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
-                mock.call.findHost(iqn='iqn.1993-08.org.debian:01:222'),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.createVLUN(
                     self.VOLUME_3PAR_NAME,
@@ -3356,7 +3363,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.getHost.side_effect = [
             hpexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST}]
-        mock_client.findHost.return_value = None
+        mock_client.queryHost.return_value = None
         mock_client.getVLUN.return_value = {'lun': self.TARGET_LUN}
 
         with mock.patch.object(hpcommon.HP3PARCommon, '_create_client')\
@@ -3369,7 +3376,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
                 mock.call.getCPG(HP3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
-                mock.call.findHost(iqn='iqn.1993-08.org.debian:01:222'),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.createHost(
                     self.FAKE_HOST,
                     optional={'domain': None, 'persona': 2},
@@ -3394,7 +3401,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.getHost.side_effect = [
             hpexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST}]
-        mock_client.findHost.return_value = None
+        mock_client.queryHost.return_value = None
         mock_client.getVLUN.return_value = {'lun': self.TARGET_LUN}
 
         expected_mod_request = {
@@ -3428,7 +3435,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.getVolumeMetaData(
                     'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
                 mock.call.getHost(self.FAKE_HOST),
-                mock.call.findHost(iqn='iqn.1993-08.org.debian:01:222'),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.createHost(
                     self.FAKE_HOST,
                     optional={'domain': None, 'persona': 2},
@@ -3454,7 +3461,11 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.getHost.side_effect = [
             hpexceptions.HTTPNotFound('Host not found.'),
             {'name': 'fakehost.foo'}]
-        mock_client.findHost.return_value = 'fakehost.foo'
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': 'fakehost.foo'
+            }]
+        }
 
         with mock.patch.object(hpcommon.HP3PARCommon, '_create_client')\
                 as mock_create_client:
@@ -3467,7 +3478,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
                 mock.call.getCPG(HP3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
-                mock.call.findHost(iqn='iqn.1993-08.org.debian:01:222'),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.getHost('fakehost.foo')]
 
             mock_client.assert_has_calls(expected)
@@ -3488,7 +3499,11 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.getHost.side_effect = [
             hpexceptions.HTTPNotFound('Host not found.'),
             {'name': 'fakehost.foo'}]
-        mock_client.findHost.return_value = 'fakehost.foo'
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': 'fakehost.foo'
+            }]
+        }
 
         def get_side_effect(*args):
             data = {'value': None}
@@ -3522,7 +3537,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.getVolumeMetaData(
                     'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
                 mock.call.getHost(self.FAKE_HOST),
-                mock.call.findHost(iqn='iqn.1993-08.org.debian:01:222'),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.modifyHost(
                     'fakehost.foo',
                     expected_mod_request),

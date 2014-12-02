@@ -76,10 +76,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.7 - Add support for pools with model update
         2.0.8 - Migrate without losing type settings bug #1356608
         2.0.9 - Removing locks bug #1381190
+        2.0.10 - Add call to queryHost instead SSH based findHost #1398206
 
     """
 
-    VERSION = "2.0.9"
+    VERSION = "2.0.10"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -352,7 +353,12 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         used by 3PAR.
         """
         # first search for an existing host
-        host_found = common.client.findHost(iqn=iscsi_iqn)
+        host_found = None
+        hosts = common.client.queryHost(iqns=[iscsi_iqn])
+
+        if hosts and hosts['members']:
+            host_found = hosts['members'][0]['name']
+
         if host_found is not None:
             common.hosts_naming_dict[hostname] = host_found
             return host_found
