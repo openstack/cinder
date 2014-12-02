@@ -97,16 +97,6 @@ volume_manager_opts = [
 CONF = cfg.CONF
 CONF.register_opts(volume_manager_opts)
 
-MAPPING = {
-    'cinder.volume.drivers.storwize_svc.StorwizeSVCDriver':
-    'cinder.volume.drivers.ibm.storwize_svc.StorwizeSVCDriver',
-    'cinder.volume.drivers.xiv_ds8k.XIVDS8KDriver':
-    'cinder.volume.drivers.ibm.xiv_ds8k.XIVDS8KDriver',
-    'cinder.volume.drivers.san.hp_lefthand.HpSanISCSIDriver':
-    'cinder.volume.drivers.san.hp.hp_lefthand_iscsi.HPLeftHandISCSIDriver',
-    'cinder.volume.drivers.gpfs.GPFSDriver':
-    'cinder.volume.drivers.ibm.gpfs.GPFSDriver', }
-
 
 def locked_volume_operation(f):
     """Lock decorator for volume operations.
@@ -173,10 +163,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             # Get from configuration, which will get the default
             # if its not using the multi backend
             volume_driver = self.configuration.volume_driver
-        if volume_driver in MAPPING:
-            LOG.warn(_LW("Driver path %s is deprecated, update your "
-                         "configuration to the new path."), volume_driver)
-            volume_driver = MAPPING[volume_driver]
 
         vol_db_empty = self._set_voldb_empty_at_startup_indicator(
             context.get_admin_context())
