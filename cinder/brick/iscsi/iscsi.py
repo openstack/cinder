@@ -254,7 +254,7 @@ class TgtAdm(TargetAdmin):
             LOG.warning(_LW("Failed to create iscsi target for volume "
                             "id:%(vol_id)s: %(e)s")
                         % {'vol_id': vol_id, 'e': e})
-            if "target already exists" in err:
+            if "target already exists" in e.stderr:
                 LOG.warning(_LW('Create iscsi target failed for '
                                 'target already exists'))
                 # NOTE(jdg):  We've run into some cases where the cmd being
