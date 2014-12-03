@@ -401,7 +401,11 @@ class NetApp7modeClientTestCase(test.TestCase):
         actual_pathname = self.client.get_actual_path_for_export(
             fake_export_path)
 
+        __, __, _kwargs = self.connection.invoke_successfully.mock_calls[0]
+        enable_tunneling = _kwargs['enable_tunneling']
+
         self.assertEqual(expected_actual_pathname, actual_pathname)
+        self.assertTrue(enable_tunneling)
 
     def test_clone_file(self):
         expected_src_path = "fake_src_path"
@@ -439,8 +443,9 @@ class NetApp7modeClientTestCase(test.TestCase):
 
         self.client.clone_file(expected_src_path, expected_dest_path)
 
-        __, _args, __ = self.connection.invoke_successfully.mock_calls[0]
+        __, _args, _kwargs = self.connection.invoke_successfully.mock_calls[0]
         actual_request = _args[0]
+        enable_tunneling = _kwargs['enable_tunneling']
         actual_src_path = actual_request \
             .get_child_by_name('source-path').get_content()
         actual_dest_path = actual_request.get_child_by_name(
@@ -450,6 +455,7 @@ class NetApp7modeClientTestCase(test.TestCase):
         self.assertEqual(expected_dest_path, actual_dest_path)
         self.assertEqual(actual_request.get_child_by_name(
             'destination-exists'), None)
+        self.assertTrue(enable_tunneling)
 
     def test_clone_file_when_clone_fails(self):
         """Ensure clone is cleaned up on failure."""
@@ -493,8 +499,9 @@ class NetApp7modeClientTestCase(test.TestCase):
                           expected_src_path,
                           expected_dest_path)
 
-        __, _args, __ = self.connection.invoke_successfully.mock_calls[0]
+        __, _args, _kwargs = self.connection.invoke_successfully.mock_calls[0]
         actual_request = _args[0]
+        enable_tunneling = _kwargs['enable_tunneling']
         actual_src_path = actual_request \
             .get_child_by_name('source-path').get_content()
         actual_dest_path = actual_request.get_child_by_name(
@@ -504,9 +511,11 @@ class NetApp7modeClientTestCase(test.TestCase):
         self.assertEqual(expected_dest_path, actual_dest_path)
         self.assertEqual(actual_request.get_child_by_name(
             'destination-exists'), None)
+        self.assertTrue(enable_tunneling)
 
-        __, _args, __ = self.connection.invoke_successfully.mock_calls[1]
+        __, _args, _kwargs = self.connection.invoke_successfully.mock_calls[1]
         actual_request = _args[0]
+        enable_tunneling = _kwargs['enable_tunneling']
         actual_clone_id = actual_request.get_child_by_name('clone-id')
         actual_clone_id_info = actual_clone_id.get_child_by_name(
             'clone-id-info')
@@ -517,14 +526,17 @@ class NetApp7modeClientTestCase(test.TestCase):
 
         self.assertEqual(fake_clone_op_id, actual_clone_op_id)
         self.assertEqual(fake_volume_id, actual_volume_uuid)
+        self.assertTrue(enable_tunneling)
 
         # Ensure that the clone-clear call is made upon error
-        __, _args, __ = self.connection.invoke_successfully.mock_calls[2]
+        __, _args, _kwargs = self.connection.invoke_successfully.mock_calls[2]
         actual_request = _args[0]
+        enable_tunneling = _kwargs['enable_tunneling']
         actual_clone_id = actual_request \
             .get_child_by_name('clone-id').get_content()
 
         self.assertEqual(fake_clone_op_id, actual_clone_id)
+        self.assertTrue(enable_tunneling)
 
     def test_get_file_usage(self):
         expected_bytes = "2048"

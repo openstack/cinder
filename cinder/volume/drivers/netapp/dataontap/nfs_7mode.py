@@ -28,6 +28,7 @@ from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
+from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 
@@ -40,6 +41,7 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
 
     def __init__(self, *args, **kwargs):
         super(NetApp7modeNfsDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(na_opts.netapp_7mode_opts)
 
     def do_setup(self, context):
         """Do the customized set up on client if any for 7 mode."""
@@ -50,7 +52,8 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
             username=self.configuration.netapp_login,
             password=self.configuration.netapp_password,
             hostname=self.configuration.netapp_server_hostname,
-            port=self.configuration.netapp_server_port)
+            port=self.configuration.netapp_server_port,
+            vfiler=self.configuration.netapp_vfiler)
 
     def check_for_setup_error(self):
         """Checks if setup occurred properly."""

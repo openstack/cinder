@@ -1609,9 +1609,9 @@
 # The vFiler unit on which provisioning of block storage
 # volumes will be done. This option is only used by the driver
 # when connecting to an instance with a storage family of Data
-# ONTAP operating in 7-Mode and the storage protocol selected
-# is iSCSI. Only use this option when utilizing the MultiStore
-# feature on the NetApp storage system. (string value)
+# ONTAP operating in 7-Mode. Only use this option when
+# utilizing the MultiStore feature on the NetApp storage
+# system. (string value)
 #netapp_vfiler=<None>
 
 # Administrative user account name used to access the storage

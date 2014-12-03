@@ -51,7 +51,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
     def __init__(self, *args, **kwargs):
         super(NetAppCmodeNfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(na_opts.netapp_cluster_opts)
-        self.configuration.append_config_values(na_opts.netapp_nfs_extra_opts)
 
     def do_setup(self, context):
         """Do the customized set up on client for cluster mode."""
