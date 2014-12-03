@@ -1136,7 +1136,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                              None,
                                              volumeops.FULL_CLONE_TYPE,
                                              datastore,
-                                             disk_type)
+                                             disk_type,
+                                             host)
                 self._delete_temp_backing(backing)
         except Exception:
             # Delete backing and virtual disk created from image.
@@ -1499,7 +1500,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
                     new_backing = self.volumeops.clone_backing(
                         volume['name'], backing, None,
-                        volumeops.FULL_CLONE_TYPE, datastore, new_disk_type)
+                        volumeops.FULL_CLONE_TYPE, datastore, new_disk_type,
+                        host)
                     self._delete_temp_backing(backing)
                     backing = new_backing
                 except error_util.VimException:
@@ -1713,7 +1715,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
             dest = self.volumeops.clone_backing(dest_name, src, None,
                                                 volumeops.FULL_CLONE_TYPE,
-                                                datastore, disk_type)
+                                                datastore, disk_type, host)
             if new_backing:
                 LOG.debug("Created new backing: %s for restoring backup.",
                           dest_name)
@@ -1978,12 +1980,14 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         :param src_vsize: the size of the source volume
         """
         datastore = None
+        host = None
         if not clone_type == volumeops.LINKED_CLONE_TYPE:
             # Pick a datastore where to create the full clone under any host
             (host, rp, folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
         clone = self.volumeops.clone_backing(volume['name'], backing,
-                                             snapshot, clone_type, datastore)
+                                             snapshot, clone_type, datastore,
+                                             host=host)
         # If the volume size specified by the user is greater than
         # the size of the source volume, the newly created volume will
         # allocate the capacity to the size of the source volume in the backend
