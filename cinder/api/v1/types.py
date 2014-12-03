@@ -57,6 +57,7 @@ class VolumeTypesController(wsgi.Controller):
         """Returns the list of volume types."""
         context = req.environ['cinder.context']
         vol_types = volume_types.get_all_types(context).values()
+        req.cache_resource(vol_types, name='types')
         return self._view_builder.index(req, vol_types)
 
     @wsgi.serializers(xml=VolumeTypeTemplate)
@@ -66,6 +67,7 @@ class VolumeTypesController(wsgi.Controller):
 
         try:
             vol_type = volume_types.get_volume_type(context, id)
+            req.cache_resource(vol_type, name='types')
         except exception.NotFound:
             raise exc.HTTPNotFound()
 

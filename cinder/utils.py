@@ -414,6 +414,14 @@ def is_valid_boolstr(val):
             val == '1' or val == '0')
 
 
+def is_none_string(val):
+    """Check if a string represents a None value."""
+    if not isinstance(val, six.string_types):
+        return False
+
+    return val.lower() == 'none'
+
+
 def monkey_patch():
     """If the CONF.monkey_patch set as True,
     this function patches a decorator

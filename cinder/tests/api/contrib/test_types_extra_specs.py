@@ -57,7 +57,7 @@ def stub_volume_type_extra_specs():
     return specs
 
 
-def volume_type_get(context, volume_type_id):
+def volume_type_get(context, id, inactive=False, expected_fields=None):
     pass
 
 

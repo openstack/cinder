@@ -271,6 +271,11 @@ class VolumeTypeNotFoundByName(VolumeTypeNotFound):
                 "could not be found.")
 
 
+class VolumeTypeAccessNotFound(NotFound):
+    message = _("Volume type access not found for %(volume_type_id)s / "
+                "%(project_id)s combination.")
+
+
 class VolumeTypeExtraSpecsNotFound(NotFound):
     message = _("Volume Type %(volume_type_id)s has no extra specs with "
                 "key %(extra_specs_key)s.")
@@ -374,6 +379,11 @@ class Duplicate(CinderException):
 
 class VolumeTypeExists(Duplicate):
     message = _("Volume Type %(id)s already exists.")
+
+
+class VolumeTypeAccessExists(Duplicate):
+    message = _("Volume type access for %(volume_type_id)s / "
+                "%(project_id)s combination already exists.")
 
 
 class VolumeTypeEncryptionExists(Invalid):

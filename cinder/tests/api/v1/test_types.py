@@ -36,13 +36,13 @@ def stub_volume_type(id):
     return dict(id=id, name='vol_type_%s' % str(id), extra_specs=specs)
 
 
-def return_volume_types_get_all_types(context):
+def return_volume_types_get_all_types(context, search_opts=None):
     return dict(vol_type_1=stub_volume_type(1),
                 vol_type_2=stub_volume_type(2),
                 vol_type_3=stub_volume_type(3))
 
 
-def return_empty_volume_types_get_all_types(context):
+def return_empty_volume_types_get_all_types(context, search_opts=None):
     return {}
 
 

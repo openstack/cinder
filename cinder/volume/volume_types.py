@@ -34,13 +34,16 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-def create(context, name, extra_specs=None):
+def create(context, name, extra_specs=None, is_public=True, projects=None):
     """Creates volume types."""
     extra_specs = extra_specs or {}
+    projects = projects or []
     try:
         type_ref = db.volume_type_create(context,
                                          dict(name=name,
-                                              extra_specs=extra_specs))
+                                              extra_specs=extra_specs,
+                                              is_public=is_public),
+                                         projects=projects)
     except db_exc.DBError as e:
         LOG.exception(_LE('DB error: %s') % e)
         raise exception.VolumeTypeCreateFailed(name=name,
@@ -64,7 +67,13 @@ def get_all_types(context, inactive=0, search_opts=None):
 
     """
     search_opts = search_opts or {}
-    vol_types = db.volume_type_get_all(context, inactive)
+    filters = {}
+
+    if 'is_public' in search_opts:
+        filters['is_public'] = search_opts['is_public']
+        del search_opts['is_public']
+
+    vol_types = db.volume_type_get_all(context, inactive, filters=filters)
 
     if search_opts:
         LOG.debug("Searching by: %s" % search_opts)
@@ -96,7 +105,7 @@ def get_all_types(context, inactive=0, search_opts=None):
     return vol_types
 
 
-def get_volume_type(ctxt, id):
+def get_volume_type(ctxt, id, expected_fields=None):
     """Retrieves single volume type by id."""
     if id is None:
         msg = _("id cannot be None")
@@ -105,7 +114,7 @@ def get_volume_type(ctxt, id):
     if ctxt is None:
         ctxt = context.get_admin_context()
 
-    return db.volume_type_get(ctxt, id)
+    return db.volume_type_get(ctxt, id, expected_fields=expected_fields)
 
 
 def get_volume_type_by_name(context, name):
@@ -147,6 +156,22 @@ def get_volume_type_extra_specs(volume_type_id, key=False):
             return False
     else:
         return extra_specs
+
+
+def add_volume_type_access(context, volume_type_id, project_id):
+    """Add access to volume type for project_id."""
+    if volume_type_id is None:
+        msg = _("volume_type_id cannot be None")
+        raise exception.InvalidVolumeType(reason=msg)
+    return db.volume_type_access_add(context, volume_type_id, project_id)
+
+
+def remove_volume_type_access(context, volume_type_id, project_id):
+    """Remove access to volume type for project_id."""
+    if volume_type_id is None:
+        msg = _("volume_type_id cannot be None")
+        raise exception.InvalidVolumeType(reason=msg)
+    return db.volume_type_access_remove(context, volume_type_id, project_id)
 
 
 def is_encrypted(context, volume_type_id):

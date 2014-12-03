@@ -52,13 +52,15 @@ class VolumeTypesManageController(wsgi.Controller):
         vol_type = body['volume_type']
         name = vol_type.get('name', None)
         specs = vol_type.get('extra_specs', {})
+        is_public = vol_type.get('os-volume-type-access:is_public', True)
 
         if name is None or name == "":
             raise webob.exc.HTTPBadRequest()
 
         try:
-            volume_types.create(context, name, specs)
+            volume_types.create(context, name, specs, is_public)
             vol_type = volume_types.get_volume_type_by_name(context, name)
+            req.cache_resource(vol_type, name='types')
             notifier_info = dict(volume_types=vol_type)
             rpc.get_notifier('volumeType').info(context, 'volume_type.create',
                                                 notifier_info)
