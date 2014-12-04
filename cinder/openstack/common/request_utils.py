@@ -20,7 +20,7 @@ Utilities for linking request ID's across service calls.
 import logging
 
 from openstack.common.gettextutils import _  # noqa
-
+from cinder.i18n import _LI
 
 LOG = logging.getLogger(__name__)
 
@@ -73,12 +73,12 @@ def link_request_ids(context, source_id, target_id=None, stage=None,
     if target_name or target_id:
         arrow = " -> "
 
-    LOG.info(_("Request ID Link: %(event_name)s '%(source_id)s'%(arrow)s"
-               "%(target_name)s%(target_id)s") % {"event_name": event_name,
-                                                  "source_id": source_id,
-                                                  "target_name": rtarget_name,
-                                                  "arrow": arrow,
-                                                  "target_id": rtarget_id})
+    LOG.info(_LI("Request ID Link: %(event_name)s '%(source_id)s'%(arrow)s"
+                 "%(target_name)s%(target_id)s") % {"event_name": event_name,
+                                                    "source_id": source_id,
+                                                    "target_name": rtarget_name,
+                                                    "arrow": arrow,
+                                                    "target_id": rtarget_id})
 
     if notifier:
         payload = {"source_request_id": source_id,

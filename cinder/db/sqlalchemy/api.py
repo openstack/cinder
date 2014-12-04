@@ -210,8 +210,8 @@ def _retry_on_deadlock(f):
             try:
                 return f(*args, **kwargs)
             except db_exc.DBDeadlock:
-                LOG.warn(_("Deadlock detected when running "
-                           "'%(func_name)s': Retrying..."),
+                LOG.warn(_LW("Deadlock detected when running "
+                             "'%(func_name)s': Retrying..."),
                          dict(func_name=f.__name__))
                 # Retry!
                 time.sleep(0.5)

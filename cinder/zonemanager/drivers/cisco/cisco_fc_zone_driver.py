@@ -217,7 +217,7 @@ class CiscoFCZoneDriver(FCZoneDriver):
                         msg = _("Exception: %s") % six.text_type(cisco_ex)
                         raise exception.FCZoneDriverException(msg)
                     except Exception as e:
-                        LOG.error(_("Exception: %s") % six.text_type(e))
+                        LOG.error(_LE("Exception: %s") % six.text_type(e))
                         msg = (_("Failed to add zoning configuration %s") %
                                six.text_type(e))
                         raise exception.FCZoneDriverException(msg)

@@ -22,7 +22,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers import fujitsu_eternus_dx_common
@@ -147,7 +147,7 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
 
     def _do_iscsi_discovery(self, volume):
 
-        LOG.warn(_("ISCSI provider_location not stored, using discovery"))
+        LOG.warn(_LW("ISCSI provider_location not stored, using discovery"))
 
         (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
                                     '-t', 'sendtargets', '-p',

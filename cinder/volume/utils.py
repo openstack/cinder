@@ -26,7 +26,7 @@ from oslo.utils import units
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import utils
@@ -242,7 +242,7 @@ def setup_blkio_cgroup(srcpath, dstpath, bps_limit, execute=utils.execute):
     try:
         execute('cgcreate', '-g', 'blkio:%s' % group_name, run_as_root=True)
     except processutils.ProcessExecutionError:
-        LOG.warn(_('Failed to create blkio cgroup'))
+        LOG.warn(_LW('Failed to create blkio cgroup'))
         return None
 
     try:
@@ -362,7 +362,7 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
     if volume_clear_ionice is None:
         volume_clear_ionice = CONF.volume_clear_ionice
 
-    LOG.info(_("Performing secure delete on volume: %s") % volume_path)
+    LOG.info(_LI("Performing secure delete on volume: %s") % volume_path)
 
     if volume_clear == 'zero':
         return copy_volume('/dev/zero', volume_path, volume_clear_size,
@@ -387,7 +387,7 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
     # some incredible event this is 0 (cirros image?) don't barf
     if duration < 1:
         duration = 1
-    LOG.info(_('Elapsed time for clear volume: %.2f sec') % duration)
+    LOG.info(_LI('Elapsed time for clear volume: %.2f sec') % duration)
 
 
 def supports_thin_provisioning():

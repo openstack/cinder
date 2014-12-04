@@ -21,7 +21,7 @@ from oslo.concurrency import processutils as putils
 from cinder.brick import exception
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
-from cinder.i18n import _
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import test
@@ -490,7 +490,7 @@ class FakeFixedIntervalLoopingCall(object):
             except loopingcall.LoopingCallDone:
                 return self
             except Exception:
-                LOG.exception(_('in fixed duration looping call'))
+                LOG.exception(_LE('in fixed duration looping call'))
                 raise
 
 

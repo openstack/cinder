@@ -2368,7 +2368,8 @@ class EMCVnxCliBase(object):
                 properties['auth_username'] = auth_username
                 properties['auth_password'] = auth_secret
         else:
-            LOG.error(_('Failed to find an available iSCSI targets for %s.'),
+            LOG.error(_LE('Failed to find an available '
+                          'iSCSI targets for %s.'),
                       storage_group)
 
         return properties

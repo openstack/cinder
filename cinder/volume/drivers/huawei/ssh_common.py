@@ -30,7 +30,7 @@ from oslo.utils import excutils
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder import ssh_utils
 from cinder import utils
@@ -278,10 +278,11 @@ class TseriesCommon():
                     params[key] = value.strip()
                 else:
                     conf = self.configuration.cinder_huawei_conf_file
-                    LOG.warn(_('_parse_volume_type: Unacceptable parameter '
-                               '%(key)s. Please check this key in extra_specs '
-                               'and make it consistent with the element in '
-                               'configuration file %(conf)s.')
+                    LOG.warn(_LW('_parse_volume_type: Unacceptable parameter '
+                                 '%(key)s. Please check this key in '
+                                 'extra_specs '
+                                 'and make it consistent with the element in '
+                                 'configuration file %(conf)s.')
                              % {'key': key,
                                 'conf': conf})
 
@@ -1118,9 +1119,9 @@ class TseriesCommon():
         if map_id is not None:
             self._delete_map(map_id)
         else:
-            LOG.warn(_('remove_map: No map between host %(host)s and '
-                       'volume %(volume)s.') % {'host': host_name,
-                                                'volume': volume_id})
+            LOG.warn(_LW('remove_map: No map between host %(host)s and '
+                         'volume %(volume)s.') % {'host': host_name,
+                                                  'volume': volume_id})
         return host_id
 
     def _delete_map(self, mapid, attempts=2):

@@ -26,7 +26,7 @@ from cinder.brick.initiator import host_driver
 from cinder.brick.initiator import linuxfc
 from cinder.brick.initiator import linuxscsi
 from cinder.brick.remotefs import remotefs
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 
@@ -227,8 +227,8 @@ class ISCSIConnector(InitiatorConnector):
             if tries >= self.device_scan_attempts:
                 raise exception.VolumeDeviceNotFound(device=host_device)
 
-            LOG.warn(_("ISCSI volume not yet found at: %(host_device)s. "
-                       "Will rescan & retry.  Try number: %(tries)s"),
+            LOG.warn(_LW("ISCSI volume not yet found at: %(host_device)s. "
+                         "Will rescan & retry.  Try number: %(tries)s"),
                      {'host_device': host_device,
                       'tries': tries})
 
@@ -634,8 +634,8 @@ class FibreChannelConnector(InitiatorConnector):
                 LOG.error(msg)
                 raise exception.NoFibreChannelVolumeDeviceFound()
 
-            LOG.warn(_("Fibre volume not yet found. "
-                       "Will rescan & retry.  Try number: %(tries)s"),
+            LOG.warn(_LW("Fibre volume not yet found. "
+                         "Will rescan & retry.  Try number: %(tries)s"),
                      {'tries': tries})
 
             self._linuxfc.rescan_hosts(hbas)
@@ -778,8 +778,8 @@ class AoEConnector(InitiatorConnector):
             if waiting_status['tries'] >= self.device_scan_attempts:
                 raise exception.VolumeDeviceNotFound(device=aoe_path)
 
-            LOG.warn(_("AoE volume not yet found at: %(path)s. "
-                       "Try number: %(tries)s"),
+            LOG.warn(_LW("AoE volume not yet found at: %(path)s. "
+                         "Try number: %(tries)s"),
                      {'path': aoe_device,
                       'tries': waiting_status['tries']})
 
@@ -860,8 +860,8 @@ class RemoteFsConnector(InitiatorConnector):
                     kwargs.get('glusterfs_mount_point_base') or\
                     mount_point_base
         else:
-            LOG.warn(_("Connection details not present."
-                       " RemoteFsClient may not initialize properly."))
+            LOG.warn(_LW("Connection details not present."
+                         " RemoteFsClient may not initialize properly."))
         self._remotefsclient = remotefs.RemoteFsClient(mount_type, root_helper,
                                                        execute=execute,
                                                        *args, **kwargs)

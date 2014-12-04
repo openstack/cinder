@@ -30,7 +30,7 @@ from oslo.utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume import volume_types
@@ -157,7 +157,7 @@ class FJDXCommon(object):
         volumesize = int(volume['size']) * units.Gi
         volumename = self._create_volume_name(volume['id'])
 
-        LOG.info(_('Create Volume: %(volume)s  Size: %(size)lu')
+        LOG.info(_LI('Create Volume: %(volume)s  Size: %(size)lu')
                  % {'volume': volumename,
                     'size': volumesize})
 
@@ -287,8 +287,8 @@ class FJDXCommon(object):
         volumename = self._create_volume_name(volume['id'])
         vol_instance = None
 
-        LOG.info(_('Create Volume from Snapshot: Volume: %(volumename)s  '
-                   'Snapshot: %(snapshotname)s')
+        LOG.info(_LI('Create Volume from Snapshot: Volume: %(volumename)s  '
+                     'Snapshot: %(snapshotname)s')
                  % {'volumename': volumename,
                     'snapshotname': snapshotname})
 
@@ -396,8 +396,8 @@ class FJDXCommon(object):
         srcname = self._create_volume_name(src_vref['id'])
         volumename = self._create_volume_name(volume['id'])
 
-        LOG.info(_('Create a Clone from Volume: Volume: %(volumename)s  '
-                   'Source Volume: %(srcname)s')
+        LOG.info(_LI('Create a Clone from Volume: Volume: %(volumename)s  '
+                     'Source Volume: %(srcname)s')
                  % {'volumename': volumename,
                     'srcname': srcname})
 
@@ -500,7 +500,7 @@ class FJDXCommon(object):
         """Deletes an volume."""
         LOG.debug('Entering delete_volume.')
         volumename = self._create_volume_name(volume['id'])
-        LOG.info(_('Delete Volume: %(volume)s')
+        LOG.info(_LI('Delete Volume: %(volume)s')
                  % {'volume': volumename})
 
         self.conn = self._get_ecom_connection()
@@ -574,7 +574,7 @@ class FJDXCommon(object):
 
         snapshotname = self._create_volume_name(snapshot['id'])
         volumename = snapshot['volume_name']
-        LOG.info(_('Create snapshot: %(snapshot)s: volume: %(volume)s')
+        LOG.info(_LI('Create snapshot: %(snapshot)s: volume: %(volume)s')
                  % {'snapshot': snapshotname,
                     'volume': volumename})
 
@@ -702,7 +702,7 @@ class FJDXCommon(object):
 
         snapshotname = snapshot['name']
         volumename = snapshot['volume_name']
-        LOG.info(_('Delete Snapshot: %(snapshot)s: volume: %(volume)s')
+        LOG.info(_LI('Delete Snapshot: %(snapshot)s: volume: %(volume)s')
                  % {'snapshot': snapshotname,
                     'volume': volumename})
 
@@ -783,8 +783,8 @@ class FJDXCommon(object):
                 sync_name, storage_system =\
                     self._find_storage_sync_sv_sv(snapshot, volume, False)
                 if sync_name is None:
-                    LOG.info(_('Snapshot: %(snapshot)s: volume: %(volume)s. '
-                               'Snapshot is deleted.')
+                    LOG.info(_LI('Snapshot: %(snapshot)s: volume: %(volume)s. '
+                                 'Snapshot is deleted.')
                              % {'snapshot': snapshotname,
                                 'volume': volumename})
                     raise loopingcall.LoopingCallDone()
@@ -797,8 +797,8 @@ class FJDXCommon(object):
             except Exception as ex:
                 if ex.args[0] == 6:
                     # 6 means object not found, so snapshot is deleted cleanly
-                    LOG.info(_('Snapshot: %(snapshot)s: volume: %(volume)s. '
-                               'Snapshot is deleted.')
+                    LOG.info(_LI('Snapshot: %(snapshot)s: volume: %(volume)s. '
+                                 'Snapshot is deleted.')
                              % {'snapshot': snapshotname,
                                 'volume': volumename})
                 else:
@@ -931,7 +931,7 @@ class FJDXCommon(object):
     def _map_lun(self, volume, connector):
         """Maps a volume to the host."""
         volumename = self._create_volume_name(volume['id'])
-        LOG.info(_('Map volume: %(volume)s')
+        LOG.info(_LI('Map volume: %(volume)s')
                  % {'volume': volumename})
 
         vol_instance = self._find_lun(volume)
@@ -950,13 +950,13 @@ class FJDXCommon(object):
     def _unmap_lun(self, volume, connector):
         """Unmaps a volume from the host."""
         volumename = self._create_volume_name(volume['id'])
-        LOG.info(_('Unmap volume: %(volume)s')
+        LOG.info(_LI('Unmap volume: %(volume)s')
                  % {'volume': volumename})
 
         device_info = self.find_device_number(volume, connector)
         device_number = device_info['hostlunid']
         if device_number is None:
-            LOG.info(_("Volume %s is not mapped. No volume to unmap.")
+            LOG.info(_LI("Volume %s is not mapped. No volume to unmap.")
                      % (volumename))
             return
 
@@ -975,13 +975,13 @@ class FJDXCommon(object):
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info."""
         volumename = self._create_volume_name(volume['id'])
-        LOG.info(_('Initialize connection: %(volume)s')
+        LOG.info(_LI('Initialize connection: %(volume)s')
                  % {'volume': volumename})
         self.conn = self._get_ecom_connection()
         device_info = self.find_device_number(volume, connector)
         device_number = device_info['hostlunid']
         if device_number is not None:
-            LOG.info(_("Volume %s is already mapped.")
+            LOG.info(_LI("Volume %s is already mapped.")
                      % (volumename))
         else:
             self._map_lun(volume, connector)
@@ -993,7 +993,7 @@ class FJDXCommon(object):
     def terminate_connection(self, volume, connector):
         """Disallow connection from connector."""
         volumename = self._create_volume_name(volume['id'])
-        LOG.info(_('Terminate connection: %(volume)s')
+        LOG.info(_LI('Terminate connection: %(volume)s')
                  % {'volume': volumename})
         self.conn = self._get_ecom_connection()
         self._unmap_lun(volume, connector)
@@ -1010,7 +1010,7 @@ class FJDXCommon(object):
         volumesize = int(new_size) * units.Gi
         volumename = self._create_volume_name(volume['id'])
 
-        LOG.info(_('Extend Volume: %(volume)s  New size: %(size)lu')
+        LOG.info(_LI('Extend Volume: %(volume)s  New size: %(size)lu')
                  % {'volume': volumename,
                     'size': volumesize})
 
@@ -1353,8 +1353,9 @@ class FJDXCommon(object):
         snapshot_instance = self._find_lun(snapshot)
         volume_instance = self._find_lun(volume)
         if snapshot_instance is None or volume_instance is None:
-            LOG.info(_('Snapshot Volume %(snapshotname)s, '
-                       'Source Volume %(volumename)s not found on the array.')
+            LOG.info(_LI('Snapshot Volume %(snapshotname)s, '
+                         'Source Volume %(volumename)s not '
+                         'found on the array.')
                      % {'snapshotname': snapshotname,
                         'volumename': volumename})
             return None, None
@@ -1415,8 +1416,8 @@ class FJDXCommon(object):
             if self._is_job_finished(conn, job):
                 raise loopingcall.LoopingCallDone()
             if self.retries > JOB_RETRIES:
-                LOG.error(_("_wait_for_job_complete failed after %(retries)d "
-                          "tries") % {'retries': self.retries})
+                LOG.error(_LE("_wait_for_job_complete failed after %(retries)d"
+                          " tries") % {'retries': self.retries})
                 raise loopingcall.LoopingCallDone()
             try:
                 self.retries += 1
@@ -1424,7 +1425,7 @@ class FJDXCommon(object):
                     if self._is_job_finished(conn, job):
                         self.wait_for_job_called = True
             except Exception as e:
-                LOG.error(_("Exception: %s") % six.text_type(e))
+                LOG.error(_LE("Exception: %s") % six.text_type(e))
                 exceptionMessage = (_("Issue encountered waiting for job."))
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
@@ -1479,7 +1480,7 @@ class FJDXCommon(object):
             if self._is_sync_complete(conn, syncName):
                 raise loopingcall.LoopingCallDone()
             if self.retries > JOB_RETRIES:
-                LOG.error(_("_wait_for_sync failed after %(retries)d tries")
+                LOG.error(_LE("_wait_for_sync failed after %(retries)d tries")
                           % {'retries': self.retries})
                 raise loopingcall.LoopingCallDone()
             try:
@@ -1488,7 +1489,7 @@ class FJDXCommon(object):
                     if self._is_sync_complete(conn, syncName):
                         self.wait_for_sync_called = True
             except Exception as e:
-                LOG.error(_("Exception: %s") % six.text_type(e))
+                LOG.error(_LE("Exception: %s") % six.text_type(e))
                 exceptionMessage = (_("Issue encountered waiting for "
                                       "synchronization."))
                 LOG.error(exceptionMessage)
@@ -1668,8 +1669,8 @@ class FJDXCommon(object):
                     break
 
         if out_num_device_number is None:
-            LOG.info(_("Device number not found for volume "
-                       "%(volumename)s %(vol_instance)s.")
+            LOG.info(_LI("Device number not found for volume "
+                         "%(volumename)s %(vol_instance)s.")
                      % {'volumename': volumename,
                         'vol_instance': vol_instance.path})
         else:

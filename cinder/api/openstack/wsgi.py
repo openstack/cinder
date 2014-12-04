@@ -27,7 +27,7 @@ import webob
 
 from cinder import exception
 from cinder import i18n
-from cinder.i18n import _, _LI
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import wsgi
@@ -750,7 +750,7 @@ class ResourceExceptionHandler(object):
                 code=ex_value.code, explanation=ex_value.msg))
         elif isinstance(ex_value, TypeError):
             exc_info = (ex_type, ex_value, ex_traceback)
-            LOG.error(_(
+            LOG.error(_LE(
                 'Exception handling resource: %s') %
                 ex_value, exc_info=exc_info)
             raise Fault(webob.exc.HTTPBadRequest())

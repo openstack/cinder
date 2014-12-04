@@ -20,7 +20,7 @@ import tempfile
 import mock
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LW
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume.drivers.fujitsu_eternus_dx_common import FJDXCommon
@@ -173,7 +173,7 @@ class FakeEcomConnection():
             rc = 0L
             job = {}
         else:
-            LOG.warn(_('method is not exist '))
+            LOG.warn(_LW('method is not exist '))
             raise exception.VolumeBackendAPIException(data="invoke method")
         LOG.debug('exit InvokeMethod:MAP_STAT: %s  VOL_STAT: %s'
                   '  Method: %s  rc: %d  job: %s' %

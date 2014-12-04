@@ -20,7 +20,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vmax_common
@@ -145,7 +145,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         iscsi_properties = self.smis_get_iscsi_properties(
             volume, connector)
 
-        LOG.info(_("Leaving initialize_connection: %s") % (iscsi_properties))
+        LOG.info(_LI("Leaving initialize_connection: %s") % (iscsi_properties))
         return {
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties
@@ -153,14 +153,14 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
 
     def smis_do_iscsi_discovery(self, volume):
 
-        LOG.info(_("ISCSI provider_location not stored, using discovery."))
+        LOG.info(_LI("ISCSI provider_location not stored, using discovery."))
 
         (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
                                     '-t', 'sendtargets', '-p',
                                     self.configuration.iscsi_ip_address,
                                     run_as_root=True)
 
-        LOG.info(_(
+        LOG.info(_LI(
             "smis_do_iscsi_discovery is: %(out)s")
             % {'out': out})
         targets = []
@@ -206,7 +206,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
 
         device_number = device_info['hostlunid']
 
-        LOG.info(_(
+        LOG.info(_LI(
             "location is: %(location)s") % {'location': location})
 
         for loc in location:
@@ -218,14 +218,14 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
 
         properties['volume_id'] = volume['id']
 
-        LOG.info(_("ISCSI properties: %(properties)s")
+        LOG.info(_LI("ISCSI properties: %(properties)s")
                  % {'properties': properties})
-        LOG.info(_("ISCSI volume is: %(volume)s")
+        LOG.info(_LI("ISCSI volume is: %(volume)s")
                  % {'volume': volume})
 
         if 'provider_auth' in volume:
             auth = volume['provider_auth']
-            LOG.info(_("AUTH properties: %(authProps)s")
+            LOG.info(_LI("AUTH properties: %(authProps)s")
                      % {'authProps': auth})
 
             if auth is not None:
@@ -235,7 +235,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                 properties['auth_username'] = auth_username
                 properties['auth_password'] = auth_secret
 
-                LOG.info(_("AUTH properties: %s") % (properties))
+                LOG.info(_LI("AUTH properties: %s") % (properties))
 
         return properties
 

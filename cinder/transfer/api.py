@@ -121,7 +121,8 @@ class API(base.Base):
         try:
             transfer = self.db.transfer_create(context, transfer_rec)
         except Exception:
-            LOG.error(_("Failed to create transfer record for %s") % volume_id)
+            LOG.error(_LE("Failed to create transfer record "
+                          "for %s") % volume_id)
             raise
         return {'id': transfer['id'],
                 'volume_id': transfer['volume_id'],

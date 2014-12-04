@@ -801,8 +801,8 @@ class GPFSDriver(driver.VolumeDriver):
         try:
             image_utils.resize_image(vol_path, new_size, run_as_root=True)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_("Failed to resize volume "
-                        "%(volume_id)s, error: %(error)s.") %
+            LOG.error(_LE("Failed to resize volume "
+                          "%(volume_id)s, error: %(error)s.") %
                       {'volume_id': volume['id'],
                        'error': exc.stderr})
             raise exception.VolumeBackendAPIException(data=exc.stderr)
@@ -875,9 +875,9 @@ class GPFSDriver(driver.VolumeDriver):
             self._execute('mv', local_path, new_path, run_as_root=True)
             return (True, None)
         except processutils.ProcessExecutionError as exc:
-            LOG.error(_('Driver-based migration of volume %(vol)s failed. '
-                        'Move from %(src)s to %(dst)s failed with error: '
-                        '%(error)s.') %
+            LOG.error(_LE('Driver-based migration of volume %(vol)s failed. '
+                          'Move from %(src)s to %(dst)s failed with error: '
+                          '%(error)s.') %
                       {'vol': volume['name'],
                        'src': local_path,
                        'dst': new_path,

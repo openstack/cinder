@@ -28,7 +28,7 @@ from oslo.config import cfg
 from oslo.utils import excutils
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.keymgr import key as keymgr_key
 from cinder.keymgr import key_mgr
 from cinder.openstack.common import log as logging
@@ -73,7 +73,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
                     endpoint=self._barbican_endpoint)
             except Exception as e:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_("Error creating Barbican client: %s"), (e))
+                    LOG.error(_LE("Error creating Barbican client: %s"), (e))
 
         return self._barbican_client
 
@@ -110,7 +110,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             return secret_uuid
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error creating key: %s"), (e))
+                LOG.error(_LE("Error creating key: %s"), (e))
 
     def store_key(self, ctxt, key, expiration=None, name='Cinder Volume Key',
                   payload_content_type='application/octet-stream',
@@ -165,7 +165,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             return secret_uuid
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error storing key: %s"), (e))
+                LOG.error(_LE("Error storing key: %s"), (e))
 
     def copy_key(self, ctxt, key_id):
         """Copies (i.e., clones) a key stored by barbican.
@@ -193,7 +193,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             return copy_uuid
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error copying key: %s"), (e))
+                LOG.error(_LE("Error copying key: %s"), (e))
 
     def _create_secret_ref(self, key_id, barbican_client):
         """Creates the URL required for accessing a secret.
@@ -230,7 +230,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             return secret_data
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error getting secret data: %s"), (e))
+                LOG.error(_LE("Error getting secret data: %s"), (e))
 
     def _get_secret(self, ctxt, secret_ref):
         """Creates the URL required for accessing a secret's metadata.
@@ -249,7 +249,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             return barbican_client.secrets.get(secret_ref)
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error getting secret metadata: %s"), (e))
+                LOG.error(_LE("Error getting secret metadata: %s"), (e))
 
     def get_key(self, ctxt, key_id,
                 payload_content_type='application/octet-stream'):
@@ -278,7 +278,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             return key
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error getting key: %s"), (e))
+                LOG.error(_LE("Error getting key: %s"), (e))
 
     def delete_key(self, ctxt, key_id):
         """Deletes the specified key.
@@ -295,4 +295,4 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             barbican_client.secrets.delete(secret_ref)
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error deleting key: %s"), (e))
+                LOG.error(_LE("Error deleting key: %s"), (e))

@@ -139,8 +139,9 @@ def get_default_volume_type():
             # Couldn't find volume type with the name in default_volume_type
             # flag, record this issue and move on
             #TODO(zhiteng) consider add notification to warn admin
-            LOG.exception(_('Default volume type is not found, '
-                            'please check default_volume_type config: %s'), e)
+            LOG.exception(_LE('Default volume type is not found, '
+                              'please check default_volume_type '
+                              'config: %s'), e)
 
     return vol_type
 

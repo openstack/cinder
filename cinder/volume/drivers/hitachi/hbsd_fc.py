@@ -25,7 +25,7 @@ from oslo.utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LW
 from cinder.openstack.common import log as logging
 from cinder import utils
 import cinder.volume.driver
@@ -181,7 +181,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
                     try:
                         self._fill_group(hgs, port, host_grp_name, wwns_copy)
                     except Exception as ex:
-                        LOG.warning(_('Failed to add host group: %s') %
+                        LOG.warning(_LW('Failed to add host group: %s') %
                                     six.text_type(ex))
                         msg = basic_lib.set_msg(
                             308, port=port, name=host_grp_name)

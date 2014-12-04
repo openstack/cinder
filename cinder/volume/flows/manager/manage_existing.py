@@ -82,8 +82,8 @@ class ManageExistingTask(flow_utils.CinderTask):
             volume_ref = self.db.volume_update(context, volume_ref['id'],
                                                model_update)
         except exception.CinderException:
-            LOG.exception(_("Failed updating model of volume %(volume_id)s"
-                            " with creation provided model %(model)s") %
+            LOG.exception(_LE("Failed updating model of volume %(volume_id)s"
+                              " with creation provided model %(model)s") %
                           {'volume_id': volume_ref['id'],
                            'model': model_update})
             raise

@@ -24,7 +24,7 @@ from oslo.utils import timeutils
 
 from cinder import db
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common.scheduler import weights
@@ -452,7 +452,7 @@ class HostManager(object):
         for service in volume_services:
             host = service['host']
             if not utils.service_is_up(service):
-                LOG.warn(_("volume service is down. (host: %s)") % host)
+                LOG.warn(_LW("volume service is down. (host: %s)") % host)
                 continue
             capabilities = self.service_states.get(host, None)
             host_state = self.host_state_map.get(host)

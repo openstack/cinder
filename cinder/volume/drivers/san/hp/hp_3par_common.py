@@ -57,7 +57,7 @@ from oslo.utils import units
 from cinder import context
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume import qos_specs
@@ -399,8 +399,8 @@ class HP3PARCommon(object):
                           'new_type': volume_type.get('name')})
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.warning(_("Failed to manage virtual volume %(disp)s "
-                                  "due to error during retype.") %
+                    LOG.warning(_LW("Failed to manage virtual volume %(disp)s "
+                                    "due to error during retype.") %
                                 {'disp': display_name})
                     # Try to undo the rename and clear the new comment.
                     self.client.modifyVolume(

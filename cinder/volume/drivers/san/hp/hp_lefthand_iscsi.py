@@ -32,7 +32,7 @@ hplefthand_password for credentials to talk to the REST service on the
 LeftHand array.
 """
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LI
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.driver import VolumeDriver
@@ -77,7 +77,8 @@ class HPLeftHandISCSIDriver(VolumeDriver):
         self.proxy = self._create_proxy(*self.args, **self.kwargs)
         self.proxy.do_setup(context)
 
-        LOG.info(_("HPLeftHand driver %(driver_ver)s, proxy %(proxy_ver)s") % {
+        LOG.info(_LI("HPLeftHand driver %(driver_ver)s, "
+                     "proxy %(proxy_ver)s") % {
             "driver_ver": self.VERSION,
             "proxy_ver": self.proxy.get_version_string()})
 

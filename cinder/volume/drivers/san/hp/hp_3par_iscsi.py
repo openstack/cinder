@@ -36,7 +36,7 @@ except ImportError:
     hpexceptions = None
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log as logging
 import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
@@ -436,9 +436,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 host = common._get_3par_host(hostname)
             elif (not host['initiatorChapEnabled'] and
                     self.configuration.hp3par_iscsi_chap_enabled):
-                LOG.warn(_("Host exists without CHAP credentials set and has "
-                           "iSCSI attachments but CHAP is enabled.  Updating "
-                           "host with new CHAP credentials."))
+                LOG.warn(_LW("Host exists without CHAP credentials set "
+                             "and has iSCSI attachments but CHAP is "
+                             "enabled.  Updating host with new CHAP "
+                             "credentials."))
                 self._set_3par_chaps(
                     common,
                     hostname,
@@ -468,11 +469,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             host_info = common.client.getHost(chap_username)
 
             if not host_info['initiatorChapEnabled']:
-                LOG.warn(_("Host has no CHAP key, but CHAP is enabled."))
+                LOG.warn(_LW("Host has no CHAP key, but CHAP is enabled."))
 
         except hpexceptions.HTTPNotFound:
             chap_password = volume_utils.generate_password(16)
-            LOG.warn(_("No host or VLUNs exist. Generating new CHAP key."))
+            LOG.warn(_LW("No host or VLUNs exist. Generating new CHAP key."))
         else:
             # Get a list of all iSCSI VLUNs and see if there is already a CHAP
             # key assigned to one of them.  Use that CHAP key if present,
@@ -500,12 +501,12 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                                   "but CHAP is enabled. Skipping." %
                                   vlun['remoteName'])
                 else:
-                    LOG.warn(_("Non-iSCSI VLUN detected."))
+                    LOG.warn(_LW("Non-iSCSI VLUN detected."))
 
             if not chap_exists:
                 chap_password = volume_utils.generate_password(16)
-                LOG.warn(_("No VLUN contained CHAP credentials. "
-                           "Generating new CHAP key."))
+                LOG.warn(_LW("No VLUN contained CHAP credentials. "
+                             "Generating new CHAP key."))
 
         # Add CHAP credentials to the volume metadata
         vol_name = common._get_3par_vol_name(volume['id'])

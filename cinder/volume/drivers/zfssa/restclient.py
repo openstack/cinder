@@ -21,7 +21,7 @@ import StringIO
 import time
 import urllib2
 
-from cinder.i18n import _, _LE
+from cinder.i18n import _LE, _LI
 from cinder.openstack.common import log
 
 LOG = log.getLogger(__name__)
@@ -176,7 +176,7 @@ class RestClientURL(object):
                 self.headers['x-auth-session'] = \
                     result.get_header('x-auth-session')
                 self.do_logout = True
-                LOG.info(_('ZFSSA version: %s') %
+                LOG.info(_LI('ZFSSA version: %s') %
                          result.get_header('x-zfssa-version'))
 
             elif result.status == httplib.NOT_FOUND:

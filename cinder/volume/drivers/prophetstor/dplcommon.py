@@ -1422,8 +1422,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     ret = 0
                     output = status.get('output', {})
             else:
-                LOG.error(_('Flexvisor failed to get pool info '
-                            '(failed to get event)%s.') % (poolid))
+                LOG.error(_LE('Flexvisor failed to get pool info '
+                              '(failed to get event)%s.') % (poolid))
                 raise exception.VolumeBackendAPIException(
                     data="failed to get event")
         elif ret != 0:

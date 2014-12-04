@@ -19,7 +19,7 @@ import errno
 from oslo.concurrency import processutils as putils
 
 from cinder.brick.initiator import linuxscsi
-from cinder.i18n import _
+from cinder.i18n import _LW
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -48,13 +48,13 @@ class LinuxFibreChannel(linuxscsi.LinuxSCSI):
             # and systool is not installed
             # 96 = nova.cmd.rootwrap.RC_NOEXECFOUND:
             if exc.exit_code == 96:
-                LOG.warn(_("systool is not installed"))
+                LOG.warn(_LW("systool is not installed"))
             return []
         except OSError as exc:
             # This handles the case where rootwrap is NOT used
             # and systool is not installed
             if exc.errno == errno.ENOENT:
-                LOG.warn(_("systool is not installed"))
+                LOG.warn(_LW("systool is not installed"))
             return []
 
         # No FC HBAs were found

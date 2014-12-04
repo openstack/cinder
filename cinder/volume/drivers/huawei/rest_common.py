@@ -28,7 +28,7 @@ from oslo.utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.drivers.huawei import huawei_utils
@@ -206,7 +206,7 @@ class HVSCommon():
             if policy_id:
                 self._update_qos_policy_lunlist(lun_list, policy_id)
             else:
-                LOG.warn(_("Can't find the Qos policy in array"))
+                LOG.warn(_LW("Can't find the Qos policy in array"))
 
         # Create lun group and add LUN into to lun group
         lungroup_id = self._create_lungroup(volume_name)
@@ -244,7 +244,7 @@ class HVSCommon():
             self._delete_lungroup(lungroup_id)
             self._delete_lun(lun_id)
         else:
-            LOG.warn(_("Can't find lun or lun group in array"))
+            LOG.warn(_LW("Can't find lun or lun group in array"))
 
     def _delete_lun_from_qos_policy(self, volume, lun_id):
         """Remove lun from qos policy."""
@@ -1155,10 +1155,11 @@ class HVSCommon():
                     params[key] = value.strip()
                 else:
                     conf = self.configuration.cinder_huawei_conf_file
-                    LOG.warn(_('_parse_volume_type: Unacceptable parameter '
-                               '%(key)s. Please check this key in extra_specs '
-                               'and make it consistent with the configuration '
-                               'file %(conf)s.') % {'key': key, 'conf': conf})
+                    LOG.warn(_LW('_parse_volume_type: Unacceptable parameter '
+                                 '%(key)s. Please check this key in '
+                                 'extra_specs and make it consistent with the '
+                                 'configuration file '
+                                 '%(conf)s.') % {'key': key, 'conf': conf})
 
         LOG.debug("The config parameters are: %s" % params)
         return params
@@ -1223,7 +1224,7 @@ class HVSCommon():
             try:
                 tree.write(filename, 'UTF-8')
             except Exception as err:
-                LOG.warn(_('%s') % err)
+                LOG.warn(_LW('%s') % err)
 
         return logininfo
 
@@ -1298,4 +1299,4 @@ class HVSCommon():
             result = self.call(url, data, "PUT")
             self._assert_rest_result(result, 'Extend lun error.')
         else:
-            LOG.warn(_('Can not find lun in array'))
+            LOG.warn(_LW('Can not find lun in array'))

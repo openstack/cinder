@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.i18n import _
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 from cinder.tests.brick.fake_lvm import FakeBrickLVM
 from cinder.volume import driver
@@ -132,7 +132,7 @@ class LoggingVolumeDriver(driver.VolumeDriver):
         self.log_action('clear_volume', volume)
 
     def local_path(self, volume):
-        LOG.error(_("local_path not implemented"))
+        LOG.error(_LE("local_path not implemented"))
         raise NotImplementedError()
 
     def ensure_export(self, context, volume):

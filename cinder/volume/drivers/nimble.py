@@ -449,7 +449,7 @@ class NimbleAPIExecutor:
     def login(self):
         """Execute Https Login API."""
         response = self._execute_login()
-        LOG.info(_('Successful login by user %s') % self.username)
+        LOG.info(_LI('Successful login by user %s') % self.username)
         self.sid = response['authInfo']['sid']
 
     @_connection_checker
@@ -573,7 +573,7 @@ class NimbleAPIExecutor:
     @_response_checker
     def online_snap(self, vol_name, online_flag, snap_name, *args, **kwargs):
         """Execute onlineSnap API."""
-        LOG.info(_('Setting snapshot %(snap)s to online_flag %(flag)s')
+        LOG.info(_LI('Setting snapshot %(snap)s to online_flag %(flag)s')
                  % {'snap': snap_name, 'flag': online_flag})
         return self.client.service.onlineSnap(request={'sid': self.sid,
                                                        'vol': vol_name,

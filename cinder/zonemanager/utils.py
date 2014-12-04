@@ -19,7 +19,7 @@ Utility functions related to the Zone Manager.
 """
 import logging
 
-from cinder.i18n import _, _LI
+from cinder.i18n import _LI, _LW
 from cinder.openstack.common import log
 from cinder.volume.configuration import Configuration
 from cinder.volume import manager
@@ -75,8 +75,8 @@ def AddFCZone(initialize_connection):
     def decorator(self, *args, **kwargs):
         conn_info = initialize_connection(self, *args, **kwargs)
         if not conn_info:
-            LOG.warn(_("Driver didn't return connection info, "
-                       "can't add zone."))
+            LOG.warn(_LW("Driver didn't return connection info, "
+                         "can't add zone."))
             return None
 
         vol_type = conn_info.get('driver_volume_type', None)
@@ -100,8 +100,8 @@ def RemoveFCZone(terminate_connection):
     def decorator(self, *args, **kwargs):
         conn_info = terminate_connection(self, *args, **kwargs)
         if not conn_info:
-            LOG.warn(_("Driver didn't return connection info from "
-                       "terminate_connection call."))
+            LOG.warn(_LW("Driver didn't return connection info from "
+                         "terminate_connection call."))
             return None
 
         vol_type = conn_info.get('driver_volume_type', None)

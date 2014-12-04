@@ -18,7 +18,7 @@ Session and API call management for VMware ESX/VC server.
 Provides abstraction over cinder.volume.drivers.vmware.vim.Vim SOAP calls.
 """
 
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.vmware import error_util
@@ -69,8 +69,8 @@ class Retry(object):
             try:
                 result = f(*args, **kwargs)
             except self._exceptions as excep:
-                LOG.exception(_("Failure while invoking function: "
-                                "%(func)s. Error: %(excep)s.") %
+                LOG.exception(_LE("Failure while invoking function: "
+                                  "%(func)s. Error: %(excep)s.") %
                               {'func': f.__name__, 'excep': excep})
                 if (self._max_retry_count != -1 and
                         self._retry_count >= self._max_retry_count):
@@ -167,7 +167,7 @@ class VMwareAPISession(object):
                 # have been cleared. We could have made a call to
                 # SessionIsActive, but that is an overhead because we
                 # anyway would have to call TerminateSession.
-                LOG.exception(_("Error while terminating session: %s.") %
+                LOG.exception(_LE("Error while terminating session: %s.") %
                               excep)
         self._session_id = session.key
 
@@ -180,21 +180,21 @@ class VMwareAPISession(object):
 
         if self.pbm:
             self.pbm.set_cookie()
-        LOG.info(_("Successfully established connection to the server."))
+        LOG.info(_LI("Successfully established connection to the server."))
 
     def __del__(self):
         """Logs-out the sessions."""
         try:
             self.vim.Logout(self.vim.service_content.sessionManager)
         except Exception as excep:
-            LOG.exception(_("Error while logging out from vim session: %s."),
+            LOG.exception(_LE("Error while logging out from vim session: %s."),
                           excep)
         if self._pbm:
             try:
                 self.pbm.Logout(self.pbm.service_content.sessionManager)
             except Exception as excep:
-                LOG.exception(_("Error while logging out from pbm session: "
-                                "%s."), excep)
+                LOG.exception(_LE("Error while logging out from pbm session: "
+                                  "%s."), excep)
 
     def invoke_api(self, module, method, *args, **kwargs):
         """Wrapper method for invoking APIs.
@@ -242,9 +242,9 @@ class VMwareAPISession(object):
                         return []
 
                     # empty response is due to an inactive session
-                    LOG.warn(_("Current session: %(session)s is inactive; "
-                               "re-creating the session while invoking "
-                               "method %(module)s.%(method)s."),
+                    LOG.warn(_LW("Current session: %(session)s is inactive; "
+                                 "re-creating the session while invoking "
+                                 "method %(module)s.%(method)s."),
                              {'session': self._session_id,
                               'module': module,
                               'method': method},
@@ -268,8 +268,8 @@ class VMwareAPISession(object):
                 sessionID=self._session_id,
                 userName=self._session_username)
         except error_util.VimException:
-            LOG.warn(_("Error occurred while checking whether the "
-                       "current session: %s is active."),
+            LOG.warn(_LW("Error occurred while checking whether the "
+                         "current session: %s is active."),
                      self._session_id,
                      exc_info=True)
 
@@ -310,11 +310,13 @@ class VMwareAPISession(object):
                 LOG.debug("Task %s status: success." % task)
             else:
                 error_msg = str(task_info.error.localizedMessage)
-                LOG.exception(_("Task: %(task)s failed with error: %(err)s.") %
+                LOG.exception(_LE("Task: %(task)s failed with "
+                                  "error: %(err)s.") %
                               {'task': task, 'err': error_msg})
                 raise error_util.VimFaultException([], error_msg)
         except Exception as excep:
-            LOG.exception(_("Task: %(task)s failed with error: %(err)s.") %
+            LOG.exception(_LE("Task: %(task)s failed with "
+                              "error: %(err)s.") %
                           {'task': task, 'err': excep})
             raise excep
         # got the result. So stop the loop.

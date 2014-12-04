@@ -26,7 +26,7 @@ from lxml import etree
 from oslo.config import cfg
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
@@ -462,16 +462,16 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         cg_name = self._get_volume_cg_name(volume_name)
         if not cg_name:
             # If the volume isn't present, then don't attempt to delete
-            LOG.warning(_("snapshot: original volume %s not found, "
-                        "skipping delete operation")
+            LOG.warning(_LW("snapshot: original volume %s not found, "
+                            "skipping delete operation")
                         % snapshot['volume_name'])
             return True
 
         snap_id = self._get_snap_id(cg_name, snapshot['name'])
         if not snap_id:
             # If the snapshot isn't present, then don't attempt to delete
-            LOG.warning(_("snapshot: snapshot %s not found, "
-                        "skipping delete operation")
+            LOG.warning(_LW("snapshot: snapshot %s not found, "
+                            "skipping delete operation")
                         % snapshot['name'])
             return True
 

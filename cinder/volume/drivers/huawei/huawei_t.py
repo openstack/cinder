@@ -21,7 +21,7 @@ import re
 import time
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.huawei import huawei_utils
@@ -350,8 +350,8 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
                     port_num -= 1
                     break
         else:
-            LOG.warn(_('_remove_iscsi_port: iSCSI port was not found '
-                       'on host %(hostid)s.') % {'hostid': hostid})
+            LOG.warn(_LW('_remove_iscsi_port: iSCSI port was not found '
+                         'on host %(hostid)s.') % {'hostid': hostid})
 
         # Delete host if no initiator added to it.
         if port_num == 0:
@@ -579,8 +579,8 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
                     self.common._delete_hostport(port[0])
                     port_num -= 1
         else:
-            LOG.warn(_('_remove_fc_ports: FC port was not found '
-                       'on host %(hostid)s.') % {'hostid': hostid})
+            LOG.warn(_LW('_remove_fc_ports: FC port was not found '
+                         'on host %(hostid)s.') % {'hostid': hostid})
 
         if port_num == 0:
             self.common._delete_host(hostid)

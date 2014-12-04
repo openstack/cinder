@@ -21,7 +21,7 @@ import time
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import utils
@@ -126,8 +126,8 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                     used_list.append(int(line[2]))
                 if int(line[3]) == ldev:
                     hlu = int(line[2])
-                    LOG.warning(_('ldev(%(ldev)d) is already mapped '
-                                  '(hlun: %(hlu)d)')
+                    LOG.warning(_LW('ldev(%(ldev)d) is already mapped '
+                                    '(hlun: %(hlu)d)')
                                 % {'ldev': ldev, 'hlu': hlu})
                     return hlu
         return None

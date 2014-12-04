@@ -1236,7 +1236,7 @@ class API(base.Base):
                     elevated, svc_host, CONF.volume_topic)
             except exception.ServiceNotFound:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_('Unable to find service for given host.'))
+                    LOG.error(_LE('Unable to find service for given host.'))
             availability_zone = service.get('availability_zone')
 
         volume_type_id = volume_type['id'] if volume_type else None

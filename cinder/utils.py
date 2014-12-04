@@ -44,7 +44,7 @@ import six
 
 from cinder.brick.initiator import connector
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 
 
@@ -614,7 +614,7 @@ def require_driver_initialized(driver):
     # we can't do anything if the driver didn't init
     if not driver.initialized:
         driver_name = driver.__class__.__name__
-        LOG.error(_("Volume driver %s not initialized") % driver_name)
+        LOG.error(_LE("Volume driver %s not initialized") % driver_name)
         raise exception.DriverNotInitialized()
 
 

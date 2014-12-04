@@ -125,8 +125,8 @@ class XtremIOVolumeDriver(san.SanDriver):
             try:
                 return json.loads(str_result)
             except Exception:
-                LOG.exception(_('querying %(typ)s, %(req)s failed to '
-                                'parse result, return value = %(res)s'),
+                LOG.exception(_LE('querying %(typ)s, %(req)s failed to '
+                                  'parse result, return value = %(res)s'),
                               {'typ': object_type,
                                'req': request_typ,
                                'res': str_result})

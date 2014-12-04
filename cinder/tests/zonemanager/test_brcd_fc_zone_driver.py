@@ -25,7 +25,7 @@ from oslo.utils import importutils
 import paramiko
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LI
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
@@ -124,10 +124,10 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         """Normal flow for i-t mode."""
         GlobalVars._is_normal_test = True
         GlobalVars._zone_state = []
-        LOG.info(_("In Add GlobalVars._is_normal_test: "
-                   "%s"), GlobalVars._is_normal_test)
-        LOG.info(_("In Add GlobalVars._zone_state:"
-                   " %s"), GlobalVars._zone_state)
+        LOG.info(_LI("In Add GlobalVars._is_normal_test: "
+                     "%s"), GlobalVars._is_normal_test)
+        LOG.info(_LI("In Add GlobalVars._zone_state:"
+                     " %s"), GlobalVars._zone_state)
         get_active_zs_mock.return_value = _active_cfg_before_add
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
         self.assertTrue(_zone_name in GlobalVars._zone_state)
@@ -181,8 +181,8 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
 
 class FakeBrcdFCZoneClientCLI(object):
     def __init__(self, ipaddress, username, password, port):
-        LOG.info(_("User: %s"), username)
-        LOG.info(_("_zone_state: %s"), GlobalVars._zone_state)
+        LOG.info(_LI("User: %s"), username)
+        LOG.info(_LI("_zone_state: %s"), GlobalVars._zone_state)
         self.firmware_supported = True
         if not GlobalVars._is_normal_test:
             raise paramiko.SSHException("Unable to connect to fabric")

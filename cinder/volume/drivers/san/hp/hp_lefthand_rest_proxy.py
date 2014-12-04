@@ -20,7 +20,7 @@ from oslo.utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume.driver import ISCSIDriver
 from cinder.volume import utils
@@ -377,11 +377,11 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             server_info = self.client.getServerByName(connector['host'])
             chap_secret = server_info['chapTargetSecret']
             if not chap_enabled and chap_secret:
-                LOG.warning(_('CHAP secret exists for host %s but CHAP is '
-                              'disabled') % connector['host'])
+                LOG.warning(_LW('CHAP secret exists for host %s but CHAP is '
+                                'disabled') % connector['host'])
             if chap_enabled and chap_secret is None:
-                LOG.warning(_('CHAP is enabled, but server secret not '
-                              'configured on server %s') % connector['host'])
+                LOG.warning(_LW('CHAP is enabled, but server secret not '
+                                'configured on server %s') % connector['host'])
             return server_info
         except hpexceptions.HTTPNotFound:
             # server does not exist, so create one
@@ -498,20 +498,20 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             virtual_ips = cluster_info['virtualIPAddresses']
 
             if driver != self.__class__.__name__:
-                LOG.info(_("Cannot provide backend assisted migration for "
-                           "volume: %s because volume is from a different "
-                           "backend.") % volume['name'])
+                LOG.info(_LI("Cannot provide backend assisted migration for "
+                             "volume: %s because volume is from a different "
+                             "backend.") % volume['name'])
                 return false_ret
             if vip != virtual_ips[0]['ipV4Address']:
-                LOG.info(_("Cannot provide backend assisted migration for "
-                           "volume: %s because cluster exists in different "
-                           "management group.") % volume['name'])
+                LOG.info(_LI("Cannot provide backend assisted migration for "
+                             "volume: %s because cluster exists in different "
+                             "management group.") % volume['name'])
                 return false_ret
 
         except hpexceptions.HTTPNotFound:
-            LOG.info(_("Cannot provide backend assisted migration for "
-                       "volume: %s because cluster exists in different "
-                       "management group.") % volume['name'])
+            LOG.info(_LI("Cannot provide backend assisted migration for "
+                         "volume: %s because cluster exists in different "
+                         "management group.") % volume['name'])
             return false_ret
 
         try:
@@ -520,9 +520,9 @@ class HPLeftHandRESTProxy(ISCSIDriver):
 
             # can't migrate if server is attached
             if volume_info['iscsiSessions'] is not None:
-                LOG.info(_("Cannot provide backend assisted migration "
-                           "for volume: %s because the volume has been "
-                           "exported.") % volume['name'])
+                LOG.info(_LI("Cannot provide backend assisted migration "
+                             "for volume: %s because the volume has been "
+                             "exported.") % volume['name'])
                 return false_ret
 
             # can't migrate if volume has snapshots
@@ -531,17 +531,17 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                 'fields=snapshots,snapshots[resource[members[name]]]')
             LOG.debug('Snapshot info: %s' % snap_info)
             if snap_info['snapshots']['resource'] is not None:
-                LOG.info(_("Cannot provide backend assisted migration "
-                           "for volume: %s because the volume has "
-                           "snapshots.") % volume['name'])
+                LOG.info(_LI("Cannot provide backend assisted migration "
+                             "for volume: %s because the volume has "
+                             "snapshots.") % volume['name'])
                 return false_ret
 
             options = {'clusterName': cluster}
             self.client.modifyVolume(volume_info['id'], options)
         except hpexceptions.HTTPNotFound:
-            LOG.info(_("Cannot provide backend assisted migration for "
-                       "volume: %s because volume does not exist in this "
-                       "management group.") % volume['name'])
+            LOG.info(_LI("Cannot provide backend assisted migration for "
+                         "volume: %s because volume does not exist in this "
+                         "management group.") % volume['name'])
             return false_ret
         except hpexceptions.HTTPServerError as ex:
             LOG.error(ex)

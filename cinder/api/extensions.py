@@ -25,7 +25,7 @@ import cinder.api.openstack
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 import cinder.policy
 
@@ -273,8 +273,8 @@ class ExtensionManager(object):
             try:
                 self.load_extension(ext_factory)
             except Exception as exc:
-                LOG.warn(_('Failed to load extension %(ext_factory)s: '
-                           '%(exc)s'),
+                LOG.warn(_LW('Failed to load extension %(ext_factory)s: '
+                             '%(exc)s'),
                          {'ext_factory': ext_factory, 'exc': exc})
 
 

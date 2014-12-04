@@ -24,7 +24,7 @@ import six
 
 from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -165,8 +165,8 @@ class NfsDriver(remotefs.RemoteFSDriver):
                 if attempt == (num_attempts - 1):
                     LOG.error(_LE('Mount failure for %(share)s after '
                                   '%(count)d attempts.') % {
-                                      'share': nfs_share,
-                                      'count': num_attempts})
+                              'share': nfs_share,
+                              'count': num_attempts})
                     raise exception.NfsException(e)
                 LOG.debug('Mount attempt %d failed: %s.\nRetrying mount ...' %
                           (attempt, six.text_type(e)))
@@ -278,7 +278,7 @@ class NfsDriver(remotefs.RemoteFSDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
-        LOG.info(_('Extending volume %s.'), volume['id'])
+        LOG.info(_LI('Extending volume %s.'), volume['id'])
         extend_by = int(new_size) - volume['size']
         if not self._is_share_eligible(volume['provider_location'],
                                        extend_by):
@@ -286,7 +286,7 @@ class NfsDriver(remotefs.RemoteFSDriver):
                                               ' extend volume %s to %sG'
                                               % (volume['id'], new_size))
         path = self.local_path(volume)
-        LOG.info(_('Resizing file to %sG...'), new_size)
+        LOG.info(_LI('Resizing file to %sG...'), new_size)
         image_utils.resize_image(path, new_size,
                                  run_as_root=self._execute_as_root)
         if not self._is_file_size_equal(path, new_size):
@@ -328,10 +328,11 @@ class NfsDriver(remotefs.RemoteFSDriver):
                   self.configuration.nas_secure_file_permissions)
 
         if self.configuration.nas_secure_file_permissions == 'false':
-            LOG.warn(_("The NAS file permissions mode will be 666 (allowing "
-                       "other/world read & write access). This is considered "
-                       "an insecure NAS environment. Please see %s for "
-                       "information on a secure NFS configuration.") %
+            LOG.warn(_LW("The NAS file permissions mode will be 666 (allowing "
+                         "other/world read & write access). "
+                         "This is considered an insecure NAS environment. "
+                         "Please see %s for information on a secure "
+                         "NFS configuration.") %
                      doc_html)
 
         self.configuration.nas_secure_file_operations = \
@@ -348,8 +349,9 @@ class NfsDriver(remotefs.RemoteFSDriver):
                   self.configuration.nas_secure_file_operations)
 
         if self.configuration.nas_secure_file_operations == 'false':
-            LOG.warn(_("The NAS file operations will be run as root: allowing "
-                       "root level access at the storage backend. This is "
-                       "considered an insecure NAS environment. Please see %s "
-                       "for information on a secure NAS configuration.") %
+            LOG.warn(_LW("The NAS file operations will be run as "
+                         "root: allowing root level access at the storage "
+                         "backend. This is considered an insecure NAS "
+                         "environment. Please see %s "
+                         "for information on a secure NAS configuration.") %
                      doc_html)

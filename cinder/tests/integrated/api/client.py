@@ -17,7 +17,7 @@ from oslo.serialization import jsonutils
 import requests
 import six.moves.urllib.parse as urlparse
 
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 
 
@@ -94,10 +94,10 @@ class TestOpenStackClient(object):
         relative_url = parsed_url.path
         if parsed_url.query:
             relative_url = relative_url + "?" + parsed_url.query
-        LOG.info(_("Doing %(method)s on %(relative_url)s"),
+        LOG.info(_LI("Doing %(method)s on %(relative_url)s"),
                  {'method': method, 'relative_url': relative_url})
         if body:
-            LOG.info(_("Body: %s") % body)
+            LOG.info(_LI("Body: %s") % body)
 
         if port:
             _url = "%s://%s:%d%s" % (scheme, hostname, int(port), relative_url)

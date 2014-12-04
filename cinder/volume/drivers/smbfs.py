@@ -22,7 +22,7 @@ from oslo.utils import units
 
 from cinder.brick.remotefs import remotefs
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -205,8 +205,8 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         if not volume['provider_location']:
-            LOG.warn(_('Volume %s does not have provider_location specified, '
-                       'skipping.'), volume['name'])
+            LOG.warn(_LW('Volume %s does not have provider_location '
+                         'specified, skipping.'), volume['name'])
             return
 
         self._ensure_share_mounted(volume['provider_location'])
@@ -227,7 +227,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         pattern = r"qemu-img version ([0-9\.]*)"
         version = re.match(pattern, info)
         if not version:
-            LOG.warn(_("qemu-img is not installed."))
+            LOG.warn(_LW("qemu-img is not installed."))
             return None
         return [int(x) for x in version.groups()[0].split('.')]
 
@@ -404,14 +404,14 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
     @utils.synchronized('smbfs', external=False)
     def extend_volume(self, volume, size_gb):
-        LOG.info(_('Extending volume %s.'), volume['id'])
+        LOG.info(_LI('Extending volume %s.'), volume['id'])
         self._extend_volume(volume, size_gb)
 
     def _extend_volume(self, volume, size_gb):
         volume_path = self.local_path(volume)
 
         self._check_extend_volume_support(volume, size_gb)
-        LOG.info(_('Resizing file to %sG...') % size_gb)
+        LOG.info(_LI('Resizing file to %sG...') % size_gb)
 
         self._do_extend_volume(volume_path, size_gb, volume['name'])
 

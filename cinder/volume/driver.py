@@ -24,7 +24,7 @@ from oslo.config import cfg
 from oslo.utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
@@ -889,7 +889,8 @@ class ISCSIDriver(VolumeDriver):
     def _do_iscsi_discovery(self, volume):
         # TODO(justinsb): Deprecate discovery and use stored info
         # NOTE(justinsb): Discovery won't work with CHAP-secured targets (?)
-        LOG.warn(_("ISCSI provider_location not stored, using discovery"))
+        LOG.warn(_LW("ISCSI provider_location not "
+                     "stored, using discovery"))
 
         volume_name = volume['name']
 
@@ -902,7 +903,7 @@ class ISCSIDriver(VolumeDriver):
                                         volume['host'].split('@')[0],
                                         run_as_root=True)
         except processutils.ProcessExecutionError as ex:
-            LOG.error(_("ISCSI discovery attempt failed for:%s") %
+            LOG.error(_LE("ISCSI discovery attempt failed for:%s") %
                       volume['host'].split('@')[0])
             LOG.debug("Error from iscsiadm -m discovery: %s" % ex.stderr)
             return None

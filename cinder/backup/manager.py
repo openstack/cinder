@@ -173,8 +173,8 @@ class BackupManager(manager.SchedulerDependentManager):
             driver.do_setup(ctxt)
             driver.check_for_setup_error()
         except Exception as ex:
-            LOG.error(_("Error encountered during initialization of driver: "
-                        "%(name)s.") %
+            LOG.error(_LE("Error encountered during initialization of driver: "
+                          "%(name)s.") %
                       {'name': driver.__class__.__name__})
             LOG.exception(ex)
             # we don't want to continue since we failed

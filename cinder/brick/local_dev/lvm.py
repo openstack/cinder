@@ -82,7 +82,7 @@ class LVM(executor.Executor):
                 raise exception.VolumeGroupCreationFailed(vg_name=self.vg_name)
 
         if self._vg_exists() is False:
-            LOG.error(_('Unable to locate Volume Group %s') % vg_name)
+            LOG.error(_LE('Unable to locate Volume Group %s') % vg_name)
             raise exception.VolumeGroupNotFound(vg_name=vg_name)
 
         # NOTE: we assume that the VG has been activated outside of Cinder
@@ -396,7 +396,7 @@ class LVM(executor.Executor):
         vg_list = self.get_all_volume_groups(self._root_helper, self.vg_name)
 
         if len(vg_list) != 1:
-            LOG.error(_('Unable to find VG: %s') % self.vg_name)
+            LOG.error(_LE('Unable to find VG: %s') % self.vg_name)
             raise exception.VolumeGroupNotFound(vg_name=self.vg_name)
 
         self.vg_size = float(vg_list[0]['size'])
@@ -448,9 +448,9 @@ class LVM(executor.Executor):
         """
 
         if not self.supports_thin_provisioning(self._root_helper):
-            LOG.error(_('Requested to setup thin provisioning, '
-                        'however current LVM version does not '
-                        'support it.'))
+            LOG.error(_LE('Requested to setup thin provisioning, '
+                          'however current LVM version does not '
+                          'support it.'))
             return None
 
         if name is None:
@@ -521,7 +521,7 @@ class LVM(executor.Executor):
         """
         source_lvref = self.get_volume(source_lv_name)
         if source_lvref is None:
-            LOG.error(_("Trying to create snapshot by non-existent LV: %s")
+            LOG.error(_LE("Trying to create snapshot by non-existent LV: %s")
                       % source_lv_name)
             raise exception.VolumeDeviceNotFound(device=source_lv_name)
         cmd = ['lvcreate', '--name', name,

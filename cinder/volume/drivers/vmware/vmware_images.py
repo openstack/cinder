@@ -18,7 +18,7 @@ Utility functions for Image transfer.
 
 from eventlet import timeout
 
-from cinder.i18n import _
+from cinder.i18n import _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.vmware import error_util
 from cinder.volume.drivers.vmware import io_util
@@ -79,7 +79,7 @@ def start_transfer(context, timeout_secs, read_file_handle, max_data_size,
         write_thread.stop()
 
         # Log and raise the exception.
-        LOG.exception(_("Error occurred during image transfer."))
+        LOG.exception(_LE("Error occurred during image transfer."))
         if isinstance(exc, error_util.ImageTransferException):
             raise
         raise error_util.ImageTransferException(exc)
@@ -107,7 +107,8 @@ def fetch_flat_image(context, timeout_secs, image_service, image_id, **kwargs):
                                                file_size)
     start_transfer(context, timeout_secs, read_handle, file_size,
                    write_file_handle=write_handle)
-    LOG.info(_("Downloaded image: %s from glance image server.") % image_id)
+    LOG.info(_LI("Downloaded image: %s from glance "
+                 "image server.") % image_id)
 
 
 def fetch_stream_optimized_image(context, timeout_secs, image_service,
@@ -126,7 +127,8 @@ def fetch_stream_optimized_image(context, timeout_secs, image_service,
                                                file_size)
     start_transfer(context, timeout_secs, read_handle, file_size,
                    write_file_handle=write_handle)
-    LOG.info(_("Downloaded image: %s from glance image server.") % image_id)
+    LOG.info(_LI("Downloaded image: %s from glance image "
+                 "server.") % image_id)
 
 
 def upload_image(context, timeout_secs, image_service, image_id, owner_id,
@@ -158,7 +160,7 @@ def upload_image(context, timeout_secs, image_service, image_id, owner_id,
     start_transfer(context, timeout_secs, read_handle, file_size,
                    image_service=image_service, image_id=image_id,
                    image_meta=image_metadata)
-    LOG.info(_("Uploaded image: %s to the Glance image server.") % image_id)
+    LOG.info(_LI("Uploaded image: %s to the Glance image server.") % image_id)
 
 
 def download_stream_optimized_disk(
