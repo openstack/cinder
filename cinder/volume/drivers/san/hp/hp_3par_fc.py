@@ -34,10 +34,8 @@ try:
 except ImportError:
     hpexceptions = None
 
-import pprint
-
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
@@ -75,10 +73,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.10 - Migrate without losing type settings bug #1356608
         2.0.11 - Removing locks bug #1381190
         2.0.12 - Fix queryHost call to specify wwns bug #1398206
+        2.0.13 - Fix missing host name during attach bug #1398206
 
     """
 
-    VERSION = "2.0.12"
+    VERSION = "2.0.13"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -322,8 +321,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         host_found = None
         hosts = common.client.queryHost(wwns=wwns)
 
-        LOG.warn(_LW("Found HOSTS %s") % pprint.pformat(hosts))
-        if hosts and hosts['members']:
+        if hosts and hosts['members'] and 'name' in hosts['members'][0]:
             host_found = hosts['members'][0]['name']
 
         if host_found is not None:
