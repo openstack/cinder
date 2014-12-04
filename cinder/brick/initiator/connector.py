@@ -124,6 +124,13 @@ class InitiatorConnector(executor.Executor):
                                   execute=execute,
                                   device_scan_attempts=device_scan_attempts,
                                   *args, **kwargs)
+        elif protocol == "HUAWEISDSHYPERVISOR":
+            return HuaweiStorHyperConnector(root_helper=root_helper,
+                                            driver=driver,
+                                            execute=execute,
+                                            device_scan_attempts=
+                                            device_scan_attempts,
+                                            *args, **kwargs)
         else:
             msg = (_("Invalid InitiatorConnector protocol "
                      "specified %(protocol)s") %
@@ -928,3 +935,116 @@ class LocalConnector(InitiatorConnector):
     def disconnect_volume(self, connection_properties, device_info):
         """Disconnect a volume from the local host."""
         pass
+
+
+class HuaweiStorHyperConnector(InitiatorConnector):
+    """"Connector class to attach/detach SDSHypervisor volumes."""
+    attached_success_code = 0
+    has_been_attached_code = 50151401
+    attach_mnid_done_code = 50151405
+    vbs_unnormal_code = 50151209
+    not_mount_node_code = 50155007
+    iscliexist = True
+
+    def __init__(self, root_helper, driver=None, execute=putils.execute,
+                 *args, **kwargs):
+        self.cli_path = os.getenv('HUAWEISDSHYPERVISORCLI_PATH')
+        if not self.cli_path:
+            self.cli_path = '/usr/local/bin/sds/sds_cli'
+            LOG.debug("CLI path is not configured, using default %s."
+                      % self.cli_path)
+        if not os.path.isfile(self.cli_path):
+            self.iscliexist = False
+            LOG.error(_LE('SDS CLI file not found, '
+                          'HuaweiStorHyperConnector init failed'))
+        super(HuaweiStorHyperConnector, self).__init__(root_helper,
+                                                       driver=driver,
+                                                       execute=execute,
+                                                       *args, **kwargs)
+
+    @synchronized('connect_volume')
+    def connect_volume(self, connection_properties):
+        """Connect to a volume."""
+        LOG.debug("Connect_volume connection properties: %s."
+                  % connection_properties)
+        out = self._attach_volume(connection_properties['volume_id'])
+        if not out or int(out['ret_code']) not in (self.attached_success_code,
+                                                   self.has_been_attached_code,
+                                                   self.attach_mnid_done_code):
+            msg = (_("Attach volume failed, "
+                   "error code is %s") % out['ret_code'])
+            raise exception.BrickException(msg=msg)
+        out = self._query_attached_volume(
+            connection_properties['volume_id'])
+        if not out or int(out['ret_code']) != 0:
+            msg = _("query attached volume failed or volume not attached.")
+            raise exception.BrickException(msg=msg)
+
+        device_info = {'type': 'block',
+                       'path': out['dev_addr']}
+        return device_info
+
+    @synchronized('connect_volume')
+    def disconnect_volume(self, connection_properties, device_info):
+        """Disconnect a volume from the local host."""
+        LOG.debug("Disconnect_volume: %s." % connection_properties)
+        out = self._detach_volume(connection_properties['volume_id'])
+        if not out or int(out['ret_code']) not in (self.attached_success_code,
+                                                   self.vbs_unnormal_code,
+                                                   self.not_mount_node_code):
+            msg = (_("Disconnect_volume failed, "
+                   "error code is %s") % out['ret_code'])
+            raise exception.BrickException(msg=msg)
+
+    def is_volume_connected(self, volume_name):
+        """Check if volume already connected to host"""
+        LOG.debug('Check if volume %s already connected to a host.'
+                  % volume_name)
+        out = self._query_attached_volume(volume_name)
+        if out:
+            return int(out['ret_code']) == 0
+        return False
+
+    def _attach_volume(self, volume_name):
+        return self._cli_cmd('attach', volume_name)
+
+    def _detach_volume(self, volume_name):
+        return self._cli_cmd('detach', volume_name)
+
+    def _query_attached_volume(self, volume_name):
+        return self._cli_cmd('querydev', volume_name)
+
+    def _cli_cmd(self, method, volume_name):
+        LOG.debug("Enter into _cli_cmd.")
+        if not self.iscliexist:
+            msg = _("SDS command line doesn't exist, "
+                    "cann't execute SDS command.")
+            raise exception.BrickException(msg=msg)
+        if not method or volume_name is None:
+            return
+        cmd = [self.cli_path, '-c', method, '-v', volume_name]
+        out, clilog = self._execute(*cmd, run_as_root=False,
+                                    root_helper=self._root_helper)
+        analyse_result = self._analyze_output(out)
+        LOG.debug('%(method)s volume returns %(analyse_result)s.'
+                  % {'method': method, 'analyse_result': analyse_result})
+        if clilog:
+            LOG.error(_LE("SDS CLI output some log: %s.")
+                      % clilog)
+        return analyse_result
+
+    def _analyze_output(self, out):
+        LOG.debug("Enter into _analyze_output.")
+        if out:
+            analyse_result = {}
+            out_temp = out.split('\n')
+            for line in out_temp:
+                LOG.debug("Line is %s." % line)
+                if line.find('=') != -1:
+                    key, val = line.split('=', 1)
+                    LOG.debug(key + " = " + val)
+                    if key in ['ret_code', 'ret_desc', 'dev_addr']:
+                        analyse_result[key] = val
+            return analyse_result
+        else:
+            return None
