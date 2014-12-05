@@ -22,6 +22,7 @@ from xml.parsers import expat
 
 from lxml import etree
 from oslo.serialization import jsonutils
+from oslo.utils import excutils
 import six
 import webob
 
@@ -1075,11 +1076,15 @@ class Resource(wsgi.Application):
                 meth = getattr(self, action)
             else:
                 meth = getattr(self.controller, action)
-        except AttributeError:
-            if (not self.wsgi_actions or
-                    action not in ['action', 'create', 'delete']):
-                # Propagate the error
-                raise
+        except AttributeError as e:
+            with excutils.save_and_reraise_exception(e) as ctxt:
+                if (not self.wsgi_actions or action not in ['action',
+                                                            'create',
+                                                            'delete',
+                                                            'update']):
+                    LOG.exception(six.text_type(e))
+                else:
+                    ctxt.reraise = False
         else:
             return meth, self.wsgi_extensions.get(action, [])
 

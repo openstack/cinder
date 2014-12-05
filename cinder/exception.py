@@ -459,6 +459,10 @@ class VolumeTypeCreateFailed(CinderException):
                 "name %(name)s and specs %(extra_specs)s")
 
 
+class VolumeTypeUpdateFailed(CinderException):
+    message = _("Cannot update volume_type %(id)s")
+
+
 class UnknownCmd(VolumeDriverException):
     message = _("Unknown or unsupported command %(cmd)s")
 

@@ -374,6 +374,10 @@ def volume_type_create(context, values, projects=None):
     return IMPL.volume_type_create(context, values, projects)
 
 
+def volume_type_update(context, volume_type_id, values):
+    return IMPL.volume_type_update(context, volume_type_id, values)
+
+
 def volume_type_get_all(context, inactive=False, filters=None):
     """Get all volume types.
 

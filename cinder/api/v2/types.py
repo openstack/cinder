@@ -30,6 +30,7 @@ from cinder.volume import volume_types
 def make_voltype(elem):
     elem.set('id')
     elem.set('name')
+    elem.set('description')
     extra_specs = xmlutil.make_flat_dict('extra_specs', selector='extra_specs')
     elem.append(extra_specs)
 
@@ -67,12 +68,20 @@ class VolumeTypesController(wsgi.Controller):
         """Return a single volume type item."""
         context = req.environ['cinder.context']
 
-        try:
-            vol_type = volume_types.get_volume_type(context, id)
+        # get default volume type
+        if id is not None and id == 'default':
+            vol_type = volume_types.get_default_volume_type()
+            if not vol_type:
+                msg = _("Default volume type can not be found.")
+                raise exc.HTTPNotFound(explanation=msg)
             req.cache_resource(vol_type, name='types')
-        except exception.NotFound:
-            msg = _("Volume type not found")
-            raise exc.HTTPNotFound(explanation=msg)
+        else:
+            try:
+                vol_type = volume_types.get_volume_type(context, id)
+                req.cache_resource(vol_type, name='types')
+            except exception.NotFound:
+                msg = _("Volume type not found")
+                raise exc.HTTPNotFound(explanation=msg)
 
         return self._view_builder.show(req, vol_type)
 
