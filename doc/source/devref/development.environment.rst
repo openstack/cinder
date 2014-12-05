@@ -92,7 +92,7 @@ or Mac OS X 10.7 (OpenSSL 0.9.8r) works fine with cinder.
 
 Getting the code
 ----------------
-Grab the code from GitHub::
+Grab the code::
 
     git clone https://github.com/openstack/cinder.git
     cd cinder
@@ -148,4 +148,4 @@ Once your work is complete you may wish to contribute it to the project.
 Cinder uses the Gerrit code review system. For information on how to submit
 your branch to Gerrit, see GerritWorkflow_.
 
-.. _GerritWorkflow: http://wiki.openstack.org/GerritWorkflow
+.. _GerritWorkflow: http://docs.openstack.org/infra/manual/developers.html#development-workflow
