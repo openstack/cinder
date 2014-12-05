@@ -1072,8 +1072,8 @@
 # IET configuration file (string value)
 #iet_conf=/etc/iet/ietd.conf
 
-# Comma-separated list of initiator IQNs allowed to connect to
-# the iSCSI target. (From Nova compute nodes.) (string value)
+# This option is deprecated and unused. It will be removed in
+# the next release. (string value)
 #lio_initiator_iqns=
 
 # Sets the behavior of the iSCSI target to either perform

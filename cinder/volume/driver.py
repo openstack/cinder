@@ -92,9 +92,8 @@ volume_opts = [
                help='IET configuration file'),
     cfg.StrOpt('lio_initiator_iqns',
                default='',
-               help=('Comma-separated list of initiator IQNs '
-                     'allowed to connect to the '
-                     'iSCSI target. (From Nova compute nodes.)')),
+               help='This option is deprecated and unused. '
+                    'It will be removed in the next release.'),
     cfg.StrOpt('iscsi_iotype',
                default='fileio',
                help=('Sets the behavior of the iSCSI target '
@@ -1122,9 +1121,7 @@ class ISCSIDriver(VolumeDriver):
         elif CONF.iscsi_helper == 'fake':
             return iscsi.FakeIscsiHelper()
         elif CONF.iscsi_helper == 'lioadm':
-            return iscsi.LioAdm(root_helper,
-                                CONF.lio_initiator_iqns,
-                                CONF.iscsi_target_prefix, db=db)
+            return iscsi.LioAdm(root_helper, CONF.iscsi_target_prefix, db=db)
         else:
             return iscsi.IetAdm(root_helper, CONF.iet_conf, CONF.iscsi_iotype,
                                 db=db)

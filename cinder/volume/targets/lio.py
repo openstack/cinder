@@ -13,7 +13,7 @@
 from oslo.concurrency import processutils as putils
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LE
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume.targets.tgt import TgtAdm
 
@@ -30,6 +30,11 @@ class LioAdm(TgtAdm):
             self.configuration.safe_get('iscsi_target_prefix')
         self.lio_initiator_iqns =\
             self.configuration.safe_get('lio_initiator_iqns')
+
+        if self.lio_initiator_iqns is not None:
+            LOG.warning(_LW("The lio_initiator_iqns option has been "
+                            "deprecated and no longer has any effect."))
+
         self._verify_rtstool()
 
     def remove_export(self, context, volume):
@@ -93,10 +98,6 @@ class LioAdm(TgtAdm):
         if chap_auth is not None:
             (chap_auth_userid, chap_auth_password) = chap_auth.split(' ')[1:]
 
-        extra_args = []
-        if self.lio_initiator_iqns:
-            extra_args.append(self.lio_initiator_iqns)
-
         try:
             command_args = ['cinder-rtstool',
                             'create',
@@ -104,8 +105,6 @@ class LioAdm(TgtAdm):
                             name,
                             chap_auth_userid,
                             chap_auth_password]
-            if extra_args:
-                command_args.extend(extra_args)
             self._execute(*command_args, run_as_root=True)
         except putils.ProcessExecutionError as e:
             LOG.error(_LE("Failed to create iscsi target for volume "
