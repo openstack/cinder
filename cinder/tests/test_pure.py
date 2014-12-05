@@ -614,16 +614,16 @@ class FlashArrayHttpRequestTestCase(FlashArrayBaseTestCase):
     # Test with _http_requests rather than rest calls to ensure
     # root_url change happens properly
     def test_choose_rest_version(self):
-        response_string = '{"version": ["0.1", "1.3", "1.1", "1.0"]}'
+        response_string = '{"version": ["0.1", "1.4", "1.3", "1.0"]}'
         self.response.read.return_value = response_string
         self.array._opener.open.return_value = self.response
         result = self.array._choose_rest_version()
-        self.assertEqual(result, "1.1")
+        self.assertEqual(result, "1.3")
         self.array._opener.open.assert_called_with(FakeRequest(
             "GET", "https://%s/api/api_version" % TARGET,
             headers=self.headers), "null")
         self.array._opener.open.reset_mock()
-        self.response.read.return_value = '{"version": ["0.1", "1.3"]}'
+        self.response.read.return_value = '{"version": ["0.1", "1.4"]}'
         self.assertRaises(exception.PureDriverException,
                           self.array._choose_rest_version)
 
@@ -764,6 +764,68 @@ class FlashArrayRESTTestCase(FlashArrayBaseTestCase):
         mock_req.assert_called_with(self.array, "GET", "volume/vol-name/host")
         self.assert_error_propagates([mock_req], self.array.list_volume_hosts,
                                      "vol-name")
+
+    def test_create_pgroup(self, mock_req):
+        mock_req.return_value = self.result
+        pgroup_name = "cgroup_id"
+        result = self.array.create_pgroup(pgroup_name)
+        self.assertEqual(self.result, result)
+        req_url = "pgroup/" + pgroup_name
+        mock_req.assert_called_with(self.array, "POST", req_url)
+        self.assert_error_propagates([mock_req], self.array.create_pgroup,
+                                     pgroup_name)
+
+    def test_delete_pgroup(self, mock_req):
+        mock_req.return_value = self.result
+        pgroup_name = "cgroup_id"
+        result = self.array.delete_pgroup(pgroup_name)
+        self.assertEqual(self.result, result)
+        req_url = "pgroup/" + pgroup_name
+        mock_req.assert_called_with(self.array, "DELETE", req_url)
+        self.assert_error_propagates([mock_req], self.array.delete_pgroup,
+                                     pgroup_name)
+
+    def test_create_pgroup_snapshot(self, mock_req):
+        mock_req.return_value = self.result
+        pgroup_name = "cgroup_id"
+        snap_suffix = "snap_suffix"
+        result = self.array.create_pgroup_snapshot(pgroup_name, snap_suffix)
+        self.assertEqual(self.result, result)
+        expected_params = {
+            "snap": True,
+            "suffix": snap_suffix,
+            "source": [pgroup_name]
+        }
+        mock_req.assert_called_with(self.array, "POST", "pgroup",
+                                    expected_params)
+        self.assert_error_propagates([mock_req],
+                                     self.array.create_pgroup_snapshot,
+                                     pgroup_name, snap_suffix)
+
+    def test_delete_pgroup_snapshot(self, mock_req):
+        mock_req.return_value = self.result
+        snapshot_name = "snap1"
+        result = self.array.delete_pgroup_snapshot(snapshot_name)
+        self.assertEqual(self.result, result)
+        req_url = "pgroup/" + snapshot_name
+        mock_req.assert_called_with(self.array, "DELETE", req_url)
+        self.assert_error_propagates([mock_req],
+                                     self.array.delete_pgroup_snapshot,
+                                     snapshot_name)
+
+    def test_add_volume_to_pgroup(self, mock_req):
+        mock_req.return_value = self.result
+        pgroup_name = "cgroup_id"
+        volume_name = "myvol-1"
+        expected_params = {"addvollist": [volume_name]}
+        result = self.array.add_volume_to_pgroup(pgroup_name, volume_name)
+        self.assertEqual(self.result, result)
+        req_url = "pgroup/" + pgroup_name
+        mock_req.assert_called_with(self.array, "PUT", req_url,
+                                    expected_params)
+        self.assert_error_propagates([mock_req],
+                                     self.array.add_volume_to_pgroup,
+                                     pgroup_name, volume_name)
 
 
 class FakeFlashArray(pure.FlashArray):

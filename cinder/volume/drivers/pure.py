@@ -71,7 +71,7 @@ def _generate_purity_host_name(name):
 class PureISCSIDriver(san.SanISCSIDriver):
     """Performs volume management on Pure Storage FlashArray."""
 
-    VERSION = "1.0.0"
+    VERSION = "2.0.0"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -323,7 +323,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
 
 class FlashArray(object):
     """Wrapper for Pure Storage REST API."""
-    SUPPORTED_REST_API_VERSIONS = ["1.2", "1.1", "1.0"]
+    SUPPORTED_REST_API_VERSIONS = ["1.3", "1.2"]
 
     def __init__(self, target, api_token):
         cookie_handler = urllib2.HTTPCookieProcessor(cookielib.CookieJar())
@@ -463,3 +463,24 @@ class FlashArray(object):
     def list_volume_hosts(self, volume):
         """Return a list of dictionaries describing connected hosts."""
         return self._http_request("GET", "volume/%s/host" % volume)
+
+    def create_pgroup(self, name):
+        return self._http_request("POST", "pgroup/%s" % name)
+
+    def delete_pgroup(self, name):
+        return self._http_request("DELETE", "pgroup/%s" % name)
+
+    def create_pgroup_snapshot(self, pgroup_name, pgsnapshot_suffix):
+        params = {
+            "snap": True,
+            "suffix": pgsnapshot_suffix,
+            "source": [pgroup_name]
+        }
+        return self._http_request("POST", "pgroup", params)
+
+    def delete_pgroup_snapshot(self, name):
+        return self._http_request("DELETE", "pgroup/%s" % name)
+
+    def add_volume_to_pgroup(self, pgroup_name, volume_name):
+        return self._http_request("PUT", "pgroup/%s" % pgroup_name,
+                                  {"addvollist": [volume_name]})
