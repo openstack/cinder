@@ -14,13 +14,14 @@
 """
 ZFS Storage Appliance Cinder Volume Driver
 """
+import ast
 import base64
 
 from oslo.config import cfg
 from oslo.utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -50,6 +51,8 @@ ZFSSA_OPTS = [
                help='iSCSI initiator CHAP user.'),
     cfg.StrOpt('zfssa_initiator_password', default='',
                help='iSCSI initiator CHAP password.'),
+    cfg.StrOpt('zfssa_initiator_config', default='',
+               help='iSCSI initiators configuration.'),
     cfg.StrOpt('zfssa_target_group', default='tgt-grp',
                help='iSCSI target group name.'),
     cfg.StrOpt('zfssa_target_user', default='',
@@ -107,30 +110,46 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                   compression=lcfg.zfssa_lun_compression,
                                   logbias=lcfg.zfssa_lun_logbias)
 
-        if (lcfg.zfssa_initiator != '' and
-            (lcfg.zfssa_initiator_group == '' or
-             lcfg.zfssa_initiator_group == 'default')):
-            msg = (_('zfssa_initiator: %(ini)s'
-                     ' wont be used on '
-                     'zfssa_initiator_group= %(inigrp)s.')
-                   % {'ini': lcfg.zfssa_initiator,
-                      'inigrp': lcfg.zfssa_initiator_group})
+        if (lcfg.zfssa_initiator_config != ''):
+            initiator_config = ast.literal_eval(lcfg.zfssa_initiator_config)
+            for initiator_group in initiator_config:
+                zfssa_initiator_group = initiator_group
+                for zfssa_initiator in initiator_config[zfssa_initiator_group]:
+                    self.zfssa.create_initiator(zfssa_initiator['iqn'],
+                                                zfssa_initiator_group + '-' +
+                                                zfssa_initiator['iqn'],
+                                                chapuser=
+                                                zfssa_initiator['user'],
+                                                chapsecret=
+                                                zfssa_initiator['password'])
+                    if (zfssa_initiator_group != 'default'):
+                        self.zfssa.add_to_initiatorgroup(
+                            zfssa_initiator['iqn'],
+                            zfssa_initiator_group)
+        else:
+            LOG.warning(_LW('zfssa_initiator_config not found. '
+                            'Using deprecated configuration options.'))
+            if (lcfg.zfssa_initiator != '' and
+                (lcfg.zfssa_initiator_group == '' or
+                 lcfg.zfssa_initiator_group == 'default')):
+                LOG.warning(_LW('zfssa_initiator: %(ini)s'
+                                ' wont be used on '
+                                'zfssa_initiator_group= %(inigrp)s.')
+                            % {'ini': lcfg.zfssa_initiator,
+                               'inigrp': lcfg.zfssa_initiator_group})
 
-            LOG.warning(msg)
-        # Setup initiator and initiator group
-        if (lcfg.zfssa_initiator != '' and
-           lcfg.zfssa_initiator_group != '' and
-           lcfg.zfssa_initiator_group != 'default'):
-            for initiator in lcfg.zfssa_initiator.split(','):
-                self.zfssa.create_initiator(initiator,
-                                            lcfg.zfssa_initiator_group + '-' +
-                                            initiator,
-                                            chapuser=
-                                            lcfg.zfssa_initiator_user,
-                                            chapsecret=
-                                            lcfg.zfssa_initiator_password)
-                self.zfssa.add_to_initiatorgroup(initiator,
-                                                 lcfg.zfssa_initiator_group)
+            # Setup initiator and initiator group
+            if (lcfg.zfssa_initiator != '' and
+               lcfg.zfssa_initiator_group != '' and
+               lcfg.zfssa_initiator_group != 'default'):
+                for initiator in lcfg.zfssa_initiator.split(','):
+                    self.zfssa.create_initiator(
+                        initiator, lcfg.zfssa_initiator_group + '-' +
+                        initiator, chapuser=lcfg.zfssa_initiator_user,
+                        chapsecret=lcfg.zfssa_initiator_password)
+                    self.zfssa.add_to_initiatorgroup(
+                        initiator, lcfg.zfssa_initiator_group)
+
         # Parse interfaces
         interfaces = []
         for interface in lcfg.zfssa_target_interfaces.split(','):
@@ -158,11 +177,18 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         self.zfssa.verify_pool(lcfg.zfssa_pool)
         self.zfssa.verify_project(lcfg.zfssa_pool, lcfg.zfssa_project)
 
-        if (lcfg.zfssa_initiator != '' and
-           lcfg.zfssa_initiator_group != '' and
-           lcfg.zfssa_initiator_group != 'default'):
-            for initiator in lcfg.zfssa_initiator.split(','):
-                self.zfssa.verify_initiator(initiator)
+        if (lcfg.zfssa_initiator_config != ''):
+            initiator_config = ast.literal_eval(lcfg.zfssa_initiator_config)
+            for initiator_group in initiator_config:
+                zfssa_initiator_group = initiator_group
+                for zfssa_initiator in initiator_config[zfssa_initiator_group]:
+                    self.zfssa.verify_initiator(zfssa_initiator['iqn'])
+        else:
+            if (lcfg.zfssa_initiator != '' and
+               lcfg.zfssa_initiator_group != '' and
+               lcfg.zfssa_initiator_group != 'default'):
+                for initiator in lcfg.zfssa_initiator.split(','):
+                    self.zfssa.verify_initiator(initiator)
 
             self.zfssa.verify_target(self._get_target_alias())
 
@@ -196,8 +222,6 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                               sparse=lcfg.zfssa_lun_sparse,
                               compression=lcfg.zfssa_lun_compression,
                               logbias=lcfg.zfssa_lun_logbias)
-
-        return self._get_provider_info(volume)
 
     def delete_volume(self, volume):
         """Deletes a volume with the given volume['name']."""
@@ -308,35 +332,14 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             self._update_volume_status()
         return self._stats
 
-    def _export_volume(self, volume):
-        """Export the volume - set the initiatorgroup property."""
-        LOG.debug('_export_volume: volume name: %s' % volume['name'])
-        lcfg = self.configuration
-
-        self.zfssa.set_lun_initiatorgroup(lcfg.zfssa_pool,
-                                          lcfg.zfssa_project,
-                                          volume['name'],
-                                          lcfg.zfssa_initiator_group)
-        return self._get_provider_info(volume)
-
     def create_export(self, context, volume):
-        """Driver entry point to get the  export info for a new volume."""
-        LOG.debug('create_export: volume name: %s' % volume['name'])
-        return self._export_volume(volume)
+        pass
 
     def remove_export(self, context, volume):
-        """Driver entry point to remove an export for a volume."""
-        LOG.debug('remove_export: volume name: %s' % volume['name'])
-        lcfg = self.configuration
-        self.zfssa.set_lun_initiatorgroup(lcfg.zfssa_pool,
-                                          lcfg.zfssa_project,
-                                          volume['name'],
-                                          '')
+        pass
 
     def ensure_export(self, context, volume):
-        """Driver entry point to get the export info for an existing volume."""
-        LOG.debug('ensure_export: volume name: %s' % volume['name'])
-        return self._export_volume(volume)
+        pass
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         self.ensure_export(context, volume)
@@ -387,3 +390,42 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                  lcfg.zfssa_project,
                                  snapshot['volume_name'])
         return lun['size'] == size
+
+    def initialize_connection(self, volume, connector):
+        lcfg = self.configuration
+        init_groups = self.zfssa.get_initiator_initiatorgroup(
+            connector['initiator'])
+        for initiator_group in init_groups:
+            self.zfssa.set_lun_initiatorgroup(lcfg.zfssa_pool,
+                                              lcfg.zfssa_project,
+                                              volume['name'],
+                                              initiator_group)
+        iscsi_properties = {}
+        provider = self._get_provider_info(volume)
+        (target_portal, iqn, lun) = provider['provider_location'].split()
+        iscsi_properties['target_discovered'] = False
+        iscsi_properties['target_portal'] = target_portal
+        iscsi_properties['target_iqn'] = iqn
+        iscsi_properties['target_lun'] = lun
+        iscsi_properties['volume_id'] = volume['id']
+
+        if 'provider_auth' in provider:
+            (auth_method, auth_username, auth_password) = provider[
+                'provider_auth'].split()
+            iscsi_properties['auth_method'] = auth_method
+            iscsi_properties['auth_username'] = auth_username
+            iscsi_properties['auth_password'] = auth_password
+
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': iscsi_properties
+        }
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Driver entry point to terminate a connection for a volume."""
+        LOG.debug('terminate_connection: volume name: %s.' % volume['name'])
+        lcfg = self.configuration
+        self.zfssa.set_lun_initiatorgroup(lcfg.zfssa_pool,
+                                          lcfg.zfssa_project,
+                                          volume['name'],
+                                          '')

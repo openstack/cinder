@@ -214,12 +214,17 @@ class FakeZFSSA(object):
 
         return out
 
+    def get_initiator_initiatorgroup(self, initiator):
+        ret = ['test-init-grp1']
+        return ret
+
 
 class TestZFSSAISCSIDriver(test.TestCase):
 
     test_vol = {
         'name': 'cindervol',
-        'size': 1
+        'size': 1,
+        'id': 1
     }
 
     test_snap = {
@@ -259,6 +264,9 @@ class TestZFSSAISCSIDriver(test.TestCase):
             'iqn.1-0.org.deb:01:d7, iqn.1-0.org.deb:01:d9'
         self.configuration.zfssa_initiator_user = ''
         self.configuration.zfssa_initiator_password = ''
+        self.configuration.zfssa_initiator_config = "{'test-init-grp1':[{'iqn':\
+            'iqn.1-0.org.deb:01:d7','user':'','password':''}],'test-init-grp\
+            2':[{'iqn':'iqn.1-0.org.deb:01:d9','user':'','password':''}]}"
         self.configuration.zfssa_target_group = 'test-target-grp1'
         self.configuration.zfssa_target_user = ''
         self.configuration.zfssa_target_password = ''
@@ -283,14 +291,20 @@ class TestZFSSAISCSIDriver(test.TestCase):
                                              self.test_snap)
         self.drv.delete_volume(self.test_vol)
 
-    def test_create_export(self):
-        self.drv.create_volume(self.test_vol)
-        self.drv.create_export({}, self.test_vol)
-        self.drv.delete_volume(self.test_vol)
-
     def test_remove_export(self):
         self.drv.create_volume(self.test_vol)
-        self.drv.remove_export({}, self.test_vol)
+        self.drv.terminate_connection(self.test_vol, '')
+        self.drv.delete_volume(self.test_vol)
+
+    def test_volume_attach_detach(self):
+        self.drv.create_volume(self.test_vol)
+
+        connector = dict(initiator='iqn.1-0.org.deb:01:d7')
+        props = self.drv.initialize_connection(self.test_vol, connector)
+        self.assertEqual('iscsi', props['driver_volume_type'])
+        self.assertEqual(self.test_vol['id'], props['data']['volume_id'])
+
+        self.drv.terminate_connection(self.test_vol, '')
         self.drv.delete_volume(self.test_vol)
 
     def test_get_volume_stats(self):

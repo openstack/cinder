@@ -17,7 +17,7 @@ ZFS Storage Appliance Proxy
 import json
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log
 from cinder.volume.drivers.zfssa import restclient
 
@@ -628,3 +628,22 @@ class ZFSSAApi(object):
 
         val = json.loads(ret.data)
         return val['snapshot']['numclones'] != 0
+
+    def get_initiator_initiatorgroup(self, initiator):
+        """Returns the initiator group of the initiator."""
+        groups = []
+        svc = "/api/san/v1/iscsi/initiator-groups"
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            LOG.error(_LE('Error getting initiator groups.'))
+            exception_msg = (_('Error getting initiator groups.'))
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+        val = json.loads(ret.data)
+        for initiator_group in val['groups']:
+            if initiator in initiator_group['initiators']:
+                groups.append(initiator_group["name"])
+        if len(groups) == 0:
+            LOG.debug("Initiator group not found. Attaching volume to "
+                      "default initiator group.")
+            groups.append('default')
+        return groups
