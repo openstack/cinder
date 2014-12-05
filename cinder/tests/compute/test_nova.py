@@ -15,7 +15,6 @@
 import contextlib
 
 import mock
-from novaclient.v1_1.contrib import assisted_volume_snapshots
 
 from cinder.compute import nova
 from cinder import context
@@ -47,8 +46,8 @@ class NovaClientTestCase(test.TestCase):
         p_client.assert_called_once_with(
             'regularuser', 'token', None,
             auth_url='http://novahost:8774/v2/e3f0833dc08b4cea',
-            insecure=False, cacert=None,
-            extensions=[assisted_volume_snapshots])
+            insecure=False, cacert=None, timeout=None,
+            extensions=nova.nova_extensions)
 
     @mock.patch('novaclient.v1_1.client.Client')
     def test_nova_client_admin_endpoint(self, p_client):
@@ -56,8 +55,8 @@ class NovaClientTestCase(test.TestCase):
         p_client.assert_called_once_with(
             'regularuser', 'token', None,
             auth_url='http://novaadmhost:4778/v2/e3f0833dc08b4cea',
-            insecure=False, cacert=None,
-            extensions=[assisted_volume_snapshots])
+            insecure=False, cacert=None, timeout=None,
+            extensions=nova.nova_extensions)
 
     @mock.patch('novaclient.v1_1.client.Client')
     def test_nova_client_privileged_user(self, p_client):
@@ -65,8 +64,8 @@ class NovaClientTestCase(test.TestCase):
         p_client.assert_called_once_with(
             'adminuser', 'strongpassword', None,
             auth_url='http://keystonehost:5000/v2.0',
-            insecure=False, cacert=None,
-            extensions=[assisted_volume_snapshots])
+            insecure=False, cacert=None, timeout=None,
+            extensions=nova.nova_extensions)
 
 
 class FakeNovaClient(object):

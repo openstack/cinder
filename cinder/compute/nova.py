@@ -17,13 +17,18 @@ Handles all requests to Nova.
 """
 
 
+from novaclient import exceptions as nova_exceptions
+from novaclient import extension
 from novaclient import service_catalog
 from novaclient.v1_1 import client as nova_client
 from novaclient.v1_1.contrib import assisted_volume_snapshots
+from novaclient.v1_1.contrib import list_extensions
 from oslo.config import cfg
+from requests import exceptions as request_exceptions
 
 from cinder import context as ctx
 from cinder.db import base
+from cinder import exception
 from cinder.openstack.common import log as logging
 
 nova_opts = [
@@ -60,8 +65,12 @@ CONF.register_opts(nova_opts)
 
 LOG = logging.getLogger(__name__)
 
+nova_extensions = (assisted_volume_snapshots,
+                   extension.Extension('list_extensions', list_extensions))
 
-def novaclient(context, admin_endpoint=False, privileged_user=False):
+
+def novaclient(context, admin_endpoint=False, privileged_user=False,
+               timeout=None):
     """Returns a Nova client
 
     @param admin_endpoint: If True, use the admin endpoint template from
@@ -69,6 +78,8 @@ def novaclient(context, admin_endpoint=False, privileged_user=False):
     @param privileged_user: If True, use the account from configuration
         (requires 'os_privileged_user_name', 'os_privileged_user_password' and
         'os_privileged_user_tenant' to be set)
+    @param timeout: Number of seconds to wait for an answer before raising a
+        Timeout exception (None to disable)
     """
     # FIXME: the novaclient ServiceCatalog object is mis-named.
     #        It actually contains the entire access blob.
@@ -119,15 +130,14 @@ def novaclient(context, admin_endpoint=False, privileged_user=False):
 
         LOG.debug('Nova client connection created using URL: %s' % url)
 
-    extensions = [assisted_volume_snapshots]
-
     c = nova_client.Client(context.user_id,
                            context.auth_token,
                            context.project_name,
                            auth_url=url,
                            insecure=CONF.nova_api_insecure,
+                           timeout=timeout,
                            cacert=CONF.nova_ca_certificates_file,
-                           extensions=extensions)
+                           extensions=nova_extensions)
 
     if not privileged_user:
         # noauth extracts user_id:project_id from auth_token
@@ -139,6 +149,18 @@ def novaclient(context, admin_endpoint=False, privileged_user=False):
 
 class API(base.Base):
     """API for interacting with novaclient."""
+
+    def has_extension(self, context, extension, timeout=None):
+        try:
+            client = novaclient(context, timeout=timeout)
+
+            # Pylint gives a false positive here because the 'list_extensions'
+            # method is not explicitly declared. Overriding the error.
+            # pylint: disable-msg=E1101
+            nova_exts = client.list_extensions.show_all()
+        except request_exceptions.Timeout:
+            raise exception.APITimeout(service='Nova')
+        return extension in [e.name for e in nova_exts]
 
     def update_server_volume(self, context, server_id, attachment_id,
                              new_volume_id):
@@ -159,3 +181,13 @@ class API(base.Base):
         nova.assisted_volume_snapshots.delete(
             snapshot_id,
             delete_info=delete_info)
+
+    def get_server(self, context, server_id, privileged_user=False,
+                   timeout=None):
+        try:
+            return novaclient(context, privileged_user=privileged_user,
+                              timeout=timeout).servers.get(server_id)
+        except nova_exceptions.NotFound:
+            raise exception.ServerNotFound(uuid=server_id)
+        except request_exceptions.Timeout:
+            raise exception.APITimeout(service='Nova')

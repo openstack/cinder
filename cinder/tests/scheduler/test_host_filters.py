@@ -17,9 +17,12 @@ Tests For Scheduler Host Filters.
 
 import mock
 from oslo.serialization import jsonutils
+from requests import exceptions as request_exceptions
 
+from cinder.compute import nova
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder.openstack.common.scheduler import filters
 from cinder import test
 from cinder.tests.scheduler import fakes
@@ -32,10 +35,6 @@ class HostFiltersTestCase(test.TestCase):
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
         self.context = context.RequestContext('fake', 'fake')
-        self.json_query = jsonutils.dumps(
-            ['and',
-                ['>=', '$free_capacity_gb', 1024],
-                ['>=', '$total_capacity_gb', 10 * 1024]])
         # This has a side effect of testing 'get_filter_classes'
         # when specifying a method (in this case, our standard filters)
         filter_handler = filters.HostFilterHandler('cinder.scheduler.filters')
@@ -44,8 +43,17 @@ class HostFiltersTestCase(test.TestCase):
         for cls in classes:
             self.class_map[cls.__name__] = cls
 
+
+class CapacityFilterTestCase(HostFiltersTestCase):
+    def setUp(self):
+        super(CapacityFilterTestCase, self).setUp()
+        self.json_query = jsonutils.dumps(
+            ['and',
+                ['>=', '$free_capacity_gb', 1024],
+                ['>=', '$total_capacity_gb', 10 * 1024]])
+
     @mock.patch('cinder.utils.service_is_up')
-    def test_capacity_filter_passes(self, _mock_serv_is_up):
+    def test_filter_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100}
@@ -57,7 +65,7 @@ class HostFiltersTestCase(test.TestCase):
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('cinder.utils.service_is_up')
-    def test_capacity_filter_current_host_passes(self, _mock_serv_is_up):
+    def test_filter_current_host_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100, 'vol_exists_on': 'host1'}
@@ -69,7 +77,7 @@ class HostFiltersTestCase(test.TestCase):
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('cinder.utils.service_is_up')
-    def test_capacity_filter_fails(self, _mock_serv_is_up):
+    def test_filter_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100}
@@ -82,7 +90,7 @@ class HostFiltersTestCase(test.TestCase):
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('cinder.utils.service_is_up')
-    def test_capacity_filter_passes_infinite(self, _mock_serv_is_up):
+    def test_filter_passes_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100}
@@ -94,7 +102,7 @@ class HostFiltersTestCase(test.TestCase):
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('cinder.utils.service_is_up')
-    def test_capacity_filter_passes_unknown(self, _mock_serv_is_up):
+    def test_filter_passes_unknown(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100}
@@ -105,8 +113,10 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
+
+class AffinityFilterTestCase(HostFiltersTestCase):
     @mock.patch('cinder.utils.service_is_up')
-    def test_affinity_different_filter_passes(self, _mock_serv_is_up):
+    def test_different_filter_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['DifferentBackendFilter']()
         service = {'disabled': False}
@@ -124,7 +134,7 @@ class HostFiltersTestCase(test.TestCase):
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('cinder.utils.service_is_up')
-    def test_affinity_different_filter_legacy_volume_hint_passes(
+    def test_different_filter_legacy_volume_hint_passes(
             self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['DifferentBackendFilter']()
@@ -142,7 +152,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_different_filter_non_list_fails(self):
+    def test_different_filter_non_list_fails(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
         host = fakes.FakeHostState('host2', {})
         volume = utils.create_volume(self.context, host='host2')
@@ -154,7 +164,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_different_filter_fails(self):
+    def test_different_filter_fails(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
         host = fakes.FakeHostState('host1', {})
         volume = utils.create_volume(self.context, host='host1')
@@ -166,7 +176,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_different_filter_handles_none(self):
+    def test_different_filter_handles_none(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
         host = fakes.FakeHostState('host1', {})
 
@@ -175,7 +185,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_different_filter_handles_deleted_instance(self):
+    def test_different_filter_handles_deleted_instance(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
         host = fakes.FakeHostState('host1', {})
         volume = utils.create_volume(self.context, host='host1')
@@ -188,7 +198,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_different_filter_fail_nonuuid_hint(self):
+    def test_different_filter_fail_nonuuid_hint(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
         host = fakes.FakeHostState('host1', {})
 
@@ -198,7 +208,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_different_filter_handles_multiple_uuids(self):
+    def test_different_filter_handles_multiple_uuids(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
         host = fakes.FakeHostState('host1#pool0', {})
         volume1 = utils.create_volume(self.context, host='host1:pool1')
@@ -212,7 +222,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_different_filter_handles_invalid_uuids(self):
+    def test_different_filter_handles_invalid_uuids(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
         host = fakes.FakeHostState('host1', {})
         volume = utils.create_volume(self.context, host='host2')
@@ -224,7 +234,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_same_filter_no_list_passes(self):
+    def test_same_filter_no_list_passes(self):
         filt_cls = self.class_map['SameBackendFilter']()
         host = fakes.FakeHostState('host1', {})
         volume = utils.create_volume(self.context, host='host1')
@@ -236,7 +246,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_same_filter_passes(self):
+    def test_same_filter_passes(self):
         filt_cls = self.class_map['SameBackendFilter']()
         host = fakes.FakeHostState('host1#pool0', {})
         volume = utils.create_volume(self.context, host='host1#pool0')
@@ -248,7 +258,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_same_filter_legacy_vol_fails(self):
+    def test_same_filter_legacy_vol_fails(self):
         filt_cls = self.class_map['SameBackendFilter']()
         host = fakes.FakeHostState('host1#pool0', {})
         volume = utils.create_volume(self.context, host='host1')
@@ -260,7 +270,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_same_filter_fails(self):
+    def test_same_filter_fails(self):
         filt_cls = self.class_map['SameBackendFilter']()
         host = fakes.FakeHostState('host1#pool0', {})
         volume = utils.create_volume(self.context, host='host1#pool1')
@@ -272,7 +282,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_same_filter_vol_list_pass(self):
+    def test_same_filter_vol_list_pass(self):
         filt_cls = self.class_map['SameBackendFilter']()
         host = fakes.FakeHostState('host1', {})
         volume1 = utils.create_volume(self.context, host='host1')
@@ -286,7 +296,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_same_filter_handles_none(self):
+    def test_same_filter_handles_none(self):
         filt_cls = self.class_map['SameBackendFilter']()
         host = fakes.FakeHostState('host1', {})
 
@@ -295,7 +305,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_same_filter_handles_deleted_instance(self):
+    def test_same_filter_handles_deleted_instance(self):
         filt_cls = self.class_map['SameBackendFilter']()
         host = fakes.FakeHostState('host1', {})
         volume = utils.create_volume(self.context, host='host2')
@@ -308,7 +318,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    def test_affinity_same_filter_fail_nonuuid_hint(self):
+    def test_same_filter_fail_nonuuid_hint(self):
         filt_cls = self.class_map['SameBackendFilter']()
         host = fakes.FakeHostState('host1', {})
 
@@ -318,7 +328,9 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    def test_driver_filter_passing_function(self):
+
+class DriverFilterTestCase(HostFiltersTestCase):
+    def test_passing_function(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -338,7 +350,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_failing_function(self):
+    def test_failing_function(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -358,7 +370,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_no_filter_function(self):
+    def test_no_filter_function(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -378,7 +390,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_not_implemented(self):
+    def test_not_implemented(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -396,7 +408,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_no_volume_extra_specs(self):
+    def test_no_volume_extra_specs(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -410,7 +422,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_volume_backend_name_different(self):
+    def test_volume_backend_name_different(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -430,7 +442,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_function_extra_spec_replacement(self):
+    def test_function_extra_spec_replacement(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -451,7 +463,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_function_stats_replacement(self):
+    def test_function_stats_replacement(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -472,7 +484,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_function_volume_replacement(self):
+    def test_function_volume_replacement(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -497,7 +509,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_function_qos_spec_replacement(self):
+    def test_function_qos_spec_replacement(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -520,7 +532,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_function_exception_caught(self):
+    def test_function_exception_caught(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -540,7 +552,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_function_empty_qos(self):
+    def test_function_empty_qos(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -561,7 +573,7 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertFalse(filt_cls.host_passes(host1, filter_properties))
 
-    def test_driver_filter_capabilities(self):
+    def test_capabilities(self):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeHostState(
             'host1', {
@@ -581,3 +593,93 @@ class HostFiltersTestCase(test.TestCase):
         }
 
         self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+
+
+class InstanceLocalityFilterTestCase(HostFiltersTestCase):
+    def setUp(self):
+        super(InstanceLocalityFilterTestCase, self).setUp()
+        self.override_config('nova_endpoint_template',
+                             'http://novahost:8774/v2/%(project_id)s')
+        self.context.service_catalog = \
+            [{'type': 'compute', 'name': 'nova', 'endpoints':
+              [{'publicURL': 'http://novahost:8774/v2/e3f0833dc08b4cea'}]},
+             {'type': 'identity', 'name': 'keystone', 'endpoints':
+              [{'publicURL': 'http://keystonehost:5000/v2.0'}]}]
+
+    @mock.patch('cinder.compute.nova.novaclient')
+    def test_same_host(self, _mock_novaclient):
+        _mock_novaclient.return_value = fakes.FakeNovaClient()
+        filt_cls = self.class_map['InstanceLocalityFilter']()
+        host = fakes.FakeHostState('host1', {})
+        uuid = nova.novaclient().servers.create('host1')
+
+        filter_properties = {'context': self.context,
+                             'scheduler_hints': {'local_to_instance': uuid}}
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.compute.nova.novaclient')
+    def test_different_host(self, _mock_novaclient):
+        _mock_novaclient.return_value = fakes.FakeNovaClient()
+        filt_cls = self.class_map['InstanceLocalityFilter']()
+        host = fakes.FakeHostState('host1', {})
+        uuid = nova.novaclient().servers.create('host2')
+
+        filter_properties = {'context': self.context,
+                             'scheduler_hints': {'local_to_instance': uuid}}
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_handles_none(self):
+        filt_cls = self.class_map['InstanceLocalityFilter']()
+        host = fakes.FakeHostState('host1', {})
+
+        filter_properties = {'context': self.context,
+                             'scheduler_hints': None}
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    def test_invalid_uuid(self):
+        filt_cls = self.class_map['InstanceLocalityFilter']()
+        host = fakes.FakeHostState('host1', {})
+
+        filter_properties = {'context': self.context,
+                             'scheduler_hints':
+                             {'local_to_instance': 'e29b11d4-not-valid-a716'}}
+        self.assertRaises(exception.InvalidUUID,
+                          filt_cls.host_passes, host, filter_properties)
+
+    @mock.patch('cinder.compute.nova.novaclient')
+    def test_nova_no_extended_server_attributes(self, _mock_novaclient):
+        _mock_novaclient.return_value = fakes.FakeNovaClient(
+            ext_srv_attr=False)
+        filt_cls = self.class_map['InstanceLocalityFilter']()
+        host = fakes.FakeHostState('host1', {})
+        uuid = nova.novaclient().servers.create('host1')
+
+        filter_properties = {'context': self.context,
+                             'scheduler_hints': {'local_to_instance': uuid}}
+        self.assertRaises(exception.CinderException,
+                          filt_cls.host_passes, host, filter_properties)
+
+    @mock.patch('cinder.compute.nova.novaclient')
+    def test_nova_down_does_not_alter_other_filters(self, _mock_novaclient):
+        # Simulate Nova API is not available
+        _mock_novaclient.side_effect = Exception
+
+        filt_cls = self.class_map['InstanceLocalityFilter']()
+        host = fakes.FakeHostState('host1', {})
+
+        filter_properties = {'context': self.context, 'size': 100}
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('requests.request')
+    def test_nova_timeout(self, _mock_request):
+        # Simulate a HTTP timeout
+        _mock_request.side_effect = request_exceptions.Timeout
+
+        filt_cls = self.class_map['InstanceLocalityFilter']()
+        host = fakes.FakeHostState('host1', {})
+
+        filter_properties = \
+            {'context': self.context, 'scheduler_hints':
+                {'local_to_instance': 'e29b11d4-15ef-34a9-a716-598a6f0b5467'}}
+        self.assertRaises(exception.APITimeout,
+                          filt_cls.host_passes, host, filter_properties)

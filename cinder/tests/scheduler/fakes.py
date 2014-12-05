@@ -18,6 +18,7 @@ Fakes For Scheduler tests.
 
 from oslo.utils import timeutils
 
+from cinder.openstack.common import uuidutils
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import host_manager
 
@@ -71,6 +72,55 @@ class FakeHostState(host_manager.HostState):
         super(FakeHostState, self).__init__(host)
         for (key, val) in attribute_dict.iteritems():
             setattr(self, key, val)
+
+
+class FakeNovaClient(object):
+    class Server(object):
+        def __init__(self, host):
+            self.uuid = uuidutils.generate_uuid()
+            self.host = host
+            setattr(self, 'OS-EXT-SRV-ATTR:host', host)
+
+    class ServerManager(object):
+        def __init__(self):
+            self._servers = []
+
+        def create(self, host):
+            self._servers.append(FakeNovaClient.Server(host))
+            return self._servers[-1].uuid
+
+        def get(self, server_uuid):
+            for s in self._servers:
+                if s.uuid == server_uuid:
+                    return s
+            return None
+
+        def list(self, detailed=True, search_opts=None):
+            matching = list(self._servers)
+            if search_opts:
+                for opt, val in search_opts.iteritems():
+                    matching = [m for m in matching
+                                if getattr(m, opt, None) == val]
+            return matching
+
+    class ListExtResource(object):
+        def __init__(self, ext_name):
+            self.name = ext_name
+
+    class ListExtManager(object):
+        def __init__(self, ext_srv_attr=True):
+            self.ext_srv_attr = ext_srv_attr
+
+        def show_all(self):
+            if self.ext_srv_attr:
+                return [
+                    FakeNovaClient.ListExtResource('ExtendedServerAttributes')]
+            return []
+
+    def __init__(self, ext_srv_attr=True):
+        self.servers = FakeNovaClient.ServerManager()
+        self.list_extensions = FakeNovaClient.ListExtManager(
+            ext_srv_attr=ext_srv_attr)
 
 
 def mock_host_manager_db_calls(mock_obj, disabled=None):
