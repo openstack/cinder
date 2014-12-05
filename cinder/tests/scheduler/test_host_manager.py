@@ -427,6 +427,20 @@ class HostStateTestCase(test.TestCase):
         self.assertEqual(fake_host.pools['_pool0'].free_capacity_gb,
                          'unknown')
 
+    def test_update_from_empty_volume_capability(self):
+        fake_host = host_manager.HostState('host1')
+
+        vol_cap = {'timestamp': None}
+
+        fake_host.update_from_volume_capability(vol_cap)
+        self.assertEqual(fake_host.total_capacity_gb, 0)
+        self.assertEqual(fake_host.free_capacity_gb, None)
+        # Pool stats has been updated
+        self.assertEqual(fake_host.pools['_pool0'].total_capacity_gb,
+                         0)
+        self.assertEqual(fake_host.pools['_pool0'].free_capacity_gb,
+                         0)
+
 
 class PoolStateTestCase(test.TestCase):
     """Test case for HostState class."""

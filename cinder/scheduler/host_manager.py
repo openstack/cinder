@@ -300,12 +300,12 @@ class PoolState(HostState):
                 return
             self.update_backend(capability)
 
-            self.total_capacity_gb = capability['total_capacity_gb']
-            self.free_capacity_gb = capability['free_capacity_gb']
+            self.total_capacity_gb = capability.get('total_capacity_gb', 0)
+            self.free_capacity_gb = capability.get('free_capacity_gb', 0)
             self.allocated_capacity_gb = capability.get(
                 'allocated_capacity_gb', 0)
             self.QoS_support = capability.get('QoS_support', False)
-            self.reserved_percentage = capability['reserved_percentage']
+            self.reserved_percentage = capability.get('reserved_percentage', 0)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
