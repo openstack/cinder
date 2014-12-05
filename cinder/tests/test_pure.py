@@ -709,6 +709,26 @@ class FlashArrayRESTTestCase(FlashArrayBaseTestCase):
         self.assert_error_propagates([mock_req], self.array.list_hosts,
                                      **self.kwargs)
 
+    def test_create_host(self, mock_req):
+        mock_req.return_value = self.result
+        host_name = "host1"
+        params = {'iqnlist': ['iqn1']}
+        result = self.array.create_host(host_name, iqnlist=['iqn1'])
+        self.assertEqual(result, self.result)
+        mock_req.assert_called_with(self.array, "POST", "host/" + host_name,
+                                    params)
+        self.assert_error_propagates([mock_req], self.array.create_host,
+                                     host_name, iqnlist=['iqn1'])
+
+    def test_delete_host(self, mock_req):
+        mock_req.return_value = self.result
+        host_name = "host1"
+        result = self.array.delete_host(host_name)
+        self.assertEqual(result, self.result)
+        mock_req.assert_called_with(self.array, "DELETE", "host/" + host_name)
+        self.assert_error_propagates([mock_req], self.array.delete_host,
+                                     host_name)
+
     def test_connect_host(self, mock_req):
         mock_req.return_value = self.result
         result = self.array.connect_host("host-name", "vol-name",
