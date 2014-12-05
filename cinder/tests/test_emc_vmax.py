@@ -275,7 +275,7 @@ class FakeEcomConnection():
 
     def InvokeMethod(self, MethodName, Service, ElementName=None, InPool=None,
                      ElementType=None, Size=None,
-                     SyncType=None, SourceElement=None,
+                     SyncType=None, SourceElement=None, TargetElement=None,
                      Operation=None, Synchronization=None,
                      TheElements=None, TheElement=None,
                      LUNames=None, InitiatorPortIDs=None, DeviceAccesses=None,
@@ -663,6 +663,13 @@ class FakeEcomConnection():
         instance = Fake_CIM_TierPolicyServiceCapabilities()
         fakeinstance = instance.fake_getpolicyinstance()
         return fakeinstance
+
+    def _getinstance_syncsvsv(self, objectpath):
+        svInstance = {}
+        svInstance['SyncedElement'] = 'SyncedElement'
+        svInstance['SystemElement'] = 'SystemElement'
+        svInstance['PercentSynced'] = 100
+        return svInstance
 
     def _default_getinstance(self, objectpath):
         return objectpath
@@ -1301,13 +1308,28 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         'volume_get',
         return_value=EMCVMAXCommonData.test_source_volume)
     @mock.patch.object(
+        EMCVMAXUtils,
+        'get_volume_meta_head',
+        return_value=[EMCVMAXCommonData.test_volume])
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'get_meta_members_capacity_in_bit',
+        return_value=[1234567, 7654321])
+    @mock.patch.object(
         EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    def test_create_snapshot_no_fast_success(
-            self, mock_volume_type,
-            mock_volume, mock_sync_sv):
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    def test_create_snapshot_different_sizes_meta_no_fast_success(
+            self, mock_volume_type, mock_volume,
+            mock_meta, mock_size, mock_pool):
         self.data.test_volume['volume_name'] = "vmax-1234567"
+        common = self.driver.common
+        volumeDict = {'classname': u'Symm_StorageVolume',
+                      'keybindings': EMCVMAXCommonData.keybindings}
+        common.provision.create_volume_from_pool = (
+            mock.Mock(return_value=(volumeDict, 0L)))
+        common.provision.get_volume_dict_from_job = (
+            mock.Mock(return_value=volumeDict))
         self.driver.create_snapshot(self.data.test_volume)
 
     def test_create_snapshot_no_fast_failed(self):
@@ -1321,19 +1343,22 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'ISCSINoFAST'})
     @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
-    @mock.patch.object(
         EMCVMAXCommon,
         '_find_storage_sync_sv_sv',
         return_value=(None, None))
-    def test_create_volume_from_snapshot_no_fast_success(
-            self, mock_volume_type,
-            mock_volume, mock_sync_sv):
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'get_volume_meta_head',
+        return_value=[EMCVMAXCommonData.test_volume])
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'get_meta_members_capacity_in_bit',
+        return_value=[1234567])
+    def test_create_volume_from_same_size_meta_snapshot(
+            self, mock_volume_type, mock_sync_sv, mock_meta, mock_size):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.create_volume_from_snapshot(
-            self.data.test_volume, EMCVMAXCommonData.test_source_volume)
+            self.data.test_volume, self.data.test_volume)
 
     def test_create_volume_from_snapshot_no_fast_failed(self):
         self.data.test_volume['volume_name'] = "vmax-1234567"
@@ -1354,8 +1379,13 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         EMCVMAXCommon,
         '_find_storage_sync_sv_sv',
         return_value=(None, None))
-    def test_create_clone_no_fast_success(self, mock_volume_type,
-                                          mock_volume, mock_sync_sv):
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'get_volume_meta_head',
+        return_value=None)
+    def test_create_clone_simple_volume_no_fast_success(
+            self, mock_volume_type, mock_volume, mock_sync_sv,
+            mock_simple_volume):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.create_cloned_volume(self.data.test_volume,
                                          EMCVMAXCommonData.test_source_volume)
@@ -1737,37 +1767,41 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'ISCSIFAST',
-                      'FASTPOLICY': 'FC_GOLD1'})
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_storage_masking_group',
-        return_value=EMCVMAXCommonData.storagegroupname)
+        return_value={'volume_backend_name': 'ISCSIFAST'})
     @mock.patch.object(
         FakeDB,
         'volume_get',
         return_value=EMCVMAXCommonData.test_source_volume)
     @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_storage_configuration_service',
+        EMCVMAXFast,
+        'get_pool_associated_to_policy',
         return_value=1)
     @mock.patch.object(
         EMCVMAXUtils,
-        'find_controller_configuration_service',
-        return_value=1)
+        'get_volume_meta_head',
+        return_value=[EMCVMAXCommonData.test_volume])
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'get_meta_members_capacity_in_bit',
+        return_value=[1234567, 7654321])
     @mock.patch.object(
         EMCVMAXCommon,
-        '_get_or_create_default_storage_group',
-        return_value=1)
-    def test_create_snapshot_fast_success(
-            self, mock_volume_type, mock_storage_group, mock_volume,
-            mock_sync_sv, mock_storage_config_service, mock_controller_service,
-            mock_default_sg):
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    def test_create_snapshot_different_sizes_meta_fast_success(
+            self, mock_volume_type, mock_volume, mock_meta,
+            mock_size, mock_pool, mock_policy):
         self.data.test_volume['volume_name'] = "vmax-1234567"
+        common = self.driver.common
+
+        volumeDict = {'classname': u'Symm_StorageVolume',
+                      'keybindings': EMCVMAXCommonData.keybindings}
+        common.provision.create_volume_from_pool = (
+            mock.Mock(return_value=(volumeDict, 0L)))
+        common.provision.get_volume_dict_from_job = (
+            mock.Mock(return_value=volumeDict))
+        common.fast.is_volume_in_default_SG = (
+            mock.Mock(return_value=True))
         self.driver.create_snapshot(self.data.test_volume)
 
     def test_create_snapshot_fast_failed(self):
@@ -1779,39 +1813,30 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'ISCSIFAST',
-                      'FASTPOLICY': 'FC_GOLD1'})
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_storage_masking_group',
-        return_value=EMCVMAXCommonData.storagegroupname)
-    @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
+        return_value={'volume_backend_name': 'ISCSIFAST'})
     @mock.patch.object(
         EMCVMAXCommon,
         '_find_storage_sync_sv_sv',
         return_value=(None, None))
     @mock.patch.object(
         EMCVMAXUtils,
-        'find_storage_configuration_service',
-        return_value=1)
+        'get_volume_meta_head',
+        return_value=[EMCVMAXCommonData.test_volume])
     @mock.patch.object(
         EMCVMAXUtils,
-        'find_controller_configuration_service',
-        return_value=1)
-    @mock.patch.object(
-        EMCVMAXCommon,
-        '_get_or_create_default_storage_group',
-        return_value=1)
-    def test_create_volume_from_snapshot_fast_success(
-            self, mock_volume_type, mock_storage_group, mock_volume,
-            mock_sync_sv, mock_storage_config_service, mock_controller_service,
-            mock_default_sg):
+        'get_meta_members_capacity_in_bit',
+        return_value=[1234567])
+    def test_create_volume_from_same_size_meta_snapshot(
+            self, mock_volume_type, mock_sync_sv, mock_meta, mock_size):
         self.data.test_volume['volume_name'] = "vmax-1234567"
+        self.driver.common.utils.find_storage_configuration_service = (
+            mock.Mock(return_value=EMCVMAXCommonData.storage_system))
+        self.driver.common._get_or_create_default_storage_group = (
+            mock.Mock(return_value=EMCVMAXCommonData.default_storage_group))
+        self.driver.common.fast.is_volume_in_default_SG = (
+            mock.Mock(return_value=True))
         self.driver.create_volume_from_snapshot(
-            self.data.test_volume, EMCVMAXCommonData.test_source_volume)
+            self.data.test_volume, self.data.test_volume)
 
     @mock.patch.object(
         volume_types,
@@ -1826,9 +1851,13 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         EMCVMAXCommon,
         '_find_storage_sync_sv_sv',
         return_value=(None, None))
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'get_volume_meta_head',
+        return_value=None)
     def test_create_volume_from_snapshot_fast_failed(
-            self, mock_volume_type,
-            mock_rep_service, mock_sync_sv):
+            self, mock_type, mock_rep_service, mock_sync_sv, mock_meta):
+
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume_from_snapshot,
@@ -1838,12 +1867,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'ISCSIFAST',
-                      'FASTPOLICY': 'FC_GOLD1'})
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_storage_masking_group',
-        return_value=EMCVMAXCommonData.storagegroupname)
+        return_value={'volume_backend_name': 'ISCSIFAST'})
     @mock.patch.object(
         FakeDB,
         'volume_get',
@@ -1854,38 +1878,51 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         return_value=(None, None))
     @mock.patch.object(
         EMCVMAXUtils,
-        'find_storage_configuration_service',
-        return_value=1)
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_controller_configuration_service',
-        return_value=1)
-    @mock.patch.object(
-        EMCVMAXCommon,
-        '_get_or_create_default_storage_group',
-        return_value=1)
-    def test_create_clone_fast_success(self, mock_volume_type,
-                                       mock_storage_group, mock_volume,
-                                       mock_sync_sv,
-                                       mock_storage_config_service,
-                                       mock_controller_service,
-                                       mock_default_sg):
+        'get_volume_meta_head',
+        return_value=None)
+    def test_create_clone_simple_volume_fast_success(
+            self, mock_volume_type, mock_volume, mock_sync_sv,
+            mock_simple_volume):
         self.data.test_volume['volume_name'] = "vmax-1234567"
+        self.driver.common.utils.find_storage_configuration_service = (
+            mock.Mock(return_value=EMCVMAXCommonData.storage_system))
+        self.driver.common._get_or_create_default_storage_group = (
+            mock.Mock(return_value=EMCVMAXCommonData.default_storage_group))
+        self.driver.common.fast.is_volume_in_default_SG = (
+            mock.Mock(return_value=True))
         self.driver.create_cloned_volume(self.data.test_volume,
                                          EMCVMAXCommonData.test_source_volume)
 
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'ISCSIFAST',
-                      'FASTPOLICY': 'FC_GOLD1'})
+        return_value={'volume_backend_name': 'ISCSIFAST'})
+    @mock.patch.object(
+        FakeDB,
+        'volume_get',
+        return_value=EMCVMAXCommonData.test_source_volume)
+    @mock.patch.object(
+        EMCVMAXFast,
+        'get_pool_associated_to_policy',
+        return_value=1)
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'get_volume_meta_head',
+        return_value=[EMCVMAXCommonData.test_volume])
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'get_meta_members_capacity_in_bit',
+        return_value=[1234567, 7654321])
     @mock.patch.object(
         EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    def test_create_clone_fast_failed(self, mock_volume_type,
-                                      mock_sync_sv):
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    def test_create_clone_fast_failed(
+            self, mock_volume_type, mock_vol, mock_policy, mock_meta,
+            mock_size, mock_pool):
         self.data.test_volume['volume_name'] = "vmax-1234567"
+        self.driver.common._modify_and_get_composite_volume_instance = (
+            mock.Mock(return_value=(1L, None)))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cloned_volume,
                           self.data.test_volume,
@@ -2228,81 +2265,6 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
                           self.driver.extend_volume,
                           self.data.test_volume,
                           newSize)
-
-    @mock.patch.object(
-        volume_types,
-        'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'FCNoFAST'})
-    @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
-    @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    def test_create_snapshot_no_fast_success(
-            self, mock_volume_type,
-            mock_volume, mock_sync_sv):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
-        self.driver.create_snapshot(self.data.test_volume)
-
-    def test_create_snapshot_no_fast_failed(self):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_snapshot,
-                          self.data.test_volume)
-
-    @mock.patch.object(
-        volume_types,
-        'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'FCNoFAST'})
-    @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
-    @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    def test_create_volume_from_snapshot_no_fast_success(
-            self, mock_volume_type,
-            mock_volume, mock_sync_sv):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
-        self.driver.create_volume_from_snapshot(
-            self.data.test_volume, EMCVMAXCommonData.test_source_volume)
-
-    def test_create_volume_from_snapshot_no_fast_failed(self):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_volume_from_snapshot,
-                          self.data.test_volume,
-                          EMCVMAXCommonData.test_source_volume)
-
-    @mock.patch.object(
-        volume_types,
-        'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'FCNoFAST'})
-    @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
-    @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    def test_create_clone_no_fast_success(self, mock_volume_type,
-                                          mock_volume, mock_sync_sv):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
-        self.driver.create_cloned_volume(self.data.test_volume,
-                                         EMCVMAXCommonData.test_source_volume)
-
-    def test_create_clone_no_fast_failed(self):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_cloned_volume,
-                          self.data.test_volume,
-                          EMCVMAXCommonData.test_source_volume)
 
     @mock.patch.object(
         volume_types,
@@ -2652,39 +2614,41 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'FCFAST',
-                      'FASTPOLICY': 'FC_GOLD1'})
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_storage_masking_group',
-        return_value=EMCVMAXCommonData.storagegroupname)
+        return_value={'volume_backend_name': 'FCFAST'})
     @mock.patch.object(
         FakeDB,
         'volume_get',
         return_value=EMCVMAXCommonData.test_source_volume)
     @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_storage_configuration_service',
+        EMCVMAXFast,
+        'get_pool_associated_to_policy',
         return_value=1)
     @mock.patch.object(
         EMCVMAXUtils,
-        'find_controller_configuration_service',
-        return_value=1)
+        'get_volume_meta_head',
+        return_value=[EMCVMAXCommonData.test_volume])
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'get_meta_members_capacity_in_bit',
+        return_value=[1234567, 7654321])
     @mock.patch.object(
         EMCVMAXCommon,
-        '_get_or_create_default_storage_group',
-        return_value=1)
-    def test_create_snapshot_fast_success(self, mock_volume_type,
-                                          mock_storage_group, mock_volume,
-                                          mock_sync_sv,
-                                          mock_storage_config_service,
-                                          mock_controller_config_service,
-                                          mock_default_sg):
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    def test_create_snapshot_different_sizes_meta_fast_success(
+            self, mock_volume_type, mock_volume, mock_meta,
+            mock_size, mock_pool, mock_policy):
         self.data.test_volume['volume_name'] = "vmax-1234567"
+        common = self.driver.common
+
+        volumeDict = {'classname': u'Symm_StorageVolume',
+                      'keybindings': EMCVMAXCommonData.keybindings}
+        common.provision.create_volume_from_pool = (
+            mock.Mock(return_value=(volumeDict, 0L)))
+        common.provision.get_volume_dict_from_job = (
+            mock.Mock(return_value=volumeDict))
+        common.fast.is_volume_in_default_SG = (
+            mock.Mock(return_value=True))
         self.driver.create_snapshot(self.data.test_volume)
 
     def test_create_snapshot_fast_failed(self):
@@ -2696,12 +2660,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'FCFAST',
-                      'FASTPOLICY': 'FC_GOLD1'})
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_storage_masking_group',
-        return_value=EMCVMAXCommonData.storagegroupname)
+        return_value={'volume_backend_name': 'FCFAST'})
     @mock.patch.object(
         FakeDB,
         'volume_get',
@@ -2712,100 +2671,52 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         return_value=(None, None))
     @mock.patch.object(
         EMCVMAXUtils,
-        'find_storage_configuration_service',
-        return_value=1)
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_controller_configuration_service',
-        return_value=1)
-    @mock.patch.object(
-        EMCVMAXCommon,
-        '_get_or_create_default_storage_group',
-        return_value=1)
-    def test_create_volume_from_snapshot_fast_success(
-            self, mock_volume_type, mock_storage_group, mock_volume,
-            mock_sync_sv, mock_storage_config_service,
-            mock_controller_config_service, mock_default_sg):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
-        self.driver.create_volume_from_snapshot(
-            self.data.test_volume, EMCVMAXCommonData.test_source_volume)
-
-    @mock.patch.object(
-        volume_types,
-        'get_volume_type_extra_specs',
-        return_value={'storagetype: pool': 'gold',
-                      'volume_backend_name': 'FCFAST'})
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_replication_service',
+        'get_volume_meta_head',
         return_value=None)
-    @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    def test_create_volume_from_snapshot_fast_failed(self, mock_volume_type,
-                                                     mock_rep_service,
-                                                     mock_sync_sv):
+    def test_create_clone_simple_volume_fast_success(
+            self, mock_volume_type,
+            mock_volume, mock_sync_sv, mock_meta):
         self.data.test_volume['volume_name'] = "vmax-1234567"
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_volume_from_snapshot,
-                          self.data.test_volume,
-                          EMCVMAXCommonData.test_source_volume)
-
-    @mock.patch.object(
-        volume_types,
-        'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'FCFAST',
-                      'FASTPOLICY': 'FC_GOLD1'})
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_storage_masking_group',
-        return_value=EMCVMAXCommonData.storagegroupname)
-    @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
-    @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_storage_configuration_service',
-        return_value=1)
-    @mock.patch.object(
-        EMCVMAXUtils,
-        'find_controller_configuration_service',
-        return_value=1)
-    @mock.patch.object(
-        EMCVMAXCommon,
-        '_get_or_create_default_storage_group',
-        return_value=1)
-    def test_create_clone_fast_success(self, mock_volume_type,
-                                       mock_storage_group, mock_volume,
-                                       mock_sync_sv,
-                                       mock_storage_config_service,
-                                       mock_controller_config_service,
-                                       mock_default_sg):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
-        self.driver.create_cloned_volume(self.data.test_volume,
-                                         EMCVMAXCommonData.test_source_volume)
+        self.driver.common.utils.find_storage_configuration_service = (
+            mock.Mock(return_value=EMCVMAXCommonData.storage_system))
+        self.driver.common._get_or_create_default_storage_group = (
+            mock.Mock(return_value=EMCVMAXCommonData.default_storage_group))
+        self.driver.common.fast.is_volume_in_default_SG = (
+            mock.Mock(return_value=True))
+        self.driver.create_cloned_volume(
+            self.data.test_volume,
+            EMCVMAXCommonData.test_source_volume)
 
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'FCFAST'})
     @mock.patch.object(
+        FakeDB,
+        'volume_get',
+        return_value=EMCVMAXCommonData.test_source_volume)
+    @mock.patch.object(
+        EMCVMAXFast,
+        'get_pool_associated_to_policy',
+        return_value=1)
+    @mock.patch.object(
         EMCVMAXUtils,
-        'find_replication_service',
-        return_value=None)
+        'get_volume_meta_head',
+        return_value=[EMCVMAXCommonData.test_volume])
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'get_meta_members_capacity_in_bit',
+        return_value=[1234567, 7654321])
     @mock.patch.object(
         EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    def test_create_clone_fast_failed(self, mock_volume_type,
-                                      mock_rep_service, mock_sync_sv):
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    def test_create_clone_fast_failed(
+            self, mock_volume_type, mock_vol,
+            mock_policy, mock_meta, mock_size, mock_pool):
         self.data.test_volume['volume_name'] = "vmax-1234567"
+        self.driver.common._modify_and_get_composite_volume_instance = (
+            mock.Mock(return_value=(1L, None)))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cloned_volume,
                           self.data.test_volume,
