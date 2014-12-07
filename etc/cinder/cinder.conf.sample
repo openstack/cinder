@@ -285,6 +285,11 @@
 # with big service catalogs). (integer value)
 #max_header_line=16384
 
+# If False, closes the client socket connection explicitly.
+# Setting it to True to maintain backward compatibility.
+# Recommended setting is set it to False. (boolean value)
+#wsgi_keep_alive=true
+
 # Sets the value of TCP_KEEPIDLE in seconds for each server
 # socket. Not supported on OS X. (integer value)
 #tcp_keepidle=600
