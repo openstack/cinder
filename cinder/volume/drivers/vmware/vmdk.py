@@ -1459,11 +1459,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 req[hub.DatastoreSelector.HARD_ANTI_AFFINITY_DS] = (
                     [datastore.value])
 
-            if need_profile_change:
-                LOG.debug("Backing: %(backing)s needs a profile change to: "
-                          "%(profile)s.",
-                          {'backing': backing,
-                           'profile': new_profile})
+            if new_profile:
                 req[hub.DatastoreSelector.PROFILE_NAME] = new_profile
 
             # Select datastore satisfying the requirements.
@@ -1530,6 +1526,10 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
         # Update the backing's storage profile if needed.
         if need_profile_change:
+            LOG.debug("Backing: %(backing)s needs a profile change to:"
+                      " %(profile)s.",
+                      {'backing': backing,
+                       'profile': new_profile})
             profile_id = None
             if new_profile is not None:
                 profile_id = self.ds_sel.get_profile_id(new_profile)
