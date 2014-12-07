@@ -1542,6 +1542,11 @@
 # value of zero disables cloning (integer value)
 #rbd_max_clone_depth=5
 
+# Timeout value (in seconds) used when connecting to ceph
+# cluster. If value < 0, no timeout is set and default
+# librados value is used. (integer value)
+#rados_connect_timeout=-1
+
 
 #
 # Options defined in cinder.volume.drivers.san.hp.hp_3par_common

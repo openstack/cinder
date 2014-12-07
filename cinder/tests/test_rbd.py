@@ -704,6 +704,8 @@ class RBDTestCase(test.TestCase):
 
     @common_mocks
     def test_connect_to_rados(self):
+        # Default
+        self.cfg.rados_connect_timeout = -1
         self.mock_rados.Rados.connect = mock.Mock()
         self.mock_rados.Rados.shutdown = mock.Mock()
         self.mock_rados.Rados.open_ioctx = mock.Mock()
@@ -725,6 +727,12 @@ class RBDTestCase(test.TestCase):
         self.assertIsInstance(ret[0], self.mock_rados.Rados)
         self.assertEqual(ret[1], self.mock_rados.Rados.ioctx)
         self.mock_rados.Rados.open_ioctx.assert_called_with('alt_pool')
+
+        # With timeout
+        self.cfg.rados_connect_timeout = 1
+        self.mock_rados.Rados.connect.reset_mock()
+        self.driver._connect_to_rados()
+        self.mock_rados.Rados.connect.assert_called_once_with(timeout=1)
 
         # error
         self.mock_rados.Rados.open_ioctx.reset_mock()
