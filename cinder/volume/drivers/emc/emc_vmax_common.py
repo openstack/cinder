@@ -116,87 +116,10 @@ class EMCVMAXCommon(object):
         volumeName = volume['name']
 
         extraSpecs = self._initial_setup(volume)
-        memberCount, errorDesc = self.utils.determine_member_count(
-            volume['size'], extraSpecs[MEMBERCOUNT], extraSpecs[COMPOSITETYPE])
-        if errorDesc is not None:
-            exceptionMessage = (_("The striped meta count of %(memberCount)s "
-                                  "is too small for volume: %(volumeName)s. "
-                                  "with size %(volumeSize)s ")
-                                % {'memberCount': memberCount,
-                                   'volumeName': volumeName,
-                                   'volumeSize': volume['size']})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
-
         self.conn = self._get_ecom_connection()
 
-        poolInstanceName, storageSystemName = (
-            self._get_pool_and_storage_system(extraSpecs))
-
-        LOG.debug("Create Volume: %(volume)s  Pool: %(pool)s  "
-                  "Storage System: %(storageSystem)s "
-                  "Size: %(size)lu "
-                  % {'volume': volumeName,
-                     'pool': poolInstanceName,
-                     'storageSystem': storageSystemName,
-                     'size': volumeSize})
-
-        elementCompositionService = (
-            self.utils.find_element_composition_service(self.conn,
-                                                        storageSystemName))
-
-        storageConfigService = self.utils.find_storage_configuration_service(
-            self.conn, storageSystemName)
-
-        # If FAST is intended to be used we must first check that the pool
-        # is associated with the correct storage tier
-        if extraSpecs[FASTPOLICY] is not None:
-            foundPoolInstanceName = self.fast.get_pool_associated_to_policy(
-                self.conn, extraSpecs[FASTPOLICY], extraSpecs[ARRAY],
-                storageConfigService, poolInstanceName)
-            if foundPoolInstanceName is None:
-                exceptionMessage = (_("Pool: %(poolName)s. "
-                                      "is not associated to storage tier for "
-                                      "fast policy %(fastPolicy)s.")
-                                    % {'poolName': extraSpecs[POOL],
-                                       'fastPolicy': extraSpecs[FASTPOLICY]})
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
-
-        compositeType = self.utils.get_composite_type(
-            extraSpecs[COMPOSITETYPE])
-
-        volumeDict, rc = self.provision.create_composite_volume(
-            self.conn, elementCompositionService, volumeSize, volumeName,
-            poolInstanceName, compositeType, memberCount)
-
-        # Now that we have already checked that the pool is associated with
-        # the correct storage tier and the volume was successfully created
-        # add the volume to the default storage group created for
-        # volumes in pools associated with this fast policy
-        if extraSpecs[FASTPOLICY]:
-            LOG.info(_LI("Adding volume: %(volumeName)s to "
-                         "default storage group "
-                         "for FAST policy: %(fastPolicyName)s "),
-                     {'volumeName': volumeName,
-                      'fastPolicyName': extraSpecs[FASTPOLICY]})
-            defaultStorageGroupInstanceName = (
-                self._get_or_create_default_storage_group(
-                    self.conn, storageSystemName, volumeDict,
-                    volumeName, extraSpecs[FASTPOLICY]))
-            if not defaultStorageGroupInstanceName:
-                exceptionMessage = (_(
-                    "Unable to create or get default storage group for "
-                    "FAST policy: %(fastPolicyName)s. ")
-                    % {'fastPolicyName': extraSpecs[FASTPOLICY]})
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
-
-            self._add_volume_to_default_storage_group_on_create(
-                volumeDict, volumeName, storageConfigService,
-                storageSystemName, extraSpecs[FASTPOLICY])
+        rc, volumeDict, storageSystemName = self._create_composite_volume(
+            volume, extraSpecs, volumeName, volumeSize)
 
         LOG.info(_LI("Leaving create_volume: %(volumeName)s  "
                      "Return code: %(rc)lu "
@@ -359,7 +282,7 @@ class EMCVMAXCommon(object):
             # Device is already mapped so we will leave the state as is
             deviceNumber = deviceInfoDict['hostlunid']
             LOG.info(_LI("Volume %(volume)s is already mapped. "
-                         "The device number is  %(deviceNumber)s ")
+                         "The device number is %(deviceNumber)s ")
                      % {'volume': volumeName,
                         'deviceNumber': deviceNumber})
         else:
@@ -1072,7 +995,7 @@ class EMCVMAXCommon(object):
                 conn, controllerConfigurationService, volumeInstance,
                 volumeName, targetFastPolicyName))
         if assocDefaultStorageGroupName is None:
-            errorMsg = (_(
+            errorMsg = (_LE(
                 "Failed to add %(volumeName)s "
                 "to default storage group for fast policy "
                 "%(fastPolicyName)s ")
@@ -1113,7 +1036,7 @@ class EMCVMAXCommon(object):
                           "and fast policy"))
 
         if targetArraySerialNumber not in sourceArraySerialNumber:
-            errorMessage = (_(
+            errorMessage = (_LE(
                 "The source array : %(sourceArraySerialNumber)s does not "
                 "match the target array: %(targetArraySerialNumber)s"
                 "skipping storage-assisted migration")
@@ -1129,8 +1052,8 @@ class EMCVMAXCommon(object):
         assocPoolInstance = self.conn.GetInstance(
             assocPoolInstanceName)
         if assocPoolInstance['ElementName'] == targetPoolName:
-            errorMessage = (_("No action required. Volume : %(volumeName)s is "
-                              "already part of pool : %(pool)s")
+            errorMessage = (_LE("No action required. Volume : %(volumeName)s "
+                                "is already part of pool : %(pool)s")
                             % {'volumeName': volumeName,
                                'pool': targetPoolName})
             LOG.error(errorMessage)
@@ -1139,7 +1062,7 @@ class EMCVMAXCommon(object):
         LOG.info(_LI("Volume status is: %s"), volumeStatus)
         if (host['capabilities']['storage_protocol'] != self.protocol and
                 (volumeStatus != 'available' and volumeStatus != 'retyping')):
-            errorMessage = (_(
+            errorMessage = (_LE(
                 "Only available volumes can be migrated between "
                 "different protocols"))
             LOG.error(errorMessage)
@@ -1884,7 +1807,7 @@ class EMCVMAXCommon(object):
         cloneName = cloneVolume['name']
 
         LOG.info(_LI("Create a Clone from Volume: Clone "
-                     "Volume: %(cloneName)s  "
+                     "Volume: %(cloneName)s "
                      "Source Volume: %(sourceName)s")
                  % {'cloneName': cloneName,
                     'sourceName': sourceName})
@@ -1893,15 +1816,6 @@ class EMCVMAXCommon(object):
 
         sourceInstance = self._find_lun(sourceVolume)
         storageSystem = sourceInstance['SystemName']
-
-        LOG.debug("Create Cloned Volume: Volume: %(cloneName)s  "
-                  "Source Volume: %(sourceName)s  Source Instance: "
-                  "%(sourceInstance)s  Storage System: %(storageSystem)s."
-                  % {'cloneName': cloneName,
-                     'sourceName': sourceName,
-                     'sourceInstance': sourceInstance.path,
-                     'storageSystem': storageSystem})
-
         repServiceInstanceName = self.utils.find_replication_service(
             self.conn, storageSystem)
 
@@ -1917,10 +1831,133 @@ class EMCVMAXCommon(object):
                      'elementname': cloneName,
                      'sourceelement': sourceInstance.path})
 
+        return self._examine_source_and_create_clone(
+            repServiceInstanceName, cloneVolume, sourceVolume,
+            sourceInstance, extraSpecs)
+
+    def _examine_source_and_create_clone(self, repServiceInstanceName,
+                                         cloneVolume, sourceVolume,
+                                         sourceInstance, extraSpecs):
+        """Create a clone (v2).
+
+        :param repServiceInstanceName: the replication service
+        :param cloneVolume: the clone volume object
+        :param sourceVolume: the source volume object
+        :param sourceInstance: the device ID of the volume
+        :param fastPolicyName: the FAST policy name(if it exists)
+        :returns: rc
+        """
+        # check if the source volume contains any meta devices
+        metaHeadInstanceName = self.utils.get_volume_meta_head(
+            self.conn, sourceInstance.path)
+
+        if metaHeadInstanceName is None:  # simple volume
+            return self._create_replica_and_delete_clone_relationship(
+                repServiceInstanceName, cloneVolume, sourceVolume,
+                sourceInstance, None, extraSpecs)
+        else:  # composite volume with meta device members
+            # check if the meta members' capacity
+            metaMemberInstanceNames = (
+                self.utils.get_meta_members_of_composite_volume(
+                    self.conn, metaHeadInstanceName))
+            volumeCapacities = self.utils.get_meta_members_capacity_in_bit(
+                self.conn, metaMemberInstanceNames)
+            LOG.debug("Volume capacities:  %(metasizes)s "
+                      % {'metasizes': volumeCapacities})
+            if len(set(volumeCapacities)) == 1:
+                LOG.debug("Meta volume all of the same size")
+                return self._create_replica_and_delete_clone_relationship(
+                    repServiceInstanceName, cloneVolume, sourceVolume,
+                    sourceInstance, None, extraSpecs)
+
+            LOG.debug("Meta volumes are of different sizes: "
+                      "%d different sizes." % len(set(volumeCapacities)))
+
+            baseTargetVolumeInstance = None
+            for volumeSizeInbits in volumeCapacities:
+                if baseTargetVolumeInstance is None:  # Create base volume
+                    baseVolumeName = "TargetBaseVol"
+                    volume = {'size': int(self.utils.convert_bits_to_gbs(
+                        volumeSizeInbits))}
+                    rc, baseVolumeDict, storageSystemName = (
+                        self._create_composite_volume(
+                            volume, extraSpecs,
+                            baseVolumeName, volumeSizeInbits))
+                    baseTargetVolumeInstance = self.utils.find_volume_instance(
+                        self.conn, baseVolumeDict, baseVolumeName)
+                    LOG.info(_LI("Base target volume %(targetVol)s created. "
+                                 "Capacity in bits: %(capInBits)lu ")
+                             % {'capInBits': volumeSizeInbits,
+                                'targetVol': baseTargetVolumeInstance.path})
+                else:  # create append volume
+                    targetVolumeName = "MetaVol"
+                    volume = {'size': int(self.utils.convert_bits_to_gbs(
+                        volumeSizeInbits))}
+                    storageConfigService = (
+                        self.utils.find_storage_configuration_service(
+                            self.conn, storageSystemName))
+                    unboundVolumeInstance = (
+                        self._create_and_get_unbound_volume(
+                            self.conn, storageConfigService,
+                            baseTargetVolumeInstance.path, volumeSizeInbits))
+                    if unboundVolumeInstance is None:
+                        exceptionMessage = (_(
+                            "Error Creating unbound volume."))
+                        LOG.error(exceptionMessage)
+                        raise exception.VolumeBackendAPIException(
+                            data=exceptionMessage)
+
+                    # append the new unbound volume to the
+                    # base target composite volume
+                    baseTargetVolumeInstance = self.utils.find_volume_instance(
+                        self.conn, baseVolumeDict, baseVolumeName)
+                    elementCompositionService = (
+                        self.utils.find_element_composition_service(
+                            self.conn, storageSystemName))
+                    compositeType = self.utils.get_composite_type(
+                        extraSpecs[COMPOSITETYPE])
+                    rc, modifiedVolumeDict = (
+                        self._modify_and_get_composite_volume_instance(
+                            self.conn, elementCompositionService,
+                            baseTargetVolumeInstance,
+                            unboundVolumeInstance.path,
+                            targetVolumeName, compositeType))
+                    if modifiedVolumeDict is None:
+                        exceptionMessage = (_(
+                            "Error appending volume %(volumename)s to "
+                            "target base volume")
+                            % {'volumename': targetVolumeName})
+                        LOG.error(exceptionMessage)
+                        raise exception.VolumeBackendAPIException(
+                            data=exceptionMessage)
+
+            LOG.debug("Create replica for meta members of different sizes.")
+            return self._create_replica_and_delete_clone_relationship(
+                repServiceInstanceName, cloneVolume, sourceVolume,
+                sourceInstance, baseTargetVolumeInstance, extraSpecs)
+
+    def _create_replica_and_delete_clone_relationship(
+            self, repServiceInstanceName, cloneVolume, sourceVolume,
+            sourceInstance, targetInstance, extraSpecs):
+        """Helper function to create a clone and delete the relationship.
+
+        This function creates clone of the source volume and then
+        delete the clone replatinship once the copy completes.
+
+        :param repServiceInstanceName: replication service instance name
+        :param cloneVolume: target volume of the clone operation
+        :param sourceVolume: source volume of the clone operation
+        :param sourceInstance: instance of ECOM StorageVolume object
+        :param targetInstance: instance of ECOM StorageVolume object
+        :param extraSpecs: extraSpecs info
+        :returns: rc the return code, cloneDict the cloned volume dictionary
+        """
+        sourceName = sourceVolume['name']
+        cloneName = cloneVolume['name']
         # Create a Clone from source volume
         rc, job = self.provision.create_element_replica(
             self.conn, repServiceInstanceName, cloneName, sourceName,
-            sourceInstance)
+            sourceInstance, targetInstance)
 
         cloneDict = self.provision.get_volume_dict_from_job(
             self.conn, job['Job'])
@@ -1960,9 +1997,15 @@ class EMCVMAXCommon(object):
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
 
-            self._add_volume_to_default_storage_group_on_create(
-                cloneDict, cloneName, storageConfigService, storageSystemName,
-                extraSpecs[FASTPOLICY])
+            # check if the clone/snapshot volume already part of the default sg
+            cloneInstance = self.utils.find_volume_instance(
+                self.conn, cloneDict, cloneName)
+            inDefaultSG = self.fast.is_volume_in_default_SG(
+                self.conn, cloneInstance.path)
+            if inDefaultSG is False:
+                self._add_volume_to_default_storage_group_on_create(
+                    cloneDict, cloneName, storageConfigService,
+                    storageSystemName, extraSpecs[FASTPOLICY])
 
         LOG.debug("Leaving _create_cloned_volume: Volume: "
                   "%(cloneName)s Source Volume: %(sourceName)s  "
@@ -2051,7 +2094,7 @@ class EMCVMAXCommon(object):
                         self.conn, controllerConfigurationService,
                         volumeInstance, volumeName, fastPolicyName))
                 if assocDefaultStorageGroupName is None:
-                    errorMsg = (_(
+                    errorMsg = (_LE(
                         "Failed to Roll back to re-add volume %(volumeName)s "
                         "to default storage group for fast policy "
                         "%(fastPolicyName)s: Please contact your sysadmin to "
@@ -2218,7 +2261,7 @@ class EMCVMAXCommon(object):
             self.conn, maskingViewInstanceName)
 
     def get_masking_view_by_volume(self, volume):
-        """Given volume, retrieve the masking view instance name
+        """Given volume, retrieve the masking view instance name.
 
         :param volume: the volume
         :param mvInstanceName: masking view instance name
@@ -2231,7 +2274,7 @@ class EMCVMAXCommon(object):
             self.conn, volumeInstance)
 
     def get_masking_views_by_port_group(self, portGroupInstanceName):
-        """Given port group, retrieve the masking view instance name
+        """Given port group, retrieve the masking view instance name.
 
         :param : the volume
         :param mvInstanceName: masking view instance name
@@ -2241,3 +2284,93 @@ class EMCVMAXCommon(object):
                   % {'pg': portGroupInstanceName})
         return self.masking.get_masking_views_by_port_group(
             self.conn, portGroupInstanceName)
+
+    def _create_composite_volume(
+            self, volume, extraSpecs, volumeName, volumeSize):
+        """Create a composite volume.
+
+        :param volume: the volume object
+        :param extraSpecs:
+        :param volumeName:
+        :param volumeSize:
+        :returns:
+        """
+        memberCount, errorDesc = self.utils.determine_member_count(
+            volume['size'], extraSpecs[MEMBERCOUNT], extraSpecs[COMPOSITETYPE])
+        if errorDesc is not None:
+            exceptionMessage = (_("The striped meta count of %(memberCount)s "
+                                  "is too small for volume: %(volumeName)s. "
+                                  "with size %(volumeSize)s ")
+                                % {'memberCount': memberCount,
+                                   'volumeName': volumeName,
+                                   'volumeSize': volume['size']})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+        poolInstanceName, storageSystemName = (
+            self._get_pool_and_storage_system(extraSpecs))
+
+        LOG.debug("Create Volume: %(volume)s  Pool: %(pool)s  "
+                  "Storage System: %(storageSystem)s "
+                  "Size: %(size)lu "
+                  % {'volume': volumeName,
+                     'pool': poolInstanceName,
+                     'storageSystem': storageSystemName,
+                     'size': volumeSize})
+
+        elementCompositionService = (
+            self.utils.find_element_composition_service(self.conn,
+                                                        storageSystemName))
+
+        storageConfigService = self.utils.find_storage_configuration_service(
+            self.conn, storageSystemName)
+
+        # If FAST is intended to be used we must first check that the pool
+        # is associated with the correct storage tier
+        if extraSpecs[FASTPOLICY] is not None:
+            foundPoolInstanceName = self.fast.get_pool_associated_to_policy(
+                self.conn, extraSpecs[FASTPOLICY], extraSpecs[ARRAY],
+                storageConfigService, poolInstanceName)
+            if foundPoolInstanceName is None:
+                exceptionMessage = (_("Pool: %(poolName)s. "
+                                      "is not associated to storage tier for "
+                                      "fast policy %(fastPolicy)s.")
+                                    % {'poolName': extraSpecs[POOL],
+                                       'fastPolicy': extraSpecs[FASTPOLICY]})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+
+        compositeType = self.utils.get_composite_type(
+            extraSpecs[COMPOSITETYPE])
+
+        volumeDict, rc = self.provision.create_composite_volume(
+            self.conn, elementCompositionService, volumeSize, volumeName,
+            poolInstanceName, compositeType, memberCount)
+
+        # Now that we have already checked that the pool is associated with
+        # the correct storage tier and the volume was successfully created
+        # add the volume to the default storage group created for
+        # volumes in pools associated with this fast policy
+        if extraSpecs[FASTPOLICY]:
+            LOG.info(_LI("Adding volume: %(volumeName)s to default storage "
+                         "group for FAST policy: %(fastPolicyName)s ")
+                     % {'volumeName': volumeName,
+                        'fastPolicyName': extraSpecs[FASTPOLICY]})
+            defaultStorageGroupInstanceName = (
+                self._get_or_create_default_storage_group(
+                    self.conn, storageSystemName, volumeDict,
+                    volumeName, extraSpecs[FASTPOLICY]))
+            if not defaultStorageGroupInstanceName:
+                exceptionMessage = (_(
+                    "Unable to create or get default storage group for "
+                    "FAST policy: %(fastPolicyName)s. ")
+                    % {'fastPolicyName': extraSpecs[FASTPOLICY]})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+
+            self._add_volume_to_default_storage_group_on_create(
+                volumeDict, volumeName, storageConfigService,
+                storageSystemName, extraSpecs[FASTPOLICY])
+        return rc, volumeDict, storageSystemName
