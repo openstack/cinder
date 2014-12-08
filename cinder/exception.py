@@ -633,6 +633,10 @@ class ExtendVolumeError(CinderException):
     message = _("Error extending volume: %(reason)s")
 
 
+class EvaluatorParseException(Exception):
+    message = _("Error during evaluator parsing: %(reason)s")
+
+
 # Driver specific exceptions
 # Coraid
 class CoraidException(VolumeDriverException):
