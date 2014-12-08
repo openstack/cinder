@@ -15,14 +15,16 @@
 
 import errno
 import os
+import time
 
 from oslo.concurrency import processutils as putils
 from oslo.config import cfg
 from oslo.utils import units
+import six
 
 from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import utils
@@ -58,6 +60,12 @@ nfs_opts = [
                default=None,
                help=('Mount options passed to the nfs client. See section '
                      'of the nfs man page for details.')),
+    cfg.IntOpt('nfs_mount_attempts',
+               default=3,
+               help=('The number of attempts to mount nfs shares before '
+                     'raising an error.  At least one attempt will be '
+                     'made to mount an nfs share, regardless of the '
+                     'value specified.')),
 ]
 
 CONF = cfg.CONF
@@ -148,7 +156,21 @@ class NfsDriver(remotefs.RemoteFSDriver):
         mnt_flags = []
         if self.shares.get(nfs_share) is not None:
             mnt_flags = self.shares[nfs_share].split()
-        self._remotefsclient.mount(nfs_share, mnt_flags)
+        num_attempts = max(1, self.configuration.nfs_mount_attempts)
+        for attempt in range(num_attempts):
+            try:
+                self._remotefsclient.mount(nfs_share, mnt_flags)
+                return
+            except Exception as e:
+                if attempt == (num_attempts - 1):
+                    LOG.error(_LE('Mount failure for %(share)s after '
+                                  '%(count)d attempts.') % {
+                                      'share': nfs_share,
+                                      'count': num_attempts})
+                    raise exception.NfsException(e)
+                LOG.debug('Mount attempt %d failed: %s.\nRetrying mount ...' %
+                          (attempt, six.text_type(e)))
+                time.sleep(1)
 
     def _find_share(self, volume_size_in_gib):
         """Choose NFS share among available ones for given volume size.

@@ -16,6 +16,7 @@
 
 import errno
 import os
+import random
 
 import mock
 import mox as mox_lib
@@ -365,6 +366,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_oversub_ratio = 1.0
         self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
         self.configuration.nfs_mount_options = None
+        self.configuration.nfs_mount_attempts = 3
         self.configuration.nas_secure_file_permissions = 'false'
         self.configuration.nas_secure_file_operations = 'false'
         self.configuration.volume_dd_blocksize = '1M'
@@ -1039,3 +1041,60 @@ class NfsDriverTestCase(test.TestCase):
         self.assertEqual(drv.configuration.nas_secure_file_permissions,
                          'false')
         self.assertTrue(LOG.warn.called)
+
+    def test_set_nas_security_options_exception_if_no_mounted_shares(self):
+        """Ensure proper exception is raised if there are no mounted shares."""
+
+        drv = self._driver
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._mounted_shares = []
+        is_new_cinder_install = 'does not matter'
+
+        self.assertRaises(exception.NfsNoSharesMounted,
+                          drv.set_nas_security_options,
+                          is_new_cinder_install)
+
+    def test_ensure_share_mounted(self):
+        """Case where the mount works the first time."""
+
+        num_attempts = random.randint(1, 5)
+        self.mock_object(self._driver._remotefsclient, 'mount')
+        drv = self._driver
+        drv.configuration.nfs_mount_attempts = num_attempts
+        drv.shares = {self.TEST_NFS_EXPORT1: ''}
+
+        drv._ensure_share_mounted(self.TEST_NFS_EXPORT1)
+
+        drv._remotefsclient.mount.called_once()
+
+    def test_ensure_share_mounted_exception(self):
+        """Make the configured number of attempts when mounts fail."""
+
+        num_attempts = random.randint(1, 5)
+        self.mock_object(self._driver._remotefsclient, 'mount',
+                         mock.Mock(side_effect=Exception))
+        drv = self._driver
+        drv.configuration.nfs_mount_attempts = num_attempts
+        drv.shares = {self.TEST_NFS_EXPORT1: ''}
+
+        self.assertRaises(exception.NfsException, drv._ensure_share_mounted,
+                          self.TEST_NFS_EXPORT1)
+
+        self.assertEqual(num_attempts, drv._remotefsclient.mount.call_count)
+
+    def test_ensure_share_mounted_at_least_one_attempt(self):
+        """Make at least one mount attempt even if configured for less."""
+
+        min_num_attempts = 1
+        num_attempts = 0
+        self.mock_object(self._driver._remotefsclient, 'mount',
+                         mock.Mock(side_effect=Exception))
+        drv = self._driver
+        drv.configuration.nfs_mount_attempts = num_attempts
+        drv.shares = {self.TEST_NFS_EXPORT1: ''}
+
+        self.assertRaises(exception.NfsException, drv._ensure_share_mounted,
+                          self.TEST_NFS_EXPORT1)
+
+        self.assertEqual(min_num_attempts,
+                         drv._remotefsclient.mount.call_count)
