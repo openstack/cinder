@@ -16,15 +16,12 @@
 import errno
 import os
 import stat
-import time
 
 from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.utils import units
 
 from cinder.brick.remotefs import remotefs as remotefs_brick
-from cinder import compute
-from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
@@ -116,7 +113,6 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         self._remotefsclient = None
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
-        self._nova = None
         self.base = getattr(self.configuration,
                             'glusterfs_mount_point_base',
                             CONF.glusterfs_mount_point_base)
@@ -133,8 +129,6 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(GlusterfsDriver, self).do_setup(context)
-
-        self._nova = compute.API()
 
         config = self.configuration.glusterfs_shares_config
         if not config:
@@ -311,100 +305,6 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def delete_snapshot(self, snapshot):
         """Apply locking to the delete snapshot operation."""
         self._delete_snapshot(snapshot)
-
-    def _delete_snapshot_online(self, context, snapshot, info):
-        # Update info over the course of this method
-        # active file never changes
-        info_path = self._local_path_volume(snapshot['volume']) + '.info'
-        snap_info = self._read_info_file(info_path)
-
-        if info['active_file'] == info['snapshot_file']:
-            # blockRebase/Pull base into active
-            # info['base'] => snapshot_file
-
-            file_to_delete = info['base_file']
-            if info['base_id'] is None:
-                # Passing base=none to blockRebase ensures that
-                # libvirt blanks out the qcow2 backing file pointer
-                new_base = None
-            else:
-                new_base = info['new_base_file']
-                snap_info[info['base_id']] = info['snapshot_file']
-
-            delete_info = {'file_to_merge': new_base,
-                           'merge_target_file': None,  # current
-                           'type': 'qcow2',
-                           'volume_id': snapshot['volume']['id']}
-
-            del(snap_info[snapshot['id']])
-        else:
-            # blockCommit snapshot into base
-            # info['base'] <= snapshot_file
-            # delete record of snapshot
-            file_to_delete = info['snapshot_file']
-
-            delete_info = {'file_to_merge': info['snapshot_file'],
-                           'merge_target_file': info['base_file'],
-                           'type': 'qcow2',
-                           'volume_id': snapshot['volume']['id']}
-
-            del(snap_info[snapshot['id']])
-
-        try:
-            self._nova.delete_volume_snapshot(
-                context,
-                snapshot['id'],
-                delete_info)
-        except Exception as e:
-            LOG.error(_LE('Call to Nova delete snapshot failed'))
-            LOG.exception(e)
-            raise e
-
-        # Loop and wait for result
-        # Nova will call Cinderclient to update the status in the database
-        # An update of progress = '90%' means that Nova is done
-        seconds_elapsed = 0
-        increment = 1
-        timeout = 7200
-        while True:
-            s = db.snapshot_get(context, snapshot['id'])
-
-            if s['status'] == 'deleting':
-                if s['progress'] == '90%':
-                    # Nova tasks completed successfully
-                    break
-                else:
-                    msg = ('status of snapshot %s is '
-                           'still "deleting"... waiting') % snapshot['id']
-                    LOG.debug(msg)
-                    time.sleep(increment)
-                    seconds_elapsed += increment
-            else:
-                msg = _('Unable to delete snapshot %(id)s, '
-                        'status: %(status)s.') % {'id': snapshot['id'],
-                                                  'status': s['status']}
-                raise exception.GlusterfsException(msg)
-
-            if 10 < seconds_elapsed <= 20:
-                increment = 2
-            elif 20 < seconds_elapsed <= 60:
-                increment = 5
-            elif 60 < seconds_elapsed:
-                increment = 10
-
-            if seconds_elapsed > timeout:
-                msg = _('Timed out while waiting for Nova update '
-                        'for deletion of snapshot %(id)s.') %\
-                    {'id': snapshot['id']}
-                raise exception.GlusterfsException(msg)
-
-        # Write info file updated above
-        self._write_info_file(info_path, snap_info)
-
-        # Delete stale file
-        path_to_delete = os.path.join(
-            self._local_volume_dir(snapshot['volume']), file_to_delete)
-        self._execute('rm', '-f', path_to_delete, run_as_root=True)
 
     def ensure_export(self, ctx, volume):
         """Synchronously recreates an export for a logical volume."""
@@ -638,68 +538,3 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         return super(GlusterfsDriver, self).backup_volume(
             context, backup, backup_service)
-
-    def _create_snapshot_online(self, snapshot, backing_filename,
-                                new_snap_path):
-        # Perform online snapshot via Nova
-        context = snapshot['context']
-
-        self._do_create_snapshot(snapshot,
-                                 backing_filename,
-                                 new_snap_path)
-
-        connection_info = {
-            'type': 'qcow2',
-            'new_file': os.path.basename(new_snap_path),
-            'snapshot_id': snapshot['id']
-        }
-
-        try:
-            result = self._nova.create_volume_snapshot(
-                context,
-                snapshot['volume_id'],
-                connection_info)
-            LOG.debug('nova call result: %s' % result)
-        except Exception as e:
-            LOG.error(_LE('Call to Nova to create snapshot failed'))
-            LOG.exception(e)
-            raise e
-
-        # Loop and wait for result
-        # Nova will call Cinderclient to update the status in the database
-        # An update of progress = '90%' means that Nova is done
-        seconds_elapsed = 0
-        increment = 1
-        timeout = 600
-        while True:
-            s = db.snapshot_get(context, snapshot['id'])
-
-            if s['status'] == 'creating':
-                if s['progress'] == '90%':
-                    # Nova tasks completed successfully
-                    break
-
-                time.sleep(increment)
-                seconds_elapsed += increment
-            elif s['status'] == 'error':
-
-                msg = _('Nova returned "error" status '
-                        'while creating snapshot.')
-                raise exception.RemoteFSException(msg)
-
-            LOG.debug('Status of snapshot %(id)s is now %(status)s' % {
-                'id': snapshot['id'],
-                'status': s['status']
-            })
-
-            if 10 < seconds_elapsed <= 20:
-                increment = 2
-            elif 20 < seconds_elapsed <= 60:
-                increment = 5
-            elif 60 < seconds_elapsed:
-                increment = 10
-
-            if seconds_elapsed > timeout:
-                msg = _('Timed out while waiting for Nova update '
-                        'for creation of snapshot %s.') % snapshot['id']
-                raise exception.RemoteFSException(msg)
