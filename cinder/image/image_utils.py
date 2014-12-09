@@ -334,10 +334,6 @@ def is_xenserver_format(image_meta):
     )
 
 
-def file_exist(fpath):
-    return os.path.exists(fpath)
-
-
 def set_vhd_parent(vhd_path, parentpath):
     utils.execute('vhd-util', 'modify', '-n', vhd_path, '-p', parentpath)
 
@@ -374,10 +370,6 @@ def create_temporary_file(*args, **kwargs):
     fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir, *args, **kwargs)
     os.close(fd)
     return tmp
-
-
-def rename_file(src, dst):
-    os.rename(src, dst)
 
 
 @contextlib.contextmanager
@@ -417,7 +409,7 @@ def discover_vhd_chain(directory):
 
     while True:
         fpath = os.path.join(directory, '%d.vhd' % counter)
-        if file_exist(fpath):
+        if os.path.exists(fpath):
             chain.append(fpath)
         else:
             break
@@ -433,4 +425,4 @@ def replace_xenserver_image_with_coalesced_vhd(image_file):
         fix_vhd_chain(chain)
         coalesced = coalesce_chain(chain)
         fileutils.delete_if_exists(image_file)
-        rename_file(coalesced, image_file)
+        os.rename(coalesced, image_file)
