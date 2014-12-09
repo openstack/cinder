@@ -223,15 +223,15 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
         initiator = self.connector.get_initiator()
         self.assertEqual(initiator, 'iqn.1234-56.foo.bar:01:23456789abc')
 
-    @test.testtools.skipUnless(os.path.exists('/dev/disk/by-path'),
-                               'Test requires /dev/disk/by-path')
-    def test_connect_volume(self):
+    def _test_connect_volume(self, extra_props, additional_commands):
         self.stubs.Set(os.path, 'exists', lambda x: True)
         location = '10.0.2.15:3260'
         name = 'volume-00000001'
         iqn = 'iqn.2010-10.org.openstack:%s' % name
         vol = {'id': 1, 'name': name}
         connection_info = self.iscsi_connection(vol, location, iqn)
+        for key, value in extra_props.iteritems():
+            connection_info['data'][key] = value
         device = self.connector.connect_volume(connection_info['data'])
         dev_str = '/dev/disk/by-path/ip-%s-iscsi-%s-lun-1' % (location, iqn)
         self.assertEqual(device['type'], 'block')
@@ -255,11 +255,88 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                              ('iscsiadm -m node -T %s -p %s --logout' %
                               (iqn, location)),
                              ('iscsiadm -m node -T %s -p %s --op delete' %
-                              (iqn, location)), ]
+                              (iqn, location)), ] + additional_commands
         LOG.debug("self.cmds = %s" % self.cmds)
         LOG.debug("expected = %s" % expected_commands)
 
         self.assertEqual(expected_commands, self.cmds)
+
+    @test.testtools.skipUnless(os.path.exists('/dev/disk/by-path'),
+                               'Test requires /dev/disk/by-path')
+    def test_connect_volume(self):
+        self._test_connect_volume({}, [])
+
+    @test.testtools.skipUnless(os.path.exists('/dev/disk/by-path'),
+                               'Test requires /dev/disk/by-path')
+    def test_connect_volume_with_alternative_targets(self):
+        location = '10.0.2.15:3260'
+        location2 = '10.0.3.15:3260'
+        iqn = 'iqn.2010-10.org.openstack:volume-00000001'
+        iqn2 = 'iqn.2010-10.org.openstack:volume-00000001-2'
+        extra_props = {'target_portals': [location, location2],
+                       'target_iqns': [iqn, iqn2],
+                       'target_luns': [1, 2]}
+        additional_commands = [('blockdev --flushbufs /dev/sdb'),
+                               ('tee -a /sys/block/sdb/device/delete'),
+                               ('iscsiadm -m node -T %s -p %s --op update'
+                                ' -n node.startup -v manual' %
+                                (iqn2, location2)),
+                               ('iscsiadm -m node -T %s -p %s --logout' %
+                                (iqn2, location2)),
+                               ('iscsiadm -m node -T %s -p %s --op delete' %
+                                (iqn2, location2))]
+        self._test_connect_volume(extra_props, additional_commands)
+
+    @test.testtools.skipUnless(os.path.exists('/dev/disk/by-path'),
+                               'Test requires /dev/disk/by-path')
+    @mock.patch.object(os.path, 'exists')
+    @mock.patch.object(connector.ISCSIConnector, '_run_iscsiadm')
+    def test_connect_volume_with_alternative_targets_primary_error(
+            self, mock_iscsiadm, mock_exists):
+        location = '10.0.2.15:3260'
+        location2 = '10.0.3.15:3260'
+        name = 'volume-00000001'
+        iqn = 'iqn.2010-10.org.openstack:%s' % name
+        iqn2 = 'iqn.2010-10.org.openstack:%s-2' % name
+        vol = {'id': 1, 'name': name}
+        connection_info = self.iscsi_connection(vol, location, iqn)
+        connection_info['data']['target_portals'] = [location, location2]
+        connection_info['data']['target_iqns'] = [iqn, iqn2]
+        connection_info['data']['target_luns'] = [1, 2]
+        dev_str2 = '/dev/disk/by-path/ip-%s-iscsi-%s-lun-2' % (location2, iqn2)
+
+        def fake_run_iscsiadm(iscsi_properties, iscsi_command, **kwargs):
+            if iscsi_properties['target_portal'] == location:
+                if iscsi_command == ('--login',):
+                    raise putils.ProcessExecutionError(None, None, 21)
+            return mock.DEFAULT
+
+        mock_iscsiadm.side_effect = fake_run_iscsiadm
+        mock_exists.side_effect = lambda x: x == dev_str2
+        device = self.connector.connect_volume(connection_info['data'])
+        self.assertEqual('block', device['type'])
+        self.assertEqual(dev_str2, device['path'])
+        props = connection_info['data'].copy()
+        for key in ('target_portals', 'target_iqns', 'target_luns'):
+            props.pop(key, None)
+        props['target_portal'] = location2
+        props['target_iqn'] = iqn2
+        props['target_lun'] = 2
+        mock_iscsiadm.assert_any_call(props, ('--login',),
+                                      check_exit_code=[0, 255])
+
+        mock_iscsiadm.reset_mock()
+        self.connector.disconnect_volume(connection_info['data'], device)
+        props = connection_info['data'].copy()
+        for key in ('target_portals', 'target_iqns', 'target_luns'):
+            props.pop(key, None)
+        mock_iscsiadm.assert_any_call(props, ('--logout',),
+                                      check_exit_code=[0, 21, 255])
+        props['target_portal'] = location2
+        props['target_iqn'] = iqn2
+        props['target_lun'] = 2
+        mock_iscsiadm.assert_any_call(props, ('--logout',),
+                                      check_exit_code=[0, 21, 255])
 
     def test_connect_volume_with_multipath(self):
         location = '10.0.2.15:3260'

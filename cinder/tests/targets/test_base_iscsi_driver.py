@@ -78,6 +78,21 @@ class TestBaseISCSITargetDriver(test.TestCase):
         self.assertEqual(self.expected_iscsi_properties,
                          self.target._get_iscsi_properties(self.testvol))
 
+    def test_get_iscsi_properties_multiple_targets(self):
+        testvol = self.testvol.copy()
+        expected_iscsi_properties = self.expected_iscsi_properties.copy()
+        iqn = expected_iscsi_properties['target_iqn']
+        testvol.update(
+            {'provider_location': '10.10.7.1:3260;10.10.8.1:3260 '
+                                  'iqn.2010-10.org.openstack:'
+                                  'volume-%s 0' % self.fake_volume_id})
+        expected_iscsi_properties.update(
+            {'target_portals': ['10.10.7.1:3260', '10.10.8.1:3260'],
+             'target_iqns': [iqn, iqn],
+             'target_luns': [0, 0]})
+        self.assertEqual(expected_iscsi_properties,
+                         self.target._get_iscsi_properties(testvol))
+
     def test_build_iscsi_auth_string(self):
         auth_string = 'chap chap-user chap-password'
         self.assertEqual(auth_string,
