@@ -29,7 +29,6 @@ from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.tests import fake_notifier
 from cinder.tests.image import fake as fake_image
-from cinder import utils
 from cinder.volume import api as volume_api
 
 
@@ -761,31 +760,6 @@ class VolumeApiTest(test.TestCase):
         res = self.controller.index(req)
         self.assertIn('volumes', res)
         self.assertEqual(1, len(res['volumes']))
-
-    def test_add_visible_admin_metadata_visible_key_only(self):
-        admin_metadata = [{"key": "invisible_key", "value": "invisible_value"},
-                          {"key": "readonly", "value": "visible"},
-                          {"key": "attached_mode", "value": "visible"}]
-        metadata = [{"key": "key", "value": "value"}]
-        volume = dict(volume_admin_metadata=admin_metadata,
-                      volume_metadata=metadata)
-        utils.add_visible_admin_metadata(volume)
-        self.assertEqual(volume['volume_metadata'],
-                         [{"key": "key", "value": "value"},
-                          {"key": "readonly", "value": "visible"},
-                          {"key": "attached_mode", "value": "visible"}])
-
-        admin_metadata = {"invisible_key": "invisible_value",
-                          "readonly": "visible",
-                          "attached_mode": "visible"}
-        metadata = {"key": "value"}
-        volume = dict(admin_metadata=admin_metadata,
-                      metadata=metadata)
-        utils.add_visible_admin_metadata(volume)
-        self.assertEqual(volume['metadata'],
-                         {'key': 'value',
-                          'attached_mode': 'visible',
-                          'readonly': 'visible'})
 
 
 class VolumeSerializerTest(test.TestCase):
