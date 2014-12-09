@@ -933,3 +933,10 @@ class ViolinBackendErrExists(CinderException):
 
 class ViolinBackendErrNotFound(CinderException):
     message = _("Backend reports: item not found")
+
+
+# ZFSSA NFS driver exception.
+class WebDAVClientError(CinderException):
+        message = _("The WebDAV request failed. Reason: %(msg)s, "
+                    "Return code/reason: %(code)s, Source Volume: %(src)s, "
+                    "Destination Volume: %(dst)s, Method: %(method)s.")

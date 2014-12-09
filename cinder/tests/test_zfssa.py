@@ -26,10 +26,14 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.zfssa import restclient as client
 from cinder.volume.drivers.zfssa import zfssaiscsi as iscsi
+from cinder.volume.drivers.zfssa import zfssanfs
 from cinder.volume.drivers.zfssa import zfssarest as rest
 
 
 LOG = logging.getLogger(__name__)
+
+nfs_logbias = 'latency'
+nfs_compression = 'off'
 
 
 class FakeZFSSA(object):
@@ -216,6 +220,83 @@ class FakeZFSSA(object):
         return ret
 
 
+class FakeNFSZFSSA(FakeZFSSA):
+    """Fake ZFS SA for the NFS Driver
+    """
+    def set_webdav(self, https_path, auth_str):
+        self.webdavclient = https_path
+
+    def create_share(self, pool, project, share, args):
+        out = {}
+        if not self.host and not self.user:
+            return out
+
+        out = {"logbias": nfs_logbias,
+               "compression": nfs_compression,
+               "status": "online",
+               "pool": pool,
+               "name": share,
+               "project": project,
+               "mountpoint": '/export/nfs_share'}
+
+        return out
+
+    def get_share(self, pool, project, share):
+        out = {}
+        if not self.host and not self.user:
+            return out
+
+        out = {"logbias": nfs_logbias,
+               "compression": nfs_compression,
+               "encryption": "off",
+               "status": "online",
+               "pool": pool,
+               "name": share,
+               "project": project,
+               "mountpoint": '/export/nfs_share'}
+
+        return out
+
+    def create_snapshot_of_volume_file(self, src_file="", dst_file=""):
+        out = {}
+        if not self.host and not self.user:
+            return out
+        out = {"status": 201}
+
+        return out
+
+    def delete_snapshot_of_volume_file(self, src_file=""):
+        out = {}
+        if not self.host and not self.user:
+            return out
+        out = {"status": 204}
+
+        return out
+
+    def create_volume_from_snapshot_file(self, src_file="", dst_file="",
+                                         method='COPY'):
+        out = {}
+        if not self.host and not self.user:
+            return out
+        out = {"status": 202}
+
+        return out
+
+    def modify_service(self, service, args):
+        out = {}
+        if not self.host and not self.user:
+            return out
+        out = {"service": {"<status>": "online"}}
+        return out
+
+    def enable_service(self, service):
+        out = {}
+        if not self.host and not self.user:
+            return out
+        out = {"service": {"<status>": "online"}}
+        return out
+
+
 class TestZFSSAISCSIDriver(test.TestCase):
 
     test_vol = {
@@ -360,3 +441,75 @@ class FakeAddIni2InitGrp(object):
         result = client.RestResult()
         result.status = client.Status.CREATED
         return result
+
+
+class TestZFSSANFSDriver(test.TestCase):
+
+    test_vol = {
+        'name': 'test-vol',
+        'size': 1
+    }
+
+    test_snap = {
+        'name': 'cindersnap',
+        'volume_name': test_vol['name'],
+        'volume_size': test_vol['size']
+    }
+
+    test_vol_snap = {
+        'name': 'cindersnapvol',
+        'size': test_vol['size']
+    }
+
+    def __init__(self, method):
+        super(TestZFSSANFSDriver, self).__init__(method)
+
+    @mock.patch.object(zfssanfs, 'factory_zfssa')
+    def setUp(self, _factory_zfssa):
+        super(TestZFSSANFSDriver, self).setUp()
+        self._create_fake_config()
+        _factory_zfssa.return_value = FakeNFSZFSSA()
+        self.drv = zfssanfs.ZFSSANFSDriver(configuration=self.configuration)
+        self.drv.do_setup({})
+
+    def _create_fake_config(self):
+        self.configuration = mock.Mock(spec=conf.Configuration)
+        self.configuration.san_ip = '1.1.1.1'
+        self.configuration.san_login = 'user'
+        self.configuration.san_password = 'passwd'
+        self.configuration.zfssa_data_ip = '2.2.2.2'
+        self.configuration.zfssa_https_port = '443'
+        self.configuration.zfssa_nfs_pool = 'pool'
+        self.configuration.zfssa_nfs_project = 'nfs_project'
+        self.configuration.zfssa_nfs_share = 'nfs_share'
+        self.configuration.zfssa_nfs_share_logbias = nfs_logbias
+        self.configuration.zfssa_nfs_share_compression = nfs_compression
+        self.configuration.zfssa_nfs_mount_options = ''
+        self.configuration.zfssa_rest_timeout = '30'
+        self.configuration.nfs_oversub_ratio = 1
+        self.configuration.nfs_used_ratio = 1
+
+    def test_create_delete_snapshot(self):
+        self.drv.create_snapshot(self.test_snap)
+        self.drv.delete_snapshot(self.test_snap)
+
+    def test_create_volume_from_snapshot(self):
+        self.drv.create_snapshot(self.test_snap)
+        with mock.patch.object(self.drv, '_ensure_shares_mounted'):
+            prov_loc = self.drv.create_volume_from_snapshot(self.test_vol_snap,
+                                                            self.test_snap,
+                                                            method='COPY')
+        self.assertEqual('2.2.2.2:/export/nfs_share',
+                         prov_loc['provider_location'])
+
+    def test_get_volume_stats(self):
+        self.drv._mounted_shares = ['nfs_share']
+        with mock.patch.object(self.drv, '_ensure_shares_mounted'):
+            with mock.patch.object(self.drv, '_get_share_capacity_info') as \
+                    mock_get_share_capacity_info:
+                mock_get_share_capacity_info.return_value = (1073741824,
+                                                             9663676416)
+                self.drv.get_volume_stats(refresh=True)
+
+    def tearDown(self):
+        super(TestZFSSANFSDriver, self).tearDown()
