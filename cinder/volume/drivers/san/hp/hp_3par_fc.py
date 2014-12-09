@@ -74,10 +74,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.11 - Removing locks bug #1381190
         2.0.12 - Fix queryHost call to specify wwns bug #1398206
         2.0.13 - Fix missing host name during attach bug #1398206
+        2.0.14 - Removed usage of host name cache #1398914
 
     """
 
-    VERSION = "2.0.13"
+    VERSION = "2.0.14"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -325,7 +326,6 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
             host_found = hosts['members'][0]['name']
 
         if host_found is not None:
-            common.hosts_naming_dict[hostname] = host_found
             return host_found
         else:
             persona_id = int(persona_id)
