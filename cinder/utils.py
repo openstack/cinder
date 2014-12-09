@@ -635,17 +635,17 @@ def _get_disk_of_partition(devpath, st=None):
     for '/dev/disk1p1' ('p' is prepended to the partition number if the disk
     name ends with numbers).
     """
-    if st is None:
-        st = os.stat(devpath)
     diskpath = re.sub('(?:(?<=\d)p)?\d+$', '', devpath)
     if diskpath != devpath:
         try:
-            st = os.stat(diskpath)
-            if stat.S_ISBLK(st.st_mode):
-                return (diskpath, st)
+            st_disk = os.stat(diskpath)
+            if stat.S_ISBLK(st_disk.st_mode):
+                return (diskpath, st_disk)
         except OSError:
             pass
     # devpath is not a partition
+    if st is None:
+        st = os.stat(devpath)
     return (devpath, st)
 
 
