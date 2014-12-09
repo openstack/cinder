@@ -119,6 +119,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self._custom_setup()
 
     def _custom_setup(self):
+        self.mock_object(utils, 'OpenStackInfo')
         kwargs = {}
         kwargs['netapp_mode'] = 'proxy'
         kwargs['configuration'] = create_configuration()
@@ -880,6 +881,7 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         self._custom_setup()
 
     def _custom_setup(self):
+        self.mock_object(utils, 'OpenStackInfo')
         kwargs = {}
         kwargs['netapp_mode'] = 'proxy'
         kwargs['configuration'] = create_configuration()
@@ -1183,6 +1185,7 @@ class NetApp7modeNfsDriverTestCase(NetAppCmodeNfsDriverTestCase):
     """Test direct NetApp C Mode driver."""
 
     def _custom_setup(self):
+        self.mock_object(utils, 'OpenStackInfo')
         self._driver = netapp_nfs_7mode.NetApp7modeNfsDriver(
             configuration=create_configuration())
         self._driver.zapi_client = mock.Mock()
