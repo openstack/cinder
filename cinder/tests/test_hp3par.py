@@ -1770,7 +1770,8 @@ class HP3PARBaseDriver(object):
         with mock.patch.object(hpcommon.HP3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.driver.detach_volume(context.get_admin_context(), self.volume)
+            self.driver.detach_volume(context.get_admin_context(), self.volume,
+                                      None)
             expected = [
                 mock.call.removeVolumeMetaData(
                     self.VOLUME_3PAR_NAME,
@@ -1784,7 +1785,7 @@ class HP3PARBaseDriver(object):
             self.assertRaises(exception.CinderException,
                               self.driver.detach_volume,
                               context.get_admin_context(),
-                              self.volume)
+                              self.volume, None)
 
     def test_create_snapshot(self):
         # setup_mock_client drive with default configuration

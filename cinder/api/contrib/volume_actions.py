@@ -127,7 +127,11 @@ class VolumeActionsController(wsgi.Controller):
         except exception.VolumeNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
-        self.volume_api.detach(context, volume)
+        attachment_id = None
+        if body['os-detach']:
+            attachment_id = body['os-detach'].get('attachment_id', None)
+
+        self.volume_api.detach(context, volume, attachment_id)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-reserve')

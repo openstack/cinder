@@ -70,7 +70,8 @@ class ViewBuilder(common.ViewBuilder):
                 'bootable': str(volume.get('bootable')).lower(),
                 'encrypted': self._is_volume_encrypted(volume),
                 'replication_status': volume.get('replication_status'),
-                'consistencygroup_id': volume.get('consistencygroup_id')
+                'consistencygroup_id': volume.get('consistencygroup_id'),
+                'multiattach': volume.get('multiattach')
             }
         }
 
@@ -83,19 +84,17 @@ class ViewBuilder(common.ViewBuilder):
         attachments = []
 
         if volume['attach_status'] == 'attached':
-            d = {}
-            volume_id = volume['id']
-
-            # note(justinsb): we use the volume id as the id of the attachments
-            # object
-            d['id'] = volume_id
-
-            d['volume_id'] = volume_id
-            d['server_id'] = volume['instance_uuid']
-            d['host_name'] = volume['attached_host']
-            if volume.get('mountpoint'):
-                d['device'] = volume['mountpoint']
-            attachments.append(d)
+            attaches = volume.get('volume_attachment', [])
+            for attachment in attaches:
+                if attachment.get('attach_status') == 'attached':
+                    a = {'id': attachment.get('volume_id'),
+                         'attachment_id': attachment.get('id'),
+                         'volume_id': attachment.get('volume_id'),
+                         'server_id': attachment.get('instance_uuid'),
+                         'host_name': attachment.get('attached_host'),
+                         'device': attachment.get('mountpoint'),
+                         }
+                    attachments.append(a)
 
         return attachments
 

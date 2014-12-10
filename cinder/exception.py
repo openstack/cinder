@@ -252,6 +252,11 @@ class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
 
 
+class VolumeAttachmentNotFound(NotFound):
+    message = _("Volume attachment could not be found with "
+                "filter: %(filter)s .")
+
+
 class VolumeMetadataNotFound(NotFound):
     message = _("Volume %(volume_id)s has no metadata with "
                 "key %(metadata_key)s.")

@@ -44,6 +44,7 @@ SCHEDULER_HINTS_NAMESPACE =\
 
 def make_attachment(elem):
     elem.set('id')
+    elem.set('attachment_id')
     elem.set('server_id')
     elem.set('host_name')
     elem.set('volume_id')
@@ -63,6 +64,7 @@ def make_volume(elem):
     elem.set('snapshot_id')
     elem.set('source_volid')
     elem.set('consistencygroup_id')
+    elem.set('multiattach')
 
     attachments = xmlutil.SubTemplateElement(elem, 'attachments')
     attachment = xmlutil.SubTemplateElement(attachments, 'attachment',
@@ -412,6 +414,8 @@ class VolumeController(wsgi.Controller):
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
+        multiattach = volume.get('multiattach', False)
+        kwargs['multiattach'] = multiattach
 
         new_volume = self.volume_api.create(context,
                                             size,

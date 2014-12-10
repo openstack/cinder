@@ -172,7 +172,7 @@ class DateraDriver(san.SanISCSIDriver):
     def create_export(self, context, volume):
         return self._do_export(context, volume)
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
         try:
             self._issue_api_request('volumes', 'delete', resource=volume['id'],
                                     action='export')

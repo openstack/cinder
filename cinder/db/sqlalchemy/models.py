@@ -129,10 +129,6 @@ class Volume(BASE, CinderBase):
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     size = Column(Integer)
     availability_zone = Column(String(255))  # TODO(vish): foreign key?
-    instance_uuid = Column(String(36))
-    attached_host = Column(String(255))
-    mountpoint = Column(String(255))
-    attach_time = Column(String(255))  # TODO(vish): datetime
     status = Column(String(255))  # TODO(vish): enum?
     attach_status = Column(String(255))  # TODO(vish): enum
     migration_status = Column(String(255))
@@ -157,6 +153,7 @@ class Volume(BASE, CinderBase):
 
     deleted = Column(Boolean, default=False)
     bootable = Column(Boolean, default=False)
+    multiattach = Column(Boolean, default=False)
 
     replication_status = Column(String(255))
     replication_extended_status = Column(String(255))
@@ -195,6 +192,26 @@ class VolumeAdminMetadata(BASE, CinderBase):
                           primaryjoin='and_('
                           'VolumeAdminMetadata.volume_id == Volume.id,'
                           'VolumeAdminMetadata.deleted == False)')
+
+
+class VolumeAttachment(BASE, CinderBase):
+    """Represents a volume attachment for a vm."""
+    __tablename__ = 'volume_attachment'
+    id = Column(String(36), primary_key=True)
+
+    volume_id = Column(String(36), ForeignKey('volumes.id'), nullable=False)
+    volume = relationship(Volume, backref="volume_attachment",
+                          foreign_keys=volume_id,
+                          primaryjoin='and_('
+                          'VolumeAttachment.volume_id == Volume.id,'
+                          'VolumeAttachment.deleted == False)')
+    instance_uuid = Column(String(36))
+    attached_host = Column(String(255))
+    mountpoint = Column(String(255))
+    attach_time = Column(DateTime)
+    detach_time = Column(DateTime)
+    attach_status = Column(String(255))
+    attach_mode = Column(String(255))
 
 
 class VolumeTypes(BASE, CinderBase):
@@ -576,6 +593,7 @@ def register_models():
               Volume,
               VolumeMetadata,
               VolumeAdminMetadata,
+              VolumeAttachment,
               SnapshotMetadata,
               Transfer,
               VolumeTypeExtraSpecs,

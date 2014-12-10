@@ -772,6 +772,41 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         backups = db_utils.get_table(engine, 'backups')
         self.assertNotIn('parent_id', backups.c)
 
+    def _check_40(self, engine, data):
+        volumes = db_utils.get_table(engine, 'volumes')
+        self.assertNotIn('instance_uuid', volumes.c)
+        self.assertNotIn('attached_host', volumes.c)
+        self.assertNotIn('attach_time', volumes.c)
+        self.assertNotIn('mountpoint', volumes.c)
+        self.assertIsInstance(volumes.c.multiattach.type,
+                              self.BOOL_TYPE)
+
+        attachments = db_utils.get_table(engine, 'volume_attachment')
+        self.assertIsInstance(attachments.c.attach_mode.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(attachments.c.instance_uuid.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(attachments.c.attached_host.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(attachments.c.mountpoint.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(attachments.c.attach_status.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_040(self, engine):
+        self.assertFalse(engine.dialect.has_table(engine.connect(),
+                                                  "volume_attachment"))
+        volumes = db_utils.get_table(engine, 'volumes')
+        self.assertNotIn('multiattach', volumes.c)
+        self.assertIsInstance(volumes.c.instance_uuid.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(volumes.c.attached_host.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(volumes.c.attach_time.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(volumes.c.mountpoint.type,
+                              sqlalchemy.types.VARCHAR)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 

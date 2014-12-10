@@ -63,6 +63,7 @@ class VolumeAPI(object):
                and delete_snapshot()
         1.21 - Adds update_consistencygroup.
         1.22 - Adds create_consistencygroup_from_src.
+        1.23 - Adds attachment_id to detach_volume
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -72,7 +73,7 @@ class VolumeAPI(object):
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.22', serializer=serializer)
+        self.client = rpc.get_client(target, '1.23', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
@@ -171,10 +172,11 @@ class VolumeAPI(object):
                           mountpoint=mountpoint,
                           mode=mode)
 
-    def detach_volume(self, ctxt, volume):
+    def detach_volume(self, ctxt, volume, attachment_id):
         new_host = utils.extract_host(volume['host'])
-        cctxt = self.client.prepare(server=new_host)
-        return cctxt.call(ctxt, 'detach_volume', volume_id=volume['id'])
+        cctxt = self.client.prepare(server=new_host, version='1.20')
+        return cctxt.call(ctxt, 'detach_volume', volume_id=volume['id'],
+                          attachment_id=attachment_id)
 
     def copy_volume_to_image(self, ctxt, volume, image_meta):
         new_host = utils.extract_host(volume['host'])

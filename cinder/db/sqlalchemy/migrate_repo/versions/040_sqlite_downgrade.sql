@@ -1,0 +1,87 @@
+BEGIN TRANSACTION;
+
+CREATE TABLE volumes_v39 (
+    created_at DATETIME,
+    updated_at DATETIME,
+    deleted_at DATETIME,
+    deleted BOOLEAN,
+    id VARCHAR(36) NOT NULL,
+    ec2_id INTEGER,
+    user_id VARCHAR(255),
+    project_id VARCHAR(255),
+    snapshot_id VARCHAR(36),
+    host VARCHAR(255),
+    size INTEGER,
+    availability_zone VARCHAR(255),
+    status VARCHAR(255),
+    attach_status VARCHAR(255),
+    scheduled_at DATETIME,
+    launched_at DATETIME,
+    terminated_at DATETIME,
+    display_name VARCHAR(255),
+    display_description VARCHAR(255),
+    provider_location VARCHAR(255),
+    provider_auth VARCHAR(255),
+    volume_type_id VARCHAR(36),
+    source_volid VARCHAR(36),
+    bootable INTEGER,
+    provider_geometry VARCHAR(255),
+    _name_id VARCHAR(36),
+    encryption_key_id VARCHAR(36),
+    migration_status VARCHAR(255),
+    attached_host VARCHAR(255),
+    attach_time VARCHAR(255),
+    instance_uuid VARCHAR(36),
+    mountpoint VARCHAR(255),
+    consistencygroup_id VARCHAR(36),
+    replication_status VARCHAR(255),
+    replication_extended_status VARCHAR(255),
+    replication_driver_data VARCHAR(255),
+    PRIMARY KEY (id)
+);
+
+INSERT INTO volumes_v39
+    SELECT volumes.created_at,
+        volumes.updated_at,
+        volumes.deleted_at,
+        volumes.deleted,
+        volumes.id,
+        volumes.ec2_id,
+        volumes.user_id,
+        volumes.project_id,
+        volumes.snapshot_id,
+        volumes.host,
+        volumes.size,
+        volumes.availability_zone,
+        volumes.status,
+        volumes.attach_status,
+        volumes.scheduled_at,
+        volumes.launched_at,
+        volumes.terminated_at,
+        volumes.display_name,
+        volumes.display_description,
+        volumes.provider_location,
+        volumes.provider_auth,
+        volumes.volume_type_id,
+        volumes.source_volid,
+        volumes.bootable,
+        volumes.provider_geometry,
+        volumes._name_id,
+        volumes.encryption_key_id,
+        volumes.migration_status,
+        volume_attachment.attached_host,
+        volume_attachment.attach_time,
+        volume_attachment.instance_uuid,
+        volume_attachment.mountpoint,
+        volumes.consistencygroup_id,
+        volumes.replication_status,
+        volumes.replication_extended_status,
+        volumes.replication_driver_data
+    FROM volumes
+    LEFT OUTER JOIN volume_attachment
+    ON volumes.id=volume_attachment.volume_id;
+
+DROP TABLE volumes;
+ALTER TABLE volumes_v39 RENAME TO volumes;
+DROP TABLE volume_attachment;
+COMMIT;
