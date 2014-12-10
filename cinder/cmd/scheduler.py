@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-
-# Copyright (C) 2012 Hewlett-Packard Development Company, L.P.
+# Copyright 2010 United States Government as represented by the
+# Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,27 +15,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Starter script for Cinder Volume Backup."""
+"""Starter script for Cinder Scheduler."""
 
+import eventlet
+eventlet.monkey_patch()
 
-import os
 import sys
 import warnings
 
 warnings.simplefilter('once', DeprecationWarning)
 
-import eventlet
 from oslo.config import cfg
-
-eventlet.monkey_patch()
-
-# If ../cinder/__init__.py exists, add ../ to Python search path, so that
-# it will override what happens to be installed in /usr/(local/)lib/python...
-possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
-                                   os.pardir,
-                                   os.pardir))
-if os.path.exists(os.path.join(possible_topdir, 'cinder', '__init__.py')):
-    sys.path.insert(0, possible_topdir)
 
 from cinder import i18n
 i18n.enable_lazy()
@@ -51,11 +41,11 @@ from cinder import version
 CONF = cfg.CONF
 
 
-if __name__ == '__main__':
+def main():
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
     logging.setup("cinder")
     utils.monkey_patch()
-    server = service.Service.create(binary='cinder-backup')
+    server = service.Service.create(binary='cinder-scheduler')
     service.serve(server)
     service.wait()

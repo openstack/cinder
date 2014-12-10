@@ -35,7 +35,6 @@
 from __future__ import print_function
 
 from datetime import datetime
-import os
 import sys
 import traceback
 import warnings
@@ -43,14 +42,6 @@ import warnings
 warnings.simplefilter('once', DeprecationWarning)
 
 from oslo.config import cfg
-
-# If ../cinder/__init__.py exists, add ../ to Python search path, so that
-# it will override what happens to be installed in /usr/(local/)lib/python...
-POSSIBLE_TOPDIR = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
-                                   os.pardir,
-                                   os.pardir))
-if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
-    sys.path.insert(0, POSSIBLE_TOPDIR)
 
 from cinder import i18n
 i18n.enable_lazy()
@@ -84,7 +75,7 @@ script_opts = [
 CONF.register_cli_opts(script_opts)
 
 
-if __name__ == '__main__':
+def main():
     admin_context = context.get_admin_context()
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())

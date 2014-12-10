@@ -64,14 +64,6 @@ warnings.simplefilter('once', DeprecationWarning)
 from oslo.config import cfg
 from oslo import messaging
 
-# If ../cinder/__init__.py exists, add ../ to Python search path, so that
-# it will override what happens to be installed in /usr/(local/)lib/python...
-POSSIBLE_TOPDIR = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
-                                   os.pardir,
-                                   os.pardir))
-if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'cinder', '__init__.py')):
-    sys.path.insert(0, POSSIBLE_TOPDIR)
-
 from cinder import i18n
 i18n.enable_lazy()
 
@@ -546,6 +538,3 @@ def main():
     fn = CONF.category.action_fn
     fn_args = fetch_func_args(fn)
     fn(*fn_args)
-
-if __name__ == '__main__':
-    main()

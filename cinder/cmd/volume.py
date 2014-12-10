@@ -35,14 +35,6 @@ warnings.simplefilter('once', DeprecationWarning)
 
 from oslo.config import cfg
 
-# If ../cinder/__init__.py exists, add ../ to Python search path, so that
-# it will override what happens to be installed in /usr/(local/)lib/python...
-possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
-                                   os.pardir,
-                                   os.pardir))
-if os.path.exists(os.path.join(possible_topdir, 'cinder', '__init__.py')):
-    sys.path.insert(0, possible_topdir)
-
 from cinder import i18n
 i18n.enable_lazy()
 
@@ -54,12 +46,14 @@ from cinder import utils
 from cinder import version
 
 
-host_opt = cfg.StrOpt('host',
-                      help='Backend override of host value.')
+deprecated_host_opt = cfg.DeprecatedOpt('host')
+host_opt = cfg.StrOpt('backend_host', help='Backend override of host value.',
+                      deprecated_opts=[deprecated_host_opt])
+cfg.CONF.register_cli_opt(host_opt)
 CONF = cfg.CONF
 
 
-if __name__ == '__main__':
+def main():
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
     logging.setup("cinder")
@@ -67,8 +61,8 @@ if __name__ == '__main__':
     launcher = service.get_launcher()
     if CONF.enabled_backends:
         for backend in CONF.enabled_backends:
-            CONF.register_opts([host_opt], group=backend)
-            backend_host = getattr(CONF, backend).host
+            CONF.register_opt(host_opt, group=backend)
+            backend_host = getattr(CONF, backend).backend_host
             host = "%s@%s" % (backend_host or CONF.host, backend)
             server = service.Service.create(host=host,
                                             service_name=backend,
