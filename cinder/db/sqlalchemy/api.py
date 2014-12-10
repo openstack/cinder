@@ -2028,12 +2028,34 @@ def _volume_type_get_query(context, session=None, read_deleted=None,
 def volume_type_update(context, volume_type_id, values):
     session = get_session()
     with session.begin():
+        # Check it exists
         volume_type_ref = _volume_type_ref_get(context,
                                                volume_type_id,
                                                session)
-
         if not volume_type_ref:
             raise exception.VolumeTypeNotFound(type_id=volume_type_id)
+
+        # No description change
+        if values['description'] is None:
+            del values['description']
+
+        # No name change
+        if values['name'] is None:
+            del values['name']
+        else:
+            # Volume type name is unique. If change to a name that belongs to
+            # a different volume_type , it should be prevented.
+            check_vol_type = None
+            try:
+                check_vol_type = \
+                    _volume_type_get_by_name(context,
+                                             values['name'],
+                                             session=session)
+            except exception.VolumeTypeNotFoundByName:
+                pass
+            else:
+                if check_vol_type.get('id') != volume_type_id:
+                    raise exception.VolumeTypeExists(id=values['name'])
 
         volume_type_ref.update(values)
         volume_type_ref.save(session=session)
