@@ -174,11 +174,11 @@ class HP3PARBaseDriver(object):
          'SDUsage': {'rawTotalMiB': 49152,
                      'rawUsedMiB': 1023,
                      'totalMiB': 36864,
-                     'usedMiB': 768},
+                     'usedMiB': 1024 * 1},
          'UsrUsage': {'rawTotalMiB': 57344,
                       'rawUsedMiB': 43349,
                       'totalMiB': 43008,
-                      'usedMiB': 32512},
+                      'usedMiB': 1024 * 20},
          'additionalStates': [],
          'degradedStates': [],
          'failedStates': [],
@@ -2959,9 +2959,14 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
-            'serialNumber': '1234',
-            'freeCapacityMiB': 1024.0 * 2,
-            'totalCapacityMiB': 1024.0 * 123
+            'serialNumber': '1234'
+        }
+
+        # cpg has no limit
+        mock_client.getCPGAvailableSpace.return_value = {
+            "capacityEfficiency": {u'compaction': 594.4},
+            "rawFreeMiB": 1024.0 * 6,
+            "usableFreeMiB": 1024.0 * 3
         }
 
         with mock.patch.object(hpcommon.HP3PARCommon, '_create_client')\
@@ -2974,13 +2979,15 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             self.assertEqual(stats['storage_protocol'], 'FC')
             self.assertEqual(stats['total_capacity_gb'], 0)
             self.assertEqual(stats['free_capacity_gb'], 0)
-            self.assertEqual(stats['pools'][0]['total_capacity_gb'], 123.0)
-            self.assertEqual(stats['pools'][0]['free_capacity_gb'], 2.0)
+            self.assertEqual(stats['pools'][0]['total_capacity_gb'], 24.0)
+            self.assertEqual(stats['pools'][0]['free_capacity_gb'], 3.0)
 
             expected = [
                 mock.call.getStorageSystemInfo(),
                 mock.call.getCPG(HP3PAR_CPG),
-                mock.call.getCPG(HP3PAR_CPG2)]
+                mock.call.getCPGAvailableSpace(HP3PAR_CPG),
+                mock.call.getCPG(HP3PAR_CPG2),
+                mock.call.getCPGAvailableSpace(HP3PAR_CPG2)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -2990,8 +2997,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             self.assertEqual(stats['storage_protocol'], 'FC')
             self.assertEqual(stats['total_capacity_gb'], 0)
             self.assertEqual(stats['free_capacity_gb'], 0)
-            self.assertEqual(stats['pools'][0]['total_capacity_gb'], 123.0)
-            self.assertEqual(stats['pools'][0]['free_capacity_gb'], 2.0)
+            self.assertEqual(stats['pools'][0]['total_capacity_gb'], 24.0)
+            self.assertEqual(stats['pools'][0]['free_capacity_gb'], 3.0)
 
             cpg2 = self.cpgs[0].copy()
             cpg2.update({'SDGrowth': {'limitMiB': 8192}})
@@ -3310,9 +3317,13 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
-            'serialNumber': '1234',
-            'freeCapacityMiB': 1024.0 * 2,
-            'totalCapacityMiB': 1024.0 * 123
+            'serialNumber': '1234'
+        }
+        # cpg has no limit
+        mock_client.getCPGAvailableSpace.return_value = {
+            "capacityEfficiency": {u'compaction': 594.4},
+            "rawFreeMiB": 1024.0 * 6,
+            "usableFreeMiB": 1024.0 * 3
         }
 
         with mock.patch.object(hpcommon.HP3PARCommon, '_create_client')\
@@ -3324,13 +3335,15 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             self.assertEqual(stats['storage_protocol'], 'iSCSI')
             self.assertEqual(stats['total_capacity_gb'], 0)
             self.assertEqual(stats['free_capacity_gb'], 0)
-            self.assertEqual(stats['pools'][0]['total_capacity_gb'], 123.0)
-            self.assertEqual(stats['pools'][0]['free_capacity_gb'], 2.0)
+            self.assertEqual(stats['pools'][0]['total_capacity_gb'], 24.0)
+            self.assertEqual(stats['pools'][0]['free_capacity_gb'], 3.0)
 
             expected = [
                 mock.call.getStorageSystemInfo(),
                 mock.call.getCPG(HP3PAR_CPG),
-                mock.call.getCPG(HP3PAR_CPG2)]
+                mock.call.getCPGAvailableSpace(HP3PAR_CPG),
+                mock.call.getCPG(HP3PAR_CPG2),
+                mock.call.getCPGAvailableSpace(HP3PAR_CPG2)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
