@@ -23,6 +23,7 @@ from oslo.utils import importutils
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
+from cinder.volume import driver
 from cinder.volume.drivers.netapp.options import netapp_proxy_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 
@@ -52,7 +53,7 @@ NETAPP_UNIFIED_DRIVER_REGISTRY = {
     }}
 
 
-class NetAppDriver(object):
+class NetAppDriver(driver.ProxyVD):
     """"NetApp unified block storage driver.
 
        Acts as a factory to create NetApp storage drivers based on the

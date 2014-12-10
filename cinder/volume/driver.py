@@ -869,6 +869,19 @@ class VolumeDriver(object):
         return None
 
 
+class ProxyVD(object):
+    """Proxy Volume Driver to mark proxy drivers
+
+        If a driver uses a proxy class (e.g. by using __setattr__ and
+        __getattr__) without directly inheriting from base volume driver this
+        class can help marking them and retrieve the actual used driver object.
+    """
+    def _get_driver(self):
+        """Returns the actual driver object. Can be overloaded by the proxy.
+        """
+        return getattr(self, "driver", None)
+
+
 class ISCSIDriver(VolumeDriver):
     """Executes commands relating to ISCSI volumes.
 
