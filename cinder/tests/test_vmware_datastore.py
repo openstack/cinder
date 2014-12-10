@@ -60,6 +60,12 @@ class DatastoreTest(test.TestCase):
         return mock.Mock(datastore=ds, freeSpace=free_space, type=_type,
                          capacity=capacity)
 
+    def _create_host(self, value):
+        host = mock.Mock(spec=['_type', 'value'])
+        host._type = 'HostSystem'
+        host.value = value
+        return host
+
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_filter_by_profile')
     def test_filter_datastores(self, filter_by_profile):
@@ -181,13 +187,14 @@ class DatastoreTest(test.TestCase):
                                          free_space=units.Mi,
                                          capacity=4 * units.Mi)
 
-        host_1 = mock.sentinel.host_1
-        host_2 = mock.sentinel.host_3
-        host_3 = mock.sentinel.host_3
+        host_1 = self._create_host('host-1')
+        host_2 = self._create_host('host-2')
+        host_3 = self._create_host('host-3')
 
-        connected_hosts = {mock.sentinel.ds_1: [host_1],
-                           mock.sentinel.ds_2: [host_1, host_2],
-                           mock.sentinel.ds_3: [host_1, host_2, host_3]}
+        connected_hosts = {mock.sentinel.ds_1: [host_1.value],
+                           mock.sentinel.ds_2: [host_1.value, host_2.value],
+                           mock.sentinel.ds_3: [host_1.value, host_2.value,
+                                                host_3.value]}
         self._vops.get_connected_hosts.side_effect = (
             lambda summary: connected_hosts[summary])
 
@@ -228,7 +235,7 @@ class DatastoreTest(test.TestCase):
         self._vops.get_hosts.assert_called_once_with()
 
         # Test with single host with no valid datastores.
-        host_1 = mock.sentinel.host_1
+        host_1 = self._create_host('host-1')
         self._vops.get_hosts.return_value = mock.Mock(
             objects=[mock.Mock(obj=host_1)])
         self._vops.continue_retrieval.return_value = None
@@ -240,8 +247,8 @@ class DatastoreTest(test.TestCase):
         # Test with three hosts and vCenter connection problem while fetching
         # datastores for the second host.
         self._vops.get_dss_rp.reset_mock()
-        host_2 = mock.sentinel.host_2
-        host_3 = mock.sentinel.host_3
+        host_2 = self._create_host('host-2')
+        host_3 = self._create_host('host-3')
         self._vops.get_hosts.return_value = mock.Mock(
             objects=[mock.Mock(obj=host_1),
                      mock.Mock(obj=host_2),
@@ -346,6 +353,30 @@ class DatastoreTest(test.TestCase):
 
         # Clear side effects.
         self._vops.get_dss_rp.side_effect = None
+
+    @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
+                '_filter_datastores')
+    def test_select_datastore_with_single_host(self, filter_datastores):
+        host = self._create_host('host-1')
+        req = {self._ds_sel.SIZE_BYTES: units.Gi}
+
+        ds = mock.sentinel.ds
+        rp = mock.sentinel.rp
+        self._vops.get_dss_rp.return_value = ([ds], rp)
+
+        summary = self._create_summary(ds, free_space=2 * units.Gi,
+                                       capacity=3 * units.Gi)
+        filter_datastores.return_value = [summary]
+        self._vops.get_connected_hosts.return_value = [host.value]
+
+        self.assertEqual((host, rp, summary),
+                         self._ds_sel.select_datastore(req, [host]))
+
+        # reset mocks
+        self._vops.get_dss_rp.reset_mock()
+        self._vops.get_dss_rp.return_value = None
+        self._vops.get_connected_hosts.reset_mock()
+        self._vops.get_connected_hosts.return_value = None
 
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_filter_by_profile')
