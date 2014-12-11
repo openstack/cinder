@@ -96,14 +96,14 @@ class TgtAdm(TargetAdmin):
     VOLUME_CONF = """
                 <target %s>
                     backing-store %s
-                    lld iscsi
+                    driver iscsi
                     write-cache %s
                 </target>
                   """
     VOLUME_CONF_WITH_CHAP_AUTH = """
                                 <target %s>
                                     backing-store %s
-                                    lld iscsi
+                                    driver iscsi
                                     %s
                                     write-cache %s
                                 </target>
