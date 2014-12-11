@@ -574,14 +574,23 @@ def get_root_helper():
     return 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
 
 
-def brick_get_connector_properties():
+def brick_get_connector_properties(multipath=False, enforce_multipath=False):
     """wrapper for the brick calls to automatically set
     the root_helper needed for cinder.
+
+    :param multipath:         A boolean indicating whether the connector can
+                              support multipath.
+    :param enforce_multipath: If True, it raises exception when multipath=True
+                              is specified but multipathd is not running.
+                              If False, it falls back to multipath=False
+                              when multipathd is not running.
     """
 
     root_helper = get_root_helper()
     return connector.get_connector_properties(root_helper,
-                                              CONF.my_ip)
+                                              CONF.my_ip,
+                                              multipath,
+                                              enforce_multipath)
 
 
 def brick_get_connector(protocol, driver=None,

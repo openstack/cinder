@@ -3680,7 +3680,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         self.volume.driver.db.volume_get(self.context, vol['id']).\
             AndReturn(vol)
         cinder.brick.initiator.connector.\
-            get_connector_properties(root_helper, CONF.my_ip).\
+            get_connector_properties(root_helper, CONF.my_ip, False, False).\
             AndReturn(properties)
         self.volume.driver._attach_volume(self.context, vol, properties).\
             AndReturn(attach_info)
@@ -3713,7 +3713,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         self.mox.StubOutWithMock(self.volume.driver, 'terminate_connection')
 
         cinder.brick.initiator.connector.\
-            get_connector_properties(root_helper, CONF.my_ip).\
+            get_connector_properties(root_helper, CONF.my_ip, False, False).\
             AndReturn(properties)
         self.volume.driver._attach_volume(self.context, vol, properties).\
             AndReturn(attach_info)
@@ -4085,6 +4085,19 @@ class ISCSITestCase(DriverTestCase):
         self.assertEqual(result["target_portal"], "0.0.0.0:0000")
         self.assertEqual(result["target_iqn"], "iqn:iqn")
         self.assertEqual(result["target_lun"], 0)
+
+    def test_get_iscsi_properties_multiple_portals(self):
+        volume = {"provider_location": '1.1.1.1:3260;2.2.2.2:3261,1 iqn:iqn 0',
+                  "id": "0",
+                  "provider_auth": "a b c",
+                  "attached_mode": "rw"}
+        iscsi_driver = \
+            cinder.volume.targets.tgt.TgtAdm(configuration=self.configuration)
+        result = iscsi_driver._get_iscsi_properties(volume, multipath=True)
+        self.assertEqual(["1.1.1.1:3260", "2.2.2.2:3261"],
+                         result["target_portals"])
+        self.assertEqual(["iqn:iqn", "iqn:iqn"], result["target_iqns"])
+        self.assertEqual([0, 0], result["target_luns"])
 
     def test_get_volume_stats(self):
 

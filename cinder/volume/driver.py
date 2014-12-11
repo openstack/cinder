@@ -50,6 +50,9 @@ volume_opts = [
     cfg.StrOpt('iscsi_ip_address',
                default='$my_ip',
                help='The IP address that the iSCSI daemon is listening on'),
+    cfg.ListOpt('iscsi_secondary_ip_addresses',
+                default=[],
+                help='The list of secondary IP addresses of the iSCSI daemon'),
     cfg.IntOpt('iscsi_port',
                default=3260,
                help='The port that the iSCSI daemon is listening on'),
@@ -65,6 +68,11 @@ volume_opts = [
                 default=False,
                 help='Do we attach/detach volumes in cinder using multipath '
                      'for volume to image and image to volume transfers?'),
+    cfg.BoolOpt('enforce_multipath_for_image_xfer',
+                default=False,
+                help='If this is set to True, attachment of volumes for '
+                     'image transfer will be aborted when multipathd is not '
+                     'running. Otherwise, it will fallback to single path.'),
     cfg.StrOpt('volume_clear',
                default='zero',
                help='Method used to wipe old volumes (valid options are: '
@@ -397,7 +405,10 @@ class VolumeDriver(object):
         LOG.debug(('copy_data_between_volumes %(src)s -> %(dest)s.')
                   % {'src': src_vol['name'], 'dest': dest_vol['name']})
 
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
         dest_remote = True if remote in ['dest', 'both'] else False
         dest_orig_status = dest_vol['status']
         try:
@@ -453,7 +464,10 @@ class VolumeDriver(object):
         """Fetch the image from image_service and write it to the volume."""
         LOG.debug(('copy_image_to_volume %s.') % volume['name'])
 
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
@@ -470,7 +484,10 @@ class VolumeDriver(object):
         """Copy the volume to the specified image."""
         LOG.debug(('copy_volume_to_image %s.') % volume['name'])
 
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
@@ -580,7 +597,10 @@ class VolumeDriver(object):
         LOG.debug(('Creating a new backup for volume %s.') %
                   volume['name'])
 
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
@@ -605,7 +625,10 @@ class VolumeDriver(object):
                   {'backup': backup['id'],
                    'volume': volume['name']})
 
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
@@ -958,7 +981,7 @@ class ISCSIDriver(VolumeDriver):
                 return target
         return None
 
-    def _get_iscsi_properties(self, volume):
+    def _get_iscsi_properties(self, volume, multipath=False):
         """Gets iscsi configuration
 
         We ideally get saved information in the volume entity, but fall back
@@ -983,6 +1006,11 @@ class ISCSIDriver(VolumeDriver):
 
         :access_mode:    the volume access mode allow client used
                          ('rw' or 'ro' currently supported)
+
+        In some of drivers, When multipath=True is specified, :target_iqn,
+        :target_portal, :target_lun may be replaced with :target_iqns,
+        :target_portals, :target_luns, which contain lists of multiple values.
+        In this case, the initiator should establish sessions to all the path.
         """
 
         properties = {}
@@ -1004,19 +1032,30 @@ class ISCSIDriver(VolumeDriver):
             properties['target_discovered'] = True
 
         results = location.split(" ")
-        properties['target_portal'] = results[0].split(",")[0]
-        properties['target_iqn'] = results[1]
+        portals = results[0].split(",")[0].split(";")
+        iqn = results[1]
+        nr_portals = len(portals)
+
         try:
-            properties['target_lun'] = int(results[2])
+            lun = int(results[2])
         except (IndexError, ValueError):
             if (self.configuration.volume_driver in
                     ['cinder.volume.drivers.lvm.LVMISCSIDriver',
                      'cinder.volume.drivers.lvm.LVMISERDriver',
                      'cinder.volume.drivers.lvm.ThinLVMVolumeDriver'] and
                     self.configuration.iscsi_helper in ('tgtadm', 'iseradm')):
-                properties['target_lun'] = 1
+                lun = 1
             else:
-                properties['target_lun'] = 0
+                lun = 0
+
+        if multipath:
+            properties['target_portals'] = portals
+            properties['target_iqns'] = [iqn] * nr_portals
+            properties['target_luns'] = [lun] * nr_portals
+        else:
+            properties['target_portal'] = portals[0]
+            properties['target_iqn'] = iqn
+            properties['target_lun'] = lun
 
         properties['volume_id'] = volume['id']
 
@@ -1089,7 +1128,9 @@ class ISCSIDriver(VolumeDriver):
         # drivers, for now leaving it as there are 3'rd party
         # drivers that don't use target drivers, but inherit from
         # this base class and use this init data
-        iscsi_properties = self._get_iscsi_properties(volume)
+        iscsi_properties = self._get_iscsi_properties(volume,
+                                                      connector.get(
+                                                          'multipath'))
         return {
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties

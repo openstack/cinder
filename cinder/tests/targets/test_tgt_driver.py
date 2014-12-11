@@ -300,3 +300,11 @@ class TestTgtAdmDriver(test.TestCase):
                 iscsi_write_cache='on',
                 check_exit_code=False,
                 old_name=None)
+
+    def test_iscsi_location(self):
+        location = self.target._iscsi_location('portal', 1, 'target', 2)
+        self.assertEqual('portal:3260,1 target 2', location)
+
+        location = self.target._iscsi_location('portal', 1, 'target', 2,
+                                               ['portal2'])
+        self.assertEqual('portal:3260;portal2:3260,1 target 2', location)

@@ -38,7 +38,7 @@ class ISCSITarget(driver.Target):
             self.configuration.safe_get('iscsi_protocol')
         self.protocol = 'iSCSI'
 
-    def _get_iscsi_properties(self, volume):
+    def _get_iscsi_properties(self, volume, multipath=False):
         """Gets iscsi configuration
 
         We ideally get saved information in the volume entity, but fall back
@@ -65,6 +65,11 @@ class ISCSITarget(driver.Target):
 
         :access_mode:    the volume access mode allow client used
                          ('rw' or 'ro' currently supported)
+
+        When multipath=True is specified, :target_iqn, :target_portal,
+        :target_lun may be replaced with :target_iqns, :target_portals,
+        :target_luns, which contain lists of multiple values.
+        In this case, the initiator should establish sessions to all the path.
         """
 
         properties = {}
@@ -86,10 +91,11 @@ class ISCSITarget(driver.Target):
             properties['target_discovered'] = True
 
         results = location.split(" ")
-        properties['target_portal'] = results[0].split(",")[0]
-        properties['target_iqn'] = results[1]
+        portals = results[0].split(",")[0].split(";")
+        iqn = results[1]
+        nr_portals = len(portals)
         try:
-            properties['target_lun'] = int(results[2])
+            lun = int(results[2])
         except (IndexError, ValueError):
             # NOTE(jdg): The following is carried over from the existing
             # code.  The trick here is that different targets use different
@@ -99,9 +105,18 @@ class ISCSITarget(driver.Target):
                     ['cinder.volume.drivers.lvm.LVMISCSIDriver',
                      'cinder.volume.drivers.lvm.ThinLVMVolumeDriver'] and
                     self.configuration.iscsi_helper == 'tgtadm'):
-                properties['target_lun'] = 1
+                lun = 1
             else:
-                properties['target_lun'] = 0
+                lun = 0
+
+        if multipath:
+            properties['target_portals'] = portals
+            properties['target_iqns'] = [iqn] * nr_portals
+            properties['target_luns'] = [lun] * nr_portals
+        else:
+            properties['target_portal'] = portals[0]
+            properties['target_iqn'] = iqn
+            properties['target_lun'] = lun
 
         properties['volume_id'] = volume['id']
 

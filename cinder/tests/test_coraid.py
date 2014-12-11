@@ -243,6 +243,7 @@ class CoraidDriverTestCase(test.TestCase):
         configuration.snapshot_name_template = "snapshot-%s"
         configuration.coraid_repository_key = fake_coraid_repository_key
         configuration.use_multipath_for_image_xfer = False
+        configuration.enforce_multipath_for_image_xfer = False
         configuration.num_volume_device_scan_tries = 3
         configuration.volume_dd_blocksize = '1M'
         self.fake_rpc = FakeRpc()
@@ -815,7 +816,7 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
 
         self.mox.StubOutWithMock(connector, 'get_connector_properties')
         connector.get_connector_properties(root_helper,
-                                           CONF.my_ip).\
+                                           CONF.my_ip, False, False).\
             AndReturn({})
 
         self.mox.StubOutWithMock(utils, 'brick_get_connector')
