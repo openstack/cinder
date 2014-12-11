@@ -122,7 +122,8 @@ class DatastoreSelector(object):
             if not hosts:
                 break
 
-            all_hosts.extend(hosts)
+            for host in hosts:
+                all_hosts.append(host.obj)
             retrieve_result = self._vops.continue_retrieval(
                 retrieve_result)
         return all_hosts
@@ -203,8 +204,7 @@ class DatastoreSelector(object):
                   "requirements: %(req)s.",
                   {'hosts': hosts,
                    'req': req})
-        for host in hosts:
-            host_ref = host.obj
+        for host_ref in hosts:
             try:
                 (datastores, rp) = self._vops.get_dss_rp(host_ref)
             except error_util.VimConnectionException:
