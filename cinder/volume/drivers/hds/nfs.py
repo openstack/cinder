@@ -82,11 +82,15 @@ def _read_config(xml_config_file):
     :param xml_config_file: string filename containing XML configuration
     """
 
+    if not os.access(xml_config_file, os.R_OK):
+        raise exception.NotFound(message=_LE('Can\'t open config file: ')
+                                 + xml_config_file)
+
     try:
         root = ETree.parse(xml_config_file).getroot()
     except Exception:
-        raise exception.NotFound(message='config file not found: '
-                                 + xml_config_file)
+        raise exception.ConfigNotFound(
+            message=_LE('Error parsing config file: ') + xml_config_file)
 
     # mandatory parameters
     config = {}
