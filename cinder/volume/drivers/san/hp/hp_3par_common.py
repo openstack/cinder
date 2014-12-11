@@ -159,10 +159,11 @@ class HP3PARCommon(object):
         2.0.26 - Don't ignore extra-specs snap_cpg when missing cpg #1368972
         2.0.27 - Fixing manage source-id error bug #1357075
         2.0.28 - Removing locks bug #1381190
+        2.0.29 - Report a limitless cpg's stats better bug #1398651
 
     """
 
-    VERSION = "2.0.28"
+    VERSION = "2.0.29"
 
     stats = {}
 
@@ -669,9 +670,16 @@ class HP3PARCommon(object):
             try:
                 cpg = self.client.getCPG(cpg_name)
                 if 'limitMiB' not in cpg['SDGrowth']:
-                    # System capacity is best we can do for now.
-                    total_capacity = info['totalCapacityMiB'] * const
-                    free_capacity = info['freeCapacityMiB'] * const
+                    # cpg usable free space
+                    cpg_avail_space = \
+                        self.client.getCPGAvailableSpace(cpg_name)
+                    free_capacity = int(
+                        cpg_avail_space['usableFreeMiB'] * const)
+                    # total_capacity is the best we can do for a limitless cpg
+                    total_capacity = int(
+                        (cpg['SDUsage']['usedMiB'] +
+                         cpg['UsrUsage']['usedMiB'] +
+                         cpg_avail_space['usableFreeMiB']) * const)
                 else:
                     total_capacity = int(cpg['SDGrowth']['limitMiB'] * const)
                     free_capacity = int((cpg['SDGrowth']['limitMiB'] -
