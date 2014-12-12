@@ -745,21 +745,6 @@ class NetAppDriverNegativeTestCase(test.TestCase):
         except exception.InvalidInput:
             pass
 
-    def test_non_netapp_driver(self):
-        self.mock_object(utils, 'OpenStackInfo')
-        configuration = create_configuration()
-        common.netapp_unified_plugin_registry['test_family'] =\
-            {'iscsi': 'cinder.volume.drivers.arbitrary.IscsiDriver'}
-        configuration.netapp_storage_family = 'test_family'
-        configuration.netapp_storage_protocol = 'iscsi'
-        try:
-            common.NetAppDriver(configuration=configuration)
-            raise AssertionError('Non NetApp driver is getting instantiated.')
-        except exception.InvalidInput:
-            pass
-        finally:
-            common.netapp_unified_plugin_registry.pop('test_family')
-
 
 class FakeDirect7MODEServerHandler(FakeHTTPRequestHandler):
     """HTTP handler that fakes enough stuff to allow the driver to run."""
@@ -1213,8 +1198,8 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
         self.driver.volume_list = []
 
     def test_connect(self):
-        self.driver.driver.library.zapi_client = mock.MagicMock()
-        self.driver.driver.library.zapi_client.get_ontapi_version.\
+        self.driver.library.zapi_client = mock.MagicMock()
+        self.driver.library.zapi_client.get_ontapi_version.\
             return_value = (1, 20)
         self.driver.check_for_setup_error()
 
