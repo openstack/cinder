@@ -1406,7 +1406,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                                               project_id=project_id,
                                               **reserve_opts)
         except Exception:
-            old_reservations = None
             self.db.volume_update(context, volume_id, status_update)
             LOG.exception(_LE("Failed to update usages "
                               "while retyping volume."))
