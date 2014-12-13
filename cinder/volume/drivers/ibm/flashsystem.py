@@ -1,5 +1,4 @@
-# Copyright 2014 IBM Corp.
-# Copyright 2014 OpenStack Foundation
+# Copyright 2014 - 2015 IBM Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -73,10 +72,11 @@ class FlashSystemDriver(san.SanDriver):
 
     Version history:
     1.0.0 - Initial driver
+    1.0.1 - Code clean up
 
     """
 
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemDriver, self).__init__(*args, **kwargs)
@@ -193,8 +193,8 @@ class FlashSystemDriver(san.SanDriver):
         should be restored to previous mapped or non-mapped status.
         """
 
-        LOG.debug('enter: _copy_vdisk_data: %(src)s -> %(dest)s.'
-                  % {'src': src_vdisk_name, 'dest': dest_vdisk_name})
+        LOG.debug('enter: _copy_vdisk_data: %(src)s -> %(dest)s.',
+                  {'src': src_vdisk_name, 'dest': dest_vdisk_name})
 
         connector = utils.brick_get_connector_properties()
         (src_map, src_lun_id) = self._is_vdisk_map(
@@ -236,8 +236,8 @@ class FlashSystemDriver(san.SanDriver):
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('_copy_vdisk_data: Failed to '
-                              'copy %(src)s to %(dest)s.')
-                          % {'src': src_vdisk_name, 'dest': dest_vdisk_name})
+                              'copy %(src)s to %(dest)s.'),
+                          {'src': src_vdisk_name, 'dest': dest_vdisk_name})
         finally:
             if not dest_map:
                 self._unmap_vdisk_from_host(dest_vdisk_name, connector)
@@ -247,8 +247,8 @@ class FlashSystemDriver(san.SanDriver):
                 self._remove_device(src_properties, src_map_device)
 
         LOG.debug(
-            'leave: _copy_vdisk_data: %(src)s -> %(dest)s.'
-            % {'src': src_vdisk_name, 'dest': dest_vdisk_name})
+            'leave: _copy_vdisk_data: %(src)s -> %(dest)s.',
+            {'src': src_vdisk_name, 'dest': dest_vdisk_name})
 
     def _create_and_copy_vdisk_data(self, src_vdisk_name, src_vdisk_id,
                                     dest_vdisk_name, dest_vdisk_id):
@@ -282,7 +282,7 @@ class FlashSystemDriver(san.SanDriver):
 
         """
 
-        LOG.debug('enter: _create_host: host %s.' % connector['host'])
+        LOG.debug('enter: _create_host: host %s.', connector['host'])
 
         rand_id = six.text_type(random.randint(0, 99999999)).zfill(8)
         host_name = '%s-%s' % (self._connector_to_hostname_prefix(connector),
@@ -293,7 +293,7 @@ class FlashSystemDriver(san.SanDriver):
             for wwpn in connector['wwpns']:
                 ports.append('-hbawwpn %s' % wwpn)
 
-        self._driver_assert(len(ports),
+        self._driver_assert(ports,
                             (_('_create_host: No connector ports.')))
         port1 = ports.pop(0)
         arg_name, arg_val = port1.split()
@@ -309,11 +309,11 @@ class FlashSystemDriver(san.SanDriver):
                        arg_name, arg_val, host_name]
             out, err = self._ssh(ssh_cmd)
             self._assert_ssh_return(
-                (len(out.strip()) == 0),
+                (not out.strip()),
                 '_create_host', ssh_cmd, out, err)
 
         LOG.debug(
-            'leave: _create_host: host %(host)s - %(host_name)s.' %
+            'leave: _create_host: host %(host)s - %(host_name)s.',
             {'host': connector['host'], 'host_name': host_name})
 
         return host_name
@@ -321,14 +321,14 @@ class FlashSystemDriver(san.SanDriver):
     def _create_vdisk(self, name, size, unit, opts):
         """Create a new vdisk."""
 
-        LOG.debug('enter: _create_vdisk: vdisk %s.' % name)
+        LOG.debug('enter: _create_vdisk: vdisk %s.', name)
 
         ssh_cmd = ['svctask', 'mkvdisk', '-name', name, '-mdiskgrp',
                    FLASHSYSTEM_VOLPOOL_NAME, '-iogrp',
                    six.text_type(FLASHSYSTEM_VOL_IOGRP),
                    '-size', size, '-unit', unit]
         out, err = self._ssh(ssh_cmd)
-        self._assert_ssh_return(len(out.strip()), '_create_vdisk',
+        self._assert_ssh_return(out.strip(), '_create_vdisk',
                                 ssh_cmd, out, err)
 
         # Ensure that the output is as expected
@@ -343,32 +343,32 @@ class FlashSystemDriver(san.SanDriver):
              % {'name': name, 'out': six.text_type(out),
                 'err': six.text_type(err)}))
 
-        LOG.debug('leave: _create_vdisk: vdisk %s.' % name)
+        LOG.debug('leave: _create_vdisk: vdisk %s.', name)
 
     def _delete_host(self, host_name):
         """Delete a host on the storage system."""
 
-        LOG.debug('enter: _delete_host: host %s.' % host_name)
+        LOG.debug('enter: _delete_host: host %s.', host_name)
 
         ssh_cmd = ['svctask', 'rmhost', host_name]
         out, err = self._ssh(ssh_cmd)
         # No output should be returned from rmhost
         self._assert_ssh_return(
-            len(out.strip()) == 0,
+            (not out.strip()),
             '_delete_host', ssh_cmd, out, err)
 
-        LOG.debug('leave: _delete_host: host %s.' % host_name)
+        LOG.debug('leave: _delete_host: host %s.', host_name)
 
     def _delete_vdisk(self, name, force):
         """Deletes existing vdisks."""
 
-        LOG.debug('enter: _delete_vdisk: vdisk %s.' % name)
+        LOG.debug('enter: _delete_vdisk: vdisk %s.', name)
 
         # Try to delete volume only if found on the storage
         vdisk_defined = self._is_vdisk_defined(name)
         if not vdisk_defined:
             LOG.warning(_LW('warning: Tried to delete vdisk %s but '
-                            'it does not exist.') % name)
+                            'it does not exist.'), name)
             return
 
         ssh_cmd = ['svctask', 'rmvdisk', '-force', name]
@@ -377,11 +377,11 @@ class FlashSystemDriver(san.SanDriver):
         out, err = self._ssh(ssh_cmd)
         # No output should be returned from rmvdisk
         self._assert_ssh_return(
-            len(out.strip()) == 0,
+            (not out.strip()),
             ('_delete_vdisk %(name)s') % {'name': name},
             ssh_cmd, out, err)
 
-        LOG.debug('leave: _delete_vdisk: vdisk %s.' % name)
+        LOG.debug('leave: _delete_vdisk: vdisk %s.', name)
 
     def _driver_assert(self, assert_condition, exception_message):
         """Internal assertion mechanism for CLI output."""
@@ -399,33 +399,33 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug(
             'enter: _execute_command_and_parse_attributes: '
-            'command: %s.' % six.text_type(ssh_cmd))
+            'command: %s.', six.text_type(ssh_cmd))
 
         try:
             out, err = self._ssh(ssh_cmd)
         except processutils.ProcessExecutionError:
             LOG.warning(_LW('_execute_command_and_parse_attributes: Failed to '
-                            'run command: %s.') % six.text_type(ssh_cmd))
+                            'run command: %s.'), six.text_type(ssh_cmd))
             # Does not raise exception when command encounters error.
             # Only return and the upper logic decides what to do.
             return None
 
         self._assert_ssh_return(
-            len(out),
+            out,
             '_execute_command_and_parse_attributes', ssh_cmd, out, err)
 
         attributes = {}
         for attrib_line in out.split('\n'):
             # If '!' not found, return the string and two empty strings
             attrib_name, foo, attrib_value = attrib_line.partition('!')
-            if attrib_name is not None and len(attrib_name.strip()):
+            if attrib_name is not None and attrib_name.strip():
                 self._append_dict(attributes, attrib_name, attrib_value)
 
         LOG.debug(
             'leave: _execute_command_and_parse_attributes: '
-            'command: %(cmd)s attributes: %(attr)s.'
-            % {'cmd': six.text_type(ssh_cmd),
-               'attr': six.text_type(attributes)})
+            'command: %(cmd)s attributes: %(attr)s.',
+            {'cmd': six.text_type(ssh_cmd),
+             'attr': six.text_type(attributes)})
 
         return attributes
 
@@ -434,7 +434,7 @@ class FlashSystemDriver(san.SanDriver):
             ssh_cmd = ['svcinfo', 'lshost', '-delim', '!', host]
             out, err = self._ssh(ssh_cmd)
             self._assert_ssh_return(
-                len(out.strip()),
+                out.strip(),
                 '_find_host_exhaustive', ssh_cmd, out, err)
             for attr_line in out.split('\n'):
                 # If '!' not found, return the string and two empty strings
@@ -490,8 +490,8 @@ class FlashSystemDriver(san.SanDriver):
                 if 'unconfigured' != s:
                     wwpns.add(i)
             node['WWPN'] = list(wwpns)
-            LOG.info(_LI('WWPN on node %(node)s: %(wwpn)s.')
-                     % {'node': node['id'], 'wwpn': node['WWPN']})
+            LOG.info(_LI('WWPN on node %(node)s: %(wwpn)s.'),
+                     {'node': node['id'], 'wwpn': node['WWPN']})
 
     def _get_host_from_connector(self, connector):
         """List the hosts defined in the storage.
@@ -501,13 +501,13 @@ class FlashSystemDriver(san.SanDriver):
 
         """
 
-        LOG.debug('enter: _get_host_from_connector: %s.' % connector)
+        LOG.debug('enter: _get_host_from_connector: %s.', connector)
 
         # Get list of host in the storage
         ssh_cmd = ['svcinfo', 'lshost', '-delim', '!']
         out, err = self._ssh(ssh_cmd)
 
-        if not len(out.strip()):
+        if not out.strip():
             return None
 
         # If we have FC information, we have a faster lookup option
@@ -515,7 +515,7 @@ class FlashSystemDriver(san.SanDriver):
 
         host_lines = out.strip().split('\n')
         self._assert_ssh_return(
-            len(host_lines),
+            host_lines,
             '_get_host_from_connector', ssh_cmd, out, err)
         header = host_lines.pop(0).split('!')
         self._assert_ssh_return(
@@ -525,7 +525,7 @@ class FlashSystemDriver(san.SanDriver):
         hosts = map(lambda x: x.split('!')[name_index], host_lines)
         hostname = self._find_host_exhaustive(connector, hosts)
 
-        LOG.debug('leave: _get_host_from_connector: host %s.' % hostname)
+        LOG.debug('leave: _get_host_from_connector: host %s.', hostname)
 
         return hostname
 
@@ -537,7 +537,7 @@ class FlashSystemDriver(san.SanDriver):
         out, err = self._ssh(ssh_cmd)
 
         mappings = out.strip().split('\n')
-        if len(mappings):
+        if mappings:
             header = mappings.pop(0)
             for mapping_line in mappings:
                 mapping_data = self._get_hdr_dic(header, mapping_line, '!')
@@ -565,7 +565,7 @@ class FlashSystemDriver(san.SanDriver):
         out, err = self._ssh(ssh_cmd)
 
         mappings = out.strip().split('\n')
-        if len(mappings):
+        if mappings:
             header = mappings.pop(0)
             for mapping_line in mappings:
                 mapping_data = self._get_hdr_dic(header, mapping_line, '!')
@@ -579,7 +579,7 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug(
             'enter: _get_vdisk_map_properties: vdisk '
-            '%(vdisk_name)s.' % {'vdisk_name': vdisk_name})
+            '%(vdisk_name)s.', {'vdisk_name': vdisk_name})
 
         preferred_node = '0'
         IO_group = '0'
@@ -595,7 +595,7 @@ class FlashSystemDriver(san.SanDriver):
             if node['IO_group'] == IO_group:
                 io_group_nodes.append(node)
 
-        if not len(io_group_nodes):
+        if not io_group_nodes:
             msg = (_('_get_vdisk_map_properties: No node found in '
                      'I/O group %(gid)s for volume %(vol)s.')
                    % {'gid': IO_group, 'vol': vdisk_name})
@@ -606,7 +606,7 @@ class FlashSystemDriver(san.SanDriver):
             # Get 1st node in I/O group
             preferred_node_entry = io_group_nodes[0]
             LOG.warning(_LW('_get_vdisk_map_properties: Did not find a '
-                            'preferred node for vdisk %s.') % vdisk_name)
+                            'preferred node for vdisk %s.'), vdisk_name)
         properties = {}
         properties['target_discovered'] = False
         properties['target_lun'] = lun_id
@@ -615,7 +615,7 @@ class FlashSystemDriver(san.SanDriver):
         type_str = 'fibre_channel'
         conn_wwpns = self._get_conn_fc_wwpns()
 
-        if len(conn_wwpns) == 0:
+        if not conn_wwpns:
             msg = (_('_get_vdisk_map_properties: Could not get FC '
                      'connection information for the host-volume '
                      'connection. Is the host configured properly '
@@ -633,7 +633,7 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug(
             'leave: _get_vdisk_map_properties: vdisk '
-            '%(vdisk_name)s.' % {'vdisk_name': vdisk_name})
+            '%(vdisk_name)s.', {'vdisk_name': vdisk_name})
 
         return {'driver_volume_type': type_str, 'data': properties}
 
@@ -687,13 +687,13 @@ class FlashSystemDriver(san.SanDriver):
 
     def _is_vdisk_defined(self, vdisk_name):
         """Check if vdisk is defined."""
-        LOG.debug('enter: _is_vdisk_defined: vdisk %s.' % vdisk_name)
+        LOG.debug('enter: _is_vdisk_defined: vdisk %s.', vdisk_name)
 
         vdisk_attributes = self._get_vdisk_attributes(vdisk_name)
 
         LOG.debug(
-            'leave: _is_vdisk_defined: vdisk %(vol)s with %(str)s.'
-            % {'vol': vdisk_name, 'str': vdisk_attributes is not None})
+            'leave: _is_vdisk_defined: vdisk %(vol)s with %(str)s.',
+            {'vol': vdisk_name, 'str': vdisk_attributes is not None})
 
         if vdisk_attributes is None:
             return False
@@ -702,10 +702,10 @@ class FlashSystemDriver(san.SanDriver):
 
     def _is_vdisk_copy_in_progress(self, vdisk_name):
         LOG.debug(
-            '_is_vdisk_copy_in_progress: %(vdisk)s: %(vdisk_in_progress)s.'
-            % {'vdisk': vdisk_name,
-               'vdisk_in_progress':
-               six.text_type(self._vdisk_copy_in_progress)})
+            '_is_vdisk_copy_in_progress: %(vdisk)s: %(vdisk_in_progress)s.',
+            {'vdisk': vdisk_name,
+             'vdisk_in_progress':
+             six.text_type(self._vdisk_copy_in_progress)})
         if vdisk_name not in self._vdisk_copy_in_progress:
             LOG.debug(
                 '_is_vdisk_copy_in_progress: '
@@ -720,7 +720,7 @@ class FlashSystemDriver(san.SanDriver):
 
         """
 
-        LOG.debug('enter: _is_vdisk_map: %(src)s.' % {'src': vdisk_name})
+        LOG.debug('enter: _is_vdisk_map: %(src)s.', {'src': vdisk_name})
 
         map_flag = False
         result_lun = '-1'
@@ -748,28 +748,28 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug(
             'leave: _is_vdisk_map: %(src)s '
-            'mapped %(map_flag)s %(result_lun)s.'
-            % {'src': vdisk_name,
-               'map_flag': six.text_type(map_flag),
-               'result_lun': result_lun})
+            'mapped %(map_flag)s %(result_lun)s.',
+            {'src': vdisk_name,
+             'map_flag': six.text_type(map_flag),
+             'result_lun': result_lun})
 
         return (map_flag, int(result_lun))
 
     def _log_cli_output_error(self, function, cmd, out, err):
         LOG.error(_LE('%(fun)s: Failed with unexpected CLI output.\n '
-                      'Command: %(cmd)s\nstdout: %(out)s\nstderr: %(err)s\n')
-                  % {'fun': function,
-                     'cmd': cmd,
-                     'out': six.text_type(out),
-                     'err': six.text_type(err)})
+                      'Command: %(cmd)s\nstdout: %(out)s\nstderr: %(err)s\n'),
+                  {'fun': function,
+                   'cmd': cmd,
+                   'out': six.text_type(out),
+                   'err': six.text_type(err)})
 
     def _map_vdisk_to_host(self, vdisk_name, connector):
         """Create a mapping between a vdisk to a host."""
 
         LOG.debug(
             'enter: _map_vdisk_to_host: vdisk %(vdisk_name)s to '
-            'host %(host)s.'
-            % {'vdisk_name': vdisk_name, 'host': connector})
+            'host %(host)s.',
+            {'vdisk_name': vdisk_name, 'host': connector})
 
         # Check if a host object is defined for this host name
         host_name = self._get_host_from_connector(connector)
@@ -804,8 +804,8 @@ class FlashSystemDriver(san.SanDriver):
 
                 # try to map one volume to multiple hosts
                 out, err = self._ssh(ssh_cmd)
-                LOG.info(_LI('Volume %s is mapping to multiple hosts.')
-                         % vdisk_name)
+                LOG.info(_LI('Volume %s is mapping to multiple hosts.'),
+                         vdisk_name)
                 self._assert_ssh_return(
                     'successfully created' in out,
                     '_map_vdisk_to_host', ssh_cmd, out, err)
@@ -816,9 +816,9 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug(
             ('leave: _map_vdisk_to_host: LUN %(result_lun)s, vdisk '
-             '%(vdisk_name)s, host %(host_name)s.')
-            % {'result_lun': result_lun,
-               'vdisk_name': vdisk_name, 'host_name': host_name})
+             '%(vdisk_name)s, host %(host_name)s.'),
+            {'result_lun': result_lun,
+             'vdisk_name': vdisk_name, 'host_name': host_name})
 
         return int(result_lun)
 
@@ -826,10 +826,10 @@ class FlashSystemDriver(san.SanDriver):
         ssh_cmd = cmd + ['-delim', '!']
         out, err = self._ssh(ssh_cmd)
 
-        if not len(out.strip()):
+        if not out.strip():
             return
         port_lines = out.strip().split('\n')
-        if not len(port_lines):
+        if not port_lines:
             return
 
         header = port_lines.pop(0)
@@ -899,25 +899,25 @@ class FlashSystemDriver(san.SanDriver):
         # Check if vdisk-host mapping exists, remove if it does. If no host
         # name was given, but only one mapping exists, we can use that.
         mapping_data = self._get_vdiskhost_mappings(vdisk_name)
-        if len(mapping_data) == 0:
+        if not mapping_data:
             LOG.warning(_LW('_unmap_vdisk_from_host: No mapping of volume '
-                            '%(vol_name)s to any host found.')
-                        % {'vol_name': vdisk_name})
+                            '%(vol_name)s to any host found.'),
+                        {'vol_name': vdisk_name})
             return
         if host_name is None:
             if len(mapping_data) > 1:
                 LOG.warning(_LW('_unmap_vdisk_from_host: Multiple mappings of '
                                 'volume %(vdisk_name)s found, no host '
-                                'specified.')
-                            % {'vdisk_name': vdisk_name})
+                                'specified.'),
+                            {'vdisk_name': vdisk_name})
                 return
             else:
                 host_name = mapping_data.keys()[0]
         else:
             if host_name not in mapping_data:
                 LOG.error(_LE('_unmap_vdisk_from_host: No mapping of volume '
-                              '%(vol_name)s to host %(host_name)s found.')
-                          % {'vol_name': vdisk_name, 'host_name': host_name})
+                              '%(vol_name)s to host %(host_name)s found.'),
+                          {'vol_name': vdisk_name, 'host_name': host_name})
                 return
 
         # We have a valid host_name now
@@ -926,7 +926,7 @@ class FlashSystemDriver(san.SanDriver):
         out, err = self._ssh(ssh_cmd)
         # Verify CLI behaviour - no output is returned from rmvdiskhostmap
         self._assert_ssh_return(
-            len(out.strip()) == 0,
+            (not out.strip()),
             '_unmap_vdisk_from_host', ssh_cmd, out, err)
 
         # If this host has no more mappings, delete it
@@ -975,10 +975,10 @@ class FlashSystemDriver(san.SanDriver):
 
     def _set_vdisk_copy_in_progress(self, vdisk_list):
         LOG.debug(
-            '_set_vdisk_copy_in_progress: %(vdisk)s: %(vdisk_in_progress)s.'
-            % {'vdisk': six.text_type(vdisk_list),
-               'vdisk_in_progress':
-               six.text_type(self._vdisk_copy_in_progress)})
+            '_set_vdisk_copy_in_progress: %(vdisk)s: %(vdisk_in_progress)s.',
+            {'vdisk': six.text_type(vdisk_list),
+             'vdisk_in_progress':
+             six.text_type(self._vdisk_copy_in_progress)})
         get_lock = True
         self._vdisk_copy_lock.acquire()
         for vdisk in vdisk_list:
@@ -990,16 +990,16 @@ class FlashSystemDriver(san.SanDriver):
         self._vdisk_copy_lock.release()
         if get_lock:
             LOG.debug(
-                '_set_vdisk_copy_in_progress: %s.'
-                % six.text_type(self._vdisk_copy_in_progress))
+                '_set_vdisk_copy_in_progress: %s.',
+                six.text_type(self._vdisk_copy_in_progress))
             raise loopingcall.LoopingCallDone(retvalue=True)
 
     def _unset_vdisk_copy_in_progress(self, vdisk_list):
         LOG.debug(
-            '_unset_vdisk_copy_in_progress: %(vdisk)s: %(vdisk_in_progress)s.'
-            % {'vdisk': six.text_type(vdisk_list),
-               'vdisk_in_progress':
-               six.text_type(self._vdisk_copy_in_progress)})
+            '_unset_vdisk_copy_in_progress: %(vdisk)s: %(vdisk_in_progress)s.',
+            {'vdisk': six.text_type(vdisk_list),
+             'vdisk_in_progress':
+             six.text_type(self._vdisk_copy_in_progress)})
         self._vdisk_copy_lock.acquire()
         for vdisk in vdisk_list:
             if vdisk in self._vdisk_copy_in_progress:
@@ -1051,10 +1051,10 @@ class FlashSystemDriver(san.SanDriver):
         ssh_cmd = ['svcinfo', 'lsnode', '-delim', '!']
         out, err = self._ssh(ssh_cmd)
         self._assert_ssh_return(
-            len(out.strip()), 'do_setup', ssh_cmd, out, err)
+            out.strip(), 'do_setup', ssh_cmd, out, err)
 
         nodes = out.strip().splitlines()
-        self._assert_ssh_return(len(nodes), 'do_setup', ssh_cmd, out, err)
+        self._assert_ssh_return(nodes, 'do_setup', ssh_cmd, out, err)
         header = nodes.pop(0)
         for node_line in nodes:
             try:
@@ -1083,7 +1083,7 @@ class FlashSystemDriver(san.SanDriver):
         # nodes that do not support any types (may be partially configured).
         to_delete = []
         for k, node in self._storage_nodes.iteritems():
-            if not len(node['WWPN']):
+            if not node['WWPN']:
                 to_delete.append(k)
 
         for delkey in to_delete:
@@ -1091,7 +1091,7 @@ class FlashSystemDriver(san.SanDriver):
 
         # Make sure we have at least one node configured
         self._driver_assert(
-            len(self._storage_nodes),
+            self._storage_nodes,
             'do_setup: No configured nodes.')
 
         self._protocol = node['protocol'] = 'FC'
@@ -1158,7 +1158,7 @@ class FlashSystemDriver(san.SanDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend volume."""
-        LOG.debug('enter: extend_volume: volume %s.' % volume['name'])
+        LOG.debug('enter: extend_volume: volume %s.', volume['name'])
 
         vdisk_name = volume['name']
         self._wait_vdisk_copy_completed(vdisk_name)
@@ -1169,10 +1169,10 @@ class FlashSystemDriver(san.SanDriver):
         out, err = self._ssh(ssh_cmd)
         # No output should be returned from expandvdisksize
         self._assert_ssh_return(
-            len(out.strip()) == 0,
+            (not out.strip()),
             'extend_volume', ssh_cmd, out, err)
 
-        LOG.debug('leave: extend_volume: volume %s.' % volume['name'])
+        LOG.debug('leave: extend_volume: volume %s.', volume['name'])
 
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
@@ -1191,7 +1191,7 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug(
             'enter: initialize_connection: volume %(vol)s with '
-            'connector %(conn)s.' % {'vol': volume, 'conn': connector})
+            'connector %(conn)s.', {'vol': volume, 'conn': connector})
 
         vdisk_name = volume['name']
         vdisk_id = volume['id']
@@ -1215,15 +1215,15 @@ class FlashSystemDriver(san.SanDriver):
                 self.terminate_connection(volume, connector)
                 LOG.error(_LE('initialize_connection: Failed to collect '
                               'return properties for volume %(vol)s and '
-                              'connector %(conn)s.')
-                          % {'vol': volume, 'conn': connector})
+                              'connector %(conn)s.'),
+                          {'vol': volume, 'conn': connector})
 
         LOG.debug(
             'leave: initialize_connection:\n volume: %(vol)s\n connector '
-            '%(conn)s\n properties: %(prop)s.'
-            % {'vol': volume,
-               'conn': connector,
-               'prop': properties})
+            '%(conn)s\n properties: %(prop)s.',
+            {'vol': volume,
+             'conn': connector,
+             'prop': properties})
 
         return properties
 
@@ -1240,8 +1240,8 @@ class FlashSystemDriver(san.SanDriver):
         """
         LOG.debug(
             'enter: terminate_connection: volume %(vol)s with '
-            'connector %(conn)s.'
-            % {'vol': volume, 'conn': connector})
+            'connector %(conn)s.',
+            {'vol': volume, 'conn': connector})
 
         vdisk_name = volume['name']
         self._wait_vdisk_copy_completed(vdisk_name)
@@ -1255,7 +1255,7 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug(
             'leave: terminate_connection: volume %(vol)s with '
-            'connector %(conn)s.' % {'vol': volume, 'conn': connector})
+            'connector %(conn)s.', {'vol': volume, 'conn': connector})
 
         return {
             'driver_volume_type': 'fibre_channel',
@@ -1266,8 +1266,8 @@ class FlashSystemDriver(san.SanDriver):
         """Create snapshot from volume."""
 
         LOG.debug(
-            'enter: create_snapshot: create %(snap)s from %(vol)s.'
-            % {'snap': snapshot['name'], 'vol': snapshot['volume']['name']})
+            'enter: create_snapshot: create %(snap)s from %(vol)s.',
+            {'snap': snapshot['name'], 'vol': snapshot['volume']['name']})
 
         status = snapshot['volume']['status']
         if status not in ['available', 'in-use']:
@@ -1282,30 +1282,30 @@ class FlashSystemDriver(san.SanDriver):
                                          snapshot['id'])
 
         LOG.debug(
-            'leave: create_snapshot: create %(snap)s from %(vol)s.'
-            % {'snap': snapshot['name'], 'vol': snapshot['volume']['name']})
+            'leave: create_snapshot: create %(snap)s from %(vol)s.',
+            {'snap': snapshot['name'], 'vol': snapshot['volume']['name']})
 
     def delete_snapshot(self, snapshot):
         """Delete snapshot."""
 
         LOG.debug(
-            'enter: delete_snapshot: delete %(snap)s.'
-            % {'snap': snapshot['name']})
+            'enter: delete_snapshot: delete %(snap)s.',
+            {'snap': snapshot['name']})
 
         self._wait_vdisk_copy_completed(snapshot['name'])
 
         self._delete_vdisk(snapshot['name'], False)
 
         LOG.debug(
-            'leave: delete_snapshot: delete %(snap)s.'
-            % {'snap': snapshot['name']})
+            'leave: delete_snapshot: delete %(snap)s.',
+            {'snap': snapshot['name']})
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create volume from snapshot."""
 
         LOG.debug(
             'enter: create_volume_from_snapshot: create %(vol)s from '
-            '%(snap)s.' % {'vol': volume['name'], 'snap': snapshot['name']})
+            '%(snap)s.', {'vol': volume['name'], 'snap': snapshot['name']})
 
         if volume['size'] != snapshot['volume_size']:
             msg = (_('create_volume_from_snapshot: Volume size is different '
@@ -1327,13 +1327,13 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug(
             'leave: create_volume_from_snapshot: create %(vol)s from '
-            '%(snap)s.' % {'vol': volume['name'], 'snap': snapshot['name']})
+            '%(snap)s.', {'vol': volume['name'], 'snap': snapshot['name']})
 
     def create_cloned_volume(self, volume, src_volume):
         """Create volume from a source volume."""
 
-        LOG.debug('enter: create_cloned_volume: create %(vol)s from %(src)s.'
-                  % {'src': src_volume['name'], 'vol': volume['name']})
+        LOG.debug('enter: create_cloned_volume: create %(vol)s from %(src)s.',
+                  {'src': src_volume['name'], 'vol': volume['name']})
 
         if src_volume['size'] != volume['size']:
             msg = (_('create_cloned_volume: Source and destination '
@@ -1346,8 +1346,8 @@ class FlashSystemDriver(san.SanDriver):
                                          volume['name'],
                                          volume['id'])
 
-        LOG.debug('leave: create_cloned_volume: create %(vol)s from %(src)s.'
-                  % {'src': src_volume['name'], 'vol': volume['name']})
+        LOG.debug('leave: create_cloned_volume: create %(vol)s from %(src)s.',
+                  {'src': src_volume['name'], 'vol': volume['name']})
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
