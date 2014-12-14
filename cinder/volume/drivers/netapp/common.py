@@ -42,12 +42,14 @@ netapp_unified_plugin_registry =\
     {'ontap_cluster':
      {
          'iscsi': DATAONTAP_PATH + '.iscsi_cmode.NetAppCmodeISCSIDriver',
-         'nfs': DATAONTAP_PATH + '.nfs_cmode.NetAppCmodeNfsDriver'
+         'nfs': DATAONTAP_PATH + '.nfs_cmode.NetAppCmodeNfsDriver',
+         'fc': DATAONTAP_PATH + '.fc_cmode.NetAppCmodeFibreChannelDriver'
      },
      'ontap_7mode':
      {
          'iscsi': DATAONTAP_PATH + '.iscsi_7mode.NetApp7modeISCSIDriver',
-         'nfs': DATAONTAP_PATH + '.nfs_7mode.NetApp7modeNfsDriver'
+         'nfs': DATAONTAP_PATH + '.nfs_7mode.NetApp7modeNfsDriver',
+         'fc': DATAONTAP_PATH + '.fc_7mode.NetApp7modeFibreChannelDriver'
      },
      'eseries':
      {
@@ -123,8 +125,7 @@ class NetAppDriverFactory(object):
         if driver_loc is None:
             raise exception.InvalidInput(
                 reason=_('Protocol %(storage_protocol)s is not supported'
-                         ' for storage family %(storage_family)s')
-                % fmt)
+                         ' for storage family %(storage_family)s') % fmt)
 
         NetAppDriverFactory.check_netapp_driver(driver_loc)
         kwargs = kwargs or {}

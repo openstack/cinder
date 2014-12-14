@@ -51,8 +51,8 @@ class Client(client_base.Client):
     def set_vserver(self, vserver):
         self.connection.set_vserver(vserver)
 
-    def get_target_details(self):
-        """Gets the target portal details."""
+    def get_iscsi_target_details(self):
+        """Gets the iSCSI target portal details."""
         iscsi_if_iter = netapp_api.NaElement('iscsi-interface-get-iter')
         result = self.connection.invoke_successfully(iscsi_if_iter, True)
         tgt_list = []
@@ -69,6 +69,25 @@ class Client(client_base.Client):
                     'is-interface-enabled')
                 tgt_list.append(d)
         return tgt_list
+
+    def get_fc_target_wwpns(self):
+        """Gets the FC target details."""
+        wwpns = []
+        port_name_list_api = netapp_api.NaElement('fcp-port-name-get-iter')
+        port_name_list_api.add_new_child('max-records', '100')
+        result = self.connection.invoke_successfully(port_name_list_api, True)
+        num_records = result.get_child_content('num-records')
+        if num_records and int(num_records) >= 1:
+            for port_name_info in result.get_child_by_name(
+                    'attributes-list').get_children():
+
+                if port_name_info.get_child_content('is-used') != 'true':
+                    continue
+
+                wwpn = port_name_info.get_child_content('port-name').lower()
+                wwpns.append(wwpn)
+
+        return wwpns
 
     def get_iscsi_service_details(self):
         """Returns iscsi iqn."""
@@ -100,7 +119,7 @@ class Client(client_base.Client):
             query = netapp_api.NaElement('query')
             query.add_child_elem(lun_info)
             api.add_child_elem(query)
-            result = self.connection.invoke_successfully(api)
+            result = self.connection.invoke_successfully(api, True)
             if result.get_child_by_name('num-records') and\
                     int(result.get_child_content('num-records')) >= 1:
                 attr_list = result.get_child_by_name('attributes-list')
@@ -139,51 +158,81 @@ class Client(client_base.Client):
                 break
         return map_list
 
-    def get_igroup_by_initiator(self, initiator):
-        """Get igroups by initiator."""
+    def _get_igroup_by_initiator_query(self, initiator, tag):
+        igroup_get_iter = netapp_api.NaElement('igroup-get-iter')
+        igroup_get_iter.add_new_child('max-records', '100')
+        if tag:
+            igroup_get_iter.add_new_child('tag', tag, True)
+
+        query = netapp_api.NaElement('query')
+        igroup_info = netapp_api.NaElement('initiator-group-info')
+        query.add_child_elem(igroup_info)
+        igroup_info.add_new_child('vserver', self.vserver)
+        initiators = netapp_api.NaElement('initiators')
+        igroup_info.add_child_elem(initiators)
+        igroup_get_iter.add_child_elem(query)
+        initiators.add_node_with_children(
+            'initiator-info', **{'initiator-name': initiator})
+
+        # limit results to just the attributes of interest
+        desired_attrs = netapp_api.NaElement('desired-attributes')
+        desired_igroup_info = netapp_api.NaElement('initiator-group-info')
+        desired_igroup_info.add_node_with_children(
+            'initiators', **{'initiator-info': None})
+        desired_igroup_info.add_new_child('vserver', None)
+        desired_igroup_info.add_new_child('initiator-group-name', None)
+        desired_igroup_info.add_new_child('initiator-group-type', None)
+        desired_igroup_info.add_new_child('initiator-group-os-type', None)
+        desired_attrs.add_child_elem(desired_igroup_info)
+        igroup_get_iter.add_child_elem(desired_attrs)
+
+        return igroup_get_iter
+
+    def get_igroup_by_initiators(self, initiator_list):
+        """Get igroups exactly matching a set of initiators."""
         tag = None
         igroup_list = []
+        if not initiator_list:
+            return igroup_list
+
+        initiator_set = set(initiator_list)
+
         while True:
-            igroup_iter = netapp_api.NaElement('igroup-get-iter')
-            igroup_iter.add_new_child('max-records', '100')
-            if tag:
-                igroup_iter.add_new_child('tag', tag, True)
-            query = netapp_api.NaElement('query')
-            igroup_iter.add_child_elem(query)
-            igroup_info = netapp_api.NaElement('initiator-group-info')
-            query.add_child_elem(igroup_info)
-            igroup_info.add_new_child('vserver', self.vserver)
-            initiators = netapp_api.NaElement('initiators')
-            igroup_info.add_child_elem(initiators)
-            initiators.add_node_with_children('initiator-info',
-                                              **{'initiator-name': initiator})
-            des_attrs = netapp_api.NaElement('desired-attributes')
-            des_ig_info = netapp_api.NaElement('initiator-group-info')
-            des_attrs.add_child_elem(des_ig_info)
-            des_ig_info.add_node_with_children('initiators',
-                                               **{'initiator-info': None})
-            des_ig_info.add_new_child('vserver', None)
-            des_ig_info.add_new_child('initiator-group-name', None)
-            des_ig_info.add_new_child('initiator-group-type', None)
-            des_ig_info.add_new_child('initiator-group-os-type', None)
-            igroup_iter.add_child_elem(des_attrs)
-            result = self.connection.invoke_successfully(igroup_iter, False)
+            # C-mode getter APIs can't do an 'and' query, so match the first
+            # initiator (which will greatly narrow the search results) and
+            # filter the rest in this method.
+            query = self._get_igroup_by_initiator_query(initiator_list[0], tag)
+            result = self.connection.invoke_successfully(query, True)
+
             tag = result.get_child_content('next-tag')
-            if result.get_child_content('num-records') and\
-                    int(result.get_child_content('num-records')) > 0:
-                attr_list = result.get_child_by_name('attributes-list')
-                igroups = attr_list.get_children()
-                for igroup in igroups:
-                    ig = dict()
-                    ig['initiator-group-os-type'] = igroup.get_child_content(
-                        'initiator-group-os-type')
-                    ig['initiator-group-type'] = igroup.get_child_content(
-                        'initiator-group-type')
-                    ig['initiator-group-name'] = igroup.get_child_content(
-                        'initiator-group-name')
-                    igroup_list.append(ig)
+            num_records = result.get_child_content('num-records')
+            if num_records and int(num_records) >= 1:
+
+                for igroup_info in result.get_child_by_name(
+                        'attributes-list').get_children():
+
+                    initiator_set_for_igroup = set()
+                    for initiator_info in igroup_info.get_child_by_name(
+                            'initiators').get_children():
+
+                        initiator_set_for_igroup.add(
+                            initiator_info.get_child_content('initiator-name'))
+
+                    if initiator_set == initiator_set_for_igroup:
+                        igroup = {'initiator-group-os-type':
+                                  igroup_info.get_child_content(
+                                      'initiator-group-os-type'),
+                                  'initiator-group-type':
+                                  igroup_info.get_child_content(
+                                      'initiator-group-type'),
+                                  'initiator-group-name':
+                                  igroup_info.get_child_content(
+                                      'initiator-group-name')}
+                        igroup_list.append(igroup)
+
             if tag is None:
                 break
+
         return igroup_list
 
     def clone_lun(self, volume, name, new_name, space_reserved='true',
@@ -240,7 +289,7 @@ class Client(client_base.Client):
         query = netapp_api.NaElement('query')
         lun_iter.add_child_elem(query)
         query.add_node_with_children('lun-info', **args)
-        luns = self.connection.invoke_successfully(lun_iter)
+        luns = self.connection.invoke_successfully(lun_iter, True)
         attr_list = luns.get_child_by_name('attributes-list')
         return attr_list.get_children()
 

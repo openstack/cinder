@@ -19,6 +19,7 @@ import mock
 import six
 
 from cinder import test
+import cinder.tests.volume.drivers.netapp.dataontap.fakes as fake
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 
@@ -61,7 +62,9 @@ class NetAppBaseClientTestCase(test.TestCase):
     def test_get_ontapi_version_cached(self):
 
         self.connection.get_api_version.return_value = (1, 20)
+
         major, minor = self.client.get_ontapi_version()
+
         self.assertEqual(1, self.connection.get_api_version.call_count)
         self.assertEqual(1, major)
         self.assertEqual(20, minor)
@@ -69,6 +72,7 @@ class NetAppBaseClientTestCase(test.TestCase):
     def test_check_is_naelement(self):
 
         element = netapp_api.NaElement('name')
+
         self.assertIsNone(self.client.check_is_naelement(element))
         self.assertRaises(ValueError, self.client.check_is_naelement, None)
 
@@ -366,6 +370,7 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.connection.invoke_successfully.return_value = mock_response
 
         geometry = self.client.get_lun_geometry(path)
+
         self.assertEqual(expected_keys, set(geometry.keys()))
 
     def test_get_lun_geometry_with_api_error(self):
@@ -380,6 +385,7 @@ class NetAppBaseClientTestCase(test.TestCase):
         fake_response = netapp_api.NaElement('volume')
         fake_response.add_node_with_children('options', test='blah')
         self.connection.invoke_successfully.return_value = fake_response
+
         options = self.client.get_volume_options('volume')
 
         self.assertEqual(1, len(options))
@@ -387,6 +393,7 @@ class NetAppBaseClientTestCase(test.TestCase):
     def test_get_volume_options_with_no_options(self):
         fake_response = netapp_api.NaElement('options')
         self.connection.invoke_successfully.return_value = fake_response
+
         options = self.client.get_volume_options('volume')
 
         self.assertEqual([], options)
@@ -396,7 +403,66 @@ class NetAppBaseClientTestCase(test.TestCase):
         new_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
         fake_response = netapp_api.NaElement('options')
         self.connection.invoke_successfully.return_value = fake_response
+
         self.client.move_lun(path, new_path)
 
         self.connection.invoke_successfully.assert_called_once_with(
             mock.ANY, True)
+
+    def test_get_igroup_by_initiators(self):
+        self.assertRaises(NotImplementedError,
+                          self.client.get_igroup_by_initiators,
+                          fake.FC_FORMATTED_INITIATORS)
+
+    def test_get_fc_target_wwpns(self):
+        self.assertRaises(NotImplementedError,
+                          self.client.get_fc_target_wwpns)
+
+    def test_has_luns_mapped_to_initiator(self):
+        initiator = fake.FC_FORMATTED_INITIATORS[0]
+        version_response = netapp_api.NaElement(
+            etree.XML("""
+  <results status="passed">
+    <lun-maps>
+      <lun-map-info>
+        <path>/vol/cinder1/volume-9be956b3-9854-4a5c-a7f5-13a16da52c9c</path>
+        <initiator-group>openstack-4b57a80b-ebca-4d27-bd63-48ac5408d08b
+        </initiator-group>
+        <lun-id>0</lun-id>
+      </lun-map-info>
+      <lun-map-info>
+        <path>/vol/cinder1/volume-ac90433c-a560-41b3-9357-7f3f80071eb5</path>
+        <initiator-group>openstack-4b57a80b-ebca-4d27-bd63-48ac5408d08b
+        </initiator-group>
+        <lun-id>1</lun-id>
+      </lun-map-info>
+    </lun-maps>
+  </results>"""))
+
+        self.connection.invoke_successfully.return_value = version_response
+
+        self.assertTrue(self.client._has_luns_mapped_to_initiator(initiator))
+
+    def test_has_luns_mapped_to_initiator_not_mapped(self):
+        initiator = fake.FC_FORMATTED_INITIATORS[0]
+        version_response = netapp_api.NaElement(
+            etree.XML("""
+  <results status="passed">
+    <lun-maps />
+  </results>"""))
+        self.connection.invoke_successfully.return_value = version_response
+        self.assertFalse(self.client._has_luns_mapped_to_initiator(initiator))
+
+    @mock.patch.object(client_base.Client, '_has_luns_mapped_to_initiator')
+    def test_has_luns_mapped_to_initiators(self,
+                                           mock_has_luns_mapped_to_initiator):
+        initiators = fake.FC_FORMATTED_INITIATORS
+        mock_has_luns_mapped_to_initiator.return_value = True
+        self.assertTrue(self.client.has_luns_mapped_to_initiators(initiators))
+
+    @mock.patch.object(client_base.Client, '_has_luns_mapped_to_initiator')
+    def test_has_luns_mapped_to_initiators_not_mapped(
+            self, mock_has_luns_mapped_to_initiator):
+        initiators = fake.FC_FORMATTED_INITIATORS
+        mock_has_luns_mapped_to_initiator.return_value = False
+        self.assertFalse(self.client.has_luns_mapped_to_initiators(initiators))

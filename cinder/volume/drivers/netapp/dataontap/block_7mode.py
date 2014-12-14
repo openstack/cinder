@@ -28,6 +28,7 @@ import six
 from cinder import exception
 from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
+from cinder.volume.configuration import Configuration
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp import options as na_opts
@@ -67,11 +68,30 @@ class NetAppBlockStorage7modeLibrary(block_base.
             port=self.configuration.netapp_server_port,
             vfiler=self.vfiler)
 
+        self._do_partner_setup()
+
         self.vol_refresh_time = None
         self.vol_refresh_interval = 1800
         self.vol_refresh_running = False
         self.vol_refresh_voluntary = False
         self.root_volume_name = self._get_root_volume_name()
+
+    def _do_partner_setup(self):
+        partner_backend = self.configuration.netapp_partner_backend_name
+        if partner_backend:
+            config = Configuration(na_opts.netapp_7mode_opts, partner_backend)
+            config.append_config_values(na_opts.netapp_connection_opts)
+            config.append_config_values(na_opts.netapp_basicauth_opts)
+            config.append_config_values(na_opts.netapp_transport_opts)
+
+            self.partner_zapi_client = client_7mode.Client(
+                None,
+                transport_type=config.netapp_transport_type,
+                username=config.netapp_login,
+                password=config.netapp_password,
+                hostname=config.netapp_server_hostname,
+                port=config.netapp_server_port,
+                vfiler=None)
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
@@ -120,27 +140,40 @@ class NetAppBlockStorage7modeLibrary(block_base.
         owner = self._get_owner()
         return '%s:%s' % (owner, metadata['Path'])
 
-    def _find_mapped_lun_igroup(self, path, initiator, os=None):
-        """Find the igroup for mapped LUN with initiator."""
-        igroup = None
-        lun_id = None
+    def _find_mapped_lun_igroup(self, path, initiator_list):
+        """Find an igroup for a LUN mapped to the given initiator(s)."""
+        initiator_set = set(initiator_list)
+
         result = self.zapi_client.get_lun_map(path)
-        igroups = result.get_child_by_name('initiator-groups')
-        if igroups:
-            found = False
-            igroup_infs = igroups.get_children()
-            for ig in igroup_infs:
-                initiators = ig.get_child_by_name('initiators')
-                init_infs = initiators.get_children()
-                for info in init_infs:
-                    if info.get_child_content('initiator-name') == initiator:
-                        found = True
-                        igroup = ig.get_child_content('initiator-group-name')
-                        lun_id = ig.get_child_content('lun-id')
-                        break
-                if found:
-                    break
-        return igroup, lun_id
+        initiator_groups = result.get_child_by_name('initiator-groups')
+        if initiator_groups:
+            for initiator_group_info in initiator_groups.get_children():
+
+                initiator_set_for_igroup = set()
+                for initiator_info in initiator_group_info.get_child_by_name(
+                        'initiators').get_children():
+                    initiator_set_for_igroup.add(
+                        initiator_info.get_child_content('initiator-name'))
+
+                if initiator_set == initiator_set_for_igroup:
+                        igroup = initiator_group_info.get_child_content(
+                            'initiator-group-name')
+                        lun_id = initiator_group_info.get_child_content(
+                            'lun-id')
+                        return igroup, lun_id
+
+        return None, None
+
+    def _has_luns_mapped_to_initiators(self, initiator_list,
+                                       include_partner=True):
+        """Checks whether any LUNs are mapped to the given initiator(s)."""
+        if self.zapi_client.has_luns_mapped_to_initiators(initiator_list):
+            return True
+        if include_partner and self.partner_zapi_client and \
+                self.partner_zapi_client.has_luns_mapped_to_initiators(
+                    initiator_list):
+            return True
+        return False
 
     def _clone_lun(self, name, new_name, space_reserved='true',
                    src_block=0, dest_block=0, block_count=0):
@@ -175,6 +208,12 @@ class NetAppBlockStorage7modeLibrary(block_base.
         meta_dict['SpaceReserved'] = lun.get_child_content(
             'is-space-reservation-enabled')
         return meta_dict
+
+    def _get_fc_target_wwpns(self, include_partner=True):
+        wwpns = self.zapi_client.get_fc_target_wwpns()
+        if include_partner and self.partner_zapi_client:
+            wwpns.extend(self.partner_zapi_client.get_fc_target_wwpns())
+        return wwpns
 
     def _update_volume_stats(self):
         """Retrieve stats info from filer."""

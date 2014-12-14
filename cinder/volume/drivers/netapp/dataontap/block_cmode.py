@@ -89,10 +89,10 @@ class NetAppBlockStorageCmodeLibrary(block_base.
         """Returns LUN handle based on filer type."""
         return '%s:%s' % (self.vserver, metadata['Path'])
 
-    def _find_mapped_lun_igroup(self, path, initiator, os=None):
-        """Find the igroup for mapped LUN with initiator."""
-        initiator_igroups = self.zapi_client.get_igroup_by_initiator(
-            initiator=initiator)
+    def _find_mapped_lun_igroup(self, path, initiator_list):
+        """Find an igroup for a LUN mapped to the given initiator(s)."""
+        initiator_igroups = self.zapi_client.get_igroup_by_initiators(
+            initiator_list)
         lun_maps = self.zapi_client.get_lun_map(path)
         if initiator_igroups and lun_maps:
             for igroup in initiator_igroups:
@@ -139,6 +139,9 @@ class NetAppBlockStorageCmodeLibrary(block_base.
         meta_dict['SpaceReserved'] = \
             lun.get_child_content('is-space-reservation-enabled')
         return meta_dict
+
+    def _get_fc_target_wwpns(self, include_partner=True):
+        return self.zapi_client.get_fc_target_wwpns()
 
     def _configure_tunneling(self, do_tunneling=False):
         """Configures tunneling for Data ONTAP cluster."""

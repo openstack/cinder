@@ -23,6 +23,7 @@ from cinder import exception
 from cinder import test
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
+from cinder.volume.drivers.netapp.utils import hashabledict
 
 
 CONNECTION_INFO = {'hostname': 'hostname',
@@ -52,18 +53,18 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def tearDown(self):
         super(NetAppCmodeClientTestCase, self).tearDown()
 
-    def test_get_target_details_no_targets(self):
+    def test_get_iscsi_target_details_no_targets(self):
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">
                             <num-records>1</num-records>
                             <attributes-list></attributes-list>
                           </results>"""))
         self.connection.invoke_successfully.return_value = response
-        target_list = self.client.get_target_details()
+        target_list = self.client.get_iscsi_target_details()
 
         self.assertEqual([], target_list)
 
-    def test_get_target_details(self):
+    def test_get_iscsi_target_details(self):
         expected_target = {
             "address": "127.0.0.1",
             "port": "1337",
@@ -84,7 +85,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                           </results>""" % expected_target))
         self.connection.invoke_successfully.return_value = response
 
-        target_list = self.client.get_target_details()
+        target_list = self.client.get_iscsi_target_details()
 
         self.assertEqual([expected_target], target_list)
 
@@ -241,67 +242,169 @@ class NetAppCmodeClientTestCase(test.TestCase):
                           </results>"""))
         self.connection.invoke_successfully.return_value = response
 
-        igroup = self.client.get_igroup_by_initiator(initiator)
+        igroup = self.client.get_igroup_by_initiators([initiator])
 
         self.assertEqual([], igroup)
 
-    def test_get_igroup_by_initiator(self):
-        initiator = 'initiator'
+    def test_get_igroup_by_initiators(self):
+        initiators = ['11:22:33:44:55:66:77:88']
         expected_igroup = {
-            "initiator-group-os-type": None,
-            "initiator-group-type": "1337",
-            "initiator-group-name": "vserver",
+            'initiator-group-os-type': 'default',
+            'initiator-group-type': 'fcp',
+            'initiator-group-name': 'openstack-igroup1',
         }
+
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">
-                            <num-records>1</num-records>
-                            <attributes-list>
-                              <initiator-group-info>
-    <initiator-group-type>%(initiator-group-type)s</initiator-group-type>
-    <initiator-group-name>%(initiator-group-name)s</initiator-group-name>
-                              </initiator-group-info>
-                            </attributes-list>
-                          </results>""" % expected_igroup))
+    <attributes-list>
+      <initiator-group-info>
+        <initiator-group-alua-enabled>true</initiator-group-alua-enabled>
+        <initiator-group-name>%(initiator-group-name)s</initiator-group-name>
+        <initiator-group-os-type>default</initiator-group-os-type>
+        <initiator-group-throttle-borrow>false</initiator-group-throttle-borrow>
+        <initiator-group-throttle-reserve>0</initiator-group-throttle-reserve>
+        <initiator-group-type>%(initiator-group-type)s</initiator-group-type>
+        <initiator-group-use-partner>true</initiator-group-use-partner>
+        <initiator-group-uuid>f8aa707a-57fa-11e4-ad08-123478563412
+        </initiator-group-uuid>
+        <initiator-group-vsa-enabled>false</initiator-group-vsa-enabled>
+        <initiators>
+          <initiator-info>
+            <initiator-name>11:22:33:44:55:66:77:88</initiator-name>
+          </initiator-info>
+        </initiators>
+        <vserver>cinder-iscsi</vserver>
+      </initiator-group-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>""" % expected_igroup))
         self.connection.invoke_successfully.return_value = response
 
-        igroup = self.client.get_igroup_by_initiator(initiator)
+        igroups = self.client.get_igroup_by_initiators(initiators)
 
-        self.assertEqual([expected_igroup], igroup)
+        # make these lists of dicts comparable using hashable dictionaries
+        igroups = set([hashabledict(igroup) for igroup in igroups])
+        expected = set([hashabledict(expected_igroup)])
 
-    def test_get_igroup_by_initiator_multiple_pages(self):
-        initiator = 'initiator'
+        self.assertSetEqual(igroups, expected)
+
+    def test_get_igroup_by_initiators_multiple(self):
+        initiators = ['11:22:33:44:55:66:77:88', '88:77:66:55:44:33:22:11']
         expected_igroup = {
-            "initiator-group-os-type": None,
-            "initiator-group-type": "1337",
-            "initiator-group-name": "vserver",
+            'initiator-group-os-type': 'default',
+            'initiator-group-type': 'fcp',
+            'initiator-group-name': 'openstack-igroup1',
         }
+
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">
-                            <num-records>1</num-records>
-                            <attributes-list>
-                              <initiator-group-info>
-    <initiator-group-type>%(initiator-group-type)s</initiator-group-type>
-    <initiator-group-name>%(initiator-group-name)s</initiator-group-name>
-                              </initiator-group-info>
-                            </attributes-list>
-                            <next-tag>blah</next-tag>
-                          </results>""" % expected_igroup))
+    <attributes-list>
+      <initiator-group-info>
+        <initiator-group-alua-enabled>true</initiator-group-alua-enabled>
+        <initiator-group-name>%(initiator-group-name)s</initiator-group-name>
+        <initiator-group-os-type>default</initiator-group-os-type>
+        <initiator-group-throttle-borrow>false</initiator-group-throttle-borrow>
+        <initiator-group-throttle-reserve>0</initiator-group-throttle-reserve>
+        <initiator-group-type>%(initiator-group-type)s</initiator-group-type>
+        <initiator-group-use-partner>true</initiator-group-use-partner>
+        <initiator-group-uuid>f8aa707a-57fa-11e4-ad08-123478563412
+        </initiator-group-uuid>
+        <initiator-group-vsa-enabled>false</initiator-group-vsa-enabled>
+        <initiators>
+          <initiator-info>
+            <initiator-name>11:22:33:44:55:66:77:88</initiator-name>
+          </initiator-info>
+          <initiator-info>
+            <initiator-name>88:77:66:55:44:33:22:11</initiator-name>
+          </initiator-info>
+        </initiators>
+        <vserver>cinder-iscsi</vserver>
+      </initiator-group-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>""" % expected_igroup))
+        self.connection.invoke_successfully.return_value = response
+
+        igroups = self.client.get_igroup_by_initiators(initiators)
+
+        # make these lists of dicts comparable using hashable dictionaries
+        igroups = set([hashabledict(igroup) for igroup in igroups])
+        expected = set([hashabledict(expected_igroup)])
+
+        self.assertSetEqual(igroups, expected)
+
+    def test_get_igroup_by_initiators_multiple_pages(self):
+        initiator = '11:22:33:44:55:66:77:88'
+        expected_igroup1 = {
+            'initiator-group-os-type': 'default',
+            'initiator-group-type': 'fcp',
+            'initiator-group-name': 'openstack-igroup1',
+        }
+        expected_igroup2 = {
+            'initiator-group-os-type': 'default',
+            'initiator-group-type': 'fcp',
+            'initiator-group-name': 'openstack-igroup2',
+        }
+        response_1 = netapp_api.NaElement(
+            etree.XML("""<results status="passed">
+    <attributes-list>
+      <initiator-group-info>
+        <initiator-group-alua-enabled>true</initiator-group-alua-enabled>
+        <initiator-group-name>%(initiator-group-name)s</initiator-group-name>
+        <initiator-group-os-type>default</initiator-group-os-type>
+        <initiator-group-throttle-borrow>false</initiator-group-throttle-borrow>
+        <initiator-group-throttle-reserve>0</initiator-group-throttle-reserve>
+        <initiator-group-type>%(initiator-group-type)s</initiator-group-type>
+        <initiator-group-use-partner>true</initiator-group-use-partner>
+        <initiator-group-uuid>f8aa707a-57fa-11e4-ad08-123478563412
+        </initiator-group-uuid>
+        <initiator-group-vsa-enabled>false</initiator-group-vsa-enabled>
+        <initiators>
+          <initiator-info>
+            <initiator-name>11:22:33:44:55:66:77:88</initiator-name>
+          </initiator-info>
+        </initiators>
+        <vserver>cinder-iscsi</vserver>
+      </initiator-group-info>
+    </attributes-list>
+    <next-tag>12345</next-tag>
+    <num-records>1</num-records>
+  </results>""" % expected_igroup1))
         response_2 = netapp_api.NaElement(
             etree.XML("""<results status="passed">
-                            <num-records>1</num-records>
-                            <attributes-list>
-                              <initiator-group-info>
-    <initiator-group-type>%(initiator-group-type)s</initiator-group-type>
-    <initiator-group-name>%(initiator-group-name)s</initiator-group-name>
-                              </initiator-group-info>
-                            </attributes-list>
-                          </results>""" % expected_igroup))
-        self.connection.invoke_successfully.side_effect = [response,
+    <attributes-list>
+      <initiator-group-info>
+        <initiator-group-alua-enabled>true</initiator-group-alua-enabled>
+        <initiator-group-name>%(initiator-group-name)s</initiator-group-name>
+        <initiator-group-os-type>default</initiator-group-os-type>
+        <initiator-group-throttle-borrow>false</initiator-group-throttle-borrow>
+        <initiator-group-throttle-reserve>0</initiator-group-throttle-reserve>
+        <initiator-group-type>%(initiator-group-type)s</initiator-group-type>
+        <initiator-group-use-partner>true</initiator-group-use-partner>
+        <initiator-group-uuid>f8aa707a-57fa-11e4-ad08-123478563412
+        </initiator-group-uuid>
+        <initiator-group-vsa-enabled>false</initiator-group-vsa-enabled>
+        <initiators>
+          <initiator-info>
+            <initiator-name>11:22:33:44:55:66:77:88</initiator-name>
+          </initiator-info>
+        </initiators>
+        <vserver>cinder-iscsi</vserver>
+      </initiator-group-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>""" % expected_igroup2))
+        self.connection.invoke_successfully.side_effect = [response_1,
                                                            response_2]
 
-        igroup = self.client.get_igroup_by_initiator(initiator)
+        igroups = self.client.get_igroup_by_initiators([initiator])
 
-        self.assertEqual([expected_igroup, expected_igroup], igroup)
+        # make these lists of dicts comparable using hashable dictionaries
+        igroups = set([hashabledict(igroup) for igroup in igroups])
+        expected = set([hashabledict(expected_igroup1),
+                        hashabledict(expected_igroup2)])
+
+        self.assertSetEqual(igroups, expected)
 
     def test_clone_lun(self):
         self.client.clone_lun('volume', 'fakeLUN', 'newFakeLUN')

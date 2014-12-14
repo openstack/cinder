@@ -20,9 +20,10 @@ import mock
 import six
 
 from cinder import test
+from cinder.tests.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
-
+from cinder.volume.drivers.netapp.utils import hashabledict
 
 CONNECTION_INFO = {'hostname': 'hostname',
                    'transport_type': 'https',
@@ -51,7 +52,7 @@ class NetApp7modeClientTestCase(test.TestCase):
     def tearDown(self):
         super(NetApp7modeClientTestCase, self).tearDown()
 
-    def test_get_target_details_no_targets(self):
+    def test_get_iscsi_target_details_no_targets(self):
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">
                            <iscsi-portal-list-entries>
@@ -59,11 +60,11 @@ class NetApp7modeClientTestCase(test.TestCase):
                          </results>"""))
         self.connection.invoke_successfully.return_value = response
 
-        target_list = self.client.get_target_details()
+        target_list = self.client.get_iscsi_target_details()
 
         self.assertEqual([], target_list)
 
-    def test_get_target_details(self):
+    def test_get_iscsi_target_details(self):
         expected_target = {
             "address": "127.0.0.1",
             "port": "1337",
@@ -81,7 +82,7 @@ class NetApp7modeClientTestCase(test.TestCase):
                           </results>""" % expected_target))
         self.connection.invoke_successfully.return_value = response
 
-        target_list = self.client.get_target_details()
+        target_list = self.client.get_iscsi_target_details()
 
         self.assertEqual([expected_target], target_list)
 
@@ -121,8 +122,9 @@ class NetApp7modeClientTestCase(test.TestCase):
 
         self.assertEqual(2, len(luns))
 
-    def test_get_igroup_by_initiator_none_found(self):
-        initiator = 'initiator'
+    def test_get_igroup_by_initiators_none_found(self):
+        initiators = fake.FC_FORMATTED_INITIATORS[0]
+
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">
                            <initiator-groups>
@@ -130,36 +132,89 @@ class NetApp7modeClientTestCase(test.TestCase):
                          </results>"""))
         self.connection.invoke_successfully.return_value = response
 
-        igroup = self.client.get_igroup_by_initiator(initiator)
+        igroup = self.client.get_igroup_by_initiators(initiators)
 
         self.assertEqual([], igroup)
 
-    def test_get_igroup_by_initiator(self):
-        initiator = 'initiator'
-        expected_igroup = {
-            "initiator-group-os-type": None,
-            "initiator-group-type": "1337",
-            "initiator-group-name": "vserver",
-        }
+    def test_get_igroup_by_initiators(self):
+        initiators = [fake.FC_FORMATTED_INITIATORS[0]]
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">
-                           <initiator-groups>
-                             <initiator-group-info>
-                               <initiators>
-                                 <initiator-info>
-                                   <initiator-name>initiator</initiator-name>
-                                 </initiator-info>
-                               </initiators>
-    <initiator-group-type>%(initiator-group-type)s</initiator-group-type>
-    <initiator-group-name>%(initiator-group-name)s</initiator-group-name>
-                             </initiator-group-info>
-                           </initiator-groups>
-                         </results>""" % expected_igroup))
+    <initiator-groups>
+      <initiator-group-info>
+        <initiator-group-name>%(initiator-group-name)s</initiator-group-name>
+        <initiator-group-type>%(initiator-group-type)s</initiator-group-type>
+        <initiator-group-uuid>1477ee47-0e1f-4b35-a82c-dcca0b76fc44
+        </initiator-group-uuid>
+        <initiator-group-os-type>linux</initiator-group-os-type>
+        <initiator-group-throttle-reserve>0</initiator-group-throttle-reserve>
+        <initiator-group-throttle-borrow>false
+        </initiator-group-throttle-borrow>
+        <initiator-group-vsa-enabled>false</initiator-group-vsa-enabled>
+        <initiator-group-alua-enabled>true</initiator-group-alua-enabled>
+        <initiator-group-report-scsi-name-enabled>true
+        </initiator-group-report-scsi-name-enabled>
+        <initiator-group-use-partner>true</initiator-group-use-partner>
+        <initiators>
+          <initiator-info>
+            <initiator-name>21:00:00:24:ff:40:6c:c3</initiator-name>
+          </initiator-info>
+        </initiators>
+      </initiator-group-info>
+    </initiator-groups>
+  </results>""" % fake.IGROUP1))
         self.connection.invoke_successfully.return_value = response
 
-        igroup = self.client.get_igroup_by_initiator(initiator)
+        igroups = self.client.get_igroup_by_initiators(initiators)
 
-        self.assertEqual([expected_igroup], igroup)
+        # make these lists of dicts comparable using hashable dictionaries
+        igroups = set([hashabledict(igroup) for igroup in igroups])
+        expected = set([hashabledict(fake.IGROUP1)])
+
+        self.assertSetEqual(igroups, expected)
+
+    def test_get_igroup_by_initiators_multiple(self):
+        initiators = fake.FC_FORMATTED_INITIATORS
+        response = netapp_api.NaElement(
+            etree.XML("""<results status="passed">
+    <initiator-groups>
+      <initiator-group-info>
+        <initiator-group-name>%(initiator-group-name)s</initiator-group-name>
+        <initiator-group-type>%(initiator-group-type)s</initiator-group-type>
+        <initiator-group-uuid>1477ee47-0e1f-4b35-a82c-dcca0b76fc44
+        </initiator-group-uuid>
+        <initiator-group-os-type>linux</initiator-group-os-type>
+        <initiators>
+          <initiator-info>
+            <initiator-name>21:00:00:24:ff:40:6c:c3</initiator-name>
+          </initiator-info>
+          <initiator-info>
+            <initiator-name>21:00:00:24:ff:40:6c:c2</initiator-name>
+          </initiator-info>
+        </initiators>
+      </initiator-group-info>
+      <initiator-group-info>
+        <initiator-group-name>openstack-igroup2</initiator-group-name>
+        <initiator-group-type>fcp</initiator-group-type>
+        <initiator-group-uuid>1477ee47-0e1f-4b35-a82c-dcca0b76fc44
+        </initiator-group-uuid>
+        <initiator-group-os-type>linux</initiator-group-os-type>
+        <initiators>
+          <initiator-info>
+            <initiator-name>21:00:00:24:ff:40:6c:c2</initiator-name>
+          </initiator-info>
+        </initiators>
+      </initiator-group-info>    </initiator-groups>
+  </results>""" % fake.IGROUP1))
+        self.connection.invoke_successfully.return_value = response
+
+        igroups = self.client.get_igroup_by_initiators(initiators)
+
+        # make these lists of dicts comparable using hashable dictionaries
+        igroups = set([hashabledict(igroup) for igroup in igroups])
+        expected = set([hashabledict(fake.IGROUP1)])
+
+        self.assertSetEqual(igroups, expected)
 
     def test_clone_lun(self):
         fake_clone_start = netapp_api.NaElement(
@@ -561,3 +616,28 @@ class NetApp7modeClientTestCase(test.TestCase):
         actual_request = _args[0]
         self.assertEqual('net-ifconfig-get', actual_request.get_name())
         self.assertEqual(expected_response, actual_response)
+
+    def test_get_fc_target_wwpns(self):
+        wwpn1 = '50:0a:09:81:90:fe:eb:a5'
+        wwpn2 = '50:0a:09:82:90:fe:eb:a5'
+        response = netapp_api.NaElement(
+            etree.XML("""
+  <results status="passed">
+    <fcp-port-names>
+      <fcp-port-name-info>
+        <port-name>%(wwpn1)s</port-name>
+        <is-used>true</is-used>
+        <fcp-adapter>1a</fcp-adapter>
+      </fcp-port-name-info>
+      <fcp-port-name-info>
+        <port-name>%(wwpn2)s</port-name>
+        <is-used>true</is-used>
+        <fcp-adapter>1b</fcp-adapter>
+      </fcp-port-name-info>
+    </fcp-port-names>
+  </results>""" % {'wwpn1': wwpn1, 'wwpn2': wwpn2}))
+        self.connection.invoke_successfully.return_value = response
+
+        wwpns = self.client.get_fc_target_wwpns()
+
+        self.assertSetEqual(set(wwpns), set([wwpn1, wwpn2]))

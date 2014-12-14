@@ -139,6 +139,12 @@ def log_extra_spec_warnings(extra_specs):
             LOG.warning(msg % args)
 
 
+class hashabledict(dict):
+    """A hashable dictionary that is comparable (i.e. in unit tests, etc.)"""
+    def __hash__(self):
+        return hash(tuple(sorted(self.items())))
+
+
 class OpenStackInfo(object):
     """OS/distribution, release, and version.
 
