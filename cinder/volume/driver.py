@@ -1018,10 +1018,6 @@ class ISCSIDriver(VolumeDriver):
             }
 
         """
-
-        if CONF.iscsi_helper == 'lioadm':
-            self.target_helper.initialize_connection(volume, connector)
-
         iscsi_properties = self._get_iscsi_properties(volume)
         return {
             'driver_volume_type': 'iscsi',
@@ -1087,6 +1083,8 @@ class ISCSIDriver(VolumeDriver):
 
     def get_target_helper(self, db):
         root_helper = utils.get_root_helper()
+        # FIXME(jdg): These work because the driver will overide
+        # but we need to move these to use self.configuraiton
         if CONF.iscsi_helper == 'iseradm':
             return iscsi.ISERTgtAdm(root_helper, CONF.volumes_dir,
                                     CONF.iscsi_target_prefix, db=db)
@@ -1219,7 +1217,6 @@ class ISERDriver(ISCSIDriver):
             }
 
         """
-
         iser_properties = self._get_iscsi_properties(volume)
         return {
             'driver_volume_type': 'iser',

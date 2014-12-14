@@ -547,6 +547,23 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
     def create_export(self, context, volume):
         return self._create_export(context, volume)
 
+    def initialize_connection(self, volume, connector):
+        """Initializes the connection and returns connection info. """
+
+        # We have a special case for lioadm here, that's fine, we can
+        # keep the call in the parent class (driver:ISCSIDriver) generic
+        # and still use it throughout, just override and call super here
+        # no duplication, same effect but doesn't break things
+        # see bug: #1400804
+        if self.configuration.iscsi_helper == 'lioadm':
+            self.target_helper.initialize_connection(volume, connector)
+        return super(LVMISCSIDriver, self).initialize_connection(volume,
+                                                                 connector)
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        if self.configuration.iscsi_helper == 'lioadm':
+            self.target_helper.terminate_connection(volume, connector)
+
     def _create_export(self, context, volume, vg=None):
         """Creates an export for a logical volume."""
         if vg is None:
