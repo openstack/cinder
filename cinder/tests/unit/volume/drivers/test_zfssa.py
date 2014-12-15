@@ -30,6 +30,7 @@ from cinder.tests.unit import fake_utils
 from cinder.tests.unit import utils
 from cinder.volume import configuration as conf
 from cinder.volume import driver
+from cinder.volume.drivers import nfs as nfsdriver
 from cinder.volume.drivers import remotefs
 from cinder.volume.drivers.zfssa import restclient as client
 from cinder.volume.drivers.zfssa import webdavclient
@@ -1050,7 +1051,7 @@ class TestZFSSANFSDriver(test.TestCase):
     def tearDown(self):
         super(TestZFSSANFSDriver, self).tearDown()
 
-    @mock.patch.object(remotefs.RemoteFSDriver, 'delete_volume')
+    @mock.patch.object(nfsdriver.NfsDriver, 'delete_volume')
     @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_check_origin')
     def test_delete_volume(self, _check_origin, _delete_vol):
         self.drv.zfssa.get_volume.side_effect = self._get_volume_side_effect
@@ -1175,7 +1176,7 @@ class TestZFSSANFSDriver(test.TestCase):
                           img_props_nfs)
 
     @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_create_cache_volume')
-    @mock.patch.object(remotefs.RemoteFSDriver, 'delete_volume')
+    @mock.patch.object(nfsdriver.NfsDriver, 'delete_volume')
     def test_verify_cache_vol_updated_vol(self, _del_vol, _create_cache_vol):
         updated_vol = {
             'updated_at': date(3000, 12, 12),
@@ -1192,7 +1193,7 @@ class TestZFSSANFSDriver(test.TestCase):
                                                               img_props_nfs)
 
     @mock.patch.object(remotefs.RemoteFSDriver, 'copy_image_to_volume')
-    @mock.patch.object(remotefs.RemoteFSDriver, 'create_volume')
+    @mock.patch.object(nfsdriver.NfsDriver, 'create_volume')
     def test_create_cache_volume(self, _create_vol, _copy_image):
         self.drv.zfssa.webdavclient = mock.Mock()
         self.drv._create_cache_volume(fakecontext,

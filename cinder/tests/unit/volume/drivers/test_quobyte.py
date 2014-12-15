@@ -611,7 +611,8 @@ class QuobyteDriverTestCase(test.TestCase):
         drv.extend_volume(volume, 3)
 
         drv.get_active_image_from_info.assert_called_once_with(volume)
-        image_utils.qemu_img_info.assert_called_once_with(volume_path)
+        image_utils.qemu_img_info.assert_called_once_with(volume_path,
+                                                          run_as_root=False)
         image_utils.resize_image.assert_called_once_with(volume_path, 3)
 
     def test_copy_volume_from_snapshot(self):
@@ -662,7 +663,8 @@ class QuobyteDriverTestCase(test.TestCase):
         drv._copy_volume_from_snapshot(snapshot, dest_volume, size)
 
         drv._read_info_file.assert_called_once_with(info_path)
-        image_utils.qemu_img_info.assert_called_once_with(snap_path)
+        image_utils.qemu_img_info.assert_called_once_with(snap_path,
+                                                          run_as_root=False)
         (image_utils.convert_image.
          assert_called_once_with(src_vol_path,
                                  dest_vol_path,
@@ -744,7 +746,8 @@ class QuobyteDriverTestCase(test.TestCase):
         conn_info = drv.initialize_connection(volume, None)
 
         drv.get_active_image_from_info.assert_called_once_with(volume)
-        image_utils.qemu_img_info.assert_called_once_with(vol_path)
+        image_utils.qemu_img_info.assert_called_once_with(vol_path,
+                                                          run_as_root=False)
 
         self.assertEqual('raw', conn_info['data']['format'])
         self.assertEqual('quobyte', conn_info['driver_volume_type'])
@@ -789,9 +792,10 @@ class QuobyteDriverTestCase(test.TestCase):
 
             mock_get_active_image_from_info.assert_called_once_with(volume)
             mock_local_volume_dir.assert_called_once_with(volume)
-            mock_qemu_img_info.assert_called_once_with(volume_path)
+            mock_qemu_img_info.assert_called_once_with(volume_path,
+                                                       run_as_root=False)
             mock_upload_volume.assert_called_once_with(
-                mock.ANY, mock.ANY, mock.ANY, upload_path)
+                mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False)
             self.assertTrue(mock_create_temporary_file.called)
 
     def test_copy_volume_to_image_qcow2_image(self):
@@ -834,11 +838,12 @@ class QuobyteDriverTestCase(test.TestCase):
 
             mock_get_active_image_from_info.assert_called_once_with(volume)
             mock_local_volume_dir.assert_called_with(volume)
-            mock_qemu_img_info.assert_called_once_with(volume_path)
+            mock_qemu_img_info.assert_called_once_with(volume_path,
+                                                       run_as_root=False)
             mock_convert_image.assert_called_once_with(
-                volume_path, upload_path, 'raw')
+                volume_path, upload_path, 'raw', run_as_root=False)
             mock_upload_volume.assert_called_once_with(
-                mock.ANY, mock.ANY, mock.ANY, upload_path)
+                mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False)
             self.assertTrue(mock_create_temporary_file.called)
 
     def test_copy_volume_to_image_snapshot_exists(self):
@@ -883,11 +888,12 @@ class QuobyteDriverTestCase(test.TestCase):
 
             mock_get_active_image_from_info.assert_called_once_with(volume)
             mock_local_volume_dir.assert_called_with(volume)
-            mock_qemu_img_info.assert_called_once_with(volume_path)
+            mock_qemu_img_info.assert_called_once_with(volume_path,
+                                                       run_as_root=False)
             mock_convert_image.assert_called_once_with(
-                volume_path, upload_path, 'raw')
+                volume_path, upload_path, 'raw', run_as_root=False)
             mock_upload_volume.assert_called_once_with(
-                mock.ANY, mock.ANY, mock.ANY, upload_path)
+                mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False)
             self.assertTrue(mock_create_temporary_file.called)
 
     def test_set_nas_security_options_default(self):

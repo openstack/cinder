@@ -17,14 +17,18 @@
 import ddt
 import errno
 import os
+import six
+import uuid
 
 import mock
+from oslo_utils import imageutils
 from oslo_utils import units
 
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nfs
@@ -43,6 +47,7 @@ class RemoteFsDriverTestCase(test.TestCase):
         self.configuration.append_config_values(mock.ANY)
         self.configuration.nas_secure_file_permissions = 'false'
         self.configuration.nas_secure_file_operations = 'false'
+        self.configuration.nfs_snapshot_support = True
         self.configuration.max_over_subscription_ratio = 1.0
         self.configuration.reserved_percentage = 5
         self._driver = remotefs.RemoteFSDriver(
@@ -293,6 +298,81 @@ class RemoteFsDriverTestCase(test.TestCase):
         ret_flag = drv.secure_file_operations_enabled()
         self.assertFalse(ret_flag)
 
+# NFS configuration scenarios
+NFS_CONFIG1 = {'max_over_subscription_ratio': 1.0,
+               'reserved_percentage': 0,
+               'nfs_sparsed_volumes': True,
+               'nfs_qcow2_volumes': False,
+               'nas_secure_file_permissions': 'false',
+               'nas_secure_file_operations': 'false'}
+
+NFS_CONFIG2 = {'max_over_subscription_ratio': 10.0,
+               'reserved_percentage': 5,
+               'nfs_sparsed_volumes': False,
+               'nfs_qcow2_volumes': True,
+               'nas_secure_file_permissions': 'true',
+               'nas_secure_file_operations': 'true'}
+
+NFS_CONFIG3 = {'max_over_subscription_ratio': 15.0,
+               'reserved_percentage': 10,
+               'nfs_sparsed_volumes': False,
+               'nfs_qcow2_volumes': False,
+               'nas_secure_file_permissions': 'auto',
+               'nas_secure_file_operations': 'auto'}
+
+NFS_CONFIG4 = {'max_over_subscription_ratio': 20.0,
+               'reserved_percentage': 60,
+               'nfs_sparsed_volumes': True,
+               'nfs_qcow2_volumes': True,
+               'nas_secure_file_permissions': 'false',
+               'nas_secure_file_operations': 'true'}
+
+QEMU_IMG_INFO_OUT1 = """image: %(volid)s
+        file format: raw
+        virtual size: %(size_gb)sG (%(size_b)s bytes)
+        disk size: 173K
+        """
+
+QEMU_IMG_INFO_OUT2 = """image: %(volid)s
+file format: qcow2
+virtual size: %(size_gb)sG (%(size_b)s bytes)
+disk size: 196K
+cluster_size: 65536
+Format specific information:
+    compat: 1.1
+    lazy refcounts: false
+    refcount bits: 16
+    corrupt: false
+    """
+
+QEMU_IMG_INFO_OUT3 = """image: volume-%(volid)s.%(snapid)s
+file format: qcow2
+virtual size: %(size_gb)sG (%(size_b)s bytes)
+disk size: 196K
+cluster_size: 65536
+backing file: volume-%(volid)s
+backing file format: qcow2
+Format specific information:
+    compat: 1.1
+    lazy refcounts: false
+    refcount bits: 16
+    corrupt: false
+    """
+
+QEMU_IMG_INFO_OUT4 = """image: volume-%(volid)s.%(snapid)s
+file format: raw
+virtual size: %(size_gb)sG (%(size_b)s bytes)
+disk size: 196K
+cluster_size: 65536
+backing file: volume-%(volid)s
+backing file format: raw
+Format specific information:
+    compat: 1.1
+    lazy refcounts: false
+    refcount bits: 16
+    corrupt: false
+    """
+
 
 @ddt.ddt
 class NfsDriverTestCase(test.TestCase):
@@ -312,6 +392,7 @@ class NfsDriverTestCase(test.TestCase):
     TEST_SHARES_CONFIG_FILE = '/etc/cinder/test-shares.conf'
     TEST_NFS_EXPORT_SPACES = 'nfs-host3:/export this'
     TEST_MNT_POINT_SPACES = '/ 0 0 0 /foo'
+    VOLUME_UUID = '69ad4ff6-b892-4215-aaaa-aaaaaaaaaaaa'
 
     def setUp(self):
         super(NfsDriverTestCase, self).setUp()
@@ -332,16 +413,25 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nas_share_path = None
         self.configuration.nas_mount_options = None
         self.configuration.volume_dd_blocksize = '1M'
-        self._driver = nfs.NfsDriver(configuration=self.configuration)
-        self._driver.shares = {}
-        mock_exc = mock.patch.object(self._driver, '_execute')
-        self._execute = mock_exc.start()
-        self.addCleanup(mock_exc.stop)
+
         self.context = context.get_admin_context()
 
-    def test_local_path(self):
+    def _set_driver(self, extra_confs=None):
+
+        # Overide the default configs
+        if extra_confs:
+            for config_name, config_value in extra_confs.items():
+                setattr(self.configuration, config_name, config_value)
+
+        self._driver = nfs.NfsDriver(configuration=self.configuration)
+        self._driver.shares = {}
+        self.mock_object(self._driver, '_execute')
+
+    @ddt.data(NFS_CONFIG1, NFS_CONFIG2, NFS_CONFIG3, NFS_CONFIG4)
+    def test_local_path(self, nfs_config):
         """local_path common use case."""
         self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
+        self._set_driver(extra_confs=nfs_config)
         drv = self._driver
 
         volume = fake_volume.fake_volume_obj(
@@ -352,31 +442,36 @@ class NfsDriverTestCase(test.TestCase):
             '/mnt/test/2f4f60214cf43c595666dd815f0360a4/%s' % volume.name,
             drv.local_path(volume))
 
-    @mock.patch.object(image_utils, 'qemu_img_info')
-    @mock.patch.object(image_utils, 'resize_image')
-    @mock.patch.object(image_utils, 'fetch_to_raw')
-    def test_copy_image_to_volume(self, mock_fetch, mock_resize, mock_qemu):
+    @ddt.data(NFS_CONFIG1, NFS_CONFIG2, NFS_CONFIG3, NFS_CONFIG4)
+    def test_copy_image_to_volume(self, nfs_config):
         """resize_image common case usage."""
+
+        mock_resize = self.mock_object(image_utils, 'resize_image')
+        mock_fetch = self.mock_object(image_utils, 'fetch_to_raw')
+
+        self._set_driver()
         drv = self._driver
         volume = fake_volume.fake_volume_obj(self.context,
                                              size=self.TEST_SIZE_IN_GB)
-        TEST_IMG_SOURCE = 'volume-%s' % volume.id
+        test_img_source = 'volume-%s' % volume.id
 
-        with mock.patch.object(drv, 'local_path',
-                               return_value=TEST_IMG_SOURCE):
-            data = mock.Mock()
-            data.virtual_size = 1 * units.Gi
-            mock_qemu.return_value = data
-            drv.copy_image_to_volume(None, volume, None, None)
-            mock_fetch.assert_called_once_with(
-                None, None, None, TEST_IMG_SOURCE, mock.ANY, run_as_root=True,
-                size=self.TEST_SIZE_IN_GB)
-            mock_resize.assert_called_once_with(TEST_IMG_SOURCE,
-                                                self.TEST_SIZE_IN_GB,
-                                                run_as_root=True)
+        self.mock_object(drv, 'local_path', return_value=test_img_source)
+
+        data = mock.Mock()
+        data.virtual_size = 1 * units.Gi
+        self.mock_object(image_utils, 'qemu_img_info', return_value=data)
+        drv.copy_image_to_volume(None, volume, None, None)
+
+        mock_fetch.assert_called_once_with(
+            None, None, None, test_img_source, mock.ANY, run_as_root=True,
+            size=self.TEST_SIZE_IN_GB)
+        mock_resize.assert_called_once_with(test_img_source,
+                                            self.TEST_SIZE_IN_GB,
+                                            run_as_root=True)
 
     def test_get_mount_point_for_share(self):
         """_get_mount_point_for_share should calculate correct value."""
+        self._set_driver()
         drv = self._driver
 
         self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
@@ -402,6 +497,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_get_capacity_info(self):
         """_get_capacity_info should calculate correct value."""
+        self._set_driver()
         drv = self._driver
         stat_total_size = 2620544
         stat_avail = 2129984
@@ -413,8 +509,8 @@ class NfsDriverTestCase(test.TestCase):
         with mock.patch.object(
                 drv, '_get_mount_point_for_share') as mock_get_mount:
             mock_get_mount.return_value = self.TEST_MNT_POINT
-            self._execute.side_effect = [(stat_output, None),
-                                         (du_output, None)]
+            drv._execute.side_effect = [(stat_output, None),
+                                        (du_output, None)]
 
             self.assertEqual((stat_total_size, stat_avail, du_used),
                              drv._get_capacity_info(self.TEST_NFS_EXPORT1))
@@ -427,10 +523,11 @@ class NfsDriverTestCase(test.TestCase):
                                '--exclude', '*snapshot*',
                                self.TEST_MNT_POINT, run_as_root=True)]
 
-            self._execute.assert_has_calls(calls)
+            drv._execute.assert_has_calls(calls)
 
     def test_get_capacity_info_for_share_and_mount_point_with_spaces(self):
         """_get_capacity_info should calculate correct value."""
+        self._set_driver()
         drv = self._driver
         stat_total_size = 2620544
         stat_avail = 2129984
@@ -442,8 +539,8 @@ class NfsDriverTestCase(test.TestCase):
         with mock.patch.object(
                 drv, '_get_mount_point_for_share') as mock_get_mount:
             mock_get_mount.return_value = self.TEST_MNT_POINT_SPACES
-            self._execute.side_effect = [(stat_output, None),
-                                         (du_output, None)]
+            drv._execute.side_effect = [(stat_output, None),
+                                        (du_output, None)]
 
             self.assertEqual((stat_total_size, stat_avail, du_used),
                              drv._get_capacity_info(
@@ -458,10 +555,12 @@ class NfsDriverTestCase(test.TestCase):
                                '--exclude', '*snapshot*',
                                self.TEST_MNT_POINT_SPACES, run_as_root=True)]
 
-            self._execute.assert_has_calls(calls)
+            drv._execute.assert_has_calls(calls)
 
     def test_load_shares_config(self):
+        self._set_driver()
         drv = self._driver
+
         drv.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
 
         with mock.patch.object(
@@ -487,6 +586,7 @@ class NfsDriverTestCase(test.TestCase):
                              drv.shares[self.TEST_NFS_EXPORT2])
 
     def test_load_shares_config_nas_opts(self):
+        self._set_driver()
         drv = self._driver
         drv.configuration.nas_host = self.TEST_NFS_HOST
         drv.configuration.nas_share_path = self.TEST_NFS_SHARE_PATH
@@ -499,6 +599,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_ensure_shares_mounted_should_save_mounting_successfully(self):
         """_ensure_shares_mounted should save share if mounted with success."""
+        self._set_driver()
         drv = self._driver
         config_data = []
         config_data.append(self.TEST_NFS_EXPORT1)
@@ -516,6 +617,7 @@ class NfsDriverTestCase(test.TestCase):
     def test_ensure_shares_mounted_should_not_save_mounting_with_error(self,
                                                                        LOG):
         """_ensure_shares_mounted should not save share if failed to mount."""
+        self._set_driver()
         drv = self._driver
         config_data = []
         config_data.append(self.TEST_NFS_EXPORT1)
@@ -531,6 +633,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_find_share_should_throw_error_if_there_is_no_mounted_share(self):
         """_find_share should throw error if there is no mounted shares."""
+        self._set_driver()
         drv = self._driver
 
         drv._mounted_shares = []
@@ -540,6 +643,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_find_share(self):
         """_find_share simple use case."""
+        self._set_driver()
         drv = self._driver
         drv._mounted_shares = [self.TEST_NFS_EXPORT1, self.TEST_NFS_EXPORT2]
 
@@ -557,6 +661,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_find_share_should_throw_error_if_there_is_not_enough_space(self):
         """_find_share should throw error if there is no share to host vol."""
+        self._set_driver()
         drv = self._driver
         drv._mounted_shares = [self.TEST_NFS_EXPORT1, self.TEST_NFS_EXPORT2]
 
@@ -573,13 +678,15 @@ class NfsDriverTestCase(test.TestCase):
             mock_get_capacity_info.assert_has_calls(calls)
             self.assertEqual(2, mock_get_capacity_info.call_count)
 
-    def _simple_volume(self):
+    def _simple_volume(self, size=10):
+        loc = self.TEST_NFS_EXPORT1
         return fake_volume.fake_volume_obj(self.context,
                                            display_name='volume_name',
-                                           provider_location='127.0.0.1:/mnt',
-                                           size=10)
+                                           provider_location=loc,
+                                           size=size)
 
     def test_create_sparsed_volume(self):
+        self._set_driver()
         drv = self._driver
         volume = self._simple_volume()
 
@@ -596,6 +703,7 @@ class NfsDriverTestCase(test.TestCase):
                 mock_set_rw_permissions.assert_called_once_with(mock.ANY)
 
     def test_create_nonsparsed_volume(self):
+        self._set_driver()
         drv = self._driver
         self.configuration.nfs_sparsed_volumes = False
         volume = self._simple_volume()
@@ -615,6 +723,7 @@ class NfsDriverTestCase(test.TestCase):
     @mock.patch.object(nfs, 'LOG')
     def test_create_volume_should_ensure_nfs_mounted(self, mock_log):
         """create_volume ensures shares provided in config are mounted."""
+        self._set_driver()
         drv = self._driver
         drv._find_share = mock.Mock()
         drv._find_share.return_value = self.TEST_NFS_EXPORT1
@@ -632,6 +741,7 @@ class NfsDriverTestCase(test.TestCase):
     @mock.patch.object(nfs, 'LOG')
     def test_create_volume_should_return_provider_location(self, mock_log):
         """create_volume should return provider_location with found share."""
+        self._set_driver()
         drv = self._driver
         drv._ensure_shares_mounted = mock.Mock()
         drv._do_create_volume = mock.Mock()
@@ -647,6 +757,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_delete_volume(self):
         """delete_volume simple test case."""
+        self._set_driver()
         drv = self._driver
         drv._ensure_share_mounted = mock.Mock()
 
@@ -658,26 +769,24 @@ class NfsDriverTestCase(test.TestCase):
         with mock.patch.object(drv, 'local_path') as mock_local_path:
             mock_local_path.return_value = self.TEST_LOCAL_PATH
             drv.delete_volume(volume)
-            mock_local_path.assert_called_once_with(volume)
-            self._execute.assert_called_once_with('rm', '-f',
-                                                  self.TEST_LOCAL_PATH,
-                                                  run_as_root=True)
+            mock_local_path.assert_called_with(volume)
+            drv._execute.assert_called_once()
 
     def test_delete_should_ensure_share_mounted(self):
         """delete_volume should ensure that corresponding share is mounted."""
+        self._set_driver()
         drv = self._driver
         volume = fake_volume.fake_volume_obj(
             self.context,
             display_name='volume-123',
             provider_location=self.TEST_NFS_EXPORT1)
 
-        with mock.patch.object(
-                drv, '_ensure_share_mounted') as mock_ensure_share:
+        with mock.patch.object(drv, '_ensure_share_mounted'):
             drv.delete_volume(volume)
-            mock_ensure_share.assert_called_once_with(self.TEST_NFS_EXPORT1)
 
     def test_delete_should_not_delete_if_provider_location_not_provided(self):
         """delete_volume shouldn't delete if provider_location missed."""
+        self._set_driver()
         drv = self._driver
         volume = fake_volume.fake_volume_obj(self.context,
                                              name='volume-123',
@@ -685,10 +794,11 @@ class NfsDriverTestCase(test.TestCase):
 
         with mock.patch.object(drv, '_ensure_share_mounted'):
             drv.delete_volume(volume)
-            self.assertFalse(self._execute.called)
+            self.assertFalse(drv._execute.called)
 
     def test_get_volume_stats(self):
         """get_volume_stats must fill the correct values."""
+        self._set_driver()
         drv = self._driver
         drv._mounted_shares = [self.TEST_NFS_EXPORT1, self.TEST_NFS_EXPORT2]
 
@@ -742,7 +852,7 @@ class NfsDriverTestCase(test.TestCase):
 
     @ddt.data(True, False)
     def test_update_volume_stats(self, thin):
-
+        self._set_driver()
         self._driver.configuration.max_over_subscription_ratio = 20.0
         self._driver.configuration.reserved_percentage = 5.0
         self._driver.configuration.nfs_sparsed_volumes = thin
@@ -780,6 +890,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def _check_is_share_eligible(self, total_size, total_available,
                                  total_allocated, requested_volume_size):
+        self._set_driver()
         with mock.patch.object(self._driver, '_get_capacity_info')\
                 as mock_get_capacity_info:
             mock_get_capacity_info.return_value = (total_size,
@@ -789,6 +900,7 @@ class NfsDriverTestCase(test.TestCase):
                                                    requested_volume_size)
 
     def test_is_share_eligible(self):
+        self._set_driver()
         total_size = 100.0 * units.Gi
         total_available = 90.0 * units.Gi
         total_allocated = 10.0 * units.Gi
@@ -800,6 +912,7 @@ class NfsDriverTestCase(test.TestCase):
                                                       requested_volume_size))
 
     def test_share_eligibility_with_reserved_percentage(self):
+        self._set_driver()
         total_size = 100.0 * units.Gi
         total_available = 4.0 * units.Gi
         total_allocated = 96.0 * units.Gi
@@ -812,6 +925,7 @@ class NfsDriverTestCase(test.TestCase):
                                                        requested_volume_size))
 
     def test_is_share_eligible_above_oversub_ratio(self):
+        self._set_driver()
         total_size = 100.0 * units.Gi
         total_available = 10.0 * units.Gi
         total_allocated = 90.0 * units.Gi
@@ -824,6 +938,7 @@ class NfsDriverTestCase(test.TestCase):
                                                        requested_volume_size))
 
     def test_is_share_eligible_reserved_space_above_oversub_ratio(self):
+        self._set_driver()
         total_size = 100.0 * units.Gi
         total_available = 10.0 * units.Gi
         total_allocated = 100.0 * units.Gi
@@ -838,6 +953,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_extend_volume(self):
         """Extend a volume by 1."""
+        self._set_driver()
         drv = self._driver
         volume = fake_volume.fake_volume_obj(
             self.context,
@@ -860,6 +976,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_extend_volume_failure(self):
         """Error during extend operation."""
+        self._set_driver()
         drv = self._driver
         volume = fake_volume.fake_volume_obj(
             self.context,
@@ -878,6 +995,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_extend_volume_insufficient_space(self):
         """Insufficient space on nfs_share during extend operation."""
+        self._set_driver()
         drv = self._driver
         volume = fake_volume.fake_volume_obj(
             self.context,
@@ -896,6 +1014,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_is_file_size_equal(self):
         """File sizes are equal."""
+        self._set_driver()
         drv = self._driver
         path = 'fake/path'
         size = 2
@@ -908,6 +1027,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_is_file_size_equal_false(self):
         """File sizes are not equal."""
+        self._set_driver()
         drv = self._driver
         path = 'fake/path'
         size = 2
@@ -925,6 +1045,7 @@ class NfsDriverTestCase(test.TestCase):
         The NFS driver overrides the base method with a driver specific
         version.
         """
+        self._set_driver()
         drv = self._driver
         drv._mounted_shares = [self.TEST_NFS_EXPORT1]
         is_new_install = True
@@ -948,6 +1069,7 @@ class NfsDriverTestCase(test.TestCase):
         The NFS driver overrides the base method with a driver specific
         version.
         """
+        self._set_driver()
         drv = self._driver
         drv._mounted_shares = [self.TEST_NFS_EXPORT1]
         is_new_install = False
@@ -968,6 +1090,7 @@ class NfsDriverTestCase(test.TestCase):
     def test_set_nas_security_options_exception_if_no_mounted_shares(self):
         """Ensure proper exception is raised if there are no mounted shares."""
 
+        self._set_driver()
         drv = self._driver
         drv._ensure_shares_mounted = mock.Mock()
         drv._mounted_shares = []
@@ -980,6 +1103,7 @@ class NfsDriverTestCase(test.TestCase):
     def test_ensure_share_mounted(self):
         """Case where the mount works the first time."""
 
+        self._set_driver()
         self.mock_object(self._driver._remotefsclient, 'mount')
         drv = self._driver
         drv.configuration.nfs_mount_attempts = 3
@@ -995,6 +1119,7 @@ class NfsDriverTestCase(test.TestCase):
 
         num_attempts = 3
 
+        self._set_driver()
         self.mock_object(self._driver._remotefsclient, 'mount',
                          side_effect=Exception)
         drv = self._driver
@@ -1011,6 +1136,7 @@ class NfsDriverTestCase(test.TestCase):
 
         min_num_attempts = 1
         num_attempts = 0
+        self._set_driver()
         self.mock_object(self._driver._remotefsclient, 'mount',
                          side_effect=Exception)
         drv = self._driver
@@ -1022,6 +1148,217 @@ class NfsDriverTestCase(test.TestCase):
 
         self.assertEqual(min_num_attempts,
                          drv._remotefsclient.mount.call_count)
+
+    @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT3],
+              [NFS_CONFIG2, QEMU_IMG_INFO_OUT4],
+              [NFS_CONFIG3, QEMU_IMG_INFO_OUT3],
+              [NFS_CONFIG4, QEMU_IMG_INFO_OUT4])
+    @ddt.unpack
+    def test_copy_volume_from_snapshot(self, nfs_conf, qemu_img_info):
+        self._set_driver(extra_confs=nfs_conf)
+        drv = self._driver
+        dest_volume = self._simple_volume()
+        src_volume = self._simple_volume()
+
+        fake_snap = fake_snapshot.fake_snapshot_obj(self.context)
+        fake_snap.volume = src_volume
+
+        img_out = qemu_img_info % {'volid': src_volume.id,
+                                   'snapid': fake_snap.id,
+                                   'size_gb': src_volume.size,
+                                   'size_b': src_volume.size * units.Gi}
+
+        img_info = imageutils.QemuImgInfo(img_out)
+        mock_img_info = self.mock_object(image_utils, 'qemu_img_info')
+        mock_img_info.return_value = img_info
+        mock_convert_image = self.mock_object(image_utils, 'convert_image')
+
+        vol_dir = os.path.join(self.TEST_MNT_POINT_BASE,
+                               drv._get_hash_str(src_volume.provider_location))
+        src_vol_path = os.path.join(vol_dir, img_info.backing_file)
+        dest_vol_path = os.path.join(vol_dir, dest_volume.name)
+        info_path = os.path.join(vol_dir, src_volume.name) + '.info'
+
+        snap_file = dest_volume.name + '.' + fake_snap.id
+        snap_path = os.path.join(vol_dir, snap_file)
+        size = dest_volume.size
+
+        mock_read_info_file = self.mock_object(drv, '_read_info_file')
+        mock_read_info_file.return_value = {'active': snap_file,
+                                            fake_snap.id: snap_file}
+
+        mock_permission = self.mock_object(drv, '_set_rw_permissions_for_all')
+
+        drv._copy_volume_from_snapshot(fake_snap, dest_volume, size)
+
+        mock_read_info_file.assert_called_once_with(info_path)
+        mock_img_info.assert_called_once_with(snap_path, run_as_root=True)
+        used_qcow = nfs_conf['nfs_qcow2_volumes']
+        mock_convert_image.assert_called_once_with(
+            src_vol_path, dest_vol_path, 'qcow2' if used_qcow else 'raw',
+            run_as_root=True)
+        mock_permission.assert_called_once_with(dest_vol_path)
+
+    @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT3],
+              [NFS_CONFIG2, QEMU_IMG_INFO_OUT4],
+              [NFS_CONFIG3, QEMU_IMG_INFO_OUT3],
+              [NFS_CONFIG4, QEMU_IMG_INFO_OUT4])
+    @ddt.unpack
+    def test_create_volume_from_snapshot(self, nfs_conf, qemu_img_info):
+        self._set_driver(extra_confs=nfs_conf)
+        drv = self._driver
+
+        # Volume source of the snapshot we are trying to clone from. We need it
+        # to have a different id than the default provided.
+        src_volume = self._simple_volume(size=10)
+        src_volume.id = six.text_type(uuid.uuid4())
+        src_volume_dir = os.path.join(self.TEST_MNT_POINT_BASE,
+                                      drv._get_hash_str(
+                                          src_volume.provider_location))
+        src_volume_path = os.path.join(src_volume_dir, src_volume.name)
+        fake_snap = fake_snapshot.fake_snapshot_obj(self.context)
+
+        # Fake snapshot based in the previous created volume
+        snap_file = src_volume.name + '.' + fake_snap.id
+        fake_snap.volume = src_volume
+        fake_snap.status = 'available'
+        fake_snap.size = 10
+
+        # New fake volume where the snap will be copied
+        new_volume = self._simple_volume(size=10)
+        new_volume_dir = os.path.join(self.TEST_MNT_POINT_BASE,
+                                      drv._get_hash_str(
+                                          src_volume.provider_location))
+        new_volume_path = os.path.join(new_volume_dir, new_volume.name)
+
+        # Mocks
+        img_out = qemu_img_info % {'volid': src_volume.id,
+                                   'snapid': fake_snap.id,
+                                   'size_gb': src_volume.size,
+                                   'size_b': src_volume.size * units.Gi}
+        img_info = imageutils.QemuImgInfo(img_out)
+        mock_img_info = self.mock_object(image_utils, 'qemu_img_info')
+        mock_img_info.return_value = img_info
+
+        mock_ensure = self.mock_object(drv, '_ensure_shares_mounted')
+        mock_find_share = self.mock_object(drv, '_find_share',
+                                           return_value=self.TEST_NFS_EXPORT1)
+        mock_read_info_file = self.mock_object(drv, '_read_info_file')
+        mock_read_info_file.return_value = {'active': snap_file,
+                                            fake_snap.id: snap_file}
+        mock_convert_image = self.mock_object(image_utils, 'convert_image')
+        self.mock_object(drv, '_create_qcow2_file')
+        self.mock_object(drv, '_create_regular_file')
+        self.mock_object(drv, '_create_regular_file')
+        self.mock_object(drv, '_set_rw_permissions')
+        self.mock_object(drv, '_read_file')
+
+        ret = drv.create_volume_from_snapshot(new_volume, fake_snap)
+
+        # Test asserts
+        self.assertEqual(self.TEST_NFS_EXPORT1, ret['provider_location'])
+        used_qcow = nfs_conf['nfs_qcow2_volumes']
+        mock_convert_image.assert_called_once_with(
+            src_volume_path, new_volume_path, 'qcow2' if used_qcow else 'raw',
+            run_as_root=True)
+        mock_ensure.assert_called_once()
+        mock_find_share.assert_called_once_with(new_volume.size)
+
+    def test_create_volume_from_snapshot_status_not_available(self):
+        """Expect an error when the snapshot's status is not 'available'."""
+        self._set_driver()
+        drv = self._driver
+
+        src_volume = self._simple_volume()
+
+        fake_snap = fake_snapshot.fake_snapshot_obj(self.context)
+        fake_snap.volume = src_volume
+
+        new_volume = self._simple_volume()
+        new_volume['size'] = fake_snap['volume_size']
+
+        self.assertRaises(exception.InvalidSnapshot,
+                          drv.create_volume_from_snapshot,
+                          new_volume,
+                          fake_snap)
+
+    @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT1],
+              [NFS_CONFIG2, QEMU_IMG_INFO_OUT2],
+              [NFS_CONFIG3, QEMU_IMG_INFO_OUT1],
+              [NFS_CONFIG4, QEMU_IMG_INFO_OUT2])
+    @ddt.unpack
+    def test_initialize_connection(self, nfs_confs, qemu_img_info):
+        self._set_driver(extra_confs=nfs_confs)
+        drv = self._driver
+
+        volume = self._simple_volume()
+        vol_dir = os.path.join(self.TEST_MNT_POINT_BASE,
+                               drv._get_hash_str(volume.provider_location))
+        vol_path = os.path.join(vol_dir, volume.name)
+
+        mock_img_utils = self.mock_object(image_utils, 'qemu_img_info')
+        img_out = qemu_img_info % {'volid': volume.id, 'size_gb': volume.size,
+                                   'size_b': volume.size * units.Gi}
+        mock_img_utils.return_value = imageutils.QemuImgInfo(img_out)
+        self.mock_object(drv, '_read_info_file',
+                         return_value={'active': "volume-%s" % volume.id})
+
+        conn_info = drv.initialize_connection(volume, None)
+
+        mock_img_utils.assert_called_once_with(vol_path, run_as_root=True)
+        self.assertEqual('nfs', conn_info['driver_volume_type'])
+        self.assertEqual(volume.name, conn_info['data']['name'])
+        self.assertEqual(self.TEST_MNT_POINT_BASE,
+                         conn_info['mount_point_base'])
+
+    @mock.patch.object(image_utils, 'qemu_img_info')
+    def test_initialize_connection_raise_exception(self, mock_img_info):
+        self._set_driver()
+        drv = self._driver
+        volume = self._simple_volume()
+
+        qemu_img_output = """image: %s
+        file format: iso
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 173K
+        """ % volume['name']
+        mock_img_info.return_value = imageutils.QemuImgInfo(qemu_img_output)
+
+        self.assertRaises(exception.InvalidVolume,
+                          drv.initialize_connection,
+                          volume,
+                          None)
+
+    def test_create_snapshot(self):
+        self._set_driver()
+        drv = self._driver
+        volume = self._simple_volume()
+        self.configuration.nfs_snapshot_support = True
+        fake_snap = fake_snapshot.fake_snapshot_obj(self.context)
+        fake_snap.volume = volume
+        vol_dir = os.path.join(self.TEST_MNT_POINT_BASE,
+                               drv._get_hash_str(self.TEST_NFS_EXPORT1))
+        snap_file = volume['name'] + '.' + fake_snap.id
+        snap_path = os.path.join(vol_dir, snap_file)
+        info_path = os.path.join(vol_dir, volume['name']) + '.info'
+
+        with mock.patch.object(drv, '_local_path_volume_info',
+                               return_value=info_path), \
+                mock.patch.object(drv, '_read_info_file', return_value={}), \
+                mock.patch.object(drv, '_do_create_snapshot') \
+                as mock_do_create_snapshot, \
+                mock.patch.object(drv, '_write_info_file') \
+                as mock_write_info_file, \
+                mock.patch.object(drv, 'get_active_image_from_info',
+                                  return_value=volume['name']), \
+                mock.patch.object(drv, '_get_new_snap_path',
+                                  return_value=snap_path):
+            self._driver.create_snapshot(fake_snap)
+
+        mock_do_create_snapshot.assert_called_with(fake_snap, volume['name'],
+                                                   snap_path)
+        mock_write_info_file.assert_called_with(
+            info_path, {'active': snap_file, fake_snap.id: snap_file})
 
 
 class NfsDriverDoSetupTestCase(test.TestCase):

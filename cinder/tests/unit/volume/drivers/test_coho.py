@@ -25,6 +25,7 @@ import xdrlib
 from cinder import context
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import coho
 from cinder.volume.drivers import nfs
@@ -42,7 +43,7 @@ VOLUME = {
     'volume_id': 'bcc48c61-9691-4e5f-897c-793686093190',
     'size': 128,
     'volume_type': 'silver',
-    'volume_type_id': 'type-id',
+    'volume_type_id': 'deadbeef-aaaa-bbbb-cccc-deadbeefbeef',
     'metadata': [{'key': 'type',
                   'service_label': 'silver'}],
     'provider_location': 'coho-datastream-addr:/test/path',
@@ -72,7 +73,7 @@ VOLUME_TYPE = {
     'updated_at': None,
     'extra_specs': {},
     'deleted_at': None,
-    'id': 'type-id'
+    'id': 'deadbeef-aaaa-bbbb-cccc-deadbeefbeef'
 }
 
 QOS_SPEC = {
@@ -161,6 +162,11 @@ class CohoDriverTest(test.TestCase):
     def test_create_volume_with_qos(self):
         drv = coho.CohoDriver(configuration=self.configuration)
 
+        volume = fake_volume.fake_volume_obj(self.context,
+                                             **{'volume_type_id':
+                                                VOLUME['volume_type_id'],
+                                                'provider_location':
+                                                VOLUME['provider_location']})
         mock_remotefs_create = self.mock_object(remotefs.RemoteFSDriver,
                                                 'create_volume')
         mock_rpc_client = self.mock_object(coho, 'CohoRPCClient')
@@ -172,18 +178,18 @@ class CohoDriverTest(test.TestCase):
         mock_get_admin_context = self.mock_object(context, 'get_admin_context')
         mock_get_admin_context.return_value = 'test'
 
-        drv.create_volume(VOLUME)
+        drv.create_volume(volume)
 
         self.assertTrue(mock_remotefs_create.called)
         self.assertTrue(mock_get_admin_context.called)
-        mock_remotefs_create.assert_has_calls([mock.call(VOLUME)])
+        mock_remotefs_create.assert_has_calls([mock.call(volume)])
         mock_get_volume_type.assert_has_calls(
-            [mock.call('test', VOLUME_TYPE['id'])])
+            [mock.call('test', volume.volume_type_id)])
         mock_get_qos_specs.assert_has_calls(
             [mock.call('test', QOS_SPEC['id'])])
         mock_rpc_client.assert_has_calls(
             [mock.call(ADDR, self.configuration.coho_rpc_port),
-             mock.call().set_qos_policy(os.path.join(PATH, VOLUME['name']),
+             mock.call().set_qos_policy(os.path.join(PATH, volume.name),
                                         QOS)])
 
     def test_create_snapshot(self):
