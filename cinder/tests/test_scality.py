@@ -43,7 +43,7 @@ class ScalityDriverTestCase(test.TestCase):
     TEST_VOLDIR = 'volumes'
 
     TEST_VOLNAME = 'volume_name'
-    TEST_VOLSIZE = '0'
+    TEST_VOLSIZE = '1'
     TEST_VOLUME = {
         'name': TEST_VOLNAME,
         'size': TEST_VOLSIZE
@@ -183,7 +183,7 @@ class ScalityDriverTestCase(test.TestCase):
                                       self.TEST_VOLNAME))
         self.assertTrue(os.path.isfile(self.TEST_VOLPATH))
         self.assertEqual(os.stat(self.TEST_VOLPATH).st_size,
-                         100 * units.Mi)
+                         1 * units.Gi)
 
     def test_delete_volume(self):
         """Expected behaviour for delete_volume."""

@@ -128,10 +128,7 @@ class SolarisISCSIDriver(SanISCSIDriver):
 
     def create_volume(self, volume):
         """Creates a volume."""
-        if int(volume['size']) == 0:
-            sizestr = '100M'
-        else:
-            sizestr = '%sG' % volume['size']
+        sizestr = '%sG' % volume['size']
 
         zfs_poolname = self._build_zfs_poolname(volume)
 

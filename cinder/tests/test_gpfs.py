@@ -96,7 +96,6 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertFalse(gpfs._different(None))
 
     def test_sizestr(self):
-        self.assertEqual(gpfs._sizestr('0'), '100M')
         self.assertEqual(gpfs._sizestr('10'), '10G')
 
     @patch('cinder.utils.execute')

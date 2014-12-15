@@ -97,9 +97,6 @@ def _same_filesystem(path1, path2):
 
 def _sizestr(size_in_g):
     """Convert the specified size into a string value."""
-    if int(size_in_g) == 0:
-        # return 100M size on zero input for testing
-        return '100M'
     return '%sG' % size_in_g
 
 

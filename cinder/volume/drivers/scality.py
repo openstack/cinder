@@ -114,8 +114,6 @@ class ScalityDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=msg)
 
     def _size_bytes(self, size_in_g):
-        if int(size_in_g) == 0:
-            return 100 * units.Mi
         return int(size_in_g) * units.Gi
 
     def _create_file(self, path, size):
