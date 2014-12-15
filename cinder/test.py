@@ -84,7 +84,6 @@ class Database(fixtures.Fixture):
             if os.path.exists(testdb):
                 return
         db_migrate.db_sync()
-#        self.post_migrations()
         if sql_connection == "sqlite://":
             conn = self.engine.connect()
             self._DB = "".join(line for line in conn.connection.iterdump())
