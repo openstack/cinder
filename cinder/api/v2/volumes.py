@@ -216,8 +216,7 @@ class VolumeController(wsgi.Controller):
         params = req.params.copy()
         marker = params.pop('marker', None)
         limit = params.pop('limit', None)
-        sort_key = params.pop('sort_key', 'created_at')
-        sort_dir = params.pop('sort_dir', 'desc')
+        sort_keys, sort_dirs = common.get_sort_params(params)
         params.pop('offset', None)
         filters = params
 
@@ -236,8 +235,10 @@ class VolumeController(wsgi.Controller):
             except (ValueError, SyntaxError):
                 LOG.debug('Could not evaluate value %s, assuming string', v)
 
-        volumes = self.volume_api.get_all(context, marker, limit, sort_key,
-                                          sort_dir, filters,
+        volumes = self.volume_api.get_all(context, marker, limit,
+                                          sort_keys=sort_keys,
+                                          sort_dirs=sort_dirs,
+                                          filters=filters,
                                           viewable_admin_meta=True)
 
         volumes = [dict(vol.iteritems()) for vol in volumes]

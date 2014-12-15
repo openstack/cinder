@@ -625,8 +625,8 @@ class VolumeApiTest(test.TestCase):
     def test_volume_detail_limit_offset(self):
         def volume_detail_limit_offset(is_admin):
             def stub_volume_get_all_by_project(context, project_id, marker,
-                                               limit, sort_key, sort_dir,
-                                               filters=None,
+                                               limit, sort_keys=None,
+                                               sort_dirs=None, filters=None,
                                                viewable_admin_meta=False):
                 return [
                     stubs.stub_volume(1, display_name='vol1'),
@@ -770,8 +770,8 @@ class VolumeApiTest(test.TestCase):
         req.environ = {'cinder.context': context}
         self.controller._items(req, mock.Mock)
         get_all.assert_called_once_with(
-            context, sort_dir='desc', viewable_admin_meta=True,
-            sort_key='created_at', limit=None,
+            context, sort_dirs=['desc'], viewable_admin_meta=True,
+            sort_keys=['created_at'], limit=None,
             filters={'display_name': 'Volume-573108026'}, marker=None)
 
     @mock.patch('cinder.volume.api.API.get_all')
@@ -782,8 +782,8 @@ class VolumeApiTest(test.TestCase):
         req.environ = {'cinder.context': context}
         self.controller._items(req, mock.Mock)
         get_all.assert_called_once_with(
-            context, sort_dir='desc', viewable_admin_meta=True,
-            sort_key='created_at', limit=None,
+            context, sort_dirs=['desc'], viewable_admin_meta=True,
+            sort_keys=['created_at'], limit=None,
             filters={'id': ['1', '2', '3']}, marker=None)
 
     @mock.patch('cinder.volume.api.API.get_all')
@@ -794,8 +794,8 @@ class VolumeApiTest(test.TestCase):
         req.environ = {'cinder.context': context}
         self.controller._items(req, mock.Mock)
         get_all.assert_called_once_with(
-            context, sort_dir='desc', viewable_admin_meta=True,
-            sort_key='created_at', limit=None, filters={'id': 'd+'},
+            context, sort_dirs=['desc'], viewable_admin_meta=True,
+            sort_keys=['created_at'], limit=None, filters={'id': 'd+'},
             marker=None)
 
 

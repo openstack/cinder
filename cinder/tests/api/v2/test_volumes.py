@@ -928,7 +928,8 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_index_with_marker(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_key, sort_dir, filters=None,
+                                           sort_keys=None, sort_dirs=None,
+                                           filters=None,
                                            viewable_admin_meta=False):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
@@ -950,19 +951,27 @@ class VolumeApiTest(test.TestCase):
                        stubs.stub_volume_get_all_by_project)
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes?limit=1')
+        req = fakes.HTTPRequest.blank('/v2/volumes'
+                                      '?limit=1&name=foo'
+                                      '&sort=id1:asc')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(len(volumes), 1)
 
-        # Ensure that the next link is correctly formatted
+        # Ensure that the next link is correctly formatted, it should
+        # contain the same limit, filter, and sort information as the
+        # original request as well as a marker; this ensures that the
+        # caller can simply use the "next" link and that they do not
+        # need to manually insert the limit and sort information.
         links = res_dict['volumes_links']
         self.assertEqual(links[0]['rel'], 'next')
         href_parts = urlparse.urlparse(links[0]['href'])
         self.assertEqual('/v2/fakeproject/volumes', href_parts.path)
         params = urlparse.parse_qs(href_parts.query)
-        self.assertTrue('marker' in params)
+        self.assertEqual(str(volumes[0]['id']), params['marker'][0])
         self.assertEqual('1', params['limit'][0])
+        self.assertEqual('foo', params['name'][0])
+        self.assertEqual('id1:asc', params['sort'][0])
 
     def test_volume_index_limit_negative(self):
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1')
@@ -989,7 +998,8 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_index_limit_offset(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_key, sort_dir, filters=None,
+                                           sort_keys=None, sort_dirs=None,
+                                           filters=None,
                                            viewable_admin_meta=False):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
@@ -1017,7 +1027,8 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_detail_with_marker(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_key, sort_dir, filters=None,
+                                           sort_keys=None, sort_dirs=None,
+                                           filters=None,
                                            viewable_admin_meta=False):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
@@ -1078,7 +1089,8 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_detail_limit_offset(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_key, sort_dir, filters=None,
+                                           sort_keys=None, sort_dirs=None,
+                                           filters=None,
                                            viewable_admin_meta=False):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
@@ -1112,8 +1124,7 @@ class VolumeApiTest(test.TestCase):
                           req)
 
     def test_volume_with_limit_zero(self):
-        def stub_volume_get_all(context, marker, limit,
-                                sort_key, sort_dir, **kwargs):
+        def stub_volume_get_all(context, marker, limit, **kwargs):
             return []
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all)
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=0')
@@ -1136,7 +1147,7 @@ class VolumeApiTest(test.TestCase):
 
         # Number of volumes equals the max, include next link
         def stub_volume_get_all(context, marker, limit,
-                                sort_key, sort_dir,
+                                sort_keys=None, sort_dirs=None,
                                 filters=None,
                                 viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
@@ -1155,7 +1166,7 @@ class VolumeApiTest(test.TestCase):
 
         # Number of volumes less than max, do not include
         def stub_volume_get_all2(context, marker, limit,
-                                 sort_key, sort_dir,
+                                 sort_keys=None, sort_dirs=None,
                                  filters=None,
                                  viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
@@ -1173,7 +1184,7 @@ class VolumeApiTest(test.TestCase):
 
         # Number of volumes more than the max, include next link
         def stub_volume_get_all3(context, marker, limit,
-                                 sort_key, sort_dir,
+                                 sort_keys=None, sort_dirs=None,
                                  filters=None,
                                  viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
@@ -1214,14 +1225,16 @@ class VolumeApiTest(test.TestCase):
         """
         # Non-admin, project function should be called with no_migration_status
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_key, sort_dir, filters=None,
+                                           sort_keys=None, sort_dirs=None,
+                                           filters=None,
                                            viewable_admin_meta=False):
             self.assertEqual(filters['no_migration_targets'], True)
             self.assertFalse('all_tenants' in filters)
             return [stubs.stub_volume(1, display_name='vol1')]
 
         def stub_volume_get_all(context, marker, limit,
-                                sort_key, sort_dir, filters=None,
+                                sort_keys=None, sort_dirs=None,
+                                filters=None,
                                 viewable_admin_meta=False):
             return []
         self.stubs.Set(db, 'volume_get_all_by_project',
@@ -1238,13 +1251,15 @@ class VolumeApiTest(test.TestCase):
         # Admin, all_tenants is not set, project function should be called
         # without no_migration_status
         def stub_volume_get_all_by_project2(context, project_id, marker, limit,
-                                            sort_key, sort_dir, filters=None,
+                                            sort_keys=None, sort_dirs=None,
+                                            filters=None,
                                             viewable_admin_meta=False):
             self.assertFalse('no_migration_targets' in filters)
             return [stubs.stub_volume(1, display_name='vol2')]
 
         def stub_volume_get_all2(context, marker, limit,
-                                 sort_key, sort_dir, filters=None,
+                                 sort_keys=None, sort_dirs=None,
+                                 filters=None,
                                  viewable_admin_meta=False):
             return []
         self.stubs.Set(db, 'volume_get_all_by_project',
@@ -1259,12 +1274,14 @@ class VolumeApiTest(test.TestCase):
         # Admin, all_tenants is set, get_all function should be called
         # without no_migration_status
         def stub_volume_get_all_by_project3(context, project_id, marker, limit,
-                                            sort_key, sort_dir, filters=None,
+                                            sort_keys=None, sort_dirs=None,
+                                            filters=None,
                                             viewable_admin_meta=False):
             return []
 
         def stub_volume_get_all3(context, marker, limit,
-                                 sort_key, sort_dir, filters=None,
+                                 sort_keys=None, sort_dirs=None,
+                                 filters=None,
                                  viewable_admin_meta=False):
             self.assertFalse('no_migration_targets' in filters)
             self.assertFalse('all_tenants' in filters)
@@ -1551,8 +1568,10 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, None, 'created_at', 'desc',
-            {'display_name': 'Volume-573108026'}, viewable_admin_meta=True)
+            context, None, None,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'display_name': 'Volume-573108026'},
+            viewable_admin_meta=True)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_list(self, get_all):
@@ -1563,8 +1582,9 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, None, 'created_at', 'desc',
-            {'id': ['1', '2', '3']}, viewable_admin_meta=True)
+            context, None, None,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'id': ['1', '2', '3']}, viewable_admin_meta=True)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_expression(self, get_all):
@@ -1575,8 +1595,9 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, None, 'created_at', 'desc',
-            {'display_name': 'd-'}, viewable_admin_meta=True)
+            context, None, None,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'display_name': 'd-'}, viewable_admin_meta=True)
 
 
 class VolumeSerializerTest(test.TestCase):

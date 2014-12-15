@@ -179,11 +179,11 @@ def volume_get(context, volume_id):
     return IMPL.volume_get(context, volume_id)
 
 
-def volume_get_all(context, marker, limit, sort_key, sort_dir,
+def volume_get_all(context, marker, limit, sort_keys=None, sort_dirs=None,
                    filters=None):
     """Get all volumes."""
-    return IMPL.volume_get_all(context, marker, limit, sort_key, sort_dir,
-                               filters=filters)
+    return IMPL.volume_get_all(context, marker, limit, sort_keys=sort_keys,
+                               sort_dirs=sort_dirs, filters=filters)
 
 
 def volume_get_all_by_host(context, host, filters=None):
@@ -196,11 +196,13 @@ def volume_get_all_by_group(context, group_id, filters=None):
     return IMPL.volume_get_all_by_group(context, group_id, filters=filters)
 
 
-def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
-                              sort_dir, filters=None):
+def volume_get_all_by_project(context, project_id, marker, limit,
+                              sort_keys=None, sort_dirs=None, filters=None):
     """Get all volumes belonging to a project."""
     return IMPL.volume_get_all_by_project(context, project_id, marker, limit,
-                                          sort_key, sort_dir, filters=filters)
+                                          sort_keys=sort_keys,
+                                          sort_dirs=sort_dirs,
+                                          filters=filters)
 
 
 def volume_get_iscsi_target_num(context, volume_id):

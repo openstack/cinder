@@ -258,8 +258,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         :param ctxt: our working context
         """
-        vol_entries = self.db.volume_get_all(ctxt, None, 1, 'created_at',
-                                             None, filters=None)
+        vol_entries = self.db.volume_get_all(ctxt, None, 1, filters=None)
 
         if len(vol_entries) == 0:
             LOG.info(_LI("Determined volume DB was empty at startup."))
