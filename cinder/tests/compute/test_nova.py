@@ -12,6 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
+
+import mock
+
 from cinder.compute import nova
 from cinder import context
 from cinder import test
@@ -39,14 +43,21 @@ class NovaApiTestCase(test.TestCase):
         self.api = nova.API()
         self.novaclient = FakeNovaClient()
         self.ctx = context.get_admin_context()
-        self.mox.StubOutWithMock(nova, 'novaclient')
 
     def test_update_server_volume(self):
-        nova.novaclient(self.ctx).AndReturn(self.novaclient)
-        self.mox.StubOutWithMock(self.novaclient.volumes,
-                                 'update_server_volume')
-        self.novaclient.volumes.update_server_volume('server_id', 'attach_id',
-                                                     'new_volume_id')
-        self.mox.ReplayAll()
-        self.api.update_server_volume(self.ctx, 'server_id', 'attach_id',
-                                      'new_volume_id')
+        with contextlib.nested(
+                mock.patch.object(nova, 'novaclient'),
+                mock.patch.object(self.novaclient.volumes,
+                                  'update_server_volume')
+        ) as (mock_novaclient, mock_update_server_volume):
+            mock_novaclient.return_value = self.novaclient
+
+            self.api.update_server_volume(self.ctx, 'server_id',
+                                          'attach_id', 'new_volume_id')
+
+        mock_novaclient.assert_called_once_with(self.ctx)
+        mock_update_server_volume.assert_called_once_with(
+            'server_id',
+            'attach_id',
+            'new_volume_id'
+        )
