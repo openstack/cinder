@@ -67,39 +67,41 @@ class EMCVMAXMasking(object):
         maskingViewName = maskingViewDict['maskingViewName']
         volumeName = maskingViewDict['volumeName']
         pgGroupName = maskingViewDict['pgGroupName']
+        isLiveMigration = maskingViewDict['isLiveMigration']
 
         fastPolicyName = maskingViewDict['fastPolicy']
         defaultStorageGroupInstanceName = None
 
-        # we need a rollback scenario for FAST.
-        # We must make sure that volume is returned to default storage
-        # group if anything goes wrong
-        if fastPolicyName is not None:
-            defaultStorageGroupInstanceName = (
-                self.fast.get_and_verify_default_storage_group(
-                    conn, controllerConfigService, volumeInstance.path,
-                    volumeName, fastPolicyName))
-            if defaultStorageGroupInstanceName is None:
-                exceptionMessage = (_(
-                    "Cannot get the default storage group for FAST policy: "
-                    "%(fastPolicyName)s. ")
-                    % {'fastPolicyName': fastPolicyName})
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
+        if isLiveMigration is False:
+            # We need a rollback scenario for FAST.
+            # We must make sure that volume is returned to default storage
+            # group if anything goes wrong.
+            if fastPolicyName is not None:
+                defaultStorageGroupInstanceName = (
+                    self.fast.get_and_verify_default_storage_group(
+                        conn, controllerConfigService, volumeInstance.path,
+                        volumeName, fastPolicyName))
+                if defaultStorageGroupInstanceName is None:
+                    exceptionMessage = (_(
+                        "Cannot get the default storage group for FAST policy:"
+                        " %(fastPolicyName)s.")
+                        % {'fastPolicyName': fastPolicyName})
+                    LOG.error(exceptionMessage)
+                    raise exception.VolumeBackendAPIException(
+                        data=exceptionMessage)
 
-            retStorageGroupInstanceName = (
-                self.remove_device_from_default_storage_group(
-                    conn, controllerConfigService, volumeInstance.path,
-                    volumeName, fastPolicyName))
-            if retStorageGroupInstanceName is None:
-                exceptionMessage = (_(
-                    "Failed to remove volume %(volumeName)s from default SG: "
-                    "%(volumeName)s. ")
-                    % {'volumeName': volumeName})
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
+                retStorageGroupInstanceName = (
+                    self.remove_device_from_default_storage_group(
+                        conn, controllerConfigService, volumeInstance.path,
+                        volumeName, fastPolicyName))
+                if retStorageGroupInstanceName is None:
+                    exceptionMessage = (_(
+                        "Failed to remove volume %(volumeName)s from default "
+                        "SG: %(volumeName)s.")
+                        % {'volumeName': volumeName})
+                    LOG.error(exceptionMessage)
+                    raise exception.VolumeBackendAPIException(
+                        data=exceptionMessage)
 
         try:
             maskingViewInstanceName = self._find_masking_view(
