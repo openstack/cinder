@@ -168,6 +168,53 @@ def limited_by_marker(items, request, max_limit=CONF.osapi_max_limit):
     return items[start_index:range_end]
 
 
+def get_sort_params(params, default_key='created_at', default_dir='desc'):
+    """Retrieves sort keys/directions parameters.
+
+    Processes the parameters to create a list of sort keys and sort directions
+    that correspond to either the 'sort' parameter or the 'sort_key' and
+    'sort_dir' parameter values. The value of the 'sort' parameter is a comma-
+    separated list of sort keys, each key is optionally appended with
+    ':<sort_direction>'.
+
+    Note that the 'sort_key' and 'sort_dir' parameters are deprecated in kilo
+    and an exception is raised if they are supplied with the 'sort' parameter.
+
+    The sort parameters are removed from the request parameters by this
+    function.
+
+    :param params: webob.multidict of request parameters (from
+                   cinder.api.openstack.wsgi.Request.params)
+    :param default_key: default sort key value, added to the list if no
+                        sort keys are supplied
+    :param default_dir: default sort dir value, added to the list if the
+                        corresponding key does not have a direction
+                        specified
+    :returns: list of sort keys, list of sort dirs
+    :raise webob.exc.HTTPBadRequest: If both 'sort' and either 'sort_key' or
+                                     'sort_dir' are supplied parameters
+    """
+    if 'sort' in params and ('sort_key' in params or 'sort_dir' in params):
+        msg = _("The 'sort_key' and 'sort_dir' parameters are deprecated and "
+                "cannot be used with the 'sort' parameter.")
+        raise webob.exc.HTTPBadRequest(explanation=msg)
+    sort_keys = []
+    sort_dirs = []
+    if 'sort' in params:
+        for sort in params.pop('sort').strip().split(','):
+            sort_key, _sep, sort_dir = sort.partition(':')
+            if not sort_dir:
+                sort_dir = default_dir
+            sort_keys.append(sort_key.strip())
+            sort_dirs.append(sort_dir.strip())
+    else:
+        sort_key = params.pop('sort_key', default_key)
+        sort_dir = params.pop('sort_dir', default_dir)
+        sort_keys.append(sort_key.strip())
+        sort_dirs.append(sort_dir.strip())
+    return sort_keys, sort_dirs
+
+
 def remove_version_from_href(href):
     """Removes the first api version from the href.
 
