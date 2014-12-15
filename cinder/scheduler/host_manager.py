@@ -433,15 +433,7 @@ class HostManager(object):
                   {'service_name': service_name, 'host': host,
                    'cap': capabilities})
 
-    def get_all_host_states(self, context):
-        """Returns a dict of all the hosts the HostManager knows about.
-
-        Each of the consumable resources in HostState are
-        populated with capabilities scheduler received from RPC.
-
-        For example:
-          {'192.168.1.100': HostState(), ...}
-        """
+    def _update_host_state_map(self, context):
 
         # Get resource usage across the available volume nodes:
         topic = CONF.volume_topic
@@ -475,10 +467,21 @@ class HostManager(object):
                          "scheduler cache.") % {'host': host})
             del self.host_state_map[host]
 
+    def get_all_host_states(self, context):
+        """Returns a dict of all the hosts the HostManager knows about.
+
+        Each of the consumable resources in HostState are
+        populated with capabilities scheduler received from RPC.
+
+        For example:
+          {'192.168.1.100': HostState(), ...}
+        """
+
+        self._update_host_state_map(context)
+
         # build a pool_state map and return that map instead of host_state_map
         all_pools = {}
-        for host in active_hosts:
-            state = self.host_state_map[host]
+        for host, state in self.host_state_map.items():
             for key in state.pools:
                 pool = state.pools[key]
                 # use host.pool_name to make sure key is unique
@@ -489,6 +492,8 @@ class HostManager(object):
 
     def get_pools(self, context):
         """Returns a dict of all pools on all hosts HostManager knows about."""
+
+        self._update_host_state_map(context)
 
         all_pools = []
         for host, state in self.host_state_map.items():
