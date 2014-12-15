@@ -18,6 +18,7 @@ import shutil
 import string
 import tempfile
 
+from oslo.concurrency import processutils
 from oslo.config import cfg
 
 from cinder.brick.iscsi import iscsi
@@ -156,6 +157,16 @@ class TgtAdmTestCase(test.TestCase, TargetAdminTestCase):
         target_helper = self.driver.get_target_helper(self.db)
         self.assertEqual(target_helper._get_target_chap_auth(self.target_name),
                          (self.chap_username, self.chap_password))
+
+    def fake_execute(self, *cmd, **kwargs):
+        self.cmds.append(string.join(cmd))
+        # Tests that if tgtadm --op show fails with 'target already exists',
+        # we handle it gracefully and continue.
+        if 'tgtadm' in cmd and '--op' in cmd and 'show' in cmd:
+            raise processutils.ProcessExecutionError(
+                stderr='tgtadm: this target already exists')
+        else:
+            return "", None
 
 
 class IetAdmTestCase(test.TestCase, TargetAdminTestCase):
