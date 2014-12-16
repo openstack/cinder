@@ -213,6 +213,17 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(backup['size'], vol_size)
         self.assertTrue(_mock_volume_backup.called)
 
+    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('%s.%s' % (CONF.volume_driver, 'backup_volume'))
+    def test_create_backup_with_notify(self, _mock_volume_backup, notify):
+        """Test normal backup creation with notifications."""
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(size=vol_size)
+        backup_id = self._create_backup_db_entry(volume_id=vol_id)
+
+        self.backup_mgr.create_backup(self.ctxt, backup_id)
+        self.assertEqual(2, notify.call_count)
+
     def test_restore_backup_with_bad_volume_status(self):
         """Test error handling when restoring a backup to a volume
         with a bad status.
@@ -302,6 +313,19 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(backup['status'], 'available')
         self.assertTrue(_mock_volume_restore.called)
 
+    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('%s.%s' % (CONF.volume_driver, 'restore_backup'))
+    def test_restore_backup_with_notify(self, _mock_volume_restore, notify):
+        """Test normal backup restoration with notifications."""
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(status='restoring-backup',
+                                              size=vol_size)
+        backup_id = self._create_backup_db_entry(status='restoring',
+                                                 volume_id=vol_id)
+
+        self.backup_mgr.restore_backup(self.ctxt, backup_id, vol_id)
+        self.assertEqual(2, notify.call_count)
+
     def test_delete_backup_with_bad_backup_status(self):
         """Test error handling when deleting a backup with a backup
         with a bad status.
@@ -371,6 +395,15 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(backup.deleted, True)
         self.assertGreaterEqual(timeutils.utcnow(), backup.deleted_at)
         self.assertEqual(backup.status, 'deleted')
+
+    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    def test_delete_backup_with_notify(self, notify):
+        """Test normal backup deletion with notifications."""
+        vol_id = self._create_volume_db_entry(size=1)
+        backup_id = self._create_backup_db_entry(status='deleting',
+                                                 volume_id=vol_id)
+        self.backup_mgr.delete_backup(self.ctxt, backup_id)
+        self.assertEqual(2, notify.call_count)
 
     def test_list_backup(self):
         backups = db.backup_get_all_by_project(self.ctxt, 'project1')

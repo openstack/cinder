@@ -48,6 +48,9 @@ from cinder.backup.driver import BackupDriver
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import loopingcall
+from cinder.volume import utils as volume_utils
+
 
 LOG = logging.getLogger(__name__)
 
@@ -93,6 +96,12 @@ swiftbackup_service_opts = [
     cfg.StrOpt('backup_compression_algorithm',
                default='zlib',
                help='Compression algorithm (None to disable)'),
+    cfg.BoolOpt('backup_swift_enable_progress_timer',
+                default=True,
+                help='Enable or Disable the timer to send the periodic '
+                     'progress notifications to Ceilometer when backing '
+                     'up the volume to the Swift backend storage. The '
+                     'default value is True to enable the timer.'),
 ]
 
 CONF = cfg.CONF
@@ -148,6 +157,9 @@ class SwiftBackupDriver(BackupDriver):
         LOG.debug("Using swift URL %s", self.swift_url)
         self.az = CONF.storage_availability_zone
         self.data_block_size_bytes = CONF.backup_swift_object_size
+        self.backup_timer_interval = CONF.backup_timer_interval
+        self.data_block_num = CONF.backup_object_number_per_notification
+        self.enable_progress_timer = CONF.backup_swift_enable_progress_timer
         self.swift_attempts = CONF.backup_swift_retry_attempts
         self.swift_backoff = CONF.backup_swift_retry_backoff
         self.compressor = \
@@ -285,7 +297,7 @@ class SwiftBackupDriver(BackupDriver):
                   })
         object_meta = {'id': 1, 'list': [], 'prefix': object_prefix,
                        'volume_meta': None}
-        return object_meta, container
+        return object_meta, container, volume_size_bytes
 
     def _backup_chunk(self, backup, container, data, data_offset, object_meta):
         """Backup data chunk based on the object metadata and offset."""
@@ -373,10 +385,46 @@ class SwiftBackupDriver(BackupDriver):
 
         object_meta["volume_meta"] = json_meta
 
+    def _send_progress_end(self, context, backup, object_meta):
+        object_meta['backup_percent'] = 100
+        volume_utils.notify_about_backup_usage(context,
+                                               backup,
+                                               "createprogress",
+                                               extra_usage_info=
+                                               object_meta)
+
+    def _send_progress_notification(self, context, backup, object_meta,
+                                    total_block_sent_num, total_volume_size):
+        backup_percent = total_block_sent_num * 100 / total_volume_size
+        object_meta['backup_percent'] = backup_percent
+        volume_utils.notify_about_backup_usage(context,
+                                               backup,
+                                               "createprogress",
+                                               extra_usage_info=
+                                               object_meta)
+
     def backup(self, backup, volume_file, backup_metadata=True):
         """Backup the given volume to Swift."""
+        (object_meta, container,
+            volume_size_bytes) = self._prepare_backup(backup)
+        counter = 0
+        total_block_sent_num = 0
 
-        object_meta, container = self._prepare_backup(backup)
+        # There are two mechanisms to send the progress notification.
+        # 1. The notifications are periodically sent in a certain interval.
+        # 2. The notifications are sent after a certain number of chunks.
+        # Both of them are working simultaneously during the volume backup,
+        # when swift is taken as the backup backend.
+        def _notify_progress():
+            self._send_progress_notification(self.context, backup,
+                                             object_meta,
+                                             total_block_sent_num,
+                                             volume_size_bytes)
+        timer = loopingcall.FixedIntervalLoopingCall(
+            _notify_progress)
+        if self.enable_progress_timer:
+            timer.start(interval=self.backup_timer_interval)
+
         while True:
             data = volume_file.read(self.data_block_size_bytes)
             data_offset = volume_file.tell()
@@ -384,6 +432,23 @@ class SwiftBackupDriver(BackupDriver):
                 break
             self._backup_chunk(backup, container, data,
                                data_offset, object_meta)
+            total_block_sent_num += self.data_block_num
+            counter += 1
+            if counter == self.data_block_num:
+                # Send the notification to Ceilometer when the chunk
+                # number reaches the data_block_num. The backup percentage
+                # is put in the metadata as the extra information.
+                self._send_progress_notification(self.context, backup,
+                                                 object_meta,
+                                                 total_block_sent_num,
+                                                 volume_size_bytes)
+                # reset the counter
+                counter = 0
+
+        # Stop the timer.
+        timer.stop()
+        # All the data have been sent, the backup_percent reaches 100.
+        self._send_progress_end(self.context, backup, object_meta)
 
         if backup_metadata:
             try:
