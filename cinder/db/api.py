@@ -17,8 +17,6 @@
 
 """Defines interface for DB access.
 
-The underlying driver is loaded as a :class:`LazyPluggable`.
-
 Functions in this module are imported into the cinder.db namespace. Call these
 functions from cinder.db namespace, not the cinder.db.api namespace.
 
@@ -29,9 +27,6 @@ these objects be simple dictionaries.
 
 
 **Related Flags**
-
-:backend:  string to lookup in the list of LazyPluggable backends.
-           `sqlalchemy` is the only supported backend right now.
 
 :connection:  string specifying the sqlalchemy connection to use, like:
               `sqlite:///var/lib/cinder/cinder.sqlite`.
@@ -47,14 +42,6 @@ from oslo.db import options as db_options
 
 
 db_opts = [
-    # TODO(rpodolyaka): this option is deprecated but still passed to
-    #                   LazyPluggable class which doesn't support retrieving
-    #                   of options put into groups. Nova's version of this
-    #                   class supports this. Perhaps, we should put it to Oslo
-    #                   and then reuse here.
-    cfg.StrOpt('db_backend',
-               default='sqlalchemy',
-               help='The backend to use for db'),
     cfg.BoolOpt('enable_new_services',
                 default=True,
                 help='Services to be added to the available pool on create'),
