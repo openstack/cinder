@@ -24,6 +24,7 @@ from oslo.concurrency import processutils as putils
 
 from cinder import exception
 from cinder import test
+import cinder.tests.volume.drivers.netapp.fakes as fake
 from cinder import version
 import cinder.volume.drivers.netapp.utils as na_utils
 
@@ -350,3 +351,34 @@ class OpenStackInfoTestCase(test.TestCase):
         info._update_openstack_info()
 
         self.assertTrue(mock_updt_from_dpkg.called)
+
+    def test_iscsi_connection_properties(self):
+
+        actual_properties = na_utils.get_iscsi_connection_properties(
+            fake.ISCSI_FAKE_LUN_ID, fake.ISCSI_FAKE_VOLUME,
+            fake.ISCSI_FAKE_IQN, fake.ISCSI_FAKE_ADDRESS,
+            fake.ISCSI_FAKE_PORT)
+
+        actual_properties_mapped = actual_properties['data']
+
+        self.assertDictEqual(actual_properties_mapped,
+                             fake.FC_ISCSI_TARGET_INFO_DICT)
+
+    def test_iscsi_connection_lun_id_type_str(self):
+        FAKE_LUN_ID = '1'
+
+        actual_properties = na_utils.get_iscsi_connection_properties(
+            FAKE_LUN_ID, fake.ISCSI_FAKE_VOLUME, fake.ISCSI_FAKE_IQN,
+            fake.ISCSI_FAKE_ADDRESS, fake.ISCSI_FAKE_PORT)
+
+        actual_properties_mapped = actual_properties['data']
+
+        self.assertIs(type(actual_properties_mapped['target_lun']), int)
+
+    def test_iscsi_connection_lun_id_type_dict(self):
+        FAKE_LUN_ID = {'id': 'fake_id'}
+
+        self.assertRaises(TypeError, na_utils.get_iscsi_connection_properties,
+                          FAKE_LUN_ID, fake.ISCSI_FAKE_VOLUME,
+                          fake.ISCSI_FAKE_IQN, fake.ISCSI_FAKE_ADDRESS,
+                          fake.ISCSI_FAKE_PORT)

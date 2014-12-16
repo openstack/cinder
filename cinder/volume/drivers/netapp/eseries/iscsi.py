@@ -556,7 +556,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         initiator_name = connector['initiator']
         vol = self._get_latest_volume(volume['name_id'])
         iscsi_details = self._get_iscsi_service_details()
-        iscsi_det = self._get_iscsi_portal_for_vol(vol, iscsi_details)
+        iscsi_portal = self._get_iscsi_portal_for_vol(vol, iscsi_details)
         mapping = self._map_volume_to_host(vol, initiator_name)
         lun_id = mapping['lun']
         self._cache_vol_mapping(mapping)
@@ -566,23 +566,13 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         msg = _("Successfully fetched target details for volume %(id)s and "
                 "initiator %(initiator_name)s.")
         LOG.debug(msg % msg_fmt)
-        properties = {}
-        properties['target_discovered'] = False
-        properties['target_portal'] = '%s:%s' % (iscsi_det['ip'],
-                                                 iscsi_det['tcp_port'])
-        properties['target_iqn'] = iscsi_det['iqn']
-        properties['target_lun'] = lun_id
-        properties['volume_id'] = volume['id']
-        auth = volume['provider_auth']
-        if auth:
-            (auth_method, auth_username, auth_secret) = auth.split()
-            properties['auth_method'] = auth_method
-            properties['auth_username'] = auth_username
-            properties['auth_password'] = auth_secret
-        return {
-            'driver_volume_type': 'iscsi',
-            'data': properties,
-        }
+        iqn = iscsi_portal['iqn']
+        address = iscsi_portal['ip']
+        port = iscsi_portal['tcp_port']
+        properties = na_utils.get_iscsi_connection_properties(lun_id, volume,
+                                                              iqn, address,
+                                                              port)
+        return properties
 
     def _get_iscsi_service_details(self):
         """Gets iscsi iqn, ip and port information."""
