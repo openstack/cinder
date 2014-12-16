@@ -1465,7 +1465,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
 
-        self.assertRaisesAndMessageMatches(exception.GlusterfsException,
+        self.assertRaisesAndMessageMatches(exception.RemoteFSException,
                                            'Unable to delete snapshot',
                                            drv.delete_snapshot,
                                            snap_ref)
