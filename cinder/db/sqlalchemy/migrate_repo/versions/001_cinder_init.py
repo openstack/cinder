@@ -23,10 +23,7 @@ from cinder.openstack.common import log as logging
 LOG = logging.getLogger(__name__)
 
 
-def upgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
+def define_tables(meta):
     migrations = Table(
         'migrations', meta,
         Column('created_at', DateTime),
@@ -217,21 +214,27 @@ def upgrade(migrate_engine):
                nullable=True),
         mysql_engine='InnoDB'
     )
+    return [sm_flavors,
+            sm_backend_config,
+            snapshots,
+            volume_types,
+            volumes,
+            iscsi_targets,
+            migrations,
+            quotas,
+            services,
+            sm_volume,
+            volume_metadata,
+            volume_type_extra_specs]
+
+
+def upgrade(migrate_engine):
+    meta = MetaData()
+    meta.bind = migrate_engine
 
     # create all tables
     # Take care on create order for those with FK dependencies
-    tables = [sm_flavors,
-              sm_backend_config,
-              snapshots,
-              volume_types,
-              volumes,
-              iscsi_targets,
-              migrations,
-              quotas,
-              services,
-              sm_volume,
-              volume_metadata,
-              volume_type_extra_specs]
+    tables = define_tables(meta)
 
     for table in tables:
         try:
@@ -268,4 +271,10 @@ def upgrade(migrate_engine):
 
 
 def downgrade(migrate_engine):
-    LOG.exception(_('Downgrade from initial Cinder install is unsupported.'))
+    meta = MetaData()
+    meta.bind = migrate_engine
+    tables = define_tables(meta)
+    tables.reverse()
+    for table in tables:
+        LOG.info("dropping table %(table)s" % {'table': table})
+        table.drop()
