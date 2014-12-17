@@ -69,8 +69,7 @@ from taskflow.patterns import linear_flow
 
 LOG = logging.getLogger(__name__)
 
-MIN_CLIENT_VERSION = '3.1.0'
-MIN_CLIENT_SSH_ARGS_VERSION = '3.1.1'
+MIN_CLIENT_VERSION = '3.1.2'
 
 hp3par_opts = [
     cfg.StrOpt('hp3par_api_url',
@@ -160,10 +159,11 @@ class HP3PARCommon(object):
         2.0.27 - Fixing manage source-id error bug #1357075
         2.0.28 - Removing locks bug #1381190
         2.0.29 - Report a limitless cpg's stats better bug #1398651
+        2.0.30 - Update the minimum hp3parclient version bug #1402115
 
     """
 
-    VERSION = "2.0.29"
+    VERSION = "2.0.30"
 
     stats = {}
 
@@ -238,30 +238,19 @@ class HP3PARCommon(object):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        client_version = hp3parclient.version
-
-        if client_version < MIN_CLIENT_SSH_ARGS_VERSION:
-            self.client.setSSHOptions(
-                self.config.san_ip,
-                self.config.san_login,
-                self.config.san_password,
-                port=self.config.san_ssh_port,
-                conn_timeout=self.config.ssh_conn_timeout,
-                privatekey=self.config.san_private_key)
-        else:
-            known_hosts_file = CONF.ssh_hosts_key_file
-            policy = "AutoAddPolicy"
-            if CONF.strict_ssh_host_key_policy:
-                policy = "RejectPolicy"
-            self.client.setSSHOptions(
-                self.config.san_ip,
-                self.config.san_login,
-                self.config.san_password,
-                port=self.config.san_ssh_port,
-                conn_timeout=self.config.ssh_conn_timeout,
-                privatekey=self.config.san_private_key,
-                missing_key_policy=policy,
-                known_hosts_file=known_hosts_file)
+        known_hosts_file = CONF.ssh_hosts_key_file
+        policy = "AutoAddPolicy"
+        if CONF.strict_ssh_host_key_policy:
+            policy = "RejectPolicy"
+        self.client.setSSHOptions(
+            self.config.san_ip,
+            self.config.san_login,
+            self.config.san_password,
+            port=self.config.san_ssh_port,
+            conn_timeout=self.config.ssh_conn_timeout,
+            privatekey=self.config.san_private_key,
+            missing_key_policy=policy,
+            known_hosts_file=known_hosts_file)
 
     def client_logout(self):
         LOG.info(_LI("Disconnect from 3PAR REST and SSH %s") % self.uuid)

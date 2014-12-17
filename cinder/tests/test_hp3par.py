@@ -365,7 +365,9 @@ class HP3PARBaseDriver(object):
             HP3PAR_SAN_IP,
             HP3PAR_USER_NAME,
             HP3PAR_USER_PASS,
+            missing_key_policy='AutoAddPolicy',
             privatekey=HP3PAR_SAN_SSH_PRIVATE,
+            known_hosts_file=mock.ANY,
             port=HP3PAR_SAN_SSH_PORT,
             conn_timeout=HP3PAR_SAN_SSH_CON_TIMEOUT)]
 
@@ -421,20 +423,7 @@ class HP3PARBaseDriver(object):
         self.assertRaises(exception.InvalidInput,
                           self.setup_driver)
 
-    @mock.patch('hp3parclient.version', "3.1.0")
-    def test_ssh_options_310(self):
-
-        self.ctxt = context.get_admin_context()
-        mock_client = self.setup_mock_client(driver=hpfcdriver.HP3PARFCDriver)
-        expected = [
-            mock.call.getCPG(HP3PAR_CPG),
-            mock.call.getCPG(HP3PAR_CPG2)]
-        mock_client.assert_has_calls(
-            self.standard_login +
-            expected +
-            self.standard_logout)
-
-    @mock.patch('hp3parclient.version', "3.1.1")
+    @mock.patch('hp3parclient.version', "3.1.2")
     def test_ssh_options(self):
 
         expected_hosts_key_file = "test_hosts_key_file"
@@ -466,7 +455,7 @@ class HP3PARBaseDriver(object):
             expected +
             self.standard_logout)
 
-    @mock.patch('hp3parclient.version', "3.1.1")
+    @mock.patch('hp3parclient.version', "3.1.2")
     def test_ssh_options_strict(self):
 
         expected_hosts_key_file = "test_hosts_key_file"
