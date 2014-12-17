@@ -17,6 +17,7 @@ import uuid
 
 from lxml import etree
 from oslo.utils import timeutils
+import six
 import webob
 
 from cinder.api.v2 import types
@@ -37,7 +38,8 @@ def stub_volume_type(id):
     }
     return dict(
         id=id,
-        name='vol_type_%s' % str(id),
+        name='vol_type_%s' % six.text_type(id),
+        description='vol_type_desc_%s' % six.text_type(id),
         extra_specs=specs,
     )
 
@@ -64,6 +66,14 @@ def return_volume_types_get_by_name(context, name):
     if name == "777":
         raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
     return stub_volume_type(int(name.split("_")[2]))
+
+
+def return_volume_types_get_default():
+    return stub_volume_type(1)
+
+
+def return_volume_types_get_default_not_found():
+    return {}
 
 
 class VolumeTypesApiTest(test.TestCase):
@@ -116,12 +126,33 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
                           req, '777')
 
+    def test_get_default(self):
+        self.stubs.Set(volume_types, 'get_default_volume_type',
+                       return_volume_types_get_default)
+        req = fakes.HTTPRequest.blank('/v2/fake/types/default')
+        req.method = 'GET'
+        res_dict = self.controller.show(req, 'default')
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual('vol_type_1', res_dict['volume_type']['name'])
+        self.assertEqual('vol_type_desc_1',
+                         res_dict['volume_type']['description'])
+
+    def test_get_default_not_found(self):
+        self.stubs.Set(volume_types, 'get_default_volume_type',
+                       return_volume_types_get_default_not_found)
+        req = fakes.HTTPRequest.blank('/v2/fake/types/default')
+        req.method = 'GET'
+
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.show, req, 'default')
+
     def test_view_builder_show(self):
         view_builder = views_types.ViewBuilder()
 
         now = timeutils.isotime()
         raw_volume_type = dict(
             name='new_type',
+            description='new_type_desc',
             deleted=False,
             created_at=now,
             updated_at=now,
@@ -136,6 +167,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertIn('volume_type', output)
         expected_volume_type = dict(
             name='new_type',
+            description='new_type_desc',
             extra_specs={},
             id=42,
         )
@@ -150,6 +182,7 @@ class VolumeTypesApiTest(test.TestCase):
             raw_volume_types.append(
                 dict(
                     name='new_type',
+                    description='new_type_desc',
                     deleted=False,
                     created_at=now,
                     updated_at=now,
@@ -166,6 +199,7 @@ class VolumeTypesApiTest(test.TestCase):
         for i in range(0, 10):
             expected_volume_type = dict(
                 name='new_type',
+                description='new_type_desc',
                 extra_specs={},
                 id=42 + i
             )
@@ -177,6 +211,7 @@ class VolumeTypesSerializerTest(test.TestCase):
     def _verify_volume_type(self, vtype, tree):
         self.assertEqual('volume_type', tree.tag)
         self.assertEqual(vtype['name'], tree.get('name'))
+        self.assertEqual(vtype['description'], tree.get('description'))
         self.assertEqual(str(vtype['id']), tree.get('id'))
         self.assertEqual(1, len(tree))
         extra_specs = tree[0]

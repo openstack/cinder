@@ -117,8 +117,9 @@ class VolumeTypeActionController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
     def _extend_vol_type(self, vol_type_rval, vol_type_ref):
-        key = "%s:is_public" % (Volume_type_access.alias)
-        vol_type_rval[key] = vol_type_ref['is_public']
+        if vol_type_ref:
+            key = "%s:is_public" % (Volume_type_access.alias)
+            vol_type_rval[key] = vol_type_ref.get('is_public', True)
 
     @wsgi.extends
     def show(self, req, resp_obj, id):

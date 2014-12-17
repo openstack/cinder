@@ -233,9 +233,6 @@ class VolumeTypeAccessTest(test.TestCase):
         self.type_action_controller.show(self.req, resp, '0')
         self.assertEqual({'id': '0', 'os-volume-type-access:is_public': True},
                          resp.obj['volume_type'])
-        self.type_action_controller.show(self.req, resp, '2')
-        self.assertEqual({'id': '0', 'os-volume-type-access:is_public': False},
-                         resp.obj['volume_type'])
 
     def test_detail(self):
         resp = FakeResponse()

@@ -49,19 +49,24 @@ class VolumeTypeTestCase(test.TestCase):
                                     size="300",
                                     rpm="7200",
                                     visible="True")
+        self.vol_type1_description = self.vol_type1_name + '_desc'
 
     def test_volume_type_create_then_destroy(self):
         """Ensure volume types can be created and deleted."""
         prev_all_vtypes = volume_types.get_all_types(self.ctxt)
 
+        # create
         type_ref = volume_types.create(self.ctxt,
                                        self.vol_type1_name,
-                                       self.vol_type1_specs)
+                                       self.vol_type1_specs,
+                                       description=self.vol_type1_description)
         new = volume_types.get_volume_type_by_name(self.ctxt,
                                                    self.vol_type1_name)
 
         LOG.info(_("Given data: %s"), self.vol_type1_specs)
         LOG.info(_("Result data: %s"), new)
+
+        self.assertEqual(self.vol_type1_description, new['description'])
 
         for k, v in self.vol_type1_specs.iteritems():
             self.assertEqual(v, new['extra_specs'][k],
@@ -72,6 +77,14 @@ class VolumeTypeTestCase(test.TestCase):
                          len(new_all_vtypes),
                          'drive type was not created')
 
+        # update
+        new_type_desc = self.vol_type1_description + '_updated'
+        type_ref_updated = volume_types.update(self.ctxt,
+                                               type_ref.id,
+                                               new_type_desc)
+        self.assertEqual(new_type_desc, type_ref_updated['description'])
+
+        # destroy
         volume_types.destroy(self.ctxt, type_ref['id'])
         new_all_vtypes = volume_types.get_all_types(self.ctxt)
         self.assertEqual(prev_all_vtypes,

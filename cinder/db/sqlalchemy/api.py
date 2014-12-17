@@ -1936,6 +1936,24 @@ def _volume_type_get_query(context, session=None, read_deleted=None,
     return query
 
 
+@require_admin_context
+def volume_type_update(context, volume_type_id, values):
+    session = get_session()
+    with session.begin():
+        volume_type_ref = _volume_type_ref_get(context,
+                                               volume_type_id,
+                                               session)
+
+        if not volume_type_ref:
+            raise exception.VolumeTypeNotFound(type_id=volume_type_id)
+
+        volume_type_ref.update(values)
+        volume_type_ref.save(session=session)
+        volume_type = volume_type_get(context, volume_type_id)
+
+        return volume_type
+
+
 @require_context
 def volume_type_get_all(context, inactive=False, filters=None):
     """Returns a dict describing all volume_types with name as key."""
@@ -2010,6 +2028,23 @@ def volume_type_get(context, id, inactive=False, expected_fields=None):
                             session=None,
                             inactive=inactive,
                             expected_fields=expected_fields)
+
+
+@require_context
+def _volume_type_ref_get(context, id, session=None, inactive=False):
+    read_deleted = "yes" if inactive else "no"
+    result = model_query(context,
+                         models.VolumeTypes,
+                         session=session,
+                         read_deleted=read_deleted).\
+        options(joinedload('extra_specs')).\
+        filter_by(id=id).\
+        first()
+
+    if not result:
+        raise exception.VolumeTypeNotFound(volume_type_id=id)
+
+    return result
 
 
 @require_context

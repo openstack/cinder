@@ -200,6 +200,7 @@ class VolumeTypes(BASE, CinderBase):
     __tablename__ = "volume_types"
     id = Column(String(36), primary_key=True)
     name = Column(String(255))
+    description = Column(String(255))
     # A reference to qos_specs entity
     qos_specs_id = Column(String(36),
                           ForeignKey('quality_of_service_specs.id'))

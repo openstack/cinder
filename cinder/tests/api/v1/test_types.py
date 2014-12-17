@@ -118,6 +118,7 @@ class VolumeTypesApiTest(test.TestCase):
                                updated_at=now,
                                extra_specs={},
                                deleted_at=None,
+                               description=None,
                                id=42)
 
         request = fakes.HTTPRequest.blank("/v1")
@@ -126,6 +127,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertIn('volume_type', output)
         expected_volume_type = dict(name='new_type',
                                     extra_specs={},
+                                    description=None,
                                     id=42)
         self.assertDictMatch(output['volume_type'], expected_volume_type)
 
@@ -141,6 +143,7 @@ class VolumeTypesApiTest(test.TestCase):
                                          updated_at=now,
                                          extra_specs={},
                                          deleted_at=None,
+                                         description=None,
                                          id=42 + i))
 
         request = fakes.HTTPRequest.blank("/v1")
@@ -150,7 +153,8 @@ class VolumeTypesApiTest(test.TestCase):
         for i in range(0, 10):
             expected_volume_type = dict(name='new_type',
                                         extra_specs={},
-                                        id=42 + i)
+                                        id=42 + i,
+                                        description=None)
             self.assertDictMatch(output['volume_types'][i],
                                  expected_volume_type)
 
