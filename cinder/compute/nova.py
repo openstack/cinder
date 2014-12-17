@@ -27,13 +27,13 @@ from cinder.openstack.common import log as logging
 
 nova_opts = [
     cfg.StrOpt('nova_catalog_info',
-               default='compute:nova:publicURL',
+               default='compute:Compute Service:publicURL',
                help='Match this value when searching for nova in the '
                     'service catalog. Format is: separated values of '
                     'the form: '
                     '<service_type>:<service_name>:<endpoint_type>'),
     cfg.StrOpt('nova_catalog_admin_info',
-               default='compute:nova:adminURL',
+               default='compute:Compute Service:adminURL',
                help='Same as nova_catalog_info, but for admin endpoint.'),
     cfg.StrOpt('nova_endpoint_template',
                default=None,
