@@ -113,7 +113,7 @@ class EMCVMAXCommon(object):
         :raises: VolumeBackendAPIException
         """
         volumeSize = int(self.utils.convert_gb_to_bits(volume['size']))
-        volumeName = volume['name']
+        volumeName = volume['id']
 
         extraSpecs = self._initial_setup(volume)
         self.conn = self._get_ecom_connection()

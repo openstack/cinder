@@ -20,6 +20,7 @@ import time
 from xml.dom.minidom import Document
 
 import mock
+import six
 
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -214,19 +215,35 @@ class EMCVMAXCommonData():
                    'size': 1,
                    'volume_name': 'vol1',
                    'id': '1',
+                   'device_id': '1',
                    'provider_auth': None,
                    'project_id': 'project',
                    'display_name': 'vol1',
                    'display_description': 'test volume',
                    'volume_type_id': 'abc',
-                   'provider_location': str(provider_location),
+                   'provider_location': six.text_type(provider_location),
                    'status': 'available',
                    'host': 'fake-host'
                    }
+    test_volume_v2 = {'name': 'vol1',
+                      'size': 1,
+                      'volume_name': 'vol1',
+                      'id': 'vol1',
+                      'device_id': '1',
+                      'provider_auth': None,
+                      'project_id': 'project',
+                      'display_name': 'vol1',
+                      'display_description': 'test volume',
+                      'volume_type_id': 'abc',
+                      'provider_location': six.text_type(provider_location),
+                      'status': 'available',
+                      'host': 'fake-host'
+                      }
     test_failed_volume = {'name': 'failed_vol',
                           'size': 1,
                           'volume_name': 'failed_vol',
                           'id': '4',
+                          'device_id': '4',
                           'provider_auth': None,
                           'project_id': 'project',
                           'display_name': 'failed_vol',
@@ -237,22 +254,26 @@ class EMCVMAXCommonData():
                          'size': '-1',
                          'volume_name': 'failed_delete_vol',
                          'id': '99999',
+                         'device_id': '99999',
                          'provider_auth': None,
                          'project_id': 'project',
                          'display_name': 'failed delete vol',
                          'display_description': 'failed delete volume',
                          'volume_type_id': 'abc',
-                         'provider_location': str(provider_location2)}
+                         'provider_location': six.text_type(provider_location2)
+                         }
 
     test_source_volume = {'size': 1,
                           'volume_type_id': 'sourceid',
                           'display_name': 'sourceVolume',
                           'name': 'sourceVolume',
                           'volume_name': 'vmax-154326',
+                          'id': 'vmax-154326',
                           'provider_auth': None,
                           'project_id':
                           'project', 'id': '2',
-                          'provider_location': str(provider_location),
+                          'provider_location':
+                              six.text_type(provider_location),
                           'display_description': 'snapshot source volume'}
 
     location_info = {'location_info': '000195900551#silver#None',
@@ -548,10 +569,12 @@ class FakeEcomConnection():
             vol = self.data.test_volume
         elif objectpath['type'] == 'failed_vol':
             vol = self.data.test_failed_volume
+        elif objectpath['type'] == 'TargetBaseVol':
+            vol = self.data.test_failed_volume
         else:
             return None
 
-        vol['DeviceID'] = vol['id']
+        vol['DeviceID'] = vol['device_id']
         assoc = self._getinstance_storagevolume(vol)
         assocs.append(assoc)
         return assocs
@@ -1190,7 +1213,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         return_value=(None, EMCVMAXCommonData.storage_system))
     def test_create_volume_no_fast_success(
             self, _mock_volume_type, mock_storage_system):
-        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume_v2)
 
     @mock.patch.object(
         volume_types,
@@ -1203,7 +1226,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         return_value=(None, EMCVMAXCommonData.storage_system))
     def test_create_volume_no_fast_striped_success(
             self, _mock_volume_type, mock_storage_system):
-        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume_v2)
 
     @mock.patch.object(
         volume_types,
@@ -1639,7 +1662,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         return_value=1)
     def test_create_volume_fast_success(
             self, _mock_volume_type, mock_storage_system, mock_pool_policy):
-        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume_v2)
 
     @mock.patch.object(
         volume_types,
@@ -1656,7 +1679,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         return_value=1)
     def test_create_volume_fast_striped_success(
             self, _mock_volume_type, mock_storage_system, mock_pool_policy):
-        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume_v2)
 
     @mock.patch.object(
         volume_types,
@@ -2150,7 +2173,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         return_value=(None, EMCVMAXCommonData.storage_system))
     def test_create_volume_no_fast_success(
             self, _mock_volume_type, mock_storage_system):
-        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume_v2)
 
     @mock.patch.object(
         volume_types,
@@ -2163,7 +2186,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         return_value=(None, EMCVMAXCommonData.storage_system))
     def test_create_volume_no_fast_striped_success(
             self, _mock_volume_type, mock_storage_system):
-        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume_v2)
 
     @mock.patch.object(
         volume_types,
@@ -2494,7 +2517,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         return_value=1)
     def test_create_volume_fast_success(
             self, _mock_volume_type, mock_storage_system, mock_pool_policy):
-        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume_v2)
 
     @mock.patch.object(
         volume_types,
@@ -2511,7 +2534,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         return_value=1)
     def test_create_volume_fast_striped_success(
             self, _mock_volume_type, mock_storage_system, mock_pool_policy):
-        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume_v2)
 
     @mock.patch.object(
         volume_types,
