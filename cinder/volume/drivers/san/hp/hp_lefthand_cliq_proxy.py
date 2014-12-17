@@ -274,10 +274,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
             cliq_args['thinProvision'] = '0'
 
         cliq_args['volumeName'] = volume['name']
-        if int(volume['size']) == 0:
-            cliq_args['size'] = '100MB'
-        else:
-            cliq_args['size'] = '%sGB' % volume['size']
+        cliq_args['size'] = '%sGB' % volume['size']
 
         self._cliq_run_xml("createVolume", cliq_args)
 

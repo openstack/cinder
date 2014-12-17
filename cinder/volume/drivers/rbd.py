@@ -485,10 +485,7 @@ class RBDDriver(driver.VolumeDriver):
 
     def create_volume(self, volume):
         """Creates a logical volume."""
-        if int(volume['size']) == 0:
-            size = 100 * units.Mi
-        else:
-            size = int(volume['size']) * units.Gi
+        size = int(volume['size']) * units.Gi
 
         LOG.debug("creating volume '%s'" % (volume['name']))
 

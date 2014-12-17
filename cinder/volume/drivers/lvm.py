@@ -115,8 +115,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
                         data=exception_message)
 
     def _sizestr(self, size_in_g):
-        if int(size_in_g) == 0:
-            return '100m'
         return '%sg' % size_in_g
 
     def _volume_not_present(self, volume_name):
