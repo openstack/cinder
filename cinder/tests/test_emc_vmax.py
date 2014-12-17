@@ -62,6 +62,22 @@ class SYMM_LunMasking(dict):
     pass
 
 
+class CIM_DeviceMaskingGroup(dict):
+    pass
+
+
+class EMC_LunMaskingSCSIProtocolController(dict):
+    pass
+
+
+class CIM_TargetMaskingGroup(dict):
+    pass
+
+
+class EMC_StorageHardwareID(dict):
+    pass
+
+
 class Fake_CIMProperty():
 
     def fake_getCIMProperty(self):
@@ -166,6 +182,7 @@ class EMCVMAXCommonData():
         u'//10.10.10.10/root/emc: SE_DeviceMaskingGroup.InstanceID='
         '"SYMMETRIX+000198700440+OS_default_GOLD1_SG"')
     storage_system = 'SYMMETRIX+000195900551'
+    port_group = 'OS-portgroup-PG'
     lunmaskctrl_id =\
         'SYMMETRIX+000195900551+OS-fakehost-gold-MV'
     lunmaskctrl_name =\
@@ -194,12 +211,16 @@ class EMCVMAXCommonData():
     assoctierpolicy_creationclass = 'CIM_StorageTier'
     storagepool_creationclass = 'Symm_VirtualProvisioningPool'
     storagegroup_creationclass = 'CIM_DeviceMaskingGroup'
-    hardwareid_creationclass = 'SE_StorageHardwareID'
+    hardwareid_creationclass = 'EMC_StorageHardwareID'
     storagepoolid = 'SYMMETRIX+000195900551+U+gold'
     storagegroupname = 'OS_default_GOLD1_SG'
     storagevolume_creationclass = 'EMC_StorageVolume'
     policyrule = 'gold'
     poolname = 'gold'
+    totalmanagedspace_bits = '1000000000000'
+    subscribedcapacity_bits = '500000000000'
+    totalmanagedspace_gbs = 931
+    subscribedcapacity_gbs = 466
 
     unit_creationclass = 'CIM_ProtocolControllerForUnit'
     storage_type = 'gold'
@@ -289,6 +310,8 @@ class EMCVMAXCommonData():
                      'storage_protocol': 'ISCSI'}
     test_host = {'capabilities': location_info,
                  'host': 'fake_host'}
+
+    initiatorNames = ["123456789012345", "123456789054321"]
     test_ctxt = {}
     new_type = {}
     diff = {}
@@ -397,6 +420,10 @@ class FakeEcomConnection():
             result = self._enum_hdwidmgmts()
         elif name == 'SE_StorageHardwareID':
             result = self._enum_storhdwids()
+        elif name == 'EMC_StorageSystem':
+            result = self._enum_storage_system()
+        elif name == 'Symm_TierPolicyRule':
+            result = self._enum_policyrules()
         else:
             result = self._default_enum()
         return result
@@ -434,6 +461,10 @@ class FakeEcomConnection():
             result = self._getinstance_initiatormaskinggroup(objectpath)
         elif name == 'SE_StorageHardwareID':
             result = self._getinstance_storagehardwareid(objectpath)
+        elif name == 'EMC_StorageHardwareID':
+            result = self._getinstance_storagehardwareid(objectpath)
+        elif name == 'Symm_VirtualProvisioningPool':
+            result = self._getinstance_pool(objectpath)
         else:
             result = self._default_getinstance(objectpath)
 
@@ -450,6 +481,14 @@ class FakeEcomConnection():
             result = self._assoc_endpoint()
         elif ResultClass == 'EMC_StorageVolume':
             result = self._assoc_storagevolume(objectpath)
+        elif ResultClass == 'CIM_DeviceMaskingGroup':
+            result = self._assoc_storagegroup()
+        elif ResultClass == 'CIM_StorageExtent':
+            result = self._enum_storage_extent()
+        elif ResultClass == 'EMC_LunMaskingSCSIProtocolController':
+            result = self._assoc_lunmaskctrls()
+        elif ResultClass == 'CIM_TargetMaskingGroup':
+            result = self._assoc_portgroup()
         else:
             result = self._default_assoc(objectpath)
         return result
@@ -480,12 +519,16 @@ class FakeEcomConnection():
             result = self._enum_storagevolumes()
         elif ResultClass == 'SE_InitiatorMaskingGroup':
             result = self._enum_initiatorMaskingGroup()
+        elif ResultClass == 'CIM_InitiatorMaskingGroup':
+            result = self._enum_initiatorMaskingGroup()
         elif ResultClass == 'CIM_StorageExtent':
             result = self._enum_storage_extent()
         elif ResultClass == 'SE_StorageHardwareID':
             result = self._enum_storhdwids()
         elif ResultClass == 'Symm_FCSCSIProtocolEndpoint':
             result = self._enum_fcscsiendpoint()
+        elif ResultClass == 'CIM_TargetMaskingGroup':
+            result = self._assocnames_portgroup()
 
         else:
             result = self._default_assocnames(objectpath)
@@ -553,13 +596,20 @@ class FakeEcomConnection():
 
     def _assoc_hdwid(self):
         assocs = []
-        assoc = {}
+        assoc = EMC_StorageHardwareID()
         assoc['StorageID'] = self.data.connector['initiator']
+        assoc['SystemName'] = self.data.storage_system
+        assoc['CreationClassName'] = 'EMC_StorageHardwareID'
+        assoc.path = assoc
         assocs.append(assoc)
         for wwpn in self.data.connector['wwpns']:
-            assoc2 = {}
+            assoc2 = EMC_StorageHardwareID()
             assoc2['StorageID'] = wwpn
+            assoc2['SystemName'] = self.data.storage_system
+            assoc2['CreationClassName'] = 'EMC_StorageHardwareID'
+            assoc2.path = assoc2
             assocs.append(assoc2)
+        assocs.append(assoc)
         return assocs
 
     def _assoc_endpoint(self):
@@ -569,6 +619,37 @@ class FakeEcomConnection():
         assoc['SystemName'] = self.data.storage_system
         assocs.append(assoc)
         return assocs
+
+    def _assoc_storagegroup(self):
+        assocs = []
+        assoc = CIM_DeviceMaskingGroup()
+        assoc['ElementName'] = 'OS_default_GOLD1_SG'
+        assoc['SystemName'] = self.data.storage_system
+        assoc['CreationClassName'] = 'CIM_DeviceMaskingGroup'
+        assoc.path = assoc
+        assocs.append(assoc)
+        return assocs
+
+    def _assoc_portgroup(self):
+        assocs = []
+        assoc = CIM_TargetMaskingGroup()
+        assoc['ElementName'] = self.data.port_group
+        assoc['SystemName'] = self.data.storage_system
+        assoc['CreationClassName'] = 'CIM_TargetMaskingGroup'
+        assoc.path = assoc
+        assocs.append(assoc)
+        return assocs
+
+    def _assoc_lunmaskctrls(self):
+        ctrls = []
+        ctrl = EMC_LunMaskingSCSIProtocolController()
+        ctrl['CreationClassName'] = self.data.lunmask_creationclass
+        ctrl['DeviceID'] = self.data.lunmaskctrl_id
+        ctrl['SystemName'] = self.data.storage_system
+        ctrl['ElementName'] = self.data.lunmaskctrl_name
+        ctrl.path = ctrl
+        ctrls.append(ctrl)
+        return ctrls
 
     # Added test for EMC_StorageVolume associators
     def _assoc_storagevolume(self, objectpath):
@@ -620,6 +701,9 @@ class FakeEcomConnection():
     def _assocnames_storagevolume(self):
         return self._enum_storagevolume()
 
+    def _assocnames_portgroup(self):
+        return self._enum_portgroup()
+
     def _default_assocnames(self, objectpath):
         return objectpath
 
@@ -652,6 +736,7 @@ class FakeEcomConnection():
             self.data.initiatorgroup_creationclass)
         initiatorgroup['DeviceID'] = self.data.initiatorgroup_id
         initiatorgroup['SystemName'] = self.data.storage_system
+        initiatorgroup['ElementName'] = self.data.initiatorgroup_name
         initiatorgroup.path = initiatorgroup
         return initiatorgroup
 
@@ -662,6 +747,15 @@ class FakeEcomConnection():
         hardwareid['StorageID'] = self.data.connector['wwpns'][0]
         hardwareid.path = hardwareid
         return hardwareid
+
+    def _getinstance_pool(self, objectpath):
+        pool = {}
+        pool['CreationClassName'] = 'Symm_VirtualProvisioningPool'
+        pool['ElementName'] = 'gold'
+        pool['SystemName'] = self.data.storage_system
+        pool['TotalManagedSpace'] = self.data.totalmanagedspace_bits
+        pool['EMCSubscribedCapacity'] = self.data.subscribedcapacity_bits
+        return pool
 
     def _getinstance_unit(self, objectpath):
         unit = {}
@@ -867,6 +961,14 @@ class FakeEcomConnection():
         initatorgroups.append(initatorgroup)
         return initatorgroups
 
+    def _enum_storage_system(self):
+        storagesystems = []
+        storagesystem = {}
+        storagesystem['SystemName'] = self.data.storage_system
+        storagesystem['Name'] = self.data.storage_system
+        storagesystems.append(storagesystem)
+        return storagesystems
+
     def _enum_storage_extent(self):
         storageExtents = []
         storageExtent = CIM_StorageExtent()
@@ -984,6 +1086,15 @@ class FakeEcomConnection():
         wwn['Name'] = "5000090000000000"
         wwns.append(wwn)
         return wwns
+
+    def _enum_portgroup(self):
+        portgroups = []
+        portgroup = {}
+        portgroup['CreationClassName'] = (
+            'CIM_TargetMaskingGroup')
+        portgroup['ElementName'] = self.data.port_group
+        portgroups.append(portgroup)
+        return portgroups
 
     def _default_enum(self):
         names = []
@@ -1235,6 +1346,263 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                           self.driver.common.utils.process_exception_args,
                           arg, instancename3)
 
+    # Bug 1393555 - masking view has been deleted by another process.
+    def test_find_maskingview(self):
+        conn = self.fake_ecom_connection()
+        foundMaskingViewInstanceName = (
+            self.driver.common.masking._find_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        # The masking view has been found.
+        self.assertEqual(
+            self.data.lunmaskctrl_name,
+            conn.GetInstance(foundMaskingViewInstanceName)['ElementName'])
+
+        self.driver.common.masking.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundMaskingViewInstanceName2 = (
+            self.driver.common.masking._find_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        # The masking view has not been found.
+        self.assertIsNone(foundMaskingViewInstanceName2)
+
+    # Bug 1393555 - port group has been deleted by another process.
+    def test_find_portgroup(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+
+        foundPortGroupInstanceName = (
+            self.driver.common.masking._find_port_group(
+                conn, controllerConfigService, self.data.port_group))
+        # The port group has been found.
+        self.assertEqual(
+            self.data.port_group,
+            conn.GetInstance(foundPortGroupInstanceName)['ElementName'])
+
+        self.driver.common.masking.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundPortGroupInstanceName2 = (
+            self.driver.common.masking._find_port_group(
+                conn, controllerConfigService, self.data.port_group))
+        # The port group has not been found as it has been deleted
+        # externally or by another thread.
+        self.assertIsNone(foundPortGroupInstanceName2)
+
+    # Bug 1393555 - storage group has been deleted by another process.
+    def test_get_storage_group_from_masking_view(self):
+        conn = self.fake_ecom_connection()
+        foundStorageGroupInstanceName = (
+            self.driver.common.masking._get_storage_group_from_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        # The storage group has been found.
+        self.assertEqual(
+            self.data.storagegroupname,
+            conn.GetInstance(foundStorageGroupInstanceName)['ElementName'])
+
+        self.driver.common.masking.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundStorageGroupInstanceName2 = (
+            self.driver.common.masking._get_storage_group_from_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        # The storage group has not been found as it has been deleted
+        # externally or by another thread.
+        self.assertIsNone(foundStorageGroupInstanceName2)
+
+    # Bug 1393555 - initiator group has been deleted by another process.
+    def test_get_initiator_group_from_masking_view(self):
+        conn = self.fake_ecom_connection()
+        foundInitiatorGroupInstanceName = (
+            self.driver.common.masking._get_initiator_group_from_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        # The initiator group has been found.
+        self.assertEqual(
+            self.data.initiatorgroup_name,
+            conn.GetInstance(foundInitiatorGroupInstanceName)['ElementName'])
+
+        self.driver.common.masking.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundInitiatorGroupInstanceName2 = (
+            self.driver.common.masking._get_storage_group_from_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        # The initiator group has not been found as it has been deleted
+        # externally or by another thread.
+        self.assertIsNone(foundInitiatorGroupInstanceName2)
+
+    # Bug 1393555 - port group has been deleted by another process.
+    def test_get_port_group_from_masking_view(self):
+        conn = self.fake_ecom_connection()
+        foundPortGroupInstanceName = (
+            self.driver.common.masking._get_port_group_from_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        # The port group has been found.
+        self.assertEqual(
+            self.data.port_group,
+            conn.GetInstance(foundPortGroupInstanceName)['ElementName'])
+
+        self.driver.common.masking.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundPortGroupInstanceName2 = (
+            self.driver.common.masking._get_port_group_from_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        # The port group has not been found as it has been deleted
+        # externally or by another thread.
+        self.assertIsNone(foundPortGroupInstanceName2)
+
+    # Bug 1393555 - initiator group has been deleted by another process.
+    def test_find_initiator_group(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+
+        foundInitiatorGroupInstanceName = (
+            self.driver.common.masking._find_initiator_masking_group(
+                conn, controllerConfigService, self.data.initiatorNames))
+        # The initiator group has been found.
+        self.assertEqual(
+            self.data.initiatorgroup_name,
+            conn.GetInstance(foundInitiatorGroupInstanceName)['ElementName'])
+
+        self.driver.common.masking.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundInitiatorGroupInstanceName2 = (
+            self.driver.common.masking._find_initiator_masking_group(
+                conn, controllerConfigService, self.data.initiatorNames))
+        # The initiator group has not been found as it has been deleted
+        # externally or by another thread.
+        self.assertIsNone(foundInitiatorGroupInstanceName2)
+
+    # Bug 1393555 - hardware id has been deleted by another process.
+    def test_get_storage_hardware_id_instance_names(self):
+        conn = self.fake_ecom_connection()
+        foundHardwareIdInstanceNames = (
+            self.driver.common.masking._get_storage_hardware_id_instance_names(
+                conn, self.data.initiatorNames, self.data.storage_system))
+        # The hardware id list has been found.
+        self.assertEqual(
+            '123456789012345',
+            conn.GetInstance(
+                foundHardwareIdInstanceNames[0])['StorageID'])
+
+        self.driver.common.masking.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundHardwareIdInstanceNames2 = (
+            self.driver.common.masking._get_storage_hardware_id_instance_names(
+                conn, self.data.initiatorNames, self.data.storage_system))
+        # The hardware id list has not been found as it has been removed
+        # externally.
+        self.assertTrue(len(foundHardwareIdInstanceNames2) == 0)
+
+    # Bug 1393555 - controller has been deleted by another process.
+    def test_find_lunmasking_scsi_protocol_controller(self):
+        self.driver.common.conn = self.fake_ecom_connection()
+        foundControllerInstanceName = (
+            self.driver.common._find_lunmasking_scsi_protocol_controller(
+                self.data.storage_system, self.data.connector))
+        # The controller has been found.
+        self.assertEqual(
+            'OS-fakehost-gold-MV',
+            self.driver.common.conn.GetInstance(
+                foundControllerInstanceName)['ElementName'])
+
+        self.driver.common.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundControllerInstanceName2 = (
+            self.driver.common._find_lunmasking_scsi_protocol_controller(
+                self.data.storage_system, self.data.connector))
+        # The controller has not been found as it has been removed
+        # externally.
+        self.assertIsNone(foundControllerInstanceName2)
+
+    # Bug 1393555 - storage group has been deleted by another process.
+    def test_get_policy_default_storage_group(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+
+        foundStorageMaskingGroupInstanceName = (
+            self.driver.common.fast.get_policy_default_storage_group(
+                conn, controllerConfigService, 'OS_default'))
+        # The storage group has been found.
+        self.assertEqual(
+            'OS_default_GOLD1_SG',
+            conn.GetInstance(
+                foundStorageMaskingGroupInstanceName)['ElementName'])
+
+        self.driver.common.fast.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundStorageMaskingGroupInstanceName2 = (
+            self.driver.common.fast.get_policy_default_storage_group(
+                conn, controllerConfigService, 'OS_default'))
+        # The storage group has not been found as it has been removed
+        # externally.
+        self.assertIsNone(foundStorageMaskingGroupInstanceName2)
+
+    # Bug 1393555 - policy has been deleted by another process.
+    def test_get_capacities_associated_to_policy(self):
+        conn = self.fake_ecom_connection()
+        total_capacity_gb, free_capacity_gb = (
+            self.driver.common.fast.get_capacities_associated_to_policy(
+                conn, self.data.storage_system, self.data.policyrule))
+        # The capacities associated to the policy have been found.
+        self.assertEqual(self.data.totalmanagedspace_gbs, total_capacity_gb)
+        self.assertEqual(self.data.subscribedcapacity_gbs, free_capacity_gb)
+
+        self.driver.common.fast.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        total_capacity_gb_2, free_capacity_gb_2 = (
+            self.driver.common.fast.get_capacities_associated_to_policy(
+                conn, self.data.storage_system, self.data.policyrule))
+        # The capacities have not been found as the policy has been
+        # removed externally.
+        self.assertEqual(0, total_capacity_gb_2)
+        self.assertEqual(0, free_capacity_gb_2)
+
+    # Bug 1393555 - storage group has been deleted by another process.
+    def test_find_storage_masking_group(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+
+        foundStorageMaskingGroupInstanceName = (
+            self.driver.common.utils.find_storage_masking_group(
+                conn, controllerConfigService, self.data.storagegroupname))
+        # The storage group has been found.
+        self.assertEqual(
+            self.data.storagegroupname,
+            conn.GetInstance(
+                foundStorageMaskingGroupInstanceName)['ElementName'])
+
+        self.driver.common.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundStorageMaskingGroupInstanceName2 = (
+            self.driver.common.utils.find_storage_masking_group(
+                conn, controllerConfigService, self.data.storagegroupname))
+        # The storage group has not been found as it has been removed
+        # externally.
+        self.assertIsNone(foundStorageMaskingGroupInstanceName2)
+
+    # Bug 1393555 - pool has been deleted by another process.
+    def test_get_pool_by_name(self):
+        conn = self.fake_ecom_connection()
+
+        foundPoolInstanceName = self.driver.common.utils.get_pool_by_name(
+            conn, self.data.poolname, self.data.storage_system)
+        # The pool has been found.
+        self.assertEqual(
+            self.data.poolname,
+            conn.GetInstance(foundPoolInstanceName)['ElementName'])
+
+        self.driver.common.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        foundPoolInstanceName2 = self.driver.common.utils.get_pool_by_name(
+            conn, self.data.poolname, self.data.storage_system)
+        # The pool has not been found as it has been removed externally.
+        self.assertIsNone(foundPoolInstanceName2)
+
     def test_get_volume_stats_1364232(self):
         self.create_fake_config_file_1364232()
         self.assertEqual('000198700439',
@@ -1254,8 +1622,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             os.remove(self.config_file_1364232)
 
     @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storageSystem',
+        EMCVMAXUtils,
+        'find_storageSystem',
         return_value=None)
     @mock.patch.object(
         EMCVMAXFast,
@@ -1493,10 +1861,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                       'volume_backend_name': 'ISCSINoFAST'})
     @mock.patch.object(
         EMCVMAXUtils,
-        'check_if_volume_is_concatenated',
+        'check_if_volume_is_extendable',
         return_value='False')
     def test_extend_volume_striped_no_fast_failed(
-            self, _mock_volume_type, _mock_is_concatenated):
+            self, _mock_volume_type, _mock_is_extendable):
         newSize = '2'
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.extend_volume,
@@ -1748,8 +2116,8 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         return
 
     @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storageSystem',
+        EMCVMAXUtils,
+        'find_storageSystem',
         return_value=None)
     @mock.patch.object(
         EMCVMAXFast,
@@ -1958,10 +2326,10 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'ISCSIFAST'})
     @mock.patch.object(
         EMCVMAXUtils,
-        'check_if_volume_is_concatenated',
+        'check_if_volume_is_extendable',
         return_value='False')
     def test_extend_volume_striped_fast_failed(
-            self, _mock_volume_type, _mock_is_concatenated):
+            self, _mock_volume_type, _mock_is_extendable):
         newSize = '2'
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.extend_volume,
@@ -2265,8 +2633,8 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         return
 
     @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storageSystem',
+        EMCVMAXUtils,
+        'find_storageSystem',
         return_value=None)
     @mock.patch.object(
         EMCVMAXFast,
@@ -2460,10 +2828,10 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'FCNoFAST'})
     @mock.patch.object(
         EMCVMAXUtils,
-        'check_if_volume_is_concatenated',
+        'check_if_volume_is_extendable',
         return_value='False')
     def test_extend_volume_striped_no_fast_failed(
-            self, _mock_volume_type, _mock_is_concatenated):
+            self, _mock_volume_type, _mock_is_extendable):
         newSize = '2'
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.extend_volume,
@@ -2600,8 +2968,8 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         return
 
     @mock.patch.object(
-        EMCVMAXCommon,
-        '_find_storageSystem',
+        EMCVMAXUtils,
+        'find_storageSystem',
         return_value=None)
     @mock.patch.object(
         EMCVMAXFast,
@@ -2805,10 +3173,10 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'FCFAST'})
     @mock.patch.object(
         EMCVMAXUtils,
-        'check_if_volume_is_concatenated',
+        'check_if_volume_is_extendable',
         return_value='False')
     def test_extend_volume_striped_fast_failed(self, _mock_volume_type,
-                                               _mock_is_concatenated):
+                                               _mock_is_extendable):
         newSize = '2'
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.extend_volume,

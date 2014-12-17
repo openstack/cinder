@@ -424,8 +424,8 @@ class EMCVMAXCommon(object):
         additionalVolumeSize = self.utils.convert_gb_to_bits(
             additionalVolumeSize)
 
-        # is the volume concatenated
-        isConcatenated = self.utils.check_if_volume_is_concatenated(
+        # Is the volume extendable.
+        isConcatenated = self.utils.check_if_volume_is_extendable(
             self.conn, volumeInstance)
         if 'True' not in isConcatenated:
             exceptionMessage = (_(
@@ -564,7 +564,9 @@ class EMCVMAXCommon(object):
         if self.conn is None:
             self._set_ecom_credentials(emcConfigFileName)
 
-        storageSystemInstanceName = self._find_storageSystem(arrayName)
+        storageSystemInstanceName = (
+            self.utils.find_storageSystem(self.conn, arrayName))
+
         isTieringPolicySupported = (
             self.fast.is_tiering_policy_enabled_on_storage_system(
                 self.conn, storageSystemInstanceName))
@@ -1154,32 +1156,6 @@ class EMCVMAXCommon(object):
 
         return conn
 
-    def _find_storageSystem(self, arrayStr):
-        """Find an array instance name given the array name.
-
-        :param arrayStr: the array Serial number (String)
-        :returns: foundPoolInstanceName, the CIM Instance Name of the Pool
-        """
-        foundStorageSystemInstanceName = None
-        storageSystemInstanceNames = self.conn.EnumerateInstanceNames(
-            'EMC_StorageSystem')
-        for storageSystemInstanceName in storageSystemInstanceNames:
-            arrayName = storageSystemInstanceName['Name']
-            index = arrayName.find(arrayStr)
-            if index > -1:
-                foundStorageSystemInstanceName = storageSystemInstanceName
-
-        if foundStorageSystemInstanceName is None:
-            exceptionMessage = (_("StorageSystem %(array)s is not found.")
-                                % {'storage_array': arrayStr})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
-
-        LOG.debug("Array Found: %(array)s.."
-                  % {'array': arrayStr})
-
-        return foundStorageSystemInstanceName
-
     def _find_pool_in_array(self, arrayStr, poolNameInStr):
         """Find a pool based on the pool name on a given array.
 
@@ -1190,7 +1166,8 @@ class EMCVMAXCommon(object):
         foundPoolInstanceName = None
         systemNameStr = None
 
-        storageSystemInstanceName = self._find_storageSystem(arrayStr)
+        storageSystemInstanceName = self.utils.find_storageSystem(self.conn,
+                                                                  arrayStr)
 
         vpools = self.conn.AssociatorNames(
             storageSystemInstanceName,
@@ -1440,26 +1417,32 @@ class EMCVMAXCommon(object):
                                             management service
         :returns: foundInstances, the list of storage hardware ID instances
         """
-        foundInstances = []
+        foundHardwareIdList = []
         wwpns = self._find_initiator_names(connector)
 
-        hardwareIdInstanceNames = (
-            self.utils.get_hardware_id_instance_names_from_array(
+        hardwareIdInstances = (
+            self.utils.get_hardware_id_instances_from_array(
                 self.conn, hardwareIdManagementService))
-        for hardwareIdInstanceName in hardwareIdInstanceNames:
-            hardwareIdInstance = self.conn.GetInstance(hardwareIdInstanceName)
+        for hardwareIdInstance in hardwareIdInstances:
             storageId = hardwareIdInstance['StorageID']
             for wwpn in wwpns:
                 if wwpn.lower() == storageId.lower():
-                    foundInstances.append(hardwareIdInstance.path)
+                    # Check that the found hardwareId has not been
+                    # deleted. If it has, we don't want to add it to the list.
+                    instance = self.utils.get_existing_instance(
+                        self.conn, hardwareIdInstance.path)
+                    if instance is None:
+                        # hardwareId doesn't exist any more. Skip it.
+                        break
+                    foundHardwareIdList.append(hardwareIdInstance.path)
                     break
 
         LOG.debug("Storage Hardware IDs for %(wwpns)s is "
                   "%(foundInstances)s."
                   % {'wwpns': wwpns,
-                     'foundInstances': foundInstances})
+                     'foundInstances': foundHardwareIdList})
 
-        return foundInstances
+        return foundHardwareIdList
 
     def _register_config_file_from_config_group(self, configGroupName):
         """Given the config group name register the file.
@@ -2198,49 +2181,72 @@ class EMCVMAXCommon(object):
 
     def _find_lunmasking_scsi_protocol_controller(self, storageSystemName,
                                                   connector):
-        """Find LunMaskingSCSIProtocolController for the local host
+        """Find LunMaskingSCSIProtocolController for the local host.
 
         Find out how many volumes are mapped to a host
-        associated to the LunMaskingSCSIProtocolController
+        associated to the LunMaskingSCSIProtocolController.
 
-        :param connector: volume object to be deleted
         :param storageSystemName: the storage system name
-        :returns: foundCtrl
+        :param connector: volume object to be deleted
+        :returns: foundControllerInstanceName
         """
 
-        foundCtrl = None
+        foundControllerInstanceName = None
         initiators = self._find_initiator_names(connector)
-        controllers = self.conn.EnumerateInstanceNames(
-            'EMC_LunMaskingSCSIProtocolController')
-        for ctrl in controllers:
-            if storageSystemName != ctrl['SystemName']:
-                continue
-            associators = self.conn.Associators(
-                ctrl, ResultClass='EMC_StorageHardwareID')
-            for assoc in associators:
-                # if EMC_StorageHardwareID matches the initiator,
-                # we found the existing EMC_LunMaskingSCSIProtocolController
-                # (Storage Group for VNX)
-                # we can use for masking a new LUN
-                hardwareid = assoc['StorageID']
-                for initiator in initiators:
-                    if hardwareid.lower() == initiator.lower():
-                        foundCtrl = ctrl
-                        break
 
-                if foundCtrl is not None:
+        storageSystemInstanceName = self.utils.find_storageSystem(
+            self.conn, storageSystemName)
+        controllerInstanceNames = self.conn.AssociatorNames(
+            storageSystemInstanceName,
+            ResultClass='EMC_LunMaskingSCSIProtocolController')
+
+        for controllerInstanceName in controllerInstanceNames:
+            try:
+                # This is a check to see if the controller has
+                # been deleted.
+                self.conn.GetInstance(controllerInstanceName)
+                storageHardwareIdInstances = self.conn.Associators(
+                    controllerInstanceName,
+                    ResultClass='EMC_StorageHardwareID')
+
+                for storageHardwareIdInstance in storageHardwareIdInstances:
+                    # If EMC_StorageHardwareID matches the initiator, we
+                    # found the existing EMC_LunMaskingSCSIProtocolController.
+                    hardwareid = storageHardwareIdInstance['StorageID']
+                    for initiator in initiators:
+                        if hardwareid.lower() == initiator.lower():
+                            # This is a check to see if the controller
+                            # has been deleted.
+                            instance = self.utils.get_existing_instance(
+                                self.conn, controllerInstanceName)
+                            if instance is None:
+                                # Skip this controller as it doesn't exist
+                                # any more
+                                pass
+                            else:
+                                foundControllerInstanceName = (
+                                    controllerInstanceName)
+                            break
+
+                if foundControllerInstanceName is not None:
                     break
+            except pywbem.cim_operations.CIMError as arg:
+                instance = self.utils.process_exception_args(
+                    arg, controllerInstanceName)
+                if instance is None:
+                    # Skip this controller as it doesn't exist any more.
+                    pass
 
-            if foundCtrl is not None:
+            if foundControllerInstanceName is not None:
                 break
 
         LOG.debug("LunMaskingSCSIProtocolController for storage system "
-                  "%(storage_system)s and initiator %(initiator)s is  "
+                  "%(storage_system)s and initiator %(initiator)s is "
                   "%(ctrl)s."
                   % {'storage_system': storageSystemName,
                      'initiator': initiators,
-                     'ctrl': foundCtrl})
-        return foundCtrl
+                     'ctrl': foundControllerInstanceName})
+        return foundControllerInstanceName
 
     def get_num_volumes_mapped(self, volume, connector):
         """Returns how many volumes are in the same zone as the connector.
