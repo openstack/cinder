@@ -78,7 +78,7 @@ def create(backing_device, name, userid, password, initiator_iqns=None):
         rtslib.NetworkPortal(tpg_new, '::0', 3260, mode='any')
     except rtslib.utils.RTSLibError:
         # TODO(emh): Binding to IPv6 fails sometimes -- let pass for now.
-        pass
+        print(_('Failed to bind to IPv6.'))
 
 
 def _lookup_target(target_iqn, initiator_iqn):
