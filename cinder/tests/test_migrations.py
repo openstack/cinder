@@ -681,6 +681,19 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         volume_types = db_utils.get_table(engine, 'volume_types')
         self.assertNotIn('is_public', volume_types.c)
 
+    def _check_033(self, engine, data):
+        """Test adding encryption_id column to encryption table."""
+        encryptions = db_utils.get_table(engine, 'encryption')
+        self.assertIsInstance(encryptions.c.encryption_id.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_033(self, engine):
+        metadata = sqlalchemy.schema.MetaData()
+        metadata.bind = engine
+
+        encryptions = db_utils.get_table(engine, 'encryption')
+        self.assertNotIn('encryption_id', encryptions.c)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 

@@ -32,6 +32,7 @@ from oslo.db import options
 from oslo.db.sqlalchemy import session as db_session
 from oslo.utils import timeutils
 import osprofiler.sqlalchemy
+import six
 import sqlalchemy
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, joinedload_all
@@ -2596,6 +2597,9 @@ def volume_type_encryption_create(context, volume_type_id, values):
 
         if 'volume_type_id' not in values:
             values['volume_type_id'] = volume_type_id
+
+        if 'encryption_id' not in values:
+            values['encryption_id'] = six.text_type(uuid.uuid4())
 
         encryption.update(values)
         session.add(encryption)

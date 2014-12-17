@@ -512,13 +512,12 @@ class Encryption(BASE, CinderBase):
     """
 
     __tablename__ = 'encryption'
+    encryption_id = Column(String(36), primary_key=True)
     cipher = Column(String(255))
     key_size = Column(Integer)
     provider = Column(String(255))
     control_location = Column(String(255))
-    volume_type_id = Column(String(36),
-                            ForeignKey('volume_types.id'),
-                            primary_key=True)
+    volume_type_id = Column(String(36), ForeignKey('volume_types.id'))
     volume_type = relationship(
         VolumeTypes,
         backref="encryption",
