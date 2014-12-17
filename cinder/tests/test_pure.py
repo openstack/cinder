@@ -354,6 +354,42 @@ class PureISCSIDriverTestCase(test.TestCase):
              self.array.create_host],
             self.driver._connect, VOLUME, CONNECTOR)
 
+    @mock.patch(DRIVER_OBJ + "._get_host", autospec=True)
+    def test_connect_already_connected(self, mock_host):
+        mock_host.return_value = PURE_HOST
+        expected = {"host": PURE_HOST_NAME, "lun": 1}
+        self.array.list_volume_hosts.return_value = \
+            [expected, {"host": "extra", "lun": 2}]
+        self.array.connect_host.side_effect = exception.PureAPIException(
+            code=400, reason="Connection already exists")
+        actual = self.driver._connect(VOLUME, CONNECTOR)
+        self.assertEqual(expected, actual)
+        self.assertTrue(self.array.connect_host.called)
+        self.assertTrue(self.array.list_volume_hosts)
+
+    @mock.patch(DRIVER_OBJ + "._get_host", autospec=True)
+    def test_connect_already_connected_list_hosts_empty(self, mock_host):
+        mock_host.return_value = PURE_HOST
+        self.array.list_volume_hosts.return_value = []
+        self.array.connect_host.side_effect = exception.PureAPIException(
+            code=400, reason="Connection already exists")
+        self.assertRaises(exception.PureDriverException,
+                          lambda: self.driver._connect(VOLUME, CONNECTOR))
+        self.assertTrue(self.array.connect_host.called)
+        self.assertTrue(self.array.list_volume_hosts)
+
+    @mock.patch(DRIVER_OBJ + "._get_host", autospec=True)
+    def test_connect_already_connected_list_hosts_exception(self, mock_host):
+        mock_host.return_value = PURE_HOST
+        self.array.list_volume_hosts.side_effect = \
+            exception.PureAPIException(code=400, reason="")
+        self.array.connect_host.side_effect = exception.PureAPIException(
+            code=400, reason="Connection already exists")
+        self.assertRaises(exception.PureAPIException,
+                          lambda: self.driver._connect(VOLUME, CONNECTOR))
+        self.assertTrue(self.array.connect_host.called)
+        self.assertTrue(self.array.list_volume_hosts)
+
     def test_get_host(self):
         good_host = PURE_HOST.copy()
         good_host.update(iqn=["another-wrong-iqn", INITIATOR_IQN])
