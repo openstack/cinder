@@ -1,5 +1,4 @@
 # Copyright (c) 2014 Symantec Corporation
-# Copyright (c) 2014 Red Hat, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -45,7 +44,7 @@ class SymantecCNFSDriver(nfs.NfsDriver):
         opts = self.configuration.nfs_mount_options
         if not opts or opts.find('vers=3') == -1 or (
            opts.find('nfsvers=3')) == -1:
-            msg = _("NFS is not configured to use NFSv3")
+            msg = _("NFS is not configured to use NFSv3.")
             LOG.error(msg)
             raise exception.NfsException(msg)
 
@@ -78,7 +77,7 @@ class SymantecCNFSDriver(nfs.NfsDriver):
         """Delete a snapshot."""
         if not snapshot['provider_location']:
             LOG.warn(_LW('Snapshot %s does not have provider_location '
-                     'specified, skipping'), snapshot['name'])
+                     'specified, skipping.'), snapshot['name'])
             return
         self._ensure_share_mounted(snapshot['provider_location'])
         snap_path = self.local_path(snapshot)
@@ -106,7 +105,7 @@ class SymantecCNFSDriver(nfs.NfsDriver):
         if not os.path.exists(tgt_vol_path):
             self._execute('rm', '-f', tgt_vol_path_spl, run_as_root=True)
             msg = _("Filesnap over NFS is not supported, "
-                    "removing the ::snap:vxfs: file")
+                    "removing the ::snap:vxfs: file.")
             LOG.error(msg)
             raise exception.NfsException(msg)
         tgt_vol['provider_location'] = src_vol['provider_location']
