@@ -270,8 +270,11 @@ class VolumeController(wsgi.Controller):
         search_opts.pop('limit', None)
         search_opts.pop('offset', None)
 
-        if 'metadata' in search_opts:
-            search_opts['metadata'] = ast.literal_eval(search_opts['metadata'])
+        for k, v in search_opts.iteritems():
+            try:
+                search_opts[k] = ast.literal_eval(v)
+            except ValueError:
+                LOG.debug('Could not evaluate value %s, assuming string', v)
 
         context = req.environ['cinder.context']
         utils.remove_invalid_filter_options(context,

@@ -16,6 +16,7 @@
 import datetime
 
 from lxml import etree
+import mock
 from oslo.config import cfg
 import webob
 
@@ -760,6 +761,35 @@ class VolumeApiTest(test.TestCase):
         res = self.controller.index(req)
         self.assertIn('volumes', res)
         self.assertEqual(1, len(res['volumes']))
+
+    @mock.patch('cinder.utils.add_visible_admin_metadata')
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_string(self, get_all, add_meta):
+        req = mock.MagicMock()
+        req.GET.copy.return_value = {'display_name': 'Volume-573108026'}
+        context = mock.Mock()
+        req.environ = {'cinder.context': context}
+        self.controller._items(req, mock.Mock)
+        get_all.assert_any_call(context, sort_dir='desc',
+                                viewable_admin_meta=True,
+                                sort_key='created_at',
+                                limit=None,
+                                filters={'display_name': 'Volume-573108026'},
+                                marker=None)
+
+    @mock.patch('cinder.utils.add_visible_admin_metadata')
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_list(self, get_all, add_meta):
+        req = mock.MagicMock()
+        req.GET.copy.return_value = {'id': "['1', '2', '3']"}
+        context = mock.Mock()
+        req.environ = {'cinder.context': context}
+        self.controller._items(req, mock.Mock)
+        get_all.assert_any_call(context, sort_dir='desc',
+                                viewable_admin_meta=True,
+                                sort_key='created_at',
+                                limit=None, filters={'id': ['1', '2', '3']},
+                                marker=None)
 
 
 class VolumeSerializerTest(test.TestCase):
