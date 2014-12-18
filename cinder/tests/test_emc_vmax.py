@@ -23,6 +23,7 @@ import mock
 
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import loopingcall
 from cinder import test
 from cinder.volume.drivers.emc.emc_vmax_common import EMCVMAXCommon
 from cinder.volume.drivers.emc.emc_vmax_fast import EMCVMAXFast
@@ -1083,6 +1084,62 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     def fake_sleep(self, seconds):
         return
+
+    def test_wait_for_job_complete(self):
+        myjob = SE_ConcreteJob()
+        myjob.classname = 'SE_ConcreteJob'
+        myjob['InstanceID'] = '9999'
+        myjob['status'] = 'success'
+        myjob['type'] = 'type'
+        myjob['CreationClassName'] = 'SE_ConcreteJob'
+        myjob['Job'] = myjob
+        conn = self.fake_ecom_connection()
+
+        self.driver.utils._is_job_finished = mock.Mock(
+            return_value = True)
+        rc = self.driver.utils._wait_for_job_complete(conn, myjob)
+        self.assertIsNone(rc)
+        self.driver.utils._is_job_finished.assert_called_once_with(
+            conn, myjob)
+        self.assertEqual(
+            True,
+            self.driver.utils._is_job_finished.return_value)
+        self.driver.utils._is_job_finished.reset_mock()
+
+        # Save the original state and restore it after this test
+        loopingcall_orig = loopingcall.FixedIntervalLoopingCall
+        loopingcall.FixedIntervalLoopingCall = mock.Mock()
+        rc = self.driver.utils._wait_for_job_complete(conn, myjob)
+        self.assertIsNone(rc)
+        loopingcall.FixedIntervalLoopingCall.assert_called_once_with(
+            mock.ANY)
+        loopingcall.FixedIntervalLoopingCall.reset_mock()
+        loopingcall.FixedIntervalLoopingCall = loopingcall_orig
+
+    def test_wait_for_sync(self):
+        mysync = 'fakesync'
+        conn = self.fake_ecom_connection()
+
+        self.driver.utils._is_sync_complete = mock.Mock(
+            return_value = True)
+        rc = self.driver.utils.wait_for_sync(conn, mysync)
+        self.assertIsNone(rc)
+        self.driver.utils._is_sync_complete.assert_called_once_with(
+            conn, mysync)
+        self.assertEqual(
+            True,
+            self.driver.utils._is_sync_complete.return_value)
+        self.driver.utils._is_sync_complete.reset_mock()
+
+        # Save the original state and restore it after this test
+        loopingcall_orig = loopingcall.FixedIntervalLoopingCall
+        loopingcall.FixedIntervalLoopingCall = mock.Mock()
+        rc = self.driver.utils.wait_for_sync(conn, mysync)
+        self.assertIsNone(rc)
+        loopingcall.FixedIntervalLoopingCall.assert_called_once_with(
+            mock.ANY)
+        loopingcall.FixedIntervalLoopingCall.reset_mock()
+        loopingcall.FixedIntervalLoopingCall = loopingcall_orig
 
     def test_get_volume_stats_1364232(self):
         self.create_fake_config_file_1364232()

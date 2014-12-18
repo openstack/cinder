@@ -287,27 +287,30 @@ class EMCVMAXUtils(object):
 
         def _wait_for_job_complete():
             """Called at an interval until the job is finished"""
+            retries = kwargs['retries']
+            wait_for_job_called = kwargs['wait_for_job_called']
             if self._is_job_finished(conn, job):
                 raise loopingcall.LoopingCallDone()
-            if self.retries > JOB_RETRIES:
+            if retries > JOB_RETRIES:
                 LOG.error(_LE("_wait_for_job_complete "
                               "failed after %(retries)d "
-                              "tries") % {'retries': self.retries})
+                              "tries."),
+                          {'retries': retries})
 
                 raise loopingcall.LoopingCallDone()
             try:
-                self.retries += 1
-                if not self.wait_for_job_called:
+                kwargs['retries'] = retries + 1
+                if not wait_for_job_called:
                     if self._is_job_finished(conn, job):
-                        self.wait_for_job_called = True
+                        kwargs['wait_for_job_called'] = True
             except Exception as e:
                 LOG.error(_LE("Exception: %s") % six.text_type(e))
                 exceptionMessage = (_("Issue encountered waiting for job."))
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
-        self.retries = 0
-        self.wait_for_job_called = False
+        kwargs = {'retries': 0,
+                  'wait_for_job_called': False}
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_job_complete)
         timer.start(interval=INTERVAL_10_SEC).wait()
 
@@ -347,17 +350,20 @@ class EMCVMAXUtils(object):
 
         def _wait_for_sync():
             """Called at an interval until the synchronization is finished."""
+            retries = kwargs['retries']
+            wait_for_sync_called = kwargs['wait_for_sync_called']
             if self._is_sync_complete(conn, syncName):
                 raise loopingcall.LoopingCallDone()
-            if self.retries > JOB_RETRIES:
-                LOG.error(_LE("_wait_for_sync failed after %(retries)d tries.")
-                          % {'retries': self.retries})
+            if retries > JOB_RETRIES:
+                LOG.error(_LE("_wait_for_sync failed after %(retries)d "
+                              "tries."),
+                          {'retries': retries})
                 raise loopingcall.LoopingCallDone()
             try:
-                self.retries += 1
-                if not self.wait_for_sync_called:
+                kwargs['retries'] = retries + 1
+                if not wait_for_sync_called:
                     if self._is_sync_complete(conn, syncName):
-                        self.wait_for_sync_called = True
+                        kwargs['wait_for_sync_called'] = True
             except Exception as e:
                 LOG.error(_LE("Exception: %s") % six.text_type(e))
                 exceptionMessage = (_("Issue encountered waiting for "
@@ -365,8 +371,8 @@ class EMCVMAXUtils(object):
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
-        self.retries = 0
-        self.wait_for_sync_called = False
+        kwargs = {'retries': 0,
+                  'wait_for_sync_called': False}
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_sync)
         timer.start(interval=INTERVAL_10_SEC).wait()
 
