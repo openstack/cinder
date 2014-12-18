@@ -521,7 +521,7 @@ class VolumeDriver(object):
                                                       {'path': host_device}))
         return {'conn': conn, 'device': device, 'connector': connector}
 
-    def clone_image(self, volume, image_location, image_id, image_meta):
+    def clone_image(self, volume, image_location, image_meta):
         """Create a volume efficiently from an existing image.
 
         image_location is a string whose format depends on the
