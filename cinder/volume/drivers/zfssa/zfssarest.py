@@ -20,6 +20,7 @@ from cinder import exception
 from cinder.i18n import _, _LE
 from cinder.openstack.common import log
 from cinder.volume.drivers.zfssa import restclient
+from cinder.volume.drivers.zfssa import webdavclient
 
 LOG = log.getLogger(__name__)
 
@@ -641,3 +642,250 @@ class ZFSSAApi(object):
                       "default initiator group.")
             groups.append('default')
         return groups
+
+
+class ZFSSANfsApi(ZFSSAApi):
+    """ZFSSA API proxy class for NFS driver"""
+    projects_path = '/api/storage/v1/pools/%s/projects'
+    project_path = projects_path + '/%s'
+
+    shares_path = project_path + '/filesystems'
+    share_path = shares_path + '/%s'
+    share_snapshots_path = share_path + '/snapshots'
+    share_snapshot_path = share_snapshots_path + '/%s'
+
+    services_path = '/api/service/v1/services/'
+
+    def __init__(self, *args, **kwargs):
+        super(ZFSSANfsApi, self).__init__(*args, **kwargs)
+        self.webdavclient = None
+
+    def set_webdav(self, https_path, auth_str):
+        self.webdavclient = webdavclient.ZFSSAWebDAVClient(https_path,
+                                                           auth_str)
+
+    def verify_share(self, pool, project, share):
+        """Checks whether the share exists"""
+        svc = self.share_path % (pool, project, share)
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_('Error Verifying '
+                               'share: %(share)s on '
+                               'Project: %(project)s and '
+                               'Pool: %(pool)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'share': share,
+                                'project': project,
+                                'pool': pool,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def create_snapshot(self, pool, project, share, snapshot):
+        """create snapshot of a share"""
+        svc = self.share_snapshots_path % (pool, project, share)
+
+        arg = {
+            'name': snapshot
+        }
+
+        ret = self.rclient.post(svc, arg)
+        if ret.status != restclient.Status.CREATED:
+            exception_msg = (_('Error Creating '
+                               'Snapshot: %(snapshot)s on'
+                               'share: %(share)s to '
+                               'Pool: %(pool)s '
+                               'Project: %(project)s  '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'snapshot': snapshot,
+                                'share': share,
+                                'pool': pool,
+                                'project': project,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def delete_snapshot(self, pool, project, share, snapshot):
+        """delete snapshot of a share"""
+        svc = self.share_snapshot_path % (pool, project, share, snapshot)
+
+        ret = self.rclient.delete(svc)
+        if ret.status != restclient.Status.NO_CONTENT:
+            exception_msg = (_('Error Deleting '
+                               'Snapshot: %(snapshot)s on '
+                               'Share: %(share)s to '
+                               'Pool: %(pool)s '
+                               'Project: %(project)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'snapshot': snapshot,
+                                'share': share,
+                                'pool': pool,
+                                'project': project,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def create_snapshot_of_volume_file(self, src_file="", dst_file=""):
+        src_file = '.zfs/snapshot/' + src_file
+        return self.webdavclient.request(src_file=src_file, dst_file=dst_file,
+                                         method='COPY')
+
+    def delete_snapshot_of_volume_file(self, src_file=""):
+        return self.webdavclient.request(src_file=src_file, method='DELETE')
+
+    def create_volume_from_snapshot_file(self, src_file="", dst_file="",
+                                         method='COPY'):
+        return self.webdavclient.request(src_file=src_file, dst_file=dst_file,
+                                         method=method)
+
+    def _change_service_state(self, service, state=''):
+        svc = self.services_path + service + '/' + state
+        ret = self.rclient.put(svc)
+        if ret.status != restclient.Status.ACCEPTED:
+            exception_msg = (_('Error Verifying '
+                               'Service: %(service)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'service': service,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+        data = json.loads(ret.data)['service']
+        LOG.debug('%s service state: %s' % (service, data))
+
+        status = 'online' if state == 'enable' else 'disabled'
+
+        if data['<status>'] != status:
+            exception_msg = (_('%(service)s Service is not %(status)s '
+                               'on storage appliance: %(host)s')
+                             % {'service': service,
+                                'status': status,
+                                'host': self.host})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def enable_service(self, service):
+        self._change_service_state(service, state='enable')
+        self.verify_service(service)
+
+    def disable_service(self, service):
+        self._change_service_state(service, state='disable')
+        self.verify_service(service, status='offline')
+
+    def verify_service(self, service, status='online'):
+        """Checks whether a service is online or not"""
+        svc = self.services_path + service
+        ret = self.rclient.get(svc)
+
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_('Error Verifying '
+                               'Service: %(service)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'service': service,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        data = json.loads(ret.data)['service']
+
+        if data['<status>'] != status:
+            exception_msg = (_('%(service)s Service is not %(status)s '
+                               'on storage appliance: %(host)s')
+                             % {'service': service,
+                                'status': status,
+                                'host': self.host})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def modify_service(self, service, edit_args=None):
+        """Edit service properties"""
+        if edit_args is None:
+            edit_args = {}
+
+        svc = self.services_path + service
+
+        ret = self.rclient.put(svc, edit_args)
+
+        if ret.status != restclient.Status.ACCEPTED:
+            exception_msg = (_('Error modifying '
+                               'Service: %(service)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'service': service,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+        data = json.loads(ret.data)['service']
+        LOG.debug('Modify %(service)s service '
+                  'return data: %(data)s'
+                  % {'service': service,
+                     'data': data})
+
+    def create_share(self, pool, project, share, args):
+        """Create a share in the specified pool and project"""
+        svc = self.share_path % (pool, project, share)
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            svc = self.shares_path % (pool, project)
+            args.update({'name': share})
+            ret = self.rclient.post(svc, args)
+            if ret.status != restclient.Status.CREATED:
+                exception_msg = (_('Error Creating '
+                                   'Share: %(name)s '
+                                   'Return code: %(ret.status)d '
+                                   'Message: %(ret.data)s.')
+                                 % {'name': share,
+                                    'ret.status': ret.status,
+                                    'ret.data': ret.data})
+                LOG.error(exception_msg)
+                raise exception.VolumeBackendAPIException(data=exception_msg)
+        else:
+            LOG.debug('Editing properties of a pre-existing share')
+            ret = self.rclient.put(svc, args)
+            if ret.status != restclient.Status.ACCEPTED:
+                exception_msg = (_('Error editing share: '
+                                   '%(share)s on '
+                                   'Pool: %(pool)s '
+                                   'Return code: %(ret.status)d '
+                                   'Message: %(ret.data)s .')
+                                 % {'share': share,
+                                    'pool': pool,
+                                    'ret.status': ret.status,
+                                    'ret.data': ret.data})
+                LOG.error(exception_msg)
+                raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def get_share(self, pool, project, share):
+        """return share properties"""
+        svc = self.share_path % (pool, project, share)
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_('Error Getting '
+                               'Share: %(share)s on '
+                               'Pool: %(pool)s '
+                               'Project: %(project)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'share': share,
+                                'pool': pool,
+                                'project': project,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        val = json.loads(ret.data)
+        return val['filesystem']
