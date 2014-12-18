@@ -261,7 +261,6 @@ class TestWindowsDriver(test.TestCase):
         self.stubs.Set(windows_utils.WindowsUtils, 'get_supported_vhd_type',
                        fake_get_supported_type)
 
-        self.mox.StubOutWithMock(os, 'makedirs')
         self.mox.StubOutWithMock(os, 'unlink')
         self.mox.StubOutWithMock(image_utils, 'create_temporary_file')
         self.mox.StubOutWithMock(image_utils, 'fetch_to_vhd')

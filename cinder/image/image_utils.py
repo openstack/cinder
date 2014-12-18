@@ -192,10 +192,6 @@ def fetch_to_volume_format(context, image_service,
                            image_id, dest, volume_format, blocksize,
                            user_id=None, project_id=None, size=None,
                            run_as_root=True):
-    if (CONF.image_conversion_dir and not
-            os.path.exists(CONF.image_conversion_dir)):
-        os.makedirs(CONF.image_conversion_dir)
-
     qemu_img = True
     image_meta = image_service.show(context, image_id)
 
@@ -308,13 +304,7 @@ def upload_volume(context, image_service, image_meta, volume_path,
                     image_service.update(context, image_id, {}, image_file)
         return
 
-    if (CONF.image_conversion_dir and not
-            os.path.exists(CONF.image_conversion_dir)):
-        os.makedirs(CONF.image_conversion_dir)
-
-    fd, tmp = tempfile.mkstemp(dir=CONF.image_conversion_dir)
-    os.close(fd)
-    with fileutils.remove_path_on_error(tmp):
+    with temporary_file() as tmp:
         LOG.debug("%s was %s, converting to %s" %
                   (image_id, volume_format, image_meta['disk_format']))
         convert_image(volume_path, tmp, image_meta['disk_format'],
@@ -330,7 +320,6 @@ def upload_volume(context, image_service, image_meta, volume_path,
 
         with fileutils.file_open(tmp, 'rb') as image_file:
             image_service.update(context, image_id, {}, image_file)
-        fileutils.delete_if_exists(tmp)
 
 
 def is_xenserver_image(context, image_service, image_id):
@@ -403,6 +392,10 @@ def temporary_file(*args, **kwargs):
 
 
 def temporary_dir():
+    if (CONF.image_conversion_dir and not
+            os.path.exists(CONF.image_conversion_dir)):
+        os.makedirs(CONF.image_conversion_dir)
+
     return utils.tempdir(dir=CONF.image_conversion_dir)
 
 

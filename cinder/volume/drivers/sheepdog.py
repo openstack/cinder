@@ -18,9 +18,7 @@
 SheepDog Volume Driver.
 
 """
-import os
 import re
-import tempfile
 
 from oslo.concurrency import processutils
 from oslo.config import cfg
@@ -85,10 +83,6 @@ class SheepdogDriver(driver.VolumeDriver):
         """Delete a logical volume."""
         self._delete(volume)
 
-    def _ensure_dir_exists(self, tmp_dir):
-        if tmp_dir and not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-
     def _resize(self, volume, size=None):
         if not size:
             size = int(volume['size']) * units.Gi
@@ -101,19 +95,16 @@ class SheepdogDriver(driver.VolumeDriver):
                           volume['name'])
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        # use the image_conversion_dir as a temporary place to save the image
-        conversion_dir = CONF.image_conversion_dir
-        self._ensure_dir_exists(conversion_dir)
-        with tempfile.NamedTemporaryFile(dir=conversion_dir) as tmp:
+        with image_utils.temporary_file() as tmp:
             # (wenhao): we don't need to convert to raw for sheepdog.
             image_utils.fetch_verify_image(context, image_service,
-                                           image_id, tmp.name)
+                                           image_id, tmp)
 
             # remove the image created by import before this function.
             # see volume/drivers/manager.py:_create_volume
             self._delete(volume)
             # convert and store into sheepdog
-            image_utils.convert_image(tmp.name, 'sheepdog:%s' % volume['name'],
+            image_utils.convert_image(tmp, 'sheepdog:%s' % volume['name'],
                                       'raw')
             self._resize(volume)
 

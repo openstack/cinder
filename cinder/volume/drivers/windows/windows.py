@@ -167,9 +167,6 @@ class WindowsDriver(driver.ISCSIDriver):
         """Fetch the image from image_service and create a volume using it."""
         # Convert to VHD and file back to VHD
         vhd_type = self.utils.get_supported_vhd_type()
-        if (CONF.image_conversion_dir and not
-                os.path.exists(CONF.image_conversion_dir)):
-            os.makedirs(CONF.image_conversion_dir)
         with image_utils.temporary_file(suffix='.vhd') as tmp:
             volume_path = self.local_path(volume)
             image_utils.fetch_to_vhd(context, image_service, image_id, tmp,

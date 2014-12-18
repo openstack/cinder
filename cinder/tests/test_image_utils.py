@@ -16,7 +16,6 @@
 """Unit tests for image utils."""
 
 import contextlib
-import tempfile
 
 import mock
 import mox
@@ -439,118 +438,6 @@ class TestUtils(test.TestCase):
 
         self._test_fetch_verify_image(TEST_RETURN)
 
-    @mock.patch('os.stat')
-    def test_upload_volume(self, mock_stat, bps_limit=0):
-        image_meta = {'id': 1, 'disk_format': 'qcow2'}
-        TEST_RET = "image: qemu.qcow2\n"\
-                   "file_format: qcow2 \n"\
-                   "virtual_size: 50M (52428800 bytes)\n"\
-                   "cluster_size: 65536\n"\
-                   "disk_size: 196K (200704 bytes)"
-
-        if bps_limit:
-            self.override_config('volume_copy_bps_limit', bps_limit)
-            prefix = ('cgexec', '-g', 'blkio:test')
-        else:
-            prefix = ()
-
-        cmd = prefix + ('qemu-img', 'convert', '-O', 'qcow2',
-                        mox.IgnoreArg(), mox.IgnoreArg())
-
-        m = self._mox
-        m.StubOutWithMock(utils, 'execute')
-        m.StubOutWithMock(volume_utils, 'setup_blkio_cgroup')
-
-        volume_utils.setup_blkio_cgroup(mox.IgnoreArg(), mox.IgnoreArg(),
-                                        bps_limit).AndReturn(prefix)
-
-        utils.execute(*cmd, run_as_root=True)
-        utils.execute(
-            'env', 'LC_ALL=C', 'qemu-img', 'info',
-            mox.IgnoreArg(), run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored'))
-
-        m.ReplayAll()
-
-        image_utils.upload_volume(context, FakeImageService(),
-                                  image_meta, '/dev/loop1')
-        m.VerifyAll()
-
-    @mock.patch('os.stat')
-    def test_upload_volume_with_bps_limit(self, mock_stat):
-        bps_limit = 1048576
-        image_meta = {'id': 1, 'disk_format': 'qcow2'}
-        TEST_RET = "image: qemu.qcow2\n"\
-                   "file_format: qcow2 \n"\
-                   "virtual_size: 50M (52428800 bytes)\n"\
-                   "cluster_size: 65536\n"\
-                   "disk_size: 196K (200704 bytes)"
-
-        self.override_config('volume_copy_bps_limit', bps_limit)
-        prefix = ('cgexec', '-g', 'blkio:test')
-
-        cmd = prefix + ('qemu-img', 'convert', '-O', 'qcow2',
-                        mox.IgnoreArg(), mox.IgnoreArg())
-
-        m = self._mox
-        m.StubOutWithMock(utils, 'execute')
-        m.StubOutWithMock(volume_utils, 'setup_blkio_cgroup')
-        m.StubOutWithMock(volume_utils, 'check_for_odirect_support')
-
-        volume_utils.setup_blkio_cgroup(mox.IgnoreArg(), mox.IgnoreArg(),
-                                        bps_limit).AndReturn(prefix)
-        utils.execute(*cmd, run_as_root=True)
-        utils.execute(
-            'env', 'LC_ALL=C', 'qemu-img', 'info',
-            mox.IgnoreArg(), run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored'))
-
-        m.ReplayAll()
-        image_utils.upload_volume(context, FakeImageService(),
-                                  image_meta, '/dev/loop1')
-        m.VerifyAll()
-
-    def test_upload_volume_with_raw_image(self):
-        image_meta = {'id': 1, 'disk_format': 'raw'}
-        mox = self._mox
-
-        mox.StubOutWithMock(image_utils, 'convert_image')
-
-        mox.ReplayAll()
-
-        with tempfile.NamedTemporaryFile() as f:
-            image_utils.upload_volume(context, FakeImageService(),
-                                      image_meta, f.name)
-        mox.VerifyAll()
-
-    @mock.patch('os.stat')
-    def test_upload_volume_on_error(self, mock_stat):
-        image_meta = {'id': 1, 'disk_format': 'qcow2'}
-        TEST_RET = "image: qemu.vhd\n"\
-                   "file_format: vhd \n"\
-                   "virtual_size: 50M (52428800 bytes)\n"\
-                   "cluster_size: 65536\n"\
-                   "disk_size: 196K (200704 bytes)"
-
-        m = self._mox
-        m.StubOutWithMock(utils, 'execute')
-        m.StubOutWithMock(volume_utils, 'check_for_odirect_support')
-
-        utils.execute('qemu-img', 'convert', '-O', 'qcow2',
-                      mox.IgnoreArg(), mox.IgnoreArg(), run_as_root=True)
-        utils.execute(
-            'env', 'LC_ALL=C', 'qemu-img', 'info',
-            mox.IgnoreArg(), run_as_root=True).AndReturn(
-                (TEST_RET, 'ignored'))
-
-        m.ReplayAll()
-
-        self.assertRaises(exception.ImageUnacceptable,
-                          image_utils.upload_volume,
-                          context, FakeImageService(),
-                          image_meta, '/dev/loop1')
-        m.VerifyAll()
-
 
 class TestExtractTo(test.TestCase):
     def test_extract_to_calls_tar(self):
@@ -764,3 +651,170 @@ class TestXenServerImageToCoalescedVhd(test.TestCase):
         mox.ReplayAll()
         image_utils.replace_xenserver_image_with_coalesced_vhd('image')
         mox.VerifyAll()
+
+
+class TestTemporaryDir(test.TestCase):
+    @mock.patch('cinder.image.image_utils.CONF')
+    @mock.patch('os.makedirs')
+    @mock.patch('os.path.exists', return_value=True)
+    @mock.patch('cinder.image.image_utils.utils.tempdir')
+    def test_conv_dir_exists(self, mock_tempdir, mock_exists, mock_make,
+                             mock_conf):
+        mock_conf.image_conversion_dir = mock.sentinel.conv_dir
+
+        output = image_utils.temporary_dir()
+
+        self.assertFalse(mock_make.called)
+        mock_tempdir.assert_called_once_with(dir=mock.sentinel.conv_dir)
+        self.assertEqual(output, mock_tempdir.return_value)
+
+    @mock.patch('cinder.image.image_utils.CONF')
+    @mock.patch('os.makedirs')
+    @mock.patch('os.path.exists', return_value=False)
+    @mock.patch('cinder.image.image_utils.utils.tempdir')
+    def test_create_conv_dir(self, mock_tempdir, mock_exists, mock_make,
+                             mock_conf):
+        mock_conf.image_conversion_dir = mock.sentinel.conv_dir
+
+        output = image_utils.temporary_dir()
+
+        mock_make.assert_called_once_with(mock.sentinel.conv_dir)
+        mock_tempdir.assert_called_once_with(dir=mock.sentinel.conv_dir)
+        self.assertEqual(output, mock_tempdir.return_value)
+
+    @mock.patch('cinder.image.image_utils.CONF')
+    @mock.patch('os.makedirs')
+    @mock.patch('os.path.exists', return_value=False)
+    @mock.patch('cinder.image.image_utils.utils.tempdir')
+    def test_no_conv_dir(self, mock_tempdir, mock_exists, mock_make,
+                         mock_conf):
+        mock_conf.image_conversion_dir = None
+
+        output = image_utils.temporary_dir()
+
+        self.assertFalse(mock_make.called)
+        mock_tempdir.assert_called_once_with(dir=None)
+        self.assertEqual(output, mock_tempdir.return_value)
+
+
+class TestUploadVolume(test.TestCase):
+    @mock.patch('cinder.image.image_utils.CONF')
+    @mock.patch('cinder.image.image_utils.fileutils.file_open')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.convert_image')
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.os')
+    def test_diff_format(self, mock_os, mock_temp, mock_convert, mock_info,
+                         mock_open, mock_conf):
+        context = mock.sentinel.context
+        image_service = mock.Mock()
+        image_meta = {'id': 'test_id',
+                      'disk_format': mock.sentinel.disk_format}
+        volume_path = mock.sentinel.volume_path
+        mock_os.name = 'posix'
+        mock_conf.volume_copy_bps_limit = mock.sentinel.bps_limit
+        data = mock_info.return_value
+        data.file_format = mock.sentinel.disk_format
+        temp_file = mock_temp.return_value.__enter__.return_value
+
+        output = image_utils.upload_volume(context, image_service, image_meta,
+                                           volume_path)
+
+        self.assertIsNone(output)
+        mock_convert.assert_called_once_with(volume_path,
+                                             temp_file,
+                                             mock.sentinel.disk_format,
+                                             bps_limit=mock.sentinel.bps_limit,
+                                             run_as_root=True)
+        mock_info.assert_called_once_with(temp_file, run_as_root=True)
+        mock_open.assert_called_once_with(temp_file, 'rb')
+        image_service.update.assert_called_once_with(
+            context, image_meta['id'], {},
+            mock_open.return_value.__enter__.return_value)
+
+    @mock.patch('cinder.image.image_utils.utils.temporary_chown')
+    @mock.patch('cinder.image.image_utils.CONF')
+    @mock.patch('cinder.image.image_utils.fileutils.file_open')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.convert_image')
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.os')
+    def test_same_format(self, mock_os, mock_temp, mock_convert, mock_info,
+                         mock_open, mock_conf, mock_chown):
+        context = mock.sentinel.context
+        image_service = mock.Mock()
+        image_meta = {'id': 'test_id',
+                      'disk_format': 'raw'}
+        volume_path = mock.sentinel.volume_path
+        mock_os.name = 'posix'
+        mock_os.access.return_value = False
+
+        output = image_utils.upload_volume(context, image_service, image_meta,
+                                           volume_path)
+
+        self.assertIsNone(output)
+        self.assertFalse(mock_convert.called)
+        self.assertFalse(mock_info.called)
+        mock_chown.assert_called_once_with(volume_path)
+        mock_open.assert_called_once_with(volume_path)
+        image_service.update.assert_called_once_with(
+            context, image_meta['id'], {},
+            mock_open.return_value.__enter__.return_value)
+
+    @mock.patch('cinder.image.image_utils.utils.temporary_chown')
+    @mock.patch('cinder.image.image_utils.CONF')
+    @mock.patch('cinder.image.image_utils.fileutils.file_open')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.convert_image')
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.os')
+    def test_same_format_on_nt(self, mock_os, mock_temp, mock_convert,
+                               mock_info, mock_open, mock_conf, mock_chown):
+        context = mock.sentinel.context
+        image_service = mock.Mock()
+        image_meta = {'id': 'test_id',
+                      'disk_format': 'raw'}
+        volume_path = mock.sentinel.volume_path
+        mock_os.name = 'nt'
+        mock_os.access.return_value = False
+
+        output = image_utils.upload_volume(context, image_service, image_meta,
+                                           volume_path)
+
+        self.assertIsNone(output)
+        self.assertFalse(mock_convert.called)
+        self.assertFalse(mock_info.called)
+        mock_open.assert_called_once_with(volume_path, 'rb')
+        image_service.update.assert_called_once_with(
+            context, image_meta['id'], {},
+            mock_open.return_value.__enter__.return_value)
+
+    @mock.patch('cinder.image.image_utils.CONF')
+    @mock.patch('cinder.image.image_utils.fileutils.file_open')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.convert_image')
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.os')
+    def test_convert_error(self, mock_os, mock_temp, mock_convert, mock_info,
+                           mock_open, mock_conf):
+        context = mock.sentinel.context
+        image_service = mock.Mock()
+        image_meta = {'id': 'test_id',
+                      'disk_format': mock.sentinel.disk_format}
+        volume_path = mock.sentinel.volume_path
+        mock_os.name = 'posix'
+        mock_conf.volume_copy_bps_limit = mock.sentinel.bps_limit
+        data = mock_info.return_value
+        data.file_format = mock.sentinel.other_disk_format
+        temp_file = mock_temp.return_value.__enter__.return_value
+
+        self.assertRaises(exception.ImageUnacceptable,
+                          image_utils.upload_volume,
+                          context, image_service, image_meta, volume_path)
+        mock_convert.assert_called_once_with(volume_path,
+                                             temp_file,
+                                             mock.sentinel.disk_format,
+                                             bps_limit=mock.sentinel.bps_limit,
+                                             run_as_root=True)
+        mock_info.assert_called_once_with(temp_file, run_as_root=True)
+        self.assertFalse(image_service.update.called)

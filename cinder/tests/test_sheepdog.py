@@ -16,8 +16,6 @@
 
 
 import contextlib
-import os
-import tempfile
 
 from oslo.concurrency import processutils
 from oslo.utils import units
@@ -107,17 +105,16 @@ class SheepdogTestCase(test.TestCase):
 
     def test_copy_image_to_volume(self):
         @contextlib.contextmanager
-        def fake_temp_file(dir):
+        def fake_temp_file():
             class FakeTmp:
                 def __init__(self, name):
                     self.name = name
-            yield FakeTmp('test')
+            yield FakeTmp('test').name
 
         def fake_try_execute(obj, *command, **kwargs):
             return True
 
-        self.stubs.Set(tempfile, 'NamedTemporaryFile', fake_temp_file)
-        self.stubs.Set(os.path, 'exists', lambda x: True)
+        self.stubs.Set(image_utils, 'temporary_file', fake_temp_file)
         self.stubs.Set(image_utils, 'fetch_verify_image',
                        lambda w, x, y, z: None)
         self.stubs.Set(image_utils, 'convert_image',
