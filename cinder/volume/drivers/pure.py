@@ -18,6 +18,7 @@ Volume driver for Pure Storage FlashArray storage system.
 This driver requires Purity version 3.4.0 or later.
 """
 
+import math
 import re
 import uuid
 
@@ -494,3 +495,94 @@ class PureISCSIDriver(san.SanISCSIDriver):
 
         LOG.debug("Leave PureISCSIDriver.delete_cgsnapshot")
         return model_update, snapshots
+
+    def _validate_manage_existing_ref(self, existing_ref):
+        """Ensure that an existing_ref is valid and return volume info
+
+        If the ref is not valid throw a ManageExistingInvalidReference
+        exception with an appropriate error.
+        """
+        if "name" not in existing_ref or not existing_ref["name"]:
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=_("PureISCSIDriver manage_existing requires a 'name'"
+                         " key to identify an existing volume."))
+
+        ref_vol_name = existing_ref['name']
+
+        try:
+            volume_info = self._array.get_volume(ref_vol_name)
+            if volume_info:
+                return volume_info
+        except purestorage.PureHTTPError as err:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if (err.code == 400 and
+                        ERR_MSG_NOT_EXIST in err.text):
+                    ctxt.reraise = False
+
+        # If volume information was unable to be retrieved we need
+        # to throw a Invalid Reference exception
+        raise exception.ManageExistingInvalidReference(
+            existing_ref=existing_ref,
+            reason=_("Unable to find volume with name=%s") % ref_vol_name)
+
+    def manage_existing(self, volume, existing_ref):
+        """Brings an existing backend storage object under Cinder management.
+
+        We expect a volume name in the existing_ref that matches one in Purity.
+        """
+        LOG.debug("Enter PureISCSIDriver.manage_existing.")
+
+        self._validate_manage_existing_ref(existing_ref)
+
+        ref_vol_name = existing_ref['name']
+
+        connected_hosts = \
+            self._array.list_volume_private_connections(ref_vol_name)
+        if len(connected_hosts) > 0:
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=_("PureISCSIDriver manage_existing cannot manage a "
+                         "volume connected to hosts. Please disconnect the "
+                         "volume from existing hosts before importing."))
+
+        new_vol_name = _get_vol_name(volume)
+        LOG.info(_LI("Renaming existing volume %(ref_name)s to %(new_name)s"),
+                 {"ref_name": ref_vol_name, "new_name": new_vol_name})
+        self._array.rename_volume(ref_vol_name, new_vol_name)
+        LOG.debug("Leave PureISCSIDriver.manage_existing.")
+        return None
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume to be managed by manage_existing.
+
+        We expect a volume name in the existing_ref that matches one in Purity.
+        """
+        LOG.debug("Enter PureISCSIDriver.manage_existing_get_size.")
+
+        volume_info = self._validate_manage_existing_ref(existing_ref)
+        size = math.ceil(float(volume_info["size"]) / units.Gi)
+
+        LOG.debug("Leave PureISCSIDriver.manage_existing_get_size.")
+        return size
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management.
+
+        Does not delete the underlying backend storage object.
+
+        The volume will be renamed with "-unmanaged" as a suffix
+        """
+        vol_name = _get_vol_name(volume)
+        unmanaged_vol_name = vol_name + "-unmanaged"
+        LOG.info(_LI("Renaming existing volume %(ref_name)s to %(new_name)s"),
+                 {"ref_name": vol_name, "new_name": unmanaged_vol_name})
+        try:
+            self._array.rename_volume(vol_name, unmanaged_vol_name)
+        except purestorage.PureHTTPError as err:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if (err.code == 400 and
+                        ERR_MSG_NOT_EXIST in err.text):
+                    ctxt.reraise = False
+                    LOG.warn(_LW("Volume unmanage was unable to rename "
+                                 "the volume, error message: %s"), err.text)
