@@ -349,6 +349,38 @@ class RBDTestCase(test.TestCase):
                                      [self.mock_rbd.ImageBusy])
 
     @common_mocks
+    def test_delete_volume_not_found(self):
+        self.mock_rbd.Image.return_value.list_snaps.return_value = []
+
+        self.mock_rbd.RBD.return_value.remove.side_effect = (
+            self.mock_rbd.ImageNotFound)
+
+        with mock.patch.object(self.driver, '_get_clone_info') as \
+                mock_get_clone_info:
+            mock_get_clone_info.return_value = (None, None, None)
+            with mock.patch.object(self.driver, '_delete_backup_snaps') as \
+                    mock_delete_backup_snaps:
+                with mock.patch.object(driver, 'RADOSClient') as \
+                        mock_rados_client:
+                    self.assertIsNone(self.driver.delete_volume(self.volume))
+                    mock_get_clone_info.assert_called_once_with(
+                        self.mock_rbd.Image.return_value,
+                        self.volume_name,
+                        None)
+                    (self.mock_rbd.Image.return_value.list_snaps
+                     .assert_called_once_with())
+                    mock_rados_client.assert_called_once_with(self.driver)
+                    mock_delete_backup_snaps.assert_called_once_with(
+                        self.mock_rbd.Image.return_value)
+                    self.assertFalse(
+                        self.mock_rbd.Image.return_value.unprotect_snap.called)
+                    self.assertEqual(
+                        1, self.mock_rbd.RBD.return_value.remove.call_count)
+                    # Make sure the exception was raised
+                    self.assertEqual(RAISED_EXCEPTIONS,
+                                     [self.mock_rbd.ImageNotFound])
+
+    @common_mocks
     def test_create_snapshot(self):
         proxy = self.mock_proxy.return_value
         proxy.__enter__.return_value = proxy
