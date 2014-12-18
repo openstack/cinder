@@ -139,9 +139,10 @@ class StorwizeSVCDriver(san.SanDriver):
     1.2.5 - Added support for manage_existing (unmanage is inherited)
     1.2.6 - Added QoS support in terms of I/O throttling rate
     1.3.1 - Added support for volume replication
+    1.3.2 - Added support for consistency group
     """
 
-    VERSION = "1.3.1"
+    VERSION = "1.3.2"
     VDISKCOPYOPS_INTERVAL = 600
 
     def __init__(self, *args, **kwargs):
@@ -1005,6 +1006,73 @@ class StorwizeSVCDriver(san.SanDriver):
 
         return self._stats
 
+    def create_consistencygroup(self, context, group):
+        """Create a consistency group.
+
+        IBM Storwize will create CG until cg-snapshot creation,
+        db will maintain the volumes and CG relationship.
+        """
+        LOG.debug("Creating consistency group")
+        model_update = {'status': 'available'}
+        return model_update
+
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group.
+
+        IBM Storwize will delete the volumes of the CG.
+        """
+        LOG.debug("deleting consistency group")
+        model_update = {}
+        model_update['status'] = 'deleted'
+        volumes = self.db.volume_get_all_by_group(context, group['id'])
+
+        for volume in volumes:
+            try:
+                self._helpers.delete_vdisk(volume['name'], True)
+                volume['status'] = 'deleted'
+            except exception.VolumeBackendAPIException as err:
+                volume['status'] = 'error_deleting'
+                if model_update['status'] != 'error_deleting':
+                    model_update['status'] = 'error_deleting'
+                LOG.error(_LE("Failed to delete the volume %(vol)s of CG. "
+                              "Exception: %(exception)s."),
+                          {'vol': volume['name'], 'exception': err})
+        return model_update, volumes
+
+    def create_cgsnapshot(self, ctxt, cgsnapshot):
+        """Creates a cgsnapshot."""
+        # Use cgsnapshot id as cg name
+        cg_name = 'cg_snap-' + cgsnapshot['id']
+        # Create new cg as cg_snapshot
+        self._helpers.create_fc_consistgrp(cg_name)
+
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+            ctxt, cgsnapshot['id'])
+        timeout = self.configuration.storwize_svc_flashcopy_timeout
+
+        model_update, snapshots_model = (
+            self._helpers.run_consistgrp_snapshots(cg_name,
+                                                   snapshots,
+                                                   self._state,
+                                                   self.configuration,
+                                                   timeout))
+
+        return model_update, snapshots_model
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+        cgsnapshot_id = cgsnapshot['id']
+        cg_name = 'cg_snap-' + cgsnapshot_id
+
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(context,
+                                                            cgsnapshot_id)
+
+        model_update, snapshots_model = (
+            self._helpers.delete_consistgrp_snapshots(cg_name,
+                                                      snapshots))
+
+        return model_update, snapshots_model
+
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
@@ -1019,6 +1087,7 @@ class StorwizeSVCDriver(san.SanDriver):
         data['free_capacity_gb'] = 0   # To be overwritten
         data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = True
+        data['consistencygroup_support'] = True
 
         pool = self.configuration.storwize_svc_volpool_name
         backend_name = self.configuration.safe_get('volume_backend_name')

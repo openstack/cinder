@@ -16,7 +16,9 @@
 
 import random
 import re
+import time
 import unicodedata
+
 
 from eventlet import greenthread
 from oslo.utils import excutils
@@ -33,6 +35,8 @@ from cinder.volume import qos_specs
 from cinder.volume import utils
 from cinder.volume import volume_types
 
+INTERVAL_1_SEC = 1
+DEFAULT_TIMEOUT = 15
 LOG = logging.getLogger(__name__)
 
 
@@ -540,6 +544,34 @@ class StorwizeHelpers(object):
                         continue
         return qos
 
+    def _wait_for_a_condition(self, testmethod, timeout=None,
+                              interval=INTERVAL_1_SEC):
+        start_time = time.time()
+        if timeout is None:
+            timeout = DEFAULT_TIMEOUT
+
+        def _inner():
+            try:
+                testValue = testmethod()
+            except Exception as ex:
+                testValue = False
+                LOG.debug('Helper.'
+                          '_wait_for_condition: %(method_name)s '
+                          'execution failed for %(exception)s',
+                          {'method_name': testmethod.__name__,
+                           'exception': ex.message})
+            if testValue:
+                raise loopingcall.LoopingCallDone()
+
+            if int(time.time()) - start_time > timeout:
+                msg = (_('CommandLineHelper._wait_for_condition: %s timeout')
+                       % testmethod.__name__)
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        timer = loopingcall.FixedIntervalLoopingCall(_inner)
+        timer.start(interval=interval).wait()
+
     def get_vdisk_params(self, config, state, type_id, volume_type=None,
                          volume_metadata=None):
         """Return the parameters for creating the vdisk.
@@ -698,10 +730,93 @@ class StorwizeHelpers(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
+    def start_fc_consistgrp(self, fc_consistgrp):
+        self.ssh.startfcconsistgrp(fc_consistgrp)
+
+    def create_fc_consistgrp(self, fc_consistgrp):
+        self.ssh.mkfcconsistgrp(fc_consistgrp)
+
+    def delete_fc_consistgrp(self, fc_consistgrp):
+        self.ssh.rmfcconsistgrp(fc_consistgrp)
+
+    def stop_fc_consistgrp(self, fc_consistgrp):
+        self.ssh.stopfcconsistgrp(fc_consistgrp)
+
+    def run_consistgrp_snapshots(self, fc_consistgrp, snapshots, state,
+                                 config, timeout):
+        cgsnapshot = {'status': 'available'}
+        try:
+            for snapshot in snapshots:
+                opts = self.get_vdisk_params(config, state,
+                                             snapshot['volume_type_id'])
+                self.create_flashcopy_to_consistgrp(snapshot['volume_name'],
+                                                    snapshot['name'],
+                                                    fc_consistgrp,
+                                                    config, opts)
+                snapshot['status'] = 'available'
+
+            self.prepare_fc_consistgrp(fc_consistgrp, timeout)
+            self.start_fc_consistgrp(fc_consistgrp)
+            # There is CG limitation that could not create more than 128 CGs.
+            # After start CG, we delete CG to avoid CG limitation.
+            # Cinder general will maintain the CG and snapshots relationship.
+            self.delete_fc_consistgrp(fc_consistgrp)
+        except exception.VolumeBackendAPIException as err:
+            for snapshot in snapshots:
+                snapshot['status'] = 'error'
+            cgsnapshot['status'] = 'error'
+            # Release cg
+            self.delete_fc_consistgrp(fc_consistgrp)
+            LOG.error(_LE("Failed to create CGSnapshot. "
+                          "Exception: %s"), err)
+
+        return cgsnapshot, snapshots
+
+    def delete_consistgrp_snapshots(self, fc_consistgrp, snapshots):
+        """Delete flashcopy maps and consistent group."""
+        cgsnapshot = {'status': 'available'}
+        try:
+            for snapshot in snapshots:
+                self.ssh.rmvdisk(snapshot['name'], True)
+                snapshot['status'] = 'deleted'
+        except exception.VolumeBackendAPIException as err:
+            for snapshot in snapshots:
+                snapshot['status'] = 'error_deleting'
+            cgsnapshot['status'] = 'error_deleting'
+            LOG.error(_LE("Failed to delete the snapshot %(snap)s of "
+                          "CGSnapshot. Exception: %(exception)s"),
+                      {'snap': snapshot['name'], 'exception': err})
+        return cgsnapshot, snapshots
+
+    def prepare_fc_consistgrp(self, fc_consistgrp, timeout):
+        """Prepare FC Consistency Group."""
+        self.ssh.prestartfcconsistgrp(fc_consistgrp)
+
+        def prepare_fc_consistgrp_success():
+            mapping_ready = False
+            mapping_attrs = self._get_flashcopy_consistgrp_attr(fc_consistgrp)
+            if (mapping_attrs is None or
+                    'status' not in mapping_attrs):
+                pass
+            if mapping_attrs['status'] == 'prepared':
+                mapping_ready = True
+            elif mapping_attrs['status'] == 'stopped':
+                self.ssh.prestartfcconsistgrp(fc_consistgrp)
+            elif mapping_attrs['status'] != 'preparing':
+                msg = (_('Unexpected mapping status %(status)s for mapping'
+                         '%(id)s. Attributes: %(attr)s') %
+                       {'status': mapping_attrs['status'],
+                        'id': fc_consistgrp,
+                        'attr': mapping_attrs})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return mapping_ready
+        self._wait_for_a_condition(prepare_fc_consistgrp_success, timeout)
+
     def run_flashcopy(self, source, target, timeout, full_copy=True):
         """Create a FlashCopy mapping from the source to the target."""
         LOG.debug('enter: run_flashcopy: execute FlashCopy from source '
-                  '%(source)s to target %(target)s' %
+                  '%(source)s to target %(target)s',
                   {'source': source, 'target': target})
 
         fc_map_id = self.ssh.mkfcmap(source, target, full_copy)
@@ -709,7 +824,35 @@ class StorwizeHelpers(object):
         self.ssh.startfcmap(fc_map_id)
 
         LOG.debug('leave: run_flashcopy: FlashCopy started from '
-                  '%(source)s to %(target)s' %
+                  '%(source)s to %(target)s',
+                  {'source': source, 'target': target})
+
+    def create_flashcopy_to_consistgrp(self, source, target, consistgrp,
+                                       config, opts, full_copy=False,
+                                       pool=None):
+        """Create a FlashCopy mapping and add to consistent group."""
+        LOG.debug('enter: create_flashcopy_to_consistgrp: create FlashCopy'
+                  ' from source %(source)s to target %(target)s'
+                  'Then add the flashcopy to %(cg)s',
+                  {'source': source, 'target': target, 'cg': consistgrp})
+
+        src_attrs = self.get_vdisk_attributes(source)
+        if src_attrs is None:
+            msg = (_('create_copy: Source vdisk %(src)s '
+                     'does not exist') % {'src': source})
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        src_size = src_attrs['capacity']
+        # In case we need to use a specific pool
+        if not pool:
+            pool = config.storwize_svc_volpool_name
+        self.create_vdisk(target, src_size, 'b', pool, opts)
+
+        self.ssh.mkfcmap(source, target, full_copy, consistgrp)
+
+        LOG.debug('leave: create_flashcopy_to_consistgrp: '
+                  'FlashCopy started from  %(source)s to %(target)s',
                   {'source': source, 'target': target})
 
     def _get_vdisk_fc_mappings(self, vdisk):
@@ -722,6 +865,12 @@ class StorwizeHelpers(object):
 
     def _get_flashcopy_mapping_attributes(self, fc_map_id):
         resp = self.ssh.lsfcmap(fc_map_id)
+        if not len(resp):
+            return None
+        return resp[0]
+
+    def _get_flashcopy_consistgrp_attr(self, fc_map_id):
+        resp = self.ssh.lsfcconsistgrp(fc_map_id)
         if not len(resp):
             return None
         return resp[0]
