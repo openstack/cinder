@@ -106,7 +106,6 @@ class BaseVolumeTestCase(test.TestCase):
             mock_trace_cls.return_value = mock_decorator
             self.volume = importutils.import_object(CONF.volume_manager)
         self.configuration = mock.Mock(conf.Configuration)
-        #self.configuration = conf.Configuration(fake_opts, 'fake_group')
         self.context = context.get_admin_context()
         self.context.user_id = 'fake'
         self.context.project_id = 'fake'
@@ -2178,7 +2177,9 @@ class VolumeTestCase(BaseVolumeTestCase):
                               size=None):
             pass
 
-        def fake_clone_image(volume_ref, image_location, image_meta):
+        def fake_clone_image(ctx, volume_ref,
+                             image_location, image_meta,
+                             image_service):
             return {'provider_location': None}, True
 
         dst_fd, dst_path = tempfile.mkstemp()

@@ -239,7 +239,7 @@ class RBDTestCase(test.TestCase):
                           self.driver.manage_existing,
                           self.volume, existing_ref)
 
-        #make sure the exception was raised
+        # Make sure the exception was raised
         self.assertEqual(RAISED_EXCEPTIONS,
                          [self.mock_rbd.ImageExists])
 
@@ -1041,7 +1041,8 @@ class ManagedRBDTestCase(DriverTestCase):
     def test_create_vol_from_image_status_available(self):
         """Clone raw image then verify volume is in available state."""
 
-        def _mock_clone_image(volume, image_location, image_meta):
+        def _mock_clone_image(context, volume, image_location,
+                              image_meta, image_service):
             return {'provider_location': None}, True
 
         with mock.patch.object(self.volume.driver, 'clone_image') as \
@@ -1060,7 +1061,8 @@ class ManagedRBDTestCase(DriverTestCase):
     def test_create_vol_from_non_raw_image_status_available(self):
         """Clone non-raw image then verify volume is in available state."""
 
-        def _mock_clone_image(volume, image_location, image_meta):
+        def _mock_clone_image(context, volume, image_location,
+                              image_meta, image_service):
             return {'provider_location': None}, False
 
         with mock.patch.object(self.volume.driver, 'clone_image') as \
@@ -1096,11 +1098,15 @@ class ManagedRBDTestCase(DriverTestCase):
 
         with mock.patch.object(driver, '_is_cloneable', lambda *args: False):
             image_loc = (mock.Mock(), mock.Mock())
-            actual = driver.clone_image(mock.Mock(), image_loc, {})
+            actual = driver.clone_image(mock.Mock(),
+                                        mock.Mock(),
+                                        image_loc,
+                                        {},
+                                        mock.Mock())
             self.assertEqual(({}, False), actual)
 
         self.assertEqual(({}, False),
-                         driver.clone_image(object(), None, {}))
+                         driver.clone_image('', object(), None, {}, ''))
 
     def test_clone_success(self):
         expected = ({'provider_location': None}, True)
@@ -1116,9 +1122,12 @@ class ManagedRBDTestCase(DriverTestCase):
                     image_loc = ('rbd://fee/fi/fo/fum', None)
 
                     volume = {'name': 'vol1'}
-                    actual = driver.clone_image(volume, image_loc,
+                    actual = driver.clone_image(mock.Mock(),
+                                                volume,
+                                                image_loc,
                                                 {'disk_format': 'raw',
-                                                 'id': 'id.foo'})
+                                                 'id': 'id.foo'},
+                                                mock.Mock())
 
                     self.assertEqual(expected, actual)
                     mock_clone.assert_called_once_with(volume,

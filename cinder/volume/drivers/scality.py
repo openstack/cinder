@@ -256,16 +256,22 @@ class ScalityDriver(driver.VolumeDriver):
                                   image_meta,
                                   self.local_path(volume))
 
-    def clone_image(self, volume, image_location, image_meta):
+    def clone_image(self, context, volume,
+                    image_location, image_meta,
+                    image_service):
         """Create a volume efficiently from an existing image.
 
         image_location is a string whose format depends on the
         image service backend in use. The driver should use it
         to determine whether cloning is possible.
 
-        image_id is a string which represents id of the image.
-        It can be used by the driver to introspect internal
-        stores or registry to do an efficient image clone.
+        image_meta is the metadata associated with the image and
+        includes properties like the image id, size, virtual-size
+        etc.
+
+        image_service is the reference of the image_service to use.
+        Note that this is needed to be passed here for drivers that
+        will want to fetch images from the image service directly.
 
         Returns a dict of volume properties eg. provider_location,
         boolean indicating whether cloning occurred
