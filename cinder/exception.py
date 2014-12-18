@@ -912,3 +912,24 @@ class ISCSITargetAttachFailed(CinderException):
 # X-IO driver exception.
 class XIODriverException(VolumeDriverException):
     message = _("X-IO Volume Driver exception!")
+
+
+# Violin Memory drivers
+class ViolinInvalidBackendConfig(CinderException):
+    message = _("Volume backend config is invalid: %(reason)s")
+
+
+class ViolinRequestRetryTimeout(CinderException):
+    message = _("Backend service retry timeout hit: %(timeout)s sec")
+
+
+class ViolinBackendErr(CinderException):
+    message = _("Backend reports: %(message)s")
+
+
+class ViolinBackendErrExists(CinderException):
+    message = _("Backend reports: item already exists")
+
+
+class ViolinBackendErrNotFound(CinderException):
+    message = _("Backend reports: item not found")
