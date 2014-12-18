@@ -79,10 +79,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.10 - Add call to queryHost instead SSH based findHost #1398206
         2.0.11 - Added missing host name during attach fix #1398206
         2.0.12 - Removed usage of host name cache #1398914
+        2.0.13 - Update LOG usage to fix translations.  bug #1384312
 
     """
 
-    VERSION = "2.0.12"
+    VERSION = "2.0.13"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -537,7 +538,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             vol_name = common._get_3par_vol_name(volume['id'])
             common.client.getVolume(vol_name)
         except hpexceptions.HTTPNotFound:
-            LOG.error(_LE("Volume %s doesn't exist on array.") % vol_name)
+            LOG.error(_LE("Volume %s doesn't exist on array."), vol_name)
         else:
             metadata = common.client.getAllVolumeMetaData(vol_name)
 
