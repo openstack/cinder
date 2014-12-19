@@ -20,6 +20,7 @@ import time
 from xml.dom.minidom import Document
 
 import mock
+import six
 
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -1140,6 +1141,63 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             mock.ANY)
         loopingcall.FixedIntervalLoopingCall.reset_mock()
         loopingcall.FixedIntervalLoopingCall = loopingcall_orig
+
+    # Bug 1395830: _find_lun throws exception when lun is not found.
+    def test_find_lun(self):
+        keybindings = {'CreationClassName': u'Symm_StorageVolume',
+                       'SystemName': u'SYMMETRIX+000195900551',
+                       'DeviceID': u'1',
+                       'SystemCreationClassName': u'Symm_StorageSystem'}
+        provider_location = {'classname': 'Symm_StorageVolume',
+                             'keybindings': keybindings}
+        volume = EMC_StorageVolume()
+        volume['name'] = 'vol1'
+        volume['provider_location'] = six.text_type(provider_location)
+
+        self.driver.common.conn = self.driver.common._get_ecom_connection()
+        findlun = self.driver.common._find_lun(volume)
+        getinstance = self.driver.common.conn._getinstance_storagevolume(
+            keybindings)
+        # Found lun.
+        self.assertEqual(getinstance, findlun)
+
+        keybindings2 = {'CreationClassName': u'Symm_StorageVolume',
+                        'SystemName': u'SYMMETRIX+000195900551',
+                        'DeviceID': u'9',
+                        'SystemCreationClassName': u'Symm_StorageSystem'}
+        provider_location2 = {'classname': 'Symm_StorageVolume',
+                              'keybindings': keybindings2}
+        volume2 = EMC_StorageVolume()
+        volume2['name'] = 'myVol'
+        volume2['provider_location'] = six.text_type(provider_location2)
+        verify_orig = self.driver.common.utils.get_existing_instance
+        self.driver.common.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        findlun2 = self.driver.common._find_lun(volume2)
+        # Not found.
+        self.assertIsNone(findlun2)
+        instancename2 = self.driver.utils.get_instance_name(
+            provider_location2['classname'],
+            keybindings2)
+        self.driver.common.utils.get_existing_instance.assert_called_once_with(
+            self.driver.common.conn, instancename2)
+        self.driver.common.utils.get_existing_instance.reset_mock()
+        self.driver.common.utils.get_existing_instance = verify_orig
+
+        keybindings3 = {'CreationClassName': u'Symm_StorageVolume',
+                        'SystemName': u'SYMMETRIX+000195900551',
+                        'DeviceID': u'9999',
+                        'SystemCreationClassName': u'Symm_StorageSystem'}
+        provider_location3 = {'classname': 'Symm_StorageVolume',
+                              'keybindings': keybindings3}
+        instancename3 = self.driver.utils.get_instance_name(
+            provider_location3['classname'],
+            keybindings3)
+        # Error other than not found.
+        arg = 9999, "test_error"
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.common.utils.process_exception_args,
+                          arg, instancename3)
 
     def test_get_volume_stats_1364232(self):
         self.create_fake_config_file_1364232()

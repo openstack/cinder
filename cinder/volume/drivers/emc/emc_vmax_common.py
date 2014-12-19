@@ -1196,7 +1196,9 @@ class EMCVMAXCommon(object):
             instancename = self.utils.get_instance_name(
                 name['classname'], name['keybindings'])
 
-            foundVolumeinstance = self.conn.GetInstance(instancename)
+            # Handle the case where volume cannot be found.
+            foundVolumeinstance = self.utils.get_existing_instance(
+                self.conn, instancename)
 
         if foundVolumeinstance is None:
             LOG.debug("Volume %(volumename)s not found on the array."

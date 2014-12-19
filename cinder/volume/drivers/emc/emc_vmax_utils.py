@@ -46,6 +46,7 @@ ISCSI = 'iscsi'
 FC = 'fc'
 JOB_RETRIES = 60
 INTERVAL_10_SEC = 10
+CIM_ERR_NOT_FOUND = 6
 
 
 class EMCVMAXUtils(object):
@@ -1225,3 +1226,43 @@ class EMCVMAXUtils(object):
             volumeSizeInbits = numOfBlocks * blockSize
             capacitiesInBit.append(volumeSizeInbits)
         return capacitiesInBit
+
+    def get_existing_instance(self, conn, instanceName):
+        """Check that the instance name still exists and return the instance.
+
+        :param conn: the connection to the ecom server
+        :param instanceName: the instanceName to be checked
+        :returns: instance or None
+        """
+        instance = None
+        try:
+            instance = conn.GetInstance(instanceName, LocalOnly=False)
+        except pywbem.cim_operations.CIMError as arg:
+            instance = self.process_exception_args(arg, instanceName)
+
+        return instance
+
+    def process_exception_args(self, arg, instanceName):
+        """Process exception arguments.
+
+        :param arg: the arg list
+        :param instanceName: the instance name
+        :returns: None
+        :raises: VolumeBackendAPIException
+        """
+        instance = None
+        code, desc = arg[0], arg[1]
+        if code == CIM_ERR_NOT_FOUND:
+            # Object doesn't exist any more
+            instance = None
+        else:
+            # Something else that we cannot recover from has happened
+            LOG.error(_LE("Exception: %s"), six.text_type(desc))
+            exceptionMessage = (_(
+                "Cannot verify the existance of object:"
+                "%(instanceName)s.")
+                % {'instanceName': instanceName})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+        return instance
