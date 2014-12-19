@@ -232,7 +232,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                                                    self.config['mgmt_ip0'],
                                                    self.config['username'],
                                                    self.config['password'],
-                                                   svc['iscsi_target'],
+                                                   'cinder-' + label,
                                                    svc['hdp'],
                                                    svc['iscsi_secret'])
 
