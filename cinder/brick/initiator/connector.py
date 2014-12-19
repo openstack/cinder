@@ -17,8 +17,8 @@ import os
 import socket
 import time
 
-from oslo.concurrency import lockutils
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import lockutils
+from oslo_concurrency import processutils as putils
 
 from cinder.brick import exception
 from cinder.brick import executor

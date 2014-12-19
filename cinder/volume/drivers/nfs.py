@@ -17,9 +17,9 @@ import errno
 import os
 import time
 
-from oslo.concurrency import processutils as putils
 from oslo.config import cfg
 from oslo.utils import units
+from oslo_concurrency import processutils as putils
 import six
 
 from cinder.brick.remotefs import remotefs as remotefs_brick

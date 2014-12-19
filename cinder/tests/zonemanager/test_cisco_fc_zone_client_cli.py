@@ -18,7 +18,7 @@
 """Unit tests for Cisco fc zone client cli."""
 
 from mock import patch
-from oslo.concurrency import processutils
+from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder import test

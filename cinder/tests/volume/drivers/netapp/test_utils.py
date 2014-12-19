@@ -20,7 +20,7 @@ Mock unit tests for the NetApp driver utility module
 import platform
 
 import mock
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 
 from cinder import exception
 from cinder import test

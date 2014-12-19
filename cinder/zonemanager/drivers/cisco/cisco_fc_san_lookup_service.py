@@ -18,8 +18,8 @@
 import random
 
 from eventlet import greenthread
-from oslo.concurrency import processutils
 from oslo.utils import excutils
+from oslo_concurrency import processutils
 import six
 
 from cinder import exception

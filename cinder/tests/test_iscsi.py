@@ -18,8 +18,8 @@ import shutil
 import string
 import tempfile
 
-from oslo.concurrency import processutils
 from oslo.config import cfg
+from oslo_concurrency import processutils
 
 from cinder.brick.iscsi import iscsi
 from cinder import test

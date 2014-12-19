@@ -29,8 +29,8 @@ import json
 import os
 import stat
 
-from oslo.concurrency import processutils
 from oslo.config import cfg
+from oslo_concurrency import processutils
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception

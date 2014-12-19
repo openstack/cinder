@@ -17,7 +17,7 @@ import os
 import re
 
 import mock
-from oslo.concurrency import processutils
+from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder import test
@@ -1155,7 +1155,7 @@ Time Remaining:  0 second(s)
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch(
-        "oslo.concurrency.processutils.execute",
+        "oslo_concurrency.processutils.execute",
         mock.Mock(
             return_value=(
                 "fakeportal iqn.1992-04.fake.com:fake.apm00123907237.a8", 0)))
@@ -2474,7 +2474,7 @@ class EMCVNXCLIDriverFCTestCase(test.TestCase):
             return None
 
     @mock.patch(
-        "oslo.concurrency.processutils.execute",
+        "oslo_concurrency.processutils.execute",
         mock.Mock(
             return_value=(
                 "fakeportal iqn.1992-04.fake.com:fake.apm00123907237.a8", 0)))

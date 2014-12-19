@@ -29,13 +29,13 @@ import uuid
 import fixtures
 import mock
 import mox
-from oslo.concurrency import lockutils
 from oslo.config import cfg
 from oslo.config import fixture as config_fixture
 from oslo.i18n import _lazy
 from oslo.messaging import conffixture as messaging_conffixture
 from oslo.utils import strutils
 from oslo.utils import timeutils
+from oslo_concurrency import lockutils
 import stubout
 import testtools
 

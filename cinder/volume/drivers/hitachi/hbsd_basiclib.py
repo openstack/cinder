@@ -16,9 +16,9 @@ import inspect
 import os
 import shlex
 
-from oslo.concurrency import lockutils
-from oslo.concurrency import processutils as putils
 from oslo.utils import excutils
+from oslo_concurrency import lockutils
+from oslo_concurrency import processutils as putils
 import six
 
 from cinder import exception

@@ -22,9 +22,9 @@ import math
 import os
 import socket
 
-from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.utils import units
+from oslo_concurrency import processutils
 
 from cinder.brick import exception as brick_exception
 from cinder.brick.local_dev import lvm as lvm

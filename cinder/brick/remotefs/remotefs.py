@@ -19,7 +19,7 @@ import hashlib
 import os
 import re
 
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 import six
 
 from cinder.brick import exception

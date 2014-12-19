@@ -26,9 +26,9 @@ import mox as mox_lib
 from mox import IgnoreArg
 from mox import IsA
 from mox import stubout
-from oslo.concurrency import processutils as putils
 from oslo.config import cfg
 from oslo.utils import units
+from oslo_concurrency import processutils as putils
 
 from cinder import context
 from cinder import exception

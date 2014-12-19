@@ -17,8 +17,8 @@
 import errno
 import os
 
-from oslo.concurrency import processutils
 from oslo.config import cfg
+from oslo_concurrency import processutils
 import xattr
 
 from cinder import compute

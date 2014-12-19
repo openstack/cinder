@@ -25,7 +25,7 @@ import decimal
 import platform
 import socket
 
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 import six
 
 from cinder import context

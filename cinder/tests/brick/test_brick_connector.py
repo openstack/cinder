@@ -17,7 +17,7 @@ import string
 import tempfile
 import time
 
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 
 from cinder.brick import exception
 from cinder.brick.initiator import connector

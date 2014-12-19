@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW

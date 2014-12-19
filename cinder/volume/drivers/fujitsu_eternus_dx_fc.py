@@ -17,7 +17,7 @@
 FC Drivers for ETERNUS DX arrays based on SMI-S.
 
 """
-from oslo.concurrency import lockutils
+from oslo_concurrency import lockutils
 import six
 
 from cinder import context

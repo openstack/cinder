@@ -19,7 +19,7 @@
 import os
 import re
 
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 
 from cinder.brick import executor
 from cinder.i18n import _, _LW
