@@ -956,7 +956,7 @@ class HuaweiStorHyperConnector(InitiatorConnector):
         if not os.path.isfile(self.cli_path):
             self.iscliexist = False
             LOG.error(_LE('SDS CLI file not found, '
-                          'HuaweiStorHyperConnector init failed'))
+                          'HuaweiStorHyperConnector init failed.'))
         super(HuaweiStorHyperConnector, self).__init__(root_helper,
                                                        driver=driver,
                                                        execute=execute,
@@ -1018,7 +1018,7 @@ class HuaweiStorHyperConnector(InitiatorConnector):
         LOG.debug("Enter into _cli_cmd.")
         if not self.iscliexist:
             msg = _("SDS command line doesn't exist, "
-                    "cann't execute SDS command.")
+                    "can't execute SDS command.")
             raise exception.BrickException(msg=msg)
         if not method or volume_name is None:
             return
