@@ -1038,7 +1038,7 @@ class ManagedRBDTestCase(DriverTestCase):
     def test_create_vol_from_image_status_available(self):
         """Clone raw image then verify volume is in available state."""
 
-        def _mock_clone_image(volume, image_location, image_id, image_meta):
+        def _mock_clone_image(volume, image_location, image_meta):
             return {'provider_location': None}, True
 
         with mock.patch.object(self.volume.driver, 'clone_image') as \
@@ -1057,7 +1057,7 @@ class ManagedRBDTestCase(DriverTestCase):
     def test_create_vol_from_non_raw_image_status_available(self):
         """Clone non-raw image then verify volume is in available state."""
 
-        def _mock_clone_image(volume, image_location, image_id, image_meta):
+        def _mock_clone_image(volume, image_location, image_meta):
             return {'provider_location': None}, False
 
         with mock.patch.object(self.volume.driver, 'clone_image') as \
@@ -1093,12 +1093,11 @@ class ManagedRBDTestCase(DriverTestCase):
 
         with mock.patch.object(driver, '_is_cloneable', lambda *args: False):
             image_loc = (mock.Mock(), mock.Mock())
-            actual = driver.clone_image(mock.Mock(), image_loc,
-                                        mock.Mock(), {})
+            actual = driver.clone_image(mock.Mock(), image_loc, {})
             self.assertEqual(({}, False), actual)
 
         self.assertEqual(({}, False),
-                         driver.clone_image(object(), None, None, {}))
+                         driver.clone_image(object(), None, {}))
 
     def test_clone_success(self):
         expected = ({'provider_location': None}, True)
@@ -1115,8 +1114,8 @@ class ManagedRBDTestCase(DriverTestCase):
 
                     volume = {'name': 'vol1'}
                     actual = driver.clone_image(volume, image_loc,
-                                                'id.foo',
-                                                {'disk_format': 'raw'})
+                                                {'disk_format': 'raw',
+                                                 'id': 'id.foo'})
 
                     self.assertEqual(expected, actual)
                     mock_clone.assert_called_once_with(volume,

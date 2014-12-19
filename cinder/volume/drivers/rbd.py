@@ -804,7 +804,7 @@ class RBDDriver(driver.VolumeDriver):
                       dict(loc=image_location, err=e))
             return False
 
-    def clone_image(self, volume, image_location, image_id, image_meta):
+    def clone_image(self, volume, image_location, image_meta):
         image_location = image_location[0] if image_location else None
         if image_location is None or not self._is_cloneable(
                 image_location, image_meta):

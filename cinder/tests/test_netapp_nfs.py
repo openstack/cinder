@@ -477,7 +477,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._post_clone_image(volume)
 
         mox.ReplayAll()
-        drv.clone_image(volume, ('image_location', None), 'image_id', {})
+        drv.clone_image(volume, ('image_location', None), {'id': 'image_id'})
         mox.VerifyAll()
 
     def get_img_info(self, format):
@@ -501,7 +501,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
         (prop, cloned) = drv. clone_image(
-            volume, ('nfs://127.0.0.1:/share/img-id', None), 'image_id', {})
+            volume,
+            ('nfs://127.0.0.1:/share/img-id', None),
+            {'id': 'image_id'})
         mox.VerifyAll()
         if not cloned and not prop['provider_location']:
             pass
@@ -537,7 +539,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
         drv. clone_image(
-            volume, ('nfs://127.0.0.1:/share/img-id', None), 'image_id', {})
+            volume,
+            ('nfs://127.0.0.1:/share/img-id', None),
+            {'id': 'image_id'})
         mox.VerifyAll()
 
     def test_clone_image_cloneableshare_notraw(self):
@@ -575,7 +579,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
         drv.clone_image(
-            volume, ('nfs://127.0.0.1/share/img-id', None), 'image_id', {})
+            volume, ('nfs://127.0.0.1/share/img-id', None), {'id': 'image_id'})
         mox.VerifyAll()
 
     def test_clone_image_file_not_discovered(self):
@@ -615,7 +619,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
         vol_dict, result = drv. clone_image(
-            volume, ('nfs://127.0.0.1/share/img-id', None), 'image_id', {})
+            volume, ('nfs://127.0.0.1/share/img-id', None), {'id': 'image_id'})
         mox.VerifyAll()
         self.assertFalse(result)
         self.assertFalse(vol_dict['bootable'])
@@ -663,7 +667,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
         vol_dict, result = drv. clone_image(
-            volume, ('nfs://127.0.0.1/share/img-id', None), 'image_id', {})
+            volume, ('nfs://127.0.0.1/share/img-id', None), {'id': 'image_id'})
         mox.VerifyAll()
         self.assertFalse(result)
         self.assertFalse(vol_dict['bootable'])
@@ -1108,8 +1112,8 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         image_service.show.return_value = {'size': 1,
                                            'disk_format': 'raw'}
 
-        drv._check_get_nfs_path_segs = mock.Mock(return_value=
-                                                 ('ip1', '/openstack'))
+        drv._check_get_nfs_path_segs =\
+            mock.Mock(return_value=('ip1', '/openstack'))
         drv._get_ip_verify_on_cluster = mock.Mock(return_value='ip1')
         drv._get_host_ip = mock.Mock(return_value='ip2')
         drv._get_export_path = mock.Mock(return_value='/exp_path')
@@ -1149,8 +1153,8 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
                                                    None)
         image_service.show.return_value = {'size': 1,
                                            'disk_format': 'qcow2'}
-        drv._check_get_nfs_path_segs = mock.Mock(return_value=
-                                                 ('ip1', '/openstack'))
+        drv._check_get_nfs_path_segs =\
+            mock.Mock(return_value=('ip1', '/openstack'))
 
         drv._get_ip_verify_on_cluster = mock.Mock(return_value='ip1')
         drv._get_host_ip = mock.Mock(return_value='ip2')

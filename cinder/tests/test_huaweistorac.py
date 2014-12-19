@@ -269,6 +269,7 @@ class StorACDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(StorACDriverTestCase, self).setUp()
+
         self.fake_conf_file = tempfile.mktemp(suffix='.xml')
         self.addCleanup(os.remove, self.fake_conf_file)
 
