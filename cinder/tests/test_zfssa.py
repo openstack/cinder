@@ -23,6 +23,7 @@ from oslo.utils import units
 
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder.tests import fake_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.zfssa import restclient as client
 from cinder.volume.drivers.zfssa import zfssaiscsi as iscsi
@@ -323,6 +324,7 @@ class TestZFSSAISCSIDriver(test.TestCase):
         super(TestZFSSAISCSIDriver, self).setUp()
         self._create_fake_config()
         _factory_zfssa.return_value = FakeZFSSA()
+        iscsi.ZFSSAISCSIDriver._execute = fake_utils.fake_execute
         self.drv = iscsi.ZFSSAISCSIDriver(configuration=self.configuration)
         self.drv.do_setup({})
 
@@ -470,6 +472,7 @@ class TestZFSSANFSDriver(test.TestCase):
         self._create_fake_config()
         _factory_zfssa.return_value = FakeNFSZFSSA()
         self.drv = zfssanfs.ZFSSANFSDriver(configuration=self.configuration)
+        self.drv._execute = fake_utils.fake_execute
         self.drv.do_setup({})
 
     def _create_fake_config(self):
