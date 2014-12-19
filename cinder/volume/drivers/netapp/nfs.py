@@ -58,6 +58,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
       Executes commands relating to Volumes.
     """
 
+    # do not increment this as it may be used in volume type definitions
     VERSION = "1.0.0"
 
     def __init__(self, *args, **kwargs):
@@ -65,6 +66,7 @@ class NetAppNFSDriver(nfs.NfsDriver):
         validate_instantiation(**kwargs)
         self._execute = None
         self._context = None
+        self._app_version = kwargs.pop("app_version", "unknown")
         super(NetAppNFSDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(netapp_connection_opts)
         self.configuration.append_config_values(netapp_basicauth_opts)
@@ -936,7 +938,7 @@ class NetAppDirectCmodeNfsDriver (NetAppDirectNfsDriver):
         self._stats["vendor_name"] = 'NetApp'
         self._stats["driver_version"] = '1.0'
         self._update_cluster_vol_stats(self._stats)
-        provide_ems(self, self._client, self._stats, netapp_backend)
+        provide_ems(self, self._client, netapp_backend, self._app_version)
 
     def _update_cluster_vol_stats(self, data):
         """Updates vol stats with cluster config."""
@@ -1435,8 +1437,8 @@ class NetAppDirect7modeNfsDriver (NetAppDirectNfsDriver):
                                               'NetApp_NFS_7mode_direct')
         self._stats["vendor_name"] = 'NetApp'
         self._stats["driver_version"] = self.VERSION
-        provide_ems(self, self._client, self._stats, netapp_backend,
-                    server_type="7mode")
+        provide_ems(self, self._client, netapp_backend,
+                    self._app_version, server_type="7mode")
 
     def _shortlist_del_eligible_files(self, share, old_files):
         """Prepares list of eligible files to be deleted from cache."""

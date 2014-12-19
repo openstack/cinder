@@ -24,6 +24,7 @@ from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.options import netapp_proxy_opts
+from cinder.volume.drivers.netapp import utils
 
 
 LOG = logging.getLogger(__name__)
@@ -72,12 +73,16 @@ class NetAppDriver(object):
 
     def __init__(self, *args, **kwargs):
         super(NetAppDriver, self).__init__()
+        app_version = utils.OpenStackInfo().info()
+        LOG.info(_('OpenStack OS Version Info: %(info)s') % {
+            'info': app_version})
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(netapp_proxy_opts)
         else:
             raise exception.InvalidInput(
                 reason=_("Required configuration not found"))
+        kwargs['app_version'] = app_version
         self.driver = NetAppDriverFactory.create_driver(
             self.configuration.netapp_storage_family,
             self.configuration.netapp_storage_protocol,
