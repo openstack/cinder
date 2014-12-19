@@ -17,6 +17,7 @@ Mock unit tests for the NetApp driver utility module
 """
 
 from cinder import test
+import cinder.tests.volume.drivers.netapp.fakes as fake
 import cinder.volume.drivers.netapp.utils as na_utils
 
 
@@ -57,3 +58,34 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0.00'), -5.56)
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0.0'), -5.5)
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0'), -5)
+
+    def test_iscsi_connection_properties(self):
+        FAKE_LUN_ID = 1
+
+        actual_properties = na_utils.get_iscsi_connection_properties(
+            fake.ISCSI_FAKE_ADDRESS, fake.ISCSI_FAKE_PORT,
+            fake.ISCSI_FAKE_IQN, FAKE_LUN_ID, fake.ISCSI_FAKE_VOLUME)
+
+        actual_properties_mapped = actual_properties['data']
+
+        self.assertDictEqual(actual_properties_mapped, fake.ISCSI_FAKE_DICT)
+
+    def test_iscsi_connection_lun_id_str(self):
+        FAKE_LUN_ID = '1'
+
+        actual_properties = na_utils.get_iscsi_connection_properties(
+            fake.ISCSI_FAKE_ADDRESS, fake.ISCSI_FAKE_PORT,
+            fake.ISCSI_FAKE_IQN, FAKE_LUN_ID, fake.ISCSI_FAKE_VOLUME)
+
+        actual_properties_mapped = actual_properties['data']
+
+        self.assertIs(type(actual_properties_mapped['target_lun']), int)
+
+    def test_iscsi_connection_lun_id_dict(self):
+        FAKE_LUN_ID = {'id': '1'}
+
+        self.assertRaises(TypeError,
+                          na_utils.get_iscsi_connection_properties,
+                          fake.ISCSI_FAKE_ADDRESS, fake.ISCSI_FAKE_PORT,
+                          fake.ISCSI_FAKE_IQN, FAKE_LUN_ID,
+                          fake.ISCSI_FAKE_VOLUME)
