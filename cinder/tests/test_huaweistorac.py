@@ -390,6 +390,7 @@ class StorACDriverTestCase(test.TestCase):
         self.assertEqual('volume-21ec7341-9256-497b-97d9-ef48edcf0635',
                          retval['provider_location'])
 
+    @mock.patch.object(brick_connector, 'get_connector_properties')
     @mock.patch.object(brick_connector.HuaweiStorHyperConnector,
                        'is_volume_connected')
     @mock.patch.object(brick_connector.HuaweiStorHyperConnector,
@@ -404,7 +405,8 @@ class StorACDriverTestCase(test.TestCase):
                                      mock_connect_volume,
                                      mock_is_volume_connected,
                                      mock__attach_volume,
-                                     mock__detach_volume):
+                                     mock__detach_volume,
+                                     mock__get_connector_properties):
             mock_disconnect_volume.return_value = None
             mock_connect_volume.return_value = {'type': 'block',
                                                 'path': '/dev/null'}
@@ -412,6 +414,7 @@ class StorACDriverTestCase(test.TestCase):
             mock_is_volume_connected.return_value = True
             mock__attach_volume.return_value = None
             mock__detach_volume.return_value = None
+            mock__get_connector_properties.return_value = {}
 
             self.driver.delete_snapshot(test_snap)
             self.assertEqual('0', FakeVbsClient.retcode)
