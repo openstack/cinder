@@ -626,15 +626,22 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
                                 lvm_mirrors,
                                 dest_vg_ref)
 
-        volutils.copy_volume(self.local_path(volume),
-                             self.local_path(volume, vg=dest_vg),
-                             volume['size'],
-                             self.configuration.volume_dd_blocksize,
-                             execute=self._execute)
-        self._delete_volume(volume)
-        model_update = self._create_export(ctxt, volume, vg=dest_vg)
+            volutils.copy_volume(self.local_path(volume),
+                                 self.local_path(volume, vg=dest_vg),
+                                 volume['size'],
+                                 self.configuration.volume_dd_blocksize,
+                                 execute=self._execute)
+            self._delete_volume(volume)
+            model_update = self._create_export(ctxt, volume, vg=dest_vg)
 
-        return (True, model_update)
+            return (True, model_update)
+        else:
+            message = (_("Refusing to migrate volume ID: %(id)s. Please "
+                         "check your configuration because source and "
+                         "destination are the same Volume Group: %(name)s.")
+                       % {'id': volume['id'], 'name': self.vg.vg_name})
+            LOG.exception(message)
+            raise exception.VolumeBackendAPIException(data=message)
 
     def _iscsi_location(self, ip, target, iqn, lun=None):
         return "%s:%s,%s %s %s" % (ip, self.configuration.iscsi_port,

@@ -3752,6 +3752,23 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.assertEqual(moved, False)
         self.assertIsNone(model_update)
 
+    @mock.patch.object(volutils, 'get_all_volume_groups',
+                       return_value=[{'name': 'cinder-volumes'}])
+    def test_lvm_migrate_volume_same_volume_group(self, vgs):
+        hostname = socket.gethostname()
+        capabilities = {'location_info': 'LVMVolumeDriver:%s:'
+                        'cinder-volumes:default:0' % hostname}
+        host = {'capabilities': capabilities}
+        vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
+        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
+                                             False,
+                                             None,
+                                             'default')
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.volume.driver.migrate_volume, self.context,
+                          vol, host)
+
     def test_lvm_volume_group_missing(self):
         hostname = socket.gethostname()
         capabilities = {'location_info': 'LVMVolumeDriver:%s:'
