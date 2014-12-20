@@ -24,7 +24,14 @@ def upgrade(migrate_engine):
 
     encryptions = Table('encryption', meta, autoload=True)
 
-    encryption_id = Column('encryption_id', String(36))
+    encryption_id_column_kwargs = {}
+    if migrate_engine.name == 'ibm_db_sa':
+        # NOTE(junxiebj): DB2 10.5 doesn't support primary key
+        # constraints over nullable columns, so we have to
+        # make the column non-nullable in the DB2 case.
+        encryption_id_column_kwargs['nullable'] = False
+    encryption_id = Column('encryption_id', String(36),
+                           **encryption_id_column_kwargs)
     encryptions.create_column(encryption_id)
 
     encryption_items = list(encryptions.select().execute())
