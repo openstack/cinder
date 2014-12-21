@@ -57,6 +57,10 @@ class SE_StorageHardwareID(dict):
     pass
 
 
+class SYMM_LunMasking(dict):
+    pass
+
+
 class Fake_CIMProperty():
 
     def fake_getCIMProperty(self):
@@ -82,6 +86,11 @@ class Fake_CIMProperty():
     def fake_getIsCompositeCIMProperty(self):
         cimproperty = Fake_CIMProperty()
         cimproperty.value = False
+        return cimproperty
+
+    def fake_getElementNameCIMProperty(self):
+        cimproperty = Fake_CIMProperty()
+        cimproperty.value = 'OS-myhost-MV'
         return cimproperty
 
 
@@ -502,9 +511,14 @@ class FakeEcomConnection():
         dependent['ElementName'] = self.data.test_volume['name']
         dependent['SystemName'] = self.data.storage_system
 
-        antecedent = {}
+        antecedent = SYMM_LunMasking()
         antecedent['CreationClassName'] = self.data.lunmask_creationclass2
         antecedent['SystemName'] = self.data.storage_system
+        classcimproperty = Fake_CIMProperty()
+        elementName = (
+            classcimproperty.fake_getElementNameCIMProperty())
+        properties = {u'ElementName': elementName}
+        antecedent.properties = properties
 
         unitname['Dependent'] = dependent
         unitname['Antecedent'] = antecedent
@@ -1274,10 +1288,63 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         EMCVMAXCommon,
         '_wrap_find_device_number',
+        return_value={'storagesystem': EMCVMAXCommonData.storage_system})
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'find_storage_masking_group',
+        return_value='value')
+    def test_map_new_masking_view_no_fast_success(self, _mock_volume_type,
+                                                  mock_wrap_group,
+                                                  mock_wrap_device,
+                                                  mock_storage_group):
+        self.driver.initialize_connection(self.data.test_volume,
+                                          self.data.connector)
+
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSINoFAST'})
+    @mock.patch.object(
+        EMCVMAXMasking,
+        '_wrap_get_storage_group_from_volume',
+        return_value=None)
+    @mock.patch.object(
+        EMCVMAXCommon,
+        '_wrap_find_device_number',
         return_value={'hostlunid': 1,
                       'storagesystem': EMCVMAXCommonData.storage_system})
-    def test_map_no_fast_success(self, _mock_volume_type, mock_wrap_group,
-                                 mock_wrap_device):
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'find_storage_masking_group',
+        return_value='value')
+    @mock.patch.object(
+        EMCVMAXCommon,
+        '_is_same_host',
+        return_value=False)
+    def test_map_live_migration_no_fast_success(self, _mock_volume_type,
+                                                mock_wrap_group,
+                                                mock_wrap_device,
+                                                mock_storage_group,
+                                                mock_same_host):
+        self.driver.initialize_connection(self.data.test_volume,
+                                          self.data.connector)
+
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSINoFAST'})
+    @mock.patch.object(
+        EMCVMAXMasking,
+        '_wrap_get_storage_group_from_volume',
+        return_value=None)
+    @mock.patch.object(
+        EMCVMAXCommon,
+        '_wrap_find_device_number',
+        return_value={'hostlunid': 1,
+                      'storagesystem': EMCVMAXCommonData.storage_system})
+    def test_already_mapped_no_fast_success(self, _mock_volume_type,
+                                            mock_wrap_group,
+                                            mock_wrap_device):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 

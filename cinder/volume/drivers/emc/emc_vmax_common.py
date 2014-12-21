@@ -279,41 +279,88 @@ class EMCVMAXCommon(object):
         deviceInfoDict = self._wrap_find_device_number(volume, connector)
         if ('hostlunid' in deviceInfoDict and
                 deviceInfoDict['hostlunid'] is not None):
-            # Device is already mapped so we will leave the state as is
-            deviceNumber = deviceInfoDict['hostlunid']
-            LOG.info(_LI("Volume %(volume)s is already mapped. "
-                         "The device number is %(deviceNumber)s ")
-                     % {'volume': volumeName,
-                        'deviceNumber': deviceNumber})
+            isSameHost = self._is_same_host(connector, deviceInfoDict)
+            if isSameHost:
+                # Device is already mapped so we will leave the state as is.
+                deviceNumber = deviceInfoDict['hostlunid']
+                LOG.info(_LI("Volume %(volume)s is already mapped. "
+                             "The device number is %(deviceNumber)s.")
+                         % {'volume': volumeName,
+                            'deviceNumber': deviceNumber})
+            else:
+                deviceInfoDict = self._attach_volume(volume, connector,
+                                                     extraSpecs, True)
         else:
-            maskingViewDict = self._populate_masking_dict(
-                volume, connector, extraSpecs)
-            rollbackDict = self.masking.get_or_create_masking_view_and_map_lun(
-                self.conn, maskingViewDict)
-
-            # Find host lun id again after the volume is exported to the host
-            deviceInfoDict = self.find_device_number(volume, connector)
-            if 'hostlunid' not in deviceInfoDict:
-                # Did not successfully attach to host,
-                # so a rollback for FAST is required
-                LOG.error(_LE("Error Attaching volume %(vol)s ")
-                          % {'vol': volumeName})
-                if rollbackDict['fastPolicyName'] is not None:
-                    (
-                        self.masking
-                        ._check_if_rollback_action_for_masking_required(
-                            self.conn,
-                            rollbackDict['controllerConfigService'],
-                            rollbackDict['volumeInstance'],
-                            rollbackDict['volumeName'],
-                            rollbackDict['fastPolicyName'],
-                            rollbackDict['defaultStorageGroupInstanceName']))
-                exception_message = ("Error Attaching volume %(vol)s"
-                                     % {'vol': volumeName})
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
+            deviceInfoDict = self._attach_volume(volume, connector, extraSpecs)
 
         return deviceInfoDict
+
+    def _attach_volume(self, volume, connector, extraSpecs,
+                       isLiveMigration=None):
+        """Attach a volume to a host.
+
+        If live migration is being undertaken then the volume
+        remains attached to the source host.
+
+        :params volume: the volume object
+        :params connector: the connector object
+        :params extraSpecs: the volume extra specs
+        :param isLiveMigration: boolean, can be None
+        :returns: deviceInfoDict
+        """
+        volumeName = volume['name']
+        maskingViewDict = self._populate_masking_dict(
+            volume, connector, extraSpecs)
+        if isLiveMigration:
+            maskingViewDict['isLiveMigration'] = True
+        else:
+            maskingViewDict['isLiveMigration'] = False
+
+        rollbackDict = self.masking.get_or_create_masking_view_and_map_lun(
+            self.conn, maskingViewDict)
+
+        # Find host lun id again after the volume is exported to the host.
+        deviceInfoDict = self.find_device_number(volume, connector)
+        if 'hostlunid' not in deviceInfoDict:
+            # Did not successfully attach to host,
+            # so a rollback for FAST is required.
+            LOG.error(_LE("Error Attaching volume %(vol)s.")
+                      % {'vol': volumeName})
+            if rollbackDict['fastPolicyName'] is not None:
+                (
+                    self.masking
+                    ._check_if_rollback_action_for_masking_required(
+                        self.conn,
+                        rollbackDict['controllerConfigService'],
+                        rollbackDict['volumeInstance'],
+                        rollbackDict['volumeName'],
+                        rollbackDict['fastPolicyName'],
+                        rollbackDict['defaultStorageGroupInstanceName']))
+            exception_message = ("Error Attaching volume %(vol)s."
+                                 % {'vol': volumeName})
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+
+        return deviceInfoDict
+
+    def _is_same_host(self, connector, deviceInfoDict):
+        """Check if the host is the same.
+
+        Check if the host to attach to is the same host
+        that is already attached. This is necessary for
+        live migration.
+
+        :params connector: the connector object
+        :params deviceInfoDict: the device information
+        :returns: boolean True/False
+        """
+        if 'host' in connector:
+            currentHost = connector['host']
+            if ('maskingview' in deviceInfoDict and
+                    deviceInfoDict['maskingview'] is not None):
+                if currentHost in deviceInfoDict['maskingview']:
+                    return True
+        return False
 
     def _wrap_find_device_number(self, volume, connector):
         """Aid for unit testing
@@ -1299,6 +1346,15 @@ class EMCVMAXCommon(object):
                 numDeviceNumber = int(unitinstance['DeviceNumber'],
                                       16)
                 foundNumDeviceNumber = numDeviceNumber
+                controllerInstance = self.conn.GetInstance(controller,
+                                                           LocalOnly=False)
+                propertiesList = controllerInstance.properties.items()
+                for properties in propertiesList:
+                    if properties[0] == 'ElementName':
+                        cimProperties = properties[1]
+                        foundMaskingViewName = cimProperties.value
+                        break
+
                 break
 
         if foundNumDeviceNumber is None:
@@ -1309,7 +1365,8 @@ class EMCVMAXCommon(object):
                    'volumeInstance': volumeInstance.path})
 
         data = {'hostlunid': foundNumDeviceNumber,
-                'storagesystem': storageSystemName}
+                'storagesystem': storageSystemName,
+                'maskingview': foundMaskingViewName}
 
         LOG.debug("Device info: %(data)s." % {'data': data})
 
