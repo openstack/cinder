@@ -368,6 +368,7 @@ class EMCVMAXProvision(object):
 
         rc, job = conn.InvokeMethod(
             'CreateOrModifyCompositeElement', elementCompositionService,
+            ElementName=volumeName,
             ElementType=self.utils.get_num(THINPROVISIONINGCOMPOSITE, '16'),
             Size=self.utils.get_num(volumeSize, '64'),
             ElementSource=self.utils.get_num(newMembers, '16'),
