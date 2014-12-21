@@ -704,6 +704,24 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         volume_types = db_utils.get_table(engine, 'volume_types')
         self.assertNotIn('description', volume_types.c)
 
+    def _check_035(self, engine, data):
+        volumes = db_utils.get_table(engine, 'volumes')
+        self.assertIsInstance(volumes.c.provider_id.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_035(self, engine):
+        volumes = db_utils.get_table(engine, 'volumes')
+        self.assertNotIn('provider_id', volumes.c)
+
+    def _check_036(self, engine, data):
+        snapshots = db_utils.get_table(engine, 'snapshots')
+        self.assertIsInstance(snapshots.c.provider_id.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_036(self, engine):
+        snapshots = db_utils.get_table(engine, 'snapshots')
+        self.assertNotIn('provider_id', snapshots.c)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 
