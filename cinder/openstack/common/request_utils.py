@@ -19,32 +19,32 @@ Utilities for linking request ID's across service calls.
 
 import logging
 
-from openstack.common.gettextutils import _  # noqa
-from cinder.i18n import _LI
+from cinder.openstack.common._i18n import _, _LI
+
 
 LOG = logging.getLogger(__name__)
 
 
 def link_request_ids(context, source_id, target_id=None, stage=None,
                      target_name=None, notifier=None):
-    """Links the Request ID from the Source service to
-       the Request ID returned from the Target service.
+    """Links the Request ID from the Source service to the Request ID returned
+    from the Target service.
 
-       Linkages are logged and emitted as INFO notifications.
+    Linkages are logged and emitted as INFO notifications.
 
-       :params context: context object
-       :params source_id: the Request ID of the source
-       :params target_id: the Request ID of the target
-       :params stage: optional event name extension to
-                      indicate which part of the linkage
-                      this is.
-       :params target_name: human readable name of the
-                            target system you are talking to.
-       :params notifier: notifier object
+    :params context: context object
+    :params source_id: the Request ID of the source
+    :params target_id: the Request ID of the target
+    :params stage: optional event name extension to indicate which part of the
+      linkage this is.
+    :params target_name: human readable name of the target system you are
+      talking to.
+    :params notifier: notifier object
 
-       A typical use case is: System A asking System B
-       to perform some action. The linkages might look
-       like this:
+    A typical use case is: System A asking System B to perform some action. The
+    linkages might look like this:
+
+    .. code-block:: python
 
        link_request_ids(sys_A.request_ID, stage="start")
        # send request to System B and get request ID
@@ -53,7 +53,10 @@ def link_request_ids(context, source_id, target_id=None, stage=None,
        link_request_ids(sys_A.request_ID, target_id=sys_B.request.ID,
                         stage="end")
 
-       But, it could be as simple as:
+    But, it could be as simple as:
+
+    .. code-block:: python
+
        link_request_ids(sys_A.request_ID, target_id=sys_B.request.ID)
        """
 
@@ -73,12 +76,14 @@ def link_request_ids(context, source_id, target_id=None, stage=None,
     if target_name or target_id:
         arrow = " -> "
 
-    LOG.info(_LI("Request ID Link: %(event_name)s '%(source_id)s'%(arrow)s"
-                 "%(target_name)s%(target_id)s") % {"event_name": event_name,
-                                                    "source_id": source_id,
-                                                    "target_name": rtarget_name,
-                                                    "arrow": arrow,
-                                                    "target_id": rtarget_id})
+    LOG.info(_LI("Request ID Link: %(event_name)s "
+                 "'%(source_id)s'%(arrow)s"
+                 "%(target_name)s%(target_id)s") % {
+                     "event_name": event_name,
+                     "source_id": source_id,
+                     "target_name": rtarget_name,
+                     "arrow": arrow,
+                     "target_id": rtarget_id})
 
     if notifier:
         payload = {"source_request_id": source_id,
