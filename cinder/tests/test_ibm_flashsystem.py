@@ -20,9 +20,9 @@ Tests for the IBM FlashSystem volume driver.
 """
 
 import mock
-from oslo.concurrency import processutils
 from oslo.utils import excutils
 from oslo.utils import units
+from oslo_concurrency import processutils
 import six
 
 import random

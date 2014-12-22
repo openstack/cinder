@@ -21,7 +21,7 @@
 
 import mock
 from mock import patch
-from oslo.concurrency import processutils
+from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder.openstack.common import log as logging

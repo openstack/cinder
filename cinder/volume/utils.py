@@ -18,11 +18,11 @@
 import math
 
 from Crypto.Random import random
-from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.utils import strutils
 from oslo.utils import timeutils
 from oslo.utils import units
+from oslo_concurrency import processutils
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import exception

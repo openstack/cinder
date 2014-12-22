@@ -12,7 +12,7 @@
 
 import abc
 
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 import six
 
 

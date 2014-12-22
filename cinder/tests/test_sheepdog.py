@@ -17,8 +17,8 @@
 
 import contextlib
 
-from oslo.concurrency import processutils
 from oslo.utils import units
+from oslo_concurrency import processutils
 
 from cinder.image import image_utils
 from cinder import test

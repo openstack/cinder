@@ -17,8 +17,8 @@ import json
 import urllib2
 
 import mock
-from oslo.concurrency import processutils
 from oslo.utils import units
+from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder import test

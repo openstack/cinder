@@ -13,11 +13,11 @@
 import ast
 
 import fixtures
-from oslo.concurrency import lockutils
 from oslo.config import cfg
 from oslo.config import fixture as config_fixture
 from oslo.serialization import jsonutils
 from oslo.utils import timeutils
+from oslo_concurrency import lockutils
 import webob
 from webob import exc
 

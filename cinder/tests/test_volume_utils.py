@@ -16,8 +16,8 @@
 """Tests For miscellaneous util methods used with volume."""
 
 import mock
-from oslo.concurrency import processutils
 from oslo.config import cfg
+from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder.openstack.common import log as logging

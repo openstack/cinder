@@ -17,8 +17,8 @@ Unit tests for the Scality Rest Block Volume Driver.
 """
 
 import mock
-from oslo.concurrency import processutils
 from oslo.utils import units
+from oslo_concurrency import processutils
 
 from cinder import context
 from cinder import exception
@@ -117,7 +117,7 @@ class SRBLvmTestCase(test_brick_lvm.BrickLvmTestCase):
                                self.fake_execute)
         self.assertTrue(self.thin_vg.supports_thin_provisioning('sudo'))
         self.thin_vg.update_volume_group_info = mock.MagicMock()
-        with mock.patch('oslo.concurrency.processutils.execute'):
+        with mock.patch('oslo_concurrency.processutils.execute'):
             executor = mock.MagicMock()
             self.thin_vg._execute = executor
             self.thin_vg.extend_thin_pool()

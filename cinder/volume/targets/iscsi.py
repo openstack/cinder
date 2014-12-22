@@ -11,7 +11,7 @@
 #    under the License.
 
 
-from oslo.concurrency import processutils
+from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder.i18n import _, _LW, _LE

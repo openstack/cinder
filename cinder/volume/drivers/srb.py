@@ -24,11 +24,11 @@ import functools
 import sys
 import time
 
-from oslo.concurrency import lockutils
-from oslo.concurrency import processutils as putils
 from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import units
+from oslo_concurrency import lockutils
+from oslo_concurrency import processutils as putils
 import six
 
 from cinder.brick.local_dev import lvm

@@ -22,7 +22,7 @@ import json
 import os
 import posix
 
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 
 from cinder.backup.drivers import tsm
 from cinder import context

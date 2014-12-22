@@ -16,7 +16,7 @@
 """Unit tests for image utils."""
 
 import mock
-from oslo.concurrency import processutils
+from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder.image import image_utils

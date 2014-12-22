@@ -21,12 +21,12 @@ import random
 import re
 import time
 
-from oslo.concurrency import lockutils
-from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.serialization import jsonutils as json
 from oslo.utils import excutils
 from oslo.utils import timeutils
+from oslo_concurrency import lockutils
+from oslo_concurrency import processutils
 import six
 
 from cinder import exception

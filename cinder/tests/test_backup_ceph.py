@@ -21,8 +21,8 @@ import tempfile
 import uuid
 
 import mock
-from oslo.concurrency import processutils
 from oslo.serialization import jsonutils
+from oslo_concurrency import processutils
 import six
 
 from cinder.backup import driver

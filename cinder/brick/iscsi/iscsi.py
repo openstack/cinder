@@ -23,8 +23,8 @@ import re
 import stat
 import time
 
-from oslo.concurrency import processutils as putils
 from oslo.config import cfg
+from oslo_concurrency import processutils as putils
 import six
 
 from cinder.brick import exception

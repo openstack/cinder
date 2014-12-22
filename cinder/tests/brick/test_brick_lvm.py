@@ -14,7 +14,7 @@
 #    under the License.
 
 import mox
-from oslo.concurrency import processutils
+from oslo_concurrency import processutils
 
 from cinder.brick import exception
 from cinder.brick.local_dev import lvm as brick

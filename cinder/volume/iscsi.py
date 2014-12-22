@@ -16,7 +16,7 @@
 import os
 import re
 
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 
 from cinder.brick.iscsi import iscsi
 from cinder import exception

@@ -15,7 +15,7 @@ import os
 import re
 import time
 
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 import six
 
 from cinder import exception

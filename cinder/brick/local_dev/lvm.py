@@ -22,8 +22,8 @@ import math
 import re
 import time
 
-from oslo.concurrency import processutils as putils
 from oslo.utils import excutils
+from oslo_concurrency import processutils as putils
 
 from cinder.brick import exception
 from cinder.brick import executor

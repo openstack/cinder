@@ -23,10 +23,10 @@ import re
 import time
 
 import mock
-from oslo.concurrency import processutils
 from oslo.utils import excutils
 from oslo.utils import importutils
 from oslo.utils import units
+from oslo_concurrency import processutils
 
 from cinder import context
 from cinder import exception
