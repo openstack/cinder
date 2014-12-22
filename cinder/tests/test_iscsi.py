@@ -174,7 +174,12 @@ class IetAdmTestCase(test.TestCase, TargetAdminTestCase):
     def setUp(self):
         super(IetAdmTestCase, self).setUp()
         TargetAdminTestCase.setUp(self)
+
+        self.iet_conffile = str(self.persist_tempdir) + '/bogus-file'
+
         self.flags(iscsi_helper='ietadm')
+        self.flags(iet_conf=self.iet_conffile)
+
         self.script_template = "\n".join([
             'ietadm --op new --tid=%(tid)s --params Name=%(target_name)s',
             'ietadm --op new --tid=%(tid)s --lun=%(lun)s '
@@ -191,8 +196,12 @@ class IetAdmBlockIOTestCase(test.TestCase, TargetAdminTestCase):
     def setUp(self):
         super(IetAdmBlockIOTestCase, self).setUp()
         TargetAdminTestCase.setUp(self)
+
+        self.iet_conffile = str(self.persist_tempdir) + '/bogus-file'
+
         self.flags(iscsi_helper='ietadm')
         self.flags(iscsi_iotype='blockio')
+        self.flags(iet_conf=self.iet_conffile)
         self.script_template = "\n".join([
             'ietadm --op new --tid=%(tid)s --params Name=%(target_name)s',
             'ietadm --op new --tid=%(tid)s --lun=%(lun)s '
@@ -209,6 +218,10 @@ class IetAdmFileIOTestCase(test.TestCase, TargetAdminTestCase):
     def setUp(self):
         super(IetAdmFileIOTestCase, self).setUp()
         TargetAdminTestCase.setUp(self)
+
+        self.iet_conffile = str(self.persist_tempdir) + '/bogus-file'
+
+        self.flags(iet_conf=self.iet_conffile)
         self.flags(iscsi_helper='ietadm')
         self.flags(iscsi_iotype='fileio')
         self.script_template = "\n".join([
@@ -227,9 +240,12 @@ class IetAdmAutoIOTestCase(test.TestCase, TargetAdminTestCase):
     def setUp(self):
         super(IetAdmAutoIOTestCase, self).setUp()
         TargetAdminTestCase.setUp(self)
+        self.iet_conffile = 'this-bogus-conf-file-dne'
         self.stubs.Set(iscsi.IetAdm, '_is_block', lambda a, b: True)
+
         self.flags(iscsi_helper='ietadm')
         self.flags(iscsi_iotype='auto')
+        self.flags(iet_conf=self.iet_conffile)
         self.script_template = "\n".join([
             'ietadm --op new --tid=%(tid)s --params Name=%(target_name)s',
             'ietadm --op new --tid=%(tid)s --lun=%(lun)s '
