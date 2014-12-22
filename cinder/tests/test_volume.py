@@ -4576,6 +4576,46 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
         volume = db.volume_get(self.context, self.volume_id)
         self.assertEqual(volume['status'], 'available')
 
+    def test_copy_volume_to_image_instance_deleted(self):
+        # During uploading volume to image if instance is deleted,
+        # volume should be in available status.
+        self.image_meta['id'] = 'a440c04b-79fa-479c-bed1-0b816eaec379'
+        # Creating volume testdata
+        self.volume_attrs['instance_uuid'] = 'b21f957d-a72f-4b93-b5a5-' \
+                                             '45b1161abb02'
+        db.volume_create(self.context, self.volume_attrs)
+
+        # Storing unmocked db api function reference here, because we have to
+        # update volume status (set instance_uuid to None) before calling the
+        # 'volume_update_status_based_on_attached_instance_id' db api.
+        unmocked_db_api = db.volume_update_status_based_on_attachment
+
+        def mock_volume_update_after_upload(context, volume_id):
+            # First update volume and set 'instance_uuid' to None
+            # because after deleting instance, instance_uuid of volume is
+            # set to None
+            db.volume_update(context, volume_id, {'instance_uuid': None})
+            # Calling unmocked db api
+            unmocked_db_api(context, volume_id)
+
+        with mock.patch.object(
+                db,
+                'volume_update_status_based_on_attachment',
+                side_effect=mock_volume_update_after_upload) as mock_update:
+
+            # Start test
+            self.volume.copy_volume_to_image(self.context,
+                                             self.volume_id,
+                                             self.image_meta)
+            # Check 'volume_update_status_after_copy_volume_to_image'
+            # is called 1 time
+            self.assertEqual(1, mock_update.call_count)
+
+        # Check volume status has changed to available because
+        # instance is deleted
+        volume = db.volume_get(self.context, self.volume_id)
+        self.assertEqual('available', volume['status'])
+
     def test_copy_volume_to_image_status_use(self):
         self.image_meta['id'] = 'a440c04b-79fa-479c-bed1-0b816eaec379'
         # creating volume testdata
