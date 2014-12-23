@@ -37,6 +37,8 @@ from cinder.volume.drivers.netapp.options import netapp_cluster_opts
 from cinder.volume.drivers.netapp.options import netapp_connection_opts
 from cinder.volume.drivers.netapp.options import netapp_provisioning_opts
 from cinder.volume.drivers.netapp.options import netapp_transport_opts
+from cinder.volume.drivers.netapp import utils
+
 
 LOG = logging.getLogger("cinder.volume.driver")
 
@@ -552,6 +554,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.stubs.Set(
             ssc_cmode, 'refresh_cluster_ssc',
             lambda a, b, c, synchronous: None)
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(httplib, 'HTTPConnection',
@@ -577,6 +580,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.driver.check_for_setup_error()
 
     def test_do_setup_all_default(self):
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         driver.do_setup(context='')
@@ -587,6 +591,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.Mock(return_value=(1, 20)))
     def test_do_setup_http_default_port(self):
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         configuration.netapp_transport_type = 'http'
         driver = common.NetAppDriver(configuration=configuration)
@@ -598,6 +603,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.Mock(return_value=(1, 20)))
     def test_do_setup_https_default_port(self):
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         configuration.netapp_transport_type = 'https'
         driver = common.NetAppDriver(configuration=configuration)
@@ -610,6 +616,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.Mock(return_value=(1, 20)))
     def test_do_setup_http_non_default_port(self):
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         configuration.netapp_server_port = 81
         driver = common.NetAppDriver(configuration=configuration)
@@ -621,6 +628,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.Mock(return_value=(1, 20)))
     def test_do_setup_https_non_default_port(self):
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         configuration.netapp_transport_type = 'https'
         configuration.netapp_server_port = 446
@@ -677,6 +685,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             raise AssertionError('Target portal is none')
 
     def test_vol_stats(self):
+        self.mock_object(client_base.Client, 'provide_ems')
         stats = self.driver.get_volume_stats(refresh=True)
         self.assertEqual(stats['vendor_name'], 'NetApp')
 
@@ -716,6 +725,7 @@ class NetAppDriverNegativeTestCase(test.TestCase):
         super(NetAppDriverNegativeTestCase, self).setUp()
 
     def test_incorrect_family(self):
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = create_configuration()
         configuration.netapp_storage_family = 'xyz_abc'
         try:
@@ -725,6 +735,7 @@ class NetAppDriverNegativeTestCase(test.TestCase):
             pass
 
     def test_incorrect_protocol(self):
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = create_configuration()
         configuration.netapp_storage_family = 'ontap'
         configuration.netapp_storage_protocol = 'ontap'
@@ -735,6 +746,7 @@ class NetAppDriverNegativeTestCase(test.TestCase):
             pass
 
     def test_non_netapp_driver(self):
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = create_configuration()
         common.netapp_unified_plugin_registry['test_family'] =\
             {'iscsi': 'cinder.volume.drivers.arbitrary.IscsiDriver'}
@@ -1175,6 +1187,7 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
         super(NetAppDirect7modeISCSIDriverTestCase_NV, self).setUp()
 
     def _custom_setup(self):
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(httplib, 'HTTPConnection',
@@ -1230,6 +1243,7 @@ class NetAppDirect7modeISCSIDriverTestCase_WV(
         super(NetAppDirect7modeISCSIDriverTestCase_WV, self).setUp()
 
     def _custom_setup(self):
+        self.mock_object(utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(httplib, 'HTTPConnection',
