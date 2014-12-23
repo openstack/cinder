@@ -23,7 +23,7 @@ import httplib
 import urllib
 import urllib2
 
-import netaddr
+from oslo.utils import netutils
 import six.moves.urllib.parse as urlparse
 
 from cinder.i18n import _, _LI
@@ -102,16 +102,9 @@ class VMwareHTTPFile(object):
         """Get size of the file to be read."""
         raise NotImplementedError()
 
-    def _is_valid_ipv6(self, address):
-        """Whether given host address is a valid IPv6 address."""
-        try:
-            return netaddr.valid_ipv6(address)
-        except Exception:
-            return False
-
     def get_soap_url(self, scheme, host):
         """return IPv4/v6 compatible url constructed for host."""
-        if self._is_valid_ipv6(host):
+        if netutils.is_valid_ipv6(host):
             return '%s://[%s]' % (scheme, host)
         return '%s://%s' % (scheme, host)
 

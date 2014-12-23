@@ -12,8 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import netaddr
 from oslo.serialization import jsonutils
+from oslo.utils import netutils
 import requests
 import six.moves.urllib.parse as urlparse
 
@@ -88,7 +88,7 @@ class TestOpenStackClient(object):
         hostname = parsed_url.hostname
         scheme = parsed_url.scheme
 
-        if netaddr.valid_ipv6(hostname):
+        if netutils.is_valid_ipv6(hostname):
             hostname = "[%s]" % hostname
 
         relative_url = parsed_url.path
