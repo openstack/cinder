@@ -18,20 +18,23 @@
 from __future__ import absolute_import
 
 from oslo.config import cfg
+from oslo.utils import importutils
 from oslo.utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _LE
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
-from storpool import spapi
-from storpool import spopenstack
-from storpool import sptypes
+storpool = importutils.try_import('storpool')
+if storpool:
+    from storpool import spapi
+    from storpool import spopenstack
+    from storpool import sptypes
 
 
 storpool_opts = [
@@ -43,8 +46,11 @@ storpool_opts = [
                help='The default StorPool chain replication value.  '
                     'Used when creating a volume with no specified type if '
                     'storpool_template is not set.  Also used for calculating '
-                    'the apparent free space reported in the stats.')
+                    'the apparent free space reported in the stats.'),
 ]
+
+CONF = cfg.CONF
+CONF.register_opts(storpool_opts)
 
 
 class StorPoolDriver(driver.VolumeDriver):
@@ -58,7 +64,7 @@ class StorPoolDriver(driver.VolumeDriver):
         self._sp_config = None
         self._ourId = None
         self._ourIdInt = None
-        self._attach = spopenstack.AttachDB(log=LOG)
+        self._attach = None
 
     def _backendException(self, e):
         return exception.VolumeBackendAPIException(data=six.text_type(e))
@@ -179,6 +185,11 @@ class StorPoolDriver(driver.VolumeDriver):
                 raise self._backendException(e)
 
     def check_for_setup_error(self):
+        if storpool is None:
+            msg = _('storpool libraries not found')
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        self._attach = spopenstack.AttachDB(log=LOG)
         try:
             self._attach.api()
         except Exception as e:

@@ -161,9 +161,9 @@ class StorPoolTestCase(test.TestCase):
 
         self.driver = driver.StorPoolDriver(execute=mock_exec,
                                             configuration=self.cfg)
+        self.driver.check_for_setup_error()
 
     def test_initialized(self):
-        self.driver.check_for_setup_error()
         self.driver.validate_connector(None)
         self.driver.validate_connector(5)
         c = self.driver.initialize_connection(None, None)
