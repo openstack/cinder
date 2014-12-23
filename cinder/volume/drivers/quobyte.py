@@ -424,7 +424,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
                 msg = _LE("The mount %(mount_path)s is not a valid"
                           " Quobyte USP volume. Error: %(exc)s") \
                     % {'mount_path': mount_path, 'exc': exc}
-                raise exception.QuobyteException(msg)
+                raise exception.VolumeDriverException(msg)
             if not os.access(mount_path, os.W_OK | os.X_OK):
                 LOG.warn(_LW("Volume is not writable. Please broaden the file"
                              " permissions. Mount: %s"), mount_path)

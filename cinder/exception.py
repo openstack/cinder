@@ -822,15 +822,6 @@ class NetAppDriverException(VolumeDriverException):
     message = _("NetApp Cinder Driver exception.")
 
 
-# Quobyte USP
-class QuobyteException(VolumeDriverException):
-    message = _("Unknown Quobyte exception")
-
-
-class QuobyteVolumeNotMounted(NotFound):
-    message = _("No mounted Quobyte volumes found")
-
-
 class EMCVnxCLICmdError(VolumeBackendAPIException):
     def __init__(self, cmd=None, rc=None, out='',
                  log_as_error=True, **kwargs):
