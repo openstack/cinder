@@ -258,6 +258,7 @@ class TestCase(testtools.TestCase):
         patcher = mock.patch.object(obj, attr_name, new_attr, **kwargs)
         patcher.start()
         self.addCleanup(patcher.stop)
+        return new_attr
 
     # Useful assertions
     def assertDictMatch(self, d1, d2, approx_equal=False, tolerance=0.001):

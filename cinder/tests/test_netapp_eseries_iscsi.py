@@ -853,10 +853,10 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         fake_pool['volumeGroupRef'] = 'foo'
         fake_pools = [fake_pool]
         storage_pools.return_value = fake_pools
-        drv = self.driver
-        storage_vol = drv.driver._create_volume(self.fake_eseries_pool_label,
-                                                self.fake_eseries_volume_label,
-                                                self.fake_size_gb)
+        storage_vol = self.driver._create_volume(
+            self.fake_eseries_pool_label,
+            self.fake_eseries_volume_label,
+            self.fake_size_gb)
         log_info.assert_called_once_with("Created volume with label %s.",
                                          self.fake_eseries_volume_label)
         self.assertEqual('CorrectVolume', storage_vol)
