@@ -391,6 +391,25 @@ def log_extra_spec_warnings(extra_specs):
             LOG.warn(msg % args)
 
 
+def get_iscsi_connection_properties(address, port, iqn, lun_id, volume):
+        properties = {}
+        properties['target_discovered'] = False
+        properties['target_portal'] = '%s:%s' % (address, port)
+        properties['target_iqn'] = iqn
+        properties['target_lun'] = int(lun_id)
+        properties['volume_id'] = volume['id']
+        auth = volume['provider_auth']
+        if auth:
+            (auth_method, auth_username, auth_secret) = auth.split()
+            properties['auth_method'] = auth_method
+            properties['auth_username'] = auth_username
+            properties['auth_password'] = auth_secret
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': properties,
+        }
+
+
 class OpenStackInfo(object):
     """OS/distribution, release, and version.
 
