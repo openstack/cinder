@@ -244,8 +244,8 @@ class DbQuotaDriver(object):
         else:
             sync_filt = lambda x: not hasattr(x, 'sync')
         desired = set(keys)
-        sub_resources = dict((k, v) for k, v in resources.items()
-                             if k in desired and sync_filt(v))
+        sub_resources = {k: v for k, v in resources.items()
+                         if k in desired and sync_filt(v)}
 
         # Make sure we accounted for all of them...
         if len(keys) != len(sub_resources):
@@ -257,7 +257,7 @@ class DbQuotaDriver(object):
                                          project_id,
                                          context.quota_class, usages=False)
 
-        return dict((k, v['limit']) for k, v in quotas.items())
+        return {k: v['limit'] for k, v in quotas.items()}
 
     def limit_check(self, context, resources, values, project_id=None):
         """Check simple quota limits.

@@ -164,8 +164,8 @@ class FlashSystemDriver(san.SanDriver):
 
         host_name = connector['host']
         if isinstance(host_name, six.text_type):
-            unicode_host_name_filter = dict((ord(six.text_type(char)), u'-')
-                                            for char in invalid_ch_in_host)
+            unicode_host_name_filter = {ord(six.text_type(char)): u'-'
+                                        for char in invalid_ch_in_host}
             host_name = host_name.translate(unicode_host_name_filter)
         elif isinstance(host_name, str):
             string_host_name_filter = string.maketrans(
@@ -459,7 +459,7 @@ class FlashSystemDriver(san.SanDriver):
             (_('_get_hdr_dic: attribute headers and values do not match.\n '
                'Headers: %(header)s\n Values: %(row)s.')
              % {'header': six.text_type(header), 'row': six.text_type(row)}))
-        dic = dict((a, v) for a, v in map(None, attributes, values))
+        dic = {a: v for a, v in map(None, attributes, values)}
         return dic
 
     def _get_conn_fc_wwpns(self):

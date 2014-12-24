@@ -105,7 +105,7 @@ class ViewBuilder(common.ViewBuilder):
         """Retrieve the metadata of the volume object."""
         if volume.get('volume_metadata'):
             metadata = volume.get('volume_metadata')
-            return dict((item['key'], item['value']) for item in metadata)
+            return {item['key']: item['value'] for item in metadata}
         # avoid circular ref when vol is a Volume instance
         elif volume.get('metadata') and isinstance(volume.get('metadata'),
                                                    dict):

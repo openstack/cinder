@@ -17,6 +17,7 @@ Cinder Specific Commandments
 - [N329] LOG.exception and LOG.error messages require translations `_LE()`.
 - [N330] LOG.warning messages require translations `_LW()`.
 - [N333] Ensure that oslo namespaces are used for namespaced libraries.
+- [N336] Must use a dict comprehension instead of a dict constructor with a sequence of key-value pairs.
 - [C301] timeutils.utcnow() from oslo_utils should be used instead of datetime.now().
 - [C302] six.text_type should be used instead of unicode
 - [C303] Ensure that there are no 'print()' statements in code that is being committed.
@@ -24,7 +25,6 @@ Cinder Specific Commandments
 - [C305] Prevent use of deprecated contextlib.nested.
 - [C306] timeutils.strtime() must not be used (deprecated).
 - [C307] LOG.warn is deprecated. Enforce use of LOG.warning.
-
 
 General
 -------

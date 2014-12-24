@@ -43,6 +43,7 @@ underscore_import_check = re.compile(r"(.)*i18n\s+import\s+_(.)*")
 custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
 no_audit_log = re.compile(r"(.)*LOG\.audit(.)*")
 no_print_statements = re.compile(r"\s*print\s*\(.+\).*")
+dict_constructor_with_list_copy_re = re.compile(r".*\bdict\((\[)?(\(|\[)")
 
 # NOTE(jsbryant): When other oslo libraries switch over non-namespaced
 # imports, we will need to add them to the regex below.
@@ -303,6 +304,13 @@ def no_log_warn(logical_line):
         yield (0, msg)
 
 
+def dict_constructor_with_list_copy(logical_line):
+    msg = ("N336: Must use a dict comprehension instead of a dict constructor "
+           "with a sequence of key-value pairs.")
+    if dict_constructor_with_list_copy_re.match(logical_line):
+        yield (0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
@@ -319,3 +327,4 @@ def factory(register):
     register(check_no_log_audit)
     register(check_no_contextlib_nested)
     register(no_log_warn)
+    register(dict_constructor_with_list_copy)

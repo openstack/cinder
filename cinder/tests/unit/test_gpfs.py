@@ -650,21 +650,16 @@ class GPFSDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_gpfs_change_attributes')
     def test_set_volume_attributes(self, mock_change_attributes, mock_mkfs):
-        metadata = [dict([('key', 'data_pool_name'), ('value', 'test')]),
-                    dict([('key', 'replicas'), ('value', 'test')]),
-                    dict([('key', 'dio'), ('value', 'test')]),
-                    dict([('key', 'write_affinity_depth'), ('value', 'test')]),
-                    dict([('key', 'block_group_factor'), ('value', 'test')]),
-                    dict([('key', 'write_affinity_failure_group'),
-                          ('value', 'test')]),
-                    dict([('key', 'test'),
-                          ('value', 'test')]),
-                    dict([('key', 'fstype'),
-                          ('value', 'test')]),
-                    dict([('key', 'fslabel'),
-                          ('value', 'test')]),
-                    dict([('key', 'test'),
-                          ('value', 'test')])]
+        metadata = [{'key': 'data_pool_name', 'value': 'test'},
+                    {'key': 'replicas', 'value': 'test'},
+                    {'key': 'dio', 'value': 'test'},
+                    {'key': 'write_affinity_depth', 'value': 'test'},
+                    {'key': 'block_group_factor', 'value': 'test'},
+                    {'key': 'write_affinity_failure_group', 'value': 'test'},
+                    {'key': 'test', 'value': 'test'},
+                    {'key': 'fstype', 'value': 'test'},
+                    {'key': 'fslabel', 'value': 'test'},
+                    {'key': 'test', 'value': 'test'}]
 
         self.driver._set_volume_attributes('', '', metadata)
 

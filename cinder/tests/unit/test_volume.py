@@ -3108,8 +3108,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         # ensure that volume's glance metadata is copied
         # to snapshot's glance metadata
         self.assertEqual(len(vol_glance_meta), len(snap_glance_meta))
-        vol_glance_dict = dict((x.key, x.value) for x in vol_glance_meta)
-        snap_glance_dict = dict((x.key, x.value) for x in snap_glance_meta)
+        vol_glance_dict = {x.key: x.value for x in vol_glance_meta}
+        snap_glance_dict = {x.key: x.value for x in snap_glance_meta}
         self.assertDictMatch(vol_glance_dict, snap_glance_dict)
 
         # ensure that snapshot's status is changed to 'available'

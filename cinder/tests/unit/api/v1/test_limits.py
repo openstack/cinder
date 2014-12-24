@@ -55,8 +55,7 @@ class BaseLimitTestSuite(test.TestCase):
         self.absolute_limits = {}
 
         def stub_get_project_quotas(context, project_id, usages=True):
-            return dict((k, dict(limit=v))
-                        for k, v in self.absolute_limits.items())
+            return {k: dict(limit=v) for k, v in self.absolute_limits.items()}
 
         self.stubs.Set(cinder.quota.QUOTAS, "get_project_quotas",
                        stub_get_project_quotas)
