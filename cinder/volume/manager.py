@@ -91,7 +91,13 @@ volume_manager_opts = [
     cfg.StrOpt('extra_capabilities',
                default='{}',
                help='User defined capabilities, a JSON formatted string '
-                    'specifying key/value pairs.'),
+                    'specifying key/value pairs. The key/value pairs can '
+                    'be used by the CapabilitiesFilter to select between '
+                    'backends when requests specify volume types. For '
+                    'example, specifying a service level or the geographical '
+                    'location of a backend, then creating a volume type to '
+                    'allow the user to select by these different '
+                    'properties.'),
 ]
 
 CONF = cfg.CONF
