@@ -122,6 +122,7 @@ systool: CommandFilter, systool, root
 blockdev: CommandFilter, blockdev, root
 
 # cinder/volume/drivers/ibm/gpfs.py
+cp: CommandFilter, cp, root
 mv: CommandFilter, mv, root
 mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
 mmclone: CommandFilter, /usr/lpp/mmfs/bin/mmclone, root
@@ -131,6 +132,12 @@ mmlsconfig: CommandFilter, /usr/lpp/mmfs/bin/mmlsconfig, root
 mmlsfs: CommandFilter, /usr/lpp/mmfs/bin/mmlsfs, root
 mmlspool: CommandFilter, /usr/lpp/mmfs/bin/mmlspool, root
 mkfs: CommandFilter, mkfs, root
+mmcrfileset: CommandFilter, /usr/lpp/mmfs/bin/mmcrfileset, root
+mmlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmlinkfileset, root
+mmunlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmunlinkfileset, root
+mmdelfileset: CommandFilter, /usr/lpp/mmfs/bin/mmdelfileset, root
+mmcrsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmcrsnapshot, root
+mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
 
 # cinder/volume/drivers/ibm/gpfs.py
 # cinder/volume/drivers/ibm/ibmnas.py

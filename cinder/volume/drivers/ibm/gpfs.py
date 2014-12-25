@@ -24,7 +24,9 @@ import shutil
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import units
+import six
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.image import image_utils
@@ -106,9 +108,10 @@ class GPFSDriver(driver.VolumeDriver):
     Version history:
     1.0.0 - Initial driver
     1.1.0 - Add volume retype, refactor volume migration
+    1.2.0 - Add consistency group support
     """
 
-    VERSION = "1.1.0"
+    VERSION = "1.2.0"
 
     def __init__(self, *args, **kwargs):
         super(GPFSDriver, self).__init__(*args, **kwargs)
@@ -507,11 +510,25 @@ class GPFSDriver(driver.VolumeDriver):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a GPFS volume from a snapshot."""
 
+        snapshot_path = self._get_snapshot_path(snapshot)
+        # check if the snapshot lies in the same CG as the volume to be created
+        # if yes, clone the volume from the snapshot, else perform full copy
+        clone = False
+        if volume['consistencygroup_id'] is not None:
+            ctxt = context.get_admin_context()
+            snap_parent_vol = self.db.volume_get(ctxt, snapshot['volume_id'])
+            if (volume['consistencygroup_id'] ==
+                    snap_parent_vol['consistencygroup_id']):
+                clone = True
+
         volume_path = self.local_path(volume)
-        snapshot_path = self.local_path(snapshot)
-        self._create_gpfs_copy(src=snapshot_path, dest=volume_path)
+        if clone:
+            self._create_gpfs_copy(src=snapshot_path, dest=volume_path)
+            self._gpfs_redirect(volume_path)
+        else:
+            self._gpfs_full_copy(snapshot_path, volume_path)
+
         self._set_rw_permission(volume_path)
-        self._gpfs_redirect(volume_path)
         v_metadata = volume.get('volume_metadata')
         self._set_volume_attributes(volume, volume_path, v_metadata)
         virt_size = self._resize_volume_file(volume, volume['size'])
@@ -522,7 +539,11 @@ class GPFSDriver(driver.VolumeDriver):
 
         src = self.local_path(src_vref)
         dest = self.local_path(volume)
-        self._create_gpfs_clone(src, dest)
+        if (volume['consistencygroup_id'] == src_vref['consistencygroup_id']):
+            self._create_gpfs_clone(src, dest)
+        else:
+            self._gpfs_full_copy(src, dest)
+
         self._set_rw_permission(dest)
         v_metadata = volume.get('volume_metadata')
         self._set_volume_attributes(volume, dest, v_metadata)
@@ -602,6 +623,11 @@ class GPFSDriver(driver.VolumeDriver):
         """Create a GPFS file clone copy for the specified file."""
         self._execute('mmclone', 'copy', src, dest, run_as_root=True)
 
+    def _gpfs_full_copy(self, src, dest):
+        """Create a full copy from src to dest."""
+        self._execute('cp', src, dest,
+                      check_exit_code=True, run_as_root=True)
+
     def _create_gpfs_snap(self, src, dest=None):
         """Create a GPFS file clone snapshot for the specified file."""
         if dest is None:
@@ -618,8 +644,8 @@ class GPFSDriver(driver.VolumeDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a GPFS snapshot."""
-        snapshot_path = self.local_path(snapshot)
-        volume_path = os.path.join(self.configuration.gpfs_mount_point_base,
+        snapshot_path = self._get_snapshot_path(snapshot)
+        volume_path = os.path.join(os.path.dirname(snapshot_path),
                                    snapshot['volume_name'])
         self._create_gpfs_snap(src=volume_path, dest=snapshot_path)
         self._set_rw_permission(snapshot_path, modebits='640')
@@ -632,16 +658,37 @@ class GPFSDriver(driver.VolumeDriver):
         # clone children, the delete will fail silently. When volumes that
         # are clone children are deleted in the future, the remaining ts
         # snapshots will also be deleted.
-        snapshot_path = self.local_path(snapshot)
+        snapshot_path = self._get_snapshot_path(snapshot)
         snapshot_ts_path = '%s.ts' % snapshot_path
         self._execute('mv', snapshot_path, snapshot_ts_path, run_as_root=True)
         self._execute('rm', '-f', snapshot_ts_path,
                       check_exit_code=False, run_as_root=True)
 
+    def _get_snapshot_path(self, snapshot):
+        ctxt = context.get_admin_context()
+        snap_parent_vol = self.db.volume_get(ctxt, snapshot['volume_id'])
+        snap_parent_vol_path = self.local_path(snap_parent_vol)
+        snapshot_path = os.path.join(os.path.dirname(snap_parent_vol_path),
+                                     snapshot['name'])
+        return snapshot_path
+
     def local_path(self, volume):
         """Return the local path for the specified volume."""
-        return os.path.join(self.configuration.gpfs_mount_point_base,
-                            volume['name'])
+        # Check if the volume is part of a consistency group and return
+        # the local_path accordingly.
+        if volume['consistencygroup_id'] is not None:
+            cgname = "consisgroup-%s" % volume['consistencygroup_id']
+            volume_path = os.path.join(
+                self.configuration.gpfs_mount_point_base,
+                cgname,
+                volume['name']
+            )
+        else:
+            volume_path = os.path.join(
+                self.configuration.gpfs_mount_point_base,
+                volume['name']
+            )
+        return volume_path
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
@@ -700,7 +747,7 @@ class GPFSDriver(driver.VolumeDriver):
                                  {'cluster_id': self._cluster_id,
                                   'root_path': gpfs_base})
 
-        data['reserved_percentage'] = 0
+        data['consistencygroup_support'] = 'True'
         self._stats = data
 
     def clone_image(self, context, volume,
@@ -989,3 +1036,106 @@ class GPFSDriver(driver.VolumeDriver):
                      'file system is mounted.') % path)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+    def create_consistencygroup(self, context, group):
+        """Create consistency group of GPFS volumes."""
+        cgname = "consisgroup-%s" % group['id']
+        fsdev = self._gpfs_device
+        cgpath = os.path.join(self.configuration.gpfs_mount_point_base,
+                              cgname)
+        try:
+            self._execute('mmcrfileset', fsdev, cgname,
+                          '--inode-space', 'new', run_as_root=True)
+        except processutils.ProcessExecutionError as e:
+            msg = (_('Failed to create consistency group: %(cgid)s. '
+                     'Error: %(excmsg)s.') %
+                   {'cgid': group['id'], 'excmsg': six.text_type(e)})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        try:
+            self._execute('mmlinkfileset', fsdev, cgname,
+                          '-J', cgpath, run_as_root=True)
+        except processutils.ProcessExecutionError as e:
+            msg = (_('Failed to link fileset for the share %(cgname)s. '
+                     'Error: %(excmsg)s.') %
+                   {'cgname': cgname, 'excmsg': six.text_type(e)})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        try:
+            self._execute('chmod', '770', cgpath, run_as_root=True)
+        except processutils.ProcessExecutionError as e:
+            msg = (_('Failed to set permissions for the consistency group '
+                     '%(cgname)s. '
+                     'Error: %(excmsg)s.') %
+                   {'cgname': cgname, 'excmsg': six.text_type(e)})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        model_update = {'status': 'available'}
+        return model_update
+
+    def delete_consistencygroup(self, context, group):
+        """Delete consistency group of GPFS volumes."""
+        cgname = "consisgroup-%s" % group['id']
+        fsdev = self._gpfs_device
+
+        model_update = {}
+        model_update['status'] = group['status']
+        volumes = self.db.volume_get_all_by_group(context, group['id'])
+
+        # Unlink and delete the fileset associated with the consistency group.
+        # All of the volumes and volume snapshot data will also be deleted.
+        try:
+            self._execute('mmunlinkfileset', fsdev, cgname, '-f',
+                          run_as_root=True)
+        except processutils.ProcessExecutionError as e:
+            msg = (_('Failed to unlink fileset for consistency group '
+                     '%(cgname)s. Error: %(excmsg)s.') %
+                   {'cgname': cgname, 'excmsg': six.text_type(e)})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        try:
+            self._execute('mmdelfileset', fsdev, cgname, '-f',
+                          run_as_root=True)
+        except processutils.ProcessExecutionError as e:
+            msg = (_('Failed to delete fileset for consistency group '
+                     '%(cgname)s. Error: %(excmsg)s.') %
+                   {'cgname': cgname, 'excmsg': six.text_type(e)})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        for volume_ref in volumes:
+            volume_ref['status'] = 'deleted'
+
+        model_update = {'status': group['status']}
+
+        return model_update, volumes
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Create snapshot of a consistency group of GPFS volumes."""
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+            context, cgsnapshot['id'])
+
+        for snapshot in snapshots:
+            self.create_snapshot(snapshot)
+            snapshot['status'] = 'available'
+
+        model_update = {'status': 'available'}
+
+        return model_update, snapshots
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Delete snapshot of a consistency group of GPFS volumes."""
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+            context, cgsnapshot['id'])
+
+        for snapshot in snapshots:
+            self.delete_snapshot(snapshot)
+            snapshot['status'] = 'deleted'
+
+        model_update = {'status': cgsnapshot['status']}
+
+        return model_update, snapshots
