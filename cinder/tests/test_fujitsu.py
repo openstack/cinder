@@ -23,9 +23,9 @@ from cinder import exception
 from cinder.i18n import _LW
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.volume.drivers.fujitsu_eternus_dx_common import FJDXCommon
-from cinder.volume.drivers.fujitsu_eternus_dx_fc import FJDXFCDriver
-from cinder.volume.drivers.fujitsu_eternus_dx_iscsi import FJDXISCSIDriver
+import cinder.volume.drivers.fujitsu.eternus_dx_common as eternus_dx_common
+import cinder.volume.drivers.fujitsu.eternus_dx_fc as eternus_dx_fc
+import cinder.volume.drivers.fujitsu.eternus_dx_iscsi as eternus_dx_iscsi
 
 CONFIG_FILE_NAME = 'cinder_fujitsu_eternus_dx.xml'
 STORAGE_SYSTEM = '172.16.0.2'
@@ -653,15 +653,15 @@ class FJFCDriverTestCase(test.TestCase):
         #  replace some configuration function with fake
         # self.stubs.Set(self.driver.configuration, 'safe_get',
         #                self.fake_configuration_safe_get)
-        self.stubs.Set(FJDXCommon, '_get_ecom_connection',
+        self.stubs.Set(eternus_dx_common.FJDXCommon, '_get_ecom_connection',
                        self.fake_ecom_connection)
 
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(FJDXCommon, '_getinstancename',
+        self.stubs.Set(eternus_dx_common.FJDXCommon, '_getinstancename',
                        instancename.fake_getinstancename)
 
         # set fc driver to self.driver
-        driver = FJDXFCDriver(configuration=self.configuration)
+        driver = eternus_dx_fc.FJDXFCDriver(configuration=self.configuration)
         driver.db = FakeDB()
         self.driver = driver
 
@@ -735,18 +735,19 @@ class FJISCSIDriverTestCase(test.TestCase):
         # self.stubs.Set(self.driver.configuration, 'safe_get',
         #                self.fake_configuration_safe_get)
 
-        self.stubs.Set(FJDXISCSIDriver, '_do_iscsi_discovery',
+        self.stubs.Set(eternus_dx_iscsi.FJDXISCSIDriver, '_do_iscsi_discovery',
                        self.fake_do_iscsi_discovery)
 
-        self.stubs.Set(FJDXCommon, '_get_ecom_connection',
+        self.stubs.Set(eternus_dx_common.FJDXCommon, '_get_ecom_connection',
                        self.fake_ecom_connection)
 
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(FJDXCommon, '_getinstancename',
+        self.stubs.Set(eternus_dx_common.FJDXCommon, '_getinstancename',
                        instancename.fake_getinstancename)
 
         # set iscsi driver to self.driver
-        driver = FJDXISCSIDriver(configuration=self.configuration)
+        driver = (
+            eternus_dx_iscsi.FJDXISCSIDriver(configuration=self.configuration))
         driver.db = FakeDB()
         self.driver = driver
 

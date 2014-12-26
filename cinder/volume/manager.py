@@ -107,7 +107,11 @@ MAPPING = {
     'cinder.volume.drivers.huawei.huawei_hvs.HuaweiHVSISCSIDriver':
     'cinder.volume.drivers.huawei.huawei_18000.Huawei18000ISCSIDriver',
     'cinder.volume.drivers.huawei.huawei_hvs.HuaweiHVSFCDriver':
-    'cinder.volume.drivers.huawei.huawei_18000.Huawei18000FCDriver', }
+    'cinder.volume.drivers.huawei.huawei_18000.Huawei18000FCDriver',
+    'cinder.volume.drivers.fujitsu_eternus_dx_fc.FJDXFCDriver':
+    'cinder.volume.drivers.fujitsu.eternus_dx_fc.FJDXFCDriver',
+    'cinder.volume.drivers.fujitsu_eternus_dx_iscsi.FJDXISCSIDriver':
+    'cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver', }
 
 
 def locked_volume_operation(f):
