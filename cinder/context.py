@@ -20,9 +20,9 @@
 import copy
 
 from oslo.utils import timeutils
+from oslo_context import context
 
 from cinder.i18n import _
-from cinder.openstack.common import context
 from cinder.openstack.common import local
 from cinder.openstack.common import log as logging
 from cinder import policy
@@ -66,10 +66,6 @@ class RequestContext(context.RequestContext):
                                              request_id=request_id)
         self.roles = roles or []
         self.project_name = project_name
-        if self.is_admin is None:
-            self.is_admin = policy.check_is_admin(self.roles)
-        elif self.is_admin and 'admin' not in self.roles:
-            self.roles.append('admin')
         self.read_deleted = read_deleted
         self.remote_address = remote_address
         if not timestamp:
@@ -89,6 +85,14 @@ class RequestContext(context.RequestContext):
         else:
             # if list is empty or none
             self.service_catalog = []
+
+        # We need to have RequestContext attributes defined
+        # when policy.check_is_admin invokes request logging
+        # to make it loggable.
+        if self.is_admin is None:
+            self.is_admin = policy.check_is_admin(self.roles)
+        elif self.is_admin and 'admin' not in self.roles:
+            self.roles.append('admin')
 
     def _get_read_deleted(self):
         return self._read_deleted
