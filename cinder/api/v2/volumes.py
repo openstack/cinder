@@ -230,8 +230,11 @@ class VolumeController(wsgi.Controller):
             filters['display_name'] = filters['name']
             del filters['name']
 
-        if 'metadata' in filters:
-            filters['metadata'] = ast.literal_eval(filters['metadata'])
+        for k, v in filters.iteritems():
+            try:
+                filters[k] = ast.literal_eval(v)
+            except ValueError:
+                LOG.debug('Could not evaluate value %s, assuming string', v)
 
         volumes = self.volume_api.get_all(context, marker, limit, sort_key,
                                           sort_dir, filters,
