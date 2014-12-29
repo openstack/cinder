@@ -13,16 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os.path
-
-import mox
+import mock
 
 from cinder import context
 from cinder.db.sqlalchemy import api
 import cinder.exception
-from cinder.image import image_utils
 import cinder.test
-from cinder.volume.driver import ISCSIDriver
 from cinder.volume.drivers.block_device import BlockDeviceDriver
 from cinder.volume import utils as volutils
 
@@ -30,213 +26,235 @@ from cinder.volume import utils as volutils
 class TestBlockDeviceDriver(cinder.test.TestCase):
     def setUp(self):
         super(TestBlockDeviceDriver, self).setUp()
-        self.configuration = mox.MockAnything()
+        self.configuration = mock.MagicMock()
         self.configuration.available_devices = ['/dev/loop1', '/dev/loop2']
         self.host = 'localhost'
         self.configuration.iscsi_port = 3260
+        self.configuration.volume_dd_blocksize = 1234
         self.drv = BlockDeviceDriver(configuration=self.configuration,
                                      host='localhost')
 
     def test_initialize_connection(self):
         TEST_VOLUME1 = {'host': 'localhost1',
-                        'provider_location': '1 2 3 /dev/loop1',
-                        }
+                        'provider_location': '1 2 3 /dev/loop1'}
         TEST_CONNECTOR = {'host': 'localhost1'}
-        self.mox.StubOutWithMock(self.drv, 'local_path')
-        self.drv.local_path(TEST_VOLUME1).AndReturn('/dev/loop1')
-        self.mox.ReplayAll()
-        data = self.drv.initialize_connection(TEST_VOLUME1, TEST_CONNECTOR)
-        self.assertEqual(data, {
-            'driver_volume_type': 'local',
-            'data': {'device_path': '/dev/loop1'}
-        })
 
-    def test_initialize_connection_different_hosts(self):
+        with mock.patch.object(self.drv, 'local_path',
+                               return_value='/dev/loop1') as lp_mocked:
+            data = self.drv.initialize_connection(TEST_VOLUME1, TEST_CONNECTOR)
+
+            lp_mocked.assert_called_once_with(TEST_VOLUME1)
+            self.assertEqual(data, {
+                'driver_volume_type': 'local',
+                'data': {'device_path': '/dev/loop1'}})
+
+    @mock.patch('cinder.volume.driver.ISCSIDriver.initialize_connection')
+    def test_initialize_connection_different_hosts(self, _init_conn):
         TEST_CONNECTOR = {'host': 'localhost1'}
         TEST_VOLUME2 = {'host': 'localhost2',
-                        'provider_location': '1 2 3 /dev/loop2',
-                        }
-        self.mox.StubOutWithMock(ISCSIDriver, 'initialize_connection')
-        ISCSIDriver.initialize_connection(TEST_VOLUME2,
-                                          TEST_CONNECTOR).AndReturn('data')
-        self.mox.ReplayAll()
+                        'provider_location': '1 2 3 /dev/loop2'}
+        _init_conn.return_value = 'data'
+
         data = self.drv.initialize_connection(TEST_VOLUME2, TEST_CONNECTOR)
-        self.assertEqual(data, 'data')
 
-    def test_delete_not_volume_provider_location(self):
+        _init_conn.assert_called_once_with(TEST_VOLUME2, TEST_CONNECTOR)
+        self.assertEqual('data', data)
+
+    @mock.patch('cinder.volume.drivers.block_device.BlockDeviceDriver.'
+                'local_path', return_value=None)
+    @mock.patch('cinder.volume.utils.clear_volume')
+    def test_delete_not_volume_provider_location(self, _clear_volume,
+                                                 _local_path):
         TEST_VOLUME2 = {'provider_location': None}
-        self.mox.StubOutWithMock(self.drv, 'local_path')
-        self.drv.local_path(TEST_VOLUME2).AndReturn(None)
-        self.mox.StubOutWithMock(volutils, 'clear_volume')
-        self.mox.ReplayAll()
         self.drv.delete_volume(TEST_VOLUME2)
+        _local_path.assert_called_once_with(TEST_VOLUME2)
 
-    def test_delete_volume_path_exist(self):
+    @mock.patch('os.path.exists', return_value=True)
+    @mock.patch('cinder.volume.utils.clear_volume')
+    def test_delete_volume_path_exist(self, _clear_volume, _exists):
         TEST_VOLUME1 = {'provider_location': '1 2 3 /dev/loop1'}
-        self.mox.StubOutWithMock(self.drv, 'local_path')
-        path = self.drv.local_path(TEST_VOLUME1).AndReturn('/dev/loop1')
-        self.mox.StubOutWithMock(os.path, 'exists')
-        os.path.exists(path).AndReturn(True)
-        self.mox.StubOutWithMock(volutils, 'clear_volume')
-        self.mox.StubOutWithMock(self.drv, '_get_device_size')
-        size = self.drv._get_device_size(path).AndReturn(1024)
-        volutils.clear_volume(size, path,
-                              volume_clear=mox.IgnoreArg(),
-                              volume_clear_size=mox.IgnoreArg())
-        self.mox.ReplayAll()
-        self.drv.delete_volume(TEST_VOLUME1)
+
+        with mock.patch.object(self.drv, 'local_path',
+                               return_value='/dev/loop1') as lp_mocked:
+            with mock.patch.object(self.drv, '_get_device_size',
+                                   return_value=1024) as gds_mocked:
+                volutils.clear_volume(gds_mocked, lp_mocked)
+
+                self.drv.delete_volume(TEST_VOLUME1)
+
+                lp_mocked.assert_called_once_with(TEST_VOLUME1)
+                gds_mocked.assert_called_once_with('/dev/loop1')
+
+        _exists.assert_called_anytime()
+        _clear_volume.assert_called_anytime()
 
     def test_delete_path_is_not_in_list_of_available_devices(self):
         TEST_VOLUME2 = {'provider_location': '1 2 3 /dev/loop0'}
-        self.mox.StubOutWithMock(self.drv, 'local_path')
-        self.drv.local_path(TEST_VOLUME2).AndReturn('/dev/loop0')
-        self.mox.StubOutWithMock(volutils, 'clear_volume')
-        self.mox.ReplayAll()
-        self.drv.delete_volume(TEST_VOLUME2)
+        with mock.patch.object(self.drv, 'local_path',
+                               return_value='/dev/loop0') as lp_mocked:
+            self.drv.delete_volume(TEST_VOLUME2)
+            lp_mocked.assert_called_once_with(TEST_VOLUME2)
 
     def test_create_volume(self):
         TEST_VOLUME = {'size': 1,
                        'name': 'vol1'}
-        self.mox.StubOutWithMock(self.drv, 'find_appropriate_size_device')
-        self.drv.find_appropriate_size_device(TEST_VOLUME['size']) \
-            .AndReturn('dev_path')
-        self.mox.ReplayAll()
-        result = self.drv.create_volume(TEST_VOLUME)
-        self.assertEqual(result, {
-            'provider_location': 'dev_path'})
+
+        with mock.patch.object(self.drv, 'find_appropriate_size_device',
+                               return_value='dev_path') as fasd_mocked:
+            result = self.drv.create_volume(TEST_VOLUME)
+            self.assertEqual(result, {
+                'provider_location': 'dev_path'})
+            fasd_mocked.assert_called_once_with(TEST_VOLUME['size'])
 
     def test_update_volume_stats(self):
-        self.mox.StubOutWithMock(self.drv, '_devices_sizes')
-        self.drv._devices_sizes().AndReturn({'/dev/loop1': 1024,
-                                             '/dev/loop2': 1024})
-        self.mox.StubOutWithMock(self.drv, '_get_used_devices')
-        self.drv._get_used_devices().AndReturn(set())
-        self.mox.StubOutWithMock(self.configuration, 'safe_get')
-        self.configuration.safe_get('volume_backend_name'). \
-            AndReturn('BlockDeviceDriver')
-        self.mox.ReplayAll()
-        self.drv._update_volume_stats()
-        self.assertEqual(self.drv._stats,
-                         {'total_capacity_gb': 2,
-                          'free_capacity_gb': 2,
-                          'reserved_percentage':
-                          self.configuration.reserved_percentage,
-                          'QoS_support': False,
-                          'vendor_name': "Open Source",
-                          'driver_version': self.drv.VERSION,
-                          'storage_protocol': 'unknown',
-                          'volume_backend_name': 'BlockDeviceDriver',
-                          })
+        self.configuration.safe_get.return_value = 'BlockDeviceDriver'
 
-    def test_create_cloned_volume(self):
+        with mock.patch.object(self.drv, '_devices_sizes',
+                               return_value={'/dev/loop1': 1024,
+                                             '/dev/loop2': 1024}) as \
+                ds_mocked:
+            with mock.patch.object(self.drv, '_get_used_devices') as \
+                    gud_mocked:
+                self.drv._update_volume_stats()
+
+                self.assertEqual(self.drv._stats,
+                                 {'total_capacity_gb': 2,
+                                  'free_capacity_gb': 2,
+                                  'reserved_percentage':
+                                  self.configuration.reserved_percentage,
+                                  'QoS_support': False,
+                                  'vendor_name': "Open Source",
+                                  'driver_version': self.drv.VERSION,
+                                  'storage_protocol': 'unknown',
+                                  'volume_backend_name': 'BlockDeviceDriver',
+                                  })
+                gud_mocked.assert_called_once_with()
+                ds_mocked.assert_called_once_with()
+
+    @mock.patch('cinder.volume.utils.copy_volume')
+    def test_create_cloned_volume(self, _copy_volume):
         TEST_SRC = {'id': '1',
                     'size': 1,
                     'provider_location': '1 2 3 /dev/loop1'}
         TEST_VOLUME = {}
-        self.mox.StubOutWithMock(self.drv, 'find_appropriate_size_device')
-        dev = self.drv.find_appropriate_size_device(TEST_SRC['size']).\
-            AndReturn('/dev/loop2')
-        self.mox.StubOutWithMock(volutils, 'copy_volume')
-        self.mox.StubOutWithMock(self.drv, 'local_path')
-        self.mox.StubOutWithMock(self.drv, '_get_device_size')
-        self.drv.local_path(TEST_SRC).AndReturn('/dev/loop1')
-        self.drv._get_device_size('/dev/loop2').AndReturn(1)
-        volutils.copy_volume('/dev/loop1', dev, 2048, mox.IgnoreArg(),
-                             execute=self.drv._execute)
-        self.mox.ReplayAll()
-        self.assertEqual(self.drv.create_cloned_volume(TEST_VOLUME, TEST_SRC),
-                         {'provider_location': '/dev/loop2'})
 
-    def test_copy_image_to_volume(self):
+        with mock.patch.object(self.drv, 'find_appropriate_size_device',
+                               return_value='/dev/loop2') as fasd_mocked:
+            with mock.patch.object(self.drv, '_get_device_size',
+                                   return_value=1) as gds_mocked:
+                with mock.patch.object(self.drv, 'local_path',
+                                       return_value='/dev/loop1') as \
+                        lp_mocked:
+                    volutils.copy_volume('/dev/loop1', fasd_mocked, 2048,
+                                         mock.sentinel,
+                                         execute=self.drv._execute)
+
+                    self.assertEqual(self.drv.create_cloned_volume(
+                                     TEST_VOLUME, TEST_SRC),
+                                     {'provider_location': '/dev/loop2'})
+                    fasd_mocked.assert_called_once_with(TEST_SRC['size'])
+                    lp_mocked.assert_called_once_with(TEST_SRC)
+                    gds_mocked.assert_called_once_with('/dev/loop2')
+
+    @mock.patch.object(cinder.image.image_utils, 'fetch_to_raw')
+    def test_copy_image_to_volume(self, _fetch_to_raw):
         TEST_VOLUME = {'provider_location': '1 2 3 /dev/loop1', 'size': 1}
         TEST_IMAGE_SERVICE = "image_service"
         TEST_IMAGE_ID = "image_id"
-        self.mox.StubOutWithMock(image_utils, 'fetch_to_raw')
-        self.mox.StubOutWithMock(self.drv, 'local_path')
-        self.drv.local_path(TEST_VOLUME).AndReturn('/dev/loop1')
-        image_utils.fetch_to_raw(context, TEST_IMAGE_SERVICE,
-                                 TEST_IMAGE_ID, '/dev/loop1', mox.IgnoreArg(),
-                                 size=1)
-        self.mox.ReplayAll()
-        self.drv.copy_image_to_volume(context, TEST_VOLUME, TEST_IMAGE_SERVICE,
-                                      TEST_IMAGE_ID)
+
+        with mock.patch.object(self.drv, 'local_path',
+                               return_value='/dev/loop1') as lp_mocked:
+            self.drv.copy_image_to_volume(context, TEST_VOLUME,
+                                          TEST_IMAGE_SERVICE, TEST_IMAGE_ID)
+            lp_mocked.assert_called_once_with(TEST_VOLUME)
+
+        _fetch_to_raw.assert_called_once_with(context, TEST_IMAGE_SERVICE,
+                                              TEST_IMAGE_ID, '/dev/loop1',
+                                              1234, size=1)
 
     def test_copy_volume_to_image(self):
         TEST_VOLUME = {'provider_location': '1 2 3 /dev/loop1'}
         TEST_IMAGE_SERVICE = "image_service"
         TEST_IMAGE_META = "image_meta"
-        self.mox.StubOutWithMock(image_utils, 'upload_volume')
-        self.mox.StubOutWithMock(self.drv, 'local_path')
-        self.drv.local_path(TEST_VOLUME).AndReturn('/dev/loop1')
-        image_utils.upload_volume(context, TEST_IMAGE_SERVICE,
-                                  TEST_IMAGE_META, '/dev/loop1')
-        self.mox.ReplayAll()
-        self.drv.copy_volume_to_image(context, TEST_VOLUME, TEST_IMAGE_SERVICE,
-                                      TEST_IMAGE_META)
+
+        with mock.patch.object(cinder.image.image_utils, 'upload_volume') as \
+                _upload_volume:
+            with mock.patch.object(self.drv, 'local_path') as _local_path:
+                _local_path.return_value = '/dev/loop1'
+                self.drv.copy_volume_to_image(context, TEST_VOLUME,
+                                              TEST_IMAGE_SERVICE,
+                                              TEST_IMAGE_META)
+
+                _local_path.assert_called()
+                _upload_volume.assert_called_once_with(context,
+                                                       TEST_IMAGE_SERVICE,
+                                                       TEST_IMAGE_META,
+                                                       '/dev/loop1')
 
     def test_get_used_devices(self):
         TEST_VOLUME1 = {'host': 'localhost',
                         'provider_location': '1 2 3 /dev/loop1'}
         TEST_VOLUME2 = {'host': 'localhost',
                         'provider_location': '1 2 3 /dev/loop2'}
-        self.mox.StubOutWithMock(api, 'volume_get_all_by_host')
-        self.mox.StubOutWithMock(context, 'get_admin_context')
-        context.get_admin_context()
-        api.volume_get_all_by_host(None, self.host) \
-            .AndReturn([TEST_VOLUME1, TEST_VOLUME2])
-        self.mox.StubOutWithMock(self.drv, 'local_path')
-        path1 = self.drv.local_path(TEST_VOLUME1).AndReturn('/dev/loop1')
-        path2 = self.drv.local_path(TEST_VOLUME2).AndReturn('/dev/loop2')
-        self.mox.ReplayAll()
-        self.assertEqual(self.drv._get_used_devices(), set([path1, path2]))
+
+        def fake_local_path(vol):
+            return vol['provider_location'].split()[-1]
+
+        with mock.patch.object(api, 'volume_get_all_by_host',
+                               return_value=[TEST_VOLUME1, TEST_VOLUME2]):
+            with mock.patch.object(context, 'get_admin_context'):
+                with mock.patch.object(self.drv, 'local_path',
+                                       return_value=fake_local_path):
+                    path1 = self.drv.local_path(TEST_VOLUME1)
+                    path2 = self.drv.local_path(TEST_VOLUME2)
+                    self.assertEqual(self.drv._get_used_devices(),
+                                     set([path1, path2]))
 
     def test_get_device_size(self):
         dev_path = '/dev/loop1'
-        self.mox.StubOutWithMock(self.drv, '_execute')
         out = '2048'
-        self.drv._execute('blockdev', '--getsz', dev_path,
-                          run_as_root=True).AndReturn((out, None))
-        self.mox.ReplayAll()
-        self.assertEqual(self.drv._get_device_size(dev_path), 1)
+        with mock.patch.object(self.drv,
+                               '_execute',
+                               return_value=(out, None)) as _execute:
+            self.assertEqual(self.drv._get_device_size(dev_path), 1)
+            _execute.assert_called_once_with('blockdev', '--getsz', dev_path,
+                                             run_as_root=True)
 
     def test_devices_sizes(self):
-        self.mox.StubOutWithMock(self.drv, '_get_device_size')
-        for dev in self.configuration.available_devices:
-            self.drv._get_device_size(dev).AndReturn(1)
-        self.mox.ReplayAll()
-        self.assertEqual(self.drv._devices_sizes(),
-                         {'/dev/loop1': 1, '/dev/loop2': 1})
+        with mock.patch.object(self.drv, '_get_device_size') as _get_dvc_size:
+            _get_dvc_size.return_value = 1
+            self.assertEqual(self.drv._devices_sizes(),
+                             {'/dev/loop1': 1, '/dev/loop2': 1})
 
     def test_find_appropriate_size_device_no_free_disks(self):
         size = 1
-        self.mox.StubOutWithMock(self.drv, '_devices_sizes')
-        self.drv._devices_sizes().AndReturn({'/dev/loop1': 1024,
-                                             '/dev/loop2': 1024})
-        self.mox.StubOutWithMock(self.drv, '_get_used_devices')
-        self.drv._get_used_devices().AndReturn(set(['/dev/loop1',
-                                                    '/dev/loop2']))
-        self.mox.ReplayAll()
-        self.assertRaises(cinder.exception.CinderException,
-                          self.drv.find_appropriate_size_device, size)
+        with mock.patch.object(self.drv, '_devices_sizes') as _dvc_sizes:
+            with mock.patch.object(self.drv, '_get_used_devices') as \
+                    _get_used_dvc:
+                _dvc_sizes.return_value = {'/dev/loop1': 1024,
+                                           '/dev/loop2': 1024}
+                _get_used_dvc.return_value = set(['/dev/loop1', '/dev/loop2'])
+                self.assertRaises(cinder.exception.CinderException,
+                                  self.drv.find_appropriate_size_device, size)
 
     def test_find_appropriate_size_device_not_big_enough_disk(self):
         size = 2
-        self.mox.StubOutWithMock(self.drv, '_devices_sizes')
-        self.drv._devices_sizes().AndReturn({'/dev/loop1': 1024,
-                                             '/dev/loop2': 1024})
-        self.mox.StubOutWithMock(self.drv, '_get_used_devices')
-        self.drv._get_used_devices().AndReturn(set(['/dev/loop1']))
-        self.mox.ReplayAll()
-        self.assertRaises(cinder.exception.CinderException,
-                          self.drv.find_appropriate_size_device, size)
+        with mock.patch.object(self.drv, '_devices_sizes') as _dvc_sizes:
+            with mock.patch.object(self.drv, '_get_used_devices') as \
+                    _get_used_dvc:
+                _dvc_sizes.return_value = {'/dev/loop1': 1024,
+                                           '/dev/loop2': 1024}
+                _get_used_dvc.return_value = set(['/dev/loop1'])
+                self.assertRaises(cinder.exception.CinderException,
+                                  self.drv.find_appropriate_size_device, size)
 
     def test_find_appropriate_size_device(self):
         size = 1
-        self.mox.StubOutWithMock(self.drv, '_devices_sizes')
-        self.drv._devices_sizes().AndReturn({'/dev/loop1': 2048,
-                                             '/dev/loop2': 1024})
-        self.mox.StubOutWithMock(self.drv, '_get_used_devices')
-        self.drv._get_used_devices().AndReturn(set())
-        self.mox.ReplayAll()
-        self.assertEqual(self.drv.find_appropriate_size_device(size),
-                         '/dev/loop2')
+        with mock.patch.object(self.drv, '_devices_sizes') as _dvc_sizes:
+            with mock.patch.object(self.drv, '_get_used_devices') as \
+                    _get_used_dvc:
+                _dvc_sizes.return_value = {'/dev/loop1': 2048,
+                                           '/dev/loop2': 1024}
+                _get_used_dvc.return_value = set()
+                self.assertEqual(self.drv.find_appropriate_size_device(size),
+                                 '/dev/loop2')
