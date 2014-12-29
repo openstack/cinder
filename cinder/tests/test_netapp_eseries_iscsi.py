@@ -638,6 +638,7 @@ class NetAppEseriesIscsiDriverTestCase(test.TestCase):
         self._custom_setup()
 
     def _custom_setup(self):
+        self.mock_object(na_utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         self.driver = common.NetAppDriver(configuration=configuration)
         self.mock_object(requests, 'Session', FakeEseriesHTTPSession)
