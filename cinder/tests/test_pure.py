@@ -49,7 +49,11 @@ VOLUME = {"name": "volume-" + VOLUME_ID,
           "host": "irrelevant",
           "volume_type": None,
           "volume_type_id": None,
+          "consistencygroup_id": None
           }
+VOLUME_WITH_CGROUP = VOLUME.copy()
+VOLUME_WITH_CGROUP['consistencygroup_id'] = \
+    "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
 SRC_VOL_ID = "dc7a294d-5964-4379-a15f-ce5554734efc"
 SRC_VOL = {"name": "volume-" + SRC_VOL_ID,
            "id": SRC_VOL_ID,
@@ -58,6 +62,7 @@ SRC_VOL = {"name": "volume-" + SRC_VOL_ID,
            "host": "irrelevant",
            "volume_type": None,
            "volume_type_id": None,
+           "consistencygroup_id": None
            }
 SNAPSHOT_ID = "04fe2f9a-d0c4-4564-a30d-693cc3657b47"
 SNAPSHOT = {"name": "snapshot-" + SNAPSHOT_ID,
@@ -66,7 +71,11 @@ SNAPSHOT = {"name": "snapshot-" + SNAPSHOT_ID,
             "volume_name": "volume-" + SRC_VOL_ID,
             "volume_size": 2,
             "display_name": "fake_snapshot",
+            "cgsnapshot_id": None
             }
+SNAPSHOT_WITH_CGROUP = SNAPSHOT.copy()
+SNAPSHOT_WITH_CGROUP['cgsnapshot_id'] = \
+    "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
 INITIATOR_IQN = "iqn.1993-08.org.debian:01:222"
 CONNECTOR = {"initiator": INITIATOR_IQN, "host": HOSTNAME}
 TARGET_IQN = "iqn.2010-06.com.purestorage:flasharray.12345abc"
@@ -155,9 +164,22 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.assert_error_propagates([self.array.create_volume],
                                      self.driver.create_volume, VOLUME)
 
+    @mock.patch(DRIVER_OBJ + "._add_volume_to_consistency_group",
+                autospec=True)
+    def test_create_volume_with_cgroup(self, mock_add_to_cgroup):
+        vol_name = VOLUME_WITH_CGROUP["name"] + "-cinder"
+
+        self.driver.create_volume(VOLUME_WITH_CGROUP)
+
+        mock_add_to_cgroup\
+            .assert_called_with(self.driver,
+                                VOLUME_WITH_CGROUP['consistencygroup_id'],
+                                vol_name)
+
     def test_create_volume_from_snapshot(self):
         vol_name = VOLUME["name"] + "-cinder"
         snap_name = SNAPSHOT["volume_name"] + "-cinder." + SNAPSHOT["name"]
+
         # Branch where extend unneeded
         self.driver.create_volume_from_snapshot(VOLUME, SNAPSHOT)
         self.array.copy_volume.assert_called_with(snap_name, vol_name)
@@ -166,6 +188,7 @@ class PureISCSIDriverTestCase(test.TestCase):
             [self.array.copy_volume],
             self.driver.create_volume_from_snapshot, VOLUME, SNAPSHOT)
         self.assertFalse(self.array.extend_volume.called)
+
         # Branch where extend needed
         SNAPSHOT["volume_size"] = 1  # resize so smaller than VOLUME
         self.driver.create_volume_from_snapshot(VOLUME, SNAPSHOT)
@@ -176,6 +199,33 @@ class PureISCSIDriverTestCase(test.TestCase):
             [self.array.copy_volume, self.array.extend_volume],
             self.driver.create_volume_from_snapshot, VOLUME, SNAPSHOT)
         SNAPSHOT["volume_size"] = 2  # reset size
+
+    @mock.patch(DRIVER_OBJ + "._add_volume_to_consistency_group",
+                autospec=True)
+    @mock.patch(DRIVER_OBJ + "._extend_if_needed", autospec=True)
+    @mock.patch(DRIVER_PATH + "._get_pgroup_vol_snap_name", autospec=True)
+    def test_create_volume_from_cgsnapshot(self, mock_get_snap_name,
+                                           mock_extend_if_needed,
+                                           mock_add_to_cgroup):
+        vol_name = VOLUME_WITH_CGROUP["name"] + "-cinder"
+        snap_name = "consisgroup-4a2f7e3a-312a-40c5-96a8-536b8a0f" \
+                    "e074-cinder.4a2f7e3a-312a-40c5-96a8-536b8a0fe075."\
+                    + vol_name
+        mock_get_snap_name.return_value = snap_name
+
+        self.driver.create_volume_from_snapshot(VOLUME_WITH_CGROUP,
+                                                SNAPSHOT_WITH_CGROUP)
+
+        self.array.copy_volume.assert_called_with(snap_name, vol_name)
+        self.assertTrue(mock_get_snap_name.called)
+        self.assertTrue(mock_extend_if_needed.called)
+
+        self.driver.create_volume_from_snapshot(VOLUME_WITH_CGROUP,
+                                                SNAPSHOT_WITH_CGROUP)
+        mock_add_to_cgroup\
+            .assert_called_with(self.driver,
+                                VOLUME_WITH_CGROUP['consistencygroup_id'],
+                                vol_name)
 
     def test_create_cloned_volume(self):
         vol_name = VOLUME["name"] + "-cinder"
@@ -198,6 +248,18 @@ class PureISCSIDriverTestCase(test.TestCase):
             [self.array.copy_volume, self.array.extend_volume],
             self.driver.create_cloned_volume, VOLUME, SRC_VOL)
         SRC_VOL["size"] = 2  # reset size
+
+    @mock.patch(DRIVER_OBJ + "._add_volume_to_consistency_group",
+                autospec=True)
+    def test_create_cloned_volume_with_cgroup(self, mock_add_to_cgroup):
+        vol_name = VOLUME_WITH_CGROUP["name"] + "-cinder"
+
+        self.driver.create_cloned_volume(VOLUME_WITH_CGROUP, SRC_VOL)
+
+        mock_add_to_cgroup\
+            .assert_called_with(self.driver,
+                                VOLUME_WITH_CGROUP['consistencygroup_id'],
+                                vol_name)
 
     def test_delete_volume_already_deleted(self):
         self.array.list_volume_hosts.side_effect = exception.PureAPIException(
@@ -468,6 +530,7 @@ class PureISCSIDriverTestCase(test.TestCase):
                   "total_capacity_gb": TOTAL_SPACE,
                   "free_capacity_gb": FREE_SPACE,
                   "reserved_percentage": 0,
+                  "consistencygroup_support": True
                   }
         real_result = self.driver.get_volume_stats(refresh=True)
         self.assertDictMatch(result, real_result)
@@ -479,6 +542,210 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.array.extend_volume.assert_called_with(vol_name, 3 * units.Gi)
         self.assert_error_propagates([self.array.extend_volume],
                                      self.driver.extend_volume, VOLUME, 3)
+
+    def test_get_pgroup_name_from_id(self):
+        id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
+        expected_name = "consisgroup-%s-cinder" % id
+        actual_name = pure._get_pgroup_name_from_id(id)
+        self.assertEqual(expected_name, actual_name)
+
+    def test_get_pgroup_snap_suffix(self):
+        cgsnap = mock.Mock()
+        cgsnap.id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
+        expected_suffix = "cgsnapshot-%s-cinder" % cgsnap.id
+        actual_suffix = pure._get_pgroup_snap_suffix(cgsnap)
+        self.assertEqual(expected_suffix, actual_suffix)
+
+    def test_get_pgroup_snap_name(self):
+        cg_id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
+        cgsnap_id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
+
+        mock_cgsnap = mock.Mock()
+        mock_cgsnap.consistencygroup_id = cg_id
+        mock_cgsnap.id = cgsnap_id
+        expected_name = "consisgroup-%(cg)s-cinder.cgsnapshot-%(snap)s-cinder"\
+                        % {"cg": cg_id, "snap": cgsnap_id}
+
+        actual_name = pure._get_pgroup_snap_name(mock_cgsnap)
+
+        self.assertEqual(expected_name, actual_name)
+
+    def test_get_pgroup_vol_snap_name(self):
+        cg_id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
+        cgsnap_id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
+        volume_name = "volume-4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
+
+        mock_snap = mock.Mock()
+        mock_snap.cgsnapshot = mock.Mock()
+        mock_snap.cgsnapshot.consistencygroup_id = cg_id
+        mock_snap.cgsnapshot.id = cgsnap_id
+        mock_snap.volume_name = volume_name
+
+        expected_name = "consisgroup-%(cg)s-cinder.cgsnapshot-%(snap)s-cinder"\
+                        ".%(vol)s-cinder" % {"cg": cg_id,
+                                             "snap": cgsnap_id,
+                                             "vol": volume_name}
+
+        actual_name = pure._get_pgroup_vol_snap_name(mock_snap)
+
+        self.assertEqual(expected_name, actual_name)
+
+    def test_create_consistencygroup(self):
+        mock_cgroup = mock.Mock()
+        mock_cgroup.id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
+
+        model_update = self.driver.create_consistencygroup(None, mock_cgroup)
+
+        expected_name = pure._get_pgroup_name_from_id(mock_cgroup.id)
+        self.array.create_pgroup.assert_called_with(expected_name)
+        self.assertEqual({'status': 'available'}, model_update)
+
+        self.assert_error_propagates(
+            [self.array.create_pgroup],
+            self.driver.create_consistencygroup, None, mock_cgroup)
+
+    @mock.patch(DRIVER_OBJ + ".delete_volume", autospec=True)
+    def test_delete_consistencygroup(self, mock_delete_volume):
+        mock_cgroup = mock.MagicMock()
+        mock_cgroup.id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
+        mock_cgroup['status'] = "deleted"
+        mock_context = mock.Mock()
+        self.driver.db = mock.Mock()
+        mock_volume = mock.MagicMock()
+        expected_volumes = [mock_volume]
+        self.driver.db.volume_get_all_by_group.return_value = expected_volumes
+
+        model_update, volumes = \
+            self.driver.delete_consistencygroup(mock_context, mock_cgroup)
+
+        expected_name = pure._get_pgroup_name_from_id(mock_cgroup.id)
+        self.array.delete_pgroup.assert_called_with(expected_name)
+        self.assertEqual(expected_volumes, volumes)
+        self.assertEqual(mock_cgroup['status'], model_update['status'])
+        mock_delete_volume.assert_called_with(self.driver, mock_volume)
+
+        self.array.delete_pgroup.side_effect = exception.PureAPIException(
+            code=400, reason="Protection group has been destroyed.")
+        self.driver.delete_consistencygroup(mock_context, mock_cgroup)
+        self.array.delete_pgroup.assert_called_with(expected_name)
+        mock_delete_volume.assert_called_with(self.driver, mock_volume)
+
+        self.array.delete_pgroup.side_effect = exception.PureAPIException(
+            code=400, reason="Protection group does not exist")
+        self.driver.delete_consistencygroup(mock_context, mock_cgroup)
+        self.array.delete_pgroup.assert_called_with(expected_name)
+        mock_delete_volume.assert_called_with(self.driver, mock_volume)
+
+        self.array.delete_pgroup.side_effect = exception.PureAPIException(
+            code=400, reason="Some other error")
+        self.assertRaises(exception.PureAPIException,
+                          self.driver.delete_consistencygroup,
+                          mock_context,
+                          mock_volume)
+
+        self.array.delete_pgroup.side_effect = exception.PureAPIException(
+            code=500, reason="Another different error")
+        self.assertRaises(exception.PureAPIException,
+                          self.driver.delete_consistencygroup,
+                          mock_context,
+                          mock_volume)
+
+        self.array.delete_pgroup.side_effect = None
+        self.assert_error_propagates(
+            [self.array.delete_pgroup],
+            self.driver.delete_consistencygroup, mock_context, mock_cgroup)
+
+    def test_create_cgsnapshot(self):
+        mock_cgsnap = mock.Mock()
+        mock_cgsnap.id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
+        mock_cgsnap.consistencygroup_id = \
+            "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
+        mock_context = mock.Mock()
+        self.driver.db = mock.Mock()
+        mock_snap = mock.MagicMock()
+        expected_snaps = [mock_snap]
+        self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = \
+            expected_snaps
+
+        model_update, snapshots = \
+            self.driver.create_cgsnapshot(mock_context, mock_cgsnap)
+
+        expected_pgroup_name = \
+            pure._get_pgroup_name_from_id(mock_cgsnap.consistencygroup_id)
+        expected_snap_suffix = pure._get_pgroup_snap_suffix(mock_cgsnap)
+        self.array.create_pgroup_snapshot\
+            .assert_called_with(expected_pgroup_name, expected_snap_suffix)
+        self.assertEqual({'status': 'available'}, model_update)
+        self.assertEqual(expected_snaps, snapshots)
+        self.assertEqual('available', mock_snap.status)
+
+        self.assert_error_propagates(
+            [self.array.create_pgroup_snapshot],
+            self.driver.create_cgsnapshot, mock_context, mock_cgsnap)
+
+    @mock.patch(DRIVER_PATH + "._get_pgroup_snap_name", autospec=True)
+    def test_delete_cgsnapshot(self, mock_get_snap_name):
+        snap_name = "consisgroup-4a2f7e3a-312a-40c5-96a8-536b8a0f" \
+                    "e074-cinder.4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
+        mock_get_snap_name.return_value = snap_name
+        mock_cgsnap = mock.Mock()
+        mock_cgsnap.status = 'deleted'
+        mock_context = mock.Mock()
+        mock_snap = mock.MagicMock()
+        expected_snaps = [mock_snap]
+        self.driver.db = mock.Mock()
+        self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = \
+            expected_snaps
+
+        model_update, snapshots = \
+            self.driver.delete_cgsnapshot(mock_context, mock_cgsnap)
+
+        self.array.delete_pgroup_snapshot.assert_called_with(snap_name)
+        self.assertEqual({'status': mock_cgsnap.status}, model_update)
+        self.assertEqual(expected_snaps, snapshots)
+        self.assertEqual('deleted', mock_snap.status)
+
+        self.array.delete_pgroup_snapshot.side_effect = \
+            exception.PureAPIException(
+                code=400,
+                reason="Protection group snapshot has been destroyed."
+            )
+        self.driver.delete_cgsnapshot(mock_context, mock_cgsnap)
+        self.array.delete_pgroup_snapshot.assert_called_with(snap_name)
+
+        self.array.delete_pgroup_snapshot.side_effect = \
+            exception.PureAPIException(
+                code=400,
+                reason="Protection group snapshot does not exist"
+            )
+        self.driver.delete_cgsnapshot(mock_context, mock_cgsnap)
+        self.array.delete_pgroup_snapshot.assert_called_with(snap_name)
+
+        self.array.delete_pgroup_snapshot.side_effect = \
+            exception.PureAPIException(
+                code=400,
+                reason="Some other error"
+            )
+        self.assertRaises(exception.PureAPIException,
+                          self.driver.delete_cgsnapshot,
+                          mock_context,
+                          mock_cgsnap)
+
+        self.array.delete_pgroup_snapshot.side_effect = \
+            exception.PureAPIException(
+                code=500,
+                reason="Another different error"
+            )
+        self.assertRaises(exception.PureAPIException,
+                          self.driver.delete_cgsnapshot,
+                          mock_context,
+                          mock_cgsnap)
+
+        self.array.delete_pgroup_snapshot.side_effect = None
+
+        self.assert_error_propagates(
+            [self.array.delete_pgroup_snapshot],
+            self.driver.delete_cgsnapshot, mock_context, mock_cgsnap)
 
 
 class FlashArrayBaseTestCase(test.TestCase):

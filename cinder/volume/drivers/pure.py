@@ -48,6 +48,9 @@ CONF.register_opts(PURE_OPTS)
 INVALID_CHARACTERS = re.compile(r"[^-a-zA-Z0-9]")
 GENERATED_NAME = re.compile(r".*-[a-f0-9]{32}-cinder$")
 
+ERR_MSG_NOT_EXIST = "does not exist"
+ERR_MSG_PENDING_ERADICATION = "has been destroyed"
+
 
 def _get_vol_name(volume):
     """Return the name of the volume Purity will use."""
@@ -57,6 +60,28 @@ def _get_vol_name(volume):
 def _get_snap_name(snapshot):
     """Return the name of the snapshot that Purity will use."""
     return "%s-cinder.%s" % (snapshot["volume_name"], snapshot["name"])
+
+
+def _get_pgroup_name_from_id(id):
+    return "consisgroup-%s-cinder" % id
+
+
+def _get_pgroup_snap_suffix(cgsnapshot):
+    return "cgsnapshot-%s-cinder" % cgsnapshot.id
+
+
+def _get_pgroup_snap_name(cgsnapshot):
+    """Return the name of the pgroup snapshot that Purity will use"""
+    return "%s.%s" % (_get_pgroup_name_from_id(cgsnapshot.consistencygroup_id),
+                      _get_pgroup_snap_suffix(cgsnapshot))
+
+
+def _get_pgroup_vol_snap_name(snapshot):
+    """Return the name of the snapshot that Purity will use for a volume."""
+    cg_name = _get_pgroup_name_from_id(snapshot.cgsnapshot.consistencygroup_id)
+    cgsnapshot_id = _get_pgroup_snap_suffix(snapshot.cgsnapshot)
+    volume_name = snapshot.volume_name
+    return "%s.%s.%s-cinder" % (cg_name, cgsnapshot_id, volume_name)
 
 
 def _generate_purity_host_name(name):
@@ -71,7 +96,7 @@ def _generate_purity_host_name(name):
 class PureISCSIDriver(san.SanISCSIDriver):
     """Performs volume management on Pure Storage FlashArray."""
 
-    VERSION = "2.0.0"
+    VERSION = "2.0.1"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -102,16 +127,31 @@ class PureISCSIDriver(san.SanISCSIDriver):
         vol_name = _get_vol_name(volume)
         vol_size = volume["size"] * units.Gi
         self._array.create_volume(vol_name, vol_size)
+
+        if volume['consistencygroup_id']:
+            self._add_volume_to_consistency_group(
+                volume['consistencygroup_id'],
+                vol_name
+            )
         LOG.debug("Leave PureISCSIDriver.create_volume.")
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
         LOG.debug("Enter PureISCSIDriver.create_volume_from_snapshot.")
         vol_name = _get_vol_name(volume)
-        snap_name = _get_snap_name(snapshot)
+        if snapshot['cgsnapshot_id']:
+            snap_name = _get_pgroup_vol_snap_name(snapshot)
+        else:
+            snap_name = _get_snap_name(snapshot)
+
         self._array.copy_volume(snap_name, vol_name)
         self._extend_if_needed(vol_name, snapshot["volume_size"],
                                volume["size"])
+        if volume['consistencygroup_id']:
+            self._add_volume_to_consistency_group(
+                volume['consistencygroup_id'],
+                vol_name
+            )
         LOG.debug("Leave PureISCSIDriver.create_volume_from_snapshot.")
 
     def create_cloned_volume(self, volume, src_vref):
@@ -121,6 +161,13 @@ class PureISCSIDriver(san.SanISCSIDriver):
         src_name = _get_vol_name(src_vref)
         self._array.copy_volume(src_name, vol_name)
         self._extend_if_needed(vol_name, src_vref["size"], volume["size"])
+
+        if volume['consistencygroup_id']:
+            self._add_volume_to_consistency_group(
+                volume['consistencygroup_id'],
+                vol_name
+            )
+
         LOG.debug("Leave PureISCSIDriver.create_cloned_volume.")
 
     def _extend_if_needed(self, vol_name, src_size, vol_size):
@@ -142,7 +189,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
         except exception.PureAPIException as err:
             with excutils.save_and_reraise_exception() as ctxt:
                 if err.kwargs["code"] == 400 and \
-                        "Volume does not exist" in err.msg:
+                        ERR_MSG_NOT_EXIST in err.msg:
                     # Happens if the volume does not exist.
                     ctxt.reraise = False
                     LOG.warn(_LW("Volume deletion failed with message: %s")
@@ -329,6 +376,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
                 "total_capacity_gb": total,
                 "free_capacity_gb": free,
                 "reserved_percentage": 0,
+                "consistencygroup_support": True
                 }
         self._stats = data
 
@@ -339,6 +387,98 @@ class PureISCSIDriver(san.SanISCSIDriver):
         new_size = new_size * units.Gi
         self._array.extend_volume(vol_name, new_size)
         LOG.debug("Leave PureISCSIDriver.extend_volume.")
+
+    def _add_volume_to_consistency_group(self, consistencygroup_id, vol_name):
+        pgroup_name = _get_pgroup_name_from_id(consistencygroup_id)
+        self._array.add_volume_to_pgroup(pgroup_name, vol_name)
+
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+        LOG.debug("Enter PureISCSIDriver.create_consistencygroup")
+
+        self._array.create_pgroup(_get_pgroup_name_from_id(group.id))
+
+        model_update = {'status': 'available'}
+
+        LOG.debug("Leave PureISCSIDriver.create_consistencygroup")
+        return model_update
+
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group."""
+        LOG.debug("Enter PureISCSIDriver.delete_consistencygroup")
+
+        try:
+            self._array.delete_pgroup(_get_pgroup_name_from_id(group.id))
+        except exception.PureAPIException as err:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if (err.kwargs["code"] == 400 and
+                        (ERR_MSG_PENDING_ERADICATION in err.msg or
+                         ERR_MSG_NOT_EXIST in err.msg)):
+                    # Treat these as a "success" case since we are trying
+                    # to delete them anyway.
+                    ctxt.reraise = False
+                    LOG.warning(_LW("Unable to delete Protection Group: %s"),
+                                err.msg)
+
+        volumes = self.db.volume_get_all_by_group(context, group.id)
+
+        for volume in volumes:
+            self.delete_volume(volume)
+            volume.status = 'deleted'
+
+        model_update = {'status': group['status']}
+
+        LOG.debug("Leave PureISCSIDriver.delete_consistencygroup")
+        return model_update, volumes
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Creates a cgsnapshot."""
+        LOG.debug("Enter PureISCSIDriver.create_cgsnapshot")
+
+        pgroup_name = _get_pgroup_name_from_id(cgsnapshot.consistencygroup_id)
+        pgsnap_suffix = _get_pgroup_snap_suffix(cgsnapshot)
+        self._array.create_pgroup_snapshot(pgroup_name, pgsnap_suffix)
+
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+            context, cgsnapshot.id)
+
+        for snapshot in snapshots:
+            snapshot.status = 'available'
+
+        model_update = {'status': 'available'}
+
+        LOG.debug("Leave PureISCSIDriver.create_cgsnapshot")
+        return model_update, snapshots
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+        LOG.debug("Enter PureISCSIDriver.delete_cgsnapshot")
+
+        pgsnap_name = _get_pgroup_snap_name(cgsnapshot)
+
+        try:
+            self._array.delete_pgroup_snapshot(pgsnap_name)
+        except exception.PureAPIException as err:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if (err.kwargs["code"] == 400 and
+                        (ERR_MSG_PENDING_ERADICATION in err.msg or
+                         ERR_MSG_NOT_EXIST in err.msg)):
+                    # Treat these as a "success" case since we are trying
+                    # to delete them anyway.
+                    ctxt.reraise = False
+                    LOG.warning(_LW("Unable to delete Protection Group "
+                                    "Snapshot: %s"), err.msg)
+
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+            context, cgsnapshot.id)
+
+        for snapshot in snapshots:
+            snapshot.status = 'deleted'
+
+        model_update = {'status': cgsnapshot.status}
+
+        LOG.debug("Leave PureISCSIDriver.delete_cgsnapshot")
+        return model_update, snapshots
 
 
 class FlashArray(object):
