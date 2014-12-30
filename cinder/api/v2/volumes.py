@@ -233,7 +233,7 @@ class VolumeController(wsgi.Controller):
         for k, v in filters.iteritems():
             try:
                 filters[k] = ast.literal_eval(v)
-            except ValueError:
+            except (ValueError, SyntaxError):
                 LOG.debug('Could not evaluate value %s, assuming string', v)
 
         volumes = self.volume_api.get_all(context, marker, limit, sort_key,
