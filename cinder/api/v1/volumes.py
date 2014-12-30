@@ -273,7 +273,7 @@ class VolumeController(wsgi.Controller):
         for k, v in search_opts.iteritems():
             try:
                 search_opts[k] = ast.literal_eval(v)
-            except ValueError:
+            except (ValueError, SyntaxError):
                 LOG.debug('Could not evaluate value %s, assuming string', v)
 
         context = req.environ['cinder.context']
