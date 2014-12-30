@@ -203,6 +203,20 @@ global_opts = [
                help='The full class name of the volume replication API class'),
     cfg.StrOpt('consistencygroup_api_class',
                default='cinder.consistencygroup.api.API',
-               help='The full class name of the consistencygroup API class'), ]
+               help='The full class name of the consistencygroup API class'),
+    cfg.StrOpt('os_privileged_user_name',
+               default=None,
+               help='OpenStack privileged account username. Used for requests '
+                    'to other services (such as Nova) that require an account '
+                    'with special rights.'),
+    cfg.StrOpt('os_privileged_user_password',
+               default=None,
+               help='Password associated with the OpenStack privileged '
+                    'account.'),
+    cfg.StrOpt('os_privileged_user_tenant',
+               default=None,
+               help='Tenant name associated with the OpenStack privileged '
+                    'account.'),
+]
 
 CONF.register_opts(global_opts)

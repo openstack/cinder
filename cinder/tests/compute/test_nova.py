@@ -15,10 +15,58 @@
 import contextlib
 
 import mock
+from novaclient.v1_1.contrib import assisted_volume_snapshots
 
 from cinder.compute import nova
 from cinder import context
 from cinder import test
+
+
+class NovaClientTestCase(test.TestCase):
+    def setUp(self):
+        super(NovaClientTestCase, self).setUp()
+
+        self.ctx = context.RequestContext('regularuser', 'e3f0833dc08b4cea',
+                                          auth_token='token', is_admin=False)
+        self.ctx.service_catalog = \
+            [{'type': 'compute', 'name': 'nova', 'endpoints':
+              [{'publicURL': 'http://novahost:8774/v2/e3f0833dc08b4cea'}]},
+             {'type': 'identity', 'name': 'keystone', 'endpoints':
+              [{'publicURL': 'http://keystonehost:5000/v2.0'}]}]
+
+        self.override_config('nova_endpoint_template',
+                             'http://novahost:8774/v2/%(project_id)s')
+        self.override_config('nova_endpoint_admin_template',
+                             'http://novaadmhost:4778/v2/%(project_id)s')
+        self.override_config('os_privileged_user_name', 'adminuser')
+        self.override_config('os_privileged_user_password', 'strongpassword')
+
+    @mock.patch('novaclient.v1_1.client.Client')
+    def test_nova_client_regular(self, p_client):
+        nova.novaclient(self.ctx)
+        p_client.assert_called_once_with(
+            'regularuser', 'token', None,
+            auth_url='http://novahost:8774/v2/e3f0833dc08b4cea',
+            insecure=False, cacert=None,
+            extensions=[assisted_volume_snapshots])
+
+    @mock.patch('novaclient.v1_1.client.Client')
+    def test_nova_client_admin_endpoint(self, p_client):
+        nova.novaclient(self.ctx, admin_endpoint=True)
+        p_client.assert_called_once_with(
+            'regularuser', 'token', None,
+            auth_url='http://novaadmhost:4778/v2/e3f0833dc08b4cea',
+            insecure=False, cacert=None,
+            extensions=[assisted_volume_snapshots])
+
+    @mock.patch('novaclient.v1_1.client.Client')
+    def test_nova_client_privileged_user(self, p_client):
+        nova.novaclient(self.ctx, privileged_user=True)
+        p_client.assert_called_once_with(
+            'adminuser', 'strongpassword', None,
+            auth_url='http://keystonehost:5000/v2.0',
+            insecure=False, cacert=None,
+            extensions=[assisted_volume_snapshots])
 
 
 class FakeNovaClient(object):
