@@ -6283,6 +6283,66 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
                           self.volume.driver.manage_existing_get_size,
                           vol, ref)
 
+    def test_lvm_manage_existing_snapshot(self):
+        """Good pass on managing an LVM snapshot.
+
+        This test case ensures that, when a logical volume's snapshot with the
+        specified name exists, and the size is as expected, no error is
+        returned from driver.manage_existing_snapshot, and that the
+        rename_volume function is called in the Brick LVM code with the correct
+        arguments.
+        """
+        self._setup_stubs_for_manage_existing()
+
+        ref = {'source-name': 'fake_lv'}
+        snp = {'name': 'test', 'id': 1, 'size': 0}
+
+        def _rename_volume(old_name, new_name):
+            self.assertEqual(ref['source-name'], old_name)
+            self.assertEqual(snp['name'], new_name)
+
+        with mock.patch.object(self.volume.driver.vg, 'rename_volume') as \
+                mock_rename_volume:
+            mock_rename_volume.return_value = _rename_volume
+
+            size = self.volume.driver.manage_existing_snapshot_get_size(snp,
+                                                                        ref)
+            self.assertEqual(2, size)
+            model_update = self.volume.driver.manage_existing_snapshot(snp,
+                                                                       ref)
+            self.assertIsNone(model_update)
+
+    def test_lvm_manage_existing_snapshot_bad_ref(self):
+        """Error case where specified LV snapshot doesn't exist.
+
+        This test case ensures that the correct exception is raised when
+        the caller attempts to manage a snapshot that does not exist.
+        """
+        self._setup_stubs_for_manage_existing()
+
+        ref = {'source-name': 'fake_nonexistent_lv'}
+        snp = {'name': 'test', 'id': 1, 'size': 0, 'status': 'available'}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.volume.driver.manage_existing_snapshot_get_size,
+                          snp, ref)
+
+    def test_lvm_manage_existing_snapshot_bad_size(self):
+        """Make sure correct exception on bad size returned from LVM.
+
+        This test case ensures that the correct exception is raised when
+        the information returned for the existing LVs is not in the format
+        that the manage_existing_snapshot code expects.
+        """
+        self._setup_stubs_for_manage_existing()
+
+        ref = {'source-name': 'fake_lv_bad_size'}
+        snp = {'name': 'test', 'id': 1, 'size': 2}
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.volume.driver.manage_existing_snapshot_get_size,
+                          snp, ref)
+
 
 class LVMVolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver"""

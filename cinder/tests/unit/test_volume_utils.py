@@ -22,6 +22,7 @@ import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 
+from cinder import context
 from cinder import exception
 from cinder import test
 from cinder import utils
@@ -802,3 +803,20 @@ class VolumeUtilsTestCase(test.TestCase):
         self.assertEqual(
             expected_dict,
             volume_utils.convert_config_string_to_dict(test_string))
+
+    def test_process_reserve_over_quota(self):
+        ctxt = context.get_admin_context()
+        ctxt.project_id = 'fake'
+        overs_one = ['gigabytes']
+        over_two = ['snapshots']
+        usages = {'gigabytes': {'reserved': 1, 'in_use': 9},
+                  'snapshots': {'reserved': 1, 'in_use': 9}}
+        quotas = {'gigabytes': 10, 'snapshots': 10}
+        size = 1
+
+        self.assertRaises(exception.VolumeSizeExceedsAvailableQuota,
+                          volume_utils.process_reserve_over_quota,
+                          ctxt, overs_one, usages, quotas, size)
+        self.assertRaises(exception.SnapshotLimitExceeded,
+                          volume_utils.process_reserve_over_quota,
+                          ctxt, over_two, usages, quotas, size)

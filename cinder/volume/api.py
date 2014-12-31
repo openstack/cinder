@@ -837,32 +837,8 @@ class API(base.Base):
             overs = e.kwargs['overs']
             usages = e.kwargs['usages']
             quotas = e.kwargs['quotas']
-
-            def _consumed(name):
-                return (usages[name]['reserved'] + usages[name]['in_use'])
-
-            for over in overs:
-                if 'gigabytes' in over:
-                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                              "%(s_size)sG snapshot (%(d_consumed)dG of "
-                              "%(d_quota)dG already consumed).")
-                    LOG.warning(msg, {'s_pid': context.project_id,
-                                      's_size': volume['size'],
-                                      'd_consumed': _consumed(over),
-                                      'd_quota': quotas[over]})
-                    raise exception.VolumeSizeExceedsAvailableQuota(
-                        requested=volume['size'],
-                        consumed=_consumed('gigabytes'),
-                        quota=quotas['gigabytes'])
-                elif 'snapshots' in over:
-                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                              "snapshot (%(d_consumed)d snapshots "
-                              "already consumed).")
-
-                    LOG.warning(msg, {'s_pid': context.project_id,
-                                      'd_consumed': _consumed(over)})
-                    raise exception.SnapshotLimitExceeded(
-                        allowed=quotas[over])
+            volume_utils.process_reserve_over_quota(context, overs, usages,
+                                                    quotas, volume['size'])
 
         return reservations
 
@@ -901,7 +877,8 @@ class API(base.Base):
         return result
 
     @wrap_check_policy
-    def delete_snapshot(self, context, snapshot, force=False):
+    def delete_snapshot(self, context, snapshot, force=False,
+                        unmanage_only=False):
         if not force and snapshot['status'] not in ["available", "error"]:
             LOG.error(_LE('Unable to delete snapshot: %(snap_id)s, '
                           'due to invalid status. '
@@ -924,7 +901,8 @@ class API(base.Base):
 
         volume = self.db.volume_get(context, snapshot_obj.volume_id)
         self.volume_rpcapi.delete_snapshot(context, snapshot_obj,
-                                           volume['host'])
+                                           volume['host'],
+                                           unmanage_only=unmanage_only)
         LOG.info(_LI("Snapshot delete request issued successfully."),
                  resource=snapshot)
 
@@ -1471,7 +1449,9 @@ class API(base.Base):
                     elevated, svc_host, CONF.volume_topic)
             except exception.ServiceNotFound:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Unable to find service for given host.'))
+                    LOG.error(_LE('Unable to find service: %(service)s for '
+                                  'given host: %(host)s.'),
+                              {'service': CONF.volume_topic, 'host': host})
             availability_zone = service.get('availability_zone')
 
         manage_what = {
@@ -1504,6 +1484,26 @@ class API(base.Base):
             LOG.info(_LI("Manage volume request issued successfully."),
                      resource=vol_ref)
             return vol_ref
+
+    def manage_existing_snapshot(self, context, ref, volume,
+                                 name=None, description=None,
+                                 metadata=None):
+        host = volume_utils.extract_host(volume['host'])
+        try:
+            self.db.service_get_by_host_and_topic(
+                context.elevated(), host, CONF.volume_topic)
+        except exception.ServiceNotFound:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Unable to find service: %(service)s for '
+                              'given host: %(host)s.'),
+                          {'service': CONF.volume_topic, 'host': host})
+
+        snapshot_object = self.create_snapshot_in_db(context, volume, name,
+                                                     description, False,
+                                                     metadata, None)
+        self.volume_rpcapi.manage_existing_snapshot(context, snapshot_object,
+                                                    ref, host)
+        return snapshot_object
 
     #  Replication V2 methods ##
 

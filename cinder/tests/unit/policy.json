@@ -74,6 +74,8 @@
     "limits_extension:used_limits": "",
 
     "snapshot_extension:snapshot_actions:update_snapshot_status": "",
+    "snapshot_extension:snapshot_manage": "rule:admin_api",
+    "snapshot_extension:snapshot_unmanage": "rule:admin_api",
 
     "volume:create_transfer": "",
     "volume:accept_transfer": "",

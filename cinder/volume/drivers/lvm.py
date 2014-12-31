@@ -567,8 +567,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
 
-    def manage_existing_get_size(self, volume, existing_ref):
-        """Return size of an existing LV for manage_existing.
+    def manage_existing_object_get_size(self, existing_object, existing_ref,
+                                        object_type):
+        """Return size of an existing LV for manage existing volume/snapshot.
 
         existing_ref is a dictionary of the form:
         {'source-name': <name of LV>}
@@ -593,14 +594,32 @@ class LVMVolumeDriver(driver.VolumeDriver):
         try:
             lv_size = int(math.ceil(float(lv['size'])))
         except ValueError:
-            exception_message = (_("Failed to manage existing volume "
+            exception_message = (_("Failed to manage existing %(type)s "
                                    "%(name)s, because reported size %(size)s "
                                    "was not a floating-point number.")
-                                 % {'name': lv_name,
+                                 % {'type': object_type,
+                                    'name': lv_name,
                                     'size': lv['size']})
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
         return lv_size
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        return self.manage_existing_object_get_size(volume, existing_ref,
+                                                    "volume")
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        if not isinstance(existing_ref, dict):
+            existing_ref = {"source-name": existing_ref}
+        return self.manage_existing_object_get_size(snapshot, existing_ref,
+                                                    "snapshot")
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        dest_name = self._escape_snapshot(snapshot['name'])
+        snapshot_temp = {"name": dest_name}
+        if not isinstance(existing_ref, dict):
+            existing_ref = {"source-name": existing_ref}
+        return self.manage_existing(snapshot_temp, existing_ref)
 
     def migrate_volume(self, ctxt, volume, host, thin=False, mirror_count=0):
         """Optimize the migration if the destination is on the same server.

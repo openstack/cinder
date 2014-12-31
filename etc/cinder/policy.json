@@ -78,6 +78,8 @@
     "backup:backup-export": "rule:admin_api",
 
     "snapshot_extension:snapshot_actions:update_snapshot_status": "",
+    "snapshot_extension:snapshot_manage": "rule:admin_api",
+    "snapshot_extension:snapshot_unmanage": "rule:admin_api",
 
     "consistencygroup:create" : "group:nobody",
     "consistencygroup:delete": "group:nobody",
