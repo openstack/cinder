@@ -43,7 +43,6 @@ import re
 import uuid
 
 from oslo.utils import importutils
-import six
 
 hp3parclient = importutils.try_import("hp3parclient")
 if hp3parclient:
@@ -161,10 +160,11 @@ class HP3PARCommon(object):
         2.0.29 - Report a limitless cpg's stats better bug #1398651
         2.0.30 - Update the minimum hp3parclient version bug #1402115
         2.0.31 - Removed usage of host name cache #1398914
+        2.0.32 - Update LOG usage to fix translations.  bug #1384312
 
     """
 
-    VERSION = "2.0.31"
+    VERSION = "2.0.32"
 
     stats = {}
 
@@ -253,9 +253,9 @@ class HP3PARCommon(object):
             known_hosts_file=known_hosts_file)
 
     def client_logout(self):
-        LOG.info(_LI("Disconnect from 3PAR REST and SSH %s") % self.uuid)
+        LOG.info(_LI("Disconnect from 3PAR REST and SSH %s"), self.uuid)
         self.client.logout()
-        LOG.info(_LI("logout Done %s") % self.uuid)
+        LOG.info(_LI("logout Done %s"), self.uuid)
 
     def do_setup(self, context):
         if hp3parclient is None:
@@ -265,9 +265,9 @@ class HP3PARCommon(object):
             self.client = self._create_client()
         except hpexceptions.UnsupportedVersion as ex:
             raise exception.InvalidInput(ex)
-        LOG.info(_LI("HP3PARCommon %(common_ver)s, hp3parclient %(rest_ver)s")
-                 % {"common_ver": self.VERSION,
-                     "rest_ver": hp3parclient.get_version_string()})
+        LOG.info(_LI("HP3PARCommon %(common_ver)s, hp3parclient %(rest_ver)s"),
+                 {"common_ver": self.VERSION,
+                  "rest_ver": hp3parclient.get_version_string()})
         if self.config.hp3par_debug:
             self.client.debug_rest(True)
 
@@ -370,27 +370,27 @@ class HP3PARCommon(object):
                                  {'newName': new_vol_name,
                                   'comment': json.dumps(new_comment)})
 
-        LOG.info(_LI("Virtual volume '%(ref)s' renamed to '%(new)s'.") %
+        LOG.info(_LI("Virtual volume '%(ref)s' renamed to '%(new)s'."),
                  {'ref': existing_ref['source-name'], 'new': new_vol_name})
 
         retyped = False
         model_update = None
         if volume_type:
             LOG.info(_LI("Virtual volume %(disp)s '%(new)s' is "
-                         "being retyped.") %
+                         "being retyped."),
                      {'disp': display_name, 'new': new_vol_name})
 
             try:
                 retyped, model_update = self._retype_from_no_type(volume,
                                                                   volume_type)
                 LOG.info(_LI("Virtual volume %(disp)s successfully retyped to "
-                             "%(new_type)s.") %
+                             "%(new_type)s."),
                          {'disp': display_name,
                           'new_type': volume_type.get('name')})
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.warning(_LW("Failed to manage virtual volume %(disp)s "
-                                    "due to error during retype.") %
+                                    "due to error during retype."),
                                 {'disp': display_name})
                     # Try to undo the rename and clear the new comment.
                     self.client.modifyVolume(
@@ -403,7 +403,7 @@ class HP3PARCommon(object):
             updates.update(model_update)
 
         LOG.info(_LI("Virtual volume %(disp)s '%(new)s' is "
-                     "now being managed.") %
+                     "now being managed."),
                  {'disp': display_name, 'new': new_vol_name})
 
         # Return display name to update the name displayed in the GUI and
@@ -445,7 +445,7 @@ class HP3PARCommon(object):
         self.client.modifyVolume(vol_name, {'newName': new_vol_name})
 
         LOG.info(_LI("Virtual volume %(disp)s '%(vol)s' is no longer managed. "
-                     "Volume renamed to '%(new)s'.") %
+                     "Volume renamed to '%(new)s'."),
                  {'disp': volume['display_name'],
                   'vol': vol_name,
                   'new': new_vol_name})
@@ -496,7 +496,7 @@ class HP3PARCommon(object):
                             _convert_to_base=True)
                 else:
                     LOG.error(_LE("Error extending volume: %(vol)s. "
-                                  "Exception: %(ex)s") %
+                                  "Exception: %(ex)s"),
                               {'vol': volume_name, 'ex': ex})
         return model_update
 
@@ -868,7 +868,7 @@ class HP3PARCommon(object):
             self.client.createQoSRules(vvs_name, qosRule)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error creating QOS rule %s") % qosRule)
+                LOG.error(_LE("Error creating QOS rule %s"), qosRule)
 
     def _add_volume_to_volume_set(self, volume, volume_name,
                                   cpg, vvs_name, qos):
@@ -1317,7 +1317,7 @@ class HP3PARCommon(object):
                     self.client.growVolume(volume_name, growth_size_mib)
                 except Exception as ex:
                     LOG.error(_LE("Error extending volume %(id)s. "
-                                  "Ex: %(ex)s") %
+                                  "Ex: %(ex)s"),
                               {'id': volume['id'], 'ex': ex})
                     # Delete the volume if unable to grow it
                     self.client.deleteVolume(volume_name)
@@ -1428,7 +1428,7 @@ class HP3PARCommon(object):
                                               instance_uuid)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error attaching volume %s") % volume)
+                LOG.error(_LE("Error attaching volume %s"), volume)
 
     def detach_volume(self, volume):
         LOG.debug("Detach Volume\n%s" % pprint.pformat(volume))
@@ -1436,7 +1436,7 @@ class HP3PARCommon(object):
             self.clear_volume_key_value_pair(volume, 'HPQ-CS-instance_uuid')
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error detaching volume %s") % volume)
+                LOG.error(_LE("Error detaching volume %s"), volume)
 
     def migrate_volume(self, volume, host):
         """Migrate directly if source and dest are managed by same storage.
@@ -1466,7 +1466,7 @@ class HP3PARCommon(object):
                 ret = self.retype(volume, volume_type, None, host)
             except Exception as e:
                 LOG.info(_LI('3PAR driver cannot perform migration. '
-                             'Retype exception: %s') % six.text_type(e))
+                             'Retype exception: %s'), e)
 
         LOG.debug('leave: migrate_volume: id=%(id)s, host=%(host)s.' % dbg)
         LOG.debug('migrate_volume result: %s, %s' % ret)
@@ -1531,7 +1531,7 @@ class HP3PARCommon(object):
             self.client.modifyVolume(temp_vol_name, {'newName': volume_name})
 
             LOG.info(_LI('Completed: convert_to_base_volume: '
-                         'id=%s.') % volume['id'])
+                         'id=%s.'), volume['id'])
         except hpexceptions.HTTPConflict:
             msg = _("Volume (%s) already exists on array.") % volume_name
             LOG.error(msg)
@@ -1653,7 +1653,7 @@ class HP3PARCommon(object):
             if new_cpg != old_cpg:
                 LOG.info(_LI("Modifying %(volume_name)s userCPG "
                              "from %(old_cpg)s"
-                             " to %(new_cpg)s") %
+                             " to %(new_cpg)s"),
                          {'volume_name': volume_name,
                           'old_cpg': old_cpg, 'new_cpg': new_cpg})
                 _response, body = self.client.modifyVolume(
@@ -1673,12 +1673,12 @@ class HP3PARCommon(object):
             if old_tpvv:
                 cop = self.CONVERT_TO_FULL
                 LOG.info(_LI("Converting %(volume_name)s to full provisioning "
-                             "with userCPG=%(new_cpg)s") %
+                             "with userCPG=%(new_cpg)s"),
                          {'volume_name': volume_name, 'new_cpg': new_cpg})
             else:
                 cop = self.CONVERT_TO_THIN
                 LOG.info(_LI("Converting %(volume_name)s to thin provisioning "
-                             "with userCPG=%(new_cpg)s") %
+                             "with userCPG=%(new_cpg)s"),
                          {'volume_name': volume_name, 'new_cpg': new_cpg})
 
             try:
@@ -1694,7 +1694,7 @@ class HP3PARCommon(object):
                     # use keepVV and have straggling volumes.  Log additional
                     # info and then raise.
                     LOG.info(_LI("tunevv failed because the volume '%s' "
-                                 "has snapshots.") % volume_name)
+                                 "has snapshots."), volume_name)
                     raise ex
 
             task_id = body['taskid']
@@ -1971,7 +1971,7 @@ class ModifyVolumeTask(flow_utils.CinderTask):
         if new_snap_cpg != old_snap_cpg:
             # Modify the snap_cpg.  This will fail with snapshots.
             LOG.info(_LI("Modifying %(volume_name)s snap_cpg from "
-                         "%(old_snap_cpg)s to %(new_snap_cpg)s.") %
+                         "%(old_snap_cpg)s to %(new_snap_cpg)s."),
                      {'volume_name': volume_name,
                       'old_snap_cpg': old_snap_cpg,
                       'new_snap_cpg': new_snap_cpg})
@@ -1981,7 +1981,7 @@ class ModifyVolumeTask(flow_utils.CinderTask):
                  'comment': json.dumps(comment_dict)})
             self.needs_revert = True
         else:
-            LOG.info(_LI("Modifying %s comments.") % volume_name)
+            LOG.info(_LI("Modifying %s comments."), volume_name)
             common.client.modifyVolume(
                 volume_name,
                 {'comment': json.dumps(comment_dict)})
@@ -1991,7 +1991,7 @@ class ModifyVolumeTask(flow_utils.CinderTask):
                old_comment, **kwargs):
         if self.needs_revert:
             LOG.info(_LI("Retype revert %(volume_name)s snap_cpg from "
-                         "%(new_snap_cpg)s back to %(old_snap_cpg)s.") %
+                         "%(new_snap_cpg)s back to %(old_snap_cpg)s."),
                      {'volume_name': volume_name,
                       'new_snap_cpg': new_snap_cpg,
                       'old_snap_cpg': old_snap_cpg})
@@ -2000,7 +2000,7 @@ class ModifyVolumeTask(flow_utils.CinderTask):
                     volume_name,
                     {'snapCPG': old_snap_cpg, 'comment': old_comment})
             except Exception as ex:
-                LOG.error(_LE("Exception during snapCPG revert: %s") % ex)
+                LOG.error(_LE("Exception during snapCPG revert: %s"), ex)
 
 
 class TuneVolumeTask(flow_utils.CinderTask):
@@ -2069,7 +2069,7 @@ class ModifySpecsTask(flow_utils.CinderTask):
                 # HTTPNotFound(code=102) is OK.  Set does not exist.
                 if ex.get_code() != 102:
                     LOG.error(_LE("Unexpected error when retype() tried to "
-                                  "deleteVolumeSet(%s)") % vvs_name)
+                                  "deleteVolumeSet(%s)"), vvs_name)
                     raise ex
 
             if new_vvs or new_qos:
@@ -2090,10 +2090,10 @@ class ModifySpecsTask(flow_utils.CinderTask):
                 # HTTPNotFound(code=102) is OK.  Set does not exist.
                 if ex.get_code() != 102:
                     LOG.error(_LE("Unexpected error when retype() revert "
-                                  "tried to deleteVolumeSet(%s)") % vvs_name)
+                                  "tried to deleteVolumeSet(%s)"), vvs_name)
             except Exception:
                 LOG.error(_LE("Unexpected error when retype() revert "
-                              "tried to deleteVolumeSet(%s)") % vvs_name)
+                              "tried to deleteVolumeSet(%s)"), vvs_name)
 
             if old_vvs is not None or old_qos is not None:
                 try:
@@ -2103,7 +2103,7 @@ class ModifySpecsTask(flow_utils.CinderTask):
                     LOG.error(_LE("%(exception)s: Exception during revert of "
                                   "retype for volume %(volume_name)s. "
                                   "Original volume set/QOS settings may not "
-                                  "have been fully restored.") %
+                                  "have been fully restored."),
                               {'exception': ex, 'volume_name': volume_name})
 
             if new_vvs is not None and old_vvs != new_vvs:
@@ -2114,7 +2114,7 @@ class ModifySpecsTask(flow_utils.CinderTask):
                     LOG.error(_LE("%(exception)s: Exception during revert of "
                                   "retype for volume %(volume_name)s. "
                                   "Failed to remove from new volume set "
-                                  "%(new_vvs)s.") %
+                                  "%(new_vvs)s."),
                               {'exception': ex,
                                'volume_name': volume_name,
                                'new_vvs': new_vvs})
