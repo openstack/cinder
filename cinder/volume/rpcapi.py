@@ -61,6 +61,7 @@ class VolumeAPI(object):
         1.19 - Adds update_migrated_volume
         1.20 - Adds support for sending objects over RPC in create_snapshot()
                and delete_snapshot()
+        1.21 - Adds update_consistencygroup.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -70,7 +71,7 @@ class VolumeAPI(object):
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.20', serializer=serializer)
+        self.client = rpc.get_client(target, '1.21', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
@@ -83,6 +84,15 @@ class VolumeAPI(object):
         cctxt = self.client.prepare(server=host, version='1.18')
         cctxt.cast(ctxt, 'delete_consistencygroup',
                    group_id=group['id'])
+
+    def update_consistencygroup(self, ctxt, group, add_volumes=None,
+                                remove_volumes=None):
+        host = utils.extract_host(group['host'])
+        cctxt = self.client.prepare(server=host, version='1.21')
+        cctxt.cast(ctxt, 'update_consistencygroup',
+                   group_id=group['id'],
+                   add_volumes=add_volumes,
+                   remove_volumes=remove_volumes)
 
     def create_cgsnapshot(self, ctxt, group, cgsnapshot):
 

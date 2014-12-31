@@ -1115,6 +1115,34 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         """Deletes a consistency group."""
         raise NotImplementedError()
 
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        """Updates a consistency group.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be updated.
+        :param add_volumes: a list of volume dictionaries to be added.
+        :param remove_volumes: a list of volume dictionaries to be removed.
+        :return model_update, add_volumes_update, remove_volumes_update
+
+        model_update is a dictionary that the driver wants the manager
+        to update upon a successful return. If None is returned, the manager
+        will set the status to 'available'.
+
+        add_volumes_update and remove_volumes_update are lists of dictionaries
+        that the driver wants the manager to update upon a successful return.
+        Note that each entry requires a {'id': xxx} so that the correct
+        volume entry can be updated. If None is returned, the volume will
+        remain its original status. Also note that you cannot directly
+        assign add_volumes to add_volumes_update as add_volumes is a list of
+        cinder.db.sqlalchemy.models.Volume objects and cannot be used for
+        db update directly. Same with remove_volumes.
+
+        If the driver throws an exception, the status of the group as well as
+        those of the volumes to be added/removed will be set to 'error'.
+        """
+        raise NotImplementedError()
+
     def create_cgsnapshot(self, context, cgsnapshot):
         """Creates a cgsnapshot."""
         raise NotImplementedError()
