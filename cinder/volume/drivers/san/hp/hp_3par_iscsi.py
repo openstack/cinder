@@ -78,10 +78,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.9 - Removing locks bug #1381190
         2.0.10 - Add call to queryHost instead SSH based findHost #1398206
         2.0.11 - Added missing host name during attach fix #1398206
+        2.0.12 - Removed usage of host name cache #1398914
 
     """
 
-    VERSION = "2.0.11"
+    VERSION = "2.0.12"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -361,7 +362,6 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             host_found = hosts['members'][0]['name']
 
         if host_found is not None:
-            common.hosts_naming_dict[hostname] = host_found
             return host_found
         else:
             if isinstance(iscsi_iqn, str) or isinstance(iscsi_iqn, unicode):

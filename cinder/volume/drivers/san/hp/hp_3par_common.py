@@ -160,10 +160,11 @@ class HP3PARCommon(object):
         2.0.28 - Removing locks bug #1381190
         2.0.29 - Report a limitless cpg's stats better bug #1398651
         2.0.30 - Update the minimum hp3parclient version bug #1402115
+        2.0.31 - Removed usage of host name cache #1398914
 
     """
 
-    VERSION = "2.0.30"
+    VERSION = "2.0.31"
 
     stats = {}
 
@@ -199,7 +200,6 @@ class HP3PARCommon(object):
 
     def __init__(self, config):
         self.config = config
-        self.hosts_naming_dict = dict()
         self.client = None
         self.uuid = uuid.uuid4()
 
@@ -767,7 +767,6 @@ class HP3PARCommon(object):
 
             try:
                 self._delete_3par_host(hostname)
-                self._remove_hosts_naming_dict_host(hostname)
             except Exception as ex:
                 # Any exception down here is only logged.  The vlun is deleted.
 
@@ -785,15 +784,6 @@ class HP3PARCommon(object):
                         'host': hostname,
                         'reason': ex.get_description()})
                 LOG.info(msg)
-
-    def _remove_hosts_naming_dict_host(self, hostname):
-        items = self.hosts_naming_dict.items()
-        lkey = None
-        for key, value in items:
-            if value == hostname:
-                lkey = key
-        if lkey is not None:
-            del self.hosts_naming_dict[lkey]
 
     def _get_volume_type(self, type_id):
         ctxt = context.get_admin_context()
@@ -1606,10 +1596,17 @@ class HP3PARCommon(object):
 
     def terminate_connection(self, volume, hostname, wwn=None, iqn=None):
         """Driver entry point to unattach a volume from an instance."""
+        # does 3par know this host by a different name?
+        hosts = None
+        if wwn:
+            hosts = self.client.queryHost(wwns=wwn)
+        elif iqn:
+            hosts = self.client.queryHost(iqns=[iqn])
+
+        if hosts and hosts['members'] and 'name' in hosts['members'][0]:
+            hostname = hosts['members'][0]['name']
+
         try:
-            # does 3par know this host by a different name?
-            if hostname in self.hosts_naming_dict:
-                hostname = self.hosts_naming_dict.get(hostname)
             self.delete_vlun(volume, hostname)
             return
         except hpexceptions.HTTPNotFound as e:
