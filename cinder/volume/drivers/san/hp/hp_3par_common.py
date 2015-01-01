@@ -161,10 +161,11 @@ class HP3PARCommon(object):
         2.0.30 - Update the minimum hp3parclient version bug #1402115
         2.0.31 - Removed usage of host name cache #1398914
         2.0.32 - Update LOG usage to fix translations.  bug #1384312
+        2.0.33 - Fix host persona to match WSAPI mapping bug #1403997
 
     """
 
-    VERSION = "2.0.32"
+    VERSION = "2.0.33"
 
     stats = {}
 
@@ -184,15 +185,15 @@ class HP3PARCommon(object):
     valid_prov_values = ['thin', 'full']
     valid_persona_values = ['2 - Generic-ALUA',
                             '1 - Generic',
-                            '6 - Generic-legacy',
-                            '7 - HPUX-legacy',
-                            '8 - AIX-legacy',
-                            '9 - EGENERA',
-                            '10 - ONTAP-legacy',
-                            '11 - VMware',
-                            '12 - OpenVMS',
-                            '13 - HPUX',
-                            '15 - WindowsServer']
+                            '3 - Generic-legacy',
+                            '4 - HPUX-legacy',
+                            '5 - AIX-legacy',
+                            '6 - EGENERA',
+                            '7 - ONTAP-legacy',
+                            '8 - VMware',
+                            '9 - OpenVMS',
+                            '10 - HPUX',
+                            '11 - WindowsServer']
     hp_qos_keys = ['minIOPS', 'maxIOPS', 'minBWS', 'maxBWS', 'latency',
                    'priority']
     qos_priority_level = {'low': 1, 'normal': 2, 'high': 3}
