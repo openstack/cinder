@@ -22,7 +22,7 @@ class IetAdm(object):
                       volume_group, config):
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, volume_path):
         pass
 
     def remove_export(self, context, volume):

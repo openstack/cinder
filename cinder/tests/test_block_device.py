@@ -14,20 +14,24 @@
 #    under the License.
 
 import mock
+from oslo.config import cfg
 
 from cinder import context
 from cinder.db.sqlalchemy import api
 import cinder.exception
 import cinder.test
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.block_device import BlockDeviceDriver
 from cinder.volume import utils as volutils
 
 
 class TestBlockDeviceDriver(cinder.test.TestCase):
     def setUp(self):
+        fake_opt = [cfg.StrOpt('fake_opt', default='fake', help='fake option')]
         super(TestBlockDeviceDriver, self).setUp()
-        self.configuration = mock.MagicMock()
+        self.configuration = conf.Configuration(fake_opt, 'fake_group')
         self.configuration.available_devices = ['/dev/loop1', '/dev/loop2']
+        self.configuration.iscsi_helper = 'tgtadm'
         self.host = 'localhost'
         self.configuration.iscsi_port = 3260
         self.configuration.volume_dd_blocksize = 1234
@@ -36,29 +40,49 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
 
     def test_initialize_connection(self):
         TEST_VOLUME1 = {'host': 'localhost1',
-                        'provider_location': '1 2 3 /dev/loop1'}
+                        'provider_location': '1 2 3 /dev/loop1',
+                        'provider_auth': 'a b c',
+                        'attached_mode': 'rw',
+                        'id': 'fake-uuid'}
+
         TEST_CONNECTOR = {'host': 'localhost1'}
 
-        with mock.patch.object(self.drv, 'local_path',
-                               return_value='/dev/loop1') as lp_mocked:
-            data = self.drv.initialize_connection(TEST_VOLUME1, TEST_CONNECTOR)
+        data = self.drv.initialize_connection(TEST_VOLUME1, TEST_CONNECTOR)
+        expected_data = {'data': {'auth_method': 'a',
+                                  'auth_password': 'c',
+                                  'auth_username': 'b',
+                                  'encrypted': False,
+                                  'target_discovered': False,
+                                  'target_iqn': '2',
+                                  'target_lun': 3,
+                                  'target_portal': '1',
+                                  'volume_id': 'fake-uuid'},
+                         'driver_volume_type': 'iscsi'}
 
-            lp_mocked.assert_called_once_with(TEST_VOLUME1)
-            self.assertEqual(data, {
-                'driver_volume_type': 'local',
-                'data': {'device_path': '/dev/loop1'}})
+        self.assertEqual(expected_data, data)
 
     @mock.patch('cinder.volume.driver.ISCSIDriver.initialize_connection')
     def test_initialize_connection_different_hosts(self, _init_conn):
         TEST_CONNECTOR = {'host': 'localhost1'}
         TEST_VOLUME2 = {'host': 'localhost2',
-                        'provider_location': '1 2 3 /dev/loop2'}
+                        'provider_location': '1 2 3 /dev/loop2',
+                        'provider_auth': 'd e f',
+                        'attached_mode': 'rw',
+                        'id': 'fake-uuid-2'}
         _init_conn.return_value = 'data'
 
         data = self.drv.initialize_connection(TEST_VOLUME2, TEST_CONNECTOR)
+        expected_data = {'data': {'auth_method': 'd',
+                                  'auth_password': 'f',
+                                  'auth_username': 'e',
+                                  'encrypted': False,
+                                  'target_discovered': False,
+                                  'target_iqn': '2',
+                                  'target_lun': 3,
+                                  'target_portal': '1',
+                                  'volume_id': 'fake-uuid-2'}}
 
-        _init_conn.assert_called_once_with(TEST_VOLUME2, TEST_CONNECTOR)
-        self.assertEqual('data', data)
+        self.assertEqual(expected_data['data'], data['data'])
 
     @mock.patch('cinder.volume.drivers.block_device.BlockDeviceDriver.'
                 'local_path', return_value=None)
@@ -107,7 +131,6 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
             fasd_mocked.assert_called_once_with(TEST_VOLUME['size'])
 
     def test_update_volume_stats(self):
-        self.configuration.safe_get.return_value = 'BlockDeviceDriver'
 
         with mock.patch.object(self.drv, '_devices_sizes',
                                return_value={'/dev/loop1': 1024,

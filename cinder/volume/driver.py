@@ -29,7 +29,6 @@ from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder import utils
-from cinder.volume import iscsi
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 
@@ -201,6 +200,16 @@ class VolumeDriver(object):
         self._stats = {}
 
         self.pools = []
+
+        # We set these mappings up in the base driver so they
+        # can be used by children
+        # (intended for LVM and BlockDevice, but others could use as well)
+        self.target_mapping = {
+            'fake': 'cinder.volume.targets.fake.FakeTarget',
+            'ietadm': 'cinder.volume.targets.iet.IetAdm',
+            'iseradm': 'cinder.volume.targets.iser.ISERTgtAdm',
+            'lioadm': 'cinder.volume.targets.lio.LioAdm',
+            'tgtadm': 'cinder.volume.targets.tgt.TgtAdm', }
 
         # set True by manager after successful check_for_setup
         self._initialized = False
@@ -1043,6 +1052,10 @@ class ISCSIDriver(VolumeDriver):
             }
 
         """
+        # NOTE(jdg): Yes, this is duplicated in the volume/target
+        # drivers, for now leaving it as there are 3'rd party
+        # drivers that don't use target drivers, but inherit from
+        # this base class and use this init data
         iscsi_properties = self._get_iscsi_properties(volume)
         return {
             'driver_volume_type': 'iscsi',
@@ -1105,26 +1118,6 @@ class ISCSIDriver(VolumeDriver):
             ))
             data["pools"].append(single_pool)
         self._stats = data
-
-    def get_target_helper(self, db):
-        root_helper = utils.get_root_helper()
-        # FIXME(jdg): These work because the driver will overide
-        # but we need to move these to use self.configuraiton
-        if CONF.iscsi_helper == 'iseradm':
-            return iscsi.ISERTgtAdm(root_helper, CONF.volumes_dir,
-                                    CONF.iscsi_target_prefix, db=db)
-        elif CONF.iscsi_helper == 'tgtadm':
-            return iscsi.TgtAdm(root_helper,
-                                CONF.volumes_dir,
-                                CONF.iscsi_target_prefix,
-                                db=db)
-        elif CONF.iscsi_helper == 'fake':
-            return iscsi.FakeIscsiHelper()
-        elif CONF.iscsi_helper == 'lioadm':
-            return iscsi.LioAdm(root_helper, CONF.iscsi_target_prefix, db=db)
-        else:
-            return iscsi.IetAdm(root_helper, CONF.iet_conf, CONF.iscsi_iotype,
-                                db=db)
 
 
 class FakeISCSIDriver(ISCSIDriver):
@@ -1281,15 +1274,6 @@ class ISERDriver(ISCSIDriver):
             ))
             data["pools"].append(single_pool)
         self._stats = data
-
-    def get_target_helper(self, db):
-        root_helper = utils.get_root_helper()
-
-        if CONF.iser_helper == 'fake':
-            return iscsi.FakeIscsiHelper()
-        else:
-            return iscsi.ISERTgtAdm(root_helper,
-                                    CONF.volumes_dir, db=db)
 
 
 class FakeISERDriver(FakeISCSIDriver):

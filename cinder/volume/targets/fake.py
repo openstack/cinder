@@ -10,8 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.volume.targets import iscsi
 
-class FakeTarget(object):
+
+class FakeTarget(iscsi.ISCSITarget):
     VERSION = '0.1'
 
     def __init__(self, *args, **kwargs):
@@ -22,8 +24,11 @@ class FakeTarget(object):
                       volume_group, config):
         pass
 
-    def create_export(self, context, volume):
-        pass
+    def create_export(self, context, volume, volume_path):
+        return {
+            'location': "fake_location",
+            'auth': "fake_auth"
+        }
 
     def remove_export(self, context, volume):
         pass

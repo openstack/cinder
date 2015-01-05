@@ -44,7 +44,7 @@ class Target(object):
         pass
 
     @abc.abstractmethod
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, volume_path):
         """Exports a Target/Volume.
 
         Can optionally return a Dict of changes to

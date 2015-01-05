@@ -811,7 +811,8 @@ class SRBISCSIDriver(SRBDriver, driver.ISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         self.db = kwargs.get('db')
-        self.target_helper = self.get_target_helper(self.db)
+        self.target_driver = \
+            self.target_mapping[self.configuration.safe_get('iscsi_helper')]
         super(SRBISCSIDriver, self).__init__(*args, **kwargs)
         self.backend_name =\
             self.configuration.safe_get('volume_backend_name') or 'SRB_iSCSI'
@@ -819,8 +820,8 @@ class SRBISCSIDriver(SRBDriver, driver.ISCSIDriver):
 
     def set_execute(self, execute):
         super(SRBISCSIDriver, self).set_execute(execute)
-        if self.target_helper is not None:
-            self.target_helper.set_execute(execute)
+        if self.target_driver is not None:
+            self.target_driver.set_execute(execute)
 
     def ensure_export(self, context, volume):
         volume_name = volume['name']
@@ -829,7 +830,7 @@ class SRBISCSIDriver(SRBDriver, driver.ISCSIDriver):
         device_path = self._mapper_path(volume)
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
-        model_update = self.target_helper.ensure_export(
+        model_update = self.target_driver.ensure_export(
             context, volume,
             iscsi_name,
             device_path,
@@ -847,7 +848,7 @@ class SRBISCSIDriver(SRBDriver, driver.ISCSIDriver):
         # SRB uses the same name as the volume for the VG
         volume_path = self._mapper_path(volume)
 
-        data = self.target_helper.create_export(context,
+        data = self.target_driver.create_export(context,
                                                 volume,
                                                 volume_path,
                                                 self.configuration)
@@ -862,14 +863,14 @@ class SRBISCSIDriver(SRBDriver, driver.ISCSIDriver):
         # an export, and avoid screwing up the device attach refcount.
         try:
             # Raises exception.NotFound if export not provisioned
-            iscsi_target = self.target_helper._get_iscsi_target(context,
+            iscsi_target = self.target_driver._get_iscsi_target(context,
                                                                 volume['id'])
             # Raises an Exception if currently not exported
             location = volume['provider_location'].split(' ')
             iqn = location[1]
-            self.target_helper.show_target(iscsi_target, iqn=iqn)
+            self.target_driver.show_target(iscsi_target, iqn=iqn)
 
-            self.target_helper.remove_export(context, volume)
+            self.target_driver.remove_export(context, volume)
             self._detach_file(volume)
         except exception.NotFound:
             LOG.warning(_LW('Volume %r not found while trying to remove.'),
