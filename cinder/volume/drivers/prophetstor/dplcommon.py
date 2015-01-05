@@ -89,9 +89,9 @@ class DPLCommand(object):
             try:
                 payload = json.dumps(params, ensure_ascii=False)
                 payload.encode('utf-8')
-            except Exception:
-                LOG.error(_LE('JSON encode params error: %s.'),
-                          six.text_type(params))
+            except Exception as e:
+                LOG.error(_LE('JSON encode params %(param)s error:'
+                              ' %(status)s.'), {'param': params, 'status': e})
                 retcode = errno.EINVAL
         for i in range(CONNECTION_RETRY):
             try:
@@ -103,11 +103,11 @@ class DPLCommand(object):
                     break
             except IOError as ioerr:
                 LOG.error(_LE('Connect to Flexvisor error: %s.'),
-                          six.text_type(ioerr))
+                          ioerr)
                 retcode = errno.ENOTCONN
             except Exception as e:
                 LOG.error(_LE('Connect to Flexvisor failed: %s.'),
-                          six.text_type(e))
+                          e)
                 retcode = errno.EFAULT
 
         retry = CONNECTION_RETRY
@@ -131,7 +131,7 @@ class DPLCommand(object):
                 continue
             except Exception as e:
                 LOG.error(_LE('Failed to send request: %s.'),
-                          six.text_type(e))
+                          e)
                 retcode = errno.EFAULT
                 break
 
@@ -154,7 +154,7 @@ class DPLCommand(object):
                     continue
                 except Exception as e:
                     LOG.error(_LE('Failed to get response: %s.'),
-                              six.text_type(e.message))
+                              e)
                     retcode = errno.EFAULT
                     break
 
@@ -163,11 +163,11 @@ class DPLCommand(object):
             retcode = errno.ENODATA
         elif retcode == 0 and response.status not in expected_status:
             LOG.error(_LE('%(method)s %(url)s unexpected response status: '
-                          '%(response)s (expects: %(expects)s).')
-                      % {'method': method,
-                         'url': url,
-                         'response': httplib.responses[response.status],
-                         'expects': expected_status})
+                          '%(response)s (expects: %(expects)s).'),
+                      {'method': method,
+                       'url': url,
+                       'response': httplib.responses[response.status],
+                       'expects': expected_status})
             if response.status == httplib.UNAUTHORIZED:
                 raise exception.NotAuthorized
                 retcode = errno.EACCES
@@ -182,11 +182,11 @@ class DPLCommand(object):
                 data = json.loads(data)
             except (TypeError, ValueError) as e:
                 LOG.error(_LE('Call to json.loads() raised an exception: %s.'),
-                          six.text_type(e))
+                          e)
                 retcode = errno.ENOEXEC
             except Exception as e:
                 LOG.error(_LE('Read response raised an exception: %s.'),
-                          six.text_type(e))
+                          e)
                 retcode = errno.ENOEXEC
         elif retcode == 0 and \
                 response.status in [httplib.OK, httplib.CREATED] and \
@@ -196,11 +196,11 @@ class DPLCommand(object):
                 data = json.loads(data)
             except (TypeError, ValueError) as e:
                 LOG.error(_LE('Call to json.loads() raised an exception: %s.'),
-                          six.text_type(e))
+                          e)
                 retcode = errno.ENOEXEC
             except Exception as e:
                 LOG.error(_LE('Read response raised an exception: %s.'),
-                          six.text_type(e))
+                          e)
                 retcode = errno.ENOEXEC
 
         if connection:
@@ -683,7 +683,7 @@ class DPLVolume(object):
 
 class DPLCOMMONDriver(driver.VolumeDriver):
     """class of dpl storage adapter."""
-    VERSION = '2.0.1'
+    VERSION = '2.0.2'
 
     def __init__(self, *args, **kwargs):
         super(DPLCOMMONDriver, self).__init__(*args, **kwargs)
@@ -762,10 +762,9 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     continue
 
             except Exception as e:
-                msg = _('Flexvisor failed to get event %(volume)s'
-                        '(%(status)s).') % {'volume': eventid,
-                                            'status': six.text_type(e)}
-                LOG.error(msg)
+                LOG.error(_LE('Flexvisor failed to get event %(volume)s '
+                              '(%(status)s).'),
+                          {'volume': eventid, 'status': e})
                 raise loopingcall.LoopingCallDone(retvalue=False)
                 status['state'] = 'error'
                 fExit = True
@@ -794,10 +793,9 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                                                  'cgid': cgId}
             raise exception.VolumeBackendAPIException(data=msg)
         else:
-            msg = _LI('Flexvisor succeeded to add volume %(id)s to '
-                      'group %(cgid)s.') % {'id': volume['id'],
-                                            'cgid': cgId}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to add volume %(id)s to '
+                         'group %(cgid)s.'),
+                     {'id': volume['id'], 'cgid': cgId})
 
     def _get_snapshotid_of_vgsnapshot(self, vgID, vgsnapshotID, volumeID):
         snapshotID = None
@@ -830,10 +828,9 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
     def create_consistencygroup(self, context, group):
         """Creates a consistencygroup."""
-        msg = _LI('Start to create consistency group: %(group_name)s '
-                  'id: %(id)s') % {'group_name': group['name'],
-                                   'id': group['id']}
-        LOG.info(msg)
+        LOG.info(_LI('Start to create consistency group: %(group_name)s '
+                     'id: %(id)s'),
+                 {'group_name': group['name'], 'id': group['id']})
         model_update = {'status': 'available'}
         try:
             ret, output = self.dpl.create_vg(
@@ -860,8 +857,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             context, group['id'])
         model_update = {}
         model_update['status'] = group['status']
-        LOG.info(_LI('Start to delete consistency group: %(cg_name)s')
-                 % {'cg_name': group['id']})
+        LOG.info(_LI('Start to delete consistency group: %(cg_name)s'),
+                 {'cg_name': group['id']})
         try:
             self.dpl.delete_vg(self._conver_uuid2hex(group['id']))
         except Exception as e:
@@ -891,8 +888,7 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
         model_update = {}
         LOG.info(_LI('Start to create cgsnapshot for consistency group'
-                     ': %(group_name)s') %
-                 {'group_name': cgId})
+                     ': %(group_name)s'), {'group_name': cgId})
 
         try:
             self.dpl.create_vdev_snapshot(self._conver_uuid2hex(cgId),
@@ -922,8 +918,9 @@ class DPLCOMMONDriver(driver.VolumeDriver):
         model_update = {}
         model_update['status'] = cgsnapshot['status']
         LOG.info(_LI('Delete cgsnapshot %(snap_name)s for consistency group: '
-                     '%(group_name)s') % {'snap_name': cgsnapshot['id'],
-                 'group_name': cgsnapshot['consistencygroup_id']})
+                     '%(group_name)s'),
+                 {'snap_name': cgsnapshot['id'],
+                  'group_name': cgsnapshot['consistencygroup_id']})
 
         try:
             self.dpl.delete_vdev_snapshot(self._conver_uuid2hex(cgId),
@@ -981,9 +978,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(
                 data=msg)
         else:
-            msg = _LI('Flexvisor succeed to create volume '
-                      '%(id)s.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to create volume %(id)s.'),
+                     {'id': volume['id']})
 
         if volume.get('consistencygroup_id', None):
             try:
@@ -1065,9 +1061,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(
                 data=msg)
         else:
-            msg = _LI('Flexvisor succeed to create volume %(id)s '
-                      'from snapshot.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to create volume %(id)s '
+                         'from snapshot.'), {'id': volume['id']})
 
         if volume.get('consistencygroup_id', None):
             try:
@@ -1110,9 +1105,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(
                 data=msg)
         else:
-            msg = _LI('Flexvisor succeed to create volume %(id)s '
-                      'from snapshot.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to create volume %(id)s '
+                         'from snapshot.'), {'id': volume['id']})
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
@@ -1155,9 +1149,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(
                 data=msg)
         else:
-            msg = _LI('Flexvisor succeed to clone '
-                      'volume %(id)s.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to clone volume %(id)s.'),
+                     {'id': volume['id']})
 
         if volume.get('consistencygroup_id', None):
             try:
@@ -1180,20 +1173,19 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     self._conver_uuid2hex(volume['id']),
                     self._conver_uuid2hex(volume['consistencygroup_id']))
                 if ret:
-                    msg = _LW('Flexvisor failed to delete volume %(id)s from'
-                              ' the group %(vgid)s.') % {
-                        'id': volume['id'],
-                        'vgid': volume['consistencygroup_id']}
+                    LOG.warning(_LW('Flexvisor failed to delete volume '
+                                    '%(id)s from the group %(vgid)s.'),
+                                {'id': volume['id'],
+                                 'vgid': volume['consistencygroup_id']})
             except Exception as e:
-                msg = _LW('Flexvisor failed to delete volume %(id)s from '
-                          'group %(vgid)s due to %(status)s.') % {
-                    'id': volume['id'],
-                    'vgid': volume['consistencygroup_id'],
-                    'status': six.text_type(e)}
+                LOG.warning(_LW('Flexvisor failed to delete volume %(id)s '
+                                'from group %(vgid)s due to %(status)s.'),
+                            {'id': volume['id'],
+                             'vgid': volume['consistencygroup_id'],
+                             'status': e})
 
             if ret:
                 ret = 0
-                LOG.warning(msg)
 
         ret, output = self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
         if ret == errno.EAGAIN:
@@ -1204,9 +1196,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret == errno.ENODATA:
             ret = 0
-            msg = _LI('Flexvisor volume %(id)s does not '
-                      'exist.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor volume %(id)s does not '
+                         'exist.'), {'id': volume['id']})
         elif ret != 0:
             msg = _('Flexvisor failed to delete volume %(id)s: '
                     '%(status)s.') % {'id': volume['id'], 'status': ret}
@@ -1243,9 +1234,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(
                 data=msg)
         else:
-            msg = _LI('Flexvisor succeed to extend volume'
-                      ' %(id)s.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to extend volume'
+                         ' %(id)s.'), {'id': volume['id']})
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -1298,17 +1288,15 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                         'get event) %(id)s.') % {'id': snapshot['id']}
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret == errno.ENODATA:
-            msg = _LI('Flexvisor snapshot %(id)s not existed.') % \
-                {'id': snapshot['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor snapshot %(id)s not existed.'),
+                     {'id': snapshot['id']})
         elif ret != 0:
             msg = _('Flexvisor failed to delete snapshot %(id)s: '
                     '%(status)s.') % {'id': snapshot['id'], 'status': ret}
             raise exception.VolumeBackendAPIException(data=msg)
         else:
-            msg = _LI('Flexvisor succeed to delete '
-                      'snapshot %(id)s.') % {'id': snapshot['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to delete snapshot %(id)s.'),
+                     {'id': snapshot['id']})
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -1334,13 +1322,11 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     for poolUuid, poolName in output.get('children', []):
                         qpools.append(poolUuid)
                 else:
-                    msg = _LE("Flexvisor failed to get pool list."
-                              "(Error: %d)") % (ret)
-                    LOG.error(msg)
+                    LOG.error(_LE("Flexvisor failed to get pool list."
+                                  "(Error: %d)"), ret)
             except Exception as e:
-                msg = _LE("Flexvisor failed to get pool list due to "
-                          "%s.") % (six.text_type(e))
-                LOG.error(msg)
+                LOG.error(_LE("Flexvisor failed to get pool list due to "
+                              "%s."), e)
 
         # Query pool detail information
         for poolid in qpools:
@@ -1361,10 +1347,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                 pool['reserved_percentage'] = 0
                 pools.append(pool)
             else:
-                msg = _LW("Failed to query pool %(id)s status "
-                          "%(ret)d.") % {'id': poolid,
-                                         'ret': ret}
-                LOG.warning(msg)
+                LOG.warning(_LW("Failed to query pool %(id)s status "
+                                "%(ret)d."), {'id': poolid, 'ret': ret})
                 continue
         return pools
 
@@ -1392,9 +1376,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                 data['pools'] = pools
                 self._stats = data
         except Exception as e:
-            msg = _LE('Failed to get server info due to '
-                      '%(state)s.') % {'state': six.text_type(e)}
-            LOG.error(msg)
+            LOG.error(_LE('Failed to get server info due to '
+                      '%(state)s.'), {'state': e})
         return self._stats
 
     def do_setup(self, context):
@@ -1422,8 +1405,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     ret = 0
                     output = status.get('output', {})
             else:
-                LOG.error(_LE('Flexvisor failed to get pool info '
-                              '(failed to get event)%s.') % (poolid))
+                LOG.error(_LE('Flexvisor failed to get pool %(id)s info.'),
+                          {'id': poolid})
                 raise exception.VolumeBackendAPIException(
                     data="failed to get event")
         elif ret != 0:
@@ -1431,6 +1414,5 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     '%(status)s.') % {'id': poolid, 'status': ret}
             raise exception.VolumeBackendAPIException(data=msg)
         else:
-            msg = _('Flexvisor succeed to get pool info.')
-            LOG.debug(msg)
+            LOG.debug('Flexvisor succeeded to get pool info.')
         return ret, output

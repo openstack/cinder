@@ -16,7 +16,7 @@
 import errno
 
 from cinder import exception
-from cinder.i18n import _LW, _LI, _
+from cinder.i18n import _, _LI, _LW
 from cinder.openstack.common import log as logging
 import cinder.volume.driver
 from cinder.volume.drivers.prophetstor import dplcommon
@@ -131,9 +131,8 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
                         '%(id)s.') % {'id': volume['id']}
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret == errno.ENODATA:
-            msg = _LI('Flexvisor already unassigned volume '
-                      '%(id)s.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor already unassigned volume '
+                         '%(id)s.'), {'id': volume['id']})
         elif ret != 0:
             msg = _('Flexvisor failed to unassign volume:%(id)s:'
                     '%(status)s.') % {'id': volume['id'], 'status': ret}
@@ -151,7 +150,6 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
                         (backend_name or 'DPLISCSIDriver')
                     self._stats = data
             except Exception as exc:
-                msg = _LW('Cannot get volume status '
-                          '%(exc)%s.') % {'exc': exc}
-                LOG.warning(msg)
+                LOG.warning(_LW('Cannot get volume status '
+                                '%(exc)s.'), {'exc': exc})
         return self._stats
