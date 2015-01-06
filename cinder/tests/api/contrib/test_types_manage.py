@@ -267,4 +267,4 @@ class VolumeTypesManageApiTest(test.TestCase):
                          results['volume_type']['description'])
         if expected_results.get('expected_name'):
             self.assertEqual(expected_results['expected_name'],
-                         results['volume_type']['name'])
+                             results['volume_type']['name'])
