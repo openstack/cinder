@@ -31,7 +31,6 @@ import mock
 import mox
 from oslo.config import cfg
 from oslo.config import fixture as config_fixture
-from oslo.i18n import _lazy
 from oslo.messaging import conffixture as messaging_conffixture
 from oslo.utils import strutils
 from oslo.utils import timeutils
@@ -42,6 +41,7 @@ import testtools
 from cinder.common import config  # noqa Need to register global_opts
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
+from cinder import i18n
 from cinder.openstack.common import log as oslo_logging
 from cinder import rpc
 from cinder import service
@@ -107,7 +107,7 @@ class TestCase(testtools.TestCase):
         super(TestCase, self).setUp()
 
         # Unit tests do not need to use lazy gettext
-        _lazy.enable_lazy(enable=False)
+        i18n.enable_lazy(False)
 
         test_timeout = os.environ.get('OS_TEST_TIMEOUT', 0)
         try:

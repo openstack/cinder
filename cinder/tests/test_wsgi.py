@@ -25,7 +25,6 @@ import urllib2
 
 import mock
 from oslo.config import cfg
-from oslo.i18n import _lazy
 import testtools
 import webob
 import webob.dec
@@ -257,12 +256,7 @@ class ExceptionTest(test.TestCase):
 
     def setUp(self):
         super(ExceptionTest, self).setUp()
-        back_use_lazy = _lazy.USE_LAZY
         i18n.enable_lazy()
-        self.addCleanup(self._restore_use_lazy, back_use_lazy)
-
-    def _restore_use_lazy(self, back_use_lazy):
-        _lazy.USE_LAZY = back_use_lazy
 
     def _wsgi_app(self, inner_app):
         # NOTE(luisg): In order to test localization, we need to
