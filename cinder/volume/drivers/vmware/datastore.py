@@ -36,6 +36,12 @@ class DatastoreType(object):
     VMFS = "vmfs"
     VSAN = "vsan"
 
+    _ALL_TYPES = {NFS, VMFS, VSAN}
+
+    @staticmethod
+    def get_all_types():
+        return DatastoreType._ALL_TYPES
+
 
 class DatastoreSelector(object):
     """Class for selecting datastores which satisfy input requirements."""
