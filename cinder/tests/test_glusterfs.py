@@ -154,7 +154,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                         mock.call('mount', '-t', 'glusterfs',
                                   'glusterfs-host1:/export',
                                   '/mnt/glusterfs', run_as_root=True)]
-            self.assertEqual(mock_execute.mock_calls, expected)
+            self.assertEqual(expected, mock_execute.mock_calls)
 
     def test_mount_glusterfs_should_suppress_already_mounted_error(self):
         """_mount_glusterfs should suppress already mounted error if
@@ -174,7 +174,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                         mock.call('mount', '-t', 'glusterfs',
                                   'glusterfs-host1:/export',
                                   '/mnt/glusterfs', run_as_root=True)]
-            self.assertEqual(mock_execute.mock_calls, expected)
+            self.assertEqual(expected, mock_execute.mock_calls)
 
     def test_mount_glusterfs_should_reraise_already_mounted_error(self):
         """_mount_glusterfs should not suppress already mounted error
@@ -196,7 +196,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                         mock.call('mount', '-t', 'glusterfs',
                                   'glusterfs-host1:/export',
                                   '/mnt/glusterfs', run_as_root=True)]
-            self.assertEqual(mock_execute.mock_calls, expected)
+            self.assertEqual(expected, mock_execute.mock_calls)
 
     def test_mount_glusterfs_should_create_mountpoint_if_not_yet(self):
         """_mount_glusterfs should create mountpoint if it doesn't exist."""
@@ -210,7 +210,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                         mock.call('mount', '-t', 'glusterfs',
                                   'glusterfs-host1:/export',
                                   '/mnt/glusterfs', run_as_root=True)]
-            self.assertEqual(mock_execute.mock_calls, expected)
+            self.assertEqual(expected, mock_execute.mock_calls)
 
     def test_get_hash_str(self):
         """_get_hash_str should calculation correct value."""
@@ -230,7 +230,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             result = drv._get_mount_point_for_share(self.TEST_EXPORT1)
 
-            self.assertEqual(result, hashed_path)
+            self.assertEqual(hashed_path, result)
 
     def test_get_available_capacity_with_df(self):
         """_get_available_capacity should calculate correct value."""
@@ -251,7 +251,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             mock_execute.return_value = (df_output, None)
 
             result = drv._get_available_capacity(self.TEST_EXPORT1)
-            self.assertEqual(result, (df_avail, df_total_size))
+            self.assertEqual((df_avail, df_total_size), result)
 
     def test_load_shares_config(self):
         drv = self._driver
@@ -274,10 +274,10 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             self.assertIn(self.TEST_EXPORT1, drv.shares)
             self.assertIn(self.TEST_EXPORT2, drv.shares)
-            self.assertEqual(len(drv.shares), 2)
+            self.assertEqual(2, len(drv.shares))
 
-            self.assertEqual(drv.shares[self.TEST_EXPORT2],
-                             self.TEST_EXPORT2_OPTIONS)
+            self.assertEqual(self.TEST_EXPORT2_OPTIONS,
+                             drv.shares[self.TEST_EXPORT2])
 
     def test_ensure_share_mounted(self):
         """_ensure_share_mounted simple use case."""
@@ -418,7 +418,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock.call('chmod', 'g+w',
                           '/mnt/test/8f0473c9ad824b8b6a27264b9cacb005',
                           run_as_root=True)]
-            self.assertEqual(mock_execute.mock_calls, expected)
+            self.assertEqual(expected, mock_execute.mock_calls)
 
     def test_find_share_should_throw_error_if_there_is_no_mounted_shares(self):
         """_find_share should throw error if there is no mounted shares."""
@@ -907,8 +907,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
                 info = drv._read_info_file(info_path)
 
-                self.assertEqual(info[self.VOLUME_UUID],
-                                 'volume-%s' % self.VOLUME_UUID)
+                self.assertEqual('volume-%s' % self.VOLUME_UUID,
+                                 info[self.VOLUME_UUID])
 
     def test_extend_volume(self):
         drv = self._driver
@@ -1404,13 +1404,13 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             # Verify chain contains all expected data
             item_1 = drv._get_matching_backing_file(chain, vol_filename)
-            self.assertEqual(item_1['filename'], vol_filename_2)
+            self.assertEqual(vol_filename_2, item_1['filename'])
             chain.remove(item_1)
             item_2 = drv._get_matching_backing_file(chain, vol_filename_2)
-            self.assertEqual(item_2['filename'], vol_filename_3)
+            self.assertEqual(vol_filename_3, item_2['filename'])
             chain.remove(item_2)
-            self.assertEqual(len(chain), 1)
-            self.assertEqual(chain[0]['filename'], vol_filename)
+            self.assertEqual(1, len(chain))
+            self.assertEqual(vol_filename, chain[0]['filename'])
 
     def test_copy_volume_from_snapshot(self):
         drv = self._driver
@@ -1510,17 +1510,17 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             conn_info = drv.initialize_connection(volume, None)
 
-            self.assertEqual(conn_info['data']['format'], 'raw')
-            self.assertEqual(conn_info['driver_volume_type'], 'glusterfs')
-            self.assertEqual(conn_info['data']['name'], volume['name'])
-            self.assertEqual(conn_info['mount_point_base'],
-                             self.TEST_MNT_POINT_BASE)
+            self.assertEqual('raw', conn_info['data']['format'])
+            self.assertEqual('glusterfs', conn_info['driver_volume_type'])
+            self.assertEqual(volume['name'], conn_info['data']['name'])
+            self.assertEqual(self.TEST_MNT_POINT_BASE,
+                             conn_info['mount_point_base'])
 
     def test_get_mount_point_base(self):
         drv = self._driver
 
-        self.assertEqual(drv._get_mount_point_base(),
-                         self.TEST_MNT_POINT_BASE)
+        self.assertEqual(self.TEST_MNT_POINT_BASE,
+                         drv._get_mount_point_base())
 
     def test_backup_volume(self):
         """Backup a volume with no snapshots."""
@@ -1683,7 +1683,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             mock_qemu_img_info.assert_called_once_with(volume_path)
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path)
-            self.assertEqual(mock_create_temporary_file.call_count, 1)
+            self.assertEqual(1, mock_create_temporary_file.call_count)
 
     def test_copy_volume_to_image_qcow2_image(self):
         """Upload a qcow2 image file which has to be converted to raw first."""
