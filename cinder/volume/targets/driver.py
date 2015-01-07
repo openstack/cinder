@@ -58,15 +58,10 @@ class Target(object):
         pass
 
     @abc.abstractmethod
-    def detach_volume(self, context, volume):
-        """Callback for volume detached from instance or host."""
-        pass
-
-    @abc.abstractmethod
-    def initialize_connection(self, volume, **kwargs):
+    def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         pass
 
-    def terminate_connection(self, volume, **kwargs):
+    def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         pass

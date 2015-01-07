@@ -127,7 +127,7 @@ class TestBaseISCSITargetDriver(test.TestCase):
         expected = {'driver_volume_type': 'iscsi',
                     'data': self.expected_iscsi_properties}
         self.assertEqual(expected,
-                         self.target.initialize_connection(self.testvol_1))
+                         self.target.initialize_connection(self.testvol_1, {}))
 
     def test_validate_connector(self):
         bad_connector = {'no_initiator': 'nada'}

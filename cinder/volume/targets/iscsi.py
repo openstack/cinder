@@ -156,10 +156,7 @@ class ISCSITarget(driver.Target):
         """Get the current chap auth username and password."""
         return None
 
-    def detach_volume(self, context, volume):
-        self._get_iscsi_properties(volume)
-
-    def initialize_connection(self, volume, **kwargs):
+    def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
         The iscsi driver returns a driver_volume_type of 'iscsi'.

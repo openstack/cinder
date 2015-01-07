@@ -572,7 +572,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         return self.target_driver.validate_connector(connector)
 
     def terminate_connection(self, volume, connector, **kwargs):
-        pass
+        return self.target_driver.terminate_connection(volume, connector,
+                                                       **kwargs)
 
 
 class LVMISCSIDriver(LVMVolumeDriver):

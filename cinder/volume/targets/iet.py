@@ -28,15 +28,5 @@ class IetAdm(object):
     def remove_export(self, context, volume):
         pass
 
-    def attach_volume(self, context, volume,
-                      instance_uuid, host_name, mountpoint):
-        pass
-
-    def detach_volume(self, context, volume):
-        pass
-
-    def initialize_connection(self, volume, **kwargs):
-        pass
-
-    def terminate_connection(self, volume, **kwargs):
+    def initialize_connection(self, volume, connector):
         pass

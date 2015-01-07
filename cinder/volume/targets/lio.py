@@ -178,7 +178,7 @@ class LioAdm(TgtAdm):
             'data': iscsi_properties
         }
 
-    def terminate_connection(self, volume, connector):
+    def terminate_connection(self, volume, connector, **kwargs):
         volume_iqn = volume['provider_location'].split(' ')[1]
 
         # Delete initiator iqns from target ACL
