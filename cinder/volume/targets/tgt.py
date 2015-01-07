@@ -232,13 +232,25 @@ class TgtAdm(iscsi.ISCSITarget):
                                        run_as_root=True)
             LOG.debug("Targets after update: %s" % out)
         except putils.ProcessExecutionError as e:
-            LOG.warning(_LW("Failed to create iscsi target for volume "
-                        "id:%(vol_id)s: %(e)s")
-                        % {'vol_id': vol_id, 'e': e})
+            if "target already exists" in e.stderr:
+                LOG.warning(_LW('Could not create target because '
+                                'it already exists for volume: %s'), vol_id)
+                # NOTE(jdg): We've run into issues where the command being sent
+                # was not correct. This may be related to using the executor
+                # directly? Even though the above call specified is a show
+                # we see a new being called instead...
 
-            # Don't forget to remove the persistent file we created
-            os.unlink(volume_path)
-            raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
+                # Adding the additional Warning message above for a clear
+                # ER marker (Ref bug: #1398078).
+                pass
+            else:
+                LOG.warning(_LW("Failed to create iscsi target for volume "
+                            "id:%(vol_id)s: %(e)s")
+                            % {'vol_id': vol_id, 'e': e})
+
+                # Don't forget to remove the persistent file we created
+                os.unlink(volume_path)
+                raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)

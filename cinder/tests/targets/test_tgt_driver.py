@@ -14,6 +14,7 @@ import tempfile
 
 import mock
 from oslo.utils import timeutils
+from oslo_concurrency import processutils as putils
 
 from cinder import context
 from cinder import test
@@ -174,6 +175,36 @@ class TestTgtAdmDriver(test.TestCase):
 
         def _fake_execute(*args, **kwargs):
             return '', ''
+
+        self.stubs.Set(self.target,
+                       '_execute',
+                       _fake_execute)
+
+        self.stubs.Set(self.target,
+                       '_get_target',
+                       lambda x: 1)
+
+        self.stubs.Set(self.target,
+                       '_verify_backing_lun',
+                       lambda x, y: True)
+
+        test_vol = 'iqn.2010-10.org.openstack:'\
+                   'volume-83c2e877-feed-46be-8435-77884fe55b45'
+        self.assertEqual(
+            1,
+            self.target.create_iscsi_target(
+                test_vol,
+                1,
+                0,
+                self.fake_volumes_dir))
+
+    def test_create_iscsi_target_already_exists(self):
+        def _fake_execute(*args, **kwargs):
+            raise putils.ProcessExecutionError(
+                exit_code=1,
+                stdout='',
+                stderr='target already exists',
+                cmd='tgtad --lld iscsi --op show --mode target')
 
         self.stubs.Set(self.target,
                        '_execute',
