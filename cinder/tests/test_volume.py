@@ -4027,7 +4027,8 @@ class ISCSITestCase(DriverTestCase):
         iscsi_driver = \
             cinder.volume.targets.tgt.TgtAdm(
                 configuration=self.configuration)
-        iscsi_driver._execute = lambda *a, **kw: \
+
+        utils.execute = lambda *a, **kw: \
             ("%s dummy" % CONF.iscsi_ip_address, '')
         volume = {"name": "dummy",
                   "host": "0.0.0.0",

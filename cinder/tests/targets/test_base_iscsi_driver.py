@@ -116,8 +116,8 @@ class TestBaseISCSITargetDriver(test.TestCase):
                        'safe_get',
                        _fake_safe_get)
 
-        self.stubs.Set(self.target,
-                       '_execute',
+        self.stubs.Set(utils,
+                       'execute',
                        _fake_execute)
 
         self.assertEqual(target_string,

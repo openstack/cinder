@@ -15,6 +15,7 @@ from oslo.concurrency import processutils
 from cinder import exception
 from cinder.i18n import _, _LW, _LE
 from cinder.openstack.common import log as logging
+from cinder import utils
 from cinder.volume.targets import driver
 
 LOG = logging.getLogger(__name__)
@@ -135,10 +136,9 @@ class ISCSITarget(driver.Target):
             # NOTE(griff) We're doing the split straight away which should be
             # safe since using '@' in hostname is considered invalid
 
-            (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
+            (out, _err) = utils.execute('iscsiadm', '-m', 'discovery',
                                         '-t', 'sendtargets', '-p',
                                         volume['host'].split('@')[0],
-                                        root_helper=self._root_helper,
                                         run_as_root=True)
         except processutils.ProcessExecutionError as ex:
             LOG.error(_LE("ISCSI discovery attempt failed for:%s") %
