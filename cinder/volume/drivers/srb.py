@@ -824,18 +824,11 @@ class SRBISCSIDriver(SRBDriver, driver.ISCSIDriver):
             self.target_driver.set_execute(execute)
 
     def ensure_export(self, context, volume):
-        volume_name = volume['name']
-        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
-                               volume_name)
         device_path = self._mapper_path(volume)
-        # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
-        # should clean this all up at some point in the future
-        model_update = self.target_driver.ensure_export(
-            context, volume,
-            iscsi_name,
-            device_path,
-            None,
-            self.configuration)
+
+        model_update = self.target_driver.ensure_export(context,
+                                                        volume,
+                                                        device_path)
         if model_update:
             self.db.volume_update(context, volume['id'], model_update)
 
@@ -850,8 +843,7 @@ class SRBISCSIDriver(SRBDriver, driver.ISCSIDriver):
 
         data = self.target_driver.create_export(context,
                                                 volume,
-                                                volume_path,
-                                                self.configuration)
+                                                volume_path)
         return {
             'provider_location': data['location'],
             'provider_auth': data['auth'],

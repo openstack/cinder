@@ -542,13 +542,11 @@ class LVMVolumeDriver(driver.VolumeDriver):
     # #######  Interface methods for DataPath (Target Driver) ########
 
     def ensure_export(self, context, volume):
-        volume_name = volume['name']
         volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
-                                      volume_name)
+                                      volume['name'])
+
         model_update = \
-            self.target_driver.ensure_export(context,
-                                             volume,
-                                             volume_path=volume_path)
+            self.target_driver.ensure_export(context, volume, volume_path)
         return model_update
 
     def create_export(self, context, volume, vg=None):
@@ -556,9 +554,11 @@ class LVMVolumeDriver(driver.VolumeDriver):
             vg = self.configuration.volume_group
 
         volume_path = "/dev/%s/%s" % (vg, volume['name'])
-        export_info = self.target_driver.create_export(context,
-                                                       volume,
-                                                       volume_path)
+
+        export_info = self.target_driver.create_export(
+            context,
+            volume,
+            volume_path)
         return {'provider_location': export_info['location'],
                 'provider_auth': export_info['auth'], }
 

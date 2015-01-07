@@ -49,9 +49,7 @@ class LioAdm(TgtAdm):
 
         self.remove_iscsi_target(iscsi_target, 0, volume['id'], volume['name'])
 
-    def ensure_export(self, context, volume,
-                      iscsi_name, volume_path,
-                      volume_group, config):
+    def ensure_export(self, context, volume, volume_path):
         try:
             volume_info = self.db.volume_get(context, volume['id'])
             (auth_method,
@@ -66,7 +64,8 @@ class LioAdm(TgtAdm):
                          "provision for volume: %s"), volume['id'])
 
         iscsi_target = 1
-
+        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
+                               volume['name'])
         self.create_iscsi_target(iscsi_name, iscsi_target, 0, volume_path,
                                  chap_auth, check_exit_code=False)
 
