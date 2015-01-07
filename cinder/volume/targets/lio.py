@@ -38,6 +38,9 @@ class LioAdm(TgtAdm):
 
         self._verify_rtstool()
 
+    def _get_target_chap_auth(self, name):
+        pass
+
     def remove_export(self, context, volume):
         try:
             iscsi_target = self.db.volume_get_iscsi_target_num(context,

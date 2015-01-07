@@ -49,6 +49,9 @@ class TestLioAdmDriver(test_tgt.TestTgtAdmDriver):
     def test_verify_backing_lun(self):
         pass
 
+    def test_get_target_chap_auth(self):
+        pass
+
     def test_create_iscsi_target_already_exists(self):
         def _fake_execute(*args, **kwargs):
             raise putils.ProcessExecutionError(exit_code=1)
