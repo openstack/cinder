@@ -844,7 +844,7 @@ class TestCinderRtstoolCmd(test.TestCase):
         target_iqn = mock.MagicMock()
         target_iqn.tpgs.return_value = \
             [{'node_acls': mock.sentinel.initiator_iqn}]
-        acl = {'node_wwn': mock.sentinel.initiator_iqn}
+        acl = mock.MagicMock(node_wwn=mock.sentinel.initiator_iqn)
         tpg = mock.MagicMock(node_acls=[acl])
         tpgs = mock.MagicMock()
         tpgs.next.return_value = tpg
