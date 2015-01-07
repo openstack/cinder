@@ -317,3 +317,267 @@ class HostFiltersTestCase(test.TestCase):
             'same_host': "NOT-a-valid-UUID", }}
 
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    def test_driver_filter_passing_function(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'filter_function': '1 == 1',
+                }
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                }
+            }
+        }
+
+        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_failing_function(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'filter_function': '1 == 2',
+                }
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                }
+            }
+        }
+
+        self.assertFalse(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_no_filter_function(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'filter_function': None,
+                }
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                }
+            }
+        }
+
+        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_not_implemented(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {}
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                }
+            }
+        }
+
+        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_no_volume_extra_specs(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'filter_function': '1 == 1',
+                }
+            })
+
+        filter_properties = {'volume_type': {}}
+
+        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_volume_backend_name_different(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'filter_function': '1 == 1',
+                }
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake2',
+                }
+            }
+        }
+
+        self.assertFalse(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_function_extra_spec_replacement(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'filter_function': 'extra.var == 1',
+                }
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                    'var': 1,
+                }
+            }
+        }
+
+        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_function_stats_replacement(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'total_capacity_gb': 100,
+                'capabilities': {
+                    'filter_function': 'stats.total_capacity_gb < 200',
+                }
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                }
+            }
+        }
+
+        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_function_volume_replacement(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'filter_function': 'volume.size < 5',
+                }
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                }
+            },
+            'request_spec': {
+                'volume_properties': {
+                    'size': 1
+                }
+            }
+        }
+
+        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_function_qos_spec_replacement(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'filter_function': 'qos.var == 1',
+                }
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                }
+            },
+            'qos_specs': {
+                'var': 1
+            }
+        }
+
+        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_function_exception_caught(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'filter_function': '1 / 0 == 0',
+                }
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                }
+            }
+        }
+
+        self.assertFalse(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_function_empty_qos(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'filter_function': 'qos.maxiops == 1',
+                }
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                }
+            },
+            'qos_specs': None
+        }
+
+        self.assertFalse(filt_cls.host_passes(host1, filter_properties))
+
+    def test_driver_filter_capabilities(self):
+        filt_cls = self.class_map['DriverFilter']()
+        host1 = fakes.FakeHostState(
+            'host1', {
+                'volume_backend_name': 'fake',
+                'capabilities': {
+                    'foo': 10,
+                    'filter_function': 'capabilities.foo == 10',
+                },
+            })
+
+        filter_properties = {
+            'volume_type': {
+                'extra_specs': {
+                    'volume_backend_name': 'fake',
+                }
+            }
+        }
+
+        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
