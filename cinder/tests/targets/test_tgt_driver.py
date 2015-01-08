@@ -115,8 +115,8 @@ class TestTgtAdmDriver(test.TestCase):
         def _fake_execute(*args, **kwargs):
             return self.fake_iscsi_scan, None
 
-        self.stubs.Set(self.target,
-                       '_execute',
+        self.stubs.Set(utils,
+                       'execute',
                        _fake_execute)
 
         self.assertEqual('1',
@@ -129,8 +129,8 @@ class TestTgtAdmDriver(test.TestCase):
         def _fake_execute(*args, **kwargs):
             return self.fake_iscsi_scan, None
 
-        self.stubs.Set(self.target,
-                       '_execute',
+        self.stubs.Set(utils,
+                       'execute',
                        _fake_execute)
 
         self.assertTrue(self.target._verify_backing_lun(
@@ -144,8 +144,8 @@ class TestTgtAdmDriver(test.TestCase):
         def _fake_execute_bad_lun(*args, **kwargs):
             return bad_scan, None
 
-        self.stubs.Set(self.target,
-                       '_execute',
+        self.stubs.Set(utils,
+                       'execute',
                        _fake_execute_bad_lun)
 
         self.assertFalse(self.target._verify_backing_lun(
@@ -176,8 +176,8 @@ class TestTgtAdmDriver(test.TestCase):
         def _fake_execute(*args, **kwargs):
             return '', ''
 
-        self.stubs.Set(self.target,
-                       '_execute',
+        self.stubs.Set(utils,
+                       'execute',
                        _fake_execute)
 
         self.stubs.Set(self.target,
@@ -206,8 +206,8 @@ class TestTgtAdmDriver(test.TestCase):
                 stderr='target already exists',
                 cmd='tgtad --lld iscsi --op show --mode target')
 
-        self.stubs.Set(self.target,
-                       '_execute',
+        self.stubs.Set(utils,
+                       'execute',
                        _fake_execute)
 
         self.stubs.Set(self.target,
@@ -233,8 +233,8 @@ class TestTgtAdmDriver(test.TestCase):
         def _fake_execute(*args, **kwargs):
             return '', ''
 
-        self.stubs.Set(self.target,
-                       '_execute',
+        self.stubs.Set(utils,
+                       'execute',
                        _fake_execute)
 
         self.stubs.Set(self.target,

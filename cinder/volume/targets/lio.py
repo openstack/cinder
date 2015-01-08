@@ -15,6 +15,7 @@ from oslo_concurrency import processutils as putils
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
+from cinder import utils
 from cinder.volume.targets.tgt import TgtAdm
 
 LOG = logging.getLogger(__name__)
@@ -71,13 +72,13 @@ class LioAdm(TgtAdm):
 
     def _verify_rtstool(self):
         try:
-            self._execute('cinder-rtstool', 'verify')
+            utils.execute('cinder-rtstool', 'verify')
         except (OSError, putils.ProcessExecutionError):
             LOG.error(_LE('cinder-rtstool is not installed correctly'))
             raise
 
     def _get_target(self, iqn):
-        (out, err) = self._execute('cinder-rtstool',
+        (out, err) = utils.execute('cinder-rtstool',
                                    'get-targets',
                                    run_as_root=True)
         lines = out.split('\n')
@@ -105,7 +106,7 @@ class LioAdm(TgtAdm):
                             name,
                             chap_auth_userid,
                             chap_auth_password]
-            self._execute(*command_args, run_as_root=True)
+            utils.execute(*command_args, run_as_root=True)
         except putils.ProcessExecutionError as e:
             LOG.error(_LE("Failed to create iscsi target for volume "
                           "id:%s.") % vol_id)
@@ -128,7 +129,7 @@ class LioAdm(TgtAdm):
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_uuid_name)
 
         try:
-            self._execute('cinder-rtstool',
+            utils.execute('cinder-rtstool',
                           'delete',
                           iqn,
                           run_as_root=True)
@@ -155,7 +156,7 @@ class LioAdm(TgtAdm):
 
         # Add initiator iqns to target ACL
         try:
-            self._execute('cinder-rtstool', 'add-initiator',
+            utils.execute('cinder-rtstool', 'add-initiator',
                           volume_iqn,
                           auth_user,
                           auth_pass,
@@ -183,7 +184,7 @@ class LioAdm(TgtAdm):
 
         # Delete initiator iqns from target ACL
         try:
-            self._execute('cinder-rtstool', 'delete-initiator',
+            utils.execute('cinder-rtstool', 'delete-initiator',
                           volume_iqn,
                           connector['initiator'],
                           run_as_root=True)

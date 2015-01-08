@@ -12,8 +12,10 @@
 
 import abc
 
-from oslo_concurrency import processutils as putils
+from oslo.config import cfg
 import six
+
+CONF = cfg.CONF
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -33,8 +35,9 @@ class Target(object):
     def __init__(self, *args, **kwargs):
         self.db = kwargs.get('db')
         self.configuration = kwargs.get('configuration')
-        self._execute = kwargs.get('executor', putils.execute)
-        self._root_helper = kwargs.get('root_helper')
+        self._root_helper = kwargs.get('root_helper',
+                                       'sudo cinder-rootwrap %s' %
+                                       CONF.rootwrap_config)
 
     @abc.abstractmethod
     def ensure_export(self, context, volume,

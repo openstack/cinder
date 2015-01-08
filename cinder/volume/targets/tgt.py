@@ -22,6 +22,7 @@ from cinder import exception
 from cinder.openstack.common import fileutils
 from cinder.i18n import _, _LI, _LW, _LE
 from cinder.openstack.common import log as logging
+from cinder import utils
 from cinder.volume.targets import iscsi
 from cinder.volume import utils as vutils
 
@@ -58,7 +59,7 @@ class TgtAdm(iscsi.ISCSITarget):
         self.volumes_dir = self.configuration.safe_get('volumes_dir')
 
     def _get_target(self, iqn):
-        (out, err) = self._execute('tgt-admin', '--show', run_as_root=True)
+        (out, err) = utils.execute('tgt-admin', '--show', run_as_root=True)
         lines = out.split('\n')
         for line in lines:
             if iqn in line:
@@ -73,7 +74,7 @@ class TgtAdm(iscsi.ISCSITarget):
         capture = False
         target_info = []
 
-        (out, err) = self._execute('tgt-admin', '--show', run_as_root=True)
+        (out, err) = utils.execute('tgt-admin', '--show', run_as_root=True)
         lines = out.split('\n')
 
         for line in lines:
@@ -99,7 +100,7 @@ class TgtAdm(iscsi.ISCSITarget):
         # and error on the side of caution
         time.sleep(10)
         try:
-            (out, err) = self._execute('tgtadm', '--lld', 'iscsi',
+            (out, err) = utils.execute('tgtadm', '--lld', 'iscsi',
                                        '--op', 'new', '--mode',
                                        'logicalunit', '--tid',
                                        tid, '--lun', '1', '-b',
@@ -214,7 +215,7 @@ class TgtAdm(iscsi.ISCSITarget):
             # by creating the entry in the persist file
             # and then doing an update to get the target
             # created.
-            (out, err) = self._execute('tgt-admin', '--update', name,
+            (out, err) = utils.execute('tgt-admin', '--update', name,
                                        run_as_root=True)
             LOG.debug("StdOut from tgt-admin --update: %s", out)
             LOG.debug("StdErr from tgt-admin --update: %s", err)
@@ -222,7 +223,7 @@ class TgtAdm(iscsi.ISCSITarget):
             # Grab targets list for debug
             # Consider adding a check for lun 0 and 1 for tgtadm
             # before considering this as valid
-            (out, err) = self._execute('tgtadm',
+            (out, err) = utils.execute('tgtadm',
                                        '--lld',
                                        'iscsi',
                                        '--op',
@@ -357,7 +358,7 @@ class TgtAdm(iscsi.ISCSITarget):
         try:
             # NOTE(vish): --force is a workaround for bug:
             #             https://bugs.launchpad.net/cinder/+bug/1159948
-            self._execute('tgt-admin',
+            utils.execute('tgt-admin',
                           '--force',
                           '--delete',
                           iqn,
@@ -381,7 +382,7 @@ class TgtAdm(iscsi.ISCSITarget):
             try:
                 LOG.warning(_LW('Silent failure of target removal '
                                 'detected, retry....'))
-                self._execute('tgt-admin',
+                utils.execute('tgt-admin',
                               '--delete',
                               iqn,
                               run_as_root=True)
