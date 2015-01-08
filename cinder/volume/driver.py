@@ -147,6 +147,20 @@ volume_opts = [
                       'provisioned capacity cannot exceed the total physical '
                       'capacity. A ratio lower than 1.0 will be ignored and '
                       'the default value will be used instead.'),
+    cfg.StrOpt('scst_target_iqn_name',
+               default=None,
+               help='Certain ISCSI targets have predefined target names, '
+                    'SCST target driver uses this name.'),
+    cfg.StrOpt('scst_target_driver',
+               default='iscsi',
+               help='SCST target implementation can choose from multiple '
+                    'SCST target drivers.'),
+    cfg.StrOpt('chap_username',
+               default=None,
+               help='CHAP username to use for iSCSI Targets'),
+    cfg.StrOpt('chap_password',
+               default=None,
+               help='CHAP password to use for iSCSI Targets'),
 ]
 
 # for backward compatibility
@@ -227,7 +241,8 @@ class VolumeDriver(object):
             'ietadm': 'cinder.volume.targets.iet.IetAdm',
             'iseradm': 'cinder.volume.targets.iser.ISERTgtAdm',
             'lioadm': 'cinder.volume.targets.lio.LioAdm',
-            'tgtadm': 'cinder.volume.targets.tgt.TgtAdm', }
+            'tgtadm': 'cinder.volume.targets.tgt.TgtAdm',
+            'scstadmin': 'cinder.volume.targets.scst.SCSTAdm', }
 
         # set True by manager after successful check_for_setup
         self._initialized = False
