@@ -24,11 +24,7 @@ from cinder import test
 import cinder.tests.volume.drivers.netapp.dataontap.fakes as fake
 import cinder.tests.volume.drivers.netapp.fakes as na_fakes
 from cinder.volume.drivers.netapp.dataontap import block_base
-from cinder.volume.drivers.netapp.dataontap.block_base import \
-    NetAppBlockStorageLibrary as block_lib
 from cinder.volume.drivers.netapp.dataontap import block_cmode
-from cinder.volume.drivers.netapp.dataontap.block_cmode import \
-    NetAppBlockStorageCmodeLibrary as block_lib_cmode
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
@@ -42,7 +38,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         super(NetAppBlockStorageCmodeLibraryTestCase, self).setUp()
 
         kwargs = {'configuration': self.get_config_cmode()}
-        self.library = block_lib_cmode('driver', 'protocol', **kwargs)
+        self.library = block_cmode.NetAppBlockStorageCmodeLibrary(
+            'driver', 'protocol', **kwargs)
 
         self.library.zapi_client = mock.Mock()
         self.zapi_client = self.library.zapi_client
@@ -66,7 +63,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.MagicMock(return_value=(1, 20)))
     @mock.patch.object(na_utils, 'check_flags')
-    @mock.patch.object(block_lib, 'do_setup')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, 'do_setup')
     def test_do_setup(self, super_do_setup, mock_check_flags):
         context = mock.Mock()
 
@@ -75,7 +72,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         super_do_setup.assert_called_once_with(context)
         self.assertEqual(1, mock_check_flags.call_count)
 
-    @mock.patch.object(block_lib, 'check_for_setup_error')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       'check_for_setup_error')
     @mock.patch.object(ssc_cmode, 'check_ssc_api_permissions')
     def test_check_for_setup_error(self, mock_check_ssc_api_permissions,
                                    super_check_for_setup_error):

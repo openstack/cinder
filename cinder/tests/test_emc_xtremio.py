@@ -20,8 +20,7 @@ import six
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.volume.drivers.emc.xtremio import XtremIOFibreChannelDriver
-from cinder.volume.drivers.emc.xtremio import XtremIOISCSIDriver
+from cinder.volume.drivers.emc import xtremio
 
 
 LOG = logging.getLogger(__name__)
@@ -210,7 +209,7 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         configuration.san_login = ''
         configuration.san_password = ''
         configuration.san_ip = ''
-        self.driver = XtremIOISCSIDriver(configuration=configuration)
+        self.driver = xtremio.XtremIOISCSIDriver(configuration=configuration)
 
         self.data = CommonData()
 
@@ -294,7 +293,8 @@ class EMCXIODriverFibreChannelTestCase(test.TestCase):
         configuration.san_login = ''
         configuration.san_password = ''
         configuration.san_ip = ''
-        self.driver = XtremIOFibreChannelDriver(configuration=configuration)
+        self.driver = xtremio.XtremIOFibreChannelDriver(
+            configuration=configuration)
 
         self.data = CommonData()
 

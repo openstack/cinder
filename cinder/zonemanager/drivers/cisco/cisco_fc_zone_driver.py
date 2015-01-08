@@ -37,8 +37,8 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.zonemanager.drivers.cisco import cisco_fabric_opts as fabric_opts
-from cinder.zonemanager.drivers.fc_zone_driver import FCZoneDriver
-from cinder.zonemanager.utils import get_formatted_wwn
+from cinder.zonemanager.drivers import fc_zone_driver
+from cinder.zonemanager import utils as zm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ CONF = cfg.CONF
 CONF.register_opts(cisco_opts, 'fc-zone-manager')
 
 
-class CiscoFCZoneDriver(FCZoneDriver):
+class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
     """Cisco FC zone driver implementation.
 
     OpenStack Fibre Channel zone driver to manage FC zoning in
@@ -162,8 +162,9 @@ class CiscoFCZoneDriver(FCZoneDriver):
                     if zoning_policy == 'initiator-target':
                         for t in t_list:
                             target = t.lower()
-                            zone_members = [get_formatted_wwn(initiator),
-                                            get_formatted_wwn(target)]
+                            zone_members = [
+                                zm_utils.get_formatted_wwn(initiator),
+                                zm_utils.get_formatted_wwn(target)]
                             zone_name = (self.
                                          configuration.cisco_zone_name_prefix
                                          + initiator.replace(':', '')
@@ -177,10 +178,12 @@ class CiscoFCZoneDriver(FCZoneDriver):
                                              "Skipping zone creation %s"),
                                          zone_name)
                     elif zoning_policy == 'initiator':
-                        zone_members = [get_formatted_wwn(initiator)]
+                        zone_members = [
+                            zm_utils.get_formatted_wwn(initiator)]
                         for t in t_list:
                             target = t.lower()
-                            zone_members.append(get_formatted_wwn(target))
+                            zone_members.append(
+                                zm_utils.get_formatted_wwn(target))
 
                         zone_name = self.configuration.cisco_zone_name_prefix \
                             + initiator.replace(':', '')
@@ -277,7 +280,7 @@ class CiscoFCZoneDriver(FCZoneDriver):
             LOG.debug("zone config from Fabric: %s", cfgmap_from_fabric)
             for initiator_key in initiator_target_map.keys():
                 initiator = initiator_key.lower()
-                formatted_initiator = get_formatted_wwn(initiator)
+                formatted_initiator = zm_utils.get_formatted_wwn(initiator)
                 zone_map = {}
                 zones_to_delete = []
                 t_list = initiator_target_map[initiator_key]
@@ -300,7 +303,8 @@ class CiscoFCZoneDriver(FCZoneDriver):
                     zone_members = [formatted_initiator]
                     for t in t_list:
                         target = t.lower()
-                        zone_members.append(get_formatted_wwn(target))
+                        zone_members.append(
+                            zm_utils.get_formatted_wwn(target))
 
                     zone_name = self.configuration.cisco_zone_name_prefix \
                         + initiator.replace(':', '')
@@ -389,7 +393,8 @@ class CiscoFCZoneDriver(FCZoneDriver):
         LOG.debug("Target wwn List: %s", target_wwn_list)
         if len(fabrics) > 0:
             for t in target_wwn_list:
-                formatted_target_list.append(get_formatted_wwn(t.lower()))
+                formatted_target_list.append(
+                    zm_utils.get_formatted_wwn(t.lower()))
             LOG.debug("Formatted Target wwn List: %s", formatted_target_list)
             for fabric_name in fabrics:
                 fabric_ip = self.fabric_configs[fabric_name].safe_get(

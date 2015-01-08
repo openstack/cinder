@@ -30,11 +30,8 @@ import ctypes
 import os
 
 if os.name == 'nt':
-    from ctypes import windll
-    from ctypes import wintypes
-
-    kernel32 = windll.kernel32
-    virtdisk = windll.virtdisk
+    kernel32 = ctypes.windll.kernel32
+    virtdisk = ctypes.windll.virtdisk
 
 from cinder import exception
 from cinder.i18n import _
@@ -45,88 +42,88 @@ LOG = logging.getLogger(__name__)
 
 if os.name == 'nt':
     class Win32_GUID(ctypes.Structure):
-        _fields_ = [("Data1", wintypes.DWORD),
-                    ("Data2", wintypes.WORD),
-                    ("Data3", wintypes.WORD),
-                    ("Data4", wintypes.BYTE * 8)]
+        _fields_ = [("Data1", ctypes.wintypes.DWORD),
+                    ("Data2", ctypes.wintypes.WORD),
+                    ("Data3", ctypes.wintypes.WORD),
+                    ("Data4", ctypes.wintypes.BYTE * 8)]
 
     class Win32_VIRTUAL_STORAGE_TYPE(ctypes.Structure):
         _fields_ = [
-            ('DeviceId', wintypes.ULONG),
+            ('DeviceId', ctypes.wintypes.ULONG),
             ('VendorId', Win32_GUID)
         ]
 
     class Win32_RESIZE_VIRTUAL_DISK_PARAMETERS(ctypes.Structure):
         _fields_ = [
-            ('Version', wintypes.DWORD),
+            ('Version', ctypes.wintypes.DWORD),
             ('NewSize', ctypes.c_ulonglong)
         ]
 
     class Win32_OPEN_VIRTUAL_DISK_PARAMETERS_V1(ctypes.Structure):
         _fields_ = [
-            ('Version', wintypes.DWORD),
+            ('Version', ctypes.wintypes.DWORD),
             ('RWDepth', ctypes.c_ulong),
         ]
 
     class Win32_OPEN_VIRTUAL_DISK_PARAMETERS_V2(ctypes.Structure):
         _fields_ = [
-            ('Version', wintypes.DWORD),
-            ('GetInfoOnly', wintypes.BOOL),
-            ('ReadOnly', wintypes.BOOL),
+            ('Version', ctypes.wintypes.DWORD),
+            ('GetInfoOnly', ctypes.wintypes.BOOL),
+            ('ReadOnly', ctypes.wintypes.BOOL),
             ('ResiliencyGuid', Win32_GUID)
         ]
 
     class Win32_MERGE_VIRTUAL_DISK_PARAMETERS(ctypes.Structure):
         _fields_ = [
-            ('Version', wintypes.DWORD),
+            ('Version', ctypes.wintypes.DWORD),
             ('MergeDepth', ctypes.c_ulong)
         ]
 
     class Win32_CREATE_VIRTUAL_DISK_PARAMETERS(ctypes.Structure):
         _fields_ = [
-            ('Version', wintypes.DWORD),
+            ('Version', ctypes.wintypes.DWORD),
             ('UniqueId', Win32_GUID),
             ('MaximumSize', ctypes.c_ulonglong),
-            ('BlockSizeInBytes', wintypes.ULONG),
-            ('SectorSizeInBytes', wintypes.ULONG),
-            ('PhysicalSectorSizeInBytes', wintypes.ULONG),
-            ('ParentPath', wintypes.LPCWSTR),
-            ('SourcePath', wintypes.LPCWSTR),
-            ('OpenFlags', wintypes.DWORD),
+            ('BlockSizeInBytes', ctypes.wintypes.ULONG),
+            ('SectorSizeInBytes', ctypes.wintypes.ULONG),
+            ('PhysicalSectorSizeInBytes', ctypes.wintypes.ULONG),
+            ('ParentPath', ctypes.wintypes.LPCWSTR),
+            ('SourcePath', ctypes.wintypes.LPCWSTR),
+            ('OpenFlags', ctypes.wintypes.DWORD),
             ('ParentVirtualStorageType', Win32_VIRTUAL_STORAGE_TYPE),
             ('SourceVirtualStorageType', Win32_VIRTUAL_STORAGE_TYPE),
             ('ResiliencyGuid', Win32_GUID)
         ]
 
     class Win32_SIZE(ctypes.Structure):
-        _fields_ = [("VirtualSize", wintypes.ULARGE_INTEGER),
-                    ("PhysicalSize", wintypes.ULARGE_INTEGER),
-                    ("BlockSize", wintypes.ULONG),
-                    ("SectorSize", wintypes.ULONG)]
+        _fields_ = [("VirtualSize", ctypes.wintypes.ULARGE_INTEGER),
+                    ("PhysicalSize", ctypes.wintypes.ULARGE_INTEGER),
+                    ("BlockSize", ctypes.wintypes.ULONG),
+                    ("SectorSize", ctypes.wintypes.ULONG)]
 
     class Win32_PARENT_LOCATION(ctypes.Structure):
-        _fields_ = [('ParentResolved', wintypes.BOOL),
-                    ('ParentLocationBuffer', wintypes.WCHAR * 512)]
+        _fields_ = [('ParentResolved', ctypes.wintypes.BOOL),
+                    ('ParentLocationBuffer', ctypes.wintypes.WCHAR * 512)]
 
     class Win32_PHYSICAL_DISK(ctypes.Structure):
-        _fields_ = [("LogicalSectorSize", wintypes.ULONG),
-                    ("PhysicalSectorSize", wintypes.ULONG),
-                    ("IsRemote", wintypes.BOOL)]
+        _fields_ = [("LogicalSectorSize", ctypes.wintypes.ULONG),
+                    ("PhysicalSectorSize", ctypes.wintypes.ULONG),
+                    ("IsRemote", ctypes.wintypes.BOOL)]
 
     class Win32_VHD_INFO(ctypes.Union):
         _fields_ = [("Size", Win32_SIZE),
                     ("Identifier", Win32_GUID),
                     ("ParentLocation", Win32_PARENT_LOCATION),
                     ("ParentIdentifier", Win32_GUID),
-                    ("ParentTimestamp", wintypes.ULONG),
+                    ("ParentTimestamp", ctypes.wintypes.ULONG),
                     ("VirtualStorageType", Win32_VIRTUAL_STORAGE_TYPE),
-                    ("ProviderSubtype", wintypes.ULONG),
-                    ("Is4kAligned", wintypes.BOOL),
+                    ("ProviderSubtype", ctypes.wintypes.ULONG),
+                    ("Is4kAligned", ctypes.wintypes.BOOL),
                     ("PhysicalDisk", Win32_PHYSICAL_DISK),
-                    ("VhdPhysicalSectorSize", wintypes.ULONG),
+                    ("VhdPhysicalSectorSize", ctypes.wintypes.ULONG),
                     ("SmallestSafeVirtualSize",
-                        wintypes.ULARGE_INTEGER),
-                    ("FragmentationPercentage", wintypes.ULONG)]
+                        ctypes.wintypes.ULARGE_INTEGER),
+                    ("FragmentationPercentage", ctypes.wintypes.ULONG)]
 
     class Win32_GET_VIRTUAL_DISK_INFO_PARAMETERS(ctypes.Structure):
         _fields_ = [("VERSION", ctypes.wintypes.UINT),
@@ -134,8 +131,8 @@ if os.name == 'nt':
 
     class Win32_SET_VIRTUAL_DISK_INFO_PARAMETERS(ctypes.Structure):
         _fields_ = [
-            ('Version', wintypes.DWORD),
-            ('ParentFilePath', wintypes.LPCWSTR)
+            ('Version', ctypes.wintypes.DWORD),
+            ('ParentFilePath', ctypes.wintypes.LPCWSTR)
         ]
 
 
@@ -194,7 +191,7 @@ class VHDUtils(object):
         guid.Data1 = 0xec984aec
         guid.Data2 = 0xa0f9
         guid.Data3 = 0x47e9
-        ByteArray8 = wintypes.BYTE * 8
+        ByteArray8 = ctypes.wintypes.BYTE * 8
         guid.Data4 = ByteArray8(0x90, 0x1f, 0x71, 0x41, 0x5a, 0x66, 0x34, 0x5b)
         return guid
 
@@ -207,7 +204,7 @@ class VHDUtils(object):
         vst.DeviceId = device_id
         vst.VendorId = self._msft_vendor_id
 
-        handle = wintypes.HANDLE()
+        handle = ctypes.wintypes.HANDLE()
 
         ret_val = virtdisk.OpenVirtualDisk(ctypes.byref(vst),
                                            ctypes.c_wchar_p(vhd_path),
@@ -297,7 +294,7 @@ class VHDUtils(object):
             params.SourceVirtualStorageType.DeviceId = src_device_id
             params.SourceVirtualStorageType.VendorId = self._msft_vendor_id
 
-        handle = wintypes.HANDLE()
+        handle = ctypes.wintypes.HANDLE()
         create_virtual_disk_flag = self.create_virtual_disk_flags.get(
             new_vhd_type)
 
@@ -337,7 +334,7 @@ class VHDUtils(object):
 
         infoSize = ctypes.sizeof(virt_disk_info)
 
-        virtdisk.GetVirtualDiskInformation.restype = wintypes.DWORD
+        virtdisk.GetVirtualDiskInformation.restype = ctypes.wintypes.DWORD
 
         ret_val = virtdisk.GetVirtualDiskInformation(
             vhd_file, ctypes.byref(ctypes.c_ulong(infoSize)),

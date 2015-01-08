@@ -68,7 +68,7 @@ sys.modules['drbdmanage.exceptions'] = collections.namedtuple(
     'module', ['DM_EEXIST'])
 
 
-from cinder.volume.drivers.drbdmanagedrv import DrbdManageDriver
+from cinder.volume.drivers import drbdmanagedrv
 
 
 LOG = logging.getLogger(__name__)
@@ -179,9 +179,11 @@ class DrbdManageTestCase(test.TestCase):
 
         self.stubs.Set(importutils, 'import_object',
                        self.fake_import_object)
-        self.stubs.Set(DrbdManageDriver, 'call_or_reconnect',
+        self.stubs.Set(drbdmanagedrv.DrbdManageDriver,
+                       'call_or_reconnect',
                        self.fake_issue_dbus_call)
-        self.stubs.Set(DrbdManageDriver, 'dbus_connect',
+        self.stubs.Set(drbdmanagedrv.DrbdManageDriver,
+                       'dbus_connect',
                        self.fake_issue_dbus_connect)
 
         sys.modules['cinder.volume.drivers.drbdmanagedrv'].dm_const \
@@ -216,7 +218,7 @@ class DrbdManageTestCase(test.TestCase):
                    'volume_type_id': 'drbdmanage',
                    'created_at': timeutils.utcnow()}
 
-        dmd = DrbdManageDriver(configuration=self.configuration)
+        dmd = drbdmanagedrv.DrbdManageDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_volume(testvol)
         self.assertEqual(dmd.odm.calls[0][0], "create_resource")
@@ -232,7 +234,7 @@ class DrbdManageTestCase(test.TestCase):
                    'volume_type_id': 'drbdmanage',
                    'created_at': timeutils.utcnow()}
 
-        dmd = DrbdManageDriver(configuration=self.configuration)
+        dmd = drbdmanagedrv.DrbdManageDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.delete_volume(testvol)
         self.assertEqual(dmd.odm.calls[0][0], "list_volumes")
@@ -247,7 +249,7 @@ class DrbdManageTestCase(test.TestCase):
                    'volume_type_id': 'drbdmanage',
                    'created_at': timeutils.utcnow()}
 
-        dmd = DrbdManageDriver(configuration=self.configuration)
+        dmd = drbdmanagedrv.DrbdManageDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         data = dmd.local_path(testvol)
         self.assertTrue(data.startswith("/dev/drbd"))
@@ -256,7 +258,7 @@ class DrbdManageTestCase(test.TestCase):
         testsnap = {'id': 'ca253fd0-8068-11e4-98c0-5254008ea111',
                     'volume_id': 'ba253fd0-8068-11e4-98c0-5254008ea111'}
 
-        dmd = DrbdManageDriver(configuration=self.configuration)
+        dmd = drbdmanagedrv.DrbdManageDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_snapshot(testsnap)
         self.assertEqual(dmd.odm.calls[0][0], "list_volumes")
@@ -267,7 +269,7 @@ class DrbdManageTestCase(test.TestCase):
     def test_delete_snapshot(self):
         testsnap = {'id': 'ca253fd0-8068-11e4-98c0-5254008ea111'}
 
-        dmd = DrbdManageDriver(configuration=self.configuration)
+        dmd = drbdmanagedrv.DrbdManageDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.delete_snapshot(testsnap)
         self.assertEqual(dmd.odm.calls[0][0], "list_snapshots")
@@ -281,7 +283,7 @@ class DrbdManageTestCase(test.TestCase):
                    'volume_type_id': 'drbdmanage',
                    'created_at': timeutils.utcnow()}
 
-        dmd = DrbdManageDriver(configuration=self.configuration)
+        dmd = drbdmanagedrv.DrbdManageDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.extend_volume(testvol, 5)
         self.assertEqual(dmd.odm.calls[0][0], "list_volumes")
@@ -302,7 +304,7 @@ class DrbdManageTestCase(test.TestCase):
 
         newvol = {'id': 'ca253fd0-8068-11e4-98c0-5254008ea111'}
 
-        dmd = DrbdManageDriver(configuration=self.configuration)
+        dmd = drbdmanagedrv.DrbdManageDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_cloned_volume(newvol, srcvol)
         self.assertEqual(dmd.odm.calls[0][0], "list_volumes")

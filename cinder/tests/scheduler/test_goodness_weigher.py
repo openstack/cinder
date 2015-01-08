@@ -15,7 +15,7 @@
 Tests For Goodness Weigher.
 """
 
-from cinder.scheduler.weights.goodness import GoodnessWeigher
+from cinder.scheduler.weights import goodness
 from cinder import test
 from cinder.tests.scheduler import fakes
 
@@ -25,7 +25,7 @@ class GoodnessWeigherTestCase(test.TestCase):
         super(GoodnessWeigherTestCase, self).setUp()
 
     def test_goodness_weigher_passing_host(self):
-        weigher = GoodnessWeigher()
+        weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {
             'host': 'host.example.com',
             'capabilities': {
@@ -54,7 +54,7 @@ class GoodnessWeigherTestCase(test.TestCase):
         self.assertEqual(50, weight)
 
     def test_goodness_weigher_capabilities_substitution(self):
-        weigher = GoodnessWeigher()
+        weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {
             'host': 'host.example.com',
             'capabilities': {
@@ -68,7 +68,7 @@ class GoodnessWeigherTestCase(test.TestCase):
         self.assertEqual(60, weight)
 
     def test_goodness_weigher_extra_specs_substitution(self):
-        weigher = GoodnessWeigher()
+        weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {
             'host': 'host.example.com',
             'capabilities': {
@@ -87,7 +87,7 @@ class GoodnessWeigherTestCase(test.TestCase):
         self.assertEqual(60, weight)
 
     def test_goodness_weigher_volume_substitution(self):
-        weigher = GoodnessWeigher()
+        weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {
             'host': 'host.example.com',
             'capabilities': {
@@ -106,7 +106,7 @@ class GoodnessWeigherTestCase(test.TestCase):
         self.assertEqual(60, weight)
 
     def test_goodness_weigher_qos_substitution(self):
-        weigher = GoodnessWeigher()
+        weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {
             'host': 'host.example.com',
             'capabilities': {
@@ -123,7 +123,7 @@ class GoodnessWeigherTestCase(test.TestCase):
         self.assertEqual(60, weight)
 
     def test_goodness_weigher_stats_substitution(self):
-        weigher = GoodnessWeigher()
+        weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {
             'host': 'host.example.com',
             'capabilities': {
@@ -137,7 +137,7 @@ class GoodnessWeigherTestCase(test.TestCase):
         self.assertEqual(100, weight)
 
     def test_goodness_weigher_invalid_substitution(self):
-        weigher = GoodnessWeigher()
+        weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {
             'host': 'host.example.com',
             'capabilities': {
@@ -151,7 +151,7 @@ class GoodnessWeigherTestCase(test.TestCase):
         self.assertEqual(0, weight)
 
     def test_goodness_weigher_host_rating_out_of_bounds(self):
-        weigher = GoodnessWeigher()
+        weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {
             'host': 'host.example.com',
             'capabilities': {
@@ -172,7 +172,7 @@ class GoodnessWeigherTestCase(test.TestCase):
         self.assertEqual(0, weight)
 
     def test_goodness_weigher_invalid_goodness_function(self):
-        weigher = GoodnessWeigher()
+        weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {
             'host': 'host.example.com',
             'capabilities': {

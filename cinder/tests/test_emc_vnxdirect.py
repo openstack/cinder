@@ -20,14 +20,13 @@ from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder import test
-from cinder.tests.utils import ZeroIntervalLoopingCall
+from cinder.tests import utils
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.emc.emc_cli_fc import EMCCLIFCDriver
-from cinder.volume.drivers.emc.emc_cli_iscsi import EMCCLIISCSIDriver
-import cinder.volume.drivers.emc.emc_vnx_cli as emc_vnx_cli
-from cinder.volume.drivers.emc.emc_vnx_cli import CommandLineHelper
-from cinder.volume.drivers.emc.emc_vnx_cli import EMCVnxCLICmdError
-from cinder.zonemanager.fc_san_lookup_service import FCSanLookupService
+from cinder.volume.drivers.emc import emc_cli_fc
+from cinder.volume.drivers.emc import emc_cli_iscsi
+from cinder.volume.drivers.emc import emc_vnx_cli
+from cinder.zonemanager import fc_san_lookup_service as fc_service
+
 
 SUCCEED = ("", 0)
 FAKE_ERROR_RETURN = ("FAKE ERROR", 255)
@@ -873,9 +872,9 @@ class DriverTestCaseBase(test.TestCase):
     def setUp(self):
         super(DriverTestCaseBase, self).setUp()
 
-        self.stubs.Set(CommandLineHelper, 'command_execute',
+        self.stubs.Set(emc_vnx_cli.CommandLineHelper, 'command_execute',
                        self.fake_command_execute_for_driver_setup)
-        self.stubs.Set(CommandLineHelper, 'get_array_serial',
+        self.stubs.Set(emc_vnx_cli.CommandLineHelper, 'get_array_serial',
                        mock.Mock(return_value={'array_serial':
                                                'fakeSerial'}))
         self.stubs.Set(os.path, 'exists', mock.Mock(return_value=1))
@@ -971,7 +970,7 @@ class DriverTestCaseBase(test.TestCase):
 
 class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
     def generateDriver(self, conf):
-        return EMCCLIISCSIDriver(configuration=conf)
+        return emc_cli_iscsi.EMCCLIISCSIDriver(configuration=conf)
 
     @mock.patch(
         "eventlet.event.Event.wait",
@@ -1703,7 +1702,8 @@ Time Remaining:  0 second(s)
     def test_terminate_connection(self):
 
         os.path.exists = mock.Mock(return_value=1)
-        self.driver = EMCCLIISCSIDriver(configuration=self.configuration)
+        self.driver = emc_cli_iscsi.EMCCLIISCSIDriver(
+            configuration=self.configuration)
         cli_helper = self.driver.cli._client
         data = {'storage_group_name': "fakehost",
                 'storage_group_uid': "2F:D4:00:00:00:00:00:"
@@ -1735,7 +1735,7 @@ Time Remaining:  0 second(s)
         results = [FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
 
-        self.assertRaises(EMCVnxCLICmdError,
+        self.assertRaises(exception.EMCVnxCLICmdError,
                           self.driver.create_volume,
                           self.testData.test_failed_volume)
         expect_cmd = [mock.call(*self.testData.LUN_CREATION_CMD(
@@ -1748,10 +1748,9 @@ Time Remaining:  0 second(s)
         fake_cli = self.driverSetup(commands, results)
 
         # case
-        self.assertRaises(EMCVnxCLICmdError,
+        self.assertRaises(exception.EMCVnxCLICmdError,
                           self.driver.create_snapshot,
                           self.testData.test_failed_snapshot)
-
         # verification
         expect_cmd = [
             mock.call(
@@ -1802,7 +1801,7 @@ Time Remaining:  0 second(s)
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
-                new=ZeroIntervalLoopingCall)
+                new=utils.ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot_sync_failed(self):
 
         cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
@@ -1935,7 +1934,7 @@ Time Remaining:  0 second(s)
         results = [FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
 
-        self.assertRaises(EMCVnxCLICmdError,
+        self.assertRaises(exception.EMCVnxCLICmdError,
                           self.driver.delete_volume,
                           self.testData.test_failed_volume)
         expected = [mock.call(*self.testData.LUN_DELETE_CMD('failed_vol1'))]
@@ -1947,10 +1946,10 @@ Time Remaining:  0 second(s)
         results = [self.testData.LUN_DELETE_IN_SG_ERROR(),
                    self.testData.LUN_DELETE_IN_SG_ERROR(False)]
         self.driverSetup(commands, results)
-        self.assertRaises(EMCVnxCLICmdError,
+        self.assertRaises(exception.EMCVnxCLICmdError,
                           self.driver.delete_volume,
                           self.testData.test_volume1_in_sg)
-        self.assertRaises(EMCVnxCLICmdError,
+        self.assertRaises(exception.EMCVnxCLICmdError,
                           self.driver.delete_volume,
                           self.testData.test_volume2_in_sg)
 
@@ -2016,7 +2015,7 @@ Time Remaining:  0 second(s)
         results = [FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
 
-        self.assertRaises(EMCVnxCLICmdError,
+        self.assertRaises(exception.EMCVnxCLICmdError,
                           self.driver.extend_volume,
                           self.testData.test_failed_volume,
                           2)
@@ -2025,7 +2024,7 @@ Time Remaining:  0 second(s)
         fake_cli.assert_has_calls(expected)
 
     @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
-                new=ZeroIntervalLoopingCall)
+                new=utils.ZeroIntervalLoopingCall)
     def test_extend_volume_failed(self):
         commands = [self.testData.LUN_PROPERTY_ALL_CMD('failed_vol1')]
         results = [self.testData.LUN_PROPERTY('failed_vol1', size=2)]
@@ -2052,7 +2051,8 @@ Time Remaining:  0 second(s)
         results = [SUCCEED]
         self.configuration.storage_vnx_pool_name = \
             self.testData.test_pool_name
-        self.driver = EMCCLIISCSIDriver(configuration=self.configuration)
+        self.driver = emc_cli_iscsi.EMCCLIISCSIDriver(
+            configuration=self.configuration)
         assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
         # mock the command executor
         fake_command_execute = self.get_command_execute_simulator(
@@ -2074,7 +2074,8 @@ Time Remaining:  0 second(s)
         results = [self.testData.LUN_PROPERTY('lun_name')]
         invalid_pool_name = "fake_pool"
         self.configuration.storage_vnx_pool_name = invalid_pool_name
-        self.driver = EMCCLIISCSIDriver(configuration=self.configuration)
+        self.driver = emc_cli_iscsi.EMCCLIISCSIDriver(
+            configuration=self.configuration)
         assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
         # mock the command executor
         fake_command_execute = self.get_command_execute_simulator(
@@ -2102,7 +2103,8 @@ Time Remaining:  0 second(s)
 
         self.configuration.storage_vnx_pool_name = \
             self.testData.test_pool_name
-        self.driver = EMCCLIISCSIDriver(configuration=self.configuration)
+        self.driver = emc_cli_iscsi.EMCCLIISCSIDriver(
+            configuration=self.configuration)
         assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
 
         # mock the command executor
@@ -2174,7 +2176,7 @@ Time Remaining:  0 second(s)
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        CommandLineHelper.get_array_serial = mock.Mock(
+        emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
 
         self.driver.retype(None, self.testData.test_volume3,
@@ -2243,7 +2245,7 @@ Time Remaining:  0 second(s)
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        CommandLineHelper.get_array_serial = mock.Mock(
+        emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
 
         self.driver.retype(None, self.testData.test_volume3,
@@ -2317,7 +2319,7 @@ Time Remaining:  0 second(s)
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        CommandLineHelper.get_array_serial = mock.Mock(
+        emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
 
         self.driver.retype(None, self.testData.test_volume3,
@@ -2380,7 +2382,7 @@ Time Remaining:  0 second(s)
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        CommandLineHelper.get_array_serial = mock.Mock(
+        emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
 
         self.driver.retype(None, self.testData.test_volume3,
@@ -2433,7 +2435,7 @@ Time Remaining:  0 second(s)
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        CommandLineHelper.get_array_serial = mock.Mock(
+        emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
 
         retyped = self.driver.retype(None, self.testData.test_volume3,
@@ -2495,7 +2497,7 @@ Time Remaining:  0 second(s)
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        CommandLineHelper.get_array_serial = mock.Mock(
+        emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
 
         self.driver.retype(None, self.testData.test_volume3,
@@ -2557,7 +2559,7 @@ Time Remaining:  0 second(s)
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        CommandLineHelper.get_array_serial = mock.Mock(
+        emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
 
         retyped = self.driver.retype(None, self.testData.test_volume3,
@@ -2608,7 +2610,7 @@ Time Remaining:  0 second(s)
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        CommandLineHelper.get_array_serial = mock.Mock(
+        emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
 
         self.driver.retype(None, self.testData.test_volume3,
@@ -2645,7 +2647,8 @@ Time Remaining:  0 second(s)
 
         self.configuration.storage_vnx_pool_name = \
             self.testData.test_pool_name
-        self.driver = EMCCLIISCSIDriver(configuration=self.configuration)
+        self.driver = emc_cli_iscsi.EMCCLIISCSIDriver(
+            configuration=self.configuration)
         assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
 
         cli_helper = self.driver.cli._client
@@ -2925,7 +2928,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
              'volume_backend_name': 'namedbackend'})
 
     def generateDriver(self, conf):
-        driver = EMCCLIISCSIDriver(configuration=conf)
+        driver = emc_cli_iscsi.EMCCLIISCSIDriver(configuration=conf)
         self.assertTrue(isinstance(driver.cli,
                                    emc_vnx_cli.EMCVnxCliArray))
         return driver
@@ -3176,7 +3179,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
 
 class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
     def generateDriver(self, conf):
-        return EMCCLIFCDriver(configuration=conf)
+        return emc_cli_fc.EMCCLIFCDriver(configuration=conf)
 
     @mock.patch(
         "oslo_concurrency.processutils.execute",
@@ -3277,8 +3280,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
                    ('', 0),
                    self.testData.FC_PORTS]
         fake_cli = self.driverSetup(commands, results)
-        self.driver.cli.zonemanager_lookup_service = FCSanLookupService(
-            configuration=self.configuration)
+        self.driver.cli.zonemanager_lookup_service =\
+            fc_service.FCSanLookupService(configuration=self.configuration)
 
         conn_info = self.driver.initialize_connection(
             self.testData.test_volume,
@@ -3308,7 +3311,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         "get_device_mapping_from_network",
         mock.Mock(return_value=EMCVNXCLIDriverTestData.device_map))
     def test_terminate_connection_remove_zone_false(self):
-        self.driver = EMCCLIFCDriver(configuration=self.configuration)
+        self.driver = emc_cli_fc.EMCCLIFCDriver(
+            configuration=self.configuration)
         cli_helper = self.driver.cli._client
         data = {'storage_group_name': "fakehost",
                 'storage_group_uid': "2F:D4:00:00:00:00:00:"
@@ -3317,8 +3321,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         cli_helper.get_storage_group = mock.Mock(
             return_value=data)
         cli_helper.remove_hlu_from_storagegroup = mock.Mock()
-        self.driver.cli.zonemanager_lookup_service = FCSanLookupService(
-            configuration=self.configuration)
+        self.driver.cli.zonemanager_lookup_service =\
+            fc_service.FCSanLookupService(configuration=self.configuration)
         connection_info = self.driver.terminate_connection(
             self.testData.test_volume,
             self.testData.connector)
@@ -3333,7 +3337,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         "get_device_mapping_from_network",
         mock.Mock(return_value=EMCVNXCLIDriverTestData.device_map))
     def test_terminate_connection_remove_zone_true(self):
-        self.driver = EMCCLIFCDriver(configuration=self.configuration)
+        self.driver = emc_cli_fc.EMCCLIFCDriver(
+            configuration=self.configuration)
         cli_helper = self.driver.cli._client
         data = {'storage_group_name': "fakehost",
                 'storage_group_uid': "2F:D4:00:00:00:00:00:"
@@ -3342,8 +3347,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         cli_helper.get_storage_group = mock.Mock(
             return_value=data)
         cli_helper.remove_hlu_from_storagegroup = mock.Mock()
-        self.driver.cli.zonemanager_lookup_service = FCSanLookupService(
-            configuration=self.configuration)
+        self.driver.cli.zonemanager_lookup_service =\
+            fc_service.FCSanLookupService(configuration=self.configuration)
         connection_info = self.driver.terminate_connection(
             self.testData.test_volume,
             self.testData.connector)

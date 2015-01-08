@@ -23,7 +23,7 @@ from cinder import exception
 from cinder import test
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
-from cinder.volume.drivers.netapp.utils import hashabledict
+from cinder.volume.drivers.netapp import utils as netapp_utils
 
 
 CONNECTION_INFO = {'hostname': 'hostname',
@@ -283,8 +283,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
         igroups = self.client.get_igroup_by_initiators(initiators)
 
         # make these lists of dicts comparable using hashable dictionaries
-        igroups = set([hashabledict(igroup) for igroup in igroups])
-        expected = set([hashabledict(expected_igroup)])
+        igroups = set(
+            [netapp_utils.hashabledict(igroup) for igroup in igroups])
+        expected = set([netapp_utils.hashabledict(expected_igroup)])
 
         self.assertSetEqual(igroups, expected)
 
@@ -328,8 +329,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
         igroups = self.client.get_igroup_by_initiators(initiators)
 
         # make these lists of dicts comparable using hashable dictionaries
-        igroups = set([hashabledict(igroup) for igroup in igroups])
-        expected = set([hashabledict(expected_igroup)])
+        igroups = set(
+            [netapp_utils.hashabledict(igroup) for igroup in igroups])
+        expected = set([netapp_utils.hashabledict(expected_igroup)])
 
         self.assertSetEqual(igroups, expected)
 
@@ -400,9 +402,10 @@ class NetAppCmodeClientTestCase(test.TestCase):
         igroups = self.client.get_igroup_by_initiators([initiator])
 
         # make these lists of dicts comparable using hashable dictionaries
-        igroups = set([hashabledict(igroup) for igroup in igroups])
-        expected = set([hashabledict(expected_igroup1),
-                        hashabledict(expected_igroup2)])
+        igroups = set(
+            [netapp_utils.hashabledict(igroup) for igroup in igroups])
+        expected = set([netapp_utils.hashabledict(expected_igroup1),
+                        netapp_utils.hashabledict(expected_igroup2)])
 
         self.assertSetEqual(igroups, expected)
 

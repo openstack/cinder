@@ -31,7 +31,7 @@ from cinder.openstack.common import log as logging
 
 # Handle case where we are running in a monkey patched environment
 if patcher.is_monkey_patched('socket'):
-    from eventlet.green.OpenSSL.SSL import GreenConnection as Connection
+    from eventlet.green.OpenSSL import SSL
 else:
     raise ImportError
 
@@ -78,7 +78,7 @@ class OpenSSLConnectionDelegator(object):
     a delegator must be used.
     """
     def __init__(self, *args, **kwargs):
-        self.connection = Connection(*args, **kwargs)
+        self.connection = SSL.Connection(*args, **kwargs)
 
     def __getattr__(self, name):
         return getattr(self.connection, name)

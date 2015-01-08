@@ -20,8 +20,7 @@ Fibre Channel Driver for EMC VNX array based on CLI.
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vnx_cli
-from cinder.zonemanager.utils import AddFCZone
-from cinder.zonemanager.utils import RemoveFCZone
+from cinder.zonemanager import utils as zm_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -118,7 +117,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         """Make sure volume is exported."""
         pass
 
-    @AddFCZone
+    @zm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
@@ -169,7 +168,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                   % {'conn_info': conn_info})
         return conn_info
 
-    @RemoveFCZone
+    @zm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         conn_info = self.cli.terminate_connection(volume, connector)

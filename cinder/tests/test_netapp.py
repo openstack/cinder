@@ -31,12 +31,7 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
-from cinder.volume.drivers.netapp.options import netapp_7mode_opts
-from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
-from cinder.volume.drivers.netapp.options import netapp_cluster_opts
-from cinder.volume.drivers.netapp.options import netapp_connection_opts
-from cinder.volume.drivers.netapp.options import netapp_provisioning_opts
-from cinder.volume.drivers.netapp.options import netapp_transport_opts
+from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils
 
 
@@ -45,12 +40,12 @@ LOG = logging.getLogger("cinder.volume.driver")
 
 def create_configuration():
     configuration = conf.Configuration(None)
-    configuration.append_config_values(netapp_connection_opts)
-    configuration.append_config_values(netapp_transport_opts)
-    configuration.append_config_values(netapp_basicauth_opts)
-    configuration.append_config_values(netapp_cluster_opts)
-    configuration.append_config_values(netapp_7mode_opts)
-    configuration.append_config_values(netapp_provisioning_opts)
+    configuration.append_config_values(options.netapp_connection_opts)
+    configuration.append_config_values(options.netapp_transport_opts)
+    configuration.append_config_values(options.netapp_basicauth_opts)
+    configuration.append_config_values(options.netapp_cluster_opts)
+    configuration.append_config_values(options.netapp_7mode_opts)
+    configuration.append_config_values(options.netapp_provisioning_opts)
     return configuration
 
 

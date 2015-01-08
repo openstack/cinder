@@ -30,7 +30,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
-from cinder.volume.drivers.hds.hnas_backend import HnasBackend
+from cinder.volume.drivers.hds import hnas_backend
 from cinder.volume.drivers import nfs
 
 
@@ -125,7 +125,7 @@ def _read_config(xml_config_file):
 def factory_bend():
     """Factory over-ride in self-tests."""
 
-    return HnasBackend()
+    return hnas_backend.HnasBackend()
 
 
 class HDSNFSDriver(nfs.NfsDriver):

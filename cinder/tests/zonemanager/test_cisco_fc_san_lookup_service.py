@@ -26,7 +26,7 @@ from cinder.volume import configuration as conf
 import cinder.zonemanager.drivers.cisco.cisco_fc_san_lookup_service \
     as cisco_lookup
 import cinder.zonemanager.drivers.cisco.fc_zone_constants as ZoneConstant
-from cinder.zonemanager.utils import get_formatted_wwn
+from cinder.zonemanager import utils as zm_utils
 
 nsshow = '20:1a:00:05:1e:e8:e3:29'
 switch_data = ['VSAN 304\n',
@@ -111,7 +111,7 @@ class TestCiscoFCSanLookupService(cisco_lookup.CiscoFCSanLookupService,
         wwn_list = ['10008c7cff523b01']
         return_wwn_list = []
         expected_wwn_list = ['10:00:8c:7c:ff:52:3b:01']
-        return_wwn_list.append(get_formatted_wwn(wwn_list[0]))
+        return_wwn_list.append(zm_utils.get_formatted_wwn(wwn_list[0]))
         self.assertEqual(return_wwn_list, expected_wwn_list)
 
     @mock.patch.object(cisco_lookup.CiscoFCSanLookupService,

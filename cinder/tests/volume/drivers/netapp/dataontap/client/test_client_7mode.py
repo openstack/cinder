@@ -23,7 +23,7 @@ from cinder import test
 from cinder.tests.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
-from cinder.volume.drivers.netapp.utils import hashabledict
+from cinder.volume.drivers.netapp import utils as netapp_utils
 
 CONNECTION_INFO = {'hostname': 'hostname',
                    'transport_type': 'https',
@@ -168,8 +168,9 @@ class NetApp7modeClientTestCase(test.TestCase):
         igroups = self.client.get_igroup_by_initiators(initiators)
 
         # make these lists of dicts comparable using hashable dictionaries
-        igroups = set([hashabledict(igroup) for igroup in igroups])
-        expected = set([hashabledict(fake.IGROUP1)])
+        igroups = set(
+            [netapp_utils.hashabledict(igroup) for igroup in igroups])
+        expected = set([netapp_utils.hashabledict(fake.IGROUP1)])
 
         self.assertSetEqual(igroups, expected)
 
@@ -211,8 +212,9 @@ class NetApp7modeClientTestCase(test.TestCase):
         igroups = self.client.get_igroup_by_initiators(initiators)
 
         # make these lists of dicts comparable using hashable dictionaries
-        igroups = set([hashabledict(igroup) for igroup in igroups])
-        expected = set([hashabledict(fake.IGROUP1)])
+        igroups = set(
+            [netapp_utils.hashabledict(igroup) for igroup in igroups])
+        expected = set([netapp_utils.hashabledict(fake.IGROUP1)])
 
         self.assertSetEqual(igroups, expected)
 

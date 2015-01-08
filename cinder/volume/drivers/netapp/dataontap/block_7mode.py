@@ -28,7 +28,7 @@ import six
 from cinder import exception
 from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
-from cinder.volume.configuration import Configuration
+from cinder.volume import configuration
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp import options as na_opts
@@ -79,7 +79,8 @@ class NetAppBlockStorage7modeLibrary(block_base.
     def _do_partner_setup(self):
         partner_backend = self.configuration.netapp_partner_backend_name
         if partner_backend:
-            config = Configuration(na_opts.netapp_7mode_opts, partner_backend)
+            config = configuration.Configuration(na_opts.netapp_7mode_opts,
+                                                 partner_backend)
             config.append_config_values(na_opts.netapp_connection_opts)
             config.append_config_values(na_opts.netapp_basicauth_opts)
             config.append_config_values(na_opts.netapp_transport_opts)

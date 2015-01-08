@@ -14,13 +14,12 @@
 #    under the License.
 """Unit tests for the NetApp-specific NFS driver module."""
 
-from itertools import chain
+import itertools
 import os
 
 from lxml import etree
 import mock
-import mox
-from mox import IgnoreArg
+import mox as mox_lib
 import six
 
 from cinder import exception
@@ -54,14 +53,15 @@ CONNECTION_INFO = {'hostname': 'fake_host',
                    'port': 443,
                    'username': 'admin',
                    'password': 'passw0rd'}
-SEVEN_MODE_CONNECTION_INFO = dict(chain(CONNECTION_INFO.items(),
-                                        {'vfiler': 'test_vfiler'}.items()))
+SEVEN_MODE_CONNECTION_INFO = dict(
+    itertools.chain(CONNECTION_INFO.items(),
+                    {'vfiler': 'test_vfiler'}.items()))
 FAKE_VSERVER = 'fake_vserver'
 
 
 def create_configuration():
-    configuration = mox.MockObject(conf.Configuration)
-    configuration.append_config_values(mox.IgnoreArg())
+    configuration = mox_lib.MockObject(conf.Configuration)
+    configuration.append_config_values(mox_lib.IgnoreArg())
     configuration.nfs_mount_point_base = '/mnt/test'
     configuration.nfs_mount_options = None
     configuration.nas_mount_options = None
@@ -136,7 +136,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv = self._driver
 
         mox.StubOutWithMock(drv, '_clone_volume')
-        drv._clone_volume(IgnoreArg(), IgnoreArg(), IgnoreArg())
+        drv._clone_volume(mox_lib.IgnoreArg(),
+                          mox_lib.IgnoreArg(),
+                          mox_lib.IgnoreArg())
         mox.ReplayAll()
 
         drv.create_snapshot(FakeSnapshot())
@@ -158,11 +160,13 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, 'local_path')
         mox.StubOutWithMock(drv, '_discover_file_till_timeout')
         mox.StubOutWithMock(drv, '_set_rw_permissions')
-        drv._clone_volume(IgnoreArg(), IgnoreArg(), IgnoreArg())
-        drv._get_volume_location(IgnoreArg()).AndReturn(location)
-        drv.local_path(IgnoreArg()).AndReturn('/mnt')
-        drv._discover_file_till_timeout(IgnoreArg()).AndReturn(True)
-        drv._set_rw_permissions(IgnoreArg())
+        drv._clone_volume(mox_lib.IgnoreArg(),
+                          mox_lib.IgnoreArg(),
+                          mox_lib.IgnoreArg())
+        drv._get_volume_location(mox_lib.IgnoreArg()).AndReturn(location)
+        drv.local_path(mox_lib.IgnoreArg()).AndReturn('/mnt')
+        drv._discover_file_till_timeout(mox_lib.IgnoreArg()).AndReturn(True)
+        drv._set_rw_permissions(mox_lib.IgnoreArg())
 
         mox.ReplayAll()
 
@@ -183,16 +187,16 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         if snapshot_exists:
             mox.StubOutWithMock(drv, '_execute')
             mox.StubOutWithMock(drv, '_get_volume_path')
-        drv._get_provider_location(IgnoreArg())
-        drv._get_provider_location(IgnoreArg())
-        drv._volume_not_present(IgnoreArg(), IgnoreArg())\
+        drv._get_provider_location(mox_lib.IgnoreArg())
+        drv._get_provider_location(mox_lib.IgnoreArg())
+        drv._volume_not_present(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())\
             .AndReturn(not snapshot_exists)
 
         if snapshot_exists:
-            drv._get_volume_path(IgnoreArg(), IgnoreArg())
+            drv._get_volume_path(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())
             drv._execute('rm', None, run_as_root=True)
 
-        drv._post_prov_deprov_in_ssc(IgnoreArg())
+        drv._post_prov_deprov_in_ssc(mox_lib.IgnoreArg())
 
         mox.ReplayAll()
 
@@ -251,9 +255,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'nfsvol')
         drv.zapi_client.clone_file('nfsvol', 'volume_name', 'clone_name',
                                    'openstack')
-        drv._get_host_ip(IgnoreArg()).AndReturn('127.0.0.1')
-        drv._get_export_path(IgnoreArg()).AndReturn('/nfs')
-        drv._post_prov_deprov_in_ssc(IgnoreArg())
+        drv._get_host_ip(mox_lib.IgnoreArg()).AndReturn('127.0.0.1')
+        drv._get_export_path(mox_lib.IgnoreArg()).AndReturn('/nfs')
+        drv._post_prov_deprov_in_ssc(mox_lib.IgnoreArg())
         return mox
 
     def _prepare_info_by_ip_response(self):
@@ -371,7 +375,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_get_mount_point_for_share')
         mox.StubOutWithMock(drv, '_execute')
 
-        drv._get_mount_point_for_share(IgnoreArg()).AndReturn('/mnt')
+        drv._get_mount_point_for_share(mox_lib.IgnoreArg()).AndReturn('/mnt')
         drv._execute(*cmd, run_as_root=True).AndReturn((None, ''))
         mox.ReplayAll()
         res = drv._find_old_cache_files('share')
@@ -396,7 +400,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._get_mount_point_for_share('share').AndReturn('/mnt')
         drv._execute(*cmd, run_as_root=True).AndReturn((files, None))
         drv._shortlist_del_eligible_files(
-            IgnoreArg(), r_files).AndReturn(r_files)
+            mox_lib.IgnoreArg(), r_files).AndReturn(r_files)
         mox.ReplayAll()
         res = drv._find_old_cache_files('share')
         mox.VerifyAll()
@@ -413,7 +417,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_get_mount_point_for_share')
         mox.StubOutWithMock(drv, '_delete_file')
 
-        drv._get_mount_point_for_share(IgnoreArg()).AndReturn('/mnt')
+        drv._get_mount_point_for_share(mox_lib.IgnoreArg()).AndReturn('/mnt')
         drv._delete_file('/mnt/img-cache-2').AndReturn(True)
         drv._delete_file('/mnt/img-cache-1').AndReturn(True)
         mox.ReplayAll()
@@ -472,9 +476,10 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_post_clone_image')
         mox.StubOutWithMock(drv, '_is_share_vol_compatible')
 
-        drv._find_image_in_cache(IgnoreArg()).AndReturn(
+        drv._find_image_in_cache(mox_lib.IgnoreArg()).AndReturn(
             [('share', 'file_name')])
-        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(True)
+        drv._is_share_vol_compatible(mox_lib.IgnoreArg(),
+                                     mox_lib.IgnoreArg()).AndReturn(True)
         drv._do_clone_rel_img_cache('file_name', 'vol', 'share', 'file_name')
         drv._post_clone_image(volume)
 
@@ -500,9 +505,11 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_is_cloneable_share')
         mox.StubOutWithMock(drv, '_is_share_vol_compatible')
 
-        drv._find_image_in_cache(IgnoreArg()).AndReturn([])
-        drv._is_cloneable_share(IgnoreArg()).AndReturn('127.0.0.1:/share')
-        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(False)
+        drv._find_image_in_cache(mox_lib.IgnoreArg()).AndReturn([])
+        drv._is_cloneable_share(
+            mox_lib.IgnoreArg()).AndReturn('127.0.0.1:/share')
+        drv._is_share_vol_compatible(mox_lib.IgnoreArg(),
+                                     mox_lib.IgnoreArg()).AndReturn(False)
 
         mox.ReplayAll()
         (prop, cloned) = drv.clone_image(
@@ -531,18 +538,20 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_resize_image_file')
         mox.StubOutWithMock(drv, '_is_share_vol_compatible')
 
-        drv._find_image_in_cache(IgnoreArg()).AndReturn([])
-        drv._is_cloneable_share(IgnoreArg()).AndReturn('127.0.0.1:/share')
-        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(True)
-        drv._get_mount_point_for_share(IgnoreArg()).AndReturn('/mnt')
+        drv._find_image_in_cache(mox_lib.IgnoreArg()).AndReturn([])
+        drv._is_cloneable_share(
+            mox_lib.IgnoreArg()).AndReturn('127.0.0.1:/share')
+        drv._is_share_vol_compatible(mox_lib.IgnoreArg(),
+                                     mox_lib.IgnoreArg()).AndReturn(True)
+        drv._get_mount_point_for_share(mox_lib.IgnoreArg()).AndReturn('/mnt')
         image_utils.qemu_img_info('/mnt/img-id', run_as_root=True).\
             AndReturn(self.get_img_info('raw'))
         drv._clone_volume(
             'img-id', 'vol', share='127.0.0.1:/share', volume_id=None)
-        drv._get_mount_point_for_share(IgnoreArg()).AndReturn('/mnt')
-        drv._discover_file_till_timeout(IgnoreArg()).AndReturn(True)
+        drv._get_mount_point_for_share(mox_lib.IgnoreArg()).AndReturn('/mnt')
+        drv._discover_file_till_timeout(mox_lib.IgnoreArg()).AndReturn(True)
         drv._set_rw_permissions('/mnt/vol')
-        drv._resize_image_file({'name': 'vol'}, IgnoreArg())
+        drv._resize_image_file({'name': 'vol'}, mox_lib.IgnoreArg())
 
         mox.ReplayAll()
         drv.clone_image(
@@ -569,22 +578,24 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_register_image_in_cache')
         mox.StubOutWithMock(drv, '_is_share_vol_compatible')
 
-        drv._find_image_in_cache(IgnoreArg()).AndReturn([])
+        drv._find_image_in_cache(mox_lib.IgnoreArg()).AndReturn([])
         drv._is_cloneable_share('nfs://127.0.0.1/share/img-id').AndReturn(
             '127.0.0.1:/share')
-        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(True)
+        drv._is_share_vol_compatible(mox_lib.IgnoreArg(),
+                                     mox_lib.IgnoreArg()).AndReturn(True)
         drv._get_mount_point_for_share('127.0.0.1:/share').AndReturn('/mnt')
         image_utils.qemu_img_info('/mnt/img-id', run_as_root=True).\
             AndReturn(self.get_img_info('notraw'))
-        image_utils.convert_image(IgnoreArg(), IgnoreArg(), 'raw',
-                                  run_as_root=True)
+        image_utils.convert_image(mox_lib.IgnoreArg(),
+                                  mox_lib.IgnoreArg(),
+                                  'raw', run_as_root=True)
         image_utils.qemu_img_info('/mnt/vol', run_as_root=True).\
             AndReturn(self.get_img_info('raw'))
-        drv._register_image_in_cache(IgnoreArg(), IgnoreArg())
+        drv._register_image_in_cache(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())
         drv._get_mount_point_for_share('127.0.0.1:/share').AndReturn('/mnt')
-        drv._discover_file_till_timeout(IgnoreArg()).AndReturn(True)
+        drv._discover_file_till_timeout(mox_lib.IgnoreArg()).AndReturn(True)
         drv._set_rw_permissions('/mnt/vol')
-        drv._resize_image_file({'name': 'vol'}, IgnoreArg())
+        drv._resize_image_file({'name': 'vol'}, mox_lib.IgnoreArg())
 
         mox.ReplayAll()
         drv.clone_image(
@@ -612,21 +623,24 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(os.path, 'exists')
         mox.StubOutWithMock(drv, '_delete_file')
 
-        drv._find_image_in_cache(IgnoreArg()).AndReturn([])
+        drv._find_image_in_cache(mox_lib.IgnoreArg()).AndReturn([])
         drv._is_cloneable_share('nfs://127.0.0.1/share/img-id').AndReturn(
             '127.0.0.1:/share')
-        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(True)
+        drv._is_share_vol_compatible(mox_lib.IgnoreArg(),
+                                     mox_lib.IgnoreArg()).AndReturn(True)
         drv._get_mount_point_for_share('127.0.0.1:/share').AndReturn('/mnt')
         image_utils.qemu_img_info('/mnt/img-id', run_as_root=True).\
             AndReturn(self.get_img_info('notraw'))
-        image_utils.convert_image(IgnoreArg(), IgnoreArg(), 'raw',
-                                  run_as_root=True)
+        image_utils.convert_image(mox_lib.IgnoreArg(),
+                                  mox_lib.IgnoreArg(),
+                                  'raw', run_as_root=True)
         image_utils.qemu_img_info('/mnt/vol', run_as_root=True).\
             AndReturn(self.get_img_info('raw'))
-        drv._register_image_in_cache(IgnoreArg(), IgnoreArg())
-        drv.local_path(IgnoreArg()).AndReturn('/mnt/vol')
-        drv._discover_file_till_timeout(IgnoreArg()).AndReturn(False)
-        drv.local_path(IgnoreArg()).AndReturn('/mnt/vol')
+        drv._register_image_in_cache(mox_lib.IgnoreArg(),
+                                     mox_lib.IgnoreArg())
+        drv.local_path(mox_lib.IgnoreArg()).AndReturn('/mnt/vol')
+        drv._discover_file_till_timeout(mox_lib.IgnoreArg()).AndReturn(False)
+        drv.local_path(mox_lib.IgnoreArg()).AndReturn('/mnt/vol')
         os.path.exists('/mnt/vol').AndReturn(True)
         drv._delete_file('/mnt/vol')
 
@@ -661,24 +675,28 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(os.path, 'exists')
         mox.StubOutWithMock(drv, '_delete_file')
 
-        drv._find_image_in_cache(IgnoreArg()).AndReturn([])
+        drv._find_image_in_cache(mox_lib.IgnoreArg()).AndReturn([])
         drv._is_cloneable_share('nfs://127.0.0.1/share/img-id').AndReturn(
             '127.0.0.1:/share')
-        drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(True)
+        drv._is_share_vol_compatible(mox_lib.IgnoreArg(),
+                                     mox_lib.IgnoreArg()).AndReturn(True)
         drv._get_mount_point_for_share('127.0.0.1:/share').AndReturn('/mnt')
         image_utils.qemu_img_info('/mnt/img-id', run_as_root=True).\
             AndReturn(self.get_img_info('notraw'))
-        image_utils.convert_image(IgnoreArg(), IgnoreArg(), 'raw',
+        image_utils.convert_image(mox_lib.IgnoreArg(),
+                                  mox_lib.IgnoreArg(), 'raw',
                                   run_as_root=True)
         image_utils.qemu_img_info('/mnt/vol', run_as_root=True).\
             AndReturn(self.get_img_info('raw'))
-        drv._register_image_in_cache(IgnoreArg(), IgnoreArg())
-        drv.local_path(IgnoreArg()).AndReturn('/mnt/vol')
-        drv._discover_file_till_timeout(IgnoreArg()).AndReturn(True)
+        drv._register_image_in_cache(mox_lib.IgnoreArg(),
+                                     mox_lib.IgnoreArg())
+        drv.local_path(mox_lib.IgnoreArg()).AndReturn('/mnt/vol')
+        drv._discover_file_till_timeout(mox_lib.IgnoreArg()).AndReturn(True)
         drv._set_rw_permissions('/mnt/vol')
         drv._resize_image_file(
-            IgnoreArg(), IgnoreArg()).AndRaise(exception.InvalidResults())
-        drv.local_path(IgnoreArg()).AndReturn('/mnt/vol')
+            mox_lib.IgnoreArg(),
+            mox_lib.IgnoreArg()).AndRaise(exception.InvalidResults())
+        drv.local_path(mox_lib.IgnoreArg()).AndReturn('/mnt/vol')
         os.path.exists('/mnt/vol').AndReturn(True)
         drv._delete_file('/mnt/vol')
 
@@ -718,7 +736,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox = self.mox
         strg = 'nfs://10.61.222.333/share/img'
         mox.StubOutWithMock(drv, '_check_share_in_use')
-        drv._check_share_in_use(IgnoreArg(), IgnoreArg()).AndReturn('share')
+        drv._check_share_in_use(mox_lib.IgnoreArg(),
+                                mox_lib.IgnoreArg()).AndReturn('share')
         mox.ReplayAll()
         drv._is_cloneable_share(strg)
         mox.VerifyAll()
@@ -728,7 +747,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox = self.mox
         strg = 'nfs://10.61.222.333:8080/share/img'
         mox.StubOutWithMock(drv, '_check_share_in_use')
-        drv._check_share_in_use(IgnoreArg(), IgnoreArg()).AndReturn('share')
+        drv._check_share_in_use(mox_lib.IgnoreArg(),
+                                mox_lib.IgnoreArg()).AndReturn('share')
         mox.ReplayAll()
         drv._is_cloneable_share(strg)
         mox.VerifyAll()
@@ -738,7 +758,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox = self.mox
         strg = 'nfs://com.netapp:8080/share/img'
         mox.StubOutWithMock(drv, '_check_share_in_use')
-        drv._check_share_in_use(IgnoreArg(), IgnoreArg()).AndReturn('share')
+        drv._check_share_in_use(mox_lib.IgnoreArg(),
+                                mox_lib.IgnoreArg()).AndReturn('share')
         mox.ReplayAll()
         drv._is_cloneable_share(strg)
         mox.VerifyAll()
@@ -748,7 +769,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox = self.mox
         strg = 'nfs://netapp.com/share/img'
         mox.StubOutWithMock(drv, '_check_share_in_use')
-        drv._check_share_in_use(IgnoreArg(), IgnoreArg()).AndReturn('share')
+        drv._check_share_in_use(mox_lib.IgnoreArg(),
+                                mox_lib.IgnoreArg()).AndReturn('share')
         mox.ReplayAll()
         drv._is_cloneable_share(strg)
         mox.VerifyAll()
@@ -758,7 +780,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox = self.mox
         strg = 'nfs://netapp.com/img'
         mox.StubOutWithMock(drv, '_check_share_in_use')
-        drv._check_share_in_use(IgnoreArg(), IgnoreArg()).AndReturn('share')
+        drv._check_share_in_use(mox_lib.IgnoreArg(),
+                                mox_lib.IgnoreArg()).AndReturn('share')
         mox.ReplayAll()
         drv._is_cloneable_share(strg)
         mox.VerifyAll()
@@ -779,7 +802,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv = self._driver
         mox = self.mox
         mox.StubOutWithMock(utils, 'resolve_hostname')
-        utils.resolve_hostname(IgnoreArg()).AndRaise(Exception())
+        utils.resolve_hostname(mox_lib.IgnoreArg()).AndRaise(Exception())
         mox.ReplayAll()
         share = drv._check_share_in_use('incorrect:8989', '/dir')
         mox.VerifyAll()
@@ -792,7 +815,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._mounted_shares = ['127.0.0.1:/dir/share']
         mox.StubOutWithMock(utils, 'resolve_hostname')
         mox.StubOutWithMock(drv, '_share_match_for_ip')
-        utils.resolve_hostname(IgnoreArg()).AndReturn('10.22.33.44')
+        utils.resolve_hostname(mox_lib.IgnoreArg()).AndReturn('10.22.33.44')
         drv._share_match_for_ip(
             '10.22.33.44', ['127.0.0.1:/dir/share']).AndReturn('share')
         mox.ReplayAll()
@@ -914,7 +937,7 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         self._driver.configuration.netapp_copyoffload_tool_path = 'cof_path'
         self._driver.zapi_client = mock.Mock()
 
-    @mock.patch.object(netapp_nfs_cmode, 'get_volume_extra_specs')
+    @mock.patch.object(utils, 'get_volume_extra_specs')
     @mock.patch.object(utils, 'LOG', mock.Mock())
     def test_create_volume(self, mock_volume_extra_specs):
         drv = self._driver
@@ -936,7 +959,7 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         drv.ssc_enabled = False
         extra_specs = {'netapp:raid_type': 'raid4'}
         mock_volume_extra_specs = mock.Mock()
-        self.mock_object(netapp_nfs_cmode,
+        self.mock_object(utils,
                          'get_volume_extra_specs',
                          mock_volume_extra_specs)
         mock_volume_extra_specs.return_value = extra_specs
@@ -957,7 +980,7 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         fake_share = 'localhost:myshare'
         host = 'hostname@backend#' + fake_share
         mock_volume_extra_specs = mock.Mock()
-        self.mock_object(netapp_nfs_cmode,
+        self.mock_object(utils,
                          'get_volume_extra_specs',
                          mock_volume_extra_specs)
         mock_volume_extra_specs.return_value = extra_specs
@@ -976,7 +999,7 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
             self.assertRaises(exception.InvalidHost,
                               self._driver.create_volume, FakeVolume(host, 1))
 
-    @mock.patch.object(netapp_nfs_cmode, 'get_volume_extra_specs')
+    @mock.patch.object(utils, 'get_volume_extra_specs')
     def test_create_volume_with_qos_policy(self, mock_volume_extra_specs):
         drv = self._driver
         drv.ssc_enabled = False
@@ -1225,12 +1248,12 @@ class NetApp7modeNfsDriverTestCase(NetAppCmodeNfsDriverTestCase):
             mox.StubOutWithMock(drv, '_execute')
             mox.StubOutWithMock(drv, '_get_volume_path')
 
-        drv._get_provider_location(IgnoreArg())
-        drv._volume_not_present(IgnoreArg(), IgnoreArg())\
+        drv._get_provider_location(mox_lib.IgnoreArg())
+        drv._volume_not_present(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())\
             .AndReturn(not snapshot_exists)
 
         if snapshot_exists:
-            drv._get_volume_path(IgnoreArg(), IgnoreArg())
+            drv._get_volume_path(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())
             drv._execute('rm', None, run_as_root=True)
 
         mox.ReplayAll()
@@ -1279,7 +1302,8 @@ class NetApp7modeNfsDriverTestCase(NetAppCmodeNfsDriverTestCase):
         mox.StubOutWithMock(drv, '_get_export_ip_path')
 
         drv._get_export_ip_path(
-            IgnoreArg(), IgnoreArg()).AndReturn(('127.0.0.1', '/nfs'))
+            mox_lib.IgnoreArg(),
+            mox_lib.IgnoreArg()).AndReturn(('127.0.0.1', '/nfs'))
         return mox
 
     def test_clone_volume_clear(self):
@@ -1288,7 +1312,7 @@ class NetApp7modeNfsDriverTestCase(NetAppCmodeNfsDriverTestCase):
         drv.zapi_client = mox.CreateMockAnything()
         drv.zapi_client.get_actual_path_for_export('/nfs').AndReturn(
             '/vol/vol1/nfs')
-        drv.zapi_client.clone_file(IgnoreArg(), IgnoreArg())
+        drv.zapi_client.clone_file(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())
 
         mox.ReplayAll()
 
@@ -1321,7 +1345,7 @@ class NetApp7modeNfsDriverTestCase(NetAppCmodeNfsDriverTestCase):
         drv.zapi_client = mox.CreateMockAnything()
         drv.zapi_client.get_actual_path_for_export('/nfs').AndReturn(
             '/vol/vol1/nfs')
-        drv.zapi_client.clone_file(IgnoreArg(), IgnoreArg())
+        drv.zapi_client.clone_file(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())
 
         mox.ReplayAll()
 

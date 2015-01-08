@@ -32,7 +32,7 @@ import six
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
-from cinder.volume.drivers.netapp.dataontap.client.api import NaApiError
+from cinder.volume.drivers.netapp.dataontap.client import api as na_api
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
@@ -267,7 +267,7 @@ class NetAppBlockStorageLibrary(object):
                                                  initiator_type, os)
         try:
             return self.zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
-        except NaApiError:
+        except na_api.NaApiError:
             exc_info = sys.exc_info()
             (_igroup, lun_id) = self._find_mapped_lun_igroup(path,
                                                              initiator_list)

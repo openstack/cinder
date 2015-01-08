@@ -24,7 +24,7 @@ import webob
 
 from cinder.api.contrib import volume_actions
 from cinder import exception
-from cinder.image.glance import GlanceImageService
+from cinder.image import glance
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
@@ -672,7 +672,7 @@ class VolumeImageActionsTest(test.TestCase):
             mock_get_volume_image_metadata.side_effect = \
                 fake_get_volume_image_metadata
 
-            with mock.patch.object(GlanceImageService, "create") \
+            with mock.patch.object(glance.GlanceImageService, "create") \
                     as mock_create:
                 mock_create.side_effect = self.fake_image_service_create
 
@@ -728,7 +728,7 @@ class VolumeImageActionsTest(test.TestCase):
             mock_get_volume_image_metadata.side_effect = \
                 fake_get_volume_image_metadata_raise
 
-            with mock.patch.object(GlanceImageService, "create") \
+            with mock.patch.object(glance.GlanceImageService, "create") \
                     as mock_create:
                 mock_create.side_effect = self.fake_image_service_create
 
@@ -780,7 +780,7 @@ class VolumeImageActionsTest(test.TestCase):
             mock_get_volume_image_metadata.side_effect = \
                 fake_get_volume_image_metadata
 
-            with mock.patch.object(GlanceImageService, "create") \
+            with mock.patch.object(glance.GlanceImageService, "create") \
                     as mock_create:
                 mock_create.side_effect = self.fake_image_service_create
 
@@ -824,7 +824,7 @@ class VolumeImageActionsTest(test.TestCase):
         id = 1
 
         # Need to mock create, update, copy_volume_to_image
-        with mock.patch.object(GlanceImageService, "create") \
+        with mock.patch.object(glance.GlanceImageService, "create") \
                 as mock_create:
             mock_create.side_effect = self.fake_image_service_create
 

@@ -15,8 +15,7 @@
 
 """Tests for db purge."""
 
-from datetime import datetime
-from datetime import timedelta
+import datetime
 import uuid
 
 from cinder import context
@@ -55,8 +54,8 @@ class PurgeDeletedTest(test.TestCase):
             ins_stmt = self.vm.insert().values(volume_id=uuidstr)
             self.conn.execute(ins_stmt)
         # Set 4 of them deleted, 2 are 60 days ago, 2 are 20 days ago
-        old = datetime.now() - timedelta(days=20)
-        older = datetime.now() - timedelta(days=60)
+        old = datetime.datetime.now() - datetime.timedelta(days=20)
+        older = datetime.datetime.now() - datetime.timedelta(days=60)
         make_old = self.volumes.update().\
             where(self.volumes.c.id.in_(self.uuidstrs[1:3]))\
             .values(deleted_at=old)

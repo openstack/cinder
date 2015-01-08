@@ -18,7 +18,7 @@
 from oslo_config import cfg
 
 from cinder.openstack.common import log as logging
-from cinder.volume.configuration import Configuration
+from cinder.volume import configuration
 
 brcd_zone_opts = [
     cfg.StrOpt('fc_fabric_address',
@@ -56,7 +56,7 @@ LOG = logging.getLogger(__name__)
 def load_fabric_configurations(fabric_names):
     fabric_configs = {}
     for fabric_name in fabric_names:
-        config = Configuration(brcd_zone_opts, fabric_name)
+        config = configuration.Configuration(brcd_zone_opts, fabric_name)
         LOG.debug("Loaded FC fabric config %s" % fabric_name)
         fabric_configs[fabric_name] = config
 

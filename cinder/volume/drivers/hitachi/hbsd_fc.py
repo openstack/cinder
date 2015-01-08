@@ -16,7 +16,6 @@ Fibre channel Cinder volume driver for Hitachi storage.
 
 """
 
-from contextlib import nested
 import os
 import threading
 
@@ -416,8 +415,8 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             msg = basic_lib.output_err(619, volume_id=volume['id'])
             raise exception.HBSDError(message=msg)
         self.common.add_volinfo(ldev, volume['id'])
-        with nested(self.common.volume_info[ldev]['lock'],
-                    self.common.volume_info[ldev]['in_use']):
+        with self.common.volume_info[ldev]['lock'],\
+                self.common.volume_info[ldev]['in_use']:
             hostgroups = self._initialize_connection(ldev, connector)
             properties = self._get_properties(volume, hostgroups)
             LOG.debug('Initialize volume_info: %s'
@@ -457,8 +456,8 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             raise exception.HBSDError(message=msg)
 
         self.common.add_volinfo(ldev, volume['id'])
-        with nested(self.common.volume_info[ldev]['lock'],
-                    self.common.volume_info[ldev]['in_use']):
+        with self.common.volume_info[ldev]['lock'],\
+                self.common.volume_info[ldev]['in_use']:
             self._terminate_connection(ldev, connector, hostgroups)
             properties = self._get_properties(volume, hostgroups,
                                               terminate=True)

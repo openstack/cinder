@@ -17,13 +17,13 @@
 
 """Unit tests for Cisco fc zone client cli."""
 
-from mock import patch
+import mock
 from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder import test
-from cinder.zonemanager.drivers.cisco.cisco_fc_zone_client_cli \
-    import CiscoFCZoneClientCLI
+from cinder.zonemanager.drivers.cisco \
+    import cisco_fc_zone_client_cli as cli
 import cinder.zonemanager.drivers.cisco.fc_zone_constants as ZoneConstant
 
 nsshow = '20:1a:00:05:1e:e8:e3:29'
@@ -122,7 +122,7 @@ new_zones = {'openstack10000012345678902001009876543210':
 zone_names_to_delete = 'openstack50060b0000c26604201900051ee8e329'
 
 
-class TestCiscoFCZoneClientCLI(CiscoFCZoneClientCLI, test.TestCase):
+class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
 
     def setUp(self):
         super(TestCiscoFCZoneClientCLI, self).setUp()
@@ -132,7 +132,7 @@ class TestCiscoFCZoneClientCLI(CiscoFCZoneClientCLI, test.TestCase):
     def __init__(self, *args, **kwargs):
         test.TestCase.__init__(self, *args, **kwargs)
 
-    @patch.object(CiscoFCZoneClientCLI, '_get_switch_info')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_get_switch_info')
     def test_get_active_zone_set(self, get_switch_info_mock):
         cmd_list = [ZoneConstant.GET_ACTIVE_ZONE_CFG, self.fabric_vsan,
                     ' | no-more']
@@ -141,13 +141,13 @@ class TestCiscoFCZoneClientCLI(CiscoFCZoneClientCLI, test.TestCase):
         get_switch_info_mock.assert_called_once_with(cmd_list)
         self.assertDictMatch(active_zoneset_returned, active_zoneset)
 
-    @patch.object(CiscoFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
     def test_get_active_zone_set_ssh_error(self, run_ssh_mock):
         run_ssh_mock.side_effect = processutils.ProcessExecutionError
         self.assertRaises(exception.CiscoZoningCliException,
                           self.get_active_zone_set)
 
-    @patch.object(CiscoFCZoneClientCLI, '_get_switch_info')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_get_switch_info')
     def test_get_zoning_status_basic(self, get_zoning_status_mock):
         cmd_list = [ZoneConstant.GET_ZONE_STATUS, self.fabric_vsan]
         get_zoning_status_mock.return_value = zoning_status_data_basic
@@ -155,7 +155,7 @@ class TestCiscoFCZoneClientCLI(CiscoFCZoneClientCLI, test.TestCase):
         get_zoning_status_mock.assert_called_once_with(cmd_list)
         self.assertDictMatch(zoning_status_returned, zoning_status_basic)
 
-    @patch.object(CiscoFCZoneClientCLI, '_get_switch_info')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_get_switch_info')
     def test_get_zoning_status_enhanced_nosess(self, get_zoning_status_mock):
         cmd_list = [ZoneConstant.GET_ZONE_STATUS, self.fabric_vsan]
         get_zoning_status_mock.return_value =\
@@ -165,7 +165,7 @@ class TestCiscoFCZoneClientCLI(CiscoFCZoneClientCLI, test.TestCase):
         self.assertDictMatch(zoning_status_returned,
                              zoning_status_enhanced_nosess)
 
-    @patch.object(CiscoFCZoneClientCLI, '_get_switch_info')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_get_switch_info')
     def test_get_zoning_status_enhanced_sess(self, get_zoning_status_mock):
         cmd_list = [ZoneConstant.GET_ZONE_STATUS, self.fabric_vsan]
         get_zoning_status_mock.return_value = zoning_status_data_enhanced_sess
@@ -174,7 +174,7 @@ class TestCiscoFCZoneClientCLI(CiscoFCZoneClientCLI, test.TestCase):
         self.assertDictMatch(zoning_status_returned,
                              zoning_status_enhanced_sess)
 
-    @patch.object(CiscoFCZoneClientCLI, '_get_switch_info')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_get_switch_info')
     def test_get_nameserver_info(self, get_switch_info_mock):
         ns_info_list = []
         ns_info_list_expected = ['20:1a:00:05:1e:e8:e3:29']
@@ -182,19 +182,19 @@ class TestCiscoFCZoneClientCLI(CiscoFCZoneClientCLI, test.TestCase):
         ns_info_list = self.get_nameserver_info()
         self.assertEqual(ns_info_list, ns_info_list_expected)
 
-    @patch.object(CiscoFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
     def test_get_nameserver_info_ssh_error(self, run_ssh_mock):
         run_ssh_mock.side_effect = processutils.ProcessExecutionError
         self.assertRaises(exception.CiscoZoningCliException,
                           self.get_nameserver_info)
 
-    @patch.object(CiscoFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
     def test__cfg_save(self, run_ssh_mock):
         cmd_list = ['copy', 'running-config', 'startup-config']
         self._cfg_save()
         run_ssh_mock.assert_called_once_with(cmd_list, True, 1)
 
-    @patch.object(CiscoFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
     def test__get_switch_info(self, run_ssh_mock):
         cmd_list = [ZoneConstant.FCNS_SHOW, self.fabric_vsan]
         nsshow_list = [nsshow]

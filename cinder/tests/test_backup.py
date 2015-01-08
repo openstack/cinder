@@ -30,8 +30,7 @@ from cinder import db
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.tests.backup.fake_service_with_verify import\
-    get_backup_driver
+from cinder.tests.backup import fake_service_with_verify as fake_service
 
 
 CONF = cfg.CONF
@@ -646,7 +645,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
                                '_map_service_to_driver') as \
                 mock_map_service_to_driver:
             mock_map_service_to_driver.return_value = \
-                get_backup_driver(self.ctxt)
+                fake_service.get_backup_driver(self.ctxt)
             self.backup_mgr.reset_status(self.ctxt,
                                          backup_id,
                                          'available')

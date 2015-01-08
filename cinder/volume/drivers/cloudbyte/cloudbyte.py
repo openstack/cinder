@@ -25,11 +25,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.volume.drivers.cloudbyte.options import (
-    cloudbyte_create_volume_opts
-)
-from cinder.volume.drivers.cloudbyte.options import cloudbyte_add_qosgroup_opts
-from cinder.volume.drivers.cloudbyte.options import cloudbyte_connection_opts
+from cinder.volume.drivers.cloudbyte import options
 from cinder.volume.drivers.san import san
 
 LOG = logging.getLogger(__name__)
@@ -47,9 +43,12 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(CloudByteISCSIDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(cloudbyte_add_qosgroup_opts)
-        self.configuration.append_config_values(cloudbyte_create_volume_opts)
-        self.configuration.append_config_values(cloudbyte_connection_opts)
+        self.configuration.append_config_values(
+            options.cloudbyte_add_qosgroup_opts)
+        self.configuration.append_config_values(
+            options.cloudbyte_create_volume_opts)
+        self.configuration.append_config_values(
+            options.cloudbyte_connection_opts)
         self.get_volume_stats()
 
     def _get_url(self, cmd, params, apikey):

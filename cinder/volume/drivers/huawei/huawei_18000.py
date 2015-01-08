@@ -17,7 +17,7 @@ Volume Drivers for Huawei OceanStor 18000 storage arrays.
 """
 
 from cinder.volume import driver
-from cinder.volume.drivers.huawei.rest_common import RestCommon
+from cinder.volume.drivers.huawei import rest_common
 from cinder.zonemanager import utils as fczm_utils
 
 
@@ -36,7 +36,7 @@ class Huawei18000ISCSIDriver(driver.ISCSIDriver):
 
     def do_setup(self, context):
         """Instantiate common class and log in storage system."""
-        self.common = RestCommon(configuration=self.configuration)
+        self.common = rest_common.RestCommon(configuration=self.configuration)
         return self.common.login()
 
     def check_for_setup_error(self):
@@ -124,7 +124,7 @@ class Huawei18000FCDriver(driver.FibreChannelDriver):
 
     def do_setup(self, context):
         """Instantiate common class and log in storage system."""
-        self.common = RestCommon(configuration=self.configuration)
+        self.common = rest_common.RestCommon(configuration=self.configuration)
         return self.common.login()
 
     def check_for_setup_error(self):

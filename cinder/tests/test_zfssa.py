@@ -15,10 +15,9 @@
 Unit tests for Oracle's ZFSSA Cinder volume driver
 """
 
+import json
+
 import mock
-
-from json import JSONEncoder
-
 from oslo_utils import units
 
 from cinder.openstack.common import log as logging
@@ -429,9 +428,9 @@ class FakeAddIni2InitGrp(object):
     def get(self, path, **kwargs):
         result = client.RestResult()
         result.status = client.Status.OK
-        result.data = JSONEncoder().encode({'group':
-                                            {'initiators':
-                                             ['iqn.1-0.org.deb:01:d7']}})
+        result.data = json.JSONEncoder().encode({'group':
+                                                {'initiators':
+                                                 ['iqn.1-0.org.deb:01:d7']}})
         return result
 
     def put(self, path, body="", **kwargs):

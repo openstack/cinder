@@ -25,13 +25,13 @@ from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
-import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
-from cinder.zonemanager.fc_san_lookup_service import FCSanLookupService
+import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
+from cinder.zonemanager import fc_san_lookup_service as fc_service
 
 LOG = logging.getLogger(__name__)
 
 
-class BrcdFCSanLookupService(FCSanLookupService):
+class BrcdFCSanLookupService(fc_service.FCSanLookupService):
     """The SAN lookup service that talks to Brocade switches.
 
     Version History:
@@ -193,14 +193,14 @@ class BrcdFCSanLookupService(FCSanLookupService):
         cli_output = None
         nsinfo_list = []
         try:
-            cli_output = self._get_switch_data(ZoneConstant.NS_SHOW)
+            cli_output = self._get_switch_data(zone_constant.NS_SHOW)
         except exception.FCSanLookupServiceException:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Failed collecting nsshow info for fabric"))
         if cli_output:
             nsinfo_list = self._parse_ns_output(cli_output)
         try:
-            cli_output = self._get_switch_data(ZoneConstant.NS_CAM_SHOW)
+            cli_output = self._get_switch_data(zone_constant.NS_CAM_SHOW)
         except exception.FCSanLookupServiceException:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Failed collecting nscamshow"))

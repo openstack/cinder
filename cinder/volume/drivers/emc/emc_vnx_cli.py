@@ -36,12 +36,11 @@ from taskflow import task
 from taskflow.types import failure
 
 from cinder import exception
-from cinder.exception import EMCVnxCLICmdError
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import utils
-from cinder.volume.configuration import Configuration
+from cinder.volume import configuration as config
 from cinder.volume.drivers.san import san
 from cinder.volume import manager
 from cinder.volume import utils as vol_utils
@@ -352,10 +351,10 @@ class CommandLineHelper(object):
                 '-tieringPolicy', 'noMovement']}
 
     def _raise_cli_error(self, cmd=None, rc=None, out='', **kwargs):
-        raise EMCVnxCLICmdError(cmd=cmd,
-                                rc=rc,
-                                out=out.split('\n'),
-                                **kwargs)
+        raise exception.EMCVnxCLICmdError(cmd=cmd,
+                                          rc=rc,
+                                          out=out.split('\n'),
+                                          **kwargs)
 
     def create_lun_with_advance_feature(self, pool, name, size,
                                         provisioning, tiering,
@@ -383,7 +382,7 @@ class CommandLineHelper(object):
             if provisioning == 'compressed':
                 self.enable_or_disable_compression_on_lun(
                     name, 'on')
-        except EMCVnxCLICmdError as ex:
+        except exception.EMCVnxCLICmdError as ex:
             with excutils.save_and_reraise_exception():
                 self.delete_lun(name)
                 LOG.error(_LE("Error on enable compression on lun %s."),
@@ -394,7 +393,7 @@ class CommandLineHelper(object):
             if consistencygroup_id:
                 self.add_lun_to_consistency_group(
                     consistencygroup_id, data['lun_id'])
-        except EMCVnxCLICmdError as ex:
+        except exception.EMCVnxCLICmdError as ex:
             with excutils.save_and_reraise_exception():
                 self.delete_lun(name)
                 LOG.error(_LE("Error on adding lun to consistency"
@@ -418,7 +417,7 @@ class CommandLineHelper(object):
                 return (data[self.LUN_STATE.key] == 'Ready' and
                         data[self.LUN_STATUS.key] == 'OK(0x0)' and
                         data[self.LUN_OPERATION.key] == 'None')
-            except EMCVnxCLICmdError as ex:
+            except exception.EMCVnxCLICmdError as ex:
                 orig_out = "\n".join(ex.kwargs["out"])
                 if orig_out.find(
                         self.CLI_RESP_PATTERN_LUN_NOT_EXIST) >= 0:
@@ -820,7 +819,7 @@ class CommandLineHelper(object):
                                       dst_name=None):
         try:
             self.migrate_lun(src_id, dst_id)
-        except EMCVnxCLICmdError as ex:
+        except exception.EMCVnxCLICmdError as ex:
             migration_succeed = False
             orig_out = "\n".join(ex.kwargs["out"])
             if self._is_sp_unavailable_error(orig_out):
@@ -1579,13 +1578,12 @@ class EMCVnxCliBase(object):
             self.configuration.check_max_pool_luns_threshold)
         # if zoning_mode is fabric, use lookup service to build itor_tgt_map
         self.zonemanager_lookup_service = None
-        zm_conf = Configuration(manager.volume_manager_opts)
+        zm_conf = config.Configuration(manager.volume_manager_opts)
         if (zm_conf.safe_get('zoning_mode') == 'fabric' or
                 self.configuration.safe_get('zoning_mode') == 'fabric'):
-            from cinder.zonemanager.fc_san_lookup_service \
-                import FCSanLookupService
+            from cinder.zonemanager import fc_san_lookup_service as fc_service
             self.zonemanager_lookup_service = \
-                FCSanLookupService(configuration=configuration)
+                fc_service.FCSanLookupService(configuration=configuration)
         self.max_retries = 5
         if self.destroy_empty_sg:
             LOG.warning(_LW("destroy_empty_storage_group: True. "
@@ -1759,7 +1757,7 @@ class EMCVnxCliBase(object):
         """Deletes an EMC volume."""
         try:
             self._client.delete_lun(volume['name'])
-        except EMCVnxCLICmdError as ex:
+        except exception.EMCVnxCLICmdError as ex:
             orig_out = "\n".join(ex.kwargs["out"])
             if (self.force_delete_lun_in_sg and
                     (self._client.CLI_RESP_PATTERN_LUN_IN_SG_1 in orig_out or
@@ -2288,7 +2286,7 @@ class EMCVnxCliBase(object):
     def assure_host_in_storage_group(self, hostname, storage_group):
         try:
             self._client.connect_host_to_storage_group(hostname, storage_group)
-        except EMCVnxCLICmdError as ex:
+        except exception.EMCVnxCLICmdError as ex:
             if ex.kwargs["rc"] == 83:
                 # SG was not created or was destroyed by another concurrent
                 # operation before connected.
@@ -2498,7 +2496,7 @@ class EMCVnxCliBase(object):
         try:
             sgdata = self._client.get_storage_group(hostname,
                                                     poll=False)
-        except EMCVnxCLICmdError as ex:
+        except exception.EMCVnxCLICmdError as ex:
             if ex.kwargs["rc"] != 83:
                 raise ex
             # Storage Group has not existed yet
@@ -2540,7 +2538,7 @@ class EMCVnxCliBase(object):
                         self.hlu_cache[hostname] = {}
                     self.hlu_cache[hostname][lun_id] = hlu
                     return hlu, sgdata
-                except EMCVnxCLICmdError as ex:
+                except exception.EMCVnxCLICmdError as ex:
                     LOG.debug("Add HLU to storagegroup failed, retry %s",
                               tried)
             elif tried == 1:
@@ -2705,7 +2703,7 @@ class EMCVnxCliBase(object):
                 try:
                     lun_map = self.get_lun_map(hostname)
                     self.hlu_cache[hostname] = lun_map
-                except EMCVnxCLICmdError as ex:
+                except exception.EMCVnxCLICmdError as ex:
                     if ex.kwargs["rc"] == 83:
                         LOG.warning(_LW("Storage Group %s is not found. "
                                         "terminate_connection() is "

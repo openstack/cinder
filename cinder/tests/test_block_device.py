@@ -21,7 +21,7 @@ from cinder.db.sqlalchemy import api
 import cinder.exception
 import cinder.test
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.block_device import BlockDeviceDriver
+from cinder.volume.drivers import block_device
 from cinder.volume import utils as volutils
 
 
@@ -35,8 +35,9 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         self.host = 'localhost'
         self.configuration.iscsi_port = 3260
         self.configuration.volume_dd_blocksize = 1234
-        self.drv = BlockDeviceDriver(configuration=self.configuration,
-                                     host='localhost')
+        self.drv = block_device.BlockDeviceDriver(
+            configuration=self.configuration,
+            host='localhost')
 
     def test_initialize_connection(self):
         TEST_VOLUME1 = {'host': 'localhost1',

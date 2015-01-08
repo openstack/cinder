@@ -14,7 +14,7 @@
 
 from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
-from cinder.tests.brick.fake_lvm import FakeBrickLVM
+from cinder.tests.brick import fake_lvm
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
 from cinder.zonemanager import utils as fczm_utils
@@ -28,9 +28,9 @@ class FakeISCSIDriver(lvm.LVMISCSIDriver):
     def __init__(self, *args, **kwargs):
         super(FakeISCSIDriver, self).__init__(execute=self.fake_execute,
                                               *args, **kwargs)
-        self.vg = FakeBrickLVM('cinder-volumes', False,
-                               None, 'default',
-                               self.fake_execute)
+        self.vg = fake_lvm.FakeBrickLVM('cinder-volumes', False,
+                                        None, 'default',
+                                        self.fake_execute)
 
     def check_for_setup_error(self):
         """No setup necessary in fake mode."""

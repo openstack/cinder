@@ -39,7 +39,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
-from cinder.zonemanager.drivers.fc_zone_driver import FCZoneDriver
+from cinder.zonemanager.drivers import fc_zone_driver
 
 LOG = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ CONF = cfg.CONF
 CONF.register_opts(brcd_opts, 'fc-zone-manager')
 
 
-class BrcdFCZoneDriver(FCZoneDriver):
+class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
     """Brocade FC zone driver implementation.
 
     OpenStack Fibre Channel zone driver to manage FC zoning in
