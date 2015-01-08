@@ -25,10 +25,6 @@ for more details.
 
 import uuid
 
-import dbus
-import drbdmanage.consts as dm_const
-import drbdmanage.exceptions as dm_exc
-import drbdmanage.utils as dm_utils
 from oslo.config import cfg
 from oslo.utils import importutils
 from oslo.utils import units
@@ -40,9 +36,19 @@ from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
+try:
+    import dbus
+    import drbdmanage.consts as dm_const
+    import drbdmanage.exceptions as dm_exc
+    import drbdmanage.utils as dm_utils
+except ImportError:
+    dbus = None
+    dm_const = None
+    dm_exc = None
+    dm_utils = None
+
 
 LOG = logging.getLogger(__name__)
-EMPTY_LIST = dbus.Array([], signature="a(ss)")
 
 drbd_opts = [
     cfg.StrOpt('drbdmanage_redundancy',
@@ -70,6 +76,7 @@ class DrbdManageDriver(driver.VolumeDriver):
     drbdmanage_dbus_interface = '/interface'
 
     def __init__(self, execute=None, *args, **kwargs):
+        self.empty_list = dbus.Array([], signature="a(ss)")
         super(DrbdManageDriver, self).__init__(*args, **kwargs)
         if self.configuration:
             self.configuration.append_config_values(drbd_opts)
@@ -200,11 +207,11 @@ class DrbdManageDriver(driver.VolumeDriver):
             v_uuid = volume['id']
 
         res, rl = self.call_or_reconnect(self.odm.list_volumes,
-                                         EMPTY_LIST,
+                                         self.empty_list,
                                          0,
                                          dm_utils.dict_to_aux_props(
                                              {CINDER_AUX_PROP_id: v_uuid}),
-                                         EMPTY_LIST)
+                                         self.empty_list)
         self._check_result(res)
 
         if (not rl) or (len(rl) == 0):
@@ -237,11 +244,11 @@ class DrbdManageDriver(driver.VolumeDriver):
         """
         s_uuid = snapshot['id']
         res, rs = self.call_or_reconnect(self.odm.list_snapshots,
-                                         EMPTY_LIST,
-                                         EMPTY_LIST,
+                                         self.empty_list,
+                                         self.empty_list,
                                          dm_utils.dict_to_aux_props(
                                              {CINDER_AUX_PROP_id: s_uuid}),
-                                         EMPTY_LIST)
+                                         self.empty_list)
         self._check_result(res)
 
         if (not rs) or (len(rs) == 0):
@@ -296,7 +303,7 @@ class DrbdManageDriver(driver.VolumeDriver):
         LOG.debug("create vol: make %s" % dres)
         res = self.call_or_reconnect(self.odm.create_resource,
                                      dres,
-                                     EMPTY_LIST)
+                                     self.empty_list)
         exist = self._check_result(res, ignore=[dm_exc.DM_EEXIST], ret=None)
         if exist == dm_exc.DM_EEXIST:
             # Volume already exists, eg. because deploy gave an error
@@ -345,7 +352,7 @@ class DrbdManageDriver(driver.VolumeDriver):
 
         new_res = self.is_clean_volume_name(volume['id'])
 
-        r_props = EMPTY_LIST
+        r_props = self.empty_list
         v_props = self._priv_hash_from_volume(volume)
 
         res = self.call_or_reconnect(self.odm.restore_snapshot,
@@ -434,11 +441,11 @@ class DrbdManageDriver(driver.VolumeDriver):
             snapshot["volume_id"])
 
         res, data = self.call_or_reconnect(self.odm.list_assignments,
-                                           EMPTY_LIST,
+                                           self.empty_list,
                                            [dres],
                                            0,
-                                           EMPTY_LIST,
-                                           EMPTY_LIST)
+                                           self.empty_list,
+                                           self.empty_list)
         self._check_result(res)
 
         nodes = map(lambda d: d[0], data)
