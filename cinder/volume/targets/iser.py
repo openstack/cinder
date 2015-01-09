@@ -25,6 +25,7 @@ class ISERTgtAdm(TgtAdm):
                 <target %s>
                     driver iser
                     backing-store %s
+                    write_cache %s
                 </target>
                   """
     VOLUME_CONF_WITH_CHAP_AUTH = """
@@ -32,6 +33,7 @@ class ISERTgtAdm(TgtAdm):
                                     driver iser
                                     backing-store %s
                                     %s
+                                    write_cache %s
                                 </target>
                                  """
 

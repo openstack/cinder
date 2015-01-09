@@ -189,13 +189,13 @@ class BlockDeviceDriver(driver.VolumeDriver):
     # #######  Interface methods for DataPath (Target Driver) ########
 
     def ensure_export(self, context, volume):
-        volume_name = volume['name']
         volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
-                                      volume_name)
+                                      volume['name'])
         model_update = \
-            self.target_driver.ensure_export(context,
-                                             volume,
-                                             volume_path=volume_path)
+            self.target_driver.ensure_export(
+                context,
+                volume,
+                volume_path)
         return model_update
 
     def create_export(self, context, volume):

@@ -481,15 +481,19 @@ class DrbdManageDriver(driver.VolumeDriver):
     # #######  Interface methods for DataPath (Target Driver) ########
 
     def ensure_export(self, context, volume):
+        volume_path = self.local_path(volume)
         return self.target_driver.ensure_export(
             context,
             volume,
-            volume_path=self.local_path(volume))
+            volume_path)
 
     def create_export(self, context, volume):
+        volume_path = self.local_path(volume),
         export_info = self.target_driver.create_export(
             context,
-            volume, volume_path=self.local_path(volume))
+            volume,
+            volume_path)
+
         return {'provider_location': export_info['location'],
                 'provider_auth': export_info['auth'], }
 

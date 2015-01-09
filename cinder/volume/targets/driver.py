@@ -40,9 +40,7 @@ class Target(object):
                                        CONF.rootwrap_config)
 
     @abc.abstractmethod
-    def ensure_export(self, context, volume,
-                      iscsi_name, volume_path,
-                      volume_group, config):
+    def ensure_export(self, context, volume, volume_path):
         """Synchronously recreates an export for a volume."""
         pass
 

@@ -19,9 +19,7 @@ class FakeTarget(iscsi.ISCSITarget):
     def __init__(self, *args, **kwargs):
         super(FakeTarget, self).__init__(*args, **kwargs)
 
-    def ensure_export(self, context, volume,
-                      iscsi_name, volume_path,
-                      volume_group, config):
+    def ensure_export(self, context, volume, volume_path):
         pass
 
     def create_export(self, context, volume, volume_path):

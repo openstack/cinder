@@ -160,9 +160,7 @@ class TgtAdm(iscsi.ISCSITarget):
         LOG.debug('Failed to find CHAP auth from config for %s' % vol_id)
         return None
 
-    def ensure_export(self, context, volume,
-                      iscsi_name, volume_path,
-                      volume_group, config):
+    def ensure_export(self, context, volume, volume_path):
         chap_auth = None
         old_name = None
 
@@ -173,11 +171,13 @@ class TgtAdm(iscsi.ISCSITarget):
 
         iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                volume['name'])
+        iscsi_write_cache = self.configuration.get('iscsi_write_cache', 'on')
         self.create_iscsi_target(
             iscsi_name,
             1, 0, volume_path,
             chap_auth, check_exit_code=False,
-            old_name=old_name)
+            old_name=old_name,
+            iscsi_write_cache=iscsi_write_cache)
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
@@ -186,7 +186,7 @@ class TgtAdm(iscsi.ISCSITarget):
         fileutils.ensure_tree(self.volumes_dir)
 
         vol_id = name.split(':')[1]
-        write_cache = kwargs.get('write_cache', 'on')
+        write_cache = kwargs.get('iscsi_write_cache', 'on')
         if chap_auth is None:
             volume_conf = self.VOLUME_CONF % (name, path, write_cache)
         else:
@@ -296,11 +296,13 @@ class TgtAdm(iscsi.ISCSITarget):
                                                chap_password)
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
+        iscsi_write_cache = self.configuration.get('iscsi_write_cache', 'on')
         tid = self.create_iscsi_target(iscsi_name,
                                        iscsi_target,
                                        0,
                                        volume_path,
-                                       chap_auth)
+                                       chap_auth,
+                                       iscsi_write_cache=iscsi_write_cache)
         data = {}
         data['location'] = self._iscsi_location(
             self.configuration.iscsi_ip_address, tid, iscsi_name, lun)
