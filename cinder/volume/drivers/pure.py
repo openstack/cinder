@@ -192,8 +192,8 @@ class PureISCSIDriver(san.SanISCSIDriver):
                         ERR_MSG_NOT_EXIST in err.msg:
                     # Happens if the volume does not exist.
                     ctxt.reraise = False
-                    LOG.warn(_LW("Volume deletion failed with message: %s")
-                             % err.msg)
+                    LOG.warn(_LW("Volume deletion failed with message: %s"),
+                             err.msg)
         LOG.debug("Leave PureISCSIDriver.delete_volume.")
 
     def create_snapshot(self, snapshot):
@@ -215,7 +215,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
                     # Happens if the snapshot does not exist.
                     ctxt.reraise = False
                     LOG.error(_LE("Snapshot deletion failed with message:"
-                                  " %s") % err.msg)
+                                  " %s"), err.msg)
         LOG.debug("Leave PureISCSIDriver.delete_snapshot.")
 
     def initialize_connection(self, volume, connector):
@@ -234,7 +234,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
             },
         }
         LOG.debug("Leave PureISCSIDriver.initialize_connection. "
-                  "Return value: " + str(properties))
+                  "Return value: %s", str(properties))
         return properties
 
     def _get_target_iscsi_port(self):
@@ -244,7 +244,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
                                      "-p", self._iscsi_port["portal"]])
         except processutils.ProcessExecutionError as err:
             LOG.warn(_LW("iSCSI discovery of port %(port_name)s at "
-                         "%(port_portal)s failed with error: %(err_msg)s") %
+                         "%(port_portal)s failed with error: %(err_msg)s"),
                      {"port_name": self._iscsi_port["name"],
                       "port_portal": self._iscsi_port["portal"],
                       "err_msg": err.stderr})
@@ -262,17 +262,17 @@ class PureISCSIDriver(san.SanISCSIDriver):
                                          "-p", port["portal"]])
             except processutils.ProcessExecutionError as err:
                 LOG.debug(("iSCSI discovery of port %(port_name)s at "
-                           "%(port_portal)s failed with error: %(err_msg)s") %
+                           "%(port_portal)s failed with error: %(err_msg)s"),
                           {"port_name": self._iscsi_port["name"],
                            "port_portal": self._iscsi_port["portal"],
                            "err_msg": err.stderr})
             else:
                 LOG.info(_LI("Using port %(name)s on the array at %(portal)s "
-                             "for iSCSI connectivity.") %
+                             "for iSCSI connectivity."),
                          {"name": port["name"], "portal": port["portal"]})
                 return port
         raise exception.PureDriverException(
-            reason=_LE("No reachable iSCSI-enabled ports on target array."))
+            reason=_("No reachable iSCSI-enabled ports on target array."))
 
     def _connect(self, volume, connector):
         """Connect the host and volume; return dict describing connection."""
@@ -281,13 +281,13 @@ class PureISCSIDriver(san.SanISCSIDriver):
         host = self._get_host(connector)
         if host:
             host_name = host["name"]
-            LOG.info(_LI("Re-using existing purity host %(host_name)r")
-                     % {"host_name": host_name})
+            LOG.info(_LI("Re-using existing purity host %(host_name)r"),
+                     {"host_name": host_name})
         else:
             host_name = _generate_purity_host_name(connector["host"])
             iqn = connector["initiator"]
             LOG.info(_LI("Creating host object %(host_name)r with IQN:"
-                         " %(iqn)s.") % {"host_name": host_name, "iqn": iqn})
+                         " %(iqn)s."), {"host_name": host_name, "iqn": iqn})
             self._array.create_host(host_name, iqnlist=[iqn])
 
         try:
@@ -329,7 +329,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
             self._disconnect_host(host_name, vol_name)
         else:
             LOG.error(_LE("Unable to find host object in Purity with IQN: "
-                          "%(iqn)s.") % {"iqn": connector["initiator"]})
+                          "%(iqn)s."), {"iqn": connector["initiator"]})
         LOG.debug("Leave PureISCSIDriver.terminate_connection.")
 
     def _disconnect_host(self, host_name, vol_name):
@@ -342,11 +342,11 @@ class PureISCSIDriver(san.SanISCSIDriver):
                     # Happens if the host and volume are not connected.
                     ctxt.reraise = False
                     LOG.error(_LE("Disconnection failed with message: "
-                                  "%(msg)s.") % {"msg": err.msg})
+                                  "%(msg)s."), {"msg": err.msg})
         if (GENERATED_NAME.match(host_name) and
             not self._array.list_host_connections(host_name,
                                                   private=True)):
-            LOG.info(_LI("Deleting unneeded host %(host_name)r.") %
+            LOG.info(_LI("Deleting unneeded host %(host_name)r."),
                      {"host_name": host_name})
             self._array.delete_host(host_name)
         LOG.debug("Leave PureISCSIDriver._disconnect_host.")
@@ -514,28 +514,29 @@ class FlashArray(object):
                 if new_version == self._rest_version:
                     raise exception.PureAPIException(
                         code=err.code,
-                        reason=(_LE("Unable to find usable REST API version. "
-                                    "Response from Pure Storage REST API: ") +
+                        reason=(_("Unable to find usable REST API version. "
+                                  "Response from Pure Storage REST API: %s") %
                                 err.read()))
                 self._rest_version = new_version
                 self._root_url = "https://%s/api/%s/" % (self._target,
                                                          self._rest_version)
                 return self._http_request(method, path, data)
             else:
-                raise exception.PureAPIException(code=err.code,
-                                                 reason=err.read())
+                raise exception.PureAPIException(
+                    code=err.code,
+                    reason=_("exception:%s") % err.read())
         except urllib2.URLError as err:
             # Error outside scope of HTTP status codes,
             # e.g., unable to resolve domain name
             raise exception.PureDriverException(
-                reason=_LE("Unable to connect to %r. Check san_ip.") %
+                reason=_("Unable to connect to %r. Check san_ip.") %
                 self._target)
         else:
             content = response.read()
             if "application/json" in response.info().get('Content-Type'):
                 return json.loads(content)
             raise exception.PureAPIException(
-                reason=(_LE("Response not in JSON: ") + content))
+                reason=(_("Response not in JSON: %s") % content))
 
     def _choose_rest_version(self):
         """Return a REST API version."""
@@ -547,9 +548,9 @@ class FlashArray(object):
             if version in FlashArray.SUPPORTED_REST_API_VERSIONS:
                 return version
         raise exception.PureDriverException(
-            reason=_LE("All REST API versions supported by this version of "
-                       "the Pure Storage iSCSI driver are unavailable on "
-                       "array."))
+            reason=_("All REST API versions supported by this version of "
+                     "the Pure Storage iSCSI driver are unavailable on "
+                     "array."))
 
     def _start_session(self):
         """Start a REST API session."""
