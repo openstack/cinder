@@ -200,11 +200,14 @@ class TestTgtAdmDriver(test.TestCase):
 
     def test_create_iscsi_target_already_exists(self):
         def _fake_execute(*args, **kwargs):
-            raise putils.ProcessExecutionError(
-                exit_code=1,
-                stdout='',
-                stderr='target already exists',
-                cmd='tgtad --lld iscsi --op show --mode target')
+            if 'update' in args:
+                raise putils.ProcessExecutionError(
+                    exit_code=1,
+                    stdout='',
+                    stderr='target already exists',
+                    cmd='tgtad --lld iscsi --op show --mode target')
+            else:
+                return 'fake out', 'fake err'
 
         self.stubs.Set(utils,
                        'execute',

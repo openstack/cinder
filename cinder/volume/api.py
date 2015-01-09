@@ -437,8 +437,8 @@ class API(base.Base):
 
     @wrap_check_policy
     def reserve_volume(self, context, volume):
-        #NOTE(jdg): check for Race condition bug 1096983
-        #explicitly get updated ref and check
+        # NOTE(jdg): check for Race condition bug 1096983
+        # explicitly get updated ref and check
         volume = self.db.volume_get(context, volume['id'])
         if volume['status'] == 'available':
             self.update(context, volume, {"status": "attaching"})
@@ -505,6 +505,9 @@ class API(base.Base):
 
     @wrap_check_policy
     def initialize_connection(self, context, volume, connector):
+        LOG.debug('initialize connection for volume-id: %{volid}s, and '
+                  'connector: %{connector}s', {'volid': volume['id'],
+                                               'connector': connector})
         return self.volume_rpcapi.initialize_connection(context,
                                                         volume,
                                                         connector)
