@@ -454,13 +454,14 @@ class VolumeOpsTestCase(test.TestCase):
 
     def test_create_folder_not_present(self):
         """Test create_folder when child not present."""
-        parent_folder = mock.sentinel.parent_folder
-        child_name = 'child_folder'
         prop_val = mock.Mock(spec=object)
-        prop_val.ManagedObjectReference = []
         child_folder = mock.sentinel.child_folder
         self.session.invoke_api.side_effect = [prop_val, child_folder]
+
+        child_name = 'child_folder'
+        parent_folder = mock.sentinel.parent_folder
         ret = self.vops.create_folder(parent_folder, child_name)
+
         self.assertEqual(child_folder, ret)
         expected_invoke_api = [mock.call(vim_util, 'get_object_property',
                                          self.session.vim, parent_folder,
@@ -544,6 +545,115 @@ class VolumeOpsTestCase(test.TestCase):
 
         # Reset side effects.
         self.session.invoke_api.side_effect = None
+
+    def test_create_folder_with_duplicate_name(self):
+        parent_folder = mock.sentinel.parent_folder
+        child_name = 'child_folder'
+
+        prop_val_1 = mock.Mock(spec=object)
+        prop_val_1.ManagedObjectReference = []
+
+        child_entity_2 = mock.Mock(spec=object)
+        child_entity_2._type = 'Folder'
+        prop_val_2 = mock.Mock(spec=object)
+        prop_val_2.ManagedObjectReference = [child_entity_2]
+        child_entity_2_name = child_name
+
+        self.session.invoke_api.side_effect = [
+            prop_val_1,
+            exceptions.DuplicateName,
+            prop_val_2,
+            child_entity_2_name]
+
+        ret = self.vops.create_folder(parent_folder, child_name)
+        self.assertEqual(child_entity_2, ret)
+        expected_invoke_api = [mock.call(vim_util, 'get_object_property',
+                                         self.session.vim, parent_folder,
+                                         'childEntity'),
+                               mock.call(self.session.vim, 'CreateFolder',
+                                         parent_folder, name=child_name),
+                               mock.call(vim_util, 'get_object_property',
+                                         self.session.vim, parent_folder,
+                                         'childEntity'),
+                               mock.call(vim_util, 'get_object_property',
+                                         self.session.vim, child_entity_2,
+                                         'name')]
+        self.assertEqual(expected_invoke_api,
+                         self.session.invoke_api.mock_calls)
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'get_vmfolder')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'create_folder')
+    def test_create_vm_inventory_folder(self, create_folder, get_vmfolder):
+        vm_folder_1 = mock.sentinel.vm_folder_1
+        get_vmfolder.return_value = vm_folder_1
+
+        folder_1a = mock.sentinel.folder_1a
+        folder_1b = mock.sentinel.folder_1b
+        create_folder.side_effect = [folder_1a, folder_1b]
+
+        datacenter_1 = mock.Mock(value='dc-1')
+        path_comp = ['a', 'b']
+        ret = self.vops.create_vm_inventory_folder(datacenter_1, path_comp)
+
+        self.assertEqual(folder_1b, ret)
+        get_vmfolder.assert_called_once_with(datacenter_1)
+        exp_calls = [mock.call(vm_folder_1, 'a'), mock.call(folder_1a, 'b')]
+        self.assertEqual(exp_calls, create_folder.call_args_list)
+        exp_cache = {'/dc-1': vm_folder_1,
+                     '/dc-1/a': folder_1a,
+                     '/dc-1/a/b': folder_1b}
+        self.assertEqual(exp_cache, self.vops._folder_cache)
+
+        # Test cache
+        get_vmfolder.reset_mock()
+        create_folder.reset_mock()
+
+        folder_1c = mock.sentinel.folder_1c
+        create_folder.side_effect = [folder_1c]
+
+        path_comp = ['a', 'c']
+        ret = self.vops.create_vm_inventory_folder(datacenter_1, path_comp)
+
+        self.assertEqual(folder_1c, ret)
+        self.assertFalse(get_vmfolder.called)
+        exp_calls = [mock.call(folder_1a, 'c')]
+        self.assertEqual(exp_calls, create_folder.call_args_list)
+        exp_cache = {'/dc-1': vm_folder_1,
+                     '/dc-1/a': folder_1a,
+                     '/dc-1/a/b': folder_1b,
+                     '/dc-1/a/c': folder_1c}
+        self.assertEqual(exp_cache, self.vops._folder_cache)
+
+        # Test cache with different datacenter
+        get_vmfolder.reset_mock()
+        create_folder.reset_mock()
+
+        vm_folder_2 = mock.sentinel.vm_folder_2
+        get_vmfolder.return_value = vm_folder_2
+
+        folder_2a = mock.sentinel.folder_2a
+        folder_2b = mock.sentinel.folder_2b
+        create_folder.side_effect = [folder_2a, folder_2b]
+
+        datacenter_2 = mock.Mock(value='dc-2')
+        path_comp = ['a', 'b']
+        ret = self.vops.create_vm_inventory_folder(datacenter_2, path_comp)
+
+        self.assertEqual(folder_2b, ret)
+        get_vmfolder.assert_called_once_with(datacenter_2)
+        exp_calls = [mock.call(vm_folder_2, 'a'), mock.call(folder_2a, 'b')]
+        self.assertEqual(exp_calls, create_folder.call_args_list)
+        exp_cache = {'/dc-1': vm_folder_1,
+                     '/dc-1/a': folder_1a,
+                     '/dc-1/a/b': folder_1b,
+                     '/dc-1/a/c': folder_1c,
+                     '/dc-2': vm_folder_2,
+                     '/dc-2/a': folder_2a,
+                     '/dc-2/a/b': folder_2b
+                     }
+        self.assertEqual(exp_cache, self.vops._folder_cache)
 
     def test_create_disk_backing_thin(self):
         backing = mock.Mock()
