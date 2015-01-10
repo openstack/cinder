@@ -205,7 +205,7 @@ class DatastoreSelector(object):
         if profile_name is not None:
             profile_id = self.get_profile_id(profile_name)
 
-        if hosts is None:
+        if not hosts:
             hosts = self._get_all_hosts()
 
         LOG.debug("Using hosts: %(hosts)s for datastore selection based on "

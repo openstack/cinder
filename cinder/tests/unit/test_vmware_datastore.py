@@ -383,6 +383,14 @@ class DatastoreTest(test.TestCase):
         self._vops.get_connected_hosts.reset_mock()
         self._vops.get_connected_hosts.return_value = None
 
+    def test_select_datastore_with_empty_host_list(self):
+        size_bytes = units.Ki
+        req = {self._ds_sel.SIZE_BYTES: size_bytes}
+        self._vops.get_hosts.return_value = mock.Mock(objects=[])
+
+        self.assertEqual((), self._ds_sel.select_datastore(req, hosts=[]))
+        self._vops.get_hosts.assert_called_once_with()
+
     @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_filter_by_profile')
