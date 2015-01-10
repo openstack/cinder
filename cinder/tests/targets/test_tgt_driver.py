@@ -9,6 +9,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 import os
 import tempfile
 
@@ -228,7 +229,7 @@ class TestTgtAdmDriver(test.TestCase):
                 0,
                 self.fake_volumes_dir))
 
-    def test_create_create_export(self):
+    def test_create_export(self):
 
         def _fake_execute(*args, **kwargs):
             return '', ''
@@ -262,3 +263,16 @@ class TestTgtAdmDriver(test.TestCase):
                          self.target.create_export(ctxt,
                                                    self.testvol_1,
                                                    self.fake_volumes_dir))
+
+    def test_ensure_export(self):
+        ctxt = context.get_admin_context()
+        with mock.patch.object(self.target, 'create_iscsi_target'):
+            self.target.ensure_export(ctxt,
+                                      self.testvol_1,
+                                      self.fake_volumes_dir)
+            self.target.create_iscsi_target.assert_called_once_with(
+                'iqn.2010-10.org.openstack:testvol',
+                1, 0, self.fake_volumes_dir, None,
+                iscsi_write_cache='on',
+                check_exit_code=False,
+                old_name=None)

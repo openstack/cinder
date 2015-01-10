@@ -27,9 +27,7 @@ class FakeDriver(iscsi.ISCSITarget):
     def create_export(self, context, vref):
         pass
 
-    def ensure_export(self, context, vref,
-                      iscsi_name, vol_path,
-                      vol_group, cfg):
+    def ensure_export(self, context, vref, vol_path):
         pass
 
     def remove_export(self, context, vref):

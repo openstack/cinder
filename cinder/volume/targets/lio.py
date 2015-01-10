@@ -95,6 +95,8 @@ class LioAdm(TgtAdm):
 
         LOG.info(_LI('Creating iscsi_target for volume: %s') % vol_id)
 
+        chap_auth_userid = ""
+        chap_auth_password = ""
         if chap_auth is not None:
             (chap_auth_userid, chap_auth_password) = chap_auth.split(' ')[1:]
 
