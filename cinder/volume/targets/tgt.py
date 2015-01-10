@@ -181,8 +181,22 @@ class TgtAdm(iscsi.ISCSITarget):
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
+
         # Note(jdg) tid and lun aren't used by TgtAdm but remain for
         # compatibility
+
+        # NOTE(jdg): Remove this when we get to the bottom of bug: #1398078
+        # for now, since we intermittently hit target already exists we're
+        # adding some debug info to try and pinpoint what's going on
+        (out, err) = utils.execute('tgtadm',
+                                   '--lld',
+                                   'iscsi',
+                                   '--op',
+                                   'show',
+                                   '--mode',
+                                   'target',
+                                   run_as_root=True)
+        LOG.debug("Targets prior to update: %s" % out)
         fileutils.ensure_tree(self.volumes_dir)
 
         vol_id = name.split(':')[1]
@@ -194,24 +208,30 @@ class TgtAdm(iscsi.ISCSITarget):
             volume_conf = self.VOLUME_CONF_WITH_CHAP_AUTH % (name,
                                                              path, chap_str,
                                                              write_cache)
-        LOG.info(_LI('Creating iscsi_target for: %s') % vol_id)
+        LOG.debug('Creating iscsi_target for: %s', vol_id)
         volumes_dir = self.volumes_dir
         volume_path = os.path.join(volumes_dir, vol_id)
 
+        if os.path.exists(volume_path):
+            LOG.warning(_LW('Persistence file already exists for volume, '
+                            'found file at: %s'), volume_path)
         f = open(volume_path, 'w+')
         f.write(volume_conf)
         f.close()
         LOG.debug(('Created volume path %(vp)s,\n'
-                   'content: %(vc)s')
-                  % {'vp': volume_path, 'vc': volume_conf})
+                   'content: %(vc)s'),
+                  {'vp': volume_path, 'vc': volume_conf})
 
         old_persist_file = None
         old_name = kwargs.get('old_name', None)
         if old_name is not None:
+            LOG.debug('Detected old persistence file for volume '
+                      '%{vol}s at %{old_name}s',
+                      {'vol': vol_id, 'old_name': old_name})
             old_persist_file = os.path.join(volumes_dir, old_name)
 
         try:
-            # with the persistent tgts we create them
+            # With the persistent tgts we create them
             # by creating the entry in the persist file
             # and then doing an update to get the target
             # created.
@@ -219,39 +239,35 @@ class TgtAdm(iscsi.ISCSITarget):
                                        run_as_root=True)
             LOG.debug("StdOut from tgt-admin --update: %s", out)
             LOG.debug("StdErr from tgt-admin --update: %s", err)
-
-            # Grab targets list for debug
-            # Consider adding a check for lun 0 and 1 for tgtadm
-            # before considering this as valid
-            (out, err) = utils.execute('tgtadm',
-                                       '--lld',
-                                       'iscsi',
-                                       '--op',
-                                       'show',
-                                       '--mode',
-                                       'target',
-                                       run_as_root=True)
-            LOG.debug("Targets after update: %s" % out)
         except putils.ProcessExecutionError as e:
             if "target already exists" in e.stderr:
+                # Adding the additional Warning message below for a clear
+                # ER marker (Ref bug: #1398078).
                 LOG.warning(_LW('Could not create target because '
                                 'it already exists for volume: %s'), vol_id)
-                # NOTE(jdg): We've run into issues where the command being sent
-                # was not correct. This may be related to using the executor
-                # directly? Even though the above call specified is a show
-                # we see a new being called instead...
-
-                # Adding the additional Warning message above for a clear
-                # ER marker (Ref bug: #1398078).
+                LOG.debug('Exception was: %s', e)
                 pass
             else:
-                LOG.warning(_LW("Failed to create iscsi target for volume "
-                            "id:%(vol_id)s: %(e)s")
-                            % {'vol_id': vol_id, 'e': e})
+                LOG.error(_LE("Failed to create iscsi target for volume "
+                              "id:%(vol_id)s: %(e)s"),
+                          {'vol_id': vol_id, 'e': e})
 
                 # Don't forget to remove the persistent file we created
                 os.unlink(volume_path)
                 raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
+
+        # Grab targets list for debug
+        # Consider adding a check for lun 0 and 1 for tgtadm
+        # before considering this as valid
+        (out, err) = utils.execute('tgtadm',
+                                   '--lld',
+                                   'iscsi',
+                                   '--op',
+                                   'show',
+                                   '--mode',
+                                   'target',
+                                   run_as_root=True)
+        LOG.debug("Targets after update: %s" % out)
 
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
         tid = self._get_target(iqn)
