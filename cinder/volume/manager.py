@@ -363,15 +363,15 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.scheduler_rpcapi,
                 self.host,
                 volume_id,
+                allow_reschedule,
+                context,
+                request_spec,
+                filter_properties,
                 snapshot_id=snapshot_id,
                 image_id=image_id,
                 source_volid=source_volid,
                 source_replicaid=source_replicaid,
-                consistencygroup_id=consistencygroup_id,
-                allow_reschedule=allow_reschedule,
-                reschedule_context=context,
-                request_spec=request_spec,
-                filter_properties=filter_properties)
+                consistencygroup_id=consistencygroup_id)
         except Exception:
             LOG.exception(_LE("Failed to create manager volume flow"))
             raise exception.CinderException(
