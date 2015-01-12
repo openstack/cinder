@@ -29,6 +29,8 @@ from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.hds import iscsi
+from cinder.volume import volume_types
+
 LOG = logging.getLogger(__name__)
 
 HNASCONF = """<?xml version="1.0" encoding="UTF-8" ?>
@@ -80,7 +82,9 @@ HNAS_WRONG_CONF2 = """<?xml version="1.0" encoding="UTF-8" ?>
 
 # The following information is passed on to tests, when creating a volume
 _VOLUME = {'name': 'testvol', 'volume_id': '1234567890', 'size': 128,
-           'volume_type': None, 'provider_location': None, 'id': 'abcdefg'}
+           'volume_type': 'silver', 'volume_type_id': '1',
+           'provider_location': None, 'id': 'abcdefg',
+           'host': 'host1@hnas-iscsi-backend#silver'}
 
 
 class SimulatedHnasBackend(object):
@@ -269,7 +273,7 @@ class SimulatedHnasBackend(object):
             "CTL: 1 Port: 5 IP: 172.17.39.133 Port: 3260 Link: Up"
         return self.out
 
-    def get_hdp_info(self, cmd, ip0, user, pw):
+    def get_hdp_info(self, cmd, ip0, user, pw, fslabel=None):
         self.out = "HDP: 1024  272384 MB    33792 MB  12 %  LUs:  " \
             "70  Normal  fs1\n" \
             "HDP: 1025  546816 MB    73728 MB  13 %  LUs:  194  Normal  fs2"
@@ -351,7 +355,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         stats = self.driver.get_volume_stats(True)
         self.assertEqual(stats["vendor_name"], "HDS")
         self.assertEqual(stats["storage_protocol"], "iSCSI")
-        self.assertTrue(stats["total_capacity_gb"] > 0)
+        self.assertEqual(len(stats['pools']), 2)
 
     def test_delete_volume(self):
         vol = self._create_volume()
@@ -443,3 +447,9 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.assertNotEqual(num_conn_before, num_conn_after)
         # cleanup
         self.backend.deleteVolumebyProvider(vol['provider_location'])
+
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
+                       return_value={'key': 'type', 'service_label': 'silver'})
+    def test_get_pool(self, m_ext_spec):
+        label = self.driver.get_pool(_VOLUME)
+        self.assertEqual('silver', label)
