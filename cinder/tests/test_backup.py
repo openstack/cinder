@@ -80,6 +80,8 @@ class BaseBackupTest(test.TestCase):
         backup['status'] = status
         backup['fail_reason'] = ''
         backup['service'] = CONF.backup_driver
+        backup['snapshot'] = False
+        backup['parent_id'] = None
         backup['size'] = size
         backup['object_count'] = object_count
         return db.backup_create(self.ctxt, backup)['id']

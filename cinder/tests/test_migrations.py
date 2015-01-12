@@ -763,6 +763,15 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
                                              "driver_initiator_data")
         self.assertFalse(has_table)
 
+    def _check_039(self, engine, data):
+        backups = db_utils.get_table(engine, 'backups')
+        self.assertIsInstance(backups.c.parent_id.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_039(self, engine):
+        backups = db_utils.get_table(engine, 'backups')
+        self.assertNotIn('parent_id', backups.c)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 
