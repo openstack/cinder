@@ -1079,11 +1079,12 @@ class ISCSIDriver(VolumeDriver):
 
     def validate_connector(self, connector):
         # iSCSI drivers require the initiator information
-        if 'initiator' not in connector:
-            err_msg = (_('The volume driver requires the iSCSI initiator '
-                         'name in the connector.'))
-            LOG.error(err_msg)
-            raise exception.VolumeBackendAPIException(data=err_msg)
+        required = 'initiator'
+        if required not in connector:
+            err_msg = (_LE('The volume driver requires %(data)s '
+                           'in the connector.'), {'data': required})
+            LOG.error(*err_msg)
+            raise exception.InvalidConnectorException(missing=required)
 
     def terminate_connection(self, volume, connector, **kwargs):
         pass
@@ -1361,8 +1362,9 @@ class FibreChannelDriver(VolumeDriver):
     def validate_connector_has_setting(connector, setting):
         """Test for non-empty setting in connector."""
         if setting not in connector or not connector[setting]:
-            msg = (_(
+            msg = (_LE(
                 "FibreChannelDriver validate_connector failed. "
-                "No '%s'. Make sure HBA state is Online.") % setting)
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+                "No '%(setting)s'. Make sure HBA state is Online."),
+                {'setting': setting})
+            LOG.error(*msg)
+            raise exception.InvalidConnectorException(missing=setting)

@@ -308,10 +308,11 @@ class StorwizeSVCDriver(san.SanDriver):
         if 'FC' in self._state['enabled_protocols'] and 'wwpns' in connector:
             valid = True
         if not valid:
-            msg = (_('The connector does not contain the required '
-                     'information.'))
+            msg = (_LE('The connector does not contain the required '
+                       'information.'))
             LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+            raise exception.InvalidConnectorException(
+                missing='initiator or wwpns')
 
     def _get_vdisk_params(self, type_id, volume_type=None,
                           volume_metadata=None):

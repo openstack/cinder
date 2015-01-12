@@ -21,7 +21,7 @@ import re
 import time
 
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.huawei import huawei_utils
@@ -435,10 +435,10 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
     def validate_connector(self, connector):
         """Check for wwpns in connector."""
         if 'wwpns' not in connector:
-            err_msg = (_('validate_connector: The FC driver requires the'
-                         ' wwpns in the connector.'))
+            err_msg = (_LE('validate_connector: The FC driver requires the'
+                           ' wwpns in the connector.'))
             LOG.error(err_msg)
-            raise exception.VolumeBackendAPIException(data=err_msg)
+            raise exception.InvalidConnectorException(missing='wwpns')
 
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):

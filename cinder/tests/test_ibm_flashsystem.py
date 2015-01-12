@@ -843,9 +843,9 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.driver._protocol = 'FC'
         self.driver.validate_connector(conn_fc)
         self.driver.validate_connector(conn_both)
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector, conn_iscsi)
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector, conn_neither)
 
         # clear environment

@@ -129,7 +129,7 @@ class TestBaseISCSITargetDriver(test.TestCase):
 
     def test_validate_connector(self):
         bad_connector = {'no_initiator': 'nada'}
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.target.validate_connector,
                           bad_connector)
 

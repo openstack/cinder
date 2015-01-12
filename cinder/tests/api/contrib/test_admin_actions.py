@@ -563,7 +563,7 @@ class AdminActionsTest(test.TestCase):
         connector = {}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.InvalidInput,
                           self.volume_api.initialize_connection,
                           ctx, volume, connector)
         # cleanup

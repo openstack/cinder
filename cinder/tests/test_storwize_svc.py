@@ -2042,24 +2042,24 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver._state['enabled_protocols'] = set(['iSCSI'])
         self.driver.validate_connector(conn_iscsi)
         self.driver.validate_connector(conn_both)
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector, conn_fc)
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector, conn_neither)
 
         self.driver._state['enabled_protocols'] = set(['FC'])
         self.driver.validate_connector(conn_fc)
         self.driver.validate_connector(conn_both)
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector, conn_iscsi)
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector, conn_neither)
 
         self.driver._state['enabled_protocols'] = set(['iSCSI', 'FC'])
         self.driver.validate_connector(conn_iscsi)
         self.driver.validate_connector(conn_fc)
         self.driver.validate_connector(conn_both)
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector, conn_neither)
 
     def test_storwize_svc_host_maps(self):
