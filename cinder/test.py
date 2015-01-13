@@ -189,6 +189,7 @@ class TestCase(testtools.TestCase):
             config_fixture.Config(lockutils.CONF))
         self.fixture.config(lock_path=lock_path,
                             group='oslo_concurrency')
+        lockutils.set_defaults(lock_path)
         self.override_config('policy_file',
                              os.path.join(
                                  os.path.abspath(
