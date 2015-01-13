@@ -89,10 +89,16 @@ class LVM(executor.Executor):
         if lvm_type == 'thin':
             pool_name = "%s-pool" % self.vg_name
             if self.get_volume(pool_name) is None:
-                self.create_thin_pool(pool_name)
-            else:
-                self.vg_thin_pool = pool_name
+                try:
+                    self.create_thin_pool(pool_name)
+                except putils.ProcessExecutionError:
+                    # Maybe we just lost the race against another copy of
+                    # this driver being in init in parallel - e.g.
+                    # cinder-volume and cinder-backup starting in parallel
+                    if self.get_volume(pool_name) is None:
+                        raise
 
+            self.vg_thin_pool = pool_name
             self.activate_lv(self.vg_thin_pool)
         self.pv_list = self.get_all_physical_volumes(root_helper, vg_name)
 
@@ -460,7 +466,7 @@ class LVM(executor.Executor):
             size_str = self._calculate_thin_pool_size()
 
         cmd = ['lvcreate', '-T', '-L', size_str, vg_pool_name]
-        LOG.debug('Created thin pool \'%(pool)s\' with size %(size)s of '
+        LOG.debug('Creating thin pool \'%(pool)s\' with size %(size)s of '
                   'total %(free)sg' % {'pool': vg_pool_name,
                                        'size': size_str,
                                        'free': self.vg_free_space})
