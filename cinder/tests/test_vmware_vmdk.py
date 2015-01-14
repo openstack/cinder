@@ -1141,6 +1141,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         fake_volume_size = 1 + size_gb
         adapter_type = 'ide'
         fake_image_meta = {'disk_format': 'vmdk', 'size': size,
+                           'container_format': 'bare',
                            'properties': {'vmware_disktype': 'streamOptimized',
                                           'vmware_adaptertype': adapter_type}}
         image_service = mock.Mock(glance.GlanceImageService)
@@ -2460,6 +2461,33 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                          _select_ds_for_volume,
                                                          _extend_virtual_disk,
                                                          download_image)
+
+    def test_copy_image_to_volume_with_ova_container(self):
+        image_service = mock.Mock(glance.GlanceImageService)
+        image_size = 2 * units.Gi
+        adapter_type = 'ide'
+        image_meta = {'disk_format': 'vmdk', 'size': image_size,
+                      'container_format': 'ova',
+                      'properties': {'vmware_disktype': 'streamOptimized',
+                                     'vmware_adaptertype': adapter_type}}
+        image_service.show.return_value = image_meta
+
+        context = mock.sentinel.context
+        vol_name = 'volume-51e47214-8e3c-475d-b44b-aea6cd3eef53'
+        vol_id = '51e47214-8e3c-475d-b44b-aea6cd3eef53'
+        display_name = 'foo'
+        volume_size = 4
+        volume = {'name': vol_name,
+                  'id': vol_id,
+                  'display_name': display_name,
+                  'size': volume_size,
+                  'volume_type_id': None}
+        image_id = 'image-id'
+
+        self.assertRaises(
+            cinder_exceptions.ImageUnacceptable,
+            self._driver.copy_image_to_volume, context, volume, image_service,
+            image_id)
 
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
     @mock.patch('oslo_utils.uuidutils.generate_uuid')

@@ -1288,6 +1288,14 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         metadata = image_service.show(context, image_id)
         VMwareEsxVmdkDriver._validate_disk_format(metadata['disk_format'])
 
+        # Validate container format; only 'bare' is supported currently.
+        container_format = metadata.get('container_format')
+        if (container_format and container_format != 'bare'):
+            msg = _("Container format: %s is unsupported, only 'bare' is "
+                    "supported.") % container_format
+            LOG.error(msg)
+            raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
+
         # Get the disk type, adapter type and size of vmdk image
         image_disk_type = ImageDiskType.PREALLOCATED
         image_adapter_type = volumeops.VirtualDiskAdapterType.LSI_LOGIC
