@@ -11,6 +11,6 @@ MySQL-python
 psycopg2
 sphinx>=1.1.2,<1.1.999
 python-subunit>=0.0.18
-testtools>=0.9.34
+testtools>=0.9.34,!=1.2.0,!=1.4.0
 testrepository>=0.0.18
 oslosphinx
