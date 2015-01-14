@@ -157,7 +157,7 @@ class TestTgtAdmDriver(test.TestCase):
         persist_file =\
             '<target iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45>\n'\
             '    backing-store /dev/stack-volumes-lvmdriver-1/volume-83c2e877-feed-46be-8435-77884fe55b45\n'\
-            '    lld iscsi\n'\
+            '    driver iscsi\n'\
             '    incominguser otzLy2UYbYfnP4zXLG5z 234Zweo38VGBBvrpK9nt\n'\
             '    write-cache on\n'\
             '</target>'
