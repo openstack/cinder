@@ -15,11 +15,13 @@ from oslo_concurrency import processutils as putils
 
 from cinder import context
 from cinder import exception
+from cinder import test
 from cinder.tests.targets import test_tgt_driver as test_tgt
 from cinder import utils
 from cinder.volume.targets import lio
 
 
+@test.testtools.skip("SKIP until bug #1411029 is fixed")
 class TestLioAdmDriver(test_tgt.TestTgtAdmDriver):
 
     def setUp(self):
