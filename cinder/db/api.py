@@ -108,20 +108,6 @@ def service_get_all_by_topic(context, topic, disabled=None):
     return IMPL.service_get_all_by_topic(context, topic, disabled=disabled)
 
 
-def service_get_all_by_host(context, host):
-    """Get all services for a given host."""
-    return IMPL.service_get_all_by_host(context, host)
-
-
-def service_get_all_volume_sorted(context):
-    """Get all volume services sorted by volume count.
-
-    :returns: a list of (Service, volume_count) tuples.
-
-    """
-    return IMPL.service_get_all_volume_sorted(context)
-
-
 def service_get_by_args(context, host, binary):
     """Get the state of an service by node name and binary."""
     return IMPL.service_get_by_args(context, host, binary)
@@ -161,10 +147,6 @@ def iscsi_target_create_safe(context, values):
 
 
 ###############
-
-def volume_allocate_iscsi_target(context, volume_id, host):
-    """Atomically allocate a free iscsi_target from the pool."""
-    return IMPL.volume_allocate_iscsi_target(context, volume_id, host)
 
 
 def volume_attached(context, volume_id, instance_id, host_name, mountpoint):
@@ -863,11 +845,6 @@ def consistencygroup_get_all(context):
     return IMPL.consistencygroup_get_all(context)
 
 
-def consistencygroup_get_all_by_host(context, host):
-    """Get all consistencygroups belonging to a host."""
-    return IMPL.consistencygroup_get_all_by_host(context, host)
-
-
 def consistencygroup_create(context, values):
     """Create a consistencygroup from the values dictionary."""
     return IMPL.consistencygroup_create(context, values)
@@ -902,11 +879,6 @@ def cgsnapshot_get(context, cgsnapshot_id):
 def cgsnapshot_get_all(context):
     """Get all cgsnapshots."""
     return IMPL.cgsnapshot_get_all(context)
-
-
-def cgsnapshot_get_all_by_host(context, host):
-    """Get all cgsnapshots belonging to a host."""
-    return IMPL.cgsnapshot_get_all_by_host(context, host)
 
 
 def cgsnapshot_create(context, values):
