@@ -19,6 +19,7 @@
 import os.path
 import re
 import socket
+import ssl
 import tempfile
 import time
 import urllib2
@@ -41,7 +42,17 @@ TEST_VAR_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
 
 
 def open_no_proxy(*args, **kwargs):
-    opener = urllib2.build_opener(urllib2.ProxyHandler({}))
+    # NOTE(coreycb):
+    # Deal with more secure certification chain verficiation
+    # introduced in python 2.7.9 under PEP-0476
+    # https://github.com/python/peps/blob/master/pep-0476.txt
+    if hasattr(ssl, "_create_unverified_context"):
+        opener = urllib2.build_opener(
+            urllib2.ProxyHandler({}),
+            urllib2.HTTPSHandler(context=ssl._create_unverified_context())
+        )
+    else:
+        opener = urllib2.build_opener(urllib2.ProxyHandler({}))
     return opener.open(*args, **kwargs)
 
 
