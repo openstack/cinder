@@ -2843,14 +2843,15 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.stubs.Set(self.volume.driver, 'attach_volume',
                        lambda *args, **kwargs: None)
 
-        self.volume.migrate_volume_completion(self.context,
-                                              old_volume['id'],
-                                              new_volume['id'])
+        with mock.patch.object(self.volume.driver, 'detach_volume') as detach:
+            self.volume.migrate_volume_completion(self.context, old_volume[
+                'id'], new_volume['id'])
 
         volume = db.volume_get(elevated, old_volume['id'])
         self.assertEqual(volume['status'], status)
         self.assertEqual(volume['attached_host'], attached_host)
         self.assertEqual(volume['instance_uuid'], instance_uuid)
+        self.assertEqual(status == 'in-use', detach.called)
 
     def test_migrate_volume_completion_retype_available(self):
         self._test_migrate_volume_completion('available', retyping=True)
