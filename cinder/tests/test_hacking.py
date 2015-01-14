@@ -110,3 +110,9 @@ class HackingTestCase(test.TestCase):
             "LOG.audit('My test audit log')"))), 1)
         self.assertEqual(len(list(checks.check_no_log_audit(
             "LOG.info('My info test log.')"))), 0)
+
+    def test_oslo_namespace_imports_check(self):
+        self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
+            "from oslo.concurrency import foo"))))
+        self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
+            "from oslo_concurrency import bar"))))

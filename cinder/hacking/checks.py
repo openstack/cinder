@@ -41,6 +41,10 @@ underscore_import_check = re.compile(r"(.)*i18n\s+import\s+_(.)*")
 custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
 no_audit_log = re.compile(r"(.)*LOG\.audit(.)*")
 
+# NOTE(jsbryant): When other oslo libraries switch over non-namespaced
+# imports, we will need to add them to the regex below.
+oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](concurrency)")
+
 
 def no_vi_headers(physical_line, line_number, lines):
     """Check for vi editor configuration in source files.
@@ -124,6 +128,14 @@ def check_assert_called_once(logical_line, filename):
             yield (pos, msg)
 
 
+def check_oslo_namespace_imports(logical_line):
+    if re.match(oslo_namespace_imports, logical_line):
+        msg = ("N333: '%s' must be used instead of '%s'.") % (
+            logical_line.replace('oslo.', 'oslo_'),
+            logical_line)
+        yield(0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
@@ -131,3 +143,4 @@ def factory(register):
     register(check_explicit_underscore_import)
     register(check_no_log_audit)
     register(check_assert_called_once)
+    register(check_oslo_namespace_imports)
