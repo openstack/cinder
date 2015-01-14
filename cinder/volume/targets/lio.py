@@ -195,4 +195,4 @@ class LioAdm(TgtAdm):
         except putils.ProcessExecutionError:
             LOG.error(_LE("Failed to delete initiator iqn %s to target.") %
                       connector['initiator'])
-            raise exception.ISCSITargetAttachFailed(volume_id=volume['id'])
+            raise exception.ISCSITargetDetachFailed(volume_id=volume['id'])
