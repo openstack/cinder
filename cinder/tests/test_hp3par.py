@@ -305,6 +305,12 @@ class HP3PARBaseDriver(object):
         'comment': "{'display_name': 'Foo Volume'}"
     }
 
+    MV_INFO_WITH_NO_SNAPCPG = {
+        'userCPG': 'testUserCpg0',
+        'provisioningType': 1,
+        'comment': "{'display_name': 'Foo Volume'}"
+    }
+
     RETYPE_TEST_COMMENT = "{'retype_test': 'test comment'}"
 
     RETYPE_VOLUME_INFO_0 = {
@@ -2215,6 +2221,55 @@ class HP3PARBaseDriver(object):
             self.assertEqual(expected_obj, obj)
 
     @mock.patch.object(volume_types, 'get_volume_type')
+    def test_manage_existing_with_no_snap_cpg(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.volume_type
+        mock_client = self.setup_driver()
+
+        new_comment = {"display_name": "Foo Volume",
+                       "name": "volume-007dbfce-7579-40bc-8f90-a20b3902283e",
+                       "volume_id": "007dbfce-7579-40bc-8f90-a20b3902283e",
+                       "type": "OpenStack"}
+
+        volume = {'display_name': None,
+                  'host': 'my-stack1@3parxxx#CPGNOTUSED',
+                  'volume_type': 'gold',
+                  'volume_type_id': 'acfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
+
+        mock_client.getVolume.return_value = self.MV_INFO_WITH_NO_SNAPCPG
+        mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
+        mock_client.getTask.return_value = self.STATUS_DONE
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+
+            unm_matcher = common._get_3par_unm_name(self.volume['id'])
+            osv_matcher = common._get_3par_vol_name(volume['id'])
+            existing_ref = {'source-name': unm_matcher}
+
+            expected_obj = {'display_name': 'Foo Volume',
+                            'host': 'my-stack1@3parxxx#fakepool'}
+
+            obj = self.driver.manage_existing(volume, existing_ref)
+
+            expected_manage = [
+                mock.call.getVolume(existing_ref['source-name']),
+                mock.call.modifyVolume(
+                    existing_ref['source-name'],
+                    {'newName': osv_matcher,
+                     'comment': self.CommentMatcher(self.assertEqual,
+                                                    new_comment),
+                     # manage_existing() should be setting
+                     # blank snapCPG to the userCPG
+                     'snapCPG': 'testUserCpg0'})
+            ]
+
+            mock_client.assert_has_calls(self.standard_login + expected_manage)
+            self.assertEqual(expected_obj, obj)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
     def test_manage_existing_vvs(self, _mock_volume_types):
         test_volume_type = self.RETYPE_VOLUME_TYPE_2
         vvs = test_volume_type['extra_specs']['vvs']
@@ -2304,7 +2359,8 @@ class HP3PARBaseDriver(object):
                   'volume_type_id': None,
                   'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
 
-        mock_client.getVolume.return_value = {'comment': comment}
+        mock_client.getVolume.return_value = {'comment': comment,
+                                              'userCPG': 'testUserCpg0'}
 
         with mock.patch.object(hpcommon.HP3PARCommon,
                                '_create_client') as mock_create_client:
@@ -2321,7 +2377,10 @@ class HP3PARBaseDriver(object):
                 mock.call.getVolume(existing_ref['source-name']),
                 mock.call.modifyVolume(existing_ref['source-name'],
                                        {'newName': osv_matcher,
-                                        'comment': new_comment})
+                                        'comment': new_comment,
+                                        # manage_existing() should be setting
+                                        # blank snapCPG to the userCPG
+                                        'snapCPG': 'testUserCpg0'})
             ]
 
             mock_client.assert_has_calls(
@@ -2339,7 +2398,10 @@ class HP3PARBaseDriver(object):
                 mock.call.getVolume(existing_ref['source-name']),
                 mock.call.modifyVolume(existing_ref['source-name'],
                                        {'newName': osv_matcher,
-                                        'comment': new_comment})
+                                        'comment': new_comment,
+                                        # manage_existing() should be setting
+                                        # blank snapCPG to the userCPG
+                                        'snapCPG': 'testUserCpg0'})
             ]
 
             mock_client.assert_has_calls(
@@ -2348,7 +2410,7 @@ class HP3PARBaseDriver(object):
                 self.standard_logout)
             self.assertEqual(expected_obj, obj)
 
-            mock_client.getVolume.return_value = {}
+            mock_client.getVolume.return_value = {'userCPG': 'testUserCpg0'}
             volume['display_name'] = None
             common = self.driver._login()
 
@@ -2359,7 +2421,10 @@ class HP3PARBaseDriver(object):
                 mock.call.getVolume(existing_ref['source-name']),
                 mock.call.modifyVolume(existing_ref['source-name'],
                                        {'newName': osv_matcher,
-                                        'comment': new_comment})
+                                        'comment': new_comment,
+                                        # manage_existing() should be setting
+                                        # blank snapCPG to the userCPG
+                                        'snapCPG': 'testUserCpg0'})
             ]
 
             mock_client.assert_has_calls(

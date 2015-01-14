@@ -163,10 +163,11 @@ class HP3PARCommon(object):
         2.0.32 - Update LOG usage to fix translations.  bug #1384312
         2.0.33 - Fix host persona to match WSAPI mapping bug #1403997
         2.0.34 - Fix log messages to match guidelines. bug #1411370
+        2.0.35 - Fix default snapCPG for manage_existing bug #1393609
 
     """
 
-    VERSION = "2.0.34"
+    VERSION = "2.0.35"
 
     stats = {}
 
@@ -367,10 +368,19 @@ class HP3PARCommon(object):
                           volume['volume_type_id'])
                 raise exception.ManageExistingVolumeTypeMismatch(reason=reason)
 
+        new_vals = {'newName': new_vol_name,
+                    'comment': json.dumps(new_comment)}
+
+        # Ensure that snapCPG is set
+        if 'snapCPG' not in vol:
+            new_vals['snapCPG'] = vol['userCPG']
+            LOG.info(_LI("Virtual volume %(disp)s '%(new)s' snapCPG "
+                     "is empty so it will be set to: %(cpg)s"),
+                     {'disp': display_name, 'new': new_vol_name,
+                      'cpg': new_vals['snapCPG']})
+
         # Update the existing volume with the new name and comments.
-        self.client.modifyVolume(target_vol_name,
-                                 {'newName': new_vol_name,
-                                  'comment': json.dumps(new_comment)})
+        self.client.modifyVolume(target_vol_name, new_vals)
 
         LOG.info(_LI("Virtual volume '%(ref)s' renamed to '%(new)s'."),
                  {'ref': existing_ref['source-name'], 'new': new_vol_name})
