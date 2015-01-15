@@ -505,8 +505,8 @@ class API(base.Base):
 
     @wrap_check_policy
     def initialize_connection(self, context, volume, connector):
-        LOG.debug('initialize connection for volume-id: %{volid}s, and '
-                  'connector: %{connector}s', {'volid': volume['id'],
+        LOG.debug('initialize connection for volume-id: %(volid)s, and '
+                  'connector: %(connector)s', {'volid': volume['id'],
                                                'connector': connector})
         return self.volume_rpcapi.initialize_connection(context,
                                                         volume,
