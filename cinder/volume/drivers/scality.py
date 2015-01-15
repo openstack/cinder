@@ -23,6 +23,7 @@ import urllib2
 
 from oslo.config import cfg
 from oslo.utils import units
+from oslo_concurrency import lockutils
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
@@ -99,6 +100,7 @@ class ScalityDriver(driver.VolumeDriver):
             if e.errno != errno.EEXIST:
                 raise
 
+    @lockutils.synchronized('mount-sofs', 'cinder-sofs', external=True)
     def _mount_sofs(self):
         config = self.configuration.scality_sofs_config
         mount_path = self.configuration.scality_sofs_mount_point
