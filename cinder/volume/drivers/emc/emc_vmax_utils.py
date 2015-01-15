@@ -1259,7 +1259,7 @@ class EMCVMAXUtils(object):
             # Something else that we cannot recover from has happened
             LOG.error(_LE("Exception: %s"), six.text_type(desc))
             exceptionMessage = (_(
-                "Cannot verify the existance of object:"
+                "Cannot verify the existence of object:"
                 "%(instanceName)s.")
                 % {'instanceName': instanceName})
             LOG.error(exceptionMessage)

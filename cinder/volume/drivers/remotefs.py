@@ -900,7 +900,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
                         'to be deleted.') % snapshot_path
                 LOG.warn(msg)
 
-                # Snapshot may be stale, so just delete it and update ther
+                # Snapshot may be stale, so just delete it and update the
                 # info file instead of blocking
                 return self._delete_stale_snapshot(snapshot)
 

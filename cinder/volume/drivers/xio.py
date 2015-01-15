@@ -119,7 +119,7 @@ class XIOISEDriver(object):
             msg = _LE("Array query failed - No response (%d)!") % status
             LOG.error(msg)
             RaiseXIODriverException()
-        # succesfully fetched QUERY info. Parse out globalid along with
+        # Successfully fetched QUERY info. Parse out globalid along with
         # ipaddress for Controller 1 and Controller 2. We assign primary
         # ipaddress to use based on controller rank
         xml_tree = etree.fromstring(resp['content'])
@@ -830,7 +830,7 @@ class XIOISEDriver(object):
             msg = _LE("POST for host create failed (%s)!") % status
             LOG.error(msg)
             RaiseXIODriverException()
-        # succesfully created host entry. Return host name.
+        # Successfully created host entry. Return host name.
         return hostname
 
     def _create_clone(self, volume, clone, clone_type):

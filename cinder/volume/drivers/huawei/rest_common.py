@@ -687,8 +687,8 @@ class RestCommon():
         except Exception:
             with excutils.save_and_reraise_exception():
                 err_msg = (_LE(
-                    'Error occured when adding hostgroup and lungroup to view.'
-                    ' Remove lun from lungroup now.'))
+                    'Error occurred when adding hostgroup and lungroup to '
+                    'view. Remove lun from lungroup now.'))
                 LOG.error(err_msg)
                 self._remove_lun_from_lungroup(lungroup_id, lun_id)
 

@@ -246,7 +246,7 @@ def handle_process_execution_error(message, info_message, reraise=True):
     the command string, exit code, standard output and error output of the
     process will be logged at `logging.DEBUG` level.
 
-    The `reraise` argument specifies what should happend when a
+    The `reraise` argument specifies what should happen when a
     `putils.ProcessExecutionError` is caught. If it's equal to `True`, the
     exception will be re-raised. If it's some other non-`False` object, this
     object will be raised instead (so you most likely want it to be some
