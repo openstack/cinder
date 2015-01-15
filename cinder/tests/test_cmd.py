@@ -337,7 +337,7 @@ class TestCinderManageCmd(test.TestCase):
         db_cmds.sync(version=version)
         db_sync.assert_called_once_with(version)
 
-    @mock.patch('oslo.db.sqlalchemy.migration.db_version')
+    @mock.patch('oslo_db.sqlalchemy.migration.db_version')
     def test_db_commands_version(self, db_version):
         db_cmds = cinder_manage.DbCommands()
         db_cmds.version()

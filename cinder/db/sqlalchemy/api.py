@@ -27,10 +27,10 @@ import uuid
 import warnings
 
 from oslo.config import cfg
-from oslo.db import exception as db_exc
-from oslo.db import options
-from oslo.db.sqlalchemy import session as db_session
 from oslo.utils import timeutils
+from oslo_db import exception as db_exc
+from oslo_db import options
+from oslo_db.sqlalchemy import session as db_session
 import osprofiler.sqlalchemy
 import six
 import sqlalchemy

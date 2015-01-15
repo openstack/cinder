@@ -20,7 +20,7 @@ import os
 import threading
 
 from oslo.config import cfg
-from oslo import db
+from oslo_db import options
 from stevedore import driver
 
 from cinder.db.sqlalchemy import api as db_api
@@ -30,7 +30,7 @@ INIT_VERSION = 000
 _IMPL = None
 _LOCK = threading.Lock()
 
-db.options.set_defaults(cfg.CONF)
+options.set_defaults(cfg.CONF)
 
 MIGRATE_REPO_PATH = os.path.join(
     os.path.abspath(os.path.dirname(__file__)),

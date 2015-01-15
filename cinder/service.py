@@ -23,10 +23,10 @@ import os
 import random
 
 from oslo.config import cfg
-from oslo.db import exception as db_exc
 from oslo import messaging
 from oslo.utils import importutils
 from oslo_concurrency import processutils
+from oslo_db import exception as db_exc
 import osprofiler.notifier
 from osprofiler import profiler
 import osprofiler.web
