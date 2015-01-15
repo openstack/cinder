@@ -210,18 +210,18 @@ class BackupSwiftTestCase(test.TestCase):
 
     def test_backup_shafile(self):
 
-        def _fake_generate_swift_object_name_prefix(self, backup):
+        def _fake_generate_object_name_prefix(self, backup):
             az = 'az_fake'
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_swift_object_name_prefix: %s', prefix)
+            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
         self.stubs.Set(swift_dr.SwiftBackupDriver,
-                       '_generate_swift_object_name_prefix',
-                       _fake_generate_swift_object_name_prefix)
+                       '_generate_object_name_prefix',
+                       _fake_generate_object_name_prefix)
 
         container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',
                                                '', 1)
@@ -242,18 +242,18 @@ class BackupSwiftTestCase(test.TestCase):
 
     def test_backup_cmp_shafiles(self):
 
-        def _fake_generate_swift_object_name_prefix(self, backup):
+        def _fake_generate_object_name_prefix(self, backup):
             az = 'az_fake'
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_swift_object_name_prefix: %s', prefix)
+            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
         self.stubs.Set(swift_dr.SwiftBackupDriver,
-                       '_generate_swift_object_name_prefix',
-                       _fake_generate_swift_object_name_prefix)
+                       '_generate_object_name_prefix',
+                       _fake_generate_object_name_prefix)
 
         container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',
                                                '', 1)
@@ -288,18 +288,18 @@ class BackupSwiftTestCase(test.TestCase):
 
     def test_backup_delta_two_objects_change(self):
 
-        def _fake_generate_swift_object_name_prefix(self, backup):
+        def _fake_generate_object_name_prefix(self, backup):
             az = 'az_fake'
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_swift_object_name_prefix: %s', prefix)
+            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
         self.stubs.Set(swift_dr.SwiftBackupDriver,
-                       '_generate_swift_object_name_prefix',
-                       _fake_generate_swift_object_name_prefix)
+                       '_generate_object_name_prefix',
+                       _fake_generate_object_name_prefix)
 
         self.flags(backup_swift_object_size=8 * 1024)
         self.flags(backup_swift_block_size=1024)
@@ -342,18 +342,18 @@ class BackupSwiftTestCase(test.TestCase):
 
     def test_backup_delta_two_blocks_in_object_change(self):
 
-        def _fake_generate_swift_object_name_prefix(self, backup):
+        def _fake_generate_object_name_prefix(self, backup):
             az = 'az_fake'
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_swift_object_name_prefix: %s', prefix)
+            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
         self.stubs.Set(swift_dr.SwiftBackupDriver,
-                       '_generate_swift_object_name_prefix',
-                       _fake_generate_swift_object_name_prefix)
+                       '_generate_object_name_prefix',
+                       _fake_generate_object_name_prefix)
 
         self.flags(backup_swift_object_size=8 * 1024)
         self.flags(backup_swift_block_size=1024)
@@ -469,18 +469,18 @@ class BackupSwiftTestCase(test.TestCase):
 
     def test_restore_delta(self):
 
-        def _fake_generate_swift_object_name_prefix(self, backup):
+        def _fake_generate_object_name_prefix(self, backup):
             az = 'az_fake'
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_swift_object_name_prefix: %s', prefix)
+            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
         self.stubs.Set(swift_dr.SwiftBackupDriver,
-                       '_generate_swift_object_name_prefix',
-                       _fake_generate_swift_object_name_prefix)
+                       '_generate_object_name_prefix',
+                       _fake_generate_object_name_prefix)
 
         self.flags(backup_swift_object_size=8 * 1024)
         self.flags(backup_swift_block_size=1024)
