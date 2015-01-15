@@ -1,4 +1,4 @@
-# Copyright (c) 2012 - 2014 EMC Corporation, Inc.
+# Copyright (c) 2012 - 2015 EMC Corporation, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -31,6 +31,7 @@ from cinder.zonemanager.fc_san_lookup_service import FCSanLookupService
 
 SUCCEED = ("", 0)
 FAKE_ERROR_RETURN = ("FAKE ERROR", 255)
+VERSION = emc_vnx_cli.EMCVnxCliBase.VERSION
 
 
 class EMCVNXCLIDriverTestData():
@@ -41,8 +42,25 @@ class EMCVNXCLIDriverTestData():
         'volume_name': 'vol1',
         'id': '1',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'provider_location': 'system^FNM11111|type^lun|lun_id^1',
+        'provider_location': 'system^FNM11111|type^lun|id^1|version^05.02.00',
+        'display_name': 'vol1',
+        'display_description': 'test volume',
+        'volume_type_id': None,
+        'consistencygroup_id': None,
+        'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]
+    }
+
+    test_legacy_volume = {
+        'name': 'vol1',
+        'size': 1,
+        'volume_name': 'vol1',
+        'id': '1',
+        'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
+        'project_id': 'project',
+        'provider_location': 'system^FNM11111|type^lun|id^1',
         'display_name': 'vol1',
         'display_description': 'test volume',
         'volume_type_id': None,
@@ -56,6 +74,7 @@ class EMCVNXCLIDriverTestData():
         'volume_name': 'vol1',
         'id': '1',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'vol1',
         'display_description': 'test volume',
@@ -70,6 +89,7 @@ class EMCVNXCLIDriverTestData():
         'volume_name': 'vol1',
         'id': '1',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'vol1',
         'display_description': 'test volume',
@@ -84,13 +104,15 @@ class EMCVNXCLIDriverTestData():
         'volume_name': 'vol1',
         'id': '1',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'vol1',
         'display_description': 'test volume',
         'volume_type_id': None,
         'consistencygroup_id': None,
         'volume_admin_metadata': [{'key': 'attached_mode', 'value': 'rw'},
-                                  {'key': 'readonly', 'value': 'False'}]
+                                  {'key': 'readonly', 'value': 'False'}],
+        'provider_location': 'system^FNM11111|type^lun|id^1|version^05.02.00',
     }
 
     test_volume2 = {
@@ -99,6 +121,7 @@ class EMCVNXCLIDriverTestData():
         'volume_name': 'vol2',
         'id': '1',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'vol2',
         'consistencygroup_id': None,
@@ -111,6 +134,7 @@ class EMCVNXCLIDriverTestData():
         'volume_name': 'vol2',
         'id': '1',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'vol2',
         'consistencygroup_id': None,
@@ -123,6 +147,7 @@ class EMCVNXCLIDriverTestData():
         'volume_name': 'vol_with_type',
         'id': '1',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'thin_vol',
         'consistencygroup_id': None,
@@ -135,6 +160,7 @@ class EMCVNXCLIDriverTestData():
         'volume_name': 'failed_vol1',
         'id': '4',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'failed_vol',
         'consistencygroup_id': None,
@@ -147,11 +173,12 @@ class EMCVNXCLIDriverTestData():
         'volume_name': 'vol1_in_sg',
         'id': '4',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'failed_vol',
         'display_description': 'Volume 1 in SG',
         'volume_type_id': None,
-        'provider_location': 'system^fakesn|type^lun|id^4'}
+        'provider_location': 'system^fakesn|type^lun|id^4|version^05.02.00'}
 
     test_volume2_in_sg = {
         'name': 'vol2_in_sg',
@@ -159,11 +186,12 @@ class EMCVNXCLIDriverTestData():
         'volume_name': 'vol2_in_sg',
         'id': '5',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'failed_vol',
         'display_description': 'Volume 2 in SG',
         'volume_type_id': None,
-        'provider_location': 'system^fakesn|type^lun|id^3'}
+        'provider_location': 'system^fakesn|type^lun|id^3|version^05.02.00'}
 
     test_snapshot = {
         'name': 'snapshot1',
@@ -189,6 +217,7 @@ class EMCVNXCLIDriverTestData():
         'id': '2',
         'volume_name': 'vol1',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'clone1',
         'consistencygroup_id': None,
@@ -200,6 +229,7 @@ class EMCVNXCLIDriverTestData():
         'id': '2',
         'volume_name': 'vol1',
         'provider_auth': None,
+        'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'display_name': 'clone1',
         'consistencygroup_id': 'consistencygroup_id',
@@ -211,23 +241,25 @@ class EMCVNXCLIDriverTestData():
         'wwpns': ["1234567890123456", "1234567890543216"],
         'wwnns': ["2234567890123456", "2234567890543216"],
         'host': 'fakehost'}
-    test_volume3 = {'migration_status': None, 'availability_zone': 'nova',
-                    'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce24',
-                    'name': 'vol3',
-                    'size': 2,
-                    'volume_admin_metadata': [],
-                    'status': 'available',
-                    'volume_type_id':
-                    '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
-                    'deleted': False, 'provider_location': None,
-                    'host': 'ubuntu-server12@pool_backend_1',
-                    'source_volid': None, 'provider_auth': None,
-                    'display_name': 'vol-test02', 'instance_uuid': None,
-                    'attach_status': 'detached',
-                    'volume_type': [],
-                    'attached_host': None,
-                    'provider_location': 'system^FNM11111|type^lun|lun_id^1',
-                    '_name_id': None, 'volume_metadata': []}
+    test_volume3 = {
+        'migration_status': None, 'availability_zone': 'nova',
+        'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce24',
+        'name': 'vol3',
+        'size': 2,
+        'volume_admin_metadata': [],
+        'status': 'available',
+        'volume_type_id':
+        '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
+        'deleted': False,
+        'host': "host@backendsec#unit_test_pool",
+        'source_volid': None, 'provider_auth': None,
+        'display_name': 'vol-test02', 'instance_uuid': None,
+        'attach_status': 'detached',
+        'volume_type': [],
+        'attached_host': None,
+        'provider_location':
+        'system^FNM11111|type^lun|id^1|version^05.02.00',
+        '_name_id': None, 'volume_metadata': []}
 
     test_new_type = {'name': 'voltype0', 'qos_specs_id': None,
                      'deleted': False,
@@ -238,27 +270,12 @@ class EMCVNXCLIDriverTestData():
                  'extra_specs':
                  {'storagetype:provisioning': ('thick', 'thin')}}
 
-    test_host = {'host': 'ubuntu-server12@pool_backend_1',
+    test_host = {'host': 'ubuntu-server12@pool_backend_1#POOL_SAS1',
                  'capabilities':
-                 {'location_info': 'POOL_SAS1|FNM00124500890',
+                 {'pool_name': 'POOL_SAS1',
+                  'location_info': 'POOL_SAS1|FNM00124500890',
                   'volume_backend_name': 'pool_backend_1',
                   'storage_protocol': 'iSCSI'}}
-
-    test_volume4 = {'migration_status': None, 'availability_zone': 'nova',
-                    'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce24',
-                    'name': 'vol4',
-                    'size': 2L,
-                    'volume_admin_metadata': [],
-                    'status': 'available',
-                    'volume_type_id':
-                    '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
-                    'deleted': False, 'provider_location': None,
-                    'host': 'ubuntu-server12@array_backend_1',
-                    'source_volid': None, 'provider_auth': None,
-                    'display_name': 'vol-test02', 'instance_uuid': None,
-                    'attach_status': 'detached',
-                    'volume_type': [],
-                    '_name_id': None, 'volume_metadata': []}
 
     test_volume5 = {'migration_status': None, 'availability_zone': 'nova',
                     'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce25',
@@ -270,8 +287,8 @@ class EMCVNXCLIDriverTestData():
                     'volume_type_id':
                     '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
                     'deleted': False, 'provider_location':
-                    'system^FNM11111|type^lun|lun_id^5',
-                    'host': 'ubuntu-server12@array_backend_1',
+                    'system^FNM11111|type^lun|id^5|version^05.02.00',
+                    'host': 'ubuntu-server12@array_backend_1#unit_test_pool',
                     'source_volid': None, 'provider_auth': None,
                     'display_name': 'vol-test05', 'instance_uuid': None,
                     'attach_status': 'detached',
@@ -306,6 +323,7 @@ class EMCVNXCLIDriverTestData():
         'name': 'snapshot1',
         'size': 1,
         'id': 'cgsnapshot_id',
+        'volume': test_volume,
         'volume_name': 'vol1',
         'volume_size': 1,
         'consistencygroup_id': 'consistencygroup_id',
@@ -326,13 +344,62 @@ class EMCVNXCLIDriverTestData():
     POOL_PROPERTY_CMD = ('storagepool', '-list', '-name', 'unit_test_pool',
                          '-userCap', '-availableCap')
 
+    POOL_PROPERTY_W_FASTCACHE_CMD = ('storagepool', '-list', '-name',
+                                     'unit_test_pool', '-availableCap',
+                                     '-userCap', '-fastcache')
+
+    def POOL_GET_ALL_CMD(self, withfastcache=False):
+        if withfastcache:
+            return ('storagepool', '-list', '-availableCap',
+                    '-userCap', '-fastcache')
+        else:
+            return ('storagepool', '-list', '-availableCap',
+                    '-userCap')
+
+    def POOL_GET_ALL_RESULT(self, withfastcache=False):
+        if withfastcache:
+            return ("Pool Name:  unit_test_pool1\n"
+                    "Pool ID:  0\n"
+                    "User Capacity (Blocks):  6881061888\n"
+                    "User Capacity (GBs):  3281.146\n"
+                    "Available Capacity (Blocks):  6512292864\n"
+                    "Available Capacity (GBs):  3105.303\n"
+                    "FAST Cache:  Enabled\n"
+                    "\n"
+                    "Pool Name:  unit test pool 2\n"
+                    "Pool ID:  1\n"
+                    "User Capacity (Blocks):  8598306816\n"
+                    "User Capacity (GBs):  4099.992\n"
+                    "Available Capacity (Blocks):  8356663296\n"
+                    "Available Capacity (GBs):  3984.768\n"
+                    "FAST Cache:  Disabled\n", 0)
+        else:
+            return ("Pool Name:  unit_test_pool1\n"
+                    "Pool ID:  0\n"
+                    "User Capacity (Blocks):  6881061888\n"
+                    "User Capacity (GBs):  3281.146\n"
+                    "Available Capacity (Blocks):  6512292864\n"
+                    "Available Capacity (GBs):  3105.303\n"
+                    "\n"
+                    "Pool Name:  unit test pool 2\n"
+                    "Pool ID:  1\n"
+                    "User Capacity (Blocks):  8598306816\n"
+                    "User Capacity (GBs):  4099.992\n"
+                    "Available Capacity (Blocks):  8356663296\n"
+                    "Available Capacity (GBs):  3984.768\n", 0)
+
     NDU_LIST_CMD = ('ndu', '-list')
     NDU_LIST_RESULT = ("Name of the software package:   -Compression " +
                        "Name of the software package:   -Deduplication " +
                        "Name of the software package:   -FAST " +
                        "Name of the software package:   -FASTCache " +
-                       "Name of the software package:   -ThinProvisioning ",
+                       "Name of the software package:   -ThinProvisioning "
+                       "Name of the software package:   -VNXSnapshots",
                        0)
+
+    NDU_LIST_RESULT_WO_LICENSE = (
+        "Name of the software package:   -Unisphere ",
+        0)
 
     def SNAP_MP_CREATE_CMD(self, name='vol1', source='vol1'):
         return ('lun', '-create', '-type', 'snap', '-primaryLunName',
@@ -349,10 +416,8 @@ class EMCVNXCLIDriverTestData():
                 '-allowReadWrite', 'yes',
                 '-allowAutoDelete', 'no')
 
-    def SNAP_LIST_CMD(self, res_id=1, poll=True):
+    def SNAP_LIST_CMD(self, res_id=1):
         cmd = ('snap', '-list', '-res', res_id)
-        if not poll:
-            cmd = ('-np',) + cmd
         return cmd
 
     def LUN_DELETE_CMD(self, name):
@@ -361,6 +426,9 @@ class EMCVNXCLIDriverTestData():
     def LUN_EXTEND_CMD(self, name, newsize):
         return ('lun', '-expand', '-name', name, '-capacity', newsize,
                 '-sq', 'gb', '-o', '-ignoreThresholds')
+
+    def LUN_PROPERTY_POOL_CMD(self, lunname):
+        return ('lun', '-list', '-name', lunname, '-poolName')
 
     def LUN_PROPERTY_ALL_CMD(self, lunname):
         return ('lun', '-list', '-name', lunname,
@@ -502,6 +570,15 @@ Available Capacity (Blocks):  6832207872
 Available Capacity (GBs):  3257.851
 
 """, 0)
+
+    POOL_PROPERTY_W_FASTCACHE = (
+        "Pool Name:  unit_test_pool\n"
+        "Pool ID:  1\n"
+        "User Capacity (Blocks):  6881061888\n"
+        "User Capacity (GBs):  3281.146\n"
+        "Available Capacity (Blocks):  6832207872\n"
+        "Available Capacity (GBs):  3257.851\n"
+        "FAST Cache:  Enabled\n\n", 0)
 
     ALL_PORTS = ("SP:  A\n" +
                  "Port ID:  4\n" +
@@ -792,13 +869,12 @@ Available Capacity (GBs):  3257.851
                     0)
 
 
-class EMCVNXCLIDriverISCSITestCase(test.TestCase):
-
+class DriverTestCaseBase(test.TestCase):
     def setUp(self):
-        super(EMCVNXCLIDriverISCSITestCase, self).setUp()
+        super(DriverTestCaseBase, self).setUp()
 
         self.stubs.Set(CommandLineHelper, 'command_execute',
-                       self.fake_setup_command_execute)
+                       self.fake_command_execute_for_driver_setup)
         self.stubs.Set(CommandLineHelper, 'get_array_serial',
                        mock.Mock(return_value={'array_serial':
                                                'fakeSerial'}))
@@ -819,19 +895,26 @@ class EMCVNXCLIDriverISCSITestCase(test.TestCase):
         self.configuration.default_timeout = 0.0002
         self.configuration.initiator_auto_registration = True
         self.configuration.check_max_pool_luns_threshold = False
-        self.stubs.Set(self.configuration, 'safe_get', self.fake_safe_get)
+        self.stubs.Set(self.configuration, 'safe_get',
+                       self.fake_safe_get({'storage_vnx_pool_name':
+                                           'unit_test_pool',
+                                           'volume_backend_name':
+                                           'namedbackend'}))
         self.testData = EMCVNXCLIDriverTestData()
         self.navisecclicmd = '/opt/Navisphere/bin/naviseccli ' + \
             '-address 10.0.0.1 -user sysadmin -password sysadmin -scope 0 '
         self.configuration.iscsi_initiators = '{"fakehost": ["10.0.0.2"]}'
 
     def driverSetup(self, commands=tuple(), results=tuple()):
-        self.driver = EMCCLIISCSIDriver(configuration=self.configuration)
+        self.driver = self.generateDriver(self.configuration)
         fake_command_execute = self.get_command_execute_simulator(
             commands, results)
         fake_cli = mock.Mock(side_effect=fake_command_execute)
         self.driver.cli._client.command_execute = fake_cli
         return fake_cli
+
+    def generateDriver(self, conf):
+        raise NotImplementedError
 
     def get_command_execute_simulator(self, commands=tuple(),
                                       results=tuple()):
@@ -873,6 +956,22 @@ class EMCVNXCLIDriverISCSITestCase(test.TestCase):
                 return standard_results[i]
 
         return standard_default
+
+    def fake_command_execute_for_driver_setup(self, *command, **kwargv):
+        if command == ('connection', '-getport', '-address', '-vlanid'):
+            return self.testData.ALL_PORTS
+        else:
+            return SUCCEED
+
+    def fake_safe_get(self, values):
+        def _safe_get(key):
+            return values.get(key)
+        return _safe_get
+
+
+class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
+    def generateDriver(self, conf):
+        return EMCCLIISCSIDriver(configuration=conf)
 
     @mock.patch(
         "eventlet.event.Event.wait",
@@ -1061,107 +1160,58 @@ class EMCVNXCLIDriverISCSITestCase(test.TestCase):
             re.match(r".*Compression Enabler is not installed",
                      ex.msg))
 
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
-    @mock.patch(
-        "cinder.volume.volume_types."
-        "get_volume_type_extra_specs",
-        mock.Mock(return_value={'storagetype:provisioning': 'Compressed',
-                                'storagetype:pool': 'unit_test_pool'}))
-    def test_create_compression_volume_on_array_backend(self):
-        """Unit test for create a compression volume on array
-        backend.
-        """
-        #Set up the array backend
-        config = conf.Configuration(None)
-        config.append_config_values = mock.Mock(return_value=0)
-        config.naviseccli_path = '/opt/Navisphere/bin/naviseccli'
-        config.san_ip = '10.0.0.1'
-        config.san_login = 'sysadmin'
-        config.san_password = 'sysadmin'
-        config.default_timeout = 0.0002
-        config.initiator_auto_registration = True
-        config.navisecclicmd = '/opt/Navisphere/bin/naviseccli ' + \
-            '-address 10.0.0.1 -user sysadmin -password sysadmin -scope 0 '
-        config.iscsi_initiators = '{"fakehost": ["10.0.0.2"]}'
-        self.driver = EMCCLIISCSIDriver(configuration=config)
-        assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliArray)
-
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
-                    self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
-                    self.testData.NDU_LIST_CMD]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
-                   self.testData.LUN_PROPERTY('vol_with_type', True),
-                   self.testData.NDU_LIST_RESULT]
-        fake_command_execute = self.get_command_execute_simulator(
-            commands, results)
-        fake_cli = mock.MagicMock(side_effect=fake_command_execute)
-        self.driver.cli._client.command_execute = fake_cli
-
-        self.driver.cli.stats['compression_support'] = 'True'
-        self.driver.cli.enablers = ['-Compression',
-                                    '-Deduplication',
-                                    '-ThinProvisioning',
-                                    '-FAST']
-        #case
-        self.driver.create_volume(self.testData.test_volume_with_type)
-        #verification
-        expect_cmd = [
-            mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol_with_type', 1,
-                'unit_test_pool',
-                'compressed', None, False)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
-                'vol_with_type'), poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
-                'vol_with_type'), poll=True),
-            mock.call(*self.testData.ENABLE_COMPRESSION_CMD(
-                1))]
-        fake_cli.assert_has_calls(expect_cmd)
-
     def test_get_volume_stats(self):
-        self.driverSetup()
+        commands = [self.testData.NDU_LIST_CMD,
+                    self.testData.POOL_PROPERTY_W_FASTCACHE_CMD]
+        results = [self.testData.NDU_LIST_RESULT,
+                   self.testData.POOL_PROPERTY_W_FASTCACHE]
+        self.driverSetup(commands, results)
         stats = self.driver.get_volume_stats(True)
-        self.assertTrue(stats['driver_version'] is not None,
-                        "driver_version is not returned")
-        self.assertTrue(
-            stats['free_capacity_gb'] == 3257.851,
-            "free_capacity_gb is not correct")
-        self.assertTrue(
-            stats['reserved_percentage'] == 3,
-            "reserved_percentage is not correct")
+
+        self.assertTrue(stats['driver_version'] == VERSION,
+                        "driver_version is incorrect")
         self.assertTrue(
             stats['storage_protocol'] == 'iSCSI',
-            "storage_protocol is not correct")
-        self.assertTrue(
-            stats['total_capacity_gb'] == 3281.146,
-            "total_capacity_gb is not correct")
+            "storage_protocol is incorrect")
         self.assertTrue(
             stats['vendor_name'] == "EMC",
-            "vender name is not correct")
+            "vendor name is incorrect")
         self.assertTrue(
             stats['volume_backend_name'] == "namedbackend",
-            "volume backend name is not correct")
-        self.assertTrue(stats['location_info'] == "unit_test_pool|fakeSerial")
-        self.assertTrue(
-            stats['driver_version'] == "05.01.00",
-            "driver version is incorrect.")
+            "volume backend name is incorrect")
+
+        pool_stats = stats['pools'][0]
+
+        expected_pool_stats = {
+            'free_capacity_gb': 3257.851,
+            'reserved_percentage': 3,
+            'location_info': 'unit_test_pool|fakeSerial',
+            'total_capacity_gb': 3281.146,
+            'compression_support': 'True',
+            'deduplication_support': 'True',
+            'thinprovisioning_support': 'True',
+            'consistencygroup_support': 'True',
+            'pool_name': 'unit_test_pool',
+            'fast_cache_enabled': 'True',
+            'fast_support': 'True'}
+
+        self.assertEqual(expected_pool_stats, pool_stats)
 
     def test_get_volume_stats_too_many_luns(self):
-        commands = [self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD()]
-        results = [self.testData.POOL_FEATURE_INFO_POOL_LUNS(1000, 1000)]
+        commands = [self.testData.NDU_LIST_CMD,
+                    self.testData.POOL_PROPERTY_W_FASTCACHE_CMD,
+                    self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD()]
+        results = [self.testData.NDU_LIST_RESULT,
+                   self.testData.POOL_PROPERTY_W_FASTCACHE,
+                   self.testData.POOL_FEATURE_INFO_POOL_LUNS(1000, 1000)]
         fake_cli = self.driverSetup(commands, results)
 
         self.driver.cli.check_max_pool_luns_threshold = True
         stats = self.driver.get_volume_stats(True)
+        pool_stats = stats['pools'][0]
         self.assertTrue(
-            stats['free_capacity_gb'] == 0,
-            "free_capacity_gb is not correct")
-        expect_cmd = [
-            mock.call(*self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD(),
-                      poll=False)]
-        fake_cli.assert_has_calls(expect_cmd)
+            pool_stats['free_capacity_gb'] == 0,
+            "free_capacity_gb is incorrect")
         expect_cmd = [
             mock.call(*self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD(),
                       poll=False)]
@@ -1169,11 +1219,12 @@ class EMCVNXCLIDriverISCSITestCase(test.TestCase):
 
         self.driver.cli.check_max_pool_luns_threshold = False
         stats = self.driver.get_volume_stats(True)
+        pool_stats = stats['pools'][0]
         self.assertTrue(stats['driver_version'] is not None,
                         "driver_version is not returned")
         self.assertTrue(
-            stats['free_capacity_gb'] == 3257.851,
-            "free_capacity_gb is not correct")
+            pool_stats['free_capacity_gb'] == 3257.851,
+            "free_capacity_gb is incorrect")
 
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
                 "CommandLineHelper.create_lun_by_cmd",
@@ -1388,8 +1439,8 @@ Time Remaining:  0 second(s)
             self.testData.test_volume,
             self.testData.connector)
 
-        self.assertEqual(connection_info,
-                         self.testData.iscsi_connection_info_ro)
+        self.assertEqual(self.testData.iscsi_connection_info_ro,
+                         connection_info)
 
         expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=False),
@@ -1422,14 +1473,13 @@ Time Remaining:  0 second(s)
             self.testData.PING_OK
         ]
         fake_cli = self.driverSetup(commands, results)
-        test_volume_rw = self.testData.test_volume_rw.copy()
-        test_volume_rw['provider_location'] = 'system^fakesn|type^lun|id^1'
+        test_volume_rw = self.testData.test_volume_rw
         connection_info = self.driver.initialize_connection(
             test_volume_rw,
             self.testData.connector)
 
-        self.assertEqual(connection_info,
-                         self.testData.iscsi_connection_info_rw)
+        self.assertEqual(self.testData.iscsi_connection_info_rw,
+                         connection_info)
 
         expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=False),
@@ -1812,11 +1862,9 @@ Time Remaining:  0 second(s)
         output_migrate_verify = (r'The specified source LUN '
                                  'is not currently migrating', 23)
         commands = [cmd_dest, cmd_dest_p, cmd_migrate,
-                    cmd_migrate_verify,
-                    self.testData.NDU_LIST_CMD]
+                    cmd_migrate_verify]
         results = [output_dest, output_dest, output_migrate,
-                   output_migrate_verify,
-                   self.testData.NDU_LIST_RESULT]
+                   output_migrate_verify]
         fake_cli = self.driverSetup(commands, results)
 
         self.driver.create_cloned_volume(self.testData.test_volume,
@@ -2007,12 +2055,12 @@ Time Remaining:  0 second(s)
             self.testData.test_volume_with_type,
             self.testData.test_existing_ref)
         self.assertTrue(
-            re.match(r'.*not in a manageable pool backend by cinder',
+            re.match(r'.*not managed by the host',
                      ex.msg))
         expected = [mock.call(*get_lun_cmd, poll=True)]
         fake_cli.assert_has_calls(expected)
 
-    def test_manage_existing_get_size_pool_backend(self):
+    def test_manage_existing_get_size(self):
         get_lun_cmd = ('lun', '-list', '-l', self.testData.test_lun_id,
                        '-state', '-userCap', '-owner',
                        '-attachedSnapshot', '-poolName')
@@ -2043,67 +2091,6 @@ Time Remaining:  0 second(s)
                           self.driver.manage_existing_get_size,
                           self.testData.test_volume_with_type,
                           invaild_ref)
-
-    def test_manage_existing_get_size_array_backend(self):
-        get_lun_cmd = ('lun', '-list', '-l', self.testData.test_lun_id,
-                       '-state', '-status', '-opDetails', '-userCap', '-owner',
-                       '-attachedSnapshot',)
-        test_size = 2
-        commands = [get_lun_cmd]
-        results = [self.testData.LUN_PROPERTY('lun_name', size=test_size)]
-
-        self.configuration.safe_get = mock.Mock(return_value=None)
-        self.driver = EMCCLIISCSIDriver(configuration=self.configuration)
-        assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliArray)
-
-        # Mock the command executor
-        fake_command_execute = self.get_command_execute_simulator(
-            commands, results)
-        fake_cli = mock.MagicMock(side_effect=fake_command_execute)
-        self.driver.cli._client.command_execute = fake_cli
-
-        get_size = self.driver.manage_existing_get_size(
-            self.testData.test_volume_with_type,
-            self.testData.test_existing_ref)
-        expected = [mock.call(*get_lun_cmd, poll=True)]
-        assert get_size == test_size
-        fake_cli.assert_has_calls(expected)
-        self.configuration.safe_get = self.fake_safe_get
-
-    def test_manage_existing_with_array_backend(self):
-        """Unit test for the manage_existing with the
-        array backend which is not support the manage
-        existing functinality.
-        """
-        #Set up the array backend
-        config = conf.Configuration(None)
-        config.append_config_values = mock.Mock(return_value=0)
-        config.naviseccli_path = '/opt/Navisphere/bin/naviseccli'
-        config.san_ip = '10.0.0.1'
-        config.san_login = 'sysadmin'
-        config.san_password = 'sysadmin'
-        config.default_timeout = 0.0002
-        config.initiator_auto_registration = True
-        config.navisecclicmd = '/opt/Navisphere/bin/naviseccli ' + \
-            '-address 10.0.0.1 -user sysadmin -password sysadmin -scope 0 '
-        config.iscsi_initiators = '{"fakehost": ["10.0.0.2"]}'
-        self.driver = EMCCLIISCSIDriver(configuration=config)
-        assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliArray)
-        #mock the command executor
-        lun_rename_cmd = ('lun', '-modify', '-l', self.testData.test_lun_id,
-                          '-newName', 'vol_with_type', '-o')
-        commands = [lun_rename_cmd]
-        results = [SUCCEED]
-        #mock the command executor
-        fake_command_execute = self.get_command_execute_simulator(
-            commands, results)
-        fake_cli = mock.MagicMock(side_effect=fake_command_execute)
-        self.driver.cli._client.command_execute = fake_cli
-        self.driver.manage_existing(
-            self.testData.test_volume_with_type,
-            self.testData.test_existing_ref)
-        expected = [mock.call(*lun_rename_cmd, poll=False)]
-        fake_cli.assert_has_calls(expected)
 
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
@@ -2280,7 +2267,8 @@ Time Remaining:  0 second(s)
                                              'unit_test_pool2'},
                          'id': 'f82f28c8-148b-416e-b1ae-32d3c02556c0'}
 
-        host_test_data = {'host': 'ubuntu-server12@pool_backend_1',
+        host_test_data = {'host':
+                          'ubuntu-server12@pool_backend_1#unit_test_pool2',
                           'capabilities':
                           {'location_info': 'unit_test_pool2|FNM00124500890',
                            'volume_backend_name': 'pool_backend_1',
@@ -2344,14 +2332,15 @@ Time Remaining:  0 second(s)
                                              'unit_test_pool'},
                          'id': 'f82f28c8-148b-416e-b1ae-32d3c02556c0'}
 
-        host_test_data = {'host': 'ubuntu-server12@pool_backend_1',
-                          'capabilities':
-                          {'location_info': 'unit_test_pool|FNM00124500890',
-                           'volume_backend_name': 'pool_backend_1',
-                           'storage_protocol': 'iSCSI'}}
+        host_test_data = {
+            'host': 'host@backendsec#unit_test_pool',
+            'capabilities': {
+                'location_info': 'unit_test_pool|FNM00124500890',
+                'volume_backend_name': 'pool_backend_1',
+                'storage_protocol': 'iSCSI'}}
 
         commands = [self.testData.NDU_LIST_CMD,
-                    self.testData.SNAP_LIST_CMD(poll=False)]
+                    self.testData.SNAP_LIST_CMD()]
         results = [self.testData.NDU_LIST_RESULT,
                    ('No snap', 1023)]
         fake_cli = self.driverSetup(commands, results)
@@ -2396,14 +2385,15 @@ Time Remaining:  0 second(s)
                                              'unit_test_pool'},
                          'id': 'f82f28c8-148b-416e-b1ae-32d3c02556c0'}
 
-        host_test_data = {'host': 'ubuntu-server12@pool_backend_2',
-                          'capabilities':
-                          {'location_info': 'unit_test_pool|FNM00124500891',
-                           'volume_backend_name': 'pool_backend_2',
-                           'storage_protocol': 'iSCSI'}}
+        host_test_data = {
+            'host': 'ubuntu-server12@pool_backend_2#unit_test_pool',
+            'capabilities':
+                {'location_info': 'unit_test_pool|FNM00124500891',
+                 'volume_backend_name': 'pool_backend_2',
+                 'storage_protocol': 'iSCSI'}}
 
         commands = [self.testData.NDU_LIST_CMD,
-                    self.testData.SNAP_LIST_CMD(poll=False)]
+                    self.testData.SNAP_LIST_CMD()]
         results = [self.testData.NDU_LIST_RESULT,
                    ('No snap', 1023)]
         self.driverSetup(commands, results)
@@ -2455,11 +2445,12 @@ Time Remaining:  0 second(s)
                                              'unit_test_pool'},
                          'id': 'f82f28c8-148b-416e-b1ae-32d3c02556c0'}
 
-        host_test_data = {'host': 'ubuntu-server12@pool_backend_2',
-                          'capabilities':
-                          {'location_info': 'unit_test_pool|FNM00124500890',
-                           'volume_backend_name': 'pool_backend_2',
-                           'storage_protocol': 'FC'}}
+        host_test_data = {
+            'host': 'ubuntu-server12@pool_backend_2#unit_test_pool',
+            'capabilities':
+                {'location_info': 'unit_test_pool|FNM00124500890',
+                 'volume_backend_name': 'pool_backend_2',
+                 'storage_protocol': 'FC'}}
 
         commands = [self.testData.NDU_LIST_CMD,
                     self.testData.SNAP_LIST_CMD(),
@@ -2518,14 +2509,15 @@ Time Remaining:  0 second(s)
                                              'unit_test_pool'},
                          'id': 'f82f28c8-148b-416e-b1ae-32d3c02556c0'}
 
-        host_test_data = {'host': 'ubuntu-server12@pool_backend_1',
-                          'capabilities':
-                          {'location_info': 'unit_test_pool|FNM00124500890',
-                           'volume_backend_name': 'pool_backend_1',
-                           'storage_protocol': 'iSCSI'}}
+        host_test_data = {
+            'host': 'ubuntu-server12@pool_backend_1#unit_test_pool',
+            'capabilities':
+                {'location_info': 'unit_test_pool|FNM00124500890',
+                 'volume_backend_name': 'pool_backend_1',
+                 'storage_protocol': 'iSCSI'}}
 
         commands = [self.testData.NDU_LIST_CMD,
-                    self.testData.SNAP_LIST_CMD(poll=False)]
+                    self.testData.SNAP_LIST_CMD()]
         results = [self.testData.NDU_LIST_RESULT,
                    ('Has snap', 0)]
         self.driverSetup(commands, results)
@@ -2570,11 +2562,12 @@ Time Remaining:  0 second(s)
                                              'thin'},
                          'id': 'f82f28c8-148b-416e-b1ae-32d3c02556c0'}
 
-        host_test_data = {'host': 'ubuntu-server12@pool_backend_1',
-                          'capabilities':
-                          {'location_info': 'unit_test_pool|FNM00124500890',
-                           'volume_backend_name': 'pool_backend_1',
-                           'storage_protocol': 'iSCSI'}}
+        host_test_data = {
+            'host': 'ubuntu-server12@pool_backend_1#unit_test_pool',
+            'capabilities':
+                {'location_info': 'unit_test_pool|FNM00124500890',
+                 'volume_backend_name': 'pool_backend_1',
+                 'storage_protocol': 'iSCSI'}}
 
         commands = [self.testData.NDU_LIST_CMD]
         results = [self.testData.NDU_LIST_RESULT]
@@ -2597,15 +2590,14 @@ Time Remaining:  0 second(s)
         mock.Mock(return_value={'fast_cache_enabled': 'True'}))
     def test_create_volume_with_fastcache(self):
         '''enable fastcache when creating volume.'''
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+        commands = [self.testData.NDU_LIST_CMD,
+                    self.testData.POOL_PROPERTY_W_FASTCACHE_CMD,
                     self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
-                    self.testData.NDU_LIST_CMD,
-                    self.testData.CHECK_FASTCACHE_CMD(
-                        self.testData.test_pool_name)]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
+                    ]
+        results = [self.testData.NDU_LIST_RESULT,
+                   self.testData.POOL_PROPERTY_W_FASTCACHE,
                    self.testData.LUN_PROPERTY('vol_with_type', True),
-                   SUCCEED,
-                   ('FAST Cache:  Enabled', 0)]
+                   ]
         fake_cli = self.driverSetup(commands, results)
 
         lun_info = {'lun_name': "vol_with_type",
@@ -2628,17 +2620,20 @@ Time Remaining:  0 second(s)
         cli_helper.command_execute = fake_cli
         cli_helper.get_lun_by_name = mock.Mock(return_value=lun_info)
         cli_helper.get_enablers_on_array = mock.Mock(return_value="-FASTCache")
-        cli_helper.get_pool = mock.Mock(return_value={'lun_nums': 1000,
-                                                      'total_capacity_gb': 10,
-                                                      'free_capacity_gb': 5})
+        cli_helper.get_pool = mock.Mock(return_value={
+            'lun_nums': 1000,
+            'total_capacity_gb': 10,
+            'free_capacity_gb': 5,
+            'pool_name': "unit_test_pool",
+            'fast_cache_enabled': 'True'})
+
         self.driver.update_volume_stats()
         self.driver.create_volume(self.testData.test_volume_with_type)
-        self.assertEqual(self.driver.cli.stats['fast_cache_enabled'], 'True')
+        pool_stats = self.driver.cli.stats['pools'][0]
+        self.assertEqual('True', pool_stats['fast_cache_enabled'])
         expect_cmd = [
             mock.call('connection', '-getport', '-address', '-vlanid',
                       poll=False),
-            mock.call('storagepool', '-list', '-name',
-                      'Pool_02_SASFLASH', '-fastcache', poll=False),
             mock.call('-np', 'lun', '-create', '-capacity',
                       1, '-sq', 'gb', '-poolName', 'Pool_02_SASFLASH',
                       '-name', 'vol_with_type', '-type', 'NonThin')
@@ -2655,13 +2650,13 @@ Time Remaining:  0 second(s)
             'volume_name': 'vol_01',
             'id': '1',
             'name_id': '1',
-            'provider_location': 'system^FNM11111|type^lun|lun_id^1',
+            'provider_location': 'system^FNM11111|type^lun|id^4',
             'project_id': 'project',
             'display_name': 'vol_01',
             'display_description': 'test volume',
             'volume_type_id': None,
             'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]}
-        self.assertEqual(self.driver.cli.get_lun_id(volume_01), 1)
+        self.assertEqual(4, self.driver.cli.get_lun_id(volume_01))
 
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.CommandLineHelper." +
@@ -2681,7 +2676,7 @@ Time Remaining:  0 second(s)
             'display_description': 'test volume',
             'volume_type_id': None,
             'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]}
-        self.assertEqual(self.driver.cli.get_lun_id(volume_02), 2)
+        self.assertEqual(2, self.driver.cli.get_lun_id(volume_02))
 
     def test_create_consistency_group(self):
         cg_name = self.testData.test_cg['id']
@@ -2889,147 +2884,267 @@ Time Remaining:  0 second(s)
                       '-o')]
         fake_cli.assert_has_calls(expect_cmd)
 
-    def succeed_fake_command_execute(self, *command, **kwargv):
-        return SUCCEED
 
-    def fake_setup_command_execute(self, *command, **kwargv):
-        return self.testData.ALL_PORTS
-
-    def fake_get_pool_properties(self, filter_option, properties=None):
-        pool_info = {'pool_name': "unit_test_pool0",
-                     'total_capacity_gb': 1000.0,
-                     'free_capacity_gb': 1000.0
-                     }
-        return pool_info
-
-    def fake_get_lun_properties(self, filter_option, properties=None):
-        lun_info = {'lun_name': "vol1",
-                    'lun_id': 1,
-                    'pool': "unit_test_pool",
-                    'attached_snapshot': "N/A",
-                    'owner': "A",
-                    'total_capacity_gb': 1.0,
-                    'state': "Ready"}
-        return lun_info
-
-    def fake_safe_get(self, value):
-        if value == "storage_vnx_pool_name":
-            return "unit_test_pool"
-        elif 'volume_backend_name' == value:
-            return "namedbackend"
-        else:
-            return None
-
-
-class EMCVNXCLIDriverFCTestCase(test.TestCase):
-
+class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
     def setUp(self):
-        super(EMCVNXCLIDriverFCTestCase, self).setUp()
+        super(EMCVNXCLIDArrayBasedDriverTestCase, self).setUp()
+        self.configuration.safe_get = self.fake_safe_get(
+            {'storage_vnx_pool_name': None,
+             'volume_backend_name': 'namedbackend'})
 
-        self.stubs.Set(CommandLineHelper, 'command_execute',
-                       self.fake_setup_command_execute)
-        self.stubs.Set(CommandLineHelper, 'get_array_serial',
-                       mock.Mock(return_value={'array_serial':
-                                               "fakeSerial"}))
-        self.stubs.Set(os.path, 'exists', mock.Mock(return_value=1))
+    def generateDriver(self, conf):
+        driver = EMCCLIISCSIDriver(configuration=conf)
+        self.assertTrue(isinstance(driver.cli,
+                                   emc_vnx_cli.EMCVnxCliArray))
+        return driver
 
-        self.stubs.Set(emc_vnx_cli, 'INTERVAL_5_SEC', 0.01)
-        self.stubs.Set(emc_vnx_cli, 'INTERVAL_30_SEC', 0.01)
-        self.stubs.Set(emc_vnx_cli, 'INTERVAL_60_SEC', 0.01)
+    def test_get_volume_stats(self):
+        commands = [self.testData.NDU_LIST_CMD,
+                    self.testData.POOL_GET_ALL_CMD(True)]
+        results = [self.testData.NDU_LIST_RESULT,
+                   self.testData.POOL_GET_ALL_RESULT(True)]
+        self.driverSetup(commands, results)
+        stats = self.driver.get_volume_stats(True)
 
-        self.configuration = conf.Configuration(None)
-        self.configuration.append_config_values = mock.Mock(return_value=0)
-        self.configuration.naviseccli_path = '/opt/Navisphere/bin/naviseccli'
-        self.configuration.san_ip = '10.0.0.1'
-        self.configuration.storage_vnx_pool_name = 'unit_test_pool'
-        self.configuration.san_login = 'sysadmin'
-        self.configuration.san_password = 'sysadmin'
-        #set the timeout to 0.012s = 0.0002 * 60 = 1.2ms
-        self.configuration.default_timeout = 0.0002
-        self.configuration.initiator_auto_registration = True
-        self.configuration.check_max_pool_luns_threshold = False
-        self.configuration.zoning_mode = None
-        self.configuration.max_luns_per_storage_pool = 4000
-        self.stubs.Set(self.configuration, 'safe_get', self.fake_safe_get)
-        self.testData = EMCVNXCLIDriverTestData()
-        self.navisecclicmd = '/opt/Navisphere/bin/naviseccli ' + \
-            '-address 10.0.0.1 -user sysadmin -password sysadmin -scope 0 '
+        self.assertTrue(stats['driver_version'] == VERSION,
+                        "driver_version is incorrect")
+        self.assertTrue(
+            stats['storage_protocol'] == 'iSCSI',
+            "storage_protocol is not correct")
+        self.assertTrue(
+            stats['vendor_name'] == "EMC",
+            "vendor name is not correct")
+        self.assertTrue(
+            stats['volume_backend_name'] == "namedbackend",
+            "volume backend name is not correct")
 
-    def driverSetup(self, commands=tuple(), results=tuple()):
-        self.driver = EMCCLIFCDriver(configuration=self.configuration)
-        fake_command_execute = self.get_command_execute_simulator(
-            commands, results)
-        fake_cli = mock.Mock(side_effect=fake_command_execute)
-        self.driver.cli._client.command_execute = fake_cli
-        return fake_cli
+        self.assertEqual(2, len(stats['pools']))
+        pool_stats1 = stats['pools'][0]
+        expected_pool_stats1 = {
+            'free_capacity_gb': 3105.303,
+            'reserved_percentage': 2,
+            'location_info': 'unit_test_pool1|fakeSerial',
+            'total_capacity_gb': 3281.146,
+            'compression_support': 'True',
+            'deduplication_support': 'True',
+            'thinprovisioning_support': 'True',
+            'consistencygroup_support': 'True',
+            'pool_name': 'unit_test_pool1',
+            'fast_cache_enabled': 'True',
+            'fast_support': 'True'}
+        self.assertEqual(expected_pool_stats1, pool_stats1)
 
-    def get_command_execute_simulator(self, commands=tuple(),
-                                      results=tuple()):
+        pool_stats2 = stats['pools'][1]
+        expected_pool_stats2 = {
+            'free_capacity_gb': 3984.768,
+            'reserved_percentage': 2,
+            'location_info': 'unit test pool 2|fakeSerial',
+            'total_capacity_gb': 4099.992,
+            'compression_support': 'True',
+            'deduplication_support': 'True',
+            'thinprovisioning_support': 'True',
+            'consistencygroup_support': 'True',
+            'pool_name': 'unit test pool 2',
+            'fast_cache_enabled': 'False',
+            'fast_support': 'True'}
+        self.assertEqual(expected_pool_stats2, pool_stats2)
 
-        assert(len(commands) == len(results))
+    def test_get_volume_stats_wo_fastcache(self):
+        commands = [self.testData.NDU_LIST_CMD,
+                    self.testData.POOL_GET_ALL_CMD(False)]
+        results = [self.testData.NDU_LIST_RESULT_WO_LICENSE,
+                   self.testData.POOL_GET_ALL_RESULT(False)]
+        self.driverSetup(commands, results)
 
-        def fake_command_execute(*args, **kwargv):
-            for i in range(len(commands)):
-                if args == commands[i]:
-                    if isinstance(results[i], list):
-                        if len(results[i]) > 0:
-                            ret = results[i][0]
-                            del results[i][0]
-                            return ret
-                    else:
-                        return results[i]
-            return self.standard_fake_command_execute(*args, **kwargv)
-        return fake_command_execute
+        stats = self.driver.get_volume_stats(True)
 
-    def standard_fake_command_execute(self, *args, **kwargv):
-        standard_commands = [
-            self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
-            self.testData.LUN_PROPERTY_ALL_CMD('vol2'),
-            self.testData.LUN_PROPERTY_ALL_CMD('vol-vol1'),
-            self.testData.LUN_PROPERTY_ALL_CMD('snapshot1'),
-            self.testData.POOL_PROPERTY_CMD]
+        self.assertEqual(2, len(stats['pools']))
+        pool_stats1 = stats['pools'][0]
+        expected_pool_stats1 = {
+            'free_capacity_gb': 3105.303,
+            'reserved_percentage': 2,
+            'location_info': 'unit_test_pool1|fakeSerial',
+            'total_capacity_gb': 3281.146,
+            'compression_support': 'False',
+            'deduplication_support': 'False',
+            'thinprovisioning_support': 'False',
+            'consistencygroup_support': 'False',
+            'pool_name': 'unit_test_pool1',
+            'fast_cache_enabled': 'False',
+            'fast_support': 'False'}
+        self.assertEqual(expected_pool_stats1, pool_stats1)
 
-        standard_results = [
-            self.testData.LUN_PROPERTY('vol1'),
-            self.testData.LUN_PROPERTY('vol2'),
-            self.testData.LUN_PROPERTY('vol-vol1'),
-            self.testData.LUN_PROPERTY('snapshot1'),
-            self.testData.POOL_PROPERTY]
+        pool_stats2 = stats['pools'][1]
+        expected_pool_stats2 = {
+            'free_capacity_gb': 3984.768,
+            'reserved_percentage': 2,
+            'location_info': 'unit test pool 2|fakeSerial',
+            'total_capacity_gb': 4099.992,
+            'compression_support': 'False',
+            'deduplication_support': 'False',
+            'thinprovisioning_support': 'False',
+            'consistencygroup_support': 'False',
+            'pool_name': 'unit test pool 2',
+            'fast_cache_enabled': 'False',
+            'fast_support': 'False'}
+        self.assertEqual(expected_pool_stats2, pool_stats2)
 
-        standard_default = SUCCEED
-        for i in range(len(standard_commands)):
-            if args == standard_commands[i]:
-                return standard_results[i]
+    @mock.patch(
+        "eventlet.event.Event.wait",
+        mock.Mock(return_value=None))
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={'storagetype:provisioning': 'deduplicated'}))
+    def test_create_volume_deduplicated(self):
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type')]
+        results = [self.testData.LUN_PROPERTY('vol_with_type', True)]
 
-        return standard_default
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.cli.enablers = ['-Compression',
+                                    '-Deduplication',
+                                    '-ThinProvisioning',
+                                    '-FAST']
+        # Case
+        self.driver.create_volume(self.testData.test_volume_with_type)
 
-    def fake_setup_command_execute(self, *command, **kwargv):
-        return self.testData.ALL_PORTS
+        # Verification
+        expect_cmd = [
+            mock.call(*self.testData.LUN_CREATION_CMD(
+                'vol_with_type', 1,
+                'unit_test_pool',
+                'deduplicated', None, False)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+                      poll=False)]
+        fake_cli.assert_has_calls(expect_cmd)
 
-    def fake_get_pool_properties(self, filter_option, properties=None):
-        pool_info = {'pool_name': "unit_test_pool0",
-                     'total_capacity_gb': 1000.0,
-                     'free_capacity_gb': 1000.0
-                     }
-        return pool_info
+    def test_get_pool(self):
+        testVolume = self.testData.test_volume_with_type
+        commands = [self.testData.LUN_PROPERTY_POOL_CMD(testVolume['name'])]
+        results = [self.testData.LUN_PROPERTY(testVolume['name'], False)]
+        fake_cli = self.driverSetup(commands, results)
+        pool = self.driver.get_pool(testVolume)
+        self.assertEqual('Pool_02_SASFLASH', pool)
+        fake_cli.assert_has_calls(
+            [mock.call(*self.testData.LUN_PROPERTY_POOL_CMD(
+                testVolume['name']), poll=False)])
 
-    def fake_get_lun_properties(self, filter_option, properties=None):
-        lun_info = {'lun_name': "vol1",
-                    'lun_id': 1,
-                    'pool': "unit_test_pool",
-                    'attached_snapshot': "N/A",
-                    'owner': "A",
-                    'total_capacity_gb': 1.0,
-                    'state': "Ready"}
-        return lun_info
+    def test_get_target_pool_for_cloned_volme(self):
+        testSrcVolume = self.testData.test_volume
+        testNewVolume = self.testData.test_volume2
+        fake_cli = self.driverSetup()
+        pool = self.driver.cli.get_target_storagepool(testNewVolume,
+                                                      testSrcVolume)
+        self.assertEqual('unit_test_pool', pool)
+        self.assertFalse(fake_cli.called)
 
-    def fake_safe_get(self, value):
-        if value == "storage_vnx_pool_name":
-            return "unit_test_pool"
-        elif 'volume_backend_name' == value:
-            return "namedbackend"
-        else:
-            return None
+    def test_get_target_pool_for_clone_legacy_volme(self):
+        testSrcVolume = self.testData.test_legacy_volume
+        testNewVolume = self.testData.test_volume2
+        commands = [self.testData.LUN_PROPERTY_POOL_CMD(testSrcVolume['name'])]
+        results = [self.testData.LUN_PROPERTY(testSrcVolume['name'], False)]
+        fake_cli = self.driverSetup(commands, results)
+        pool = self.driver.cli.get_target_storagepool(testNewVolume,
+                                                      testSrcVolume)
+        self.assertEqual('Pool_02_SASFLASH', pool)
+        fake_cli.assert_has_calls(
+            [mock.call(*self.testData.LUN_PROPERTY_POOL_CMD(
+                testSrcVolume['name']), poll=False)])
+
+    def test_manage_existing_get_size(self):
+        get_lun_cmd = ('lun', '-list', '-l', self.testData.test_lun_id,
+                       '-state', '-userCap', '-owner',
+                       '-attachedSnapshot', '-poolName')
+        test_size = 2
+        commands = [get_lun_cmd]
+        results = [self.testData.LUN_PROPERTY('lun_name', size=test_size)]
+        fake_cli = self.driverSetup(commands, results)
+        test_volume = self.testData.test_volume2.copy()
+        test_volume['host'] = "host@backendsec#Pool_02_SASFLASH"
+        get_size = self.driver.manage_existing_get_size(
+            test_volume,
+            self.testData.test_existing_ref)
+        expected = [mock.call(*get_lun_cmd, poll=True)]
+        self.assertEqual(test_size, get_size)
+        fake_cli.assert_has_calls(expected)
+
+    def test_manage_existing_get_size_incorrect_pool(self):
+        """Test manage_existing function of driver with an invalid pool."""
+
+        get_lun_cmd = ('lun', '-list', '-l', self.testData.test_lun_id,
+                       '-state', '-userCap', '-owner',
+                       '-attachedSnapshot', '-poolName')
+        commands = [get_lun_cmd]
+        results = [self.testData.LUN_PROPERTY('lun_name')]
+        fake_cli = self.driverSetup(commands, results)
+        test_volume = self.testData.test_volume2.copy()
+        test_volume['host'] = "host@backendsec#fake_pool"
+        ex = self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.manage_existing_get_size,
+            self.testData.test_volume_with_type,
+            self.testData.test_existing_ref)
+        self.assertTrue(
+            re.match(r'.*not managed by the host',
+                     ex.msg))
+        expected = [mock.call(*get_lun_cmd, poll=True)]
+        fake_cli.assert_has_calls(expected)
+
+    def test_manage_existing(self):
+        lun_rename_cmd = ('lun', '-modify', '-l', self.testData.test_lun_id,
+                          '-newName', 'vol_with_type', '-o')
+        commands = [lun_rename_cmd]
+        results = [SUCCEED]
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.manage_existing(
+            self.testData.test_volume_with_type,
+            self.testData.test_existing_ref)
+        expected = [mock.call(*lun_rename_cmd, poll=False)]
+        fake_cli.assert_has_calls(expected)
+
+    @mock.patch(
+        "eventlet.event.Event.wait",
+        mock.Mock(return_value=None))
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={'storagetype:provisioning': 'Compressed',
+                                'storagetype:pool': 'unit_test_pool'}))
+    def test_create_compression_volume(self):
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+                    self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+                    self.testData.NDU_LIST_CMD]
+        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
+                   self.testData.LUN_PROPERTY('vol_with_type', True),
+                   self.testData.NDU_LIST_RESULT]
+
+        fake_cli = self.driverSetup(commands, results)
+
+        self.driver.cli.stats['compression_support'] = 'True'
+        self.driver.cli.enablers = ['-Compression',
+                                    '-Deduplication',
+                                    '-ThinProvisioning',
+                                    '-FAST']
+        # Case
+        self.driver.create_volume(self.testData.test_volume_with_type)
+        # Verification
+        expect_cmd = [
+            mock.call(*self.testData.LUN_CREATION_CMD(
+                'vol_with_type', 1,
+                'unit_test_pool',
+                'compressed', None, False)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                'vol_with_type'), poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                'vol_with_type'), poll=True),
+            mock.call(*self.testData.ENABLE_COMPRESSION_CMD(
+                1))]
+        fake_cli.assert_has_calls(expect_cmd)
+
+
+class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
+    def generateDriver(self, conf):
+        return EMCCLIFCDriver(configuration=conf)
 
     @mock.patch(
         "oslo_concurrency.processutils.execute",
@@ -3137,10 +3252,10 @@ class EMCVNXCLIDriverFCTestCase(test.TestCase):
             self.testData.test_volume,
             self.testData.connector)
 
-        self.assertEqual(conn_info['data']['initiator_target_map'],
-                         EMCVNXCLIDriverTestData.i_t_map)
-        self.assertEqual(conn_info['data']['target_wwn'],
-                         ['1122334455667777'])
+        self.assertEqual(EMCVNXCLIDriverTestData.i_t_map,
+                         conn_info['data']['initiator_target_map'])
+        self.assertEqual(['1122334455667777'],
+                         conn_info['data']['target_wwn'])
         expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=False),
                     mock.call('storagegroup', '-create', '-gname', 'fakehost'),
@@ -3202,51 +3317,61 @@ class EMCVNXCLIDriverFCTestCase(test.TestCase):
             self.testData.connector)
         self.assertTrue('initiator_target_map' in connection_info['data'],
                         'initiator_target_map should be populated.')
-        self.assertEqual(connection_info['data']['initiator_target_map'],
-                         EMCVNXCLIDriverTestData.i_t_map)
+        self.assertEqual(EMCVNXCLIDriverTestData.i_t_map,
+                         connection_info['data']['initiator_target_map'])
 
     def test_get_volume_stats(self):
-        self.driverSetup()
+        commands = [self.testData.NDU_LIST_CMD,
+                    self.testData.POOL_PROPERTY_W_FASTCACHE_CMD]
+        results = [self.testData.NDU_LIST_RESULT,
+                   self.testData.POOL_PROPERTY_W_FASTCACHE]
+        self.driverSetup(commands, results)
         stats = self.driver.get_volume_stats(True)
-        self.assertTrue(stats['driver_version'] is not None,
-                        "driver_version is not returned")
-        self.assertTrue(
-            stats['free_capacity_gb'] == 3257.851,
-            "free_capacity_gb is not correct")
-        self.assertTrue(
-            stats['reserved_percentage'] == 3,
-            "reserved_percentage is not correct")
+
+        self.assertTrue(stats['driver_version'] == VERSION,
+                        "driver_version is incorrect")
         self.assertTrue(
             stats['storage_protocol'] == 'FC',
-            "storage_protocol is not correct")
-        self.assertTrue(
-            stats['total_capacity_gb'] == 3281.146,
-            "total_capacity_gb is not correct")
+            "storage_protocol is incorrect")
         self.assertTrue(
             stats['vendor_name'] == "EMC",
-            "vender name is not correct")
+            "vendor name is incorrect")
         self.assertTrue(
             stats['volume_backend_name'] == "namedbackend",
-            "volume backend name is not correct")
-        self.assertTrue(stats['location_info'] == "unit_test_pool|fakeSerial")
-        self.assertTrue(
-            stats['driver_version'] == "05.01.00",
-            "driver version is incorrect.")
+            "volume backend name is incorrect")
+
+        pool_stats = stats['pools'][0]
+
+        expected_pool_stats = {
+            'free_capacity_gb': 3257.851,
+            'reserved_percentage': 3,
+            'location_info': 'unit_test_pool|fakeSerial',
+            'total_capacity_gb': 3281.146,
+            'compression_support': 'True',
+            'deduplication_support': 'True',
+            'thinprovisioning_support': 'True',
+            'consistencygroup_support': 'True',
+            'pool_name': 'unit_test_pool',
+            'fast_cache_enabled': 'True',
+            'fast_support': 'True'}
+
+        self.assertEqual(expected_pool_stats, pool_stats)
 
     def test_get_volume_stats_too_many_luns(self):
-        commands = [self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD()]
-        results = [self.testData.POOL_FEATURE_INFO_POOL_LUNS(1000, 1000)]
+        commands = [self.testData.NDU_LIST_CMD,
+                    self.testData.POOL_PROPERTY_W_FASTCACHE_CMD,
+                    self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD()]
+        results = [self.testData.NDU_LIST_RESULT,
+                   self.testData.POOL_PROPERTY_W_FASTCACHE,
+                   self.testData.POOL_FEATURE_INFO_POOL_LUNS(1000, 1000)]
         fake_cli = self.driverSetup(commands, results)
 
         self.driver.cli.check_max_pool_luns_threshold = True
         stats = self.driver.get_volume_stats(True)
+        pool_stats = stats['pools'][0]
         self.assertTrue(
-            stats['free_capacity_gb'] == 0,
-            "free_capacity_gb is not correct")
-        expect_cmd = [
-            mock.call(*self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD(),
-                      poll=False)]
-        fake_cli.assert_has_calls(expect_cmd)
+            pool_stats['free_capacity_gb'] == 0,
+            "free_capacity_gb is incorrect")
         expect_cmd = [
             mock.call(*self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD(),
                       poll=False)]
@@ -3254,11 +3379,12 @@ class EMCVNXCLIDriverFCTestCase(test.TestCase):
 
         self.driver.cli.check_max_pool_luns_threshold = False
         stats = self.driver.get_volume_stats(True)
+        pool_stats = stats['pools'][0]
         self.assertTrue(stats['driver_version'] is not None,
-                        "driver_version is not returned")
+                        "driver_version is incorrect")
         self.assertTrue(
-            stats['free_capacity_gb'] == 3257.851,
-            "free_capacity_gb is not correct")
+            pool_stats['free_capacity_gb'] == 3257.851,
+            "free_capacity_gb is incorrect")
 
     def test_deregister_initiator(self):
         fake_cli = self.driverSetup()
@@ -3330,7 +3456,7 @@ class EMCVNXCLIToggleSPTestCase(test.TestCase):
         with mock.patch('cinder.utils.execute') as mock_utils:
             mock_utils.side_effect = SIDE_EFFECTS
             self.cli_client.command_execute(*FAKE_COMMAND)
-            self.assertEqual(self.cli_client.active_storage_ip, "10.10.10.10")
+            self.assertEqual("10.10.10.10", self.cli_client.active_storage_ip)
             expected = [
                 mock.call(*(self.test_data.FAKE_COMMAND_PREFIX('10.10.10.10')
                           + FAKE_COMMAND), check_exit_code=True)]
@@ -3350,7 +3476,7 @@ Message : HTTP/1.1 503 Service Unavailable"""
         with mock.patch('cinder.utils.execute') as mock_utils:
             mock_utils.side_effect = SIDE_EFFECTS
             self.cli_client.command_execute(*FAKE_COMMAND)
-            self.assertEqual(self.cli_client.active_storage_ip, "10.10.10.11")
+            self.assertEqual("10.10.10.11", self.cli_client.active_storage_ip)
             expected = [
                 mock.call(
                     *(self.test_data.FAKE_COMMAND_PREFIX('10.10.10.10')
@@ -3376,7 +3502,7 @@ Message : End of data stream"""
         with mock.patch('cinder.utils.execute') as mock_utils:
             mock_utils.side_effect = SIDE_EFFECTS
             self.cli_client.command_execute(*FAKE_COMMAND)
-            self.assertEqual(self.cli_client.active_storage_ip, "10.10.10.11")
+            self.assertEqual("10.10.10.11", self.cli_client.active_storage_ip)
             expected = [
                 mock.call(
                     *(self.test_data.FAKE_COMMAND_PREFIX('10.10.10.10')
@@ -3404,7 +3530,7 @@ Unable to establish a secure connection to the Management Server.
         with mock.patch('cinder.utils.execute') as mock_utils:
             mock_utils.side_effect = SIDE_EFFECTS
             self.cli_client.command_execute(*FAKE_COMMAND)
-            self.assertEqual(self.cli_client.active_storage_ip, "10.10.10.11")
+            self.assertEqual("10.10.10.11", self.cli_client.active_storage_ip)
             expected = [
                 mock.call(
                     *(self.test_data.FAKE_COMMAND_PREFIX('10.10.10.10')
@@ -3430,7 +3556,7 @@ Message : Error occurred because of time out"""
         with mock.patch('cinder.utils.execute') as mock_utils:
             mock_utils.side_effect = SIDE_EFFECTS
             self.cli_client.command_execute(*FAKE_COMMAND)
-            self.assertEqual(self.cli_client.active_storage_ip, "10.10.10.11")
+            self.assertEqual("10.10.10.11", self.cli_client.active_storage_ip)
             expected = [
                 mock.call(
                     *(self.test_data.FAKE_COMMAND_PREFIX('10.10.10.10')
