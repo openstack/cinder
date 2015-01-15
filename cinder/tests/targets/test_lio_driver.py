@@ -15,19 +15,18 @@ from oslo_concurrency import processutils as putils
 
 from cinder import context
 from cinder import exception
-from cinder import test
 from cinder.tests.targets import test_tgt_driver as test_tgt
 from cinder import utils
 from cinder.volume.targets import lio
 
 
-@test.testtools.skip("SKIP until bug #1411029 is fixed")
 class TestLioAdmDriver(test_tgt.TestTgtAdmDriver):
 
     def setUp(self):
         super(TestLioAdmDriver, self).setUp()
-        self.target = lio.LioAdm(root_helper=utils.get_root_helper(),
-                                 configuration=self.configuration)
+        with mock.patch.object(lio.LioAdm, '_verify_rtstool'):
+            self.target = lio.LioAdm(root_helper=utils.get_root_helper(),
+                                     configuration=self.configuration)
         self.fake_iscsi_scan = ('iqn.2010-10.org.openstack:'
                                 'volume-83c2e877-feed-46be-8435-77884fe55b45')
         self.target.db = mock.MagicMock(
