@@ -682,6 +682,14 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
                           self.driver.initialize_connection,
                           test_volume, FakeConnector)
 
+    def testgetdefaulttimeout(self):
+        result = self.driver.common._get_default_timeout()
+        self.assertEqual('43200', result)
+
+    def testgetwaitinterval(self):
+        result = self.driver.common._get_wait_interval('LUNReadyWaitInterval')
+        self.assertEqual('2', result)
+
     def create_fake_conf_file(self):
         """Create a fake Config file
 
@@ -717,12 +725,23 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
                                       'deviceManager/rest/')
         url.appendChild(url_text)
         storage.appendChild(url)
+
         lun = doc.createElement('LUN')
         config.appendChild(lun)
         storagepool = doc.createElement('StoragePool')
         pool_text = doc.createTextNode('OpenStack_Pool')
         storagepool.appendChild(pool_text)
         lun.appendChild(storagepool)
+
+        timeout = doc.createElement('Timeout')
+        timeout_text = doc.createTextNode('43200')
+        timeout.appendChild(timeout_text)
+        lun.appendChild(timeout)
+
+        lun_ready_wait_interval = doc.createElement('LUNReadyWaitInterval')
+        lun_ready_wait_interval_text = doc.createTextNode('2')
+        lun_ready_wait_interval.appendChild(lun_ready_wait_interval_text)
+        lun.appendChild(lun_ready_wait_interval)
 
         prefetch = doc.createElement('Prefetch')
         prefetch.setAttribute('Type', '0')
@@ -871,6 +890,14 @@ class Huawei18000FCDriverTestCase(test.TestCase):
                           self.driver.initialize_connection,
                           test_volume, FakeConnector)
 
+    def testgetdefaulttimeout(self):
+        result = self.driver.common._get_default_timeout()
+        self.assertEqual('43200', result)
+
+    def testgetwaitinterval(self):
+        result = self.driver.common._get_wait_interval('LUNReadyWaitInterval')
+        self.assertEqual('2', result)
+
     def create_fake_conf_file(self):
         """Create a fake Config file
 
@@ -913,6 +940,16 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         pool_text = doc.createTextNode('OpenStack_Pool')
         storagepool.appendChild(pool_text)
         lun.appendChild(storagepool)
+
+        timeout = doc.createElement('Timeout')
+        timeout_text = doc.createTextNode('43200')
+        timeout.appendChild(timeout_text)
+        lun.appendChild(timeout)
+
+        lun_ready_wait_interval = doc.createElement('LUNReadyWaitInterval')
+        lun_ready_wait_interval_text = doc.createTextNode('2')
+        lun_ready_wait_interval.appendChild(lun_ready_wait_interval_text)
+        lun.appendChild(lun_ready_wait_interval)
 
         prefetch = doc.createElement('Prefetch')
         prefetch.setAttribute('Type', '0')

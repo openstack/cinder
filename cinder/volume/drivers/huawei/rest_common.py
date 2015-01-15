@@ -30,11 +30,15 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
+
+DEFAULT_WAIT_TIMEOUT = 3600 * 24 * 30
+DEFAULT_WAIT_INTERVAL = 5
 
 HOSTGROUP_PREFIX = 'OpenStack_HostGroup_'
 LUNGROUP_PREFIX = 'OpenStack_LunGroup_'
@@ -46,9 +50,6 @@ huawei_valid_keys = ['maxIOPS', 'minIOPS', 'minBandWidth',
 
 class RestCommon():
     """Common class for Huawei OceanStor 18000 storage system."""
-
-    SLEEP_FOR_LUN_READY = 2
-    SLEEP_FOR_LUNCOPY = 15
 
     def __init__(self, configuration):
         self.configuration = configuration
@@ -439,9 +440,35 @@ class RestCommon():
 
         luncopy_id = self._create_luncopy(copy_name,
                                           src_lun, tgt_lun)
+        event_type = 'LUNcopyWaitInterval'
+        wait_interval = self._get_wait_interval(event_type)
+        wait_interval = int(wait_interval)
         try:
             self._start_luncopy(luncopy_id)
-            self._wait_for_luncopy(luncopy_id)
+
+            def _luncopy_complete():
+                luncopy_info = self._get_luncopy_info(luncopy_id)
+                if luncopy_info['status'] == '40':
+                    # luncopy_info['status'] means for the running status of
+                    # the luncopy. If luncopy_info['status'] is equal to '40',
+                    # this luncopy is completely ready.
+                    return True
+                elif luncopy_info['state'] != '1':
+                    # luncopy_info['state'] means for the healthy status of the
+                    # luncopy. If luncopy_info['state'] is not equal to '1',
+                    # this means that an error occurred during the LUNcopy
+                    # operation and we should abort it.
+                    err_msg = (_(
+                        'An error occurred during the LUNcopy operation. '
+                        'LUNcopy name: %(luncopyname)s. '
+                        'LUNcopy status: %(luncopystatus)s. '
+                        'LUNcopy state: %(luncopystate)s.')
+                        % {'luncopyname': luncopy_id,
+                           'luncopystatus': luncopy_info['status'],
+                           'luncopystate': luncopy_info['state']})
+                    LOG.error(err_msg)
+                    raise exception.VolumeBackendAPIException(data=err_msg)
+            self._wait_for_condition(_luncopy_complete, wait_interval)
 
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -450,16 +477,58 @@ class RestCommon():
 
         self._delete_luncopy(luncopy_id)
 
-    def _is_vol_ready(self, lunid):
-        url = self.url + "/lun/" + lunid
-        result = self.call(url, None, "GET")
-        self._assert_rest_result(result, 'Get volume by id error!')
+    def _get_wait_interval(self, event_type):
+        """Get wait interval from huawei conf file."""
+        root = self._read_xml()
+        wait_interval = root.findtext('LUN/%s' % event_type)
+        if wait_interval:
+            return wait_interval
+        else:
+            LOG.info(_LI(
+                "Wait interval for %(event_type)s is not configured in huawei "
+                "conf file. Use default: %(default_wait_interval)d."),
+                {"event_type": event_type,
+                 "default_wait_interval": DEFAULT_WAIT_INTERVAL})
+            return DEFAULT_WAIT_INTERVAL
 
-        if "data" in result:
-            if (result['data']['HEALTHSTATUS'] == "1") and\
-               (result['data']['RUNNINGSTATUS'] == "27"):
-                return True
-        return False
+    def _get_default_timeout(self):
+        """Get timeout from huawei conf file."""
+        root = self._read_xml()
+        timeout = root.findtext('LUN/Timeout')
+        if timeout is None:
+            timeout = DEFAULT_WAIT_TIMEOUT
+            LOG.info(_LI(
+                "Timeout is not configured in huawei conf file. "
+                "Use default: %(default_timeout)d."),
+                {"default_timeout": timeout})
+
+        return timeout
+
+    def _wait_for_condition(self, func, interval, timeout=None):
+        start_time = time.time()
+        if timeout is None:
+            timeout = self._get_default_timeout()
+
+        def _inner():
+            try:
+                res = func()
+            except Exception as ex:
+                res = False
+                LOG.debug('_wait_for_condition: %(func_name)s '
+                          'failed for %(exception)s.'
+                          % {'func_name': func.__name__,
+                             'exception': ex.message})
+            if res:
+                raise loopingcall.LoopingCallDone()
+
+            if int(time.time()) - start_time > timeout:
+                msg = (_('_wait_for_condition: %s timed out.')
+                       % func.__name__)
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        timer = loopingcall.FixedIntervalLoopingCall(_inner)
+        timer.start(interval=interval).wait()
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot.
@@ -492,19 +561,23 @@ class RestCommon():
                'tgt_lun_id': tgt_lun_id,
                'copy_name': luncopy_name})
 
-        timeout = 10
-        time_pass = 0
-        while True:
-            if self._is_vol_ready(tgt_lun_id):
-                break
-            LOG.info(_LI('Waiting newly created lun to be ready.'))
-            time.sleep(self.SLEEP_FOR_LUN_READY)
-            time_pass = time_pass + self.SLEEP_FOR_LUN_READY
-            if time_pass >= timeout:
-                msg = _("Waited %s seconds. Timeout when waiting the newly"
-                        " created lun to be ready.")
-                raise exception.VolumeBackendAPIException(msg % time_pass)
+        event_type = 'LUNReadyWaitInterval'
+        wait_interval = self._get_wait_interval(event_type)
 
+        def _volume_ready():
+            url = self.url + "/lun/" + tgt_lun_id
+            result = self.call(url, None, "GET")
+            self._assert_rest_result(result, 'Get volume by id failed!')
+
+            if "data" in result:
+                if (result['data']['HEALTHSTATUS'] == "1" and
+                   result['data']['RUNNINGSTATUS'] == "27"):
+                    return True
+            return False
+
+        self._wait_for_condition(_volume_ready,
+                                 wait_interval,
+                                 wait_interval * 3)
         self._copy_volume(volume, luncopy_name, snapshot_id, tgt_lun_id)
 
         return lun_info
@@ -674,7 +747,7 @@ class RestCommon():
         # Return iSCSI properties.
         properties = {}
         properties['target_discovered'] = False
-        properties['target_portal'] = ('%s: %s' % (target_ip, '3260'))
+        properties['target_portal'] = ('%s:%s' % (target_ip, '3260'))
         properties['target_iqn'] = iscsi_iqn
         properties['target_lun'] = int(hostlunid)
         properties['volume_id'] = volume['id']
@@ -883,7 +956,7 @@ class RestCommon():
             return None
 
     def _is_host_associate_to_hostgroup(self, hostgroup_id, host_id):
-        """Check whether the host is associate to the hostgroup."""
+        """Check whether the host is associated to the hostgroup."""
         url_subfix = ("/host/associate?TYPE=21&"
                       "ASSOCIATEOBJTYPE=14&ASSOCIATEOBJID=%s" % hostgroup_id)
 
@@ -1195,32 +1268,16 @@ class RestCommon():
             else:
                 err_msg = (_(
                     'PrefetchType config is wrong. PrefetchType'
-                    ' must be in 1,2,3,4. fetchtype is: %(fetchtype)s.')
+                    ' must be in 0,1,2,3. PrefetchType is: %(fetchtype)s.')
                     % {'fetchtype': fetchtype})
                 LOG.error(err_msg)
                 raise exception.CinderException(err_msg)
         else:
             LOG.info(_LI(
-                'Use default prefetch fetchtype. '
-                'Prefetch fetchtype:Intelligent.'))
+                'Use default PrefetchType. '
+                'PrefetchType: Intelligent.'))
 
         return lunsetinfo
-
-    def _wait_for_luncopy(self, luncopyid):
-        """Wait for LUNcopy to complete."""
-        while True:
-            luncopy_info = self._get_luncopy_info(luncopyid)
-            if luncopy_info['status'] == '40':
-                break
-            elif luncopy_info['state'] != '1':
-                err_msg = (_(
-                    '_wait_for_luncopy: LUNcopy status is not normal.'
-                    'LUNcopy name: %(luncopyname)s.')
-                    % {'luncopyname': luncopyid})
-                LOG.error(err_msg)
-                raise exception.VolumeBackendAPIException(data=err_msg)
-            LOG.info(_LI('Waiting for luncopy to be complete.'))
-            time.sleep(self.SLEEP_FOR_LUNCOPY)
 
     def _get_luncopy_info(self, luncopyid):
         """Get LUNcopy information."""
@@ -1298,12 +1355,15 @@ class RestCommon():
         TargetIP = root.findtext('iSCSI/DefaultTargetIP').strip()
         iscsiinfo['DefaultTargetIP'] = TargetIP
         initiator_list = []
-        tmp_dic = {}
+
         for dic in root.findall('iSCSI/Initiator'):
             # Strip values of dic.
-            for k, v in dic.items():
-                tmp_dic[k] = v.strip()
+            tmp_dic = {}
+            for k in dic.items():
+                tmp_dic[k[0]] = k[1].strip()
+
             initiator_list.append(tmp_dic)
+
         iscsiinfo['Initiator'] = initiator_list
 
         return iscsiinfo
