@@ -42,7 +42,7 @@ class ISERTgtAdm(TgtAdm):
         self.volumes_dir = self.configuration.safe_get('volumes_dir')
         self.protocol = 'iSER'
 
-        # backward compatability mess
+        # backwards compatibility mess
         self.configuration.num_volume_device_scan_tries = \
             self.configuration.num_iser_scan_tries
         self.configuration.iscsi_num_targets = \
