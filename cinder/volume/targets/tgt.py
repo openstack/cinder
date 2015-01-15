@@ -147,6 +147,13 @@ class TgtAdm(iscsi.ISCSITarget):
         LOG.debug('Failed to find CHAP auth from config for %s' % vol_id)
         return None
 
+    @utils.retry(putils.ProcessExecutionError)
+    def _do_tgt_update(self, name):
+            (out, err) = utils.execute('tgt-admin', '--update', name,
+                                       run_as_root=True)
+            LOG.debug("StdOut from tgt-admin --update: %s", out)
+            LOG.debug("StdErr from tgt-admin --update: %s", err)
+
     def ensure_export(self, context, volume, volume_path):
         chap_auth = None
         old_name = None
@@ -222,10 +229,8 @@ class TgtAdm(iscsi.ISCSITarget):
             # by creating the entry in the persist file
             # and then doing an update to get the target
             # created.
-            (out, err) = utils.execute('tgt-admin', '--update', name,
-                                       run_as_root=True)
-            LOG.debug("StdOut from tgt-admin --update: %s", out)
-            LOG.debug("StdErr from tgt-admin --update: %s", err)
+
+            self._do_tgt_update(name)
         except putils.ProcessExecutionError as e:
             if "target already exists" in e.stderr:
                 # Adding the additional Warning message below for a clear
@@ -233,15 +238,14 @@ class TgtAdm(iscsi.ISCSITarget):
                 LOG.warning(_LW('Could not create target because '
                                 'it already exists for volume: %s'), vol_id)
                 LOG.debug('Exception was: %s', e)
-                pass
-            else:
-                LOG.error(_LE("Failed to create iscsi target for volume "
-                              "id:%(vol_id)s: %(e)s"),
-                          {'vol_id': vol_id, 'e': e})
 
-                # Don't forget to remove the persistent file we created
-                os.unlink(volume_path)
-                raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
+            LOG.error(_LE("Failed to create iscsi target for volume "
+                          "id:%(vol_id)s: %(e)s"),
+                      {'vol_id': vol_id, 'e': e})
+
+            # Don't forget to remove the persistent file we created
+            os.unlink(volume_path)
+            raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
         # Grab targets list for debug
         # Consider adding a check for lun 0 and 1 for tgtadm
