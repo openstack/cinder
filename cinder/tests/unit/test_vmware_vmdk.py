@@ -20,7 +20,7 @@ Test suite for VMware VMDK driver.
 from distutils import version as ver
 
 import mock
-import mox
+from mox3 import mox
 from oslo_utils import units
 from oslo_vmware import api
 from oslo_vmware import exceptions

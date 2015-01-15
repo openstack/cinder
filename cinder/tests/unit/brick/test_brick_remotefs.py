@@ -14,7 +14,6 @@
 #    under the License.
 
 import mock
-import mox
 from oslo_log import log as logging
 
 from cinder.brick import exception
@@ -33,10 +32,8 @@ class BrickRemoteFsTestCase(test.TestCase):
 
     def setUp(self):
         super(BrickRemoteFsTestCase, self).setUp()
-        self._mox = mox.Mox()
         self._nfsclient = remotefs.RemoteFsClient(
             'nfs', 'sudo', nfs_mount_point_base=self.TEST_MNT_BASE)
-        self.addCleanup(self._mox.UnsetStubs)
 
     def test_get_hash_str(self):
         """_get_hash_str should calculation correct value."""
@@ -49,7 +46,7 @@ class BrickRemoteFsTestCase(test.TestCase):
         self.assertEqual(mnt_point, self.TEST_MNT_POINT)
 
     def test_mount_nfs_should_mount_correctly(self):
-        mox = self._mox
+        mox = self.mox
         client = self._nfsclient
 
         mox.StubOutWithMock(client, '_execute')
@@ -143,7 +140,7 @@ class BrickRemoteFsTestCase(test.TestCase):
                           self.TEST_EXPORT)
 
     def test_mount_nfs_should_not_remount(self):
-        mox = self._mox
+        mox = self.mox
         client = self._nfsclient
 
         line = "%s on %s type nfs (rw)\n" % (self.TEST_EXPORT,

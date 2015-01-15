@@ -9,7 +9,7 @@ coverage>=3.6
 discover
 fixtures>=0.3.14
 mock>=1.0
-mox>=0.5.3
+mox3>=0.7.0
 MySQL-python
 psycopg2
 oslotest>=1.5.1  # Apache-2.0

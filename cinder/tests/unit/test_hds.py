@@ -22,7 +22,7 @@ Self test for Hitachi Unified Storage (HUS) platform.
 import os
 import tempfile
 
-import mox
+from mox3 import mox
 
 from cinder import test
 from cinder.volume import configuration as conf
@@ -174,14 +174,12 @@ class HUSiSCSIDriverTest(test.TestCase):
         SimulatedHusBackend.alloc_lun = []
         SimulatedHusBackend.connections = []
         SimulatedHusBackend.out = ''
-        self.mox = mox.Mox()
         self.mox.StubOutWithMock(hds, 'factory_bend')
         hds.factory_bend().AndReturn(SimulatedHusBackend())
         self.mox.ReplayAll()
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.hds_cinder_config_file = self.config_file
         self.driver = hds.HUSDriver(configuration=self.configuration)
-        self.addCleanup(self.mox.UnsetStubs)
 
     def test_get_volume_stats(self):
         stats = self.driver.get_volume_stats(True)
@@ -273,6 +271,8 @@ class HUSiSCSIDriverTest(test.TestCase):
         connector['host'] = 'dut_1.lab.hds.com'
         vol = self.test_create_volume()
         self.mox.StubOutWithMock(self.driver, '_update_vol_location')
+        self.driver._update_vol_location(vol['id'], mox.IgnoreArg())
+        self.mox.ReplayAll()
         conn = self.driver.initialize_connection(vol, connector)
         self.assertIn('hitachi', conn['data']['target_iqn'])
         self.assertIn('3260', conn['data']['target_portal'])
@@ -287,8 +287,19 @@ class HUSiSCSIDriverTest(test.TestCase):
         because an error/exception return will only jeopardize the
         connection tear down at a host.
         """
-        (vol, conn) = self.test_initialize_connection()
+        connector = {}
+        connector['initiator'] = 'iqn.1993-08.org.debian:01:11f90746eb2'
+        connector['host'] = 'dut_1.lab.hds.com'
+        vol = self.test_create_volume()
+        self.mox.StubOutWithMock(self.driver, '_update_vol_location')
+        self.driver._update_vol_location(vol['id'], mox.IgnoreArg())
+        self.driver._update_vol_location(vol['id'], mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+
+        conn = self.driver.initialize_connection(vol, connector)
+        vol['provider_location'] = conn['data']['provider_location']
         num_conn_before = len(SimulatedHusBackend.connections)
-        self.driver.terminate_connection(vol, conn)
+        self.driver.terminate_connection(vol, connector)
         num_conn_after = len(SimulatedHusBackend.connections)
         self.assertGreater(num_conn_before, num_conn_after)

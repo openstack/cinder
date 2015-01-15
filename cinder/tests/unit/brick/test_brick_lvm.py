@@ -12,8 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
-import mox
+from mox3 import mox
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 
@@ -33,7 +32,6 @@ def create_configuration():
 
 class BrickLvmTestCase(test.TestCase):
     def setUp(self):
-        self._mox = mox.Mox()
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.volume_group_name = 'fake-vg'
         super(BrickLvmTestCase, self).setUp()
@@ -151,9 +149,9 @@ class BrickLvmTestCase(test.TestCase):
         self.assertEqual(self.vg.create_lv_snapshot('snapshot-1', 'fake-1'),
                          None)
 
-        self._mox.StubOutWithMock(self.vg, 'get_volume')
+        self.mox.StubOutWithMock(self.vg, 'get_volume')
         self.vg.get_volume('fake-non-existent').AndReturn(None)
-        self._mox.ReplayAll()
+        self.mox.ReplayAll()
         try:
             self.vg.create_lv_snapshot('snapshot-1', 'fake-non-existent')
         except exception.VolumeDeviceNotFound as e:
@@ -329,18 +327,18 @@ class BrickLvmTestCase(test.TestCase):
         self.assertFalse(self.vg.lv_has_snapshot('test-volumes'))
 
     def test_activate_lv(self):
-        self._mox.StubOutWithMock(self.vg, '_execute')
+        self.mox.StubOutWithMock(self.vg, '_execute')
         self.vg._supports_lvchange_ignoreskipactivation = True
 
         self.vg._execute('lvchange', '-a', 'y', '--yes', '-K',
                          'fake-vg/my-lv',
                          root_helper='sudo', run_as_root=True)
 
-        self._mox.ReplayAll()
+        self.mox.ReplayAll()
 
         self.vg.activate_lv('my-lv')
 
-        self._mox.VerifyAll()
+        self.mox.VerifyAll()
 
     def test_get_mirrored_available_capacity(self):
         self.assertEqual(self.vg.vg_mirror_free_space(1), 2.0)

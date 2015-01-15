@@ -22,7 +22,7 @@ import os
 import shutil
 import tempfile
 
-import mox
+from mox3 import mox
 from oslo_config import cfg
 
 from cinder.image import image_utils

@@ -21,7 +21,7 @@ import unittest
 
 from lxml import etree
 import mock
-import mox as mox_lib
+from mox3 import mox as mox_lib
 from oslo_log import log as logging
 import six
 

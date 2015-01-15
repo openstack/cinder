@@ -28,7 +28,7 @@ import time
 
 import eventlet
 import mock
-import mox
+from mox3 import mox
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_serialization import jsonutils
@@ -817,9 +817,6 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume_ref = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual(volume_id, volume_ref.id)
         self.assertEqual("available", volume_ref.status)
-
-        self.mox.UnsetStubs()
-        self.volume.delete_volume(self.context, volume_id)
 
     def test_get_volume_different_tenant(self):
         """Test can't get volume of another tenant when viewable_admin_meta."""
@@ -3101,10 +3098,6 @@ class VolumeTestCase(BaseVolumeTestCase):
         snapshot_ref = db.snapshot_get(self.context, snapshot_id)
         self.assertEqual(snapshot_id, snapshot_ref.id)
         self.assertEqual("available", snapshot_ref.status)
-
-        self.mox.UnsetStubs()
-        self.volume.delete_snapshot(self.context, snapshot_obj)
-        self.volume.delete_volume(self.context, volume_id)
 
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_delete_no_dev_fails(self):
