@@ -20,8 +20,8 @@ from contextlib import nested
 import re
 import threading
 
-from oslo.config import cfg
 from oslo.utils import excutils
+from oslo_config import cfg
 import six
 
 from cinder.db.sqlalchemy import api

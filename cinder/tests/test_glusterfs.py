@@ -21,9 +21,9 @@ import time
 import traceback
 
 import mock
-from oslo.config import cfg
 from oslo.utils import units
 from oslo_concurrency import processutils as putils
+from oslo_config import cfg
 
 from cinder import brick
 from cinder import compute

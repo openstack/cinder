@@ -49,10 +49,10 @@ import subprocess
 import time
 
 import eventlet
-from oslo.config import cfg
 from oslo.utils import encodeutils
 from oslo.utils import excutils
 from oslo.utils import units
+from oslo_config import cfg
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception

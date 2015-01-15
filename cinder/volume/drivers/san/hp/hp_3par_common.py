@@ -49,9 +49,9 @@ if hp3parclient:
     from hp3parclient import client
     from hp3parclient import exceptions as hpexceptions
 
-from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import units
+from oslo_config import cfg
 
 from cinder import context
 from cinder import exception

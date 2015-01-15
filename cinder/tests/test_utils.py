@@ -19,9 +19,9 @@ import os
 import uuid
 
 import mock
-from oslo.config import cfg
 from oslo.utils import timeutils
 from oslo_concurrency import processutils as putils
+from oslo_config import cfg
 import paramiko
 import six
 

@@ -20,9 +20,9 @@ import socket
 import string
 import time
 
-from oslo.config import cfg
 from oslo.utils import timeutils
 from oslo.utils import units
+from oslo_config import cfg
 import requests
 from six import wraps
 

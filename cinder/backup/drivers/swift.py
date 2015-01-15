@@ -37,10 +37,10 @@ import os
 import socket
 
 import eventlet
-from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import timeutils
 from oslo.utils import units
+from oslo_config import cfg
 import six
 from swiftclient import client as swift
 

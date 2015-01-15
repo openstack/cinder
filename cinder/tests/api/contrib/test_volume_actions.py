@@ -17,9 +17,9 @@ import json
 import uuid
 
 import mock
-from oslo.config import cfg
 from oslo import messaging
 from oslo.serialization import jsonutils
+from oslo_config import cfg
 import webob
 
 from cinder.api.contrib import volume_actions

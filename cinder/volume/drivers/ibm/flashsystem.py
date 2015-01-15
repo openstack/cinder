@@ -29,10 +29,10 @@ import re
 import string
 import threading
 
-from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import units
 from oslo_concurrency import processutils
+from oslo_config import cfg
 import six
 
 from cinder import context

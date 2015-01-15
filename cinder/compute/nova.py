@@ -23,7 +23,7 @@ from novaclient import service_catalog
 from novaclient.v1_1 import client as nova_client
 from novaclient.v1_1.contrib import assisted_volume_snapshots
 from novaclient.v1_1.contrib import list_extensions
-from oslo.config import cfg
+from oslo_config import cfg
 from requests import exceptions as request_exceptions
 
 from cinder import context as ctx

@@ -22,9 +22,9 @@ controller on the SAN hardware.  We expect to access it over SSH or some API.
 import random
 
 from eventlet import greenthread
-from oslo.config import cfg
 from oslo.utils import excutils
 from oslo_concurrency import processutils
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.i18n import _, _LE

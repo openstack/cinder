@@ -17,7 +17,7 @@
 #    under the License.
 
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import test
 

@@ -18,7 +18,7 @@
 """Unit tests for Cisco fc san lookup service."""
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
 from cinder import test

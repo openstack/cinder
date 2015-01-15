@@ -17,8 +17,8 @@ ZFS Storage Appliance Cinder Volume Driver
 import ast
 import base64
 
-from oslo.config import cfg
 from oslo.utils import units
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW

@@ -23,7 +23,7 @@ This driver requires VPSA with API ver.13.07 or higher.
 import httplib
 
 from lxml import etree
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.i18n import _, _LW

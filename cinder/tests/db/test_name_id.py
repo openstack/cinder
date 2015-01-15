@@ -14,7 +14,7 @@
 
 """Tests for volume name_id."""
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import context
 from cinder import db

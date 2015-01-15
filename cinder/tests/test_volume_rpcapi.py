@@ -17,8 +17,8 @@ Unit Tests for cinder.volume.rpcapi
 """
 import copy
 
-from oslo.config import cfg
 from oslo.serialization import jsonutils
+from oslo_config import cfg
 
 from cinder import context
 from cinder import db

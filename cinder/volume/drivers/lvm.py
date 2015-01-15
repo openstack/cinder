@@ -19,10 +19,10 @@ import math
 import os
 import socket
 
-from oslo.config import cfg
 from oslo.utils import importutils
 from oslo.utils import units
 from oslo_concurrency import processutils
+from oslo_config import cfg
 
 from cinder.brick import exception as brick_exception
 from cinder.brick.local_dev import lvm as lvm

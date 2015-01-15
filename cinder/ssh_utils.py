@@ -22,7 +22,7 @@ import os
 import string
 
 from eventlet import pools
-from oslo.config import cfg
+from oslo_config import cfg
 import paramiko
 
 from cinder import exception

@@ -33,7 +33,7 @@ encryption key so *any* volume can be decrypted once the fixed key is known.
 
 import array
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.i18n import _, _LW

@@ -20,7 +20,7 @@ You can customize this scheduler by specifying your own volume Filters and
 Weighing Functions.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.i18n import _, _LW

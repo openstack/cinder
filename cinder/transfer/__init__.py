@@ -17,8 +17,8 @@
 # collisions with use of 'from cinder.transfer import <foo>' elsewhere.
 
 
-from oslo.config import cfg
 from oslo.utils import importutils
+from oslo_config import cfg
 
 
 CONF = cfg.CONF

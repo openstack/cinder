@@ -14,7 +14,7 @@
 
 import datetime
 
-from oslo.config import cfg
+from oslo_config import cfg
 from sqlalchemy import MetaData, Table
 
 from cinder.i18n import _

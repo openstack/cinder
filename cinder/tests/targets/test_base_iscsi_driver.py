@@ -10,8 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.config import cfg
 from oslo.utils import timeutils
+from oslo_config import cfg
 
 from cinder import exception
 from cinder import test

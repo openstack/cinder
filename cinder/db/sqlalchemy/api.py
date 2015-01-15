@@ -26,8 +26,8 @@ import time
 import uuid
 import warnings
 
-from oslo.config import cfg
 from oslo.utils import timeutils
+from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_db import options
 from oslo_db.sqlalchemy import session as db_session

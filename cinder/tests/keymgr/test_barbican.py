@@ -22,7 +22,7 @@ import base64
 import binascii
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.keymgr import barbican

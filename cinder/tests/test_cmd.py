@@ -16,7 +16,7 @@ import StringIO
 import sys
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 import rtslib
 
 from cinder.cmd import all as cinder_all
@@ -636,7 +636,7 @@ class TestCinderManageCmd(test.TestCase):
             service_get_all.assert_called_with(ctxt)
             service_is_up.assert_called_with(service)
 
-    @mock.patch('oslo.config.cfg.ConfigOpts.register_cli_opt')
+    @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
     def test_main_argv_lt_2(self, register_cli_opt):
         script_name = 'cinder-manage'
         sys.argv = [script_name]
@@ -647,9 +647,9 @@ class TestCinderManageCmd(test.TestCase):
         self.assertTrue(register_cli_opt.called)
         self.assertEqual(exit.code, 2)
 
-    @mock.patch('oslo.config.cfg.ConfigOpts.__call__')
+    @mock.patch('oslo_config.cfg.ConfigOpts.__call__')
     @mock.patch('cinder.openstack.common.log.setup')
-    @mock.patch('oslo.config.cfg.ConfigOpts.register_cli_opt')
+    @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
     def test_main_sudo_failed(self, register_cli_opt, log_setup,
                               config_opts_call):
         script_name = 'cinder-manage'
@@ -666,8 +666,8 @@ class TestCinderManageCmd(test.TestCase):
         self.assertFalse(log_setup.called)
         self.assertEqual(exit.code, 2)
 
-    @mock.patch('oslo.config.cfg.ConfigOpts.__call__')
-    @mock.patch('oslo.config.cfg.ConfigOpts.register_cli_opt')
+    @mock.patch('oslo_config.cfg.ConfigOpts.__call__')
+    @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
     def test_main(self, register_cli_opt, config_opts_call):
         script_name = 'cinder-manage'
         sys.argv = [script_name, 'config', 'list']

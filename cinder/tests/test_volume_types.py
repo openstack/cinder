@@ -19,7 +19,7 @@ Unit Tests for volume types code
 import datetime
 import time
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import context
 from cinder import db

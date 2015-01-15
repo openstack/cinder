@@ -18,7 +18,7 @@ Provide a unified driver class for users.
 The product type and the protocol should be specified in config file before.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 
 from cinder import exception

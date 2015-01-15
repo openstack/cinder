@@ -19,7 +19,7 @@ Utility class for Windows Storage Server 2012 volume related operations.
 import ctypes
 import os
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.i18n import _, _LI

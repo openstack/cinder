@@ -26,9 +26,9 @@ __all__ = [
     'TRANSPORT_ALIASES',
 ]
 
-from oslo.config import cfg
 from oslo import messaging
 from oslo.serialization import jsonutils
+from oslo_config import cfg
 from osprofiler import profiler
 
 import cinder.context
