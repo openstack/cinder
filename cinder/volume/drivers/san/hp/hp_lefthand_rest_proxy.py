@@ -30,7 +30,7 @@ LOG = logging.getLogger(__name__)
 
 try:
     import hplefthandclient
-    from hplefthandclient import client
+    from hplefthandclient import client as hp_lh_client
     from hplefthandclient import exceptions as hpexceptions
 except ImportError:
     import cinder.tests.fake_hp_lefthand_client as hplefthandclient
@@ -93,9 +93,10 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                 improvement
         1.0.5 - Fixed bug #1311350, Live-migration of an instance when
                 attached to a volume was causing an error.
+        1.0.6 - Removing locks bug #1395953
     """
 
-    VERSION = "1.0.5"
+    VERSION = "1.0.6"
 
     device_stats = {}
 
@@ -109,24 +110,36 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         # so we need to use it as a separator
         self.DRIVER_LOCATION = self.__class__.__name__ + ' %(cluster)s %(vip)s'
 
+    def _login(self):
+        client = self.do_setup(None)
+        return client
+
+    def _logout(self, client):
+        client.logout()
+
+    def _create_client(self):
+        return hp_lh_client.HPLeftHandClient(
+            self.configuration.hplefthand_api_url)
+
     def do_setup(self, context):
         """Set up LeftHand client."""
         try:
-            self.client = client.HPLeftHandClient(
-                self.configuration.hplefthand_api_url)
-            self.client.login(
+            client = self._create_client()
+            client.login(
                 self.configuration.hplefthand_username,
                 self.configuration.hplefthand_password)
 
             if self.configuration.hplefthand_debug:
-                self.client.debug_rest(True)
+                client.debug_rest(True)
 
-            cluster_info = self.client.getClusterByName(
+            cluster_info = client.getClusterByName(
                 self.configuration.hplefthand_clustername)
             self.cluster_id = cluster_info['id']
             virtual_ips = cluster_info['virtualIPAddresses']
             self.cluster_vip = virtual_ips[0]['ipV4Address']
-            self._update_backend_status()
+            self._update_backend_status(client)
+
+            return client
         except hpexceptions.HTTPNotFound:
             raise exception.DriverNotInitialized(
                 _('LeftHand cluster not found'))
@@ -143,6 +156,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
 
     def create_volume(self, volume):
         """Creates a volume."""
+        client = self._login()
         try:
             # get the extra specs of interest from this volume's volume type
             volume_extra_specs = self._get_volume_extra_specs(volume)
@@ -170,7 +184,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             clusterName = self.configuration.hplefthand_clustername
             optional['clusterName'] = clusterName
 
-            volume_info = self.client.createVolume(
+            volume_info = client.createVolume(
                 volume['name'], self.cluster_id,
                 volume['size'] * units.Gi,
                 optional)
@@ -178,45 +192,57 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             return self._update_provider(volume_info)
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
+        finally:
+            self._logout(client)
 
     def delete_volume(self, volume):
         """Deletes a volume."""
+        client = self._login()
         try:
-            volume_info = self.client.getVolumeByName(volume['name'])
-            self.client.deleteVolume(volume_info['id'])
+            volume_info = client.getVolumeByName(volume['name'])
+            client.deleteVolume(volume_info['id'])
         except hpexceptions.HTTPNotFound:
             LOG.error(_LE("Volume did not exist. It will not be deleted"))
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
+        finally:
+            self._logout(client)
 
     def extend_volume(self, volume, new_size):
         """Extend the size of an existing volume."""
+        client = self._login()
         try:
-            volume_info = self.client.getVolumeByName(volume['name'])
+            volume_info = client.getVolumeByName(volume['name'])
 
             # convert GB to bytes
             options = {'size': int(new_size) * units.Gi}
-            self.client.modifyVolume(volume_info['id'], options)
+            client.modifyVolume(volume_info['id'], options)
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
+        finally:
+            self._logout(client)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
+        client = self._login()
         try:
-            volume_info = self.client.getVolumeByName(snapshot['volume_name'])
+            volume_info = client.getVolumeByName(snapshot['volume_name'])
 
             option = {'inheritAccess': True}
-            self.client.createSnapshot(snapshot['name'],
-                                       volume_info['id'],
-                                       option)
+            client.createSnapshot(snapshot['name'],
+                                  volume_info['id'],
+                                  option)
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
+        finally:
+            self._logout(client)
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
+        client = self._login()
         try:
-            snap_info = self.client.getSnapshotByName(snapshot['name'])
-            self.client.deleteSnapshot(snap_info['id'])
+            snap_info = client.getSnapshotByName(snapshot['name'])
+            client.deleteSnapshot(snap_info['id'])
         except hpexceptions.HTTPNotFound:
             LOG.error(_LE("Snapshot did not exist. It will not be deleted"))
         except hpexceptions.HTTPServerError as ex:
@@ -228,15 +254,21 @@ class HPLeftHandRESTProxy(ISCSIDriver):
 
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
+        finally:
+            self._logout(client)
 
     def get_volume_stats(self, refresh):
         """Gets volume stats."""
-        if refresh:
-            self._update_backend_status()
+        client = self._login()
+        try:
+            if refresh:
+                self._update_backend_status(client)
 
-        return self.device_stats
+            return self.device_stats
+        finally:
+            self._logout(client)
 
-    def _update_backend_status(self):
+    def _update_backend_status(self, client):
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or self.__class__.__name__
@@ -247,7 +279,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             'cluster': self.configuration.hplefthand_clustername,
             'vip': self.cluster_vip})
 
-        cluster_info = self.client.getCluster(self.cluster_id)
+        cluster_info = client.getCluster(self.cluster_id)
 
         total_capacity = cluster_info['spaceTotal']
         free_capacity = cluster_info['spaceAvailable']
@@ -265,9 +297,10 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         used from that host. HP VSA requires a volume to be assigned
         to a server.
         """
+        client = self._login()
         try:
-            server_info = self._create_server(connector)
-            volume_info = self.client.getVolumeByName(volume['name'])
+            server_info = self._create_server(connector, client)
+            volume_info = client.getVolumeByName(volume['name'])
 
             access_already_enabled = False
             if volume_info['iscsiSessions'] is not None:
@@ -280,7 +313,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                         break
 
             if not access_already_enabled:
-                self.client.addServerAccess(
+                client.addServerAccess(
                     volume_info['id'],
                     server_info['id'])
 
@@ -296,35 +329,46 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             return {'driver_volume_type': 'iscsi', 'data': iscsi_properties}
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
+        finally:
+            self._logout(client)
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Unassign the volume from the host."""
+        client = self._login()
         try:
-            volume_info = self.client.getVolumeByName(volume['name'])
-            server_info = self.client.getServerByName(connector['host'])
-            self.client.removeServerAccess(
+            volume_info = client.getVolumeByName(volume['name'])
+            server_info = client.getServerByName(connector['host'])
+            client.removeServerAccess(
                 volume_info['id'],
                 server_info['id'])
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
+        finally:
+            self._logout(client)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
+        client = self._login()
         try:
-            snap_info = self.client.getSnapshotByName(snapshot['name'])
-            volume_info = self.client.cloneSnapshot(
+            snap_info = client.getSnapshotByName(snapshot['name'])
+            volume_info = client.cloneSnapshot(
                 volume['name'],
                 snap_info['id'])
             return self._update_provider(volume_info)
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
+        finally:
+            self._logout(client)
 
     def create_cloned_volume(self, volume, src_vref):
+        client = self._login()
         try:
-            volume_info = self.client.getVolumeByName(src_vref['name'])
-            self.client.cloneVolume(volume['name'], volume_info['id'])
+            volume_info = client.getVolumeByName(src_vref['name'])
+            client.cloneVolume(volume['name'], volume_info['id'])
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
+        finally:
+            self._logout(client)
 
     def _get_volume_extra_specs(self, volume):
         """Get extra specs from a volume."""
@@ -370,11 +414,11 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         return {'provider_location': (
             "%s %s %s" % (iscsi_portal, volume_info['iscsiIqn'], 0))}
 
-    def _create_server(self, connector):
+    def _create_server(self, connector, client):
         server_info = None
         chap_enabled = self.configuration.hplefthand_iscsi_chap_enabled
         try:
-            server_info = self.client.getServerByName(connector['host'])
+            server_info = client.getServerByName(connector['host'])
             chap_secret = server_info['chapTargetSecret']
             if not chap_enabled and chap_secret:
                 LOG.warning(_LW('CHAP secret exists for host %s but CHAP is '
@@ -394,9 +438,10 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                         'chapTargetSecret': chap_secret,
                         'chapAuthenticationRequired': True
                         }
-        server_info = self.client.createServer(connector['host'],
-                                               connector['initiator'],
-                                               optional)
+
+        server_info = client.createServer(connector['host'],
+                                          connector['initiator'],
+                                          optional)
         return server_info
 
     def create_export(self, context, volume):
@@ -426,12 +471,10 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                                                     'new_type': new_type,
                                                     'diff': diff,
                                                     'host': host})
+        client = self._login()
         try:
-            volume_info = self.client.getVolumeByName(volume['name'])
-        except hpexceptions.HTTPNotFound:
-            raise exception.VolumeNotFound(volume_id=volume['id'])
+            volume_info = client.getVolumeByName(volume['name'])
 
-        try:
             # pick out the LH extra specs
             new_extra_specs = dict(new_type).get('extra_specs')
             lh_extra_specs = self._get_lh_extra_specs(
@@ -450,11 +493,14 @@ class HPLeftHandRESTProxy(ISCSIDriver):
             # map extra specs to LeftHand options
             options = self._map_extra_specs(changed_extra_specs)
             if len(options) > 0:
-                self.client.modifyVolume(volume_info['id'], options)
+                client.modifyVolume(volume_info['id'], options)
             return True
-
+        except hpexceptions.HTTPNotFound:
+            raise exception.VolumeNotFound(volume_id=volume['id'])
         except Exception as ex:
             LOG.warning("%s" % ex)
+        finally:
+            self._logout(client)
 
         return False
 
@@ -491,10 +537,11 @@ class HPLeftHandRESTProxy(ISCSIDriver):
 
         host_location = host['capabilities']['location_info']
         (driver, cluster, vip) = host_location.split(' ')
+        client = self._login()
         try:
             # get the cluster info, if it exists and compare
-            cluster_info = self.client.getClusterByName(cluster)
-            LOG.debug('Clister info: %s' % cluster_info)
+            cluster_info = client.getClusterByName(cluster)
+            LOG.debug('Cluster info: %s' % cluster_info)
             virtual_ips = cluster_info['virtualIPAddresses']
 
             if driver != self.__class__.__name__:
@@ -513,9 +560,12 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                          "volume: %s because cluster exists in different "
                          "management group.") % volume['name'])
             return false_ret
+        finally:
+            self._logout(client)
 
+        client = self._login()
         try:
-            volume_info = self.client.getVolumeByName(volume['name'])
+            volume_info = client.getVolumeByName(volume['name'])
             LOG.debug('Volume info: %s' % volume_info)
 
             # can't migrate if server is attached
@@ -526,7 +576,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                 return false_ret
 
             # can't migrate if volume has snapshots
-            snap_info = self.client.getVolume(
+            snap_info = client.getVolume(
                 volume_info['id'],
                 'fields=snapshots,snapshots[resource[members[name]]]')
             LOG.debug('Snapshot info: %s' % snap_info)
@@ -537,7 +587,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
                 return false_ret
 
             options = {'clusterName': cluster}
-            self.client.modifyVolume(volume_info['id'], options)
+            client.modifyVolume(volume_info['id'], options)
         except hpexceptions.HTTPNotFound:
             LOG.info(_LI("Cannot provide backend assisted migration for "
                          "volume: %s because volume does not exist in this "
@@ -546,5 +596,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         except hpexceptions.HTTPServerError as ex:
             LOG.error(ex)
             return false_ret
+        finally:
+            self._logout(client)
 
         return (True, None)
