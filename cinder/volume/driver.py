@@ -91,7 +91,8 @@ volume_opts = [
                default='tgtadm',
                help='iSCSI target user-land tool to use. tgtadm is default, '
                     'use lioadm for LIO iSCSI support, iseradm for the ISER '
-                    'protocol, or fake for testing.'),
+                    'protocol, iscsictl for Chelsio iSCSI Target or fake for '
+                    'testing.'),
     cfg.StrOpt('volumes_dir',
                default='$state_path/volumes',
                help='Volume configuration file storage '
@@ -99,6 +100,9 @@ volume_opts = [
     cfg.StrOpt('iet_conf',
                default='/etc/iet/ietd.conf',
                help='IET configuration file'),
+    cfg.StrOpt('chiscsi_conf',
+               default='/etc/chelsio-iscsi/chiscsi.conf',
+               help='Chiscsi (CXT) global defaults configuration file'),
     cfg.StrOpt('lio_initiator_iqns',
                default='',
                help='This option is deprecated and unused. '
@@ -252,7 +256,8 @@ class BaseVD(object):
             'iseradm': 'cinder.volume.targets.iser.ISERTgtAdm',
             'lioadm': 'cinder.volume.targets.lio.LioAdm',
             'tgtadm': 'cinder.volume.targets.tgt.TgtAdm',
-            'scstadmin': 'cinder.volume.targets.scst.SCSTAdm', }
+            'scstadmin': 'cinder.volume.targets.scst.SCSTAdm',
+            'iscsictl': 'cinder.volume.targets.cxt.CxtAdm'}
 
         # set True by manager after successful check_for_setup
         self._initialized = False
