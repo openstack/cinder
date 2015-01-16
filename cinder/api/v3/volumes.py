@@ -22,20 +22,25 @@ from cinder import utils
 class VolumeController(volumes_v2.VolumeController):
     """The Volumes API controller for the OpenStack API V3."""
 
+    def __init__(self, ext_mgr):
+        super(VolumeController, self).__init__(volumes_v2.VolumeController)
+
     def _get_volumes(self, req, is_detail):
         """Returns a list of volumes, transformed through view builder."""
 
         context = req.environ['cinder.context']
+        req_version = req.api_version_request
 
         params = req.params.copy()
         marker, limit, offset = common.get_pagination_params(params)
         sort_keys, sort_dirs = common.get_sort_params(params)
         filters = params
 
-        utils.remove_invalid_filter_options(context,
-                                            filters,
-                                            self._get_volume_filter_options())
+        if req_version.matches(None, "3.3"):
+            filters.pop('glance_metadata', None)
 
+        utils.remove_invalid_filter_options(context, filters,
+                                            self._get_volume_filter_options())
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in sort_keys:
             sort_keys[sort_keys.index('name')] = 'display_name'
