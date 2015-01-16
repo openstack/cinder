@@ -133,9 +133,20 @@ def downgrade(migrate_engine):
 
         new_id += 1
 
-    volumes.c.volume_type_id.alter(Integer)
-    volume_types.c.id.alter(Integer)
-    extra_specs.c.volume_type_id.alter(Integer)
+    if migrate_engine.name == 'postgresql':
+        # NOTE(e0ne): PostgreSQL can't cast string to int automatically
+        table_column_pairs = [('volumes', 'volume_type_id'),
+                              ('volume_types', 'id'),
+                              ('volume_type_extra_specs', 'volume_type_id')]
+        sql = 'ALTER TABLE {0} ALTER COLUMN {1} ' + \
+            'TYPE INTEGER USING {1}::numeric'
+
+        for table, column in table_column_pairs:
+            migrate_engine.execute(sql.format(table, column))
+    else:
+        volumes.c.volume_type_id.alter(Integer)
+        volume_types.c.id.alter(Integer)
+        extra_specs.c.volume_type_id.alter(Integer)
 
     for column in fkey_remove_list:
         fkeys = list(column.foreign_keys)

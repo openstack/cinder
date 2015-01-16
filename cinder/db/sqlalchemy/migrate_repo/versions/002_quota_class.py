@@ -111,21 +111,29 @@ def downgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    if migrate_engine.name == 'mysql':
-        # NOTE(jsbryant): MySQL Cannot drop the quota_usages table
-        # until the foreign key reservations_ibfk_1 is removed.  We
-        # remove the foreign key first, and then we drop the table.
-        table = Table('reservations', meta, autoload=True)
-        ref_table = Table('reservations', meta, autoload=True)
-        params = {'columns': [table.c['usage_id']],
-                  'refcolumns': [ref_table.c['id']],
-                  'name': 'reservations_ibfk_1'}
+    fk_name = None
 
+    if migrate_engine.name == 'mysql':
+        fk_name = 'reservations_ibfk_1'
+    elif migrate_engine.name == 'postgresql':
+        fk_name = 'reservations_usage_id_fkey'
+
+    # NOTE: MySQL and PostgreSQL Cannot drop the quota_usages table
+    # until the foreign key is removed.  We remove the foreign key first,
+    # and then we drop the table.
+    table = Table('reservations', meta, autoload=True)
+    ref_table = Table('reservations', meta, autoload=True)
+    params = {'columns': [table.c['usage_id']],
+              'refcolumns': [ref_table.c['id']],
+              'name': fk_name}
+
+    if fk_name:
         try:
             fkey = ForeignKeyConstraint(**params)
             fkey.drop()
         except Exception:
-            LOG.error(_LE("Dropping foreign key reservations_ibfk_1 failed."))
+            msg = _LE("Dropping foreign key %s failed.")
+            LOG.error(msg, fk_name)
 
     quota_classes = Table('quota_classes', meta, autoload=True)
     try:

@@ -759,3 +759,8 @@ class TestMysqlMigrations(test_base.MySQLOpportunisticTestCase,
             "and TABLE_NAME!='migrate_version'")
         count = noninnodb.scalar()
         self.assertEqual(count, 0, "%d non InnoDB tables created" % count)
+
+
+class TestPostgresqlMigrations(test_base.PostgreSQLOpportunisticTestCase,
+                               MigrationsMixin):
+    TIME_TYPE = sqlalchemy.types.TIMESTAMP
