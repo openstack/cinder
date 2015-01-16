@@ -77,7 +77,8 @@ class SheepdogDriver(driver.VolumeDriver):
         self._try_execute('qemu-img', 'create', '-b',
                           "sheepdog:%s:%s" % (snapshot['volume_name'],
                                               snapshot['name']),
-                          "sheepdog:%s" % volume['name'])
+                          "sheepdog:%s" % volume['name'],
+                          '%sG' % volume['size'])
 
     def delete_volume(self, volume):
         """Delete a logical volume."""
