@@ -189,12 +189,17 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 self.vg.vg_mirror_size(self.configuration.lvm_mirrors)
             free_capacity =\
                 self.vg.vg_mirror_free_space(self.configuration.lvm_mirrors)
+            provisioned_capacity = round(
+                float(total_capacity) - float(free_capacity), 2)
         elif self.configuration.lvm_type == 'thin':
             total_capacity = self.vg.vg_thin_pool_size
             free_capacity = self.vg.vg_thin_pool_free_space
+            provisioned_capacity = self.vg.vg_provisioned_capacity
         else:
             total_capacity = self.vg.vg_size
             free_capacity = self.vg.vg_free_space
+            provisioned_capacity = round(
+                float(total_capacity) - float(free_capacity), 2)
 
         location_info = \
             ('LVMVolumeDriver:%(hostname)s:%(vg)s'
@@ -211,6 +216,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             pool_name=data["volume_backend_name"],
             total_capacity_gb=total_capacity,
             free_capacity_gb=free_capacity,
+            provisioned_capacity_gb=provisioned_capacity,
             reserved_percentage=self.configuration.reserved_percentage,
             location_info=location_info,
             QoS_support=False,

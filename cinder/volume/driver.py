@@ -1117,6 +1117,7 @@ class ISCSIDriver(VolumeDriver):
                     pool_name=pool,
                     total_capacity_gb=0,
                     free_capacity_gb=0,
+                    provisioned_capacity_gb=0,
                     reserved_percentage=100,
                     QoS_support=False
                 ))
@@ -1128,6 +1129,7 @@ class ISCSIDriver(VolumeDriver):
                 pool_name=data["volume_backend_name"],
                 total_capacity_gb=0,
                 free_capacity_gb=0,
+                provisioned_capacity_gb=0,
                 reserved_percentage=100,
                 QoS_support=False
             ))

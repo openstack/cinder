@@ -4113,6 +4113,8 @@ class ISCSITestCase(DriverTestCase):
             stats['pools'][0]['total_capacity_gb'], float('5.52'))
         self.assertEqual(
             stats['pools'][0]['free_capacity_gb'], float('0.52'))
+        self.assertEqual(
+            stats['pools'][0]['provisioned_capacity_gb'], float('5.0'))
 
     def test_validate_connector(self):
         iscsi_driver =\
@@ -4177,6 +4179,8 @@ class ISERTestCase(DriverTestCase):
             stats['pools'][0]['total_capacity_gb'], float('5.52'))
         self.assertEqual(
             stats['pools'][0]['free_capacity_gb'], float('0.52'))
+        self.assertEqual(
+            stats['pools'][0]['provisioned_capacity_gb'], float('5.0'))
         self.assertEqual(stats['storage_protocol'], 'iSER')
 
     @test.testtools.skip("SKIP until ISER driver is removed or fixed")
@@ -4189,6 +4193,8 @@ class ISERTestCase(DriverTestCase):
             stats['pools'][0]['total_capacity_gb'], 0)
         self.assertEqual(
             stats['pools'][0]['free_capacity_gb'], 0)
+        self.assertEqual(
+            stats['pools'][0]['provisioned_capacity_gb'], float('5.0'))
         self.assertEqual(stats['storage_protocol'], 'iSER')
 
 
