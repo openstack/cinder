@@ -107,10 +107,10 @@ class BrickLvmTestCase(test.TestCase):
             else:
                 data = '  owi-a-'
         elif 'env, LC_ALL=C, pvs, --noheadings' in cmd_string:
-            data = "  fake-vg:/dev/sda:10.00:1.00\n"
-            data += "  fake-vg:/dev/sdb:10.00:1.00\n"
-            data += "  fake-vg:/dev/sdc:10.00:8.99\n"
-            data += "  fake-vg-2:/dev/sdd:10.00:9.99\n"
+            data = "  fake-vg|/dev/sda|10.00|1.00\n"
+            data += "  fake-vg|/dev/sdb|10.00|1.00\n"
+            data += "  fake-vg|/dev/sdc|10.00|8.99\n"
+            data += "  fake-vg-2|/dev/sdd|10.00|9.99\n"
         elif 'env, LC_ALL=C, lvs, --noheadings, --unit=g' \
              ', -o, size,data_percent, --separator, :' in cmd_string:
             data = "  9:12\n"
