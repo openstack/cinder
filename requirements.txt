@@ -33,7 +33,7 @@ python-novaclient>=2.18.0
 python-swiftclient>=2.2.0
 requests>=2.2.0,!=2.4.0
 Routes>=1.12.3,!=2.0
-taskflow>=0.4
+taskflow>=0.6
 rtslib-fb>=2.1.39
 six>=1.7.0
 SQLAlchemy>=0.9.7,<=0.9.99
