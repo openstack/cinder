@@ -689,10 +689,6 @@ class PureDriverException(VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")
 
 
-class PureAPIException(VolumeBackendAPIException):
-    message = _("Bad response from Pure Storage REST API: %(reason)s")
-
-
 # Zadara
 class ZadaraException(VolumeDriverException):
     message = _('Zadara Cinder Driver exception.')
