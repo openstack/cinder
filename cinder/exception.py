@@ -537,6 +537,11 @@ class MetadataCopyFailure(Invalid):
     message = _("Failed to copy metadata to volume: %(reason)s")
 
 
+class InvalidMetadataType(Invalid):
+    message = _("The type of metadata: %(metadata_type)s for volume/snapshot "
+                "%(id)s is invalid.")
+
+
 class ImageCopyFailure(Invalid):
     message = _("Failed to copy image to volume: %(reason)s")
 

@@ -13,14 +13,17 @@
 #   under the License.
 
 """The Volume Image Metadata API extension."""
-
 import logging
 
 import six
+import webob
 
+from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
+from cinder import exception
+from cinder.i18n import _
 from cinder import volume
 
 
@@ -34,6 +37,15 @@ class VolumeImageMetadataController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
         super(VolumeImageMetadataController, self).__init__(*args, **kwargs)
         self.volume_api = volume.API()
+
+    def _get_image_metadata(self, context, volume_id):
+        try:
+            volume = self.volume_api.get(context, volume_id)
+            meta = self.volume_api.get_volume_image_metadata(context, volume)
+        except exception.VolumeNotFound:
+            msg = _('Volume with volume id %s does not exist.') % volume_id
+            raise webob.exc.HTTPNotFound(explanation=msg)
+        return meta
 
     def _get_all_images_metadata(self, context):
         """Returns the image metadata for all volumes."""
@@ -80,6 +92,76 @@ class VolumeImageMetadataController(wsgi.Controller):
             for vol in list(resp_obj.obj.get('volumes', [])):
                 image_meta = all_meta.get(vol['id'], {})
                 self._add_image_metadata(context, vol, image_meta)
+
+    @wsgi.action("os-set_image_metadata")
+    @wsgi.serializers(xml=common.MetadataTemplate)
+    @wsgi.deserializers(xml=common.MetadataDeserializer)
+    def create(self, req, id, body):
+        context = req.environ['cinder.context']
+        if authorize(context):
+            try:
+                metadata = body['os-set_image_metadata']['metadata']
+            except (KeyError, TypeError):
+                msg = _("Malformed request body.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            new_metadata = self._update_volume_image_metadata(context,
+                                                              id,
+                                                              metadata,
+                                                              delete=False)
+
+            return {'metadata': new_metadata}
+
+    def _update_volume_image_metadata(self, context,
+                                      volume_id,
+                                      metadata,
+                                      delete=False):
+        try:
+            volume = self.volume_api.get(context, volume_id)
+            return self.volume_api.update_volume_metadata(
+                context,
+                volume,
+                metadata,
+                delete=False,
+                meta_type=common.METADATA_TYPES.image)
+        except exception.VolumeNotFound:
+            msg = _('Volume with volume id %s does not exist.') % volume_id
+            raise webob.exc.HTTPNotFound(explanation=msg)
+        except (ValueError, AttributeError):
+            msg = _("Malformed request body.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        except exception.InvalidVolumeMetadata as error:
+            raise webob.exc.HTTPBadRequest(explanation=error.msg)
+        except exception.InvalidVolumeMetadataSize as error:
+            raise webob.exc.HTTPRequestEntityTooLarge(explanation=error.msg)
+
+    @wsgi.action("os-unset_image_metadata")
+    def delete(self, req, id, body):
+        """Deletes an existing image metadata."""
+        context = req.environ['cinder.context']
+        if authorize(context):
+            try:
+                key = body['os-unset_image_metadata']['key']
+            except (KeyError, TypeError):
+                msg = _("Malformed request body.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
+            if key:
+                metadata = self._get_image_metadata(context, id)
+                if key not in metadata:
+                    msg = _("Metadata item was not found.")
+                    raise webob.exc.HTTPNotFound(explanation=msg)
+
+            try:
+                volume = self.volume_api.get(context, id)
+                self.volume_api.delete_volume_metadata(
+                    context,
+                    volume,
+                    key,
+                    meta_type=common.METADATA_TYPES.image)
+            except exception.VolumeNotFound:
+                msg = _('Volume does not exist.')
+                raise webob.exc.HTTPNotFound(explanation=msg)
+            return webob.Response(status_int=200)
 
 
 class Volume_image_metadata(extensions.ExtensionDescriptor):

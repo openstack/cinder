@@ -26,6 +26,7 @@ import sys
 import tempfile
 import time
 
+import enum
 import eventlet
 import mock
 from mox3 import mox
@@ -40,6 +41,7 @@ import six
 from stevedore import extension
 from taskflow.engines.action_engine import engine
 
+from cinder.api import common
 from cinder.backup import driver as backup_driver
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder.compute import nova
@@ -617,6 +619,108 @@ class VolumeTestCase(BaseVolumeTestCase):
                           None,
                           None,
                           test_meta)
+
+    def test_update_volume_metadata_with_metatype(self):
+        """Test update volume metadata with different metadata type."""
+        test_meta1 = {'fake_key1': 'fake_value1'}
+        test_meta2 = {'fake_key1': 'fake_value2'}
+        FAKE_METADATA_TYPE = enum.Enum('METADATA_TYPES', 'fake_type')
+        volume = tests_utils.create_volume(self.context, metadata=test_meta1,
+                                           **self.volume_params)
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+
+        volume_api = cinder.volume.api.API()
+
+        # update user metadata associated with the volume.
+        result_meta = volume_api.update_volume_metadata(
+            self.context,
+            volume,
+            test_meta2,
+            False,
+            common.METADATA_TYPES.user)
+        self.assertEqual(test_meta2, result_meta)
+
+        # create image metadata associated with the volume.
+        result_meta = volume_api.update_volume_metadata(
+            self.context,
+            volume,
+            test_meta1,
+            False,
+            common.METADATA_TYPES.image)
+        self.assertEqual(test_meta1, result_meta)
+
+        # update image metadata associated with the volume.
+        result_meta = volume_api.update_volume_metadata(
+            self.context,
+            volume,
+            test_meta2,
+            False,
+            common.METADATA_TYPES.image)
+        self.assertEqual(test_meta2, result_meta)
+
+        # update volume metadata with invalid metadta type.
+        self.assertRaises(exception.InvalidMetadataType,
+                          volume_api.update_volume_metadata,
+                          self.context,
+                          volume,
+                          test_meta1,
+                          False,
+                          FAKE_METADATA_TYPE.fake_type)
+
+    def test_delete_volume_metadata_with_metatype(self):
+        """Test delete volume metadata with different metadata type."""
+        test_meta1 = {'fake_key1': 'fake_value1', 'fake_key2': 'fake_value2'}
+        test_meta2 = {'fake_key1': 'fake_value1'}
+        FAKE_METADATA_TYPE = enum.Enum('METADATA_TYPES', 'fake_type')
+        volume = tests_utils.create_volume(self.context, metadata=test_meta1,
+                                           **self.volume_params)
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+
+        volume_api = cinder.volume.api.API()
+
+        # delete user metadata associated with the volume.
+        volume_api.delete_volume_metadata(
+            self.context,
+            volume,
+            'fake_key2',
+            common.METADATA_TYPES.user)
+
+        self.assertEqual(test_meta2,
+                         db.volume_metadata_get(self.context, volume_id))
+
+        # create image metadata associated with the volume.
+        result_meta = volume_api.update_volume_metadata(
+            self.context,
+            volume,
+            test_meta1,
+            False,
+            common.METADATA_TYPES.image)
+
+        self.assertEqual(test_meta1, result_meta)
+
+        # delete image metadata associated with the volume.
+        volume_api.delete_volume_metadata(
+            self.context,
+            volume,
+            'fake_key2',
+            common.METADATA_TYPES.image)
+
+        # parse the result to build the dict.
+        rows = db.volume_glance_metadata_get(self.context, volume_id)
+        result = {}
+        for row in rows:
+            result[row['key']] = row['value']
+        self.assertEqual(test_meta2, result)
+
+        # delete volume metadata with invalid metadta type.
+        self.assertRaises(exception.InvalidMetadataType,
+                          volume_api.delete_volume_metadata,
+                          self.context,
+                          volume,
+                          'fake_key1',
+                          FAKE_METADATA_TYPE.fake_type)
 
     def test_create_volume_uses_default_availability_zone(self):
         """Test setting availability_zone correctly during volume create."""

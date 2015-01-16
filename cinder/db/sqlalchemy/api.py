@@ -46,6 +46,7 @@ from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
 
+from cinder.api import common
 from cinder.common import sqlalchemyutils
 from cinder.db.sqlalchemy import models
 from cinder import exception
@@ -1760,7 +1761,10 @@ def _volume_x_metadata_get_item(context, volume_id, key, model, notfound_exec,
         first()
 
     if not result:
-        raise notfound_exec(metadata_key=key, volume_id=volume_id)
+        if model is models.VolumeGlanceMetadata:
+            raise notfound_exec(id=volume_id)
+        else:
+            raise notfound_exec(metadata_key=key, volume_id=volume_id)
     return result
 
 
@@ -1812,6 +1816,12 @@ def _volume_user_metadata_get_query(context, volume_id, session=None):
                                         models.VolumeMetadata, session=session)
 
 
+def _volume_image_metadata_get_query(context, volume_id, session=None):
+    return _volume_x_metadata_get_query(context, volume_id,
+                                        models.VolumeGlanceMetadata,
+                                        session=session)
+
+
 @require_context
 @require_volume_exists
 def _volume_user_metadata_get(context, volume_id, session=None):
@@ -1839,6 +1849,16 @@ def _volume_user_metadata_update(context, volume_id, metadata, delete,
 
 @require_context
 @require_volume_exists
+def _volume_image_metadata_update(context, volume_id, metadata, delete,
+                                  session=None):
+    return _volume_x_metadata_update(context, volume_id, metadata, delete,
+                                     models.VolumeGlanceMetadata,
+                                     exception.GlanceMetadataNotFound,
+                                     session=session)
+
+
+@require_context
+@require_volume_exists
 def volume_metadata_get_item(context, volume_id, key):
     return _volume_user_metadata_get_item(context, volume_id, key)
 
@@ -1852,19 +1872,41 @@ def volume_metadata_get(context, volume_id):
 @require_context
 @require_volume_exists
 @_retry_on_deadlock
-def volume_metadata_delete(context, volume_id, key):
-    _volume_user_metadata_get_query(context, volume_id).\
-        filter_by(key=key).\
-        update({'deleted': True,
-                'deleted_at': timeutils.utcnow(),
-                'updated_at': literal_column('updated_at')})
+def volume_metadata_delete(context, volume_id, key, meta_type):
+    if meta_type == common.METADATA_TYPES.user:
+        (_volume_user_metadata_get_query(context, volume_id).
+            filter_by(key=key).
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')}))
+    elif meta_type == common.METADATA_TYPES.image:
+        (_volume_image_metadata_get_query(context, volume_id).
+            filter_by(key=key).
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')}))
+    else:
+        raise exception.InvalidMetadataType(metadata_type=meta_type,
+                                            id=volume_id)
 
 
 @require_context
 @require_volume_exists
 @_retry_on_deadlock
-def volume_metadata_update(context, volume_id, metadata, delete):
-    return _volume_user_metadata_update(context, volume_id, metadata, delete)
+def volume_metadata_update(context, volume_id, metadata, delete, meta_type):
+    if meta_type == common.METADATA_TYPES.user:
+        return _volume_user_metadata_update(context,
+                                            volume_id,
+                                            metadata,
+                                            delete)
+    elif meta_type == common.METADATA_TYPES.image:
+        return _volume_image_metadata_update(context,
+                                             volume_id,
+                                             metadata,
+                                             delete)
+    else:
+        raise exception.InvalidMetadataType(metadata_type=meta_type,
+                                            id=volume_id)
 
 
 ###################

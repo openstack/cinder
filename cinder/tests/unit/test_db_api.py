@@ -16,9 +16,11 @@
 
 import datetime
 
+import enum
 from oslo_config import cfg
 from oslo_utils import uuidutils
 
+from cinder.api import common
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
@@ -913,6 +915,53 @@ class DBAPIVolumeTestCase(BaseTest):
 
         self.assertEqual(should_be, db_meta)
 
+    def test_volume_metadata_update_with_metatype(self):
+        user_metadata1 = {'a': '1', 'c': '2'}
+        user_metadata2 = {'a': '3', 'd': '5'}
+        expected1 = {'a': '3', 'c': '2', 'd': '5'}
+        image_metadata1 = {'e': '1', 'f': '2'}
+        image_metadata2 = {'e': '3', 'g': '5'}
+        expected2 = {'e': '3', 'f': '2', 'g': '5'}
+        FAKE_METADATA_TYPE = enum.Enum('METADATA_TYPES', 'fake_type')
+
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': user_metadata1})
+
+        # update user metatdata associated with volume.
+        db_meta = db.volume_metadata_update(
+            self.ctxt,
+            1,
+            user_metadata2,
+            False,
+            meta_type=common.METADATA_TYPES.user)
+        self.assertEqual(expected1, db_meta)
+
+        # create image metatdata associated with volume.
+        db_meta = db.volume_metadata_update(
+            self.ctxt,
+            1,
+            image_metadata1,
+            False,
+            meta_type=common.METADATA_TYPES.image)
+        self.assertEqual(image_metadata1, db_meta)
+
+        # update image metatdata associated with volume.
+        db_meta = db.volume_metadata_update(
+            self.ctxt,
+            1,
+            image_metadata2,
+            False,
+            meta_type=common.METADATA_TYPES.image)
+        self.assertEqual(expected2, db_meta)
+
+        # update volume with invalid metadata type.
+        self.assertRaises(exception.InvalidMetadataType,
+                          db.volume_metadata_update,
+                          self.ctxt,
+                          1,
+                          image_metadata1,
+                          False,
+                          FAKE_METADATA_TYPE.fake_type)
+
     def test_volume_metadata_update_delete(self):
         metadata1 = {'a': '1', 'c': '2'}
         metadata2 = {'a': '3', 'd': '4'}
@@ -929,6 +978,46 @@ class DBAPIVolumeTestCase(BaseTest):
         db.volume_metadata_delete(self.ctxt, 1, 'c')
         metadata.pop('c')
         self.assertEqual(metadata, db.volume_metadata_get(self.ctxt, 1))
+
+    def test_volume_metadata_delete_with_metatype(self):
+        user_metadata = {'a': '1', 'c': '2'}
+        image_metadata = {'e': '1', 'f': '2'}
+        FAKE_METADATA_TYPE = enum.Enum('METADATA_TYPES', 'fake_type')
+
+        # test that user metadata deleted with meta_type specified.
+        db.volume_create(self.ctxt, {'id': 1, 'metadata': user_metadata})
+        db.volume_metadata_delete(self.ctxt, 1, 'c',
+                                  meta_type=common.METADATA_TYPES.user)
+        user_metadata.pop('c')
+        self.assertEqual(user_metadata, db.volume_metadata_get(self.ctxt, 1))
+
+        # update the image metadata associated with the volume.
+        db.volume_metadata_update(
+            self.ctxt,
+            1,
+            image_metadata,
+            False,
+            meta_type=common.METADATA_TYPES.image)
+
+        # test that image metadata deleted with meta_type specified.
+        db.volume_metadata_delete(self.ctxt, 1, 'e',
+                                  meta_type=common.METADATA_TYPES.image)
+        image_metadata.pop('e')
+
+        # parse the result to build the dict.
+        rows = db.volume_glance_metadata_get(self.ctxt, 1)
+        result = {}
+        for row in rows:
+            result[row['key']] = row['value']
+        self.assertEqual(image_metadata, result)
+
+        # delete volume with invalid metadata type.
+        self.assertRaises(exception.InvalidMetadataType,
+                          db.volume_metadata_delete,
+                          self.ctxt,
+                          1,
+                          'f',
+                          FAKE_METADATA_TYPE.fake_type)
 
     def test_volume_glance_metadata_create(self):
         volume = db.volume_create(self.ctxt, {'host': 'h1'})

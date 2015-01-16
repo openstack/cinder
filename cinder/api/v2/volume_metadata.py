@@ -98,10 +98,12 @@ class Controller(wsgi.Controller):
                                 delete=False):
         try:
             volume = self.volume_api.get(context, volume_id)
-            return self.volume_api.update_volume_metadata(context,
-                                                          volume,
-                                                          metadata,
-                                                          delete)
+            return self.volume_api.update_volume_metadata(
+                context,
+                volume,
+                metadata,
+                delete,
+                meta_type=common.METADATA_TYPES.user)
         except exception.VolumeNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
@@ -139,7 +141,11 @@ class Controller(wsgi.Controller):
 
         try:
             volume = self.volume_api.get(context, volume_id)
-            self.volume_api.delete_volume_metadata(context, volume, id)
+            self.volume_api.delete_volume_metadata(
+                context,
+                volume,
+                id,
+                meta_type=common.METADATA_TYPES.user)
         except exception.VolumeNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
         return webob.Response(status_int=200)
