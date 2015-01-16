@@ -19,7 +19,7 @@ Unit Tests for qos specs internal API
 
 import time
 
-from oslo.db import exception as db_exc
+from oslo_db import exception as db_exc
 
 from cinder import context
 from cinder import db

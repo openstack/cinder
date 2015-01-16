@@ -20,8 +20,8 @@ SQLAlchemy models for cinder data.
 """
 
 from oslo.config import cfg
-from oslo.db.sqlalchemy import models
 from oslo.utils import timeutils
+from oslo_db.sqlalchemy import models
 from sqlalchemy import Column, Integer, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean

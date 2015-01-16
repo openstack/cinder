@@ -143,3 +143,7 @@ class HackingTestCase(test.TestCase):
             "from oslo.concurrency import foo"))))
         self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
             "from oslo_concurrency import bar"))))
+        self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
+            "from oslo.db import foo"))))
+        self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
+            "from oslo_db import bar"))))

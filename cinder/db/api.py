@@ -42,8 +42,8 @@ these objects be simple dictionaries.
 """
 
 from oslo.config import cfg
-from oslo.db import concurrency as db_concurrency
-from oslo.db import options as db_options
+from oslo_db import concurrency as db_concurrency
+from oslo_db import options as db_options
 
 
 db_opts = [
