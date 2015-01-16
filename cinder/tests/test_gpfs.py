@@ -1055,7 +1055,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._clone_image')
     def test_clone_image_pub(self, mock_exec):
-        self.driver.clone_image('', '', {'id': 1})
+        self.driver.clone_image('', '', '', {'id': 1}, '')
 
     @patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._is_gpfs_path')
     def test_is_cloneable_ok(self, mock_is_gpfs_path):

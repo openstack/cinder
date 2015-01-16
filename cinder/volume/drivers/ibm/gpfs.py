@@ -703,7 +703,9 @@ class GPFSDriver(driver.VolumeDriver):
         data['reserved_percentage'] = 0
         self._stats = data
 
-    def clone_image(self, volume, image_location, image_meta):
+    def clone_image(self, context, volume,
+                    image_location, image_meta,
+                    image_service):
         """Create a volume from the specified image."""
         return self._clone_image(volume, image_location, image_meta['id'])
 

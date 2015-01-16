@@ -14,6 +14,7 @@
 #    under the License.
 
 import json
+import math
 import random
 import socket
 import string
@@ -27,7 +28,8 @@ from six import wraps
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE, _LI, _LW
+from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san.san import SanISCSIDriver
 from cinder.volume import qos_specs
@@ -50,6 +52,17 @@ sf_opts = [
                     'can be used here, but the string \"hostname\" is special '
                     'and will create a prefix using the cinder node hostsname '
                     '(previous default behavior).  The default is NO prefix.'),
+
+    cfg.StrOpt('sf_template_account_name',
+               default='openstack-vtemplate',
+               help='Account name on the SolidFire Cluster to use as owner of '
+                    'template/cache volumes (created if doesnt exist).'),
+
+    cfg.BoolOpt('sf_allow_template_caching',
+                default=True,
+                help='Create an internal cache of copy of images when '
+                     'a bootable volume is created to eliminate fetch from '
+                     'glance and qemu-conversion on subsequent calls.'),
 
     cfg.IntOpt('sf_api_port',
                default=443,
@@ -328,6 +341,7 @@ class SolidFireDriver(SanISCSIDriver):
         params = {'accountID': sfaccount['accountID']}
 
         sf_vol = self._get_sf_volume(src_uuid, params)
+
         if sf_vol is None:
             raise exception.VolumeNotFound(volume_id=src_uuid)
 
@@ -381,6 +395,15 @@ class SolidFireDriver(SanISCSIDriver):
             mesg = _('Failed to get model update from clone')
             raise exception.SolidFireAPIException(mesg)
 
+        # Increment the usage count, just for data collection
+        cloned_count = sf_vol['attributes'].get('cloned_count', 0)
+        cloned_count += 1
+        attributes = sf_vol['attributes']
+        attributes['cloned_count'] = cloned_count
+
+        params = {'volumeID': int(sf_vol['volumeID'])}
+        params['attributes'] = attributes
+        data = self._issue_api_request('ModifyVolume', params)
         return (data, sfaccount, model_update)
 
     def _do_volume_create(self, project_id, params):
@@ -476,6 +499,160 @@ class SolidFireDriver(SanISCSIDriver):
             raise exception.DuplicateSfVolumeNames(vol_name=uuid)
 
         return sf_volref
+
+    def _create_image_volume(self, context,
+                             image_meta, image_service,
+                             image_id):
+        # NOTE(jdg): It's callers responsibility to ensure that
+        # the optional properties.virtual_size is set on the image
+        # before we get here
+        virt_size = int(image_meta['properties'].get('virtual_size'))
+        min_sz_in_bytes =\
+            math.ceil(virt_size / float(units.Gi)) * float(units.Gi)
+        min_sz_in_gig = math.ceil(min_sz_in_bytes / float(units.Gi))
+
+        attributes = {}
+        attributes['image_info'] = {}
+        attributes['image_info']['image_updated_at'] =\
+            image_meta['updated_at'].isoformat()
+        attributes['image_info']['image_name'] =\
+            image_meta['name']
+        attributes['image_info']['image_created_at'] =\
+            image_meta['created_at'].isoformat()
+        attributes['image_info']['image_id'] = image_meta['id']
+
+        params = {'name': 'OpenStackIMG-%s' % image_id,
+                  'accountID': None,
+                  'sliceCount': 1,
+                  'totalSize': int(min_sz_in_bytes),
+                  'enable512e': self.configuration.sf_emulate_512,
+                  'attributes': attributes,
+                  'qos': {}}
+
+        account = self.configuration.sf_template_account_name
+        template_vol = self._do_volume_create(account, params)
+        tvol = {}
+        tvol['id'] = image_id
+        tvol['provider_location'] = template_vol['provider_location']
+        tvol['provider_auth'] = template_vol['provider_auth']
+
+        connector = 'na'
+        conn = self.initialize_connection(tvol, connector)
+        attach_info = super(SolidFireDriver, self)._connect_device(conn)
+
+        sfaccount = self._get_sfaccount(account)
+        params = {'accountID': sfaccount['accountID']}
+        properties = 'na'
+
+        try:
+            image_utils.fetch_to_raw(context,
+                                     image_service,
+                                     image_id,
+                                     attach_info['device']['path'],
+                                     self.configuration.volume_dd_blocksize,
+                                     size=min_sz_in_gig)
+        except Exception as exc:
+            params['volumeID'] = template_vol['volumeID']
+            LOG.error(_LE('Failed image conversion during cache creation: %s'),
+                      exc)
+            LOG.debug('Removing SolidFire Cache Volume (SF ID): %s',
+                      template_vol['volumeID'])
+
+            self._detach_volume(context, attach_info, tvol, properties)
+            self._issue_api_request('DeleteVolume', params)
+            return
+
+        self._detach_volume(context, attach_info, tvol, properties)
+        sf_vol = self._get_sf_volume(image_id, params)
+        LOG.debug('Successfully created SolidFire Image Template ',
+                  'for image-id: %s', image_id)
+        return sf_vol
+
+    def _verify_image_volume(self, context, image_meta, image_service):
+        # This method just verifies that IF we have a cache volume that
+        # it's still up to date and current WRT the image in Glance
+        # ie an image-update hasn't occured since we grabbed it
+
+        # If it's out of date, just delete it and we'll create a new one
+        # Any other case we don't care and just return without doing anything
+
+        account = self.configuration.sf_template_account_name
+        sfaccount = self._get_sfaccount(account)
+        params = {'accountID': sfaccount['accountID']}
+        sf_vol = self._get_sf_volume(image_meta['id'], params)
+        if sf_vol is None:
+            return
+
+        # Check updated_at field, delete copy and update if needed
+        if sf_vol['attributes']['image_info']['image_updated_at'] ==\
+                image_meta['updated_at'].isoformat():
+            return
+        else:
+            # Bummer, it's been updated, delete it
+            params = {'accountID': sfaccount['accountID']}
+            params = {'volumeID': sf_vol['volumeID']}
+            data = self._issue_api_request('DeleteVolume', params)
+            if 'result' not in data:
+                msg = _("Failed to delete SolidFire Image-Volume: %s") % data
+                raise exception.SolidFireAPIException(msg)
+
+            if not self._create_image_volume(context,
+                                             image_meta,
+                                             image_service,
+                                             image_meta['id']):
+                msg = _("Failed to create SolidFire Image-Volume")
+                raise exception.SolidFireAPIException(msg)
+
+    def clone_image(self, context,
+                    volume, image_location,
+                    image_meta, image_service):
+
+        # Check out pre-requisites:
+        # Is template caching enabled?
+        if not self.configuration.sf_allow_template_caching:
+            return None, False
+
+        # Is the image owned by this tenant or public?
+        if ((not image_meta.get('is_public', False)) and
+                (image_meta['owner'] != volume['project_id'])):
+                LOG.warning(_LW("Requested image is not "
+                                "accesible by current Tenant."))
+                return None, False
+
+        # Is virtual_size property set on the image?
+        if ((not image_meta.get('properties', None)) or
+                (not image_meta['properties'].get('virtual_size', None))):
+            LOG.info(_LI('Unable to create cache volume because image: %s '
+                         'does not include properties.virtual_size'),
+                     image_meta['id'])
+            return None, False
+
+        try:
+            self._verify_image_volume(context,
+                                      image_meta,
+                                      image_service)
+        except exception.SolidFireAPIException:
+            return None, False
+
+        account = self.configuration.sf_template_account_name
+        try:
+            (data, sfaccount, model) = self._do_clone_volume(image_meta['id'],
+                                                             account,
+                                                             volume)
+        except exception.VolumeNotFound:
+            if self._create_image_volume(context,
+                                         image_meta,
+                                         image_service,
+                                         image_meta['id']) is None:
+                # We failed, dump out
+                return None, False
+
+            # Ok, should be good to go now, try it again
+            (data, sfaccount, model) = self._do_clone_volume(image_meta['id'],
+                                                             account,
+                                                             volume)
+
+        return model, True
 
     def create_volume(self, volume):
         """Create volume on SolidFire device.

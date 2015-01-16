@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
+
 import mock
 import mox
 from oslo.utils import timeutils
@@ -49,6 +51,8 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.sf_account_prefix = 'cinder'
         self.configuration.reserved_percentage = 25
         self.configuration.iscsi_helper = None
+        self.configuration.sf_template_account_name = 'openstack-vtemplate'
+        self.configuration.sf_allow_template_caching = False
 
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
@@ -59,6 +63,27 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.expected_qos_results = {'minIOPS': 1000,
                                      'maxIOPS': 10000,
                                      'burstIOPS': 20000}
+        self.mock_stats_data =\
+            {'result':
+                {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
+                                     'usedSpace': 1073741824,
+                                     'compressionPercent': 100,
+                                     'deDuplicationPercent': 100,
+                                     'thinProvisioningPercent': 100}}}
+        self.mock_volume = {'project_id': 'testprjid',
+                            'name': 'testvol',
+                            'size': 1,
+                            'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                            'volume_type_id': 'fast',
+                            'created_at': timeutils.utcnow()}
+        self.fake_image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                                'updated_at': datetime.datetime(2013, 9,
+                                                                28, 15,
+                                                                27, 36,
+                                                                325355),
+                                'is_public': True,
+                                'owner': 'testprjid'}
+        self.fake_image_service = 'null'
 
     def fake_build_endpoint_info(obj, **kwargs):
         endpoint = {}
@@ -282,23 +307,6 @@ class SolidFireVolumeTestCase(test.TestCase):
         sfv.create_cloned_volume(testvol_b, testvol)
 
     def test_initialize_connector_with_blocksizes(self):
-        expected_iqn = 'iqn.2010-01.com.solidfire:'\
-                       '87hg.uuid-2cc06226-cc74-4cb7-bd55-14aed659a0cc.4060'
-        expected_properties = \
-            {'driver_volume_type': 'iscsi',
-             'data': {'target_discovered': False,
-                      'encrypted': False,
-                      'logical_block_size': '4096',
-                      'physical_block_size': '4096',
-                      'target_iqn': expected_iqn,
-                      'target_portal': '10.10.7.1:3260',
-                      'volume_id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                      'target_lun': 0,
-                      'auth_password': '2FE0CQ8J196R',
-                      'auth_username':
-                          'stack-1-a60e2611875f40199931f2c76370d66b',
-                      'auth_method': 'CHAP'}}
-
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
@@ -315,62 +323,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                    }
 
         sfv = SolidFireDriver(configuration=self.configuration)
-        self.assertEqual(sfv.initialize_connection(testvol, connector),
-                         expected_properties)
-
-    @mock.patch('cinder.volume.driver.CONF')
-    def test_iscsi_helpers_not_in_base_iscsi_driver(self, mock_conf):
-        # This test is added to check for bug: 1400804
-        # The base iscsi driver should be clean from specifics
-        # regarding tgtadm or LVM driver, this check is here
-        # to make sure nothing regarding specific iscsi_helpers
-        # sneak back in
-        expected_iqn = 'iqn.2010-01.com.solidfire:'\
-                       '87hg.uuid-2cc06226-cc74-4cb7-bd55-14aed659a0cc.4060'
-        expected_properties = \
-            {'driver_volume_type': 'iscsi',
-             'data': {'target_discovered': False,
-                      'encrypted': False,
-                      'logical_block_size': '4096',
-                      'physical_block_size': '4096',
-                      'target_iqn': expected_iqn,
-                      'target_portal': '10.10.7.1:3260',
-                      'volume_id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                      'target_lun': 0,
-                      'auth_password': '2FE0CQ8J196R',
-                      'auth_username':
-                          'stack-1-a60e2611875f40199931f2c76370d66b',
-                      'auth_method': 'CHAP'}}
-
-        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
-        testvol = {'project_id': 'testprjid',
-                   'name': 'testvol',
-                   'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'volume_type_id': None,
-                   'provider_location': '10.10.7.1:3260 iqn.2010-01.com.'
-                                        'solidfire:87hg.uuid-2cc06226-cc'
-                                        '74-4cb7-bd55-14aed659a0cc.4060 0',
-                   'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
-                                    'c76370d66b 2FE0CQ8J196R',
-                   'provider_geometry': '4096 4096',
-                   'created_at': timeutils.utcnow(),
-                   }
-
-        mock_conf.iscsi_helper = 'lioadm'
-        sfv = SolidFireDriver(configuration=self.configuration)
-        self.assertEqual(sfv.initialize_connection(testvol, connector),
-                         expected_properties)
-
-        mock_conf.iscsi_helper = 'iseradm'
-        sfv = SolidFireDriver(configuration=self.configuration)
-        self.assertEqual(sfv.initialize_connection(testvol, connector),
-                         expected_properties)
-
-        mock_conf.iscsi_helper = 'tgtadm'
-        sfv = SolidFireDriver(configuration=self.configuration)
-        self.assertEqual(sfv.initialize_connection(testvol, connector),
-                         expected_properties)
+        properties = sfv.initialize_connection(testvol, connector)
+        self.assertEqual('4096', properties['data']['physical_block_size'])
+        self.assertEqual('4096', properties['data']['logical_block_size'])
 
     def test_create_volume_with_qos(self):
         preset_qos = {}
@@ -732,3 +687,155 @@ class SolidFireVolumeTestCase(test.TestCase):
                          sf_vol_object['attributes']['migration_uuid'])
         self.assertEqual('UUID-a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                          sf_vol_object['name'])
+
+    @mock.patch.object(SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(SolidFireDriver, '_get_sfaccount')
+    @mock.patch.object(SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(SolidFireDriver, '_create_image_volume')
+    def test_verify_image_volume_out_of_date(self,
+                                             _mock_create_image_volume,
+                                             _mock_get_sf_volume,
+                                             _mock_get_sfaccount,
+                                             _mock_issue_api_request):
+        fake_sf_vref = {
+            'status': 'active', 'volumeID': 1,
+            'attributes': {
+                'image_info':
+                    {'image_updated_at': '2014-12-17T00:16:23+00:00',
+                     'image_id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                     'image_name': 'fake-image',
+                     'image_created_at': '2014-12-17T00:16:23+00:00'}}}
+
+        stats_data =\
+            {'result':
+                {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
+                                     'usedSpace': 1073741824,
+                                     'compressionPercent': 100,
+                                     'deDuplicationPercent': 100,
+                                     'thinProvisioningPercent': 100}}}
+
+        _mock_issue_api_request.return_value = stats_data
+        _mock_get_sfaccount.return_value = {'username': 'openstack-vtemplate',
+                                            'accountID': 7777}
+        _mock_get_sf_volume.return_value = fake_sf_vref
+        _mock_create_image_volume.return_value = fake_sf_vref
+
+        image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                      'updated_at': datetime.datetime(2013, 9, 28,
+                                                      15, 27, 36,
+                                                      325355)}
+        image_service = 'null'
+
+        sfv = SolidFireDriver(configuration=self.configuration)
+        _mock_issue_api_request.return_value = {'result': 'ok'}
+        sfv._verify_image_volume(self.ctxt, image_meta, image_service)
+        self.assertTrue(_mock_create_image_volume.called)
+
+    @mock.patch.object(SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(SolidFireDriver, '_get_sfaccount')
+    @mock.patch.object(SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(SolidFireDriver, '_create_image_volume')
+    def test_verify_image_volume_ok(self,
+                                    _mock_create_image_volume,
+                                    _mock_get_sf_volume,
+                                    _mock_get_sfaccount,
+                                    _mock_issue_api_request):
+
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_get_sfaccount.return_value = {'username': 'openstack-vtemplate',
+                                            'accountID': 7777}
+        _mock_get_sf_volume.return_value =\
+            {'status': 'active', 'volumeID': 1,
+             'attributes': {
+                 'image_info':
+                     {'image_updated_at': '2013-09-28T15:27:36.325355',
+                      'image_id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                      'image_name': 'fake-image',
+                      'image_created_at': '2014-12-17T00:16:23+00:00'}}}
+        _mock_create_image_volume.return_value = None
+
+        image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                      'updated_at': datetime.datetime(2013, 9, 28,
+                                                      15, 27, 36,
+                                                      325355)}
+        image_service = 'null'
+
+        sfv = SolidFireDriver(configuration=self.configuration)
+        _mock_issue_api_request.return_value = {'result': 'ok'}
+
+        sfv._verify_image_volume(self.ctxt, image_meta, image_service)
+        self.assertFalse(_mock_create_image_volume.called)
+
+    @mock.patch.object(SolidFireDriver, '_issue_api_request')
+    def test_clone_image_not_configured(self, _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+
+        sfv = SolidFireDriver(configuration=self.configuration)
+        self.assertEqual((None, False),
+                         sfv.clone_image(self.ctxt,
+                                         self.mock_volume,
+                                         'fake',
+                                         self.fake_image_meta,
+                                         'fake'))
+
+    @mock.patch.object(SolidFireDriver, '_issue_api_request')
+    def test_clone_image_authorization(self, _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        self.configuration.sf_allow_template_caching = True
+        sfv = SolidFireDriver(configuration=self.configuration)
+
+        # Make sure if it's NOT public and we're NOT the owner it
+        # doesn't try and cache
+        _fake_image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                            'updated_at': datetime.datetime(2013, 9,
+                                                            28, 15,
+                                                            27, 36,
+                                                            325355),
+                            'properties': {'virtual_size': 1},
+                            'is_public': False,
+                            'owner': 'wrong-owner'}
+        self.assertEqual((None, False),
+                         sfv.clone_image(self.ctxt,
+                                         self.mock_volume,
+                                         'fake',
+                                         _fake_image_meta,
+                                         'fake'))
+
+        # And is_public False, but the correct owner does work
+        # expect raise AccountNotFound as that's the next call after
+        # auth checks
+        _fake_image_meta['owner'] = 'testprjid'
+        self.assertRaises(exception.SolidFireAccountNotFound,
+                          sfv.clone_image, self.ctxt,
+                          self.mock_volume, 'fake',
+                          _fake_image_meta, 'fake')
+
+        # And is_public True, even if not the correct owner
+        _fake_image_meta['is_public'] = True
+        _fake_image_meta['owner'] = 'wrong-owner'
+        self.assertRaises(exception.SolidFireAccountNotFound,
+                          sfv.clone_image, self.ctxt,
+                          self.mock_volume, 'fake',
+                          _fake_image_meta, 'fake')
+
+    @mock.patch.object(SolidFireDriver, '_issue_api_request')
+    def test_clone_image_virt_size_not_set(self, _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        self.configuration.sf_allow_template_caching = True
+        sfv = SolidFireDriver(configuration=self.configuration)
+
+        # Don't run clone_image if virtual_size property not on image
+        _fake_image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                            'updated_at': datetime.datetime(2013, 9,
+                                                            28, 15,
+                                                            27, 36,
+                                                            325355),
+                            'is_public': True,
+                            'owner': 'testprjid'}
+
+        self.assertEqual((None, False),
+                         sfv.clone_image(self.ctxt,
+                                         self.mock_volume,
+                                         'fake',
+                                         _fake_image_meta,
+                                         'fake'))

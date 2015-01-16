@@ -366,16 +366,14 @@ class NetAppNfsDriver(nfs.NfsDriver):
             LOG.warning(_LW('Exception during deleting %s'), ex.__str__())
             return False
 
-    def clone_image(self, volume, image_location, image_meta):
+    def clone_image(self, context, volume,
+                    image_location, image_meta,
+                    image_service):
         """Create a volume efficiently from an existing image.
 
         image_location is a string whose format depends on the
         image service backend in use. The driver should use it
         to determine whether cloning is possible.
-
-        image_id is a string which represents id of the image.
-        It can be used by the driver to introspect internal
-        stores or registry to do an efficient image clone.
 
         Returns a dict of volume properties eg. provider_location,
         boolean indicating whether cloning occurred.

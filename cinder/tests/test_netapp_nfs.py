@@ -478,7 +478,10 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._post_clone_image(volume)
 
         mox.ReplayAll()
-        drv.clone_image(volume, ('image_location', None), {'id': 'image_id'})
+        drv.clone_image('',
+                        volume,
+                        ('image_location', None),
+                        {'id': 'image_id'}, '')
         mox.VerifyAll()
 
     def get_img_info(self, format):
@@ -501,10 +504,12 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._is_share_vol_compatible(IgnoreArg(), IgnoreArg()).AndReturn(False)
 
         mox.ReplayAll()
-        (prop, cloned) = drv. clone_image(
+        (prop, cloned) = drv.clone_image(
+            '',
             volume,
             ('nfs://127.0.0.1:/share/img-id', None),
-            {'id': 'image_id'})
+            {'id': 'image_id'},
+            '')
         mox.VerifyAll()
         if not cloned and not prop['provider_location']:
             pass
@@ -539,10 +544,12 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._resize_image_file({'name': 'vol'}, IgnoreArg())
 
         mox.ReplayAll()
-        drv. clone_image(
+        drv.clone_image(
+            '',
             volume,
             ('nfs://127.0.0.1:/share/img-id', None),
-            {'id': 'image_id'})
+            {'id': 'image_id'},
+            '')
         mox.VerifyAll()
 
     def test_clone_image_cloneableshare_notraw(self):
@@ -580,7 +587,11 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mox.ReplayAll()
         drv.clone_image(
-            volume, ('nfs://127.0.0.1/share/img-id', None), {'id': 'image_id'})
+            '',
+            volume,
+            ('nfs://127.0.0.1/share/img-id', None),
+            {'id': 'image_id'},
+            '')
         mox.VerifyAll()
 
     def test_clone_image_file_not_discovered(self):
@@ -619,8 +630,12 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._delete_file('/mnt/vol')
 
         mox.ReplayAll()
-        vol_dict, result = drv. clone_image(
-            volume, ('nfs://127.0.0.1/share/img-id', None), {'id': 'image_id'})
+        vol_dict, result = drv.clone_image(
+            '',
+            volume,
+            ('nfs://127.0.0.1/share/img-id', None),
+            {'id': 'image_id'},
+            '')
         mox.VerifyAll()
         self.assertFalse(result)
         self.assertFalse(vol_dict['bootable'])
@@ -667,8 +682,12 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv._delete_file('/mnt/vol')
 
         mox.ReplayAll()
-        vol_dict, result = drv. clone_image(
-            volume, ('nfs://127.0.0.1/share/img-id', None), {'id': 'image_id'})
+        vol_dict, result = drv.clone_image(
+            '',
+            volume,
+            ('nfs://127.0.0.1/share/img-id', None),
+            {'id': 'image_id'},
+            '')
         mox.VerifyAll()
         self.assertFalse(result)
         self.assertFalse(vol_dict['bootable'])
