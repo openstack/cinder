@@ -950,6 +950,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertEqual(data['data']['name'], 'test')
         self.assertEqual(data['data']['device_path'], os.path.join(
             self.driver.configuration.gpfs_mount_point_base, 'test'))
+        self.assertEqual(data['driver_volume_type'], 'gpfs')
 
     def test_terminate_connection(self):
         self.assertEqual(None, self.driver.terminate_connection('', ''))

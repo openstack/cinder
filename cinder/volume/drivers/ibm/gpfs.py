@@ -655,7 +655,7 @@ class GPFSDriver(driver.VolumeDriver):
 
     def initialize_connection(self, volume, connector):
         return {
-            'driver_volume_type': 'local',
+            'driver_volume_type': 'gpfs',
             'data': {
                 'name': volume['name'],
                 'device_path': self.local_path(volume),
