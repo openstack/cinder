@@ -17,7 +17,7 @@
 The VMware API utility module.
 """
 
-import netaddr
+from oslo.utils import netutils
 
 
 def get_soap_url(protocol, host, path='sdk'):
@@ -28,7 +28,7 @@ def get_soap_url(protocol, host, path='sdk'):
     :param path: path part of the SOAP URL
     :return: URL to SOAP services for ESX/VC server
     """
-    if netaddr.valid_ipv6(host):
+    if netutils.is_valid_ipv6(host):
         return '%s://[%s]/%s' % (protocol, host, path)
     return '%s://%s/%s' % (protocol, host, path)
 
