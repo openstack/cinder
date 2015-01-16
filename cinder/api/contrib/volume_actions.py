@@ -14,7 +14,7 @@
 
 
 from oslo import messaging
-from oslo.utils import strutils
+from oslo_utils import strutils
 import webob
 
 from cinder.api import extensions

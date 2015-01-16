@@ -21,9 +21,9 @@ import os
 import tempfile
 import urllib
 
-from oslo.utils import encodeutils
-from oslo.utils import units
 from oslo_config import cfg
+from oslo_utils import encodeutils
+from oslo_utils import units
 import six
 
 from cinder import exception

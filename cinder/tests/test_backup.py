@@ -20,9 +20,9 @@ Tests for Backup code.
 import tempfile
 
 import mock
-from oslo.utils import importutils
-from oslo.utils import timeutils
 from oslo_config import cfg
+from oslo_utils import importutils
+from oslo_utils import timeutils
 
 from cinder.backup import manager
 from cinder import context

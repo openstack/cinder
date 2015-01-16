@@ -21,7 +21,7 @@ Storage service catalog utility functions and classes for NetApp systems.
 import copy
 from threading import Timer
 
-from oslo.utils import timeutils
+from oslo_utils import timeutils
 import six
 
 from cinder import exception

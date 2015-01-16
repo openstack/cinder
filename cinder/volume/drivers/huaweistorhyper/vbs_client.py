@@ -19,7 +19,7 @@
 
 import socket
 
-from oslo.utils import units
+from oslo_utils import units
 
 from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging

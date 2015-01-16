@@ -21,7 +21,7 @@ import base64
 import urllib2
 
 import mox as mox_lib
-from oslo.utils import units
+from oslo_utils import units
 
 from cinder import context
 from cinder import db

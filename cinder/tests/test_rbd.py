@@ -21,8 +21,8 @@ import os
 import tempfile
 
 import mock
-from oslo.utils import timeutils
-from oslo.utils import units
+from oslo_utils import timeutils
+from oslo_utils import units
 
 from cinder import db
 from cinder import exception

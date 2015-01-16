@@ -23,7 +23,7 @@ Volume driver for NetApp NFS storage.
 import os
 import uuid
 
-from oslo.utils import units
+from oslo_utils import units
 import six
 
 from cinder import exception

@@ -16,7 +16,7 @@
 # Importing full names to not pollute the namespace and cause possible
 # collisions with use of 'from cinder.transfer import <foo>' elsewhere.
 
-from oslo.utils import importutils
+from oslo_utils import importutils
 
 from cinder.common import config
 

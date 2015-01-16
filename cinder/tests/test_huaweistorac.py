@@ -23,7 +23,7 @@ import re
 import tempfile
 from xml.dom.minidom import Document
 
-from oslo.utils import units
+from oslo_utils import units
 
 from cinder.brick.initiator import connector as brick_connector
 from cinder import exception

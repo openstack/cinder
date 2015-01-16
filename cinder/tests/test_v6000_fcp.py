@@ -18,7 +18,7 @@ Tests for Violin Memory 6000 Series All-Flash Array Fibrechannel Driver
 """
 
 import mock
-from oslo.utils import units
+from oslo_utils import units
 
 from cinder import context
 from cinder.db.sqlalchemy import models

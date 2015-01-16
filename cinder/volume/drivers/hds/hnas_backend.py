@@ -20,7 +20,7 @@ Hitachi Unified Storage (HUS-HNAS) platform. Backend operations.
 
 import re
 
-from oslo.utils import units
+from oslo_utils import units
 
 from cinder.openstack.common import log as logging
 from cinder import utils

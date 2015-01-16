@@ -20,9 +20,9 @@ import shlex
 import threading
 import time
 
-from oslo.utils import excutils
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
+from oslo_utils import excutils
 import six
 
 from cinder import exception

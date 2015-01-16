@@ -25,7 +25,7 @@ import json
 import random
 import time
 
-from oslo.utils import units
+from oslo_utils import units
 import six
 
 from cinder import exception

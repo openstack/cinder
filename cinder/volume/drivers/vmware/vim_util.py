@@ -17,7 +17,7 @@
 The VMware API utility module.
 """
 
-from oslo.utils import netutils
+from oslo_utils import netutils
 
 
 def get_soap_url(protocol, host, path='sdk'):

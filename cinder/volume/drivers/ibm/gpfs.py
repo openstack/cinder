@@ -21,9 +21,9 @@ import os
 import re
 import shutil
 
-from oslo.utils import units
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI

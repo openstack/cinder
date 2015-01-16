@@ -20,9 +20,9 @@ Scheduler Service
 """
 
 from oslo import messaging
-from oslo.utils import excutils
-from oslo.utils import importutils
 from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import importutils
 
 from cinder import context
 from cinder import db

@@ -35,11 +35,11 @@ from xml import sax
 from xml.sax import expatreader
 from xml.sax import saxutils
 
-from oslo.utils import importutils
-from oslo.utils import timeutils
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils import importutils
+from oslo_utils import timeutils
 import six
 
 from cinder.brick.initiator import connector

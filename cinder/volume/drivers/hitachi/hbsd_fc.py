@@ -20,8 +20,8 @@ from contextlib import nested
 import os
 import threading
 
-from oslo.utils import excutils
 from oslo_config import cfg
+from oslo_utils import excutils
 import six
 
 from cinder import exception

@@ -15,8 +15,8 @@
 
 import os
 
-from oslo.utils import importutils
 from oslo_config import cfg
+from oslo_utils import importutils
 
 from cinder import context
 from cinder.db.sqlalchemy import api

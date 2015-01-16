@@ -25,9 +25,9 @@ import re
 from threading import Timer
 import time
 
-from oslo.utils import excutils
-from oslo.utils import units
 from oslo_concurrency import processutils
+from oslo_utils import excutils
+from oslo_utils import units
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception

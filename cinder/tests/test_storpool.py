@@ -18,7 +18,7 @@ import re
 import sys
 
 import mock
-from oslo.utils import units
+from oslo_utils import units
 
 
 fakeStorPool = mock.Mock()

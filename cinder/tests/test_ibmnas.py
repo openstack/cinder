@@ -22,8 +22,8 @@ NAS based IBM GPFS Storage Systems).
 """
 
 import mock
-from oslo.utils import units
 from oslo_config import cfg
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception

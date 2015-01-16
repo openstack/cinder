@@ -24,8 +24,8 @@ import binascii
 from barbicanclient import client as barbican_client
 from keystoneclient.auth import identity
 from keystoneclient import session
-from oslo.utils import excutils
 from oslo_config import cfg
+from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE

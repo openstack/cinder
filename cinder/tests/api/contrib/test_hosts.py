@@ -16,7 +16,7 @@
 import datetime
 
 from lxml import etree
-from oslo.utils import timeutils
+from oslo_utils import timeutils
 import webob.exc
 
 from cinder.api.contrib import hosts as os_hosts

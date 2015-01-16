@@ -19,8 +19,8 @@ import re
 import unicodedata
 
 from eventlet import greenthread
-from oslo.utils import excutils
-from oslo.utils import strutils
+from oslo_utils import excutils
+from oslo_utils import strutils
 import six
 
 from cinder import context

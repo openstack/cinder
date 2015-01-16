@@ -28,10 +28,10 @@ import contextlib
 import os
 import tempfile
 
-from oslo.utils import timeutils
-from oslo.utils import units
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils import timeutils
+from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _

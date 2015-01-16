@@ -11,9 +11,9 @@
 #    under the License.
 
 
-from oslo.utils import timeutils
-from oslo.utils import units
 from oslo_config import cfg
+from oslo_utils import timeutils
+from oslo_utils import units
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.utils import misc

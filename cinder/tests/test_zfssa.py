@@ -19,7 +19,7 @@ import mock
 
 from json import JSONEncoder
 
-from oslo.utils import units
+from oslo_utils import units
 
 from cinder.openstack.common import log as logging
 from cinder import test

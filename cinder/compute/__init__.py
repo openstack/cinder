@@ -14,7 +14,7 @@
 #    under the License.
 
 import oslo.config.cfg
-from oslo.utils import importutils
+from oslo_utils import importutils
 
 
 _compute_opts = [

@@ -21,8 +21,8 @@
 Volume driver library for NetApp 7-mode block storage systems.
 """
 
-from oslo.utils import timeutils
-from oslo.utils import units
+from oslo_utils import timeutils
+from oslo_utils import units
 import six
 
 from cinder import exception

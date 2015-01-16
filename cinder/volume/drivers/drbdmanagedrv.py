@@ -25,9 +25,9 @@ for more details.
 
 import uuid
 
-from oslo.utils import importutils
-from oslo.utils import units
 from oslo_config import cfg
+from oslo_utils import importutils
+from oslo_utils import units
 import six
 
 

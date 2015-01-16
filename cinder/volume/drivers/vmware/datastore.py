@@ -17,7 +17,7 @@
 Classes and utility methods for datastore selection.
 """
 
-from oslo.utils import excutils
+from oslo_utils import excutils
 
 from cinder.i18n import _LE, _LW
 from cinder.openstack.common import log as logging

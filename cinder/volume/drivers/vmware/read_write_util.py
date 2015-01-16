@@ -23,7 +23,7 @@ import httplib
 import urllib
 import urllib2
 
-from oslo.utils import netutils
+from oslo_utils import netutils
 import six.moves.urllib.parse as urlparse
 
 from cinder.i18n import _, _LI

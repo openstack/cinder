@@ -31,8 +31,8 @@ detach operation.
 
 """
 
-from oslo.utils import importutils
 from oslo_config import cfg
+from oslo_utils import importutils
 
 from cinder import exception
 from cinder.i18n import _, _LI

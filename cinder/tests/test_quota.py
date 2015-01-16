@@ -19,8 +19,8 @@
 import datetime
 
 import mock
-from oslo.utils import timeutils
 from oslo_config import cfg
+from oslo_utils import timeutils
 
 from cinder import backup
 from cinder import context

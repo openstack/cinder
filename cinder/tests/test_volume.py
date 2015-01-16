@@ -30,10 +30,10 @@ import eventlet
 import mock
 import mox
 from oslo.serialization import jsonutils
-from oslo.utils import importutils
-from oslo.utils import timeutils
-from oslo.utils import units
 from oslo_config import cfg
+from oslo_utils import importutils
+from oslo_utils import timeutils
+from oslo_utils import units
 from stevedore import extension
 from taskflow.engines.action_engine import engine
 

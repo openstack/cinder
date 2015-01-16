@@ -18,7 +18,7 @@ import httplib
 import re
 
 import mock
-from oslo.utils import units
+from oslo_utils import units
 
 from cinder import exception
 from cinder import test

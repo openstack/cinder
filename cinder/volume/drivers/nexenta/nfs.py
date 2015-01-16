@@ -25,7 +25,7 @@ import hashlib
 import os
 import re
 
-from oslo.utils import units
+from oslo_utils import units
 
 from cinder import context
 from cinder import db

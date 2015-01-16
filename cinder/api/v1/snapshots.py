@@ -15,7 +15,7 @@
 
 """The volumes snapshots api."""
 
-from oslo.utils import strutils
+from oslo_utils import strutils
 import webob
 from webob import exc
 

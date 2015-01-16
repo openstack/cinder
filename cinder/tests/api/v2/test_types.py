@@ -16,7 +16,7 @@
 import uuid
 
 from lxml import etree
-from oslo.utils import timeutils
+from oslo_utils import timeutils
 import six
 import webob
 

@@ -19,8 +19,8 @@
 
 import copy
 
-from oslo.utils import timeutils
 from oslo_context import context
+from oslo_utils import timeutils
 
 from cinder.i18n import _
 from cinder.openstack.common import local
