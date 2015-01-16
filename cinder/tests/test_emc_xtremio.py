@@ -15,6 +15,7 @@
 
 
 import mock
+import six
 
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -129,14 +130,16 @@ def xms_request(object_type='volumes', request_typ='GET', data=None,
             del xms_data[object_type][data['index']]
             del xms_data[object_type][data[typ2id[object_type]][1]]
         else:
-            LOG.error('trying to delete a missing object %s', str(obj_key))
+            LOG.error('Trying to delete a missing object %s',
+                      six.text_type(obj_key))
             raise exception.NotFound()
     elif request_typ == 'PUT':
         if obj_key in xms_data[object_type]:
             obj = xms_data[object_type][obj_key]
             obj.update(data)
         else:
-            LOG.error('trying to update a missing object %s', str(obj_key))
+            LOG.error('Trying to update a missing object %s',
+                      six.text_type(obj_key))
             raise exception.NotFound()
 
 
@@ -145,7 +148,7 @@ def xms_bad_request(object_type='volumes', request_typ='GET', data=None,
     if request_typ == 'GET':
         raise exception.NotFound()
     elif request_typ == 'POST':
-        raise exception.VolumeBackendAPIException('failed to create ig')
+        raise exception.VolumeBackendAPIException('Failed to create ig')
 
 
 class D(dict):
