@@ -184,6 +184,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         total_capacity = 0
         free_capacity = 0
+        thin_enabled = False
+
         if self.configuration.lvm_mirrors > 0:
             total_capacity =\
                 self.vg.vg_mirror_size(self.configuration.lvm_mirrors)
@@ -195,6 +197,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             total_capacity = self.vg.vg_thin_pool_size
             free_capacity = self.vg.vg_thin_pool_free_space
             provisioned_capacity = self.vg.vg_provisioned_capacity
+            thin_enabled = True
         else:
             total_capacity = self.vg.vg_size
             free_capacity = self.vg.vg_free_space
@@ -216,10 +219,14 @@ class LVMVolumeDriver(driver.VolumeDriver):
             pool_name=data["volume_backend_name"],
             total_capacity_gb=total_capacity,
             free_capacity_gb=free_capacity,
-            provisioned_capacity_gb=provisioned_capacity,
             reserved_percentage=self.configuration.reserved_percentage,
             location_info=location_info,
             QoS_support=False,
+            provisioned_capacity_gb=provisioned_capacity,
+            max_over_subscription_ratio=(
+                self.configuration.max_over_subscription_ratio),
+            thin_provisioning_support=thin_enabled,
+            thick_provisioning_support=not thin_enabled,
         ))
         data["pools"].append(single_pool)
 

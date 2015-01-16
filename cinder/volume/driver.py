@@ -129,6 +129,17 @@ volume_opts = [
                 default=False,
                 help='Tell driver to use SSL for connection to backend '
                      'storage if the driver supports it.'),
+    cfg.FloatOpt('max_over_subscription_ratio',
+                 default=2.0,
+                 help='Float representation of the over subscription ratio '
+                      'when thin provisioning is involved. Default ratio is '
+                      '2.0, meaning provisioned capacity can be twice of the '
+                      'total physical capacity. If the ratio is 10.5, it '
+                      'means provisioned capacity can be 10.5 times of the '
+                      'total physical capacity. A ratio of 1.0 means '
+                      'provisioned capacity cannot exceed the total physical '
+                      'capacity. A ratio lower than 1.0 will be ignored and '
+                      'the default value will be used instead.'),
 ]
 
 # for backward compatibility
@@ -1111,6 +1122,10 @@ class ISCSIDriver(VolumeDriver):
         data["storage_protocol"] = 'iSCSI'
         data["pools"] = []
 
+        # provisioned_capacity_gb is set to None by default below, but
+        # None won't be used in calculation. It will be overridden by
+        # driver's provisioned_capacity_gb if reported, otherwise it
+        # defaults to allocated_capacity_gb in host_manager.py.
         if self.pools:
             for pool in self.pools:
                 new_pool = {}
@@ -1118,7 +1133,7 @@ class ISCSIDriver(VolumeDriver):
                     pool_name=pool,
                     total_capacity_gb=0,
                     free_capacity_gb=0,
-                    provisioned_capacity_gb=0,
+                    provisioned_capacity_gb=None,
                     reserved_percentage=100,
                     QoS_support=False
                 ))
@@ -1130,7 +1145,7 @@ class ISCSIDriver(VolumeDriver):
                 pool_name=data["volume_backend_name"],
                 total_capacity_gb=0,
                 free_capacity_gb=0,
-                provisioned_capacity_gb=0,
+                provisioned_capacity_gb=None,
                 reserved_percentage=100,
                 QoS_support=False
             ))
