@@ -802,3 +802,113 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.assert_error_propagates(
             [self.array.destroy_pgroup],
             self.driver.delete_cgsnapshot, mock_context, mock_cgsnap)
+
+    def test_manage_existing(self):
+        ref_name = 'vol1'
+        volume_ref = {'name': ref_name}
+        self.array.list_volume_private_connections.return_value = []
+        vol_name = VOLUME['name'] + '-cinder'
+        self.driver.manage_existing(VOLUME, volume_ref)
+        self.array.list_volume_private_connections.assert_called_with(ref_name)
+        self.array.rename_volume.assert_called_with(ref_name, vol_name)
+
+    def test_manage_existing_error_propagates(self):
+        self.array.list_volume_private_connections.return_value = []
+        self.assert_error_propagates(
+            [self.array.list_volume_private_connections,
+             self.array.rename_volume],
+            self.driver.manage_existing,
+            VOLUME, {'name': 'vol1'}
+        )
+
+    def test_manage_existing_bad_ref(self):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing,
+                          VOLUME, {'bad_key': 'bad_value'})
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing,
+                          VOLUME, {'name': ''})
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing,
+                          VOLUME, {'name': None})
+
+        self.array.get_volume.side_effect = \
+            self.purestorage_module.PureHTTPError(
+                text="Volume does not exist.",
+                code=400
+            )
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing,
+                          VOLUME, {'name': 'non-existing-volume'})
+
+    def test_manage_existing_with_connected_hosts(self):
+        ref_name = 'vol1'
+        self.array.list_volume_private_connections.return_value = \
+            ["host1", "host2"]
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing,
+                          VOLUME, {'name': ref_name})
+
+        self.array.list_volume_private_connections.assert_called_with(ref_name)
+        self.assertFalse(self.array.rename_volume.called)
+
+    def test_manage_existing_get_size(self):
+        ref_name = 'vol1'
+        volume_ref = {'name': ref_name}
+        expected_size = 5
+        self.array.get_volume.return_value = {"size": 5368709120}
+
+        size = self.driver.manage_existing_get_size(VOLUME, volume_ref)
+
+        self.assertEqual(expected_size, size)
+        self.array.get_volume.assert_called_with(ref_name)
+
+    def test_manage_existing_get_size_error_propagates(self):
+        self.array.get_volume.return_value = mock.MagicMock()
+        self.assert_error_propagates([self.array.get_volume],
+                                     self.driver.manage_existing_get_size,
+                                     VOLUME, {'name': 'vol1'})
+
+    def test_manage_existing_get_size_bad_ref(self):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          VOLUME, {'bad_key': 'bad_value'})
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          VOLUME, {'name': ''})
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          VOLUME, {'name': None})
+
+    def test_unmanage(self):
+        vol_name = VOLUME['name'] + "-cinder"
+        unmanaged_vol_name = vol_name + "-unmanaged"
+
+        self.driver.unmanage(VOLUME)
+
+        self.array.rename_volume.assert_called_with(vol_name,
+                                                    unmanaged_vol_name)
+
+    def test_unmanage_error_propagates(self):
+        self.assert_error_propagates([self.array.rename_volume],
+                                     self.driver.unmanage,
+                                     VOLUME)
+
+    def test_unmanage_with_deleted_volume(self):
+        vol_name = VOLUME['name'] + "-cinder"
+        unmanaged_vol_name = vol_name + "-unmanaged"
+        self.array.rename_volume.side_effect = \
+            self.purestorage_module.PureHTTPError(
+                text="Volume does not exist.",
+                code=400
+            )
+
+        self.driver.unmanage(VOLUME)
+
+        self.array.rename_volume.assert_called_with(vol_name,
+                                                    unmanaged_vol_name)
