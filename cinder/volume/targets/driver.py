@@ -63,6 +63,7 @@ class Target(object):
         """Allow connection to connector and return connection info."""
         pass
 
+    @abc.abstractmethod
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         pass

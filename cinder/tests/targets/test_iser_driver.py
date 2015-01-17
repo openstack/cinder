@@ -41,7 +41,7 @@ class TestIserAdmDriver(test_tgt.TestTgtAdmDriver):
         expected_return = {'driver_volume_type': 'iser',
                            'data': {}}
         self.assertEqual(expected_return,
-                         self.target.initialize_connection(self.testvol_1,
+                         self.target.initialize_connection(self.testvol,
                                                            connector))
 
     def test_iscsi_protocol(self):
@@ -70,7 +70,7 @@ class TestIserTgtDriver(test_tgt.TestTgtAdmDriver):
         expected_return = {'driver_volume_type': 'iser',
                            'data': {}}
         self.assertEqual(expected_return,
-                         self.target.initialize_connection(self.testvol_1,
+                         self.target.initialize_connection(self.testvol,
                                                            connector))
 
 
@@ -96,6 +96,6 @@ class TestIserLioAdmDriver(test_lio.TestLioAdmDriver):
         connector = {'initiator': 'fake_init'}
 
         mock_get_iscsi.return_value = {}
-        ret = self.target.initialize_connection(self.testvol_1, connector)
+        ret = self.target.initialize_connection(self.testvol, connector)
         driver_volume_type = ret['driver_volume_type']
         self.assertEqual(driver_volume_type, 'iser')

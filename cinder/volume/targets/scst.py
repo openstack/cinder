@@ -218,6 +218,14 @@ class SCSTAdm(iscsi.ISCSITarget):
         return "%s:%s,%s %s %s" % (ip, self.configuration.iscsi_port,
                                    target, iqn, lun)
 
+    def _get_iscsi_target(self, context, vol_id):
+        # FIXME(jdg): Need to implement abc method
+        pass
+
+    def _get_target_chap_auth(self, context, iscsi_name):
+        # FIXME(jdg): Need to implement abc method
+        pass
+
     def ensure_export(self, context, volume, volume_path):
         iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                volume['name'])

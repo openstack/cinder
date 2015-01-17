@@ -10,13 +10,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import abc
+
 from oslo_concurrency import processutils
 
 from cinder import exception
-from cinder.i18n import _, _LW, _LE
+from cinder.i18n import _, _LI, _LW, _LE
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.targets import driver
+from cinder.volume import utils as vutils
 
 LOG = logging.getLogger(__name__)
 
@@ -37,6 +40,7 @@ class ISCSITarget(driver.Target):
         self.iscsi_protocol = \
             self.configuration.safe_get('iscsi_protocol')
         self.protocol = 'iSCSI'
+        self.volumes_dir = self.configuration.safe_get('volumes_dir')
 
     def _get_iscsi_properties(self, volume, multipath=False):
         """Gets iscsi configuration
@@ -169,9 +173,80 @@ class ISCSITarget(driver.Target):
                 return target
         return None
 
-    def _get_target_chap_auth(self, volume_id):
-        """Get the current chap auth username and password."""
-        return None
+    def create_export(self, context, volume, volume_path):
+        """Creates an export for a logical volume."""
+        # 'iscsi_name': 'iqn.2010-10.org.openstack:volume-00000001'
+        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
+                               volume['name'])
+        iscsi_target, lun = self._get_target_and_lun(context, volume)
+
+        # Verify we haven't setup a CHAP creds file already
+        # if DNE no big deal, we'll just create it
+        chap_auth = self._get_target_chap_auth(context, iscsi_name)
+        if not chap_auth:
+            chap_auth = (vutils.generate_username(),
+                         vutils.generate_password())
+
+        # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
+        # should clean this all up at some point in the future
+        tid = self.create_iscsi_target(iscsi_name,
+                                       iscsi_target,
+                                       lun,
+                                       volume_path,
+                                       chap_auth)
+        data = {}
+        data['location'] = self._iscsi_location(
+            self.configuration.iscsi_ip_address, tid, iscsi_name, lun,
+            self.configuration.iscsi_secondary_ip_addresses)
+        LOG.debug('Set provider_location to: %s', data['location'])
+        data['auth'] = self._iscsi_authentication(
+            'CHAP', *chap_auth)
+        return data
+
+    def remove_export(self, context, volume):
+        try:
+            iscsi_target, lun = self._get_target_and_lun(context, volume)
+        except exception.NotFound:
+            LOG.info(_LI("Skipping remove_export. No iscsi_target "
+                         "provisioned for volume: %s"), volume['id'])
+            return
+        try:
+
+            # NOTE: provider_location may be unset if the volume hasn't
+            # been exported
+            location = volume['provider_location'].split(' ')
+            iqn = location[1]
+
+            # ietadm show will exit with an error
+            # this export has already been removed
+            self.show_target(iscsi_target, iqn=iqn)
+
+        except Exception:
+            LOG.info(_LI("Skipping remove_export. No iscsi_target "
+                         "is presently exported for volume: %s"), volume['id'])
+            return
+
+        # NOTE: For TgtAdm case volume['id'] is the ONLY param we need
+        self.remove_iscsi_target(iscsi_target, lun, volume['id'],
+                                 volume['name'])
+
+    def ensure_export(self, context, volume, volume_path):
+        """Recreates an export for a logical volume."""
+        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
+                               volume['name'])
+
+        # Verify we haven't setup a CHAP creds file already
+        # if DNE no big deal, we'll just create it
+        chap_auth = self._get_target_chap_auth(context, iscsi_name)
+        if not chap_auth:
+            LOG.info(_LI("Skipping ensure_export. No iscsi_target "
+                         "provision for volume: %s"), volume['id'])
+
+        iscsi_target, lun = self._get_target_and_lun(context, volume)
+        self.create_iscsi_target(
+            iscsi_name, iscsi_target, lun, volume_path,
+            chap_auth, check_exit_code=False,
+            old_name=None)
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
@@ -198,6 +273,9 @@ class ISCSITarget(driver.Target):
             'data': iscsi_properties
         }
 
+    def terminate_connection(self, volume, connector, **kwargs):
+        pass
+
     def validate_connector(self, connector):
         # NOTE(jdg): api passes in connector which is initiator info
         if 'initiator' not in connector:
@@ -206,3 +284,46 @@ class ISCSITarget(driver.Target):
             LOG.error(err_msg)
             raise exception.InvalidConnectorException(missing='initiator')
         return True
+
+    def _iscsi_location(self, ip, target, iqn, lun=None, ip_secondary=None):
+        ip_secondary = ip_secondary or []
+        port = self.configuration.iscsi_port
+        portals = map(lambda x: "%s:%s" % (x, port), [ip] + ip_secondary)
+        return ("%(portals)s,%(target)s %(iqn)s %(lun)s"
+                % ({'portals': ";".join(portals),
+                    'target': target, 'iqn': iqn, 'lun': lun}))
+
+    def show_target(self, iscsi_target, iqn, **kwargs):
+        if iqn is None:
+            raise exception.InvalidParameterValue(
+                err=_('valid iqn needed for show_target'))
+
+        tid = self._get_target(iqn)
+        if tid is None:
+            raise exception.NotFound()
+
+    @abc.abstractmethod
+    def _get_target_and_lun(self, context, volume):
+        """Get iscsi target and lun."""
+        pass
+
+    @abc.abstractmethod
+    def _get_target_chap_auth(self, context, iscsi_name):
+        pass
+
+    @abc.abstractmethod
+    def create_iscsi_target(self, name, tid, lun, path,
+                            chap_auth, **kwargs):
+        pass
+
+    @abc.abstractmethod
+    def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
+        pass
+
+    @abc.abstractmethod
+    def _get_iscsi_target(self, context, vol_id):
+        pass
+
+    @abc.abstractmethod
+    def _get_target(self, iqn):
+        pass
