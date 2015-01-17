@@ -17,6 +17,9 @@ class IetAdm(object):
     def __init__(self, *args, **kwargs):
         super(IetAdm, self).__init__(*args, **kwargs)
 
+    def _get_target_chap_auth(self, name):
+        pass
+
     def ensure_export(self, context, volume, volume_path):
         pass
 

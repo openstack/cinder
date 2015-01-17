@@ -306,8 +306,15 @@ class TgtAdm(iscsi.ISCSITarget):
         iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                volume['name'])
         iscsi_target, lun = self._get_target_and_lun(context, volume)
-        chap_username = vutils.generate_username()
-        chap_password = vutils.generate_password()
+
+        # Verify we haven't setup a CHAP creds file already
+        # if DNE no big deal, we'll just create it
+        current_chap_auth = self._get_target_chap_auth(iscsi_name)
+        if current_chap_auth:
+            (chap_username, chap_password) = current_chap_auth
+        else:
+            chap_username = vutils.generate_username()
+            chap_password = vutils.generate_password()
         chap_auth = self._iscsi_authentication('IncomingUser', chap_username,
                                                chap_password)
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need

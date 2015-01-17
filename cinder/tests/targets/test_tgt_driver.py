@@ -249,6 +249,9 @@ class TestTgtAdmDriver(test.TestCase):
                        '_verify_backing_lun',
                        lambda x, y: True)
 
+        self.stubs.Set(self.target,
+                       '_get_target_chap_auth',
+                       lambda x: None)
         self.stubs.Set(vutils,
                        'generate_username',
                        lambda: 'QZJbisGmn9AL954FNF4D')
@@ -262,6 +265,19 @@ class TestTgtAdmDriver(test.TestCase):
                            'QZJbisGmn9AL954FNF4D P68eE7u9eFqDGexd28DQ'}
 
         ctxt = context.get_admin_context()
+        self.assertEqual(expected_result,
+                         self.target.create_export(ctxt,
+                                                   self.testvol_1,
+                                                   self.fake_volumes_dir))
+
+        self.stubs.Set(self.target,
+                       '_get_target_chap_auth',
+                       lambda x: ('otzLy2UYbYfnP4zXLG5z',
+                                  '234Zweo38VGBBvrpK9nt'))
+
+        expected_result['auth'] = ('CHAP '
+                                   'otzLy2UYbYfnP4zXLG5z 234Zweo38VGBBvrpK9nt')
+
         self.assertEqual(expected_result,
                          self.target.create_export(ctxt,
                                                    self.testvol_1,
