@@ -981,7 +981,10 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
 
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
-        mock_client.getServerByName.return_value = {'id': self.server_id}
+        mock_client.getServerByName.return_value = {
+            'id': self.server_id,
+            'name': self.serverName}
+        mock_client.findServerVolumes.return_value = [{'id': self.volume_id}]
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -993,14 +996,55 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             expected = self.driver_startup_call_stack + [
                 mock.call.getVolumeByName('fakevolume'),
                 mock.call.getServerByName('fakehost'),
+                mock.call.findServerVolumes('fakehost'),
                 mock.call.removeServerAccess(1, 0),
-                mock.call.logout()]
+                mock.call.deleteServer(0)]
 
             # validate call chain
             mock_client.assert_has_calls(expected)
 
-            mock_client.getVolumeByName.side_effect =\
-                hpexceptions.HTTPNotFound()
+            mock_client.getVolumeByName.side_effect = (
+                hpexceptions.HTTPNotFound())
+            # ensure the raised exception is a cinder exception
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
+                self.driver.terminate_connection,
+                self.volume,
+                self.connector)
+
+    def test_terminate_connection_multiple_volumes_on_server(self):
+
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getServerByName.return_value = {
+            'id': self.server_id,
+            'name': self.serverName}
+        mock_client.findServerVolumes.return_value = [
+            {'id': self.volume_id},
+            {'id': 99999}]
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # execute terminate_connection
+            self.driver.terminate_connection(self.volume, self.connector)
+
+            expected = self.driver_startup_call_stack + [
+                mock.call.getVolumeByName('fakevolume'),
+                mock.call.getServerByName('fakehost'),
+                mock.call.findServerVolumes('fakehost'),
+                mock.call.removeServerAccess(1, 0)]
+
+            # validate call chain
+            mock_client.assert_has_calls(expected)
+            self.assertFalse(mock_client.deleteServer.called)
+
+            mock_client.getVolumeByName.side_effect = (
+                hpexceptions.HTTPNotFound())
             # ensure the raised exception is a cinder exception
             self.assertRaises(
                 exception.VolumeBackendAPIException,

@@ -94,9 +94,11 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         1.0.5 - Fixed bug #1311350, Live-migration of an instance when
                 attached to a volume was causing an error.
         1.0.6 - Removing locks bug #1395953
+        1.0.7 - Fixed bug #1353137, Server was not removed from the HP
+                Lefthand backend after the last volume was detached.
     """
 
-    VERSION = "1.0.6"
+    VERSION = "1.0.7"
 
     device_stats = {}
 
@@ -338,9 +340,20 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         try:
             volume_info = client.getVolumeByName(volume['name'])
             server_info = client.getServerByName(connector['host'])
+            volume_list = client.findServerVolumes(server_info['name'])
+
+            removeServer = True
+            for entry in volume_list:
+                if entry['id'] != volume_info['id']:
+                    removeServer = False
+                    break
+
             client.removeServerAccess(
                 volume_info['id'],
                 server_info['id'])
+
+            if removeServer:
+                client.deleteServer(server_info['id'])
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
         finally:
