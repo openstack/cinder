@@ -472,7 +472,7 @@ class RBDTestCase(test.TestCase):
         volume.parent_info.assert_called_once_with()
 
     @common_mocks
-    def test_create_cloned_volume(self):
+    def test_create_cloned_volume_same_size(self):
         src_name = u'volume-00000001'
         dst_name = u'volume-00000002'
 
@@ -481,19 +481,59 @@ class RBDTestCase(test.TestCase):
         with mock.patch.object(self.driver, '_get_clone_depth') as \
                 mock_get_clone_depth:
             # Try with no flatten required
-            mock_get_clone_depth.return_value = 1
+            with mock.patch.object(self.driver, '_resize') as mock_resize:
+                mock_get_clone_depth.return_value = 1
 
-            self.driver.create_cloned_volume({'name': dst_name},
-                                             {'name': src_name})
+                self.driver.create_cloned_volume({'name': dst_name,
+                                                  'size': 10},
+                                                 {'name': src_name,
+                                                  'size': 10})
 
-            (self.mock_rbd.Image.return_value.create_snap
-                .assert_called_once_with('.'.join((dst_name, 'clone_snap'))))
-            (self.mock_rbd.Image.return_value.protect_snap
-                .assert_called_once_with('.'.join((dst_name, 'clone_snap'))))
-            self.assertEqual(
-                1, self.mock_rbd.RBD.return_value.clone.call_count)
-            self.mock_rbd.Image.return_value.close.assert_called_once_with()
-            self.assertTrue(mock_get_clone_depth.called)
+                (self.mock_rbd.Image.return_value.create_snap
+                    .assert_called_once_with('.'.join((dst_name,
+                                                       'clone_snap'))))
+                (self.mock_rbd.Image.return_value.protect_snap
+                    .assert_called_once_with('.'.join((dst_name,
+                                                       'clone_snap'))))
+                self.assertEqual(
+                    1, self.mock_rbd.RBD.return_value.clone.call_count)
+                self.mock_rbd.Image.return_value.close \
+                    .assert_called_once_with()
+                self.assertTrue(mock_get_clone_depth.called)
+                self.assertEqual(
+                    0, mock_resize.call_count)
+
+    @common_mocks
+    def test_create_cloned_volume_different_size(self):
+        src_name = u'volume-00000001'
+        dst_name = u'volume-00000002'
+
+        self.cfg.rbd_max_clone_depth = 2
+
+        with mock.patch.object(self.driver, '_get_clone_depth') as \
+                mock_get_clone_depth:
+            # Try with no flatten required
+            with mock.patch.object(self.driver, '_resize') as mock_resize:
+                mock_get_clone_depth.return_value = 1
+
+                self.driver.create_cloned_volume({'name': dst_name,
+                                                  'size': 20},
+                                                 {'name': src_name,
+                                                  'size': 10})
+
+                (self.mock_rbd.Image.return_value.create_snap
+                    .assert_called_once_with('.'.join((dst_name,
+                                                       'clone_snap'))))
+                (self.mock_rbd.Image.return_value.protect_snap
+                    .assert_called_once_with('.'.join((dst_name,
+                                                       'clone_snap'))))
+                self.assertEqual(
+                    1, self.mock_rbd.RBD.return_value.clone.call_count)
+                self.mock_rbd.Image.return_value.close \
+                    .assert_called_once_with()
+                self.assertTrue(mock_get_clone_depth.called)
+                self.assertEqual(
+                    1, mock_resize.call_count)
 
     @common_mocks
     def test_create_cloned_volume_w_flatten(self):

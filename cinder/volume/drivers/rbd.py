@@ -482,6 +482,13 @@ class RBDDriver(driver.VolumeDriver):
             finally:
                 src_volume.close()
 
+        if volume['size'] != src_vref['size']:
+            LOG.debug("resize volume '%(dst_vol)s' from %(src_size)d to "
+                      "%(dst_size)d" %
+                      {'dst_vol': volume['name'], 'src_size': src_vref['size'],
+                       'dst_size': volume['size']})
+            self._resize(volume)
+
         LOG.debug("clone created successfully")
 
     def create_volume(self, volume):
