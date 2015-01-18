@@ -272,22 +272,33 @@ class EMCVMAXMasking(object):
         :returns: foundMaskingViewInstanceName masking view instance name
         """
         foundMaskingViewInstanceName = None
-        maskingViewInstanceNames = conn.EnumerateInstanceNames(
-            'EMC_LunMaskingSCSIProtocolController')
 
-        for maskingViewInstanceName in maskingViewInstanceNames:
-            if storageSystemName == maskingViewInstanceName['SystemName']:
-                instance = conn.GetInstance(
-                    maskingViewInstanceName, LocalOnly=False)
-                if maskingViewName == instance['ElementName']:
-                    foundMaskingViewInstanceName = maskingViewInstanceName
-                    break
+        storageSystemInstanceName = self.utils.find_storageSystem(
+            conn, storageSystemName)
+        maskingViewInstances = conn.Associators(
+            storageSystemInstanceName,
+            ResultClass='EMC_LunMaskingSCSIProtocolController')
+
+        for maskingViewInstance in maskingViewInstances:
+            if maskingViewName == maskingViewInstance['ElementName']:
+                foundMaskingViewInstanceName = maskingViewInstance.path
+                break
 
         if foundMaskingViewInstanceName is not None:
-            infoMessage = (_(
-                "Found existing masking view: %(maskingViewName)s ")
-                % {'maskingViewName': maskingViewName})
-            LOG.info(infoMessage)
+            # now check that is has not been deleted
+            instance = self.utils.get_existing_instance(
+                conn, foundMaskingViewInstanceName)
+            if instance is None:
+                foundMaskingViewInstanceName = None
+                LOG.error(_LE(
+                    "Looks like masking view: %(maskingViewName)s "
+                    "has recently been deleted."),
+                    {'maskingViewName': maskingViewName})
+            else:
+                LOG.info(_LI(
+                    "Found existing masking view: %(maskingViewName)s "),
+                    {'maskingViewName': maskingViewName})
+
         return foundMaskingViewInstanceName
 
     def _create_storage_group(
@@ -356,14 +367,18 @@ class EMCVMAXMasking(object):
         :returns: foundPortGroup storage group instance name
         """
         foundPortGroupInstanceName = None
-        portMaskingGroupInstanceNames = conn.AssociatorNames(
-            controllerConfigService, resultClass='CIM_TargetMaskingGroup')
+        portMaskingGroupInstances = conn.Associators(
+            controllerConfigService, ResultClass='CIM_TargetMaskingGroup')
 
-        for portMaskingGroupInstanceName in portMaskingGroupInstanceNames:
-            instance = conn.GetInstance(
-                portMaskingGroupInstanceName, LocalOnly=False)
-            if portGroupName == instance['ElementName']:
-                foundPortGroupInstanceName = portMaskingGroupInstanceName
+        for portMaskingGroupInstance in portMaskingGroupInstances:
+            if portGroupName == portMaskingGroupInstance['ElementName']:
+                # Check to see if it has been recently deleted.
+                instance = self.utils.get_existing_instance(
+                    conn, portMaskingGroupInstance.path)
+                if instance is None:
+                    foundPortGroupInstanceName = None
+                else:
+                    foundPortGroupInstanceName = instance.path
                 break
 
         if foundPortGroupInstanceName is None:
@@ -471,37 +486,41 @@ class EMCVMAXMasking(object):
         :param initiatorName: the list of initiator names
         :returns: foundInitiatorMaskingGroup
         """
-        foundInitiatorMaskingGroupName = None
+        foundInitiatorMaskingGroupInstanceName = None
 
-        initiatorMaskingGroupNames = (
+        initiatorMaskingGroupInstanceNames = (
             conn.AssociatorNames(controllerConfigService,
                                  ResultClass='CIM_InitiatorMaskingGroup'))
 
-        for initiatorMaskingGroupName in initiatorMaskingGroupNames:
-            initiatorMaskingGroup = conn.GetInstance(
-                initiatorMaskingGroupName, LocalOnly=False)
-            associators = (
-                conn.Associators(initiatorMaskingGroup.path,
+        for initiatorMaskingGroupInstanceName in \
+                initiatorMaskingGroupInstanceNames:
+            # Check that it hasn't been deleted. If it has, continue
+            # to the next one in the loop.
+            instance = self.utils.get_existing_instance(
+                conn, initiatorMaskingGroupInstanceName)
+            if instance is None:
+                continue
+
+            storageHardwareIdInstances = (
+                conn.Associators(initiatorMaskingGroupInstanceName,
                                  ResultClass='EMC_StorageHardwareID'))
-            for assoc in associators:
-                # if EMC_StorageHardwareID matches the initiator,
-                # we found the existing EMC_LunMaskingSCSIProtocolController
-                # (Storage Group for VNX)
-                # we can use for masking a new LUN
-                hardwareid = assoc['StorageID']
+            for storageHardwareIdInstance in storageHardwareIdInstances:
+                # If EMC_StorageHardwareID matches the initiator,
+                # we found the existing CIM_InitiatorMaskingGroup.
+                hardwareid = storageHardwareIdInstance['StorageID']
                 for initiator in initiatorNames:
                     if six.text_type(hardwareid).lower() == \
                             six.text_type(initiator).lower():
-                        foundInitiatorMaskingGroupName = (
-                            initiatorMaskingGroupName)
+                        foundInitiatorMaskingGroupInstanceName = (
+                            initiatorMaskingGroupInstanceName)
                         break
 
-                if foundInitiatorMaskingGroupName is not None:
+                if foundInitiatorMaskingGroupInstanceName is not None:
                     break
 
-            if foundInitiatorMaskingGroupName is not None:
+            if foundInitiatorMaskingGroupInstanceName is not None:
                 break
-        return foundInitiatorMaskingGroupName
+        return foundInitiatorMaskingGroupInstanceName
 
     def _get_storage_hardware_id_instance_names(
             self, conn, initiatorNames, storageSystemName):
@@ -518,21 +537,23 @@ class EMCVMAXMasking(object):
             self.utils.find_storage_hardwareid_service(
                 conn, storageSystemName))
 
-        hardwareIdInstanceNames = (
-            self.utils.get_hardware_id_instance_names_from_array(
+        hardwareIdInstances = (
+            self.utils.get_hardware_id_instances_from_array(
                 conn, hardwareIdManagementService))
-
-        for hardwareIdInstanceName in hardwareIdInstanceNames:
-            hardwareIdInstance = conn.GetInstance(hardwareIdInstanceName)
+        for hardwareIdInstance in hardwareIdInstances:
             storageId = hardwareIdInstance['StorageID']
             for initiatorName in initiatorNames:
-                LOG.debug("The storage Id is : %(storageId)s "
-                          % {'storageId': storageId.lower()})
-                LOG.debug("The initiatorName is : %(initiatorName)s "
-                          % {'initiatorName': initiatorName.lower()})
                 if storageId.lower() == initiatorName.lower():
+                    # Check that the found hardwareId has been deleted.
+                    # If it has, we don't want to add it to the list.
+                    instance = self.utils.get_existing_instance(
+                        conn, hardwareIdInstance.path)
+                    if instance is None:
+                        # HardwareId doesn't exist. Skip it.
+                        break
+
                     foundHardwardIDsInstanceNames.append(
-                        hardwareIdInstanceName)
+                        hardwareIdInstance.path)
                     break
 
         LOG.debug(
@@ -630,24 +651,37 @@ class EMCVMAXMasking(object):
         :returns: instance name foundStorageGroupInstanceName
         """
         foundStorageGroupInstanceName = None
-        maskingviews = conn.EnumerateInstanceNames(
-            'EMC_LunMaskingSCSIProtocolController')
-        for view in maskingviews:
-            if storageSystemName == view['SystemName']:
-                instance = conn.GetInstance(view, LocalOnly=False)
-                if maskingViewName == instance['ElementName']:
-                    foundView = view
-                    break
+        foundView = self._find_masking_view(
+            conn, maskingViewName, storageSystemName)
+        if foundView is not None:
+            foundStorageGroupInstanceName = (
+                self._get_storage_group_from_masking_view_instance(
+                    conn, foundView))
 
+            LOG.debug("Masking view: %(view)s DeviceMaskingGroup: "
+                      "%(masking)s.",
+                      {'view': maskingViewName,
+                       'masking': foundStorageGroupInstanceName})
+        else:
+            LOG.warn(_LW("Unable to find Masking view: %(view)s."),
+                     {'view': maskingViewName})
+
+        return foundStorageGroupInstanceName
+
+    def _get_storage_group_from_masking_view_instance(
+            self, conn, maskingViewInstance):
+        """Gets the Device Masking Group from masking view instance.
+
+        :param conn: the connection to the ecom server
+        :param maskingViewInstance
+        :returns: instance name foundStorageGroupInstanceName
+        """
+        foundStorageGroupInstanceName = None
         groups = conn.AssociatorNames(
-            foundView,
+            maskingViewInstance,
             ResultClass='CIM_DeviceMaskingGroup')
         if groups[0] > 0:
             foundStorageGroupInstanceName = groups[0]
-
-        LOG.debug("Masking view: %(view)s DeviceMaskingGroup: %(masking)s."
-                  % {'view': maskingViewName,
-                     'masking': foundStorageGroupInstanceName})
 
         return foundStorageGroupInstanceName
 
@@ -812,7 +846,7 @@ class EMCVMAXMasking(object):
                 infoMessage = (_(
                     "Performing rollback on Volume: %(volumeName)s "
                     "To return it to the default storage group for FAST policy"
-                    " %(fastPolicyName)s. ")
+                    " %(fastPolicyName)s.")
                     % {'volumeName': volumeName,
                        'fastPolicyName': fastPolicyName})
                 LOG.warning(_LW("No storage group found. %s"), infoMessage)
@@ -883,26 +917,22 @@ class EMCVMAXMasking(object):
         :returns: instance name foundInitiatorMaskingGroupInstanceName
         """
         foundInitiatorMaskingGroupInstanceName = None
+        foundView = self._find_masking_view(
+            conn, maskingViewName, storageSystemName)
+        if foundView is not None:
+            groups = conn.AssociatorNames(
+                foundView,
+                ResultClass='CIM_InitiatorMaskingGroup')
+            if len(groups):
+                foundInitiatorMaskingGroupInstanceName = groups[0]
 
-        maskingviews = conn.EnumerateInstanceNames(
-            'EMC_LunMaskingSCSIProtocolController')
-        for view in maskingviews:
-            if storageSystemName == view['SystemName']:
-                instance = conn.GetInstance(view, LocalOnly=False)
-                if maskingViewName == instance['ElementName']:
-                    foundView = view
-                    break
-
-        groups = conn.AssociatorNames(
-            foundView,
-            ResultClass='CIM_InitiatorMaskingGroup')
-        if len(groups):
-            foundInitiatorMaskingGroupInstanceName = groups[0]
-
-        LOG.debug(
-            "Masking view: %(view)s InitiatorMaskingGroup: %(masking)s."
-            % {'view': maskingViewName,
-               'masking': foundInitiatorMaskingGroupInstanceName})
+            LOG.debug(
+                "Masking view: %(view)s InitiatorMaskingGroup: %(masking)s."
+                % {'view': maskingViewName,
+                   'masking': foundInitiatorMaskingGroupInstanceName})
+        else:
+            LOG.warn(_LW("Unable to find Masking view: %(view)s.")
+                     % {'view': maskingViewName})
 
         return foundInitiatorMaskingGroupInstanceName
 
@@ -1052,26 +1082,20 @@ class EMCVMAXMasking(object):
         :returns: instance name foundPortMaskingGroupInstanceName
         """
         foundPortMaskingGroupInstanceName = None
+        foundView = self._find_masking_view(
+            conn, maskingViewName, storageSystemName)
 
-        maskingviews = conn.EnumerateInstanceNames(
-            'EMC_LunMaskingSCSIProtocolController')
-        for view in maskingviews:
-            if storageSystemName == view['SystemName']:
-                instance = conn.GetInstance(view, LocalOnly=False)
-                if maskingViewName == instance['ElementName']:
-                    foundView = view
-                    break
+        if foundView is not None:
+            groups = conn.AssociatorNames(
+                foundView,
+                ResultClass='CIM_TargetMaskingGroup')
+            if len(groups) > 0:
+                foundPortMaskingGroupInstanceName = groups[0]
 
-        groups = conn.AssociatorNames(
-            foundView,
-            ResultClass='CIM_TargetMaskingGroup')
-        if len(groups) > 0:
-            foundPortMaskingGroupInstanceName = groups[0]
-
-        LOG.debug(
-            "Masking view: %(view)s InitiatorMaskingGroup: %(masking)s."
-            % {'view': maskingViewName,
-               'masking': foundPortMaskingGroupInstanceName})
+            LOG.debug(
+                "Masking view: %(view)s InitiatorMaskingGroup: %(masking)s."
+                % {'view': maskingViewName,
+                   'masking': foundPortMaskingGroupInstanceName})
 
         return foundPortMaskingGroupInstanceName
 

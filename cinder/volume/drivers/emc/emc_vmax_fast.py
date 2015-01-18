@@ -420,18 +420,25 @@ class EMCVMAXFast(object):
         :returns: storageGroupInstanceName - instance name of the default
                                              storage group
         """
-        storageMaskingGroupInstanceNames = conn.AssociatorNames(
+        foundStorageMaskingGroupInstanceName = None
+        storageMaskingGroupInstances = conn.Associators(
             controllerConfigService, ResultClass='CIM_DeviceMaskingGroup')
 
-        for storageMaskingGroupInstanceName in \
-                storageMaskingGroupInstanceNames:
-            storageMaskingGroupInstance = conn.GetInstance(
-                storageMaskingGroupInstanceName)
+        for storageMaskingGroupInstance in \
+                storageMaskingGroupInstances:
+
             if ('_default_' in storageMaskingGroupInstance['ElementName'] and
                     policyName in storageMaskingGroupInstance['ElementName']):
-                return storageMaskingGroupInstanceName
+                # Check that it has not been recently deleted.
+                instance = self.utils.get_existing_instance(
+                    conn, storageMaskingGroupInstance.path)
+                if instance is None:
+                    # Storage Group doesn't exist any more.
+                    foundStorageMaskingGroupInstanceName = None
+                else:
+                    foundStorageMaskingGroupInstanceName = instance.path
 
-        return None
+        return foundStorageMaskingGroupInstanceName
 
     def _get_associated_storage_groups_from_tier_policy(
             self, conn, tierPolicyInstanceName):
@@ -694,15 +701,28 @@ class EMCVMAXFast(object):
         tierInstanceNames = self.get_associated_tier_from_tier_policy(
             conn, policyInstanceName)
         for tierInstanceName in tierInstanceNames:
-            poolInsttanceNames = self.get_associated_pools_from_tier(
+            # Check that tier hasn't suddenly been deleted.
+            instance = self.utils.get_existing_instance(conn, tierInstanceName)
+            if instance is None:
+                # Tier doesn't exist any more.
+                break
+
+            poolInstanceNames = self.get_associated_pools_from_tier(
                 conn, tierInstanceName)
-            for poolInstanceName in poolInsttanceNames:
-                storagePoolInstance = conn.GetInstance(
-                    poolInstanceName, LocalOnly=False)
+            for poolInstanceName in poolInstanceNames:
+                # Check that pool hasn't suddenly been deleted.
+                storagePoolInstance = self.utils.get_existing_instance(
+                    conn, poolInstanceName)
+
+                if storagePoolInstance is None:
+                    # Pool doesn't exist any more.
+                    break
+
                 total_capacity_gb += self.utils.convert_bits_to_gbs(
                     storagePoolInstance['TotalManagedSpace'])
                 allocated_capacity_gb += self.utils.convert_bits_to_gbs(
                     storagePoolInstance['EMCSubscribedCapacity'])
+
                 LOG.debug(
                     "policyName:%(policyName)s, pool: %(poolInstanceName)s, "
                     "allocated_capacity_gb = %(allocated_capacity_gb)lu"
