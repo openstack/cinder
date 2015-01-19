@@ -327,15 +327,9 @@ class EMCVMAXCommon(object):
             LOG.error(_LE("Error Attaching volume %(vol)s.")
                       % {'vol': volumeName})
             if rollbackDict['fastPolicyName'] is not None:
-                (
-                    self.masking
-                    ._check_if_rollback_action_for_masking_required(
-                        self.conn,
-                        rollbackDict['controllerConfigService'],
-                        rollbackDict['volumeInstance'],
-                        rollbackDict['volumeName'],
-                        rollbackDict['fastPolicyName'],
-                        rollbackDict['defaultStorageGroupInstanceName']))
+                (self.masking
+                    .check_if_rollback_action_for_masking_required(
+                        self.conn, rollbackDict))
             exception_message = ("Error Attaching volume %(vol)s."
                                  % {'vol': volumeName})
             raise exception.VolumeBackendAPIException(
@@ -822,7 +816,7 @@ class EMCVMAXCommon(object):
             self.utils.find_controller_configuration_service(
                 conn, storageSystemName))
 
-        # check to see what SG it is in
+        # Check to see what SG it is in
         assocStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(conn,
                                                      volumeInstance.path))
@@ -1525,7 +1519,6 @@ class EMCVMAXCommon(object):
                 extraSpecs[MEMBERCOUNT] = memberCount
                 extraSpecs[COMPOSITETYPE] = CONCATENATED
                 LOG.debug("StripedMetaCount is not in the extra specs")
-                pass
 
             poolName = self.utils.parse_pool_name_from_file(configurationFile)
             if poolName is None:

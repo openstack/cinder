@@ -31,6 +31,7 @@ from cinder.volume.drivers.emc.emc_vmax_fast import EMCVMAXFast
 from cinder.volume.drivers.emc.emc_vmax_fc import EMCVMAXFCDriver
 from cinder.volume.drivers.emc.emc_vmax_iscsi import EMCVMAXISCSIDriver
 from cinder.volume.drivers.emc.emc_vmax_masking import EMCVMAXMasking
+from cinder.volume.drivers.emc.emc_vmax_provision import EMCVMAXProvision
 from cinder.volume.drivers.emc.emc_vmax_utils import EMCVMAXUtils
 from cinder.volume import volume_types
 
@@ -338,7 +339,9 @@ class FakeEcomConnection():
                      HardwareId=None, ElementSource=None, EMCInPools=None,
                      CompositeType=None, EMCNumberOfMembers=None,
                      EMCBindElements=None,
-                     InElements=None, TargetPool=None, RequestedState=None):
+                     InElements=None, TargetPool=None, RequestedState=None,
+                     GroupName=None, Type=None, InitiatorMaskingGroup=None,
+                     DeviceMaskingGroup=None, TargetMaskingGroup=None):
 
         rc = 0L
         myjob = SE_ConcreteJob()
@@ -481,6 +484,8 @@ class FakeEcomConnection():
             result = self._assoc_endpoint()
         elif ResultClass == 'EMC_StorageVolume':
             result = self._assoc_storagevolume(objectpath)
+        elif ResultClass == 'Symm_LunMaskingView':
+            result = self._assoc_maskingview()
         elif ResultClass == 'CIM_DeviceMaskingGroup':
             result = self._assoc_storagegroup()
         elif ResultClass == 'CIM_StorageExtent':
@@ -671,6 +676,20 @@ class FakeEcomConnection():
 
         vol['DeviceID'] = vol['device_id']
         assoc = self._getinstance_storagevolume(vol)
+        assocs.append(assoc)
+        return assocs
+
+    def _assoc_maskingview(self):
+        assocs = []
+        assoc = SYMM_LunMasking()
+        assoc['Name'] = 'myMaskingView'
+        assoc['SystemName'] = self.data.storage_system
+        assoc['CreationClassName'] = 'Symm_LunMaskingView'
+        assoc['DeviceID'] = '1234'
+        assoc['SystemCreationClassName'] = '1234'
+        assoc['ElementName'] = 'OS-fakehost-gold-I-MV'
+        assoc.classname = assoc['CreationClassName']
+        assoc.path = assoc
         assocs.append(assoc)
         return assocs
 
@@ -1168,7 +1187,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         ecompassword.appendChild(ecompasswordtext)
 
         portgroup = doc.createElement("PortGroup")
-        portgrouptext = doc.createTextNode("myPortGroup")
+        portgrouptext = doc.createTextNode(self.data.port_group)
         portgroup.appendChild(portgrouptext)
 
         portgroups = doc.createElement("PortGroups")
@@ -1741,10 +1760,16 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         EMCVMAXUtils,
         'find_storage_masking_group',
         return_value='value')
-    def test_map_new_masking_view_no_fast_success(self, _mock_volume_type,
-                                                  mock_wrap_group,
+    @mock.patch.object(
+        EMCVMAXMasking,
+        '_check_adding_volume_to_storage_group',
+        return_value=None)
+    def test_map_new_masking_view_no_fast_success(self,
+                                                  mock_check,
+                                                  mock_storage_group,
                                                   mock_wrap_device,
-                                                  mock_storage_group):
+                                                  mock_wrap_group,
+                                                  mock_volume_type):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -1769,11 +1794,17 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         EMCVMAXCommon,
         '_is_same_host',
         return_value=False)
-    def test_map_live_migration_no_fast_success(self, _mock_volume_type,
-                                                mock_wrap_group,
-                                                mock_wrap_device,
+    @mock.patch.object(
+        EMCVMAXMasking,
+        '_check_adding_volume_to_storage_group',
+        return_value=None)
+    def test_map_live_migration_no_fast_success(self,
+                                                mock_check,
+                                                mock_same_host,
                                                 mock_storage_group,
-                                                mock_same_host):
+                                                mock_wrap_device,
+                                                mock_wrap_group,
+                                                mock_volume_type):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -1790,9 +1821,15 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         '_wrap_find_device_number',
         return_value={'hostlunid': 1,
                       'storagesystem': EMCVMAXCommonData.storage_system})
-    def test_already_mapped_no_fast_success(self, _mock_volume_type,
+    @mock.patch.object(
+        EMCVMAXCommon,
+        '_is_same_host',
+        return_value=True)
+    def test_already_mapped_no_fast_success(self,
+                                            mock_same_host,
+                                            mock_wrap_device,
                                             mock_wrap_group,
-                                            mock_wrap_device):
+                                            mock_volume_type):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -2077,7 +2114,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         timeout.appendChild(timeouttext)
 
         portgroup = doc.createElement("PortGroup")
-        portgrouptext = doc.createTextNode("myPortGroup")
+        portgrouptext = doc.createTextNode(self.data.port_group)
         portgroup.appendChild(portgrouptext)
 
         pool = doc.createElement("Pool")
@@ -2257,8 +2294,12 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         '_wrap_find_device_number',
         return_value={'hostlunid': 1,
                       'storagesystem': EMCVMAXCommonData.storage_system})
-    def test_map_fast_success(self, _mock_volume_type, mock_wrap_group,
-                              mock_wrap_device):
+    @mock.patch.object(
+        EMCVMAXCommon,
+        '_is_same_host',
+        return_value=True)
+    def test_map_fast_success(self, mock_same_host, mock_wrap_device,
+                              mock_wrap_group, mock_volume_type):
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -2595,7 +2636,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         ecompassword.appendChild(ecompasswordtext)
 
         portgroup = doc.createElement("PortGroup")
-        portgrouptext = doc.createTextNode("myPortGroup")
+        portgrouptext = doc.createTextNode(self.data.port_group)
         portgroup.appendChild(portgrouptext)
 
         portgroups = doc.createElement("PortGroups")
@@ -2746,8 +2787,17 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         EMCVMAXMasking,
         'get_masking_view_from_storage_group',
         return_value=EMCVMAXCommonData.lunmaskctrl_name)
+    @mock.patch.object(
+        EMCVMAXProvision,
+        '_find_new_storage_group',
+        return_value='Any')
+    @mock.patch.object(
+        EMCVMAXMasking,
+        '_check_adding_volume_to_storage_group',
+        return_value=None)
     def test_map_lookup_service_no_fast_success(
-            self, _mock_volume_type, mock_maskingview):
+            self, mock_add_check, mock_new_sg,
+            mock_maskingview, mock_volume_type):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
         common.get_target_wwns_from_masking_view = mock.Mock(
@@ -2930,7 +2980,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         ecompassword.appendChild(ecompasswordtext)
 
         portgroup = doc.createElement("PortGroup")
-        portgrouptext = doc.createTextNode("myPortGroup")
+        portgrouptext = doc.createTextNode(self.data.port_group)
         portgroup.appendChild(portgrouptext)
 
         pool = doc.createElement("Pool")
@@ -3106,7 +3156,16 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         EMCVMAXMasking,
         'get_masking_view_from_storage_group',
         return_value=EMCVMAXCommonData.lunmaskctrl_name)
-    def test_map_fast_success(self, _mock_volume_type, mock_maskingview):
+    @mock.patch.object(
+        EMCVMAXProvision,
+        '_find_new_storage_group',
+        return_value='Any')
+    @mock.patch.object(
+        EMCVMAXMasking,
+        '_check_adding_volume_to_storage_group',
+        return_value=None)
+    def test_map_fast_success(self, mock_add_check, mock_new_sg,
+                              mock_maskingview, mock_volume_type):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
         common.get_target_wwns = mock.Mock(
