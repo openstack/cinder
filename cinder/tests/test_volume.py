@@ -1760,13 +1760,24 @@ class VolumeTestCase(BaseVolumeTestCase):
             **self.volume_params)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         self.volume.create_volume(self.context, volume['id'])
+        msg = fake_notifier.NOTIFICATIONS[0]
+        self.assertEqual(msg['event_type'], 'volume.create.start')
+        self.assertEqual(msg['payload']['status'], 'creating')
+        self.assertEqual(msg['priority'], 'INFO')
+        msg = fake_notifier.NOTIFICATIONS[1]
+        self.assertEqual(msg['event_type'], 'volume.create.end')
+        self.assertEqual(msg['payload']['status'], 'available')
+        self.assertEqual(msg['priority'], 'INFO')
+        if len(fake_notifier.NOTIFICATIONS) > 2:
+            # Cause an assert to print the unexpected item
+            self.assertFalse(fake_notifier.NOTIFICATIONS[2])
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
+
         snapshot_id = self._create_snapshot(volume['id'])['id']
         self.volume.create_snapshot(self.context, volume['id'], snapshot_id)
         self.assertEqual(snapshot_id,
                          db.snapshot_get(context.get_admin_context(),
                                          snapshot_id).id)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 4)
         msg = fake_notifier.NOTIFICATIONS[2]
         self.assertEqual(msg['event_type'], 'snapshot.create.start')
         expected = {
@@ -1787,8 +1798,13 @@ class VolumeTestCase(BaseVolumeTestCase):
         expected['status'] = 'available'
         self.assertDictMatch(msg['payload'], expected)
 
+        if len(fake_notifier.NOTIFICATIONS) > 4:
+            # Cause an assert to print the unexpected item
+            self.assertFalse(fake_notifier.NOTIFICATIONS[4])
+
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 4)
+
         self.volume.delete_snapshot(self.context, snapshot_id)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 6)
         msg = fake_notifier.NOTIFICATIONS[4]
         self.assertEqual(msg['event_type'], 'snapshot.delete.start')
         expected['status'] = 'available'
@@ -1796,6 +1812,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         msg = fake_notifier.NOTIFICATIONS[5]
         self.assertEqual(msg['event_type'], 'snapshot.delete.end')
         self.assertDictMatch(msg['payload'], expected)
+
+        if len(fake_notifier.NOTIFICATIONS) > 6:
+            # Cause an assert to print the unexpected item
+            self.assertFalse(fake_notifier.NOTIFICATIONS[6])
+
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 6)
 
         snap = db.snapshot_get(context.get_admin_context(read_deleted='yes'),
                                snapshot_id)
