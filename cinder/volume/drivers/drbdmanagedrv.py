@@ -127,6 +127,11 @@ class DrbdManageDriver(driver.VolumeDriver):
 
     def check_for_setup_error(self):
         """Verify that requirements are in place to use DRBDmanage driver."""
+        if not all((dbus, dm_exc, dm_const, dm_utils)):
+            msg = _('DRBDmanage driver setup error: some required '
+                    'libraries (dbus, drbdmanage.*) not found.')
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
         if self.odm.ping() != 0:
             message = _('Cannot ping DRBDmanage backend')
             raise exception.VolumeBackendAPIException(data=message)
