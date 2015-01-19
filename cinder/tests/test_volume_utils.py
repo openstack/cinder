@@ -23,6 +23,7 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder import utils
+from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
 
 
@@ -380,7 +381,8 @@ class ClearVolumeTestCase(test.TestCase):
         self.assertIsNone(output)
         mock_copy.assert_called_once_with('/dev/zero', 'volume_path', 1024,
                                           '1M', sync=True,
-                                          execute=utils.execute, ionice='-c3')
+                                          execute=utils.execute, ionice='-c3',
+                                          throttle=None)
 
     @mock.patch('cinder.volume.utils.copy_volume', return_value=None)
     @mock.patch('cinder.volume.utils.CONF')
@@ -394,7 +396,8 @@ class ClearVolumeTestCase(test.TestCase):
         self.assertIsNone(output)
         mock_copy.assert_called_once_with('/dev/zero', 'volume_path', 1,
                                           '1M', sync=True,
-                                          execute=utils.execute, ionice='-c0')
+                                          execute=utils.execute, ionice='-c0',
+                                          throttle=None)
 
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.utils.CONF')
@@ -429,8 +432,6 @@ class ClearVolumeTestCase(test.TestCase):
 
 
 class CopyVolumeTestCase(test.TestCase):
-    @mock.patch('cinder.volume.utils.setup_blkio_cgroup',
-                return_value=['cg_cmd'])
     @mock.patch('cinder.volume.utils._calculate_count',
                 return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
@@ -438,13 +439,14 @@ class CopyVolumeTestCase(test.TestCase):
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.utils.CONF')
     def test_copy_volume_dd_iflag_and_oflag(self, mock_conf, mock_exec,
-                                            mock_support, mock_count, mock_cg):
-        mock_conf.volume_copy_bps_limit = 10
+                                            mock_support, mock_count):
+        fake_throttle = throttling.Throttle(['fake_throttle'])
         output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
                                           sync=True, execute=utils.execute,
-                                          ionice=None)
+                                          ionice=None, throttle=fake_throttle)
         self.assertIsNone(output)
-        mock_exec.assert_called_once_with('cg_cmd', 'dd', 'if=/dev/zero',
+        mock_exec.assert_called_once_with('fake_throttle', 'dd',
+                                          'if=/dev/zero',
                                           'of=/dev/null', 'count=5678',
                                           'bs=1234', 'iflag=direct',
                                           'oflag=direct', run_as_root=True)
@@ -453,30 +455,28 @@ class CopyVolumeTestCase(test.TestCase):
 
         output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
                                           sync=False, execute=utils.execute,
-                                          ionice=None)
+                                          ionice=None, throttle=fake_throttle)
         self.assertIsNone(output)
-        mock_exec.assert_called_once_with('cg_cmd', 'dd', 'if=/dev/zero',
+        mock_exec.assert_called_once_with('fake_throttle', 'dd',
+                                          'if=/dev/zero',
                                           'of=/dev/null', 'count=5678',
                                           'bs=1234', 'iflag=direct',
                                           'oflag=direct', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils.setup_blkio_cgroup',
-                return_value=['cg_cmd'])
     @mock.patch('cinder.volume.utils._calculate_count',
                 return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    @mock.patch('cinder.volume.utils.CONF')
-    def test_copy_volume_dd_no_iflag_or_oflag(self, mock_conf, mock_exec,
-                                              mock_support, mock_count,
-                                              mock_cg):
-        mock_conf.volume_copy_bps_limit = 10
+    def test_copy_volume_dd_no_iflag_or_oflag(self, mock_exec,
+                                              mock_support, mock_count):
+        fake_throttle = throttling.Throttle(['fake_throttle'])
         output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
                                           sync=True, execute=utils.execute,
-                                          ionice=None)
+                                          ionice=None, throttle=fake_throttle)
         self.assertIsNone(output)
-        mock_exec.assert_called_once_with('cg_cmd', 'dd', 'if=/dev/zero',
+        mock_exec.assert_called_once_with('fake_throttle', 'dd',
+                                          'if=/dev/zero',
                                           'of=/dev/null', 'count=5678',
                                           'bs=1234', 'conv=fdatasync',
                                           run_as_root=True)
@@ -485,23 +485,20 @@ class CopyVolumeTestCase(test.TestCase):
 
         output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
                                           sync=False, execute=utils.execute,
-                                          ionice=None)
+                                          ionice=None, throttle=fake_throttle)
         self.assertIsNone(output)
-        mock_exec.assert_called_once_with('cg_cmd', 'dd', 'if=/dev/zero',
+        mock_exec.assert_called_once_with('fake_throttle', 'dd',
+                                          'if=/dev/zero',
                                           'of=/dev/null', 'count=5678',
                                           'bs=1234', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils.setup_blkio_cgroup',
-                return_value=None)
     @mock.patch('cinder.volume.utils._calculate_count',
                 return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    @mock.patch('cinder.volume.utils.CONF')
-    def test_copy_volume_dd_no_cgroup(self, mock_conf, mock_exec, mock_support,
-                                      mock_count, mock_cg):
-        mock_conf.volume_copy_bps_limit = 10
+    def test_copy_volume_dd_no_throttle(self, mock_exec, mock_support,
+                                        mock_count):
         output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
                                           sync=True, execute=utils.execute,
                                           ionice=None)
@@ -510,17 +507,13 @@ class CopyVolumeTestCase(test.TestCase):
                                           'count=5678', 'bs=1234',
                                           'conv=fdatasync', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils.setup_blkio_cgroup',
-                return_value=None)
     @mock.patch('cinder.volume.utils._calculate_count',
                 return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    @mock.patch('cinder.volume.utils.CONF')
-    def test_copy_volume_dd_with_ionice(self, mock_conf, mock_exec,
-                                        mock_support, mock_count, mock_cg):
-        mock_conf.volume_copy_bps_limit = 10
+    def test_copy_volume_dd_with_ionice(self, mock_exec,
+                                        mock_support, mock_count):
         output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
                                           sync=True, execute=utils.execute,
                                           ionice='-c3')
@@ -529,77 +522,6 @@ class CopyVolumeTestCase(test.TestCase):
                                           'if=/dev/zero', 'of=/dev/null',
                                           'count=5678', 'bs=1234',
                                           'conv=fdatasync', run_as_root=True)
-
-
-class BlkioCgroupTestCase(test.TestCase):
-    def test_bps_limit_zero(self):
-        mock_exec = mock.Mock()
-        output = volume_utils.setup_blkio_cgroup('src', 'dst', 0,
-                                                 execute=mock_exec)
-        self.assertIsNone(output)
-        self.assertFalse(mock_exec.called)
-
-    @mock.patch('cinder.utils.get_blkdev_major_minor',
-                side_effect=exception.Error)
-    def test_get_blkdev_error(self, mock_get_blkdev):
-        mock_exec = mock.Mock()
-        output = volume_utils.setup_blkio_cgroup('src', 'dst', 1,
-                                                 execute=mock_exec)
-        self.assertIsNone(output)
-        mock_get_blkdev.assert_has_calls([mock.call('src'), mock.call('dst')])
-        self.assertFalse(mock_exec.called)
-
-    @mock.patch('cinder.utils.get_blkdev_major_minor',
-                side_effect=lambda x: x)
-    @mock.patch('cinder.volume.utils.CONF')
-    def test_cgcreate_fail(self, mock_conf, mock_get_blkdev):
-        mock_conf.volume_copy_blkio_cgroup_name = 'test_group'
-        mock_exec = mock.Mock()
-        mock_exec.side_effect = processutils.ProcessExecutionError
-        output = volume_utils.setup_blkio_cgroup('src', 'dst', 1,
-                                                 execute=mock_exec)
-        self.assertIsNone(output)
-        mock_get_blkdev.assert_has_calls([mock.call('src'), mock.call('dst')])
-        mock_exec.assert_called_once_with('cgcreate', '-g', 'blkio:test_group',
-                                          run_as_root=True)
-
-    @mock.patch('cinder.utils.get_blkdev_major_minor',
-                side_effect=lambda x: x)
-    @mock.patch('cinder.volume.utils.CONF')
-    def test_cgset_fail(self, mock_conf, mock_get_blkdev):
-        mock_conf.volume_copy_blkio_cgroup_name = 'test_group'
-        mock_exec = mock.Mock()
-
-        def cgset_exception(*args, **kwargs):
-            if 'cgset' in args:
-                raise processutils.ProcessExecutionError
-
-        mock_exec.side_effect = cgset_exception
-        output = volume_utils.setup_blkio_cgroup('src', 'dst', 1,
-                                                 execute=mock_exec)
-        self.assertIsNone(output)
-        mock_get_blkdev.assert_has_calls([mock.call('src'), mock.call('dst')])
-        mock_exec.assert_has_calls([
-            mock.call('cgcreate', '-g', 'blkio:test_group', run_as_root=True),
-            mock.call('cgset', '-r', 'blkio.throttle.read_bps_device=src 1',
-                      'test_group', run_as_root=True)])
-
-    @mock.patch('cinder.utils.get_blkdev_major_minor',
-                side_effect=lambda x: x)
-    @mock.patch('cinder.volume.utils.CONF')
-    def test_setup_blkio_cgroup(self, mock_conf, mock_get_blkdev):
-        mock_conf.volume_copy_blkio_cgroup_name = 'test_group'
-        mock_exec = mock.Mock()
-        output = volume_utils.setup_blkio_cgroup('src', 'dst', 1,
-                                                 execute=mock_exec)
-        self.assertEqual(['cgexec', '-g', 'blkio:test_group'], output)
-        mock_get_blkdev.assert_has_calls([mock.call('src'), mock.call('dst')])
-        mock_exec.assert_has_calls([
-            mock.call('cgcreate', '-g', 'blkio:test_group', run_as_root=True),
-            mock.call('cgset', '-r', 'blkio.throttle.read_bps_device=src 1',
-                      'test_group', run_as_root=True),
-            mock.call('cgset', '-r', 'blkio.throttle.write_bps_device=dst 1',
-                      'test_group', run_as_root=True)])
 
 
 class VolumeUtilsTestCase(test.TestCase):

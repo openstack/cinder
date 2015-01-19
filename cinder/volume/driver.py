@@ -32,6 +32,7 @@ from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
+from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
@@ -338,6 +339,24 @@ class BaseVD(object):
     def initialized(self):
         return self._initialized
 
+    def set_throttle(self):
+        bps_limit = ((self.configuration and
+                      self.configuration.safe_get('volume_copy_bps_limit')) or
+                     CONF.volume_copy_bps_limit)
+        cgroup_name = ((self.configuration and
+                        self.configuration.safe_get(
+                            'volume_copy_blkio_cgroup_name')) or
+                       CONF.volume_copy_blkio_cgroup_name)
+        self._throttle = None
+        if bps_limit:
+            try:
+                self._throttle = throttling.BlkioCgroup(int(bps_limit),
+                                                        cgroup_name)
+            except processutils.ProcessExecutionError as err:
+                LOG.warning(_LW('Failed to activate volume copy throttling: '
+                                '%(err)s'), {'err': six.text_type(err)})
+        throttling.Throttle.set_default(self._throttle)
+
     def get_version(self):
         """Get the current version of this driver."""
         return self.VERSION
@@ -435,7 +454,8 @@ class BaseVD(object):
                 src_attach_info['device']['path'],
                 dest_attach_info['device']['path'],
                 size_in_mb,
-                self.configuration.volume_dd_blocksize)
+                self.configuration.volume_dd_blocksize,
+                throttle=self._throttle)
             copy_error = False
         except Exception:
             with excutils.save_and_reraise_exception():

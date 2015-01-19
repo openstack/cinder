@@ -327,6 +327,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.exception(ex)
             return
 
+        self.driver.set_throttle()
+
         # at this point the driver is considered initialized.
         self.driver.set_initialized()
 

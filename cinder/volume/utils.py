@@ -26,10 +26,11 @@ from oslo_utils import units
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import utils
+from cinder.volume import throttling
 
 
 CONF = cfg.CONF
@@ -246,56 +247,6 @@ def notify_about_cgsnapshot_usage(context, cgsnapshot, event_suffix,
         usage_info)
 
 
-def setup_blkio_cgroup(srcpath, dstpath, bps_limit, execute=utils.execute):
-    if not bps_limit:
-        LOG.debug('Not using bps rate limiting on volume copy')
-        return None
-
-    try:
-        srcdev = utils.get_blkdev_major_minor(srcpath)
-    except exception.Error as e:
-        msg = (_('Failed to get device number for read throttling: %(error)s')
-               % {'error': e})
-        LOG.error(msg)
-        srcdev = None
-
-    try:
-        dstdev = utils.get_blkdev_major_minor(dstpath)
-    except exception.Error as e:
-        msg = (_('Failed to get device number for write throttling: %(error)s')
-               % {'error': e})
-        LOG.error(msg)
-        dstdev = None
-
-    if not srcdev and not dstdev:
-        return None
-
-    group_name = CONF.volume_copy_blkio_cgroup_name
-    LOG.debug('Setting rate limit to %s bps for blkio '
-              'group: %s' % (bps_limit, group_name))
-    try:
-        execute('cgcreate', '-g', 'blkio:%s' % group_name, run_as_root=True)
-    except processutils.ProcessExecutionError:
-        LOG.warn(_LW('Failed to create blkio cgroup'))
-        return None
-
-    try:
-        if srcdev:
-            execute('cgset', '-r', 'blkio.throttle.read_bps_device=%s %d'
-                    % (srcdev, bps_limit), group_name, run_as_root=True)
-        if dstdev:
-            execute('cgset', '-r', 'blkio.throttle.write_bps_device=%s %d'
-                    % (dstdev, bps_limit), group_name, run_as_root=True)
-    except processutils.ProcessExecutionError:
-        msg = (_('Failed to setup blkio cgroup to throttle the devices: '
-                 '\'%(src)s\',\'%(dst)s\'')
-               % {'src': srcdev, 'dst': dstdev})
-        LOG.warn(msg)
-        return None
-
-    return ['cgexec', '-g', 'blkio:%s' % group_name]
-
-
 def _calculate_count(size_in_m, blocksize):
 
     # Check if volume_dd_blocksize is valid
@@ -332,8 +283,8 @@ def check_for_odirect_support(src, dest, flag='oflag=direct'):
         return False
 
 
-def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
-                execute=utils.execute, ionice=None):
+def _copy_volume(prefix, srcstr, deststr, size_in_m, blocksize, sync=False,
+                 execute=utils.execute, ionice=None):
     # Use O_DIRECT to avoid thrashing the system buffer cache
     extra_flags = []
     if check_for_odirect_support(srcstr, deststr, 'iflag=direct'):
@@ -357,9 +308,7 @@ def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
     if ionice is not None:
         cmd = ['ionice', ionice] + cmd
 
-    cgcmd = setup_blkio_cgroup(srcstr, deststr, CONF.volume_copy_bps_limit)
-    if cgcmd:
-        cmd = cgcmd + cmd
+    cmd = prefix + cmd
 
     # Perform the copy
     start_time = timeutils.utcnow()
@@ -381,8 +330,19 @@ def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
     LOG.info(mesg % {'size_in_m': size_in_m, 'mbps': mbps})
 
 
+def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
+                execute=utils.execute, ionice=None, throttle=None):
+    if not throttle:
+        throttle = throttling.Throttle.get_default()
+    with throttle.subcommand(srcstr, deststr) as throttle_cmd:
+        _copy_volume(throttle_cmd['prefix'], srcstr, deststr,
+                     size_in_m, blocksize, sync=sync,
+                     execute=execute, ionice=ionice)
+
+
 def clear_volume(volume_size, volume_path, volume_clear=None,
-                 volume_clear_size=None, volume_clear_ionice=None):
+                 volume_clear_size=None, volume_clear_ionice=None,
+                 throttle=None):
     """Unprovision old volumes to prevent data leaking between users."""
     if volume_clear is None:
         volume_clear = CONF.volume_clear
@@ -402,7 +362,8 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
         return copy_volume('/dev/zero', volume_path, volume_clear_size,
                            CONF.volume_dd_blocksize,
                            sync=True, execute=utils.execute,
-                           ionice=volume_clear_ionice)
+                           ionice=volume_clear_ionice,
+                           throttle=throttle)
     elif volume_clear == 'shred':
         clear_cmd = ['shred', '-n3']
         if volume_clear_size:
