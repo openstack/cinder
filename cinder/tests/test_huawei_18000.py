@@ -341,6 +341,7 @@ class Fake18000Common(rest_common.RestCommon):
         rest_common.RestCommon.__init__(self, configuration)
         self.test_normal = True
         self.other_flag = True
+        self.associate_flag = True
         self.connect_flag = False
         self.delete_flag = False
         self.terminateFlag = False
@@ -442,7 +443,9 @@ class Fake18000Common(rest_common.RestCommon):
                 data = data_lun(url, method)
 
             if url == "lungroup/associate?ID=11"\
-                      "&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=11":
+                      "&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=11"\
+                      or url == "lungroup/associate?ID=12"\
+                      "&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=12":
                 data = '{"error":{"code":0}}'
                 self.terminateFlag = True
 
@@ -494,9 +497,18 @@ class Fake18000Common(rest_common.RestCommon):
             if url == "mappingview" or url == "mappingview?range=[0-65535]":
                 data = find_data_mappingview(method, self.other_flag)
 
-            if url == ("lun/associate?ID=1&TYPE=11&"
-                       "ASSOCIATEOBJTYPE=21&ASSOCIATEOBJID=0"):
-                data = '{"error":{"code":0}}'
+            if (url == ("lun/associate?ID=1&TYPE=11&"
+                        "ASSOCIATEOBJTYPE=21&ASSOCIATEOBJID=0")
+               or url == ("lun/associate?TYPE=11&ASSOCIATEOBJTYPE=256"
+                          "&ASSOCIATEOBJID=11")
+               or (url == ("lun/associate?TYPE=11&ASSOCIATEOBJTYPE=256"
+                           "&ASSOCIATEOBJID=12")
+               and not self.associate_flag)):
+                data = '{"error":{"code":0},"data":[{"ID":"11"}]}'
+            if ((url == ("lun/associate?TYPE=11&ASSOCIATEOBJTYPE=256"
+                         "&ASSOCIATEOBJID=12"))
+               and self.associate_flag):
+                data = '{"error":{"code":0},"data":[{"ID":"12"}]}'
 
             if url == "fc_initiator?ISFREE=true&range=[0-1000]":
                 data = self.fc_initiator_data()
@@ -524,11 +536,10 @@ class Fake18000Common(rest_common.RestCommon):
 
         else:
             data = '{"error":{"code":31755596}}'
-            if url == "lun/11":
-                if method == "GET":
-                    data = """{"error":{"code":0},"data":{"ID":"11",
-                           "IOCLASSID":"11",
-                           "NAME":"5mFHcBv4RkCcD+JyrWc0SA"}}"""
+            if (url == "lun/11") and (method == "GET"):
+                data = """{"error":{"code":0},"data":{"ID":"11",
+                       "IOCLASSID":"11",
+                       "NAME":"5mFHcBv4RkCcD+JyrWc0SA"}}"""
         res_json = json.loads(data)
 
         return res_json
@@ -689,6 +700,23 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
     def testgetwaitinterval(self):
         result = self.driver.common._get_wait_interval('LUNReadyWaitInterval')
         self.assertEqual('2', result)
+
+    def test_lun_is_associated_to_lungroup(self):
+        self.driver.common.login()
+        self.driver.common._associate_lun_to_lungroup('11', '11')
+        result = self.driver.common._is_lun_associated_to_lungroup('11', '11')
+        self.assertTrue(result)
+
+    def test_lun_is_not_associated_to_lun_group(self):
+        self.driver.common.login()
+        self.driver.common._associate_lun_to_lungroup('12', '12')
+        self.driver.common.associate_flag = True
+        result = self.driver.common._is_lun_associated_to_lungroup('12', '12')
+        self.assertTrue(result)
+        self.driver.common._remove_lun_from_lungroup('12', '12')
+        self.driver.common.associate_flag = False
+        result = self.driver.common._is_lun_associated_to_lungroup('12', '12')
+        self.assertFalse(result)
 
     def create_fake_conf_file(self):
         """Create a fake Config file
@@ -897,6 +925,23 @@ class Huawei18000FCDriverTestCase(test.TestCase):
     def testgetwaitinterval(self):
         result = self.driver.common._get_wait_interval('LUNReadyWaitInterval')
         self.assertEqual('2', result)
+
+    def test_lun_is_associated_to_lungroup(self):
+        self.driver.common.login()
+        self.driver.common._associate_lun_to_lungroup('11', '11')
+        result = self.driver.common._is_lun_associated_to_lungroup('11', '11')
+        self.assertTrue(result)
+
+    def test_lun_is_not_associated_to_lun_group(self):
+        self.driver.common.login()
+        self.driver.common._associate_lun_to_lungroup('12', '12')
+        self.driver.common.associate_flag = True
+        result = self.driver.common._is_lun_associated_to_lungroup('12', '12')
+        self.assertTrue(result)
+        self.driver.common._remove_lun_from_lungroup('12', '12')
+        self.driver.common.associate_flag = False
+        result = self.driver.common._is_lun_associated_to_lungroup('12', '12')
+        self.assertFalse(result)
 
     def create_fake_conf_file(self):
         """Create a fake Config file
