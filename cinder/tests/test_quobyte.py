@@ -22,10 +22,6 @@ import StringIO
 import traceback
 
 import mock
-import mox as mox_lib
-from mox import IgnoreArg
-from mox import IsA
-from mox import stubout
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_utils import units
@@ -81,9 +77,9 @@ class QuobyteDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(QuobyteDriverTestCase, self).setUp()
-        self._mox = mox_lib.Mox()
-        self._configuration = mox_lib.MockObject(conf.Configuration)
-        self._configuration.append_config_values(mox_lib.IgnoreArg())
+
+        self._configuration = mock.Mock(conf.Configuration)
+        self._configuration.append_config_values(mock.ANY)
         self._configuration.quobyte_volume_url = \
             self.TEST_QUOBYTE_VOLUME
         self._configuration.quobyte_client_cfg = None
@@ -92,19 +88,11 @@ class QuobyteDriverTestCase(test.TestCase):
         self._configuration.quobyte_mount_point_base = \
             self.TEST_MNT_POINT_BASE
 
-        self.stubs = stubout.StubOutForTesting()
         self._driver =\
             quobyte.QuobyteDriver(configuration=self._configuration,
                                   db=FakeDb())
         self._driver.shares = {}
         self._driver.set_nas_security_options(is_new_cinder_install=False)
-        self.execute_as_root = False
-        self.addCleanup(self._mox.UnsetStubs)
-
-    def stub_out_not_replaying(self, obj, attr_name):
-        attr_to_replace = getattr(obj, attr_name)
-        stub = mox_lib.MockObject(attr_to_replace)
-        self.stubs.Set(obj, attr_name, stub)
 
     def assertRaisesAndMessageMatches(
             self, excClass, msg, callableObj, *args, **kwargs):
@@ -254,7 +242,6 @@ class QuobyteDriverTestCase(test.TestCase):
 
     def test_get_available_capacity_with_df(self):
         """_get_available_capacity should calculate correct value."""
-        mox = self._mox
         drv = self._driver
 
         df_total_size = 2620544
@@ -265,22 +252,22 @@ class QuobyteDriverTestCase(test.TestCase):
                    self.TEST_MNT_POINT)
         df_output = df_head + df_data
 
-        mox.StubOutWithMock(drv, '_get_mount_point_for_share')
-        drv._get_mount_point_for_share(self.TEST_QUOBYTE_VOLUME).\
-            AndReturn(self.TEST_MNT_POINT)
+        drv._get_mount_point_for_share = mock.Mock(return_value=self.
+                                                   TEST_MNT_POINT)
 
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('df', '--portability', '--block-size', '1',
-                     self.TEST_MNT_POINT,
-                     run_as_root=self.execute_as_root).AndReturn((df_output,
-                                                                  None))
-
-        mox.ReplayAll()
+        drv._execute = mock.Mock(return_value=(df_output, None))
 
         self.assertEqual((df_avail, df_total_size),
                          drv._get_available_capacity(self.TEST_QUOBYTE_VOLUME))
-
-        mox.VerifyAll()
+        (drv._get_mount_point_for_share.
+            assert_called_once_with(self.TEST_QUOBYTE_VOLUME))
+        (drv._execute.
+         assert_called_once_with('df',
+                                 '--portability',
+                                 '--block-size',
+                                 '1',
+                                 self.TEST_MNT_POINT,
+                                 run_as_root=self._driver._execute_as_root))
 
     def test_get_capacity_info(self):
         with mock.patch.object(self._driver, '_get_available_capacity') \
@@ -370,7 +357,7 @@ class QuobyteDriverTestCase(test.TestCase):
     def test_do_setup(self):
         """do_setup runs successfully."""
         drv = self._driver
-        drv.do_setup(IsA(context.RequestContext))
+        drv.do_setup(mock.create_autospec(context.RequestContext))
 
     def test_check_for_setup_error_throws_quobyte_volume_url_not_set(self):
         """check_for_setup_error throws if 'quobyte_volume_url' is not set."""
@@ -384,39 +371,30 @@ class QuobyteDriverTestCase(test.TestCase):
 
     def test_check_for_setup_error_throws_client_not_installed(self):
         """check_for_setup_error throws if client is not installed."""
-        mox = self._mox
         drv = self._driver
-
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mount.quobyte', check_exit_code=False,
-                     run_as_root=False).\
-            AndRaise(OSError(errno.ENOENT, 'No such file or directory'))
-
-        mox.ReplayAll()
+        drv._execute = mock.Mock(side_effect=OSError
+                                 (errno.ENOENT, 'No such file or directory'))
 
         self.assertRaisesAndMessageMatches(exception.VolumeDriverException,
                                            'mount.quobyte is not installed',
                                            drv.check_for_setup_error)
-
-        mox.VerifyAll()
+        drv._execute.assert_called_once_with('mount.quobyte',
+                                             check_exit_code=False,
+                                             run_as_root=False)
 
     def test_check_for_setup_error_throws_client_not_executable(self):
         """check_for_setup_error throws if client cannot be executed."""
-        mox = self._mox
         drv = self._driver
 
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mount.quobyte', check_exit_code=False,
-                     run_as_root=False).\
-            AndRaise(OSError(errno.EPERM, 'Operation not permitted'))
-
-        mox.ReplayAll()
+        drv._execute = mock.Mock(side_effect=OSError
+                                 (errno.EPERM, 'Operation not permitted'))
 
         self.assertRaisesAndMessageMatches(OSError,
                                            'Operation not permitted',
                                            drv.check_for_setup_error)
-
-        mox.VerifyAll()
+        drv._execute.assert_called_once_with('mount.quobyte',
+                                             check_exit_code=False,
+                                             run_as_root=False)
 
     def test_find_share_should_throw_error_if_there_is_no_mounted_shares(self):
         """_find_share should throw error if there is no mounted share."""
@@ -473,123 +451,99 @@ class QuobyteDriverTestCase(test.TestCase):
         return volume
 
     def test_create_sparsed_volume(self):
-        mox = self._mox
         drv = self._driver
         volume = self._simple_volume()
 
-        mox.StubOutWithMock(drv, '_create_sparsed_file')
-        mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
-
-        drv._create_sparsed_file(IgnoreArg(), IgnoreArg())
-        drv._set_rw_permissions_for_all(IgnoreArg())
-
-        mox.ReplayAll()
+        drv._create_sparsed_file = mock.Mock()
+        drv._set_rw_permissions_for_all = mock.Mock()
 
         drv._do_create_volume(volume)
-
-        mox.VerifyAll()
+        drv._create_sparsed_file.assert_called_once_with(mock.ANY, mock.ANY)
+        drv._set_rw_permissions_for_all.assert_called_once_with(mock.ANY)
 
     def test_create_nonsparsed_volume(self):
-        mox = self._mox
         drv = self._driver
         volume = self._simple_volume()
 
         old_value = self._configuration.quobyte_sparsed_volumes
         self._configuration.quobyte_sparsed_volumes = False
 
-        mox.StubOutWithMock(drv, '_create_regular_file')
-        mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
-
-        drv._create_regular_file(IgnoreArg(), IgnoreArg())
-        drv._set_rw_permissions_for_all(IgnoreArg())
-
-        mox.ReplayAll()
+        drv._create_regular_file = mock.Mock()
+        drv._set_rw_permissions_for_all = mock.Mock()
 
         drv._do_create_volume(volume)
-
-        mox.VerifyAll()
+        drv._create_regular_file.assert_called_once_with(mock.ANY, mock.ANY)
+        drv._set_rw_permissions_for_all.assert_called_once_with(mock.ANY)
 
         self._configuration.quobyte_sparsed_volumes = old_value
 
     def test_create_qcow2_volume(self):
-        (mox, drv) = self._mox, self._driver
+        drv = self._driver
 
         volume = self._simple_volume()
         old_value = self._configuration.quobyte_qcow2_volumes
         self._configuration.quobyte_qcow2_volumes = True
 
-        mox.StubOutWithMock(drv, '_execute')
+        drv._execute = mock.Mock()
 
         hashed = drv._get_hash_str(volume['provider_location'])
         path = '%s/%s/volume-%s' % (self.TEST_MNT_POINT_BASE,
                                     hashed,
                                     self.VOLUME_UUID)
 
-        drv._execute('qemu-img', 'create', '-f', 'qcow2',
-                     '-o', 'preallocation=metadata', path,
-                     str(volume['size'] * units.Gi),
-                     run_as_root=self.execute_as_root)
-
-        drv._execute('chmod', 'ugo+rw', path, run_as_root=self.execute_as_root)
-
-        mox.ReplayAll()
-
         drv._do_create_volume(volume)
 
-        mox.VerifyAll()
+        assert_calls = [mock.call('qemu-img', 'create', '-f', 'qcow2',
+                                  '-o', 'preallocation=metadata', path,
+                                  str(volume['size'] * units.Gi),
+                                  run_as_root=self._driver._execute_as_root),
+                        mock.call('chmod', 'ugo+rw', path,
+                                  run_as_root=self._driver._execute_as_root)]
+        drv._execute.assert_has_calls(assert_calls)
 
         self._configuration.quobyte_qcow2_volumes = old_value
 
     def test_create_volume_should_ensure_quobyte_mounted(self):
         """create_volume ensures shares provided in config are mounted."""
-        mox = self._mox
         drv = self._driver
 
-        self.stub_out_not_replaying(quobyte, 'LOG')
-        self.stub_out_not_replaying(drv, '_find_share')
-        self.stub_out_not_replaying(drv, '_do_create_volume')
-
-        mox.StubOutWithMock(drv, '_ensure_shares_mounted')
-        drv._ensure_shares_mounted()
-
-        mox.ReplayAll()
+        drv.LOG = mock.Mock()
+        drv._find_share = mock.Mock()
+        drv._do_create_volume = mock.Mock()
+        drv._ensure_shares_mounted = mock.Mock()
 
         volume = DumbVolume()
         volume['size'] = self.TEST_SIZE_IN_GB
         drv.create_volume(volume)
 
-        mox.VerifyAll()
+        drv._find_share.assert_called_once_with(mock.ANY)
+        drv._do_create_volume.assert_called_once_with(volume)
+        drv._ensure_shares_mounted.assert_called_once_with()
 
     def test_create_volume_should_return_provider_location(self):
         """create_volume should return provider_location with found share."""
-        mox = self._mox
         drv = self._driver
 
-        self.stub_out_not_replaying(quobyte, 'LOG')
-        self.stub_out_not_replaying(drv, '_ensure_shares_mounted')
-        self.stub_out_not_replaying(drv, '_do_create_volume')
-
-        mox.StubOutWithMock(drv, '_find_share')
-        drv._find_share(self.TEST_SIZE_IN_GB).\
-            AndReturn(self.TEST_QUOBYTE_VOLUME)
-
-        mox.ReplayAll()
+        drv.LOG = mock.Mock()
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._do_create_volume = mock.Mock()
+        drv._find_share = mock.Mock(return_value=self.TEST_QUOBYTE_VOLUME)
 
         volume = DumbVolume()
         volume['size'] = self.TEST_SIZE_IN_GB
         result = drv.create_volume(volume)
         self.assertEqual(self.TEST_QUOBYTE_VOLUME, result['provider_location'])
 
-        mox.VerifyAll()
+        drv._do_create_volume.assert_called_once_with(volume)
+        drv._ensure_shares_mounted.assert_called_once_with()
+        drv._find_share.assert_called_once_with(self.TEST_SIZE_IN_GB)
 
     def test_create_cloned_volume(self):
-        (mox, drv) = self._mox, self._driver
+        drv = self._driver
 
-        mox.StubOutWithMock(drv, '_create_snapshot')
-        mox.StubOutWithMock(drv, '_delete_snapshot')
-        mox.StubOutWithMock(drv, '_read_info_file')
-        mox.StubOutWithMock(image_utils, 'convert_image')
-        mox.StubOutWithMock(drv, '_copy_volume_from_snapshot')
+        drv._create_snapshot = mock.Mock()
+        drv._copy_volume_from_snapshot = mock.Mock()
+        drv._delete_snapshot = mock.Mock()
 
         volume = self._simple_volume()
         src_vref = self._simple_volume()
@@ -609,17 +563,13 @@ class QuobyteDriverTestCase(test.TestCase):
                     'id': 'tmp-snap-%s' % src_vref['id'],
                     'volume': src_vref}
 
-        drv._create_snapshot(snap_ref)
-
-        drv._copy_volume_from_snapshot(snap_ref, volume_ref, volume['size'])
-
-        drv._delete_snapshot(mox_lib.IgnoreArg())
-
-        mox.ReplayAll()
-
         drv.create_cloned_volume(volume, src_vref)
 
-        mox.VerifyAll()
+        drv._create_snapshot.assert_called_once_with(snap_ref)
+        drv._copy_volume_from_snapshot.assert_called_once_with(snap_ref,
+                                                               volume_ref,
+                                                               volume['size'])
+        drv._delete_snapshot.assert_called_once_with(mock.ANY)
 
     @mock.patch('cinder.openstack.common.fileutils.delete_if_exists')
     def test_delete_volume(self, mock_delete_if_exists):
@@ -649,8 +599,9 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume['provider_location'])
             mock_local_volume_dir.assert_called_once_with(volume)
             mock_active_image_from_info.assert_called_once_with(volume)
-            mock_execute.assert_called_once_with(
-                'rm', '-f', volume_path, run_as_root=self.execute_as_root)
+            mock_execute.assert_called_once_with('rm', '-f', volume_path,
+                                                 run_as_root=
+                                                 self._driver._execute_as_root)
             mock_local_path_volume_info.assert_called_once_with(volume)
             mock_local_path_volume.assert_called_once_with(volume)
             mock_delete_if_exists.assert_any_call(volume_path)
@@ -658,45 +609,42 @@ class QuobyteDriverTestCase(test.TestCase):
 
     def test_delete_should_ensure_share_mounted(self):
         """delete_volume should ensure that corresponding share is mounted."""
-        mox = self._mox
         drv = self._driver
 
-        self.stub_out_not_replaying(drv, '_execute')
+        drv._execute = mock.Mock()
 
         volume = DumbVolume()
         volume['name'] = 'volume-123'
         volume['provider_location'] = self.TEST_QUOBYTE_VOLUME
 
-        mox.StubOutWithMock(drv, '_ensure_share_mounted')
-        drv._ensure_share_mounted(self.TEST_QUOBYTE_VOLUME)
-
-        mox.ReplayAll()
+        drv._ensure_share_mounted = mock.Mock()
 
         drv.delete_volume(volume)
 
-        mox.VerifyAll()
+        (drv._ensure_share_mounted.
+         assert_called_once_with(self.TEST_QUOBYTE_VOLUME))
+        drv._execute.assert_called_once_with('rm', '-f',
+                                             mock.ANY,
+                                             run_as_root=False)
 
     def test_delete_should_not_delete_if_provider_location_not_provided(self):
         """delete_volume shouldn't delete if provider_location missed."""
-        mox = self._mox
         drv = self._driver
 
-        self.stub_out_not_replaying(drv, '_ensure_share_mounted')
+        drv._ensure_share_mounted = mock.Mock()
+        drv._execute = mock.Mock()
 
         volume = DumbVolume()
         volume['name'] = 'volume-123'
         volume['provider_location'] = None
 
-        mox.StubOutWithMock(drv, '_execute')
-
-        mox.ReplayAll()
-
         drv.delete_volume(volume)
 
-        mox.VerifyAll()
+        assert not drv._ensure_share_mounted.called
+        assert not drv._execute.called
 
     def test_extend_volume(self):
-        (mox, drv) = self._mox, self._driver
+        drv = self._driver
 
         volume = self._simple_volume()
 
@@ -713,31 +661,20 @@ class QuobyteDriverTestCase(test.TestCase):
 
         img_info = imageutils.QemuImgInfo(qemu_img_info_output)
 
-        mox.StubOutWithMock(drv, '_execute')
-        mox.StubOutWithMock(drv, 'get_active_image_from_info')
-        mox.StubOutWithMock(image_utils, 'qemu_img_info')
-        mox.StubOutWithMock(image_utils, 'resize_image')
-
-        drv.get_active_image_from_info(volume).AndReturn(volume['name'])
-
-        image_utils.qemu_img_info(volume_path).AndReturn(img_info)
-
-        image_utils.resize_image(volume_path, 3)
-
-        mox.ReplayAll()
+        drv.get_active_image_from_info = mock.Mock(return_value=volume['name'])
+        image_utils.qemu_img_info = mock.Mock(return_value=img_info)
+        image_utils.resize_image = mock.Mock()
 
         drv.extend_volume(volume, 3)
 
-        mox.VerifyAll()
+        drv.get_active_image_from_info.assert_called_once_with(volume)
+        image_utils.qemu_img_info.assert_called_once_with(volume_path)
+        image_utils.resize_image.assert_called_once_with(volume_path, 3)
 
     def test_copy_volume_from_snapshot(self):
-        (mox, drv) = self._mox, self._driver
+        drv = self._driver
 
-        mox.StubOutWithMock(image_utils, 'convert_image')
-        mox.StubOutWithMock(drv, '_read_info_file')
-        mox.StubOutWithMock(image_utils, 'qemu_img_info')
-        mox.StubOutWithMock(drv, '_set_rw_permissions_for_all')
-
+        # lots of test vars to be prepared at first
         dest_volume = self._simple_volume(
             'c1073000-0000-0000-0000-0000000c1073')
         src_volume = self._simple_volume()
@@ -761,11 +698,6 @@ class QuobyteDriverTestCase(test.TestCase):
 
         size = dest_volume['size']
 
-        drv._read_info_file(info_path).AndReturn(
-            {'active': snap_file,
-             snapshot['id']: snap_file}
-        )
-
         qemu_img_output = """image: %s
         file format: raw
         virtual size: 1.0G (1073741824 bytes)
@@ -774,20 +706,24 @@ class QuobyteDriverTestCase(test.TestCase):
         """ % (snap_file, src_volume['name'])
         img_info = imageutils.QemuImgInfo(qemu_img_output)
 
-        image_utils.qemu_img_info(snap_path).AndReturn(img_info)
-
-        image_utils.convert_image(src_vol_path,
-                                  dest_vol_path,
-                                  'raw',
-                                  run_as_root=self.execute_as_root)
-
-        drv._set_rw_permissions_for_all(dest_vol_path)
-
-        mox.ReplayAll()
+        # mocking and testing starts here
+        image_utils.convert_image = mock.Mock()
+        drv._read_info_file = mock.Mock(return_value=
+                                        {'active': snap_file,
+                                         snapshot['id']: snap_file})
+        image_utils.qemu_img_info = mock.Mock(return_value=img_info)
+        drv._set_rw_permissions_for_all = mock.Mock()
 
         drv._copy_volume_from_snapshot(snapshot, dest_volume, size)
 
-        mox.VerifyAll()
+        drv._read_info_file.assert_called_once_with(info_path)
+        image_utils.qemu_img_info.assert_called_once_with(snap_path)
+        (image_utils.convert_image.
+         assert_called_once_with(src_vol_path,
+                                 dest_vol_path,
+                                 'raw',
+                                 run_as_root=self._driver._execute_as_root))
+        drv._set_rw_permissions_for_all.assert_called_once_with(dest_vol_path)
 
     def test_create_volume_from_snapshot_status_not_available(self):
         """Expect an error when the snapshot's status is not 'available'."""
@@ -812,7 +748,7 @@ class QuobyteDriverTestCase(test.TestCase):
                           snap_ref)
 
     def test_create_volume_from_snapshot(self):
-        (mox, drv) = self._mox, self._driver
+        drv = self._driver
 
         src_volume = self._simple_volume()
         snap_ref = {'volume_name': src_volume['name'],
@@ -827,28 +763,21 @@ class QuobyteDriverTestCase(test.TestCase):
         new_volume = DumbVolume()
         new_volume['size'] = snap_ref['size']
 
-        mox.StubOutWithMock(drv, '_ensure_shares_mounted')
-        mox.StubOutWithMock(drv, '_find_share')
-        mox.StubOutWithMock(drv, '_do_create_volume')
-        mox.StubOutWithMock(drv, '_copy_volume_from_snapshot')
-
-        drv._ensure_shares_mounted()
-
-        drv._find_share(new_volume['size']).AndReturn(self.TEST_QUOBYTE_VOLUME)
-
-        drv._do_create_volume(new_volume)
-        drv._copy_volume_from_snapshot(snap_ref,
-                                       new_volume,
-                                       new_volume['size'])
-
-        mox.ReplayAll()
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._find_share = mock.Mock(return_value=self.TEST_QUOBYTE_VOLUME)
+        drv._do_create_volume = mock.Mock()
+        drv._copy_volume_from_snapshot = mock.Mock()
 
         drv.create_volume_from_snapshot(new_volume, snap_ref)
 
-        mox.VerifyAll()
+        drv._ensure_shares_mounted.assert_called_once_with()
+        drv._find_share.assert_called_once_with(new_volume['size'])
+        drv._do_create_volume.assert_called_once_with(new_volume)
+        (drv._copy_volume_from_snapshot.
+         assert_called_once_with(snap_ref, new_volume, new_volume['size']))
 
     def test_initialize_connection(self):
-        (mox, drv) = self._mox, self._driver
+        drv = self._driver
 
         volume = self._simple_volume()
         vol_dir = os.path.join(self.TEST_MNT_POINT_BASE,
@@ -862,17 +791,13 @@ class QuobyteDriverTestCase(test.TestCase):
         """ % volume['name']
         img_info = imageutils.QemuImgInfo(qemu_img_output)
 
-        mox.StubOutWithMock(drv, 'get_active_image_from_info')
-        mox.StubOutWithMock(image_utils, 'qemu_img_info')
-
-        drv.get_active_image_from_info(volume).AndReturn(volume['name'])
-        image_utils.qemu_img_info(vol_path).AndReturn(img_info)
-
-        mox.ReplayAll()
+        drv.get_active_image_from_info = mock.Mock(return_value=volume['name'])
+        image_utils.qemu_img_info = mock.Mock(return_value=img_info)
 
         conn_info = drv.initialize_connection(volume, None)
 
-        mox.VerifyAll()
+        drv.get_active_image_from_info.assert_called_once_with(volume)
+        image_utils.qemu_img_info.assert_called_once_with(vol_path)
 
         self.assertEqual(conn_info['data']['format'], 'raw')
         self.assertEqual(conn_info['driver_volume_type'], 'quobyte')
