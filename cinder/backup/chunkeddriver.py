@@ -45,12 +45,6 @@ chunkedbackup_service_opts = [
     cfg.StrOpt('backup_compression_algorithm',
                default='zlib',
                help='Compression algorithm (None to disable)'),
-    cfg.StrOpt('backup_compression_model',
-               default='chunked',
-               help='Values are "chunked" or "streaming".  If "chunked", '
-                    'flush compression buffers on every chunk; '
-                    'If "streaming", at the end of the entire data stream for '
-                    'a backup.'),
 ]
 
 CONF = cfg.CONF
@@ -101,7 +95,6 @@ class ChunkedBackupDriver(driver.BackupDriver):
         self.data_block_num = CONF.backup_object_number_per_notification
         self.az = CONF.storage_availability_zone
         self.backup_compression_algorithm = CONF.backup_compression_algorithm
-        self.backup_compression_model = CONF.backup_compression_model
         self.compressor = \
             self._get_compressor(CONF.backup_compression_algorithm)
 
@@ -236,7 +229,6 @@ class ChunkedBackupDriver(driver.BackupDriver):
         LOG.debug('_read_metadata started, container name: %(container)s, '
                   'metadata filename: %(filename)s.',
                   {'container': container, 'filename': filename})
-        reader = self.get_object_reader(container, filename)
         with self.get_object_reader(container, filename) as reader:
             metadata_json = reader.read()
         metadata = json.loads(metadata_json)
@@ -573,8 +565,6 @@ class ChunkedBackupDriver(driver.BackupDriver):
                           'volume_id': volume_id,
                       })
 
-            reader = self.get_object_reader(container, object_name,
-                                            extra_metadata)
             with self.get_object_reader(
                     container, object_name,
                     extra_metadata=extra_metadata) as reader:
