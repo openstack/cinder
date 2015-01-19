@@ -19,7 +19,7 @@ Volume driver common utilities for HP MSA Storage array
 import base64
 import uuid
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.i18n import _LE

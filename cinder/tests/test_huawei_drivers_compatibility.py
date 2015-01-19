@@ -13,8 +13,8 @@
 #    under the License.
 
 
-from oslo.config import cfg
 from oslo.utils import importutils
+from oslo_config import cfg
 
 from cinder import context
 from cinder import test

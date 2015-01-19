@@ -12,7 +12,7 @@
 
 import abc
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 
 CONF = cfg.CONF

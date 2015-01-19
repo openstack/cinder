@@ -16,7 +16,7 @@
 """Tests for the configuration wrapper in volume drivers."""
 
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder.openstack.common import log as logging
 from cinder import test

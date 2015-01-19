@@ -25,8 +25,8 @@ import hashlib
 import time
 from xml.dom.minidom import parseString
 
-from oslo.config import cfg
 from oslo.utils import units
+from oslo_config import cfg
 import six
 
 from cinder import exception

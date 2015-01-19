@@ -23,9 +23,9 @@ import collections
 import datetime
 import functools
 
-from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import timeutils
+from oslo_config import cfg
 import six
 
 from cinder import context

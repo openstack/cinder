@@ -24,8 +24,8 @@ import datetime
 import json
 import os
 
-from oslo.config import cfg
 from oslo.utils import timeutils
+from oslo_config import cfg
 
 from cinder.i18n import _LE
 from cinder.openstack.common import log as logging

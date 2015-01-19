@@ -19,7 +19,7 @@ Key manager API
 
 import abc
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 
 encryption_opts = [

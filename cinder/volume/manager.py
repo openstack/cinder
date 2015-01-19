@@ -39,12 +39,12 @@ intact.
 
 import time
 
-from oslo.config import cfg
 from oslo import messaging
 from oslo.serialization import jsonutils
 from oslo.utils import excutils
 from oslo.utils import importutils
 from oslo.utils import timeutils
+from oslo_config import cfg
 from osprofiler import profiler
 
 from cinder import compute

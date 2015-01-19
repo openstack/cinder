@@ -17,8 +17,8 @@ Tests For HostManager
 """
 
 import mock
-from oslo.config import cfg
 from oslo.utils import timeutils
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.openstack.common.scheduler import filters

@@ -18,9 +18,9 @@ import base64
 from datetime import datetime
 import errno
 
-from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import units
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI

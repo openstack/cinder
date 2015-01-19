@@ -19,7 +19,7 @@ Tests for volume replication API code.
 import json
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 import webob
 
 from cinder import context

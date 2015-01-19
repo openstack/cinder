@@ -25,7 +25,7 @@ import time
 import urllib2
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 import testtools
 import webob
 import webob.dec

@@ -40,7 +40,7 @@ and registered in the group in which they are used.
 """
 
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder.openstack.common import log as logging
 

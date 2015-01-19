@@ -33,10 +33,10 @@ Volume backups can be created, restored, deleted and listed.
 
 """
 
-from oslo.config import cfg
 from oslo import messaging
 from oslo.utils import excutils
 from oslo.utils import importutils
+from oslo_config import cfg
 
 from cinder.backup import driver
 from cinder.backup import rpcapi as backup_rpcapi

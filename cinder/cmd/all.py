@@ -33,7 +33,7 @@ import warnings
 
 warnings.simplefilter('once', DeprecationWarning)
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import i18n
 i18n.enable_lazy()

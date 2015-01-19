@@ -16,9 +16,9 @@
 import os
 import re
 
-from oslo.config import cfg
 from oslo.utils import units
 from oslo_concurrency import processutils as putils
+from oslo_config import cfg
 
 from cinder.brick.remotefs import remotefs
 from cinder import exception

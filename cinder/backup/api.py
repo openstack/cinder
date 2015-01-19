@@ -19,8 +19,8 @@ Handles all requests relating to the volume backups service.
 
 
 from eventlet import greenthread
-from oslo.config import cfg
 from oslo.utils import excutils
+from oslo_config import cfg
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context

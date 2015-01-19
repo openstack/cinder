@@ -17,7 +17,7 @@ Handles all requests relating to volume replication.
 """
 import functools
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder.db import base
 from cinder import exception

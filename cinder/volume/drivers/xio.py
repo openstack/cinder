@@ -18,7 +18,7 @@ import string
 import urllib2
 
 from lxml import etree
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import context
 from cinder import exception

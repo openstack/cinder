@@ -16,9 +16,9 @@
 Client side of the scheduler manager RPC API.
 """
 
-from oslo.config import cfg
 from oslo import messaging
 from oslo.serialization import jsonutils
+from oslo_config import cfg
 
 from cinder import rpc
 

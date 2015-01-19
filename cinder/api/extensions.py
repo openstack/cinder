@@ -16,8 +16,8 @@
 
 import os
 
-from oslo.config import cfg
 from oslo.utils import importutils
+from oslo_config import cfg
 import webob.dec
 import webob.exc
 

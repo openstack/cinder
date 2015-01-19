@@ -20,8 +20,8 @@
 import uuid
 
 
-from oslo.config import cfg
 from oslo.utils import units
+from oslo_config import cfg
 import six
 
 from cinder import context

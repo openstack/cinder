@@ -21,7 +21,7 @@ This driver requires ISCSI target role installed
 
 import os
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils

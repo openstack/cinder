@@ -16,7 +16,7 @@
 """Policy Engine For Cinder"""
 
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.openstack.common import policy

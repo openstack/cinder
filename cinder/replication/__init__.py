@@ -13,8 +13,8 @@
 #    under the License.
 
 
-from oslo.config import cfg
 from oslo.utils import importutils
+from oslo_config import cfg
 
 
 CONF = cfg.CONF

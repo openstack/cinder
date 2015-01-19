@@ -15,8 +15,8 @@
 #
 """HP LeftHand SAN ISCSI REST Proxy."""
 
-from oslo.config import cfg
 from oslo.utils import units
+from oslo_config import cfg
 
 from cinder import context
 from cinder import exception

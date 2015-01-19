@@ -27,10 +27,10 @@ add_connection and delete_connection interfaces.
 :zone_name_prefix: Used by: class: 'FCZoneDriver'. Defaults to 'openstack'
 """
 
-from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import importutils
 from oslo_concurrency import lockutils
+from oslo_config import cfg
 import six
 
 from cinder import exception

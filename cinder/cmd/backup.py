@@ -23,7 +23,7 @@ import warnings
 warnings.simplefilter('once', DeprecationWarning)
 
 import eventlet
-from oslo.config import cfg
+from oslo_config import cfg
 
 eventlet.monkey_patch()
 

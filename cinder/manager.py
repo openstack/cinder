@@ -52,8 +52,8 @@ This module provides Manager, a base class for managers.
 """
 
 
-from oslo.config import cfg
 from oslo import messaging
+from oslo_config import cfg
 
 from cinder.db import base
 from cinder.openstack.common import log as logging

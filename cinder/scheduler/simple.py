@@ -50,7 +50,7 @@ With that, FilterScheduler behaves mostly the same as Chance/SimpleScheduler,
 with additional benefits of supporting volume types, volume encryption, QoS.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 simple_scheduler_opts = [
     cfg.IntOpt("max_gigabytes",

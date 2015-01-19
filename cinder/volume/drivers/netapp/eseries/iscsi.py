@@ -19,9 +19,9 @@ import socket
 import time
 import uuid
 
-from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import units
+from oslo_config import cfg
 import six
 
 from cinder import exception

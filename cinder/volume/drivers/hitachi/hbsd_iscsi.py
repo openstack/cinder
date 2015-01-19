@@ -20,7 +20,7 @@ from contextlib import nested
 import os
 import threading
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 
 from cinder import exception

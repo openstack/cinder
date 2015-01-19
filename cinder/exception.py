@@ -24,7 +24,7 @@ SHOULD include dedicated exception logging.
 
 import sys
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 import webob.exc
 

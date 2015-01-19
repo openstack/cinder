@@ -19,8 +19,8 @@ Manage hosts in the current zone.
 
 import UserDict
 
-from oslo.config import cfg
 from oslo.utils import timeutils
+from oslo_config import cfg
 
 from cinder import db
 from cinder import exception

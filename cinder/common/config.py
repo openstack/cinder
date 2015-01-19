@@ -27,7 +27,7 @@ stepping stone.
 
 import socket
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder.i18n import _
 

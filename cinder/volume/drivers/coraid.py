@@ -26,10 +26,10 @@ import math
 import urllib
 import urllib2
 
-from oslo.config import cfg
 from oslo.serialization import jsonutils
 from oslo.utils import units
 from oslo_concurrency import lockutils
+from oslo_config import cfg
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception

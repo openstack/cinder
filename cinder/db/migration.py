@@ -19,7 +19,7 @@
 import os
 import threading
 
-from oslo.config import cfg
+from oslo_config import cfg
 from oslo_db import options
 from stevedore import driver
 

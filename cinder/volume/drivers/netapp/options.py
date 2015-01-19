@@ -24,7 +24,7 @@ individual modules. It is recommended to Keep options at a single
 place to ensure re usability and better management of configuration options.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 netapp_proxy_opts = [
     cfg.StrOpt('netapp_storage_family',

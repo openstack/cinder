@@ -15,7 +15,7 @@
 #    under the License.
 
 
-from oslo.config import cfg
+from oslo_config import cfg
 import paste.urlmap
 
 from cinder.i18n import _LW
