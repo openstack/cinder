@@ -144,7 +144,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                 # has closed the connection.
                 msg = _("The EQL array has closed the connection.")
                 LOG.error(msg)
-                raise processutils.ProcessExecutionError(description=msg)
+                raise exception.VolumeBackendAPIException(data=msg)
             out += ret
 
         LOG.debug("CLI output\n%s", out)
@@ -211,23 +211,25 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                 max_size=max_size)
         try:
             total_attempts = attempts
-            with self.sshpool.item() as ssh:
-                while attempts > 0:
-                    attempts -= 1
-                    try:
-                        LOG.info(_LI('EQL-driver: executing "%s".'), command)
-                        return self._ssh_execute(
-                            ssh, command,
-                            timeout=self.configuration.eqlx_cli_timeout)
-                    except processutils.ProcessExecutionError:
-                        raise
-                    except Exception as e:
-                        LOG.exception(e)
-                        greenthread.sleep(random.randint(20, 500) / 100.0)
-                msg = (_("SSH Command failed after '%(total_attempts)r' "
-                         "attempts : '%(command)s'") %
-                       {'total_attempts': total_attempts, 'command': command})
-                raise exception.VolumeBackendAPIException(data=msg)
+            ssh = self.sshpool.item()
+            while attempts > 0:
+                attempts -= 1
+                try:
+                    LOG.info(_LI('EQL-driver: executing "%s".'), command)
+                    return self._ssh_execute(
+                        ssh, command,
+                        timeout=self.configuration.eqlx_cli_timeout)
+                except processutils.ProcessExecutionError:
+                    raise
+                except Exception as e:
+                    LOG.exception(e)
+                    greenthread.sleep(random.randint(20, 500) / 100.0)
+            msg = (_("SSH Command failed after '%(total_attempts)r' "
+                     "attempts : '%(command)s'") %
+                   {'total_attempts': total_attempts - attempts,
+                    'command': command})
+            ssh.close()
+            raise exception.VolumeBackendAPIException(data=msg)
 
         except Exception:
             with excutils.save_and_reraise_exception():
