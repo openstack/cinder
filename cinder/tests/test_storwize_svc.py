@@ -2087,7 +2087,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                        'iqn.1982-01.com.ibm:1234.sim.node1',
                                        'target_portal': '1.234.56.78:3260',
                                        'target_lun': 0,
-                                       'auth_method': 'CHAP'}}}
+                                       'auth_method': 'CHAP',
+                                       'discovery_auth_method': 'CHAP'}}}
 
         for protocol in ['FC', 'iSCSI']:
             volume1['volume_type_id'] = types[protocol]['id']
