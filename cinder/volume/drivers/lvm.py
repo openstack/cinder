@@ -52,6 +52,12 @@ volume_opts = [
     cfg.StrOpt('lvm_type',
                default='default',
                help='Type of LVM volumes to deploy; (default or thin)'),
+    cfg.StrOpt('lvm_conf_file',
+               default='/etc/cinder/lvm.conf',
+               help='LVM conf file to use for the LVM driver in Cinder; '
+                    'this setting is ignored if the specified file does '
+                    'not exist (You can also specify \'None\' to not use '
+                    'a conf file even if one exists).')
 ]
 
 CONF = cfg.CONF
@@ -229,11 +235,18 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """Verify that requirements are in place to use LVM driver."""
         if self.vg is None:
             root_helper = utils.get_root_helper()
+
+            lvm_conf_file = self.configuration.lvm_conf_file
+            if lvm_conf_file.lower() == 'none':
+                lvm_conf_file = None
+
             try:
                 self.vg = lvm.LVM(self.configuration.volume_group,
                                   root_helper,
                                   lvm_type=self.configuration.lvm_type,
-                                  executor=self._execute)
+                                  executor=self._execute,
+                                  lvm_conf=lvm_conf_file)
+
             except brick_exception.VolumeGroupNotFound:
                 message = (_("Volume Group %s does not exist") %
                            self.configuration.volume_group)
@@ -519,9 +532,16 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 return false_ret
 
             helper = utils.get_root_helper()
+
+            lvm_conf_file = self.configuration.lvm_conf_file
+            if lvm_conf_file.lower() == 'none':
+                lvm_conf_file = None
+
             dest_vg_ref = lvm.LVM(dest_vg, helper,
                                   lvm_type=lvm_type,
-                                  executor=self._execute)
+                                  executor=self._execute,
+                                  lvm_conf=lvm_conf_file)
+
             self.remove_export(ctxt, volume)
             self._create_volume(volume['name'],
                                 self._sizestr(volume['size']),

@@ -14,6 +14,12 @@ vgs: EnvFilter, env, root, LC_ALL=C, vgs
 lvs: EnvFilter, env, root, LC_ALL=C, lvs
 lvdisplay: EnvFilter, env, root, LC_ALL=C, lvdisplay
 
+# LVM conf var
+pvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, pvs
+vgs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, vgs
+lvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvs
+lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvdisplay
+
 # cinder/volumes/drivers/srb.py: 'pvresize', '--setphysicalvolumesize', sizestr, pvname
 pvresize: CommandFilter, pvresize, root
 
