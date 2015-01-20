@@ -430,6 +430,10 @@ class StorwizeSVCDriver(san.SanDriver):
                     properties['auth_method'] = 'CHAP'
                     properties['auth_username'] = connector['initiator']
                     properties['auth_password'] = chap_secret
+                    properties['discovery_auth_method'] = 'CHAP'
+                    properties['discovery_auth_username'] = (
+                        connector['initiator'])
+                    properties['discovery_auth_password'] = chap_secret
             else:
                 type_str = 'fibre_channel'
                 conn_wwpns = self._helpers.get_conn_fc_wwpns(host_name)
