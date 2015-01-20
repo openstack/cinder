@@ -52,3 +52,4 @@ def set_defaults(conf):
                      'cinder.scheduler.filter_scheduler.FilterScheduler')
     conf.set_default('state_path', os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..', '..')))
+    conf.set_default('policy_dirs', [])
