@@ -1078,9 +1078,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         new_volume = self.db.volume_get(ctxt, new_volume_id)
         rpcapi = volume_rpcapi.VolumeAPI()
 
-        status_update = {}
-        if volume['status'] == 'retyping':
-            status_update = {'status': self._get_original_status(volume)}
+        orig_volume_status = self._get_original_status(volume)
 
         if error:
             msg = _("migrate_volume_completion is cleaning up an error "
@@ -1089,9 +1087,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                             'vol2': new_volume['id']})
             new_volume['migration_status'] = None
             rpcapi.delete_volume(ctxt, new_volume)
-            updates = {'migration_status': None}
-            if status_update:
-                updates.update(status_update)
+            updates = {'migration_status': None, 'status': orig_volume_status}
             self.db.volume_update(ctxt, volume_id, updates)
             return volume_id
 
@@ -1100,7 +1096,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Delete the source volume (if it fails, don't fail the migration)
         try:
-            if status_update.get('status') == 'in-use':
+            if orig_volume_status == 'in-use':
                 self.detach_volume(ctxt, volume_id)
             self.delete_volume(ctxt, volume_id)
         except Exception as ex:
@@ -1109,14 +1105,14 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self.db.finish_volume_migration(ctxt, volume_id, new_volume_id)
         self.db.volume_destroy(ctxt, new_volume_id)
-        if status_update.get('status') == 'in-use':
-            updates = {'migration_status': 'completing'}
-            updates.update(status_update)
+        if orig_volume_status == 'in-use':
+            updates = {'migration_status': 'completing',
+                       'status': orig_volume_status}
         else:
             updates = {'migration_status': None}
         self.db.volume_update(ctxt, volume_id, updates)
 
-        if 'in-use' in (status_update.get('status'), volume['status']):
+        if orig_volume_status == 'in-use':
             rpcapi.attach_volume(ctxt,
                                  volume,
                                  volume['instance_uuid'],
