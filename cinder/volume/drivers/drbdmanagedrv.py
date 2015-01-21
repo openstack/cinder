@@ -493,7 +493,7 @@ class DrbdManageDriver(driver.VolumeDriver):
             volume_path)
 
     def create_export(self, context, volume):
-        volume_path = self.local_path(volume),
+        volume_path = self.local_path(volume)
         export_info = self.target_driver.create_export(
             context,
             volume,
