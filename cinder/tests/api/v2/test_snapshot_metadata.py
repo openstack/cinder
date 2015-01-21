@@ -15,8 +15,8 @@
 
 import uuid
 
-from oslo.serialization import jsonutils
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 import webob
 
 from cinder.api import extensions

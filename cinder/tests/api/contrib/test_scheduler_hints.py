@@ -15,7 +15,7 @@
 
 import datetime
 
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 
 import cinder
 from cinder.api.openstack import wsgi

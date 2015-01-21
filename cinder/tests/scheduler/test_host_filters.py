@@ -16,7 +16,7 @@ Tests For Scheduler Host Filters.
 """
 
 import mock
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 from requests import exceptions as request_exceptions
 
 from cinder.compute import nova

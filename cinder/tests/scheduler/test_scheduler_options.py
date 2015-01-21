@@ -18,7 +18,7 @@ Tests For PickledScheduler.
 
 import datetime
 
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 import six
 
 from cinder.scheduler import scheduler_options

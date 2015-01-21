@@ -27,8 +27,8 @@ __all__ = [
 ]
 
 from oslo import messaging
-from oslo.serialization import jsonutils
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 from osprofiler import profiler
 
 import cinder.context

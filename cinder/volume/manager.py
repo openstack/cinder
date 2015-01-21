@@ -40,8 +40,8 @@ intact.
 import time
 
 from oslo import messaging
-from oslo.serialization import jsonutils
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils

@@ -16,8 +16,8 @@
 from xml.dom import minidom
 
 import mock
-from oslo.serialization import jsonutils
 from oslo_i18n import fixture as i18n_fixture
+from oslo_serialization import jsonutils
 import webob.dec
 
 from cinder.api import common

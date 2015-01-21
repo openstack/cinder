@@ -155,3 +155,7 @@ class HackingTestCase(test.TestCase):
             "from oslo.utils import foo"))))
         self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
             "from oslo_utils import bar"))))
+        self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
+            "from oslo.serialization import foo"))))
+        self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
+            "from oslo_serialization import bar"))))

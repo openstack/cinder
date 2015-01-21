@@ -21,7 +21,7 @@ import httplib
 from xml.dom import minidom
 
 from lxml import etree
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 import six
 import webob
 
