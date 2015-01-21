@@ -141,7 +141,7 @@ iser_opts = [
                default=100,
                help='The maximum number of iSER target IDs per host'),
     cfg.StrOpt('iser_target_prefix',
-               default='iqn.2010-10.org.iser.openstack:',
+               default='iqn.2010-10.org.openstack:',
                help='Prefix for iSER volumes'),
     cfg.StrOpt('iser_ip_address',
                default='$my_ip',
