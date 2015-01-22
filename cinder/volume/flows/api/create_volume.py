@@ -16,7 +16,7 @@ from oslo.utils import units
 from oslo_config import cfg
 import taskflow.engines
 from taskflow.patterns import linear_flow
-from taskflow.utils import misc
+from taskflow.types import failure as ft
 
 from cinder import exception
 from cinder import flow_utils
@@ -510,7 +510,7 @@ class EntryCreateTask(flow_utils.CinderTask):
 
     def revert(self, context, result, optional_args, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
         if optional_args['is_quota_committed']:
@@ -595,7 +595,7 @@ class QuotaReserveTask(flow_utils.CinderTask):
 
     def revert(self, context, result, optional_args, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
         if optional_args['is_quota_committed']:
@@ -641,7 +641,7 @@ class QuotaCommitTask(flow_utils.CinderTask):
 
     def revert(self, context, result, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
         volume = result['volume_properties']
         try:
@@ -749,7 +749,7 @@ class VolumeCastTask(flow_utils.CinderTask):
         self._cast_create_volume(context, request_spec, filter_properties)
 
     def revert(self, context, result, flow_failures, **kwargs):
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
         # Restore the source volume status and set the volume to error status.
