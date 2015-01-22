@@ -311,6 +311,12 @@
 # Recommended setting is set it to False. (boolean value)
 #wsgi_keep_alive=true
 
+# Timeout for client connections' socket operations. If an
+# incoming connection is idle for this number of seconds it
+# will be closed. A value of '0' means wait forever. (integer
+# value)
+#client_socket_timeout=0
+
 # Sets the value of TCP_KEEPALIVE (True/False) for each server
 # socket. (boolean value)
 #tcp_keepalive=true
