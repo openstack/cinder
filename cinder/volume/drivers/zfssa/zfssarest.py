@@ -450,6 +450,8 @@ class ZFSSAApi(object):
         }
         if 'origin' in val['lun']:
             ret.update({'origin': val['lun']['origin']})
+        if isinstance(ret['number'], list):
+            ret['number'] = ret['number'][0]
 
         return ret
 
