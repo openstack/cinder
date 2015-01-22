@@ -10,16 +10,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging as base_logging
+import os
 
 # For more information please visit: https://wiki.openstack.org/wiki/TaskFlow
-from taskflow.listeners import base as base_listener
-from taskflow import states
+from taskflow.listeners import base
+from taskflow.listeners import logging as logging_listener
 from taskflow import task
-from taskflow.utils import misc
 
 from cinder import exception
-from cinder.i18n import _
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -47,7 +45,7 @@ class CinderTask(task.Task):
                                          **kwargs)
 
 
-class DynamicLogListener(base_listener.ListenerBase):
+class DynamicLogListener(logging_listener.DynamicLoggingListener):
     """This is used to attach to taskflow engines while they are running.
 
     It provides a bunch of useful features that expose the actions happening
@@ -56,89 +54,25 @@ class DynamicLogListener(base_listener.ListenerBase):
     and more...
     """
 
+    #: Exception is an excepted case, don't include traceback in log if fails.
+    _NO_TRACE_EXCEPTIONS = (exception.InvalidInput, exception.QuotaError)
+
     def __init__(self, engine,
-                 task_listen_for=(misc.Notifier.ANY,),
-                 flow_listen_for=(misc.Notifier.ANY,),
-                 logger=None):
+                 task_listen_for=base.DEFAULT_LISTEN_FOR,
+                 flow_listen_for=base.DEFAULT_LISTEN_FOR,
+                 retry_listen_for=base.DEFAULT_LISTEN_FOR,
+                 logger=LOG):
         super(DynamicLogListener, self).__init__(
             engine,
             task_listen_for=task_listen_for,
-            flow_listen_for=flow_listen_for)
-        if logger is None:
-            self._logger = LOG
-        else:
-            self._logger = logger
+            flow_listen_for=flow_listen_for,
+            retry_listen_for=retry_listen_for,
+            log=logger)
 
-    def _flow_receiver(self, state, details):
-        # Gets called on flow state changes.
-        level = base_logging.DEBUG
-        if state in (states.FAILURE, states.REVERTED):
-            level = base_logging.WARNING
-        self._logger.log(level,
-                         _("Flow '%(flow_name)s' (%(flow_uuid)s) transitioned"
-                           " into state '%(state)s' from state"
-                           " '%(old_state)s'") %
-                         {'flow_name': details['flow_name'],
-                          'flow_uuid': details['flow_uuid'],
-                          'state': state,
-                          'old_state': details.get('old_state')})
-
-    def _task_receiver(self, state, details):
-        # Gets called on task state changes.
-        if 'result' in details and state in base_listener.FINISH_STATES:
-            result = details.get('result')
-            # If task failed log the exception
-            if isinstance(result, misc.Failure):
-                message_dict = {'task_name': details['task_name'],
-                                'task_uuid': details['task_uuid'],
-                                'state': state}
-                if (result.check(exception.InvalidInput,
-                                 exception.QuotaError) is not None):
-                    # Exception is an excepted case, don't stacktrace
-                    message_dict['exception_str'] = result.exception_str
-                    message = (_("Task '%(task_name)s' (%(task_uuid)s)"
-                                 " transitioned into state '%(state)s'. "
-                                 "Exception: '%(exception_str)s'") %
-                               message_dict)
-                    self._logger.warn(message)
-                else:
-                    # Task failed with unexpected Exception, show stacktrace
-                    message = (_("Task '%(task_name)s' (%(task_uuid)s)"
-                               " transitioned into state '%(state)s'") %
-                               message_dict)
-                    self._logger.warn(message,
-                                      exc_info=tuple(result.exc_info))
-            else:
-                # Otherwise, depending on the enabled logging level/state we
-                # will show or hide results that the task may have produced
-                # during execution.
-                level = base_logging.DEBUG
-                if state == states.FAILURE:
-                    level = base_logging.WARNING
-                if (self._logger.isEnabledFor(base_logging.DEBUG) or
-                        state == states.FAILURE):
-                    self._logger.log(level,
-                                     _("Task '%(task_name)s' (%(task_uuid)s)"
-                                       " transitioned into state '%(state)s'"
-                                       " with result '%(result)s'") %
-                                     {'task_name': details['task_name'],
-                                      'task_uuid': details['task_uuid'],
-                                      'state': state, 'result': result})
-                else:
-                    self._logger.log(level,
-                                     _("Task '%(task_name)s' (%(task_uuid)s)"
-                                       " transitioned into state"
-                                       " '%(state)s'") %
-                                     {'task_name': details['task_name'],
-                                      'task_uuid': details['task_uuid'],
-                                      'state': state})
+    def _format_failure(self, fail):
+        if fail.check(*self._NO_TRACE_EXCEPTIONS) is not None:
+            exc_info = None
+            exc_details = '%s%s' % (os.linesep, fail.pformat(traceback=False))
+            return (exc_info, exc_details)
         else:
-            level = base_logging.DEBUG
-            if state in (states.REVERTING, states.RETRYING):
-                level = base_logging.WARNING
-            self._logger.log(level,
-                             _("Task '%(task_name)s' (%(task_uuid)s)"
-                               " transitioned into state '%(state)s'") %
-                             {'task_name': details['task_name'],
-                              'task_uuid': details['task_uuid'],
-                              'state': state})
+            return super(DynamicLogListener, self)._format_failure(fail)
