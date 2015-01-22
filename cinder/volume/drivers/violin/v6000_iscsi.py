@@ -36,7 +36,7 @@ driver documentation for more information.
 
 import random
 
-from oslo.utils import units
+from oslo_utils import units
 
 from cinder import context
 from cinder.db.sqlalchemy import models

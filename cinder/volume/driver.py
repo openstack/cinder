@@ -19,9 +19,9 @@ Drivers for volumes.
 
 import time
 
-from oslo.utils import excutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW

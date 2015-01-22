@@ -21,8 +21,8 @@ iSCSI Cinder Volume driver for Hitachi Unified Storage (HUS) platform.
 
 from xml.etree import ElementTree as ETree
 
-from oslo.utils import excutils
 from oslo_config import cfg
+from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI

@@ -22,8 +22,8 @@ import urllib2
 import uuid
 from xml.etree import ElementTree as ET
 
-from oslo.utils import excutils
-from oslo.utils import units
+from oslo_utils import excutils
+from oslo_utils import units
 import six
 
 from cinder import context

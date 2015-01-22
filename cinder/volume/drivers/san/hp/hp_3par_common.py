@@ -42,16 +42,16 @@ import pprint
 import re
 import uuid
 
-from oslo.utils import importutils
+from oslo_utils import importutils
 
 hp3parclient = importutils.try_import("hp3parclient")
 if hp3parclient:
     from hp3parclient import client
     from hp3parclient import exceptions as hpexceptions
 
-from oslo.utils import excutils
-from oslo.utils import units
 from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception

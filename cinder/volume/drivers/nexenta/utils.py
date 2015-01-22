@@ -23,7 +23,7 @@
 
 import re
 
-from oslo.utils import units
+from oslo_utils import units
 import six.moves.urllib.parse as urlparse
 
 from cinder.i18n import _

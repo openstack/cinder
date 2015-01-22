@@ -21,7 +21,7 @@ import json
 from xml.dom import minidom
 
 import mock
-from oslo.utils import timeutils
+from oslo_utils import timeutils
 import webob
 
 # needed for stubs to work

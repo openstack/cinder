@@ -13,7 +13,7 @@
 #    under the License.
 
 from oslo.serialization import jsonutils
-from oslo.utils import netutils
+from oslo_utils import netutils
 import requests
 import six.moves.urllib.parse as urlparse
 

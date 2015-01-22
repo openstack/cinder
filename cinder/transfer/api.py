@@ -22,8 +22,8 @@ import hashlib
 import hmac
 import os
 
-from oslo.utils import excutils
 from oslo_config import cfg
+from oslo_utils import excutils
 
 from cinder.db import base
 from cinder import exception

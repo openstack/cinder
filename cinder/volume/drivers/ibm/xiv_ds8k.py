@@ -22,8 +22,8 @@
 Unified Volume driver for IBM XIV and DS8K Storage Systems.
 """
 
-from oslo.utils import importutils
 from oslo_config import cfg
+from oslo_utils import importutils
 
 from cinder import exception
 from cinder.openstack.common import log as logging

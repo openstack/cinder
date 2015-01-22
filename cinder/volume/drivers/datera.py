@@ -15,8 +15,8 @@
 
 import json
 
-from oslo.utils import units
 from oslo_config import cfg
+from oslo_utils import units
 import requests
 
 from cinder import exception

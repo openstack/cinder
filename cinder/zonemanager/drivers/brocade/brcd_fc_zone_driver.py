@@ -30,10 +30,10 @@ add_connection and delete_connection interfaces.
 """
 
 
-from oslo.utils import excutils
-from oslo.utils import importutils
 from oslo_concurrency import lockutils
 from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import importutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI

@@ -15,7 +15,7 @@
 
 """The QoS specs extension"""
 
-from oslo.utils import strutils
+from oslo_utils import strutils
 import six
 import webob
 

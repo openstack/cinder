@@ -17,8 +17,8 @@ import copy
 import socket
 import sys
 
-from oslo.utils import excutils
-from oslo.utils import timeutils
+from oslo_utils import excutils
+from oslo_utils import timeutils
 import six
 
 from cinder.i18n import _LE, _LW, _LI

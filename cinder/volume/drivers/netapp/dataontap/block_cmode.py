@@ -23,7 +23,7 @@ Volume driver library for NetApp C-mode block storage systems.
 
 import copy
 
-from oslo.utils import units
+from oslo_utils import units
 import six
 
 from cinder import exception

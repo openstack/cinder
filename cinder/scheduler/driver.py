@@ -19,9 +19,9 @@
 Scheduler base class that all Schedulers should inherit from
 """
 
-from oslo.utils import importutils
-from oslo.utils import timeutils
 from oslo_config import cfg
+from oslo_utils import importutils
+from oslo_utils import timeutils
 
 from cinder import db
 from cinder.i18n import _

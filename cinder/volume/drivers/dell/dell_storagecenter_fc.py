@@ -14,7 +14,7 @@
 
 '''Volume driver for Dell Storage Center.'''
 
-from oslo.utils import excutils
+from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE

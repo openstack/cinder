@@ -20,9 +20,9 @@ Handles all requests relating to consistency groups.
 
 import functools
 
-from oslo.utils import excutils
-from oslo.utils import timeutils
 from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import timeutils
 
 from cinder.db import base
 from cinder import exception

@@ -35,7 +35,7 @@ properly in an active-active HA configuration.  See OpenStack Cinder
 driver documentation for more information.
 """
 
-from oslo.utils import units
+from oslo_utils import units
 
 from cinder import context
 from cinder.db.sqlalchemy import models

@@ -26,7 +26,7 @@ import threading
 import time
 from xml.etree import ElementTree as ET
 
-from oslo.utils import excutils
+from oslo_utils import excutils
 
 from cinder import context
 from cinder import exception

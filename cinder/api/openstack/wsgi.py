@@ -22,7 +22,7 @@ from xml.parsers import expat
 
 from lxml import etree
 from oslo.serialization import jsonutils
-from oslo.utils import excutils
+from oslo_utils import excutils
 import six
 import webob
 

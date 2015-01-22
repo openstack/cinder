@@ -18,8 +18,8 @@ import os
 import re
 import sys
 
-from oslo.utils import units
 from oslo_config import cfg
+from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _

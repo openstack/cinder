@@ -19,9 +19,9 @@ import os
 import uuid
 
 import mock
-from oslo.utils import timeutils
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
+from oslo_utils import timeutils
 import paramiko
 import six
 
@@ -353,7 +353,7 @@ class GenericUtilsTestCase(test.TestCase):
                           utils.read_file_as_root,
                           test_filepath)
 
-    @mock.patch('oslo.utils.timeutils.utcnow')
+    @mock.patch('oslo_utils.timeutils.utcnow')
     def test_service_is_up(self, mock_utcnow):
         fts_func = datetime.datetime.fromtimestamp
         fake_now = 1000
@@ -893,7 +893,7 @@ class AuditPeriodTest(test.TestCase):
                                                 month=2,
                                                 year=2012))
 
-    @mock.patch('oslo.utils.timeutils.utcnow',
+    @mock.patch('oslo_utils.timeutils.utcnow',
                 return_value=datetime.datetime(day=1,
                                                month=1,
                                                year=2012))
@@ -902,7 +902,7 @@ class AuditPeriodTest(test.TestCase):
         self.assertEqual(datetime.datetime(day=1, month=11, year=2011), begin)
         self.assertEqual(datetime.datetime(day=1, month=12, year=2011), end)
 
-    @mock.patch('oslo.utils.timeutils.utcnow',
+    @mock.patch('oslo_utils.timeutils.utcnow',
                 return_value=datetime.datetime(day=2,
                                                month=1,
                                                year=2012))

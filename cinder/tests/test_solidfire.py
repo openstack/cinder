@@ -18,8 +18,8 @@ import datetime
 
 import mock
 import mox
-from oslo.utils import timeutils
-from oslo.utils import units
+from oslo_utils import timeutils
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception

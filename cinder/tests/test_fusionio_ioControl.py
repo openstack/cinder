@@ -17,8 +17,8 @@ import copy
 import json
 
 import mock
-from oslo.utils import timeutils
-from oslo.utils import units
+from oslo_utils import timeutils
+from oslo_utils import units
 import requests
 
 from cinder import context

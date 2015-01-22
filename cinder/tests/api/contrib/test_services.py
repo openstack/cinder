@@ -16,7 +16,7 @@
 
 from datetime import datetime
 
-from oslo.utils import timeutils
+from oslo_utils import timeutils
 import webob.exc
 
 from cinder.api.contrib import services

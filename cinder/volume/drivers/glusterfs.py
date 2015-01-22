@@ -17,9 +17,9 @@ import errno
 import os
 import stat
 
-from oslo.utils import units
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils import units
 
 from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import exception

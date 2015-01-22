@@ -14,8 +14,8 @@
 #    under the License.
 
 
-from oslo.utils import timeutils
 from oslo_config import cfg
+from oslo_utils import timeutils
 import webob.exc
 
 from cinder.api import extensions

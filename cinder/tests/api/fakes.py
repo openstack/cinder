@@ -15,7 +15,7 @@
 
 import uuid
 
-from oslo.utils import timeutils
+from oslo_utils import timeutils
 import routes
 import webob
 import webob.dec

@@ -18,8 +18,8 @@
 import contextlib
 
 import mock
-from oslo.utils import units
 from oslo_concurrency import processutils
+from oslo_utils import units
 
 from cinder.image import image_utils
 from cinder import test

@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.utils import excutils
+from oslo_utils import excutils
 import taskflow.engines
 from taskflow.patterns import linear_flow
 

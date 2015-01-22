@@ -12,9 +12,9 @@
 
 import traceback
 
-from oslo.utils import timeutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils import timeutils
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.utils import misc

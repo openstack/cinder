@@ -24,8 +24,8 @@ import re
 import string
 import urllib2
 
-from oslo.utils import units
 from oslo_config import cfg
+from oslo_utils import units
 from suds import client
 
 from cinder import exception

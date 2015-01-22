@@ -18,7 +18,7 @@ Unified driver for NetApp storage systems.
 Supports multiple storage systems of different families and protocols.
 """
 
-from oslo.utils import importutils
+from oslo_utils import importutils
 
 from cinder import exception
 from cinder.i18n import _, _LI
