@@ -16,6 +16,7 @@
 import datetime
 import hashlib
 import os
+import time
 import uuid
 
 import mock
@@ -785,7 +786,6 @@ class AuditPeriodTest(test.TestCase):
 
     def setUp(self):
         super(AuditPeriodTest, self).setUp()
-        #a fairly random time to test with
         test_time = datetime.datetime(second=23,
                                       minute=12,
                                       hour=8,
@@ -1380,3 +1380,91 @@ class IsBlkDeviceTestCase(test.TestCase):
     def test_fail_is_blk_device(self, mock_os_stat, mock_S_ISBLK):
         dev = 'device_exception'
         self.assertFalse(utils.is_blk_device(dev))
+
+
+class WrongException(Exception):
+        pass
+
+
+class TestRetryDecorator(test.TestCase):
+    def setUp(self):
+        super(TestRetryDecorator, self).setUp()
+
+    def test_no_retry_required(self):
+        self.counter = 0
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.VolumeBackendAPIException,
+                         interval=2,
+                         retries=3,
+                         backoff_rate=2)
+            def succeeds():
+                self.counter += 1
+                return 'success'
+
+            ret = succeeds()
+            self.assertFalse(mock_sleep.called)
+            self.assertEqual(ret, 'success')
+            self.assertEqual(self.counter, 1)
+
+    def test_retries_once(self):
+        self.counter = 0
+        interval = 2
+        backoff_rate = 2
+        retries = 3
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.VolumeBackendAPIException,
+                         interval,
+                         retries,
+                         backoff_rate)
+            def fails_once():
+                self.counter += 1
+                if self.counter < 2:
+                    raise exception.VolumeBackendAPIException(data='fake')
+                else:
+                    return 'success'
+
+            ret = fails_once()
+            self.assertEqual(ret, 'success')
+            self.assertEqual(self.counter, 2)
+            self.assertEqual(mock_sleep.call_count, 1)
+            mock_sleep.assert_called_with(interval * backoff_rate)
+
+    def test_limit_is_reached(self):
+        self.counter = 0
+        retries = 3
+        interval = 2
+        backoff_rate = 4
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.VolumeBackendAPIException,
+                         interval,
+                         retries,
+                         backoff_rate)
+            def always_fails():
+                self.counter += 1
+                raise exception.VolumeBackendAPIException(data='fake')
+
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              always_fails)
+            self.assertEqual(retries, self.counter)
+
+            expected_sleep_arg = []
+
+            for i in xrange(retries):
+                if i > 0:
+                    interval *= backoff_rate
+                    expected_sleep_arg.append(float(interval))
+
+            mock_sleep.assert_has_calls(map(mock.call, expected_sleep_arg))
+
+    def test_wrong_exception_no_retry(self):
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.VolumeBackendAPIException)
+            def raise_unexpected_error():
+                raise WrongException("wrong exception")
+
+            self.assertRaises(WrongException, raise_unexpected_error)
+            self.assertFalse(mock_sleep.called)
