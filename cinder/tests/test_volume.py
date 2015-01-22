@@ -2353,6 +2353,31 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual('readonly', admin_metadata[0]['key'])
         self.assertEqual('True', admin_metadata[0]['value'])
 
+    def test_detach_volume_while_uploading_to_image_is_in_progress(self):
+        # If instance is booted from volume with 'Terminate on Delete' flag
+        # set, and when we delete instance then it tries to delete volume
+        # even it is in 'uploading' state.
+        # It is happening because detach call is setting volume status to
+        # 'available'.
+        mountpoint = "/dev/sdf"
+        # Attach volume to the instance
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        volume = tests_utils.create_volume(self.context,
+                                           admin_metadata={'readonly': 'True'},
+                                           **self.volume_params)
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+        self.volume.attach_volume(self.context, volume_id, instance_uuid,
+                                  None, mountpoint, 'ro')
+        # Change volume status to 'uploading'
+        db.volume_update(self.context, volume_id, {'status': 'uploading'})
+        # Call detach api
+        self.volume.detach_volume(self.context, volume_id)
+        vol = db.volume_get(self.context, volume_id)
+        # Check that volume status is 'uploading'
+        self.assertEqual("uploading", vol['status'])
+        self.assertEqual("detached", vol['attach_status'])
+
     @mock.patch.object(cinder.volume.api.API, 'update')
     @mock.patch.object(db, 'volume_get')
     def test_reserve_volume_success(self, volume_get, volume_update):
