@@ -1968,6 +1968,17 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume['id'])
 
+    def test_delete_volume_in_consistency_group(self):
+        """Test deleting a volume that's tied to a consistency group fails."""
+        volume_api = cinder.volume.api.API()
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        consistencygroup_id = '12345678-1234-5678-1234-567812345678'
+        volume = db.volume_update(self.context, volume['id'],
+                                  {'status': 'available',
+                                   'consistencygroup_id': consistencygroup_id})
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.delete, self.context, volume)
+
     def test_can_delete_errored_snapshot(self):
         """Test snapshot can be created and deleted."""
         volume = tests_utils.create_volume(self.context, **self.volume_params)

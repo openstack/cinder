@@ -296,6 +296,10 @@ class API(base.Base):
             msg = _("Volume cannot be deleted while migrating")
             raise exception.InvalidVolume(reason=msg)
 
+        if volume['consistencygroup_id'] is not None:
+            msg = _("Volume cannot be deleted while in a consistency group.")
+            raise exception.InvalidVolume(reason=msg)
+
         snapshots = self.db.snapshot_get_all_for_volume(context, volume_id)
         if len(snapshots):
             msg = _("Volume still has %d dependent snapshots") % len(snapshots)
