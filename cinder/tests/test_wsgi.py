@@ -26,12 +26,12 @@ import urllib2
 
 import mock
 from oslo_config import cfg
+from oslo_i18n import fixture as i18n_fixture
 import testtools
 import webob
 import webob.dec
 
 from cinder import exception
-from cinder import i18n
 from cinder.i18n import _
 from cinder import test
 import cinder.wsgi
@@ -267,7 +267,7 @@ class ExceptionTest(test.TestCase):
 
     def setUp(self):
         super(ExceptionTest, self).setUp()
-        i18n.enable_lazy()
+        self.useFixture(i18n_fixture.ToggleLazy(True))
 
     def _wsgi_app(self, inner_app):
         # NOTE(luisg): In order to test localization, we need to

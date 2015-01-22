@@ -17,11 +17,11 @@ from xml.dom import minidom
 
 import mock
 from oslo.serialization import jsonutils
+from oslo_i18n import fixture as i18n_fixture
 import webob.dec
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
-from cinder import i18n as cinder_i18n
 from cinder.i18n import _
 from cinder import test
 
@@ -31,8 +31,7 @@ class TestFaults(test.TestCase):
 
     def setUp(self):
         super(TestFaults, self).setUp()
-        cinder_i18n.enable_lazy()
-        self.addCleanup(cinder_i18n.enable_lazy())
+        self.useFixture(i18n_fixture.ToggleLazy(True))
 
     def _prepare_xml(self, xml_string):
         """Remove characters from string which hinder XML equality testing."""
@@ -41,7 +40,6 @@ class TestFaults(test.TestCase):
         xml_string = xml_string.replace("\t", "")
         return xml_string
 
-    @test.testtools.skip("SKIP until bug #1408099 is fixed")
     def test_400_fault_json(self):
         """Test fault serialized to JSON via file-extension and/or header."""
         requests = [
@@ -64,7 +62,6 @@ class TestFaults(test.TestCase):
             self.assertEqual(response.content_type, "application/json")
             self.assertEqual(expected, actual)
 
-    @test.testtools.skip("SKIP until bug #1408099 is fixed")
     def test_413_fault_json(self):
         """Test fault serialized to JSON via file-extension and/or header."""
         requests = [
@@ -90,7 +87,6 @@ class TestFaults(test.TestCase):
             self.assertEqual(response.content_type, "application/json")
             self.assertEqual(expected, actual)
 
-    @test.testtools.skip("SKIP until bug #1408099 is fixed")
     def test_raise(self):
         """Ensure the ability to raise :class:`Fault` in WSGI-ified methods."""
         @webob.dec.wsgify
@@ -103,7 +99,6 @@ class TestFaults(test.TestCase):
         self.assertEqual(resp.status_int, 404)
         self.assertIn('whut?', resp.body)
 
-    @test.testtools.skip("SKIP until bug #1408099 is fixed")
     def test_raise_403(self):
         """Ensure the ability to raise :class:`Fault` in WSGI-ified methods."""
         @webob.dec.wsgify
@@ -117,7 +112,6 @@ class TestFaults(test.TestCase):
         self.assertNotIn('resizeNotAllowed', resp.body)
         self.assertIn('forbidden', resp.body)
 
-    @test.testtools.skip("SKIP until bug #1408099 is fixed")
     @mock.patch('cinder.api.openstack.wsgi.i18n.translate')
     def test_raise_http_with_localized_explanation(self, mock_translate):
         params = ('blah', )
@@ -139,13 +133,11 @@ class TestFaults(test.TestCase):
         self.assertIn(("Mensaje traducido"), resp.body)
         self.stubs.UnsetAll()
 
-    @test.testtools.skip("SKIP until bug #1408099 is fixed")
     def test_fault_has_status_int(self):
         """Ensure the status_int is set correctly on faults."""
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='what?'))
         self.assertEqual(fault.status_int, 400)
 
-    @test.testtools.skip("SKIP until bug #1408099 is fixed")
     def test_xml_serializer(self):
         """Ensure that a v2 request responds with a v2 xmlns."""
         request = webob.Request.blank('/v2',
