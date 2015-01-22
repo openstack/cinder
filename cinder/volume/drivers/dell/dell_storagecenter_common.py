@@ -86,19 +86,20 @@ class DellCommonDriver(san.SanDriver):
 
     def create_volume(self, volume):
         '''Create a volume.'''
-        LOG.debug('create_volume')
+        volume_name = volume.get('id')
+        volume_size = volume.get('size')
+        LOG.debug('Creating volume %(name)s of size %(size)s',
+                  {'name': volume_name, 'size': volume_size})
         scvolume = None
         with self._client.open_connection() as api:
             try:
                 # we use id as our name as it s unique
-                volume_name = volume['id']
-                volume_size = volume['size']
                 volume_folder = self.configuration.dell_sc_volume_folder
                 ssn = api.find_sc(self.configuration.dell_sc_ssn)
-                LOG.debug('cv: %(name)s : %(size)s : %(ssn)s',
+                LOG.debug('create_volume: %(name)s on %(ssn)s in %(vf)s',
                           {'name': volume_name,
-                           'size': volume_size,
-                           'ssn': ssn})
+                           'ssn': ssn,
+                           'vf': volume_folder})
                 if ssn is not None:
                     scvolume = api.create_volume(volume_name,
                                                  volume_size,
@@ -110,12 +111,13 @@ class DellCommonDriver(san.SanDriver):
                               volume['name'])
         if scvolume is None:
             raise exception.VolumeBackendAPIException(
-                _('unable to create volume'))
+                _('Unable to create volume'))
 
     def delete_volume(self, volume):
         deleted = False
         # we use id as our name as it s unique
         volume_name = volume.get('id')
+        LOG.debug('Deleting volume %s', volume_name)
         with self._client.open_connection() as api:
             try:
                 ssn = api.find_sc(self.configuration.dell_sc_ssn)
@@ -138,6 +140,8 @@ class DellCommonDriver(san.SanDriver):
         # our volume name is the volume id
         volume_name = snapshot.get('volume_id')
         snapshot_id = snapshot.get('id')
+        LOG.debug('Creating snapshot %(snap)s on volume %(vol)s',
+                  {'snap': snapshot_id, 'vol': volume_name})
         with self._client.open_connection() as api:
             ssn = api.find_sc(self.configuration.dell_sc_ssn)
             if ssn is not None:
@@ -164,6 +168,12 @@ class DellCommonDriver(san.SanDriver):
         src_volume_name = snapshot.get('volume_id')
         snapshot_id = snapshot.get('id')
         volume_name = volume.get('id')
+        LOG.debug(
+            'Creating new volume %(vol)s from snapshot %(snap)s '
+            'from vol %(src)s',
+            {'vol': volume_name,
+             'snap': snapshot_id,
+             'src': src_volume_name})
         with self._client.open_connection() as api:
             try:
                 volume_folder = self.configuration.dell_sc_volume_folder
@@ -192,10 +202,12 @@ class DellCommonDriver(san.SanDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         '''Creates a clone of the specified volume.'''
-        LOG.debug('create_cloned_volume')
         scvolume = None
         src_volume_name = src_vref.get('id')
         volume_name = volume.get('id')
+        LOG.debug('Creating cloned volume %(clone)s from volume %(vol)s',
+                  {'clone': volume_name,
+                   'vol': src_volume_name})
         with self._client.open_connection() as api:
             try:
                 volume_folder = self.configuration.dell_sc_volume_folder
@@ -222,6 +234,9 @@ class DellCommonDriver(san.SanDriver):
         '''delete_snapshot'''
         volume_name = snapshot.get('volume_id')
         snapshot_id = snapshot.get('id')
+        LOG.debug('Deleting snapshot %(snap)s from volume %(vol)s',
+                  {'snap': snapshot_id,
+                   'vol': volume_name})
         with self._client.open_connection() as api:
             ssn = api.find_sc(self.configuration.dell_sc_ssn)
             if ssn is not None:
@@ -252,6 +267,7 @@ class DellCommonDriver(san.SanDriver):
         '''
         scvolume = None
         volume_name = volume.get('id')
+        LOG.debug('Checking existence of volume %s', volume_name)
         with self._client.open_connection() as api:
             try:
                 ssn = api.find_sc(self.configuration.dell_sc_ssn)
@@ -277,6 +293,8 @@ class DellCommonDriver(san.SanDriver):
     def extend_volume(self, volume, new_size):
         '''Extend the size of the volume.'''
         volume_name = volume.get('id')
+        LOG.debug('Extending volume %(vol)s to %(size)s',
+                  {'vol': volume_name, 'size': new_size})
         if volume is not None:
             with self._client.open_connection() as api:
                 ssn = api.find_sc(self.configuration.dell_sc_ssn)

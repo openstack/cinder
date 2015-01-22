@@ -176,6 +176,7 @@ class StorageCenterApi(object):
             LOG.debug('Unable to find result where %(attr)s is %(val)s',
                       {'attr': attribute,
                        'val': value})
+            LOG.debug('Blob was %(blob)s', {'blob': blob})
         return rsp
 
     def _get_json(self, blob):
@@ -346,7 +347,7 @@ class StorageCenterApi(object):
             # Sort through the servers looking for one with connectivity.
             for scserver in scservers:
                 if scserver.get('status', '').lower() != 'down':
-                    # map to actually create the volume
+                    # Map to actually create the volume
                     self.map_volume(scvolume,
                                     scserver)
                     self.unmap_volume(scvolume,
@@ -939,6 +940,7 @@ class StorageCenterApi(object):
         once marked for expiration we do not return the replay as
         a snapshot.
         '''
+        LOG.debug('Expiring replay %s', replayid)
         replay = self.find_replay(scvolume,
                                   replayid)
         if replay is not None:
