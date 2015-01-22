@@ -378,6 +378,24 @@ class VolumeOpsTestCase(test.TestCase):
                                                         mock.sentinel.dc,
                                                         'vmFolder')
 
+    def test_create_folder_with_empty_vmfolder(self):
+        """Test create_folder when the datacenter vmFolder is empty"""
+        child_folder = mock.sentinel.child_folder
+        self.session.invoke_api.side_effect = [None, child_folder]
+
+        parent_folder = mock.sentinel.parent_folder
+        child_name = 'child_folder'
+        ret = self.vops.create_folder(parent_folder, child_name)
+
+        self.assertEqual(child_folder, ret)
+        expected_calls = [mock.call(vim_util, 'get_object_property',
+                                    self.session.vim, parent_folder,
+                                    'childEntity'),
+                          mock.call(self.session.vim, 'CreateFolder',
+                                    parent_folder, name=child_name)]
+        self.assertEqual(expected_calls,
+                         self.session.invoke_api.call_args_list)
+
     def test_create_folder_not_present(self):
         """Test create_folder when child not present."""
         parent_folder = mock.sentinel.parent_folder
