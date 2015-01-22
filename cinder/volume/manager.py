@@ -331,15 +331,33 @@ class VolumeManager(manager.SchedulerDependentManager):
                         self.db.volume_update(ctxt,
                                               volume['id'],
                                               {'status': 'error'})
-                elif volume['status'] == 'downloading':
-                    LOG.info(_LI("volume %s stuck in a downloading state"),
-                             volume['id'])
-                    self.driver.clear_download(ctxt, volume)
+                elif volume['status'] in ('downloading', 'creating'):
+                    LOG.info(_LI("volume %(volume_id)s stuck in "
+                                 "%(volume_stat)s state. "
+                                 "Changing to error state."),
+                             {'volume_id': volume['id'],
+                              'volume_stat': volume['status']})
+
+                    if volume['status'] == 'downloading':
+                        self.driver.clear_download(ctxt, volume)
                     self.db.volume_update(ctxt,
                                           volume['id'],
                                           {'status': 'error'})
                 else:
                     LOG.info(_LI("volume %s: skipping export"), volume['id'])
+            snapshots = self.db.snapshot_get_by_host(ctxt,
+                                                     self.host,
+                                                     {'status': 'creating'})
+            for snapshot in snapshots:
+                LOG.info(_LI("snapshot %(snap_id)s stuck in "
+                             "%(snap_stat)s state. "
+                             "Changing to error state."),
+                         {'snap_id': snapshot['id'],
+                          'snap_stat': snapshot['status']})
+
+                self.db.snapshot_update(ctxt,
+                                        snapshot['id'],
+                                        {'status': 'error'})
         except Exception as ex:
             LOG.error(_LE("Error encountered during "
                           "re-exporting phase of driver initialization: "

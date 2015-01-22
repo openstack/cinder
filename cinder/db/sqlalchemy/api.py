@@ -1937,6 +1937,18 @@ def snapshot_get_all_for_volume(context, volume_id):
 
 
 @require_context
+def snapshot_get_by_host(context, host, filters=None):
+    query = model_query(context, models.Snapshot, read_deleted='no',
+                        project_only=True)
+    if filters:
+        query = query.filter_by(**filters)
+
+    return query.join(models.Snapshot.volume).filter(
+        models.Volume.host == host).options(
+            joinedload('snapshot_metadata')).all()
+
+
+@require_context
 def snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id):
     return model_query(context, models.Snapshot, read_deleted='no',
                        project_only=True).\

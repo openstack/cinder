@@ -934,6 +934,34 @@ class DBAPISnapshotTestCase(BaseTest):
                                         db.snapshot_get_all(self.ctxt),
                                         ignored_keys=['metadata', 'volume'])
 
+    def test_snapshot_get_by_host(self):
+        db.volume_create(self.ctxt, {'id': 1, 'host': 'host1'})
+        db.volume_create(self.ctxt, {'id': 2, 'host': 'host2'})
+        snapshot1 = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1})
+        snapshot2 = db.snapshot_create(self.ctxt, {'id': 2, 'volume_id': 2,
+                                                   'status': 'error'})
+
+        self._assertEqualListsOfObjects([snapshot1],
+                                        db.snapshot_get_by_host(
+                                            self.ctxt,
+                                            'host1'),
+                                        ignored_keys='volume')
+        self._assertEqualListsOfObjects([snapshot2],
+                                        db.snapshot_get_by_host(
+                                            self.ctxt,
+                                            'host2'),
+                                        ignored_keys='volume')
+        self._assertEqualListsOfObjects([],
+                                        db.snapshot_get_by_host(
+                                            self.ctxt,
+                                            'host2', {'status': 'available'}),
+                                        ignored_keys='volume')
+        self._assertEqualListsOfObjects([snapshot2],
+                                        db.snapshot_get_by_host(
+                                            self.ctxt,
+                                            'host2', {'status': 'error'}),
+                                        ignored_keys='volume')
+
     def test_snapshot_metadata_get(self):
         metadata = {'a': 'b', 'c': 'd'}
         db.volume_create(self.ctxt, {'id': 1})
