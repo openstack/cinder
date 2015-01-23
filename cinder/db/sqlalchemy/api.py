@@ -387,14 +387,6 @@ def service_get_by_host_and_topic(context, host, topic):
 
 
 @require_admin_context
-def service_get_all_by_host(context, host):
-    return model_query(
-        context, models.Service, read_deleted="no").\
-        filter_by(host=host).\
-        all()
-
-
-@require_admin_context
 def _service_get_all_topic_subquery(context, session, topic, subq, label):
     sort_value = getattr(subq.c, label)
     return model_query(context, models.Service,
@@ -405,24 +397,6 @@ def _service_get_all_topic_subquery(context, session, topic, subq, label):
         outerjoin((subq, models.Service.host == subq.c.host)).\
         order_by(sort_value).\
         all()
-
-
-@require_admin_context
-def service_get_all_volume_sorted(context):
-    session = get_session()
-    with session.begin():
-        topic = CONF.volume_topic
-        label = 'volume_gigabytes'
-        subq = model_query(context, models.Volume.host,
-                           func.sum(models.Volume.size).label(label),
-                           session=session, read_deleted="no").\
-            group_by(models.Volume.host).\
-            subquery()
-        return _service_get_all_topic_subquery(context,
-                                               session,
-                                               topic,
-                                               subq,
-                                               label)
 
 
 @require_admin_context
@@ -995,29 +969,6 @@ def reservation_expire(context):
 
 
 ###################
-
-
-@require_admin_context
-@_retry_on_deadlock
-def volume_allocate_iscsi_target(context, volume_id, host):
-    session = get_session()
-    with session.begin():
-        iscsi_target_ref = model_query(context, models.IscsiTarget,
-                                       session=session, read_deleted="no").\
-            filter_by(volume=None).\
-            filter_by(host=host).\
-            with_lockmode('update').\
-            first()
-
-        # NOTE(vish): if with_lockmode isn't supported, as in sqlite,
-        #             then this has concurrency issues
-        if not iscsi_target_ref:
-            raise exception.NoMoreTargets()
-
-        iscsi_target_ref.volume_id = volume_id
-        session.add(iscsi_target_ref)
-
-    return iscsi_target_ref.target_num
 
 
 @require_admin_context
@@ -3141,12 +3092,6 @@ def consistencygroup_get_all(context):
     return model_query(context, models.ConsistencyGroup).all()
 
 
-@require_admin_context
-def consistencygroup_get_all_by_host(context, host):
-    return model_query(context, models.ConsistencyGroup).\
-        filter_by(host=host).all()
-
-
 @require_context
 def consistencygroup_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
@@ -3223,11 +3168,6 @@ def cgsnapshot_get(context, cgsnapshot_id):
 @require_admin_context
 def cgsnapshot_get_all(context):
     return model_query(context, models.Cgsnapshot).all()
-
-
-@require_admin_context
-def cgsnapshot_get_all_by_host(context, host):
-    return model_query(context, models.Cgsnapshot).filter_by(host=host).all()
 
 
 @require_admin_context

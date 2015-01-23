@@ -196,19 +196,6 @@ class DBAPIServiceTestCase(BaseTest):
         real = db.service_get_all_by_topic(self.ctxt, 't1')
         self._assertEqualListsOfObjects(expected, real)
 
-    def test_service_get_all_by_host(self):
-        values = [
-            {'host': 'host1', 'topic': 't1'},
-            {'host': 'host1', 'topic': 't1'},
-            {'host': 'host2', 'topic': 't1'},
-            {'host': 'host3', 'topic': 't2'}
-        ]
-        services = [self._create_service(vals) for vals in values]
-
-        expected = services[:2]
-        real = db.service_get_all_by_host(self.ctxt, 'host1')
-        self._assertEqualListsOfObjects(expected, real)
-
     def test_service_get_by_args(self):
         values = [
             {'host': 'host1', 'binary': 'a'},
@@ -227,22 +214,6 @@ class DBAPIServiceTestCase(BaseTest):
                           db.service_get_by_args,
                           self.ctxt, 'non-exists-host', 'a')
 
-    def test_service_get_all_volume_sorted(self):
-        values = [
-            ({'host': 'h1', 'binary': 'a', 'topic': CONF.volume_topic},
-             100),
-            ({'host': 'h2', 'binary': 'b', 'topic': CONF.volume_topic},
-             200),
-            ({'host': 'h3', 'binary': 'b', 'topic': CONF.volume_topic},
-             300)]
-        services = []
-        for vals, size in values:
-            services.append(self._create_service(vals))
-            db.volume_create(self.ctxt, {'host': vals['host'], 'size': size})
-        for service, size in db.service_get_all_volume_sorted(self.ctxt):
-            self._assertEqualObjects(services.pop(0), service)
-            self.assertEqual(values.pop(0)[1], size)
-
 
 class DBAPIVolumeTestCase(BaseTest):
 
@@ -252,20 +223,6 @@ class DBAPIVolumeTestCase(BaseTest):
         volume = db.volume_create(self.ctxt, {'host': 'host1'})
         self.assertTrue(uuidutils.is_uuid_like(volume['id']))
         self.assertEqual(volume.host, 'host1')
-
-    def test_volume_allocate_iscsi_target_no_more_targets(self):
-        self.assertRaises(exception.NoMoreTargets,
-                          db.volume_allocate_iscsi_target,
-                          self.ctxt, 42, 'host1')
-
-    def test_volume_allocate_iscsi_target(self):
-        host = 'host1'
-        volume = db.volume_create(self.ctxt, {'host': host})
-        db.iscsi_target_create_safe(self.ctxt, {'host': host,
-                                                'target_num': 42})
-        target_num = db.volume_allocate_iscsi_target(self.ctxt, volume['id'],
-                                                     host)
-        self.assertEqual(target_num, 42)
 
     def test_volume_attached_invalid_uuid(self):
         self.assertRaises(exception.InvalidUUID, db.volume_attached, self.ctxt,
