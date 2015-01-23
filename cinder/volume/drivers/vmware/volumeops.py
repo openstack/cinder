@@ -523,18 +523,20 @@ class VMwareVolumeOps(object):
         prop_val = self._session.invoke_api(vim_util, 'get_object_property',
                                             self._session.vim, parent_folder,
                                             'childEntity')
-        child_entities = prop_val.ManagedObjectReference
 
-        # Return if the child folder with input name is already present
-        for child_entity in child_entities:
-            if child_entity._type != 'Folder':
-                continue
-            child_entity_name = self.get_entity_name(child_entity)
-            if child_entity_name and (urllib.unquote(child_entity_name) ==
-                                      child_folder_name):
-                LOG.debug("Child folder: %s already present.",
-                          child_folder_name)
-                return child_entity
+        if prop_val and hasattr(prop_val, 'ManagedObjectReference'):
+            child_entities = prop_val.ManagedObjectReference
+
+            # Return if the child folder with input name is already present
+            for child_entity in child_entities:
+                if child_entity._type != 'Folder':
+                    continue
+                child_entity_name = self.get_entity_name(child_entity)
+                if child_entity_name and (urllib.unquote(child_entity_name) ==
+                                          child_folder_name):
+                    LOG.debug("Child folder: %s already present.",
+                              child_folder_name)
+                    return child_entity
 
         # Need to create the child folder
         child_folder = self._session.invoke_api(self._session.vim,
