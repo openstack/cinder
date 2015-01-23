@@ -17,7 +17,7 @@ from oslo_config import cfg
 from oslo_utils import timeutils
 import taskflow.engines
 from taskflow.patterns import linear_flow
-from taskflow.utils import misc
+from taskflow.types import failure as ft
 
 from cinder import exception
 from cinder import flow_utils
@@ -184,7 +184,7 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
         return volume_ref
 
     def revert(self, context, volume_id, result, **kwargs):
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
         common.error_out_volume(context, self.db, volume_id)
@@ -287,7 +287,7 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
         return specs
 
     def revert(self, context, result, **kwargs):
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
         volume_spec = result.get('volume_spec')
         # Restore the source volume status and set the volume to error status.
