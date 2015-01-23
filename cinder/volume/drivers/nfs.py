@@ -94,6 +94,14 @@ class NfsDriver(remotefs.RemoteFSDriver):
         opts = getattr(self.configuration,
                        'nfs_mount_options',
                        CONF.nfs_mount_options)
+
+        nas_mount_options = getattr(self.configuration,
+                                    'nas_mount_options',
+                                    None)
+        if nas_mount_options is not None:
+            LOG.debug('overriding nfs_mount_options with nas_mount_options')
+            opts = nas_mount_options
+
         self._remotefsclient = remotefs_brick.RemoteFsClient(
             'nfs', root_helper, execute=execute,
             nfs_mount_point_base=self.base,

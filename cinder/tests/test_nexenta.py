@@ -472,6 +472,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.configuration.nexenta_volume_compression = 'on'
         self.configuration.nfs_mount_point_base = '/mnt/test'
         self.configuration.nfs_mount_options = None
+        self.configuration.nas_mount_options = None
         self.configuration.nexenta_nms_cache_volroot = False
         self.nms_mock = self.mox.CreateMockAnything()
         for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc',

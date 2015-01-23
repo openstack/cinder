@@ -36,6 +36,7 @@ from cinder.volume import driver
 LOG = logging.getLogger(__name__)
 
 nas_opts = [
+    #TODO(eharney): deprecate nas_ip and change this to nas_host
     cfg.StrOpt('nas_ip',
                default='',
                help='IP address or Hostname of NAS system.'),
@@ -71,6 +72,15 @@ nas_opts = [
                      'set to auto, a check is done to determine if '
                      'this is a new installation: True is used if so, '
                      'otherwise False. Default is auto.')),
+    cfg.StrOpt('nas_share_path',
+               default='',
+               help=('Path to the share to use for storing Cinder volumes. ',
+                     'For example:  "/srv/export1" for an NFS server export '
+                     'available at 10.0.5.10:/srv/export1 .')),
+    cfg.StrOpt('nas_mount_options',
+               default=None,
+               help=('Options used to mount the storage backend file system '
+                     'where Cinder volumes are stored.'))
 ]
 
 CONF = cfg.CONF
@@ -156,6 +166,7 @@ class RemoteFSDriver(driver.VolumeDriver):
         """Creates a volume.
 
         :param volume: volume reference
+        :returns: provider_location update dict for database
         """
         self._ensure_shares_mounted()
 
@@ -229,7 +240,9 @@ class RemoteFSDriver(driver.VolumeDriver):
         self._ensure_share_mounted(volume['provider_location'])
 
     def create_export(self, ctx, volume):
-        """Exports the volume. Can optionally return a Dictionary of changes
+        """Exports the volume.
+
+        Can optionally return a dictionary of changes
         to the volume object to be persisted.
         """
         pass
@@ -250,14 +263,12 @@ class RemoteFSDriver(driver.VolumeDriver):
         self._execute('rm', '-f', path, run_as_root=self._execute_as_root)
 
     def _create_sparsed_file(self, path, size):
-        """Creates file with 0 disk usage."""
+        """Creates a sparse file of a given size in GiB."""
         self._execute('truncate', '-s', '%sG' % size,
                       path, run_as_root=self._execute_as_root)
 
     def _create_regular_file(self, path, size):
-        """Creates regular file of given size. Takes a lot of time for large
-        files.
-        """
+        """Creates a regular file of given size in GiB."""
 
         block_size_mb = 1
         block_count = size * units.Gi / (block_size_mb * units.Mi)
@@ -268,7 +279,7 @@ class RemoteFSDriver(driver.VolumeDriver):
                       run_as_root=self._execute_as_root)
 
     def _create_qcow2_file(self, path, size_gb):
-        """Creates a QCOW2 file of a given size."""
+        """Creates a QCOW2 file of a given size in GiB."""
 
         self._execute('qemu-img', 'create', '-f', 'qcow2',
                       '-o', 'preallocation=metadata',
@@ -358,33 +369,57 @@ class RemoteFSDriver(driver.VolumeDriver):
         with open(config_file) as f:
             return f.readlines()
 
-    def _load_shares_config(self, share_file):
+    def _load_shares_config(self, share_file=None):
         self.shares = {}
 
-        for share in self._read_config_file(share_file):
-            # A configuration line may be either:
-            #  host:/vol_name
-            # or
-            #  host:/vol_name -o options=123,rw --other
-            if not share.strip():
-                # Skip blank or whitespace-only lines
-                continue
-            if share.startswith('#'):
-                continue
+        if all((self.configuration.nas_ip,
+                self.configuration.nas_share_path)):
+            LOG.debug('Using nas_ip and nas_share_path configuration.')
 
-            share_info = share.split(' ', 1)
-            # results in share_info =
-            #  [ 'address:/vol', '-o options=123,rw --other' ]
+            nas_ip = self.configuration.nas_ip
+            nas_share_path = self.configuration.nas_share_path
 
-            share_address = share_info[0].strip().decode('unicode_escape')
-            share_opts = share_info[1].strip() if len(share_info) > 1 else None
+            share_address = '%s:%s' % (nas_ip, nas_share_path)
 
             if not re.match(self.SHARE_FORMAT_REGEX, share_address):
-                LOG.error(_LE("Share %s ignored due to invalid format. Must "
-                              "be of form address:/export.") % share_address)
-                continue
+                msg = (_("Share %s ignored due to invalid format. Must "
+                         "be of form address:/export. Please check the "
+                         "nas_ip and nas_share_path settings."),
+                       share_address)
+                raise exception.InvalidConfigurationValue(msg)
 
-            self.shares[share_address] = share_opts
+            self.shares[share_address] = self.configuration.nas_mount_options
+
+        elif share_file is not None:
+            LOG.debug('Loading shares from %s.' % share_file)
+
+            for share in self._read_config_file(share_file):
+                # A configuration line may be either:
+                #  host:/vol_name
+                # or
+                #  host:/vol_name -o options=123,rw --other
+                if not share.strip():
+                    # Skip blank or whitespace-only lines
+                    continue
+                if share.startswith('#'):
+                    continue
+
+                share_info = share.split(' ', 1)
+                # results in share_info =
+                #  [ 'address:/vol', '-o options=123,rw --other' ]
+
+                share_address = share_info[0].strip().decode('unicode_escape')
+                share_opts = None
+                if len(share_info) > 1:
+                    share_opts = share_info[1].strip()
+
+                if not re.match(self.SHARE_FORMAT_REGEX, share_address):
+                    LOG.error(_LE("Share %s ignored due to invalid format. "
+                                  "Must be of form address:/export."),
+                              share_address)
+                    continue
+
+                self.shares[share_address] = share_opts
 
         LOG.debug("shares loaded: %s", self.shares)
 

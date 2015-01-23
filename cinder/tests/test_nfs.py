@@ -342,7 +342,9 @@ class RemoteFsDriverTestCase(test.TestCase):
 class NfsDriverTestCase(test.TestCase):
     """Test case for NFS driver."""
 
-    TEST_NFS_EXPORT1 = 'nfs-host1:/export'
+    TEST_NFS_HOST = 'nfs-host1'
+    TEST_NFS_SHARE_PATH = '/export'
+    TEST_NFS_EXPORT1 = '%s:%s' % (TEST_NFS_HOST, TEST_NFS_SHARE_PATH)
     TEST_NFS_EXPORT2 = 'nfs-host2:/export'
     TEST_NFS_EXPORT2_OPTIONS = '-o intr'
     TEST_SIZE_IN_GB = 1
@@ -367,8 +369,12 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
         self.configuration.nfs_mount_options = None
         self.configuration.nfs_mount_attempts = 3
+        self.configuration.nfs_qcow2_volumes = False
         self.configuration.nas_secure_file_permissions = 'false'
         self.configuration.nas_secure_file_operations = 'false'
+        self.configuration.nas_ip = None
+        self.configuration.nas_share_path = None
+        self.configuration.nas_mount_options = None
         self.configuration.volume_dd_blocksize = '1M'
         self._driver = nfs.NfsDriver(configuration=self.configuration)
         self._driver.shares = {}
@@ -530,6 +536,25 @@ class NfsDriverTestCase(test.TestCase):
 
         self.assertEqual(drv.shares[self.TEST_NFS_EXPORT2],
                          self.TEST_NFS_EXPORT2_OPTIONS)
+
+        mox.VerifyAll()
+
+    def test_load_shares_config_nas_opts(self):
+        mox = self._mox
+        drv = self._driver
+
+        mox.StubOutWithMock(drv, '_read_config_file')  # ensure not called
+
+        drv.configuration.nas_ip = self.TEST_NFS_HOST
+        drv.configuration.nas_share_path = self.TEST_NFS_SHARE_PATH
+        drv.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
+
+        mox.ReplayAll()
+
+        drv._load_shares_config(drv.configuration.nfs_shares_config)
+
+        self.assertIn(self.TEST_NFS_EXPORT1, drv.shares)
+        self.assertEqual(len(drv.shares), 1)
 
         mox.VerifyAll()
 
