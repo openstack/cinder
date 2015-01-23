@@ -16,8 +16,8 @@
 
 import iso8601
 from lxml import etree
-from oslo.serialization import jsonutils
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 import webob
 
 from cinder.api import extensions

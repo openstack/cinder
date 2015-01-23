@@ -27,8 +27,8 @@ import sys
 import time
 
 import glanceclient.exc
-from oslo.serialization import jsonutils
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import six.moves.urllib.parse as urlparse
 

@@ -29,8 +29,8 @@ import tempfile
 import eventlet
 import mock
 import mox
-from oslo.serialization import jsonutils
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import units

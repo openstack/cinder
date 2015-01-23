@@ -21,10 +21,10 @@ import random
 import re
 import time
 
-from oslo.serialization import jsonutils as json
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_serialization import jsonutils as json
 from oslo_utils import excutils
 from oslo_utils import timeutils
 import six

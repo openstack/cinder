@@ -17,8 +17,8 @@
 
 import abc
 
-from oslo.serialization import jsonutils
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 import six
 
 from cinder.db import base

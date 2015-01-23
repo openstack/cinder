@@ -15,7 +15,7 @@
 
 
 from lxml import etree
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 import webob
 
 from cinder.api.contrib import extended_snapshot_attributes
