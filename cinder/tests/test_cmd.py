@@ -312,7 +312,7 @@ class TestCinderManageCmd(test.TestCase):
     def tearDown(self):
         super(TestCinderManageCmd, self).tearDown()
 
-    @mock.patch('cinder.openstack.common.uuidutils.is_uuid_like')
+    @mock.patch('oslo_utils.uuidutils.is_uuid_like')
     def test_param2id(self, is_uuid_like):
         mock_object_id = mock.MagicMock()
         is_uuid_like.return_value = True
@@ -321,7 +321,7 @@ class TestCinderManageCmd(test.TestCase):
         self.assertEqual(mock_object_id, object_id)
         is_uuid_like.assert_called_once_with(mock_object_id)
 
-    @mock.patch('cinder.openstack.common.uuidutils.is_uuid_like')
+    @mock.patch('oslo_utils.uuidutils.is_uuid_like')
     def test_param2id_int_string(self, is_uuid_like):
         object_id_str = '10'
         is_uuid_like.return_value = False

@@ -13,6 +13,7 @@
 
 """The volume type access extension."""
 
+from oslo_utils import uuidutils
 import six
 import webob
 
@@ -21,7 +22,6 @@ from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import uuidutils
 from cinder.volume import volume_types
 
 

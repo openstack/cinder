@@ -45,6 +45,7 @@ from oslo_serialization import jsonutils
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
+from oslo_utils import uuidutils
 from osprofiler import profiler
 
 from cinder import compute
@@ -56,7 +57,6 @@ from cinder.image import glance
 from cinder import manager
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import periodic_task
-from cinder.openstack.common import uuidutils
 from cinder import quota
 from cinder import utils
 from cinder.volume.configuration import Configuration

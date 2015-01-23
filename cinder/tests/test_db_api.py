@@ -17,11 +17,11 @@
 import datetime
 
 from oslo_config import cfg
+from oslo_utils import uuidutils
 
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import uuidutils
 from cinder.quota import ReservableResource
 from cinder import test
 

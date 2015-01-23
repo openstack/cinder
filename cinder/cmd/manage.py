@@ -64,6 +64,7 @@ warnings.simplefilter('once', DeprecationWarning)
 from oslo import messaging
 from oslo_config import cfg
 from oslo_db.sqlalchemy import migration
+from oslo_utils import uuidutils
 
 from cinder import i18n
 i18n.enable_lazy()
@@ -76,7 +77,6 @@ from cinder.db import migration as db_migration
 from cinder.db.sqlalchemy import api as db_api
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import uuidutils
 from cinder import rpc
 from cinder import utils
 from cinder import version

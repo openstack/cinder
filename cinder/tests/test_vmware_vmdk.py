@@ -959,7 +959,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                           image_service, fake_image_id)
 
     @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER,
@@ -1424,7 +1424,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.VerifyAll()
 
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -1645,7 +1645,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(vmware_images, 'download_stream_optimized_disk')
     @mock.patch('cinder.openstack.common.fileutils.file_open')
     @mock.patch.object(VMDK_DRIVER, '_temporary_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_create_backing_in_inventory')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, 'session')
@@ -1701,7 +1701,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_restore_backing')
     @mock.patch('cinder.openstack.common.fileutils.file_open')
     @mock.patch.object(VMDK_DRIVER, '_temporary_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_restore_backup(self, vops, generate_uuid, temporary_file,
                             file_open, restore_backing, extend_volume):
@@ -1770,7 +1770,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER,
                        '_create_backing_from_stream_optimized_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     def test_restore_backing(
             self, generate_uuid, create_backing, select_ds, get_disk_type,
             vops, delete_temp_backing):
@@ -2518,7 +2518,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self._test_extend_vmdk_virtual_disk(volume_ops)
 
     @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER,
@@ -2589,7 +2589,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                          fetch_optimized_image)
 
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -2613,7 +2613,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch.object(vmware_images, 'download_stream_optimized_disk')
     @mock.patch('cinder.openstack.common.fileutils.file_open')
     @mock.patch.object(VMDK_DRIVER, '_temporary_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_create_backing_in_inventory')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, 'session')
@@ -2626,7 +2626,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch.object(VMDK_DRIVER, '_restore_backing')
     @mock.patch('cinder.openstack.common.fileutils.file_open')
     @mock.patch.object(VMDK_DRIVER, '_temporary_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_restore_backup(self, vops, generate_uuid, temporary_file,
                             file_open, restore_backing, extend_volume):
@@ -2640,7 +2640,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER,
                        '_create_backing_from_stream_optimized_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     def test_restore_backing(
             self, generate_uuid, create_backing, select_ds, get_disk_type,
             vops, delete_temp_backing):
