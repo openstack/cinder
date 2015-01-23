@@ -18,6 +18,8 @@ import shlex
 import threading
 import time
 
+from oslo_utils import excutils
+from oslo_utils import units
 import six
 
 from cinder import exception
@@ -99,6 +101,21 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
 
         return loop.start(interval=interval).wait()
 
+    def _execute_with_exception(self, cmd, args, **kwargs):
+        ret, stdout, stderr = self.exec_hsnm(cmd, args, **kwargs)
+        if ret:
+            cmds = '%(cmd)s %(args)s' % {'cmd': cmd, 'args': args}
+            msg = basic_lib.output_err(
+                600, cmd=cmds, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDError(data=msg)
+
+        return ret, stdout, stderr
+
+    def _execute_and_return_stdout(self, cmd, args, **kwargs):
+        result = self._execute_with_exception(cmd, args, **kwargs)
+
+        return result[1]
+
     def get_comm_version(self):
         ret, stdout, stderr = self.exec_hsnm('auman', '-help')
         m = re.search('Version (\d+).(\d+)', stdout)
@@ -131,6 +148,15 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                                 % {'ldev': ldev, 'hlu': hlu})
                     return hlu
         return None
+
+    def _get_lu(self, lu=None):
+        # When 'lu' is 0, it should be true. So, it cannot remove 'is None'.
+        if lu is None:
+            args = '-unit %s' % self.unit_name
+        else:
+            args = '-unit %s -lu %s' % (self.unit_name, lu)
+
+        return self._execute_and_return_stdout('auluref', args)
 
     def get_unused_ldev(self, ldev_range):
         start = ldev_range[0]
@@ -1084,3 +1110,48 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
         self.add_used_hlun('auhgmap', port, gid, list, DUMMY_LU)
 
         return list
+
+    def get_ldev_size_in_gigabyte(self, ldev, existing_ref):
+        param = 'unit_name'
+        if param not in existing_ref:
+            msg = basic_lib.output_err(700, param=param)
+            raise exception.HBSDError(data=msg)
+        storage = existing_ref.get(param)
+        if storage != self.conf.hitachi_unit_name:
+            msg = basic_lib.output_err(648, resource=param)
+            raise exception.HBSDError(data=msg)
+
+        try:
+            stdout = self._get_lu(ldev)
+        except exception.HBSDError:
+            with excutils.save_and_reraise_exception():
+                basic_lib.output_err(648, resource='LDEV')
+
+        lines = stdout.splitlines()
+        line = lines[2]
+
+        splits = shlex.split(line)
+
+        vol_type = splits[len(splits) - 1]
+        if basic_lib.NORMAL_VOLUME_TYPE != vol_type:
+            msg = basic_lib.output_err(702, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        dppool = splits[5]
+        if 'N/A' == dppool:
+            msg = basic_lib.output_err(702, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        # Hitachi storage calculates volume sizes in a block unit, 512 bytes.
+        # So, units.Gi is divided by 512.
+        size = int(splits[1])
+        if size % (units.Gi / 512):
+            msg = basic_lib.output_err(703, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        num_port = int(splits[len(splits) - 2])
+        if num_port:
+            msg = basic_lib.output_err(704, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        return size / (units.Gi / 512)

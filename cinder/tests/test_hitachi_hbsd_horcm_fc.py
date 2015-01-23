@@ -33,6 +33,38 @@ def _exec_raidcom(*args, **kargs):
     return HBSDHORCMFCDriverTest.horcm_vals.get(args)
 
 
+def _exec_raidcom_get_ldev_no_stdout(*args, **kargs):
+    return HBSDHORCMFCDriverTest.horcm_get_ldev_no_stdout.get(args)
+
+
+def _exec_raidcom_get_ldev_no_nml(*args, **kargs):
+    return HBSDHORCMFCDriverTest.horcm_get_ldev_no_nml.get(args)
+
+
+def _exec_raidcom_get_ldev_no_open_v(*args, **kargs):
+    return HBSDHORCMFCDriverTest.horcm_get_ldev_no_open_v.get(args)
+
+
+def _exec_raidcom_get_ldev_no_hdp(*args, **kargs):
+    return HBSDHORCMFCDriverTest.horcm_get_ldev_no_hdp.get(args)
+
+
+def _exec_raidcom_get_ldev_pair(*args, **kargs):
+    return HBSDHORCMFCDriverTest.horcm_get_ldev_pair.get(args)
+
+
+def _exec_raidcom_get_ldev_permit(*args, **kargs):
+    return HBSDHORCMFCDriverTest.horcm_get_ldev_permit.get(args)
+
+
+def _exec_raidcom_get_ldev_invalid_size(*args, **kargs):
+    return HBSDHORCMFCDriverTest.horcm_get_ldev_invalid_size.get(args)
+
+
+def _exec_raidcom_get_ldev_num_port(*args, **kargs):
+    return HBSDHORCMFCDriverTest.horcm_get_ldev_num_port.get(args)
+
+
 class HBSDHORCMFCDriverTest(test.TestCase):
     """Test HBSDHORCMFCDriver."""
 
@@ -52,7 +84,11 @@ VOL_TYPE : NOT DEFINED"
 LDEV : 1\n\
 DUMMY\n\
 DUMMY\n\
-VOL_TYPE : OPEN-V-CVS"
+VOL_TYPE : OPEN-V-CVS\n\
+VOL_ATTR : CVS : HDP\n\
+VOL_Capacity(BLK) : 2097152\n\
+NUM_PORT : 0\n\
+STS : NML"
 
     raidcom_get_result3 = "Serial#  : 210944\n\
 LDEV : 0\n\
@@ -298,6 +334,108 @@ HBSD-127.0.0.1None1A30P HBSD-127.0.0.1None1A30S -mirror_id 0'):
         ('raidcom', u'delete lun -port CL1-A-1 -ldev_id 1'):
         [1, "", ""]}
 
+    horcm_get_ldev_no_stdout = {
+        ('raidcom', 'get ldev -ldev_id 1'):
+        [0, "", ""]}
+
+    raidcom_get_ldev_no_nml = "DUMMY\n\
+LDEV : 1\n\
+DUMMY\n\
+DUMMY\n\
+VOL_TYPE : OPEN-V-CVS\n\
+VOL_ATTR : CVS : HDP\n\
+VOL_Capacity(BLK) : 2097152\n\
+NUM_PORT : 0\n\
+STS :"
+
+    horcm_get_ldev_no_nml = {
+        ('raidcom', 'get ldev -ldev_id 1'):
+        [0, "%s" % raidcom_get_ldev_no_nml, ""]}
+
+    raidcom_get_ldev_no_open_v = "DUMMY\n\
+LDEV : 1\n\
+DUMMY\n\
+DUMMY\n\
+VOL_TYPE : CVS\n\
+VOL_ATTR : CVS : HDP\n\
+VOL_Capacity(BLK) : 2097152\n\
+NUM_PORT : 0\n\
+STS : NML"
+
+    horcm_get_ldev_no_open_v = {
+        ('raidcom', 'get ldev -ldev_id 1'):
+        [0, "%s" % raidcom_get_ldev_no_open_v, ""]}
+
+    raidcom_get_ldev_no_hdp = "DUMMY\n\
+LDEV : 1\n\
+DUMMY\n\
+DUMMY\n\
+VOL_TYPE : OPEN-V-CVS\n\
+VOL_ATTR : CVS :\n\
+VOL_Capacity(BLK) : 2097152\n\
+NUM_PORT : 0\n\
+STS : NML"
+
+    horcm_get_ldev_no_hdp = {
+        ('raidcom', 'get ldev -ldev_id 1'):
+        [0, "%s" % raidcom_get_ldev_no_hdp, ""]}
+
+    raidcom_get_ldev_pair = "DUMMY\n\
+LDEV : 1\n\
+DUMMY\n\
+DUMMY\n\
+VOL_TYPE : OPEN-V-CVS\n\
+VOL_ATTR : HORC : HDP\n\
+VOL_Capacity(BLK) : 2097152\n\
+NUM_PORT : 0\n\
+STS : NML"
+
+    horcm_get_ldev_pair = {
+        ('raidcom', 'get ldev -ldev_id 1'):
+        [0, "%s" % raidcom_get_ldev_pair, ""]}
+
+    raidcom_get_ldev_permit = "DUMMY\n\
+LDEV : 1\n\
+DUMMY\n\
+DUMMY\n\
+VOL_TYPE : OPEN-V-CVS\n\
+VOL_ATTR : XXX : HDP\n\
+VOL_Capacity(BLK) : 2097152\n\
+NUM_PORT : 0\n\
+STS : NML"
+
+    horcm_get_ldev_permit = {
+        ('raidcom', 'get ldev -ldev_id 1'):
+        [0, "%s" % raidcom_get_ldev_permit, ""]}
+
+    raidcom_get_ldev_invalid_size = "DUMMY\n\
+LDEV : 1\n\
+DUMMY\n\
+DUMMY\n\
+VOL_TYPE : OPEN-V-CVS\n\
+VOL_ATTR : CVS : HDP\n\
+VOL_Capacity(BLK) : 2097151\n\
+NUM_PORT : 0\n\
+STS : NML"
+
+    horcm_get_ldev_invalid_size = {
+        ('raidcom', 'get ldev -ldev_id 1'):
+        [0, "%s" % raidcom_get_ldev_invalid_size, ""]}
+
+    raidcom_get_ldev_num_port = "DUMMY\n\
+LDEV : 1\n\
+DUMMY\n\
+DUMMY\n\
+VOL_TYPE : OPEN-V-CVS\n\
+VOL_ATTR : CVS : HDP\n\
+VOL_Capacity(BLK) : 2097152\n\
+NUM_PORT : 1\n\
+STS : NML"
+
+    horcm_get_ldev_num_port = {
+        ('raidcom', 'get ldev -ldev_id 1'):
+        [0, "%s" % raidcom_get_ldev_num_port, ""]}
+
 # The following information is passed on to tests, when creating a volume
 
     _VOLUME = {'size': 128, 'volume_type': None, 'source_volid': '0',
@@ -347,6 +485,17 @@ HBSD-127.0.0.1None1A30P HBSD-127.0.0.1None1A30S -mirror_id 0'):
                             'volume': _VOLUME,
                             'provider_location': '1', 'status': 'available'}
 
+    SERIAL_NUM = '210944'
+    test_existing_ref = {'ldev': '1', 'serial_number': SERIAL_NUM}
+    test_existing_none_ldev_ref = {'ldev': None,
+                                   'serial_number': SERIAL_NUM}
+    test_existing_invalid_ldev_ref = {'ldev': 'AAA',
+                                      'serial_number': SERIAL_NUM}
+    test_existing_no_ldev_ref = {'serial_number': SERIAL_NUM}
+    test_existing_none_serial_ref = {'ldev': '1', 'serial_number': None}
+    test_existing_invalid_serial_ref = {'ldev': '1', 'serial_number': '999999'}
+    test_existing_no_serial_ref = {'ldev': '1'}
+
     def __init__(self, *args, **kwargs):
         super(HBSDHORCMFCDriverTest, self).__init__(*args, **kwargs)
 
@@ -364,6 +513,7 @@ HBSD-127.0.0.1None1A30P HBSD-127.0.0.1None1A30S -mirror_id 0'):
         self._setup_driver()
         self.driver.check_param()
         self.driver.common.pair_flock = hbsd_basiclib.NopLock()
+        self.driver.common.command = hbsd_horcm.HBSDHORCM(self.configuration)
         self.driver.common.command.horcmgr_flock = hbsd_basiclib.NopLock()
         self.driver.common.create_lock_file()
         self.driver.common.command.connect_storage()
@@ -668,3 +818,184 @@ HBSD-127.0.0.1None1A30P HBSD-127.0.0.1None1A30S -mirror_id 0'):
                           self.driver.terminate_connection,
                           self._VOLUME, connector)
         return
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    def test_manage_existing(self, arg1, arg2):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        rc = self.driver.manage_existing(self._VOLUME, self.test_existing_ref)
+        self.assertEqual(1, rc['provider_location'])
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size(self, arg1, arg2, arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        size = self.driver.manage_existing_get_size(self._VOLUME,
+                                                    self.test_existing_ref)
+        self.assertEqual(1, size)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_none_ldev_ref(self, arg1, arg2, arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_none_ldev_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_invalid_ldev_ref(self, arg1, arg2, arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_invalid_ldev_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_no_ldev_ref(self, arg1, arg2, arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_no_ldev_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_none_serial_ref(self, arg1, arg2,
+                                                      arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_none_serial_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_invalid_serial_ref(self, arg1, arg2,
+                                                         arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_invalid_serial_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_no_serial_ref(self, arg1, arg2, arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_no_serial_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'start_horcm',
+                       return_value=[0, "", ""])
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'check_horcm',
+                       return_value=[0, "", ""])
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    def test_unmanage(self, arg1, arg2, arg3, arg4):
+        self.driver.unmanage(self._VOLUME)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    def test_unmanage_busy(self, arg1, arg2):
+        self.assertRaises(exception.HBSDVolumeIsBusy,
+                          self.driver.unmanage, self.test_volume_error3)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom_get_ldev_no_stdout)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_get_ldev_no_stdout(self, arg1, arg2,
+                                                         arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom_get_ldev_no_nml)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_get_ldev_no_nml(self, arg1, arg2, arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom_get_ldev_no_open_v)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_get_ldev_no_open_v(self, arg1, arg2,
+                                                         arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom_get_ldev_no_hdp)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_get_ldev_no_hdp(self, arg1, arg2, arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom_get_ldev_pair)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_get_ldev_pair(self, arg1, arg2, arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom_get_ldev_permit)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_get_ldev_permit(self, arg1, arg2, arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom_get_ldev_invalid_size)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_get_ldev_invalid_size(self, arg1, arg2,
+                                                            arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom_get_ldev_num_port)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_get_ldev_num_port(self, arg1, arg2,
+                                                        arg3):
+        self.configuration.hitachi_serial_number = self.SERIAL_NUM
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_ref)

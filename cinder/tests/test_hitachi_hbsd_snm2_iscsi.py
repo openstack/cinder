@@ -68,7 +68,7 @@ LUN  Status                                              Copy Type    Group   \
   RAID                           Rotational  Number\n\
    LU       Capacity        Size    Group    Pool  Mode     Level        Type\
                    Speed  of Paths  Status\n\
-    0       2097152 blocks   256KB      0       0  Enable     5( 3D+1P)  SAS"
+    0       2097152 blocks   256KB      0       0  Enable     0 Normal"
 
     auhgwwn_result = "Port 00 Host Group Security  ON\n  Detected WWN\n    \
 Name                              Port Name         Host Group\n\
@@ -144,6 +144,7 @@ Authentication\n\
         ('auluadd', '-unit None -lu 1 -dppoolno 30 -size 128g'): [0, "", ""],
         ('auluadd', '-unit None -lu 1 -dppoolno 30 -size 256g'): [1, "", ""],
         ('auluref', '-unit None'): [0, "%s" % auluref_result, ""],
+        ('auluref', '-unit None -lu 0'): [0, "%s" % auluref_result, ""],
         ('autargetmap', '-unit None -add 0 0 1 1 1'): [0, "", ""],
         ('autargetmap', '-unit None -add 0 0 0 0 1'): [0, "", ""],
         ('autargetini', '-unit None -refer'):
@@ -244,6 +245,15 @@ Authentication\n\
                             'volume': test_volume_error,
                             'provider_location': None, 'status': 'available'}
 
+    UNIT_NAME = 'HUS110_91122819'
+    test_existing_ref = {'ldev': '0', 'unit_name': UNIT_NAME}
+    test_existing_none_ldev_ref = {'ldev': None, 'unit_name': UNIT_NAME}
+    test_existing_invalid_ldev_ref = {'ldev': 'AAA', 'unit_name': UNIT_NAME}
+    test_existing_no_ldev_ref = {'unit_name': UNIT_NAME}
+    test_existing_none_unit_ref = {'ldev': '0', 'unit_name': None}
+    test_existing_invalid_unit_ref = {'ldev': '0', 'unit_name': 'Dummy'}
+    test_existing_no_unit_ref = {'ldev': '0'}
+
     def __init__(self, *args, **kwargs):
         super(HBSDSNM2ISCSIDriverTest, self).__init__(*args, **kwargs)
 
@@ -296,6 +306,9 @@ Authentication\n\
         db = None
         self.driver.common = hbsd_common.HBSDCommon(
             self.configuration, self.driver, context, db)
+        self.driver.common.command = hbsd_snm2.HBSDSNM2(self.configuration)
+        self.driver.common.horcmgr_flock = \
+            self.driver.common.command.set_horcmgr_flock()
 
 # API test cases
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
@@ -492,3 +505,83 @@ Authentication\n\
                           self.driver.terminate_connection,
                           self._VOLUME, connector)
         return
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    def test_manage_existing(self, arg1, arg2):
+        rc = self.driver.manage_existing(self._VOLUME, self.test_existing_ref)
+        self.assertEqual(0, rc['provider_location'])
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size(self, arg1, arg2, arg3):
+        self.configuration.hitachi_unit_name = self.UNIT_NAME
+        size = self.driver.manage_existing_get_size(self._VOLUME,
+                                                    self.test_existing_ref)
+        self.assertEqual(1, size)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_none_ldev(self, arg1, arg2, arg3):
+        self.configuration.hitachi_unit_name = self.UNIT_NAME
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_none_ldev_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_invalid_ldev_ref(self, arg1, arg2, arg3):
+        self.configuration.hitachi_unit_name = self.UNIT_NAME
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_invalid_ldev_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_no_ldev_ref(self, arg1, arg2, arg3):
+        self.configuration.hitachi_unit_name = self.UNIT_NAME
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_no_ldev_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_none_unit_ref(self, arg1, arg2, arg3):
+        self.configuration.hitachi_unit_name = self.UNIT_NAME
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_none_unit_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_invalid_unit_ref(self, arg1, arg2, arg3):
+        self.configuration.hitachi_unit_name = self.UNIT_NAME
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_invalid_unit_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    @mock.patch.object(hbsd_common.HBSDCommon, '_update_volume_metadata')
+    def test_manage_existing_get_size_no_unit_ref(self, arg1, arg2, arg3):
+        self.configuration.hitachi_unit_name = self.UNIT_NAME
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, self._VOLUME,
+                          self.test_existing_no_unit_ref)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    def test_unmanage(self, arg1, arg2):
+        self.driver.unmanage(self._VOLUME)
+
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    def test_unmanage_busy(self, arg1, arg2):
+        self.assertRaises(exception.HBSDVolumeIsBusy,
+                          self.driver.unmanage, self.test_volume_error3)
