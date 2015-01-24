@@ -40,6 +40,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import importutils
 from oslo_utils import timeutils
+import retrying
 import six
 
 from cinder.brick.initiator import connector
@@ -766,3 +767,39 @@ def is_blk_device(dev):
     except Exception:
         LOG.debug('Path %s not found in is_blk_device check' % dev)
         return False
+
+
+def retry(exceptions, interval=1, retries=3, backoff_rate=2):
+
+    def _retry_on_exception(e):
+        return isinstance(e, exceptions)
+
+    def _backoff_sleep(previous_attempt_number, delay_since_first_attempt_ms):
+        exp = backoff_rate ** previous_attempt_number
+        wait_for = max(0, interval * exp)
+        LOG.debug("Sleeping for %s seconds", wait_for)
+        return wait_for * 1000.0
+
+    def _print_stop(previous_attempt_number, delay_since_first_attempt_ms):
+        delay_since_first_attempt = delay_since_first_attempt_ms / 1000.0
+        LOG.debug("Failed attempt %s", previous_attempt_number)
+        LOG.debug("Have been at this for %s seconds",
+                  delay_since_first_attempt)
+        return previous_attempt_number == retries
+
+    if retries < 1:
+        raise ValueError('Retries must be greater than or '
+                         'equal to 1 (received: %s). ' % retries)
+
+    def _decorator(f):
+
+        @six.wraps(f)
+        def _wrapper(*args, **kwargs):
+            r = retrying.Retrying(retry_on_exception=_retry_on_exception,
+                                  wait_func=_backoff_sleep,
+                                  stop_func=_print_stop)
+            return r.call(f, *args, **kwargs)
+
+        return _wrapper
+
+    return _decorator
