@@ -91,3 +91,27 @@ class TestLioAdmDriver(test_tgt.TestTgtAdmDriver):
             'iqn.2010-10.org.openstack:testvol',
             1, 0, self.fake_volumes_dir, 'IncomingUser foo bar',
             check_exit_code=False)
+
+    @mock.patch.object(utils, 'execute')
+    def test_terminate_connection(self, _mock_execute):
+
+        connector = {'initiator': 'fake_init'}
+        self.target.terminate_connection(self.testvol_1,
+                                         connector)
+        _mock_execute.assert_called_once_with(
+            'cinder-rtstool', 'delete-initiator',
+            'iqn.2010-10.org.openstack:'
+            'volume-ed2c2222-5fc0-11e4-aa15-123b93f75cba',
+            connector['initiator'],
+            run_as_root=True)
+
+    @mock.patch.object(utils, 'execute')
+    def test_terminate_connection_fail(self, _mock_execute):
+
+        _mock_execute.side_effect = \
+            exception.ISCSITargetDetachFailed(self.testvol_1['id'])
+        connector = {'initiator': 'fake_init'}
+        self.assertRaises(exception.ISCSITargetDetachFailed,
+                          self.target.terminate_connection,
+                          self.testvol_1,
+                          connector)
