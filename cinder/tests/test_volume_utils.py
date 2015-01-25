@@ -193,6 +193,36 @@ class NotifyUsageTestCase(test.TestCase):
             'snapshot.test_suffix',
             mock_usage.return_value)
 
+    def test_usage_from_snapshot(self):
+        raw_snapshot = {
+            'project_id': '12b0330ec2584a',
+            'user_id': '158cba1b8c2bb6008e',
+            'volume': {'availability_zone': 'nova'},
+            'volume_id': '55614621',
+            'volume_size': 1,
+            'id': '343434a2',
+            'display_name': '11',
+            'created_at': '2014-12-11T10:10:00',
+            'status': 'pause',
+            'deleted': '',
+        }
+        usage_info = volume_utils._usage_from_snapshot(
+            mock.sentinel.context,
+            raw_snapshot)
+        expected_snapshot = {
+            'tenant_id': '12b0330ec2584a',
+            'user_id': '158cba1b8c2bb6008e',
+            'availability_zone': 'nova',
+            'volume_id': '55614621',
+            'volume_size': 1,
+            'snapshot_id': '343434a2',
+            'display_name': '11',
+            'created_at': '2014-12-11T10:10:00',
+            'status': 'pause',
+            'deleted': '',
+        }
+        self.assertEqual(expected_snapshot, usage_info)
+
     @mock.patch('cinder.volume.utils._usage_from_consistencygroup')
     @mock.patch('cinder.volume.utils.CONF')
     @mock.patch('cinder.volume.utils.rpc')
