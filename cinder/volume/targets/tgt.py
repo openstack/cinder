@@ -41,14 +41,14 @@ class TgtAdm(iscsi.ISCSITarget):
     VOLUME_CONF = """
                 <target %s>
                     backing-store %s
-                    driver iscsi
+                    driver %s
                     write-cache %s
                 </target>
                   """
     VOLUME_CONF_WITH_CHAP_AUTH = """
                                 <target %s>
                                     backing-store %s
-                                    driver iscsi
+                                    driver %s
                                     %s
                                     write-cache %s
                                 </target>
@@ -188,12 +188,14 @@ class TgtAdm(iscsi.ISCSITarget):
 
         vol_id = name.split(':')[1]
         write_cache = kwargs.get('iscsi_write_cache', 'on')
+        driver = self.iscsi_protocol
+
         if chap_auth is None:
-            volume_conf = self.VOLUME_CONF % (name, path, write_cache)
+            volume_conf = self.VOLUME_CONF % (name, path, driver, write_cache)
         else:
             chap_str = re.sub('^IncomingUser ', 'incominguser ', chap_auth)
-            volume_conf = self.VOLUME_CONF_WITH_CHAP_AUTH % (name,
-                                                             path, chap_str,
+            volume_conf = self.VOLUME_CONF_WITH_CHAP_AUTH % (name, path,
+                                                             driver, chap_str,
                                                              write_cache)
         LOG.debug('Creating iscsi_target for: %s', vol_id)
         volumes_dir = self.volumes_dir
@@ -349,7 +351,7 @@ class TgtAdm(iscsi.ISCSITarget):
     def initialize_connection(self, volume, connector):
         iscsi_properties = self._get_iscsi_properties(volume)
         return {
-            'driver_volume_type': 'iscsi',
+            'driver_volume_type': self.iscsi_protocol,
             'data': iscsi_properties
         }
 

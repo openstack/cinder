@@ -117,6 +117,13 @@ volume_opts = [
                     'perform write-back(on) or write-through(off). '
                     'This parameter is valid if iscsi_helper is set '
                     'to tgtadm or iseradm.'),
+    cfg.StrOpt('iscsi_protocol',
+               default='iscsi',
+               help='Determines the iSCSI protocol for new iSCSI volumes, '
+                    'created with tgtadm or lioadm target helpers. In '
+                    'order to enable RDMA, this parameter should be set '
+                    'with the value "iser". The supported iSCSI protocol '
+                    'values are "iscsi" and "iser".'),
     cfg.StrOpt('driver_client_cert_key',
                default=None,
                help='The path to the client certificate key for verification, '

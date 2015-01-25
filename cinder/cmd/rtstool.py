@@ -33,7 +33,8 @@ class RtstoolImportError(RtstoolError):
     pass
 
 
-def create(backing_device, name, userid, password, initiator_iqns=None):
+def create(backing_device, name, userid, password, iser_enabled,
+           initiator_iqns=None):
     try:
         rtsroot = rtslib.root.RTSRoot()
     except rtslib.utils.RTSLibError:
@@ -68,10 +69,18 @@ def create(backing_device, name, userid, password, initiator_iqns=None):
     tpg_new.enable = 1
 
     try:
-        rtslib.NetworkPortal(tpg_new, '0.0.0.0', 3260, mode='any')
+        portal = rtslib.NetworkPortal(tpg_new, '0.0.0.0', 3260, mode='any')
     except rtslib.utils.RTSLibError:
         print(_('Error creating NetworkPortal: ensure port 3260 '
                 'is not in use by another service.'))
+        raise
+
+    try:
+        if iser_enabled == 'True':
+            portal._set_iser(1)
+    except rtslib.utils.RTSLibError:
+        print(_('Error enabling iSER for NetworkPortal: please ensure that '
+                'RDMA is supported on your iSCSI port.'))
         raise
 
     try:
@@ -154,7 +163,7 @@ def verify_rtslib():
 def usage():
     print("Usage:")
     print(sys.argv[0] +
-          " create [device] [name] [userid] [password]" +
+          " create [device] [name] [userid] [password] [iser_enabled]" +
           " <initiator_iqn,iqn2,iqn3,...>")
     print(sys.argv[0] +
           " add-initiator [target_iqn] [userid] [password] [initiator_iqn]")
@@ -174,22 +183,24 @@ def main(argv=None):
         usage()
 
     if argv[1] == 'create':
-        if len(argv) < 6:
+        if len(argv) < 7:
             usage()
 
-        if len(argv) > 7:
+        if len(argv) > 8:
             usage()
 
         backing_device = argv[2]
         name = argv[3]
         userid = argv[4]
         password = argv[5]
+        iser_enabled = argv[6]
         initiator_iqns = None
 
-        if len(argv) > 6:
-            initiator_iqns = argv[6]
+        if len(argv) > 7:
+            initiator_iqns = argv[7]
 
-        create(backing_device, name, userid, password, initiator_iqns)
+        create(backing_device, name, userid, password, iser_enabled,
+               initiator_iqns)
 
     elif argv[1] == 'add-initiator':
         if len(argv) < 6:
