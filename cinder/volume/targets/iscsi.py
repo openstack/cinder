@@ -184,8 +184,8 @@ class ISCSITarget(driver.Target):
     def validate_connector(self, connector):
         # NOTE(jdg): api passes in connector which is initiator info
         if 'initiator' not in connector:
-            err_msg = (_('The volume driver requires the iSCSI initiator '
-                         'name in the connector.'))
+            err_msg = (_LE('The volume driver requires the iSCSI initiator '
+                           'name in the connector.'))
             LOG.error(err_msg)
-            raise exception.VolumeBackendAPIException(data=err_msg)
+            raise exception.InvalidConnectorException(missing='initiator')
         return True

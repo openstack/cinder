@@ -4127,7 +4127,7 @@ class ISCSITestCase(DriverTestCase):
 
         # Validate a connector without the initiator
         connector = {'ip': '10.0.0.2', 'host': 'fakehost'}
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.InvalidConnectorException,
                           iscsi_driver.validate_connector, connector)
 
 
@@ -4213,27 +4213,27 @@ class FibreChannelTestCase(DriverTestCase):
     def test_validate_connector_no_wwpns(self):
         """validate_connector() throws exception when it has no wwpns."""
         connector = {'wwnns': ["not empty"]}
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.volume.driver.validate_connector, connector)
 
     def test_validate_connector_empty_wwpns(self):
         """validate_connector() throws exception when it has empty wwpns."""
         connector = {'wwpns': [],
                      'wwnns': ["not empty"]}
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.volume.driver.validate_connector, connector)
 
     def test_validate_connector_no_wwnns(self):
         """validate_connector() throws exception when it has no wwnns."""
         connector = {'wwpns': ["not empty"]}
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.volume.driver.validate_connector, connector)
 
     def test_validate_connector_empty_wwnns(self):
         """validate_connector() throws exception when it has empty wwnns."""
         connector = {'wwnns': [],
                      'wwpns': ["not empty"]}
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.volume.driver.validate_connector, connector)
 
 

@@ -890,8 +890,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         utils.require_driver_initialized(self.driver)
         try:
             self.driver.validate_connector(connector)
+        except exception.InvalidConnectorException as err:
+            raise exception.InvalidInput(reason=err)
         except Exception as err:
-            err_msg = (_('Unable to fetch connection information from '
+            err_msg = (_('Unable to validate connector information in '
                          'backend: %(err)s') % {'err': err})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)

@@ -1485,7 +1485,7 @@ class HuaweiTFCDriverTestCase(test.TestCase):
 
     def test_validate_connector_failed(self):
         invalid_connector = {'host': 'testhost'}
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector,
                           invalid_connector)
 

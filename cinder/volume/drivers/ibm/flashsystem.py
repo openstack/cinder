@@ -1137,11 +1137,11 @@ class FlashSystemDriver(san.SanDriver):
 
     def validate_connector(self, connector):
         """Check connector."""
-        if 'FC' != self._protocol or 'wwpns' not in connector:
-            msg = (_('The connector does not contain the '
-                     'required information.'))
+        if 'FC' == self._protocol and 'wwpns' not in connector:
+            msg = (_LE('The connector does not contain the '
+                       'required information: wwpns is missing'))
             LOG.error(msg)
-            raise exception.VolumeDriverException(data=msg)
+            raise exception.InvalidConnectorException(missing='wwpns')
 
     def create_volume(self, volume):
         """Create volume."""
