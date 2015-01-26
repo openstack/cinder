@@ -30,12 +30,12 @@ import tempfile
 from oslo_config import cfg
 from oslo_utils import excutils
 from oslo_utils import units
+from oslo_utils import uuidutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import uuidutils
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import api
 from cinder.volume.drivers.vmware import datastore as hub

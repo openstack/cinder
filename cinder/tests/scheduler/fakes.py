@@ -17,8 +17,8 @@ Fakes For Scheduler tests.
 """
 
 from oslo_utils import timeutils
+from oslo_utils import uuidutils
 
-from cinder.openstack.common import uuidutils
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import host_manager
 
