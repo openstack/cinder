@@ -15,8 +15,11 @@
 #    under the License.
 """Unit tests for image utils."""
 
+import math
+
 import mock
 from oslo_concurrency import processutils
+from oslo_utils import units
 
 from cinder import exception
 from cinder.image import image_utils
@@ -648,7 +651,8 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_conf.volume_copy_bps_limit = bps_limit
         tmp = mock_temp.return_value.__enter__.return_value
         image_service.show.return_value = {'disk_format': 'raw',
-                                           'size': mock.sentinel.image_size}
+                                           'size': 41126400}
+        image_size_m = math.ceil(41126400 / units.Mi)
 
         output = image_utils.fetch_to_volume_format(
             ctxt, image_service, image_id, dest, volume_format, blocksize,
@@ -662,7 +666,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            tmp, user_id, project_id)
         self.assertFalse(mock_repl_xen.called)
-        mock_copy.assert_called_once_with(tmp, dest, mock.sentinel.image_size,
+        mock_copy.assert_called_once_with(tmp, dest, image_size_m,
                                           blocksize)
         self.assertFalse(mock_convert.called)
 
