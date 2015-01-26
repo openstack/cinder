@@ -1,5 +1,5 @@
 # Copyright (c) 2014 FUJITSU LIMITED
-# Copyright (c) 2014 EMC Corporation.
+# Copyright (c) 2012 - 2014 EMC Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,32 +14,33 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-FC Drivers for ETERNUS DX arrays based on SMI-S.
+ISCSI Drivers for ETERNUS DX arrays based on SMI-S.
 
 """
 from oslo_concurrency import lockutils
 import six
 
 from cinder import context
+from cinder import exception
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
-from cinder.volume.drivers import fujitsu_eternus_dx_common
-from cinder.zonemanager import utils as fczm_utils
+from cinder.volume.drivers.fujitsu import eternus_dx_common
 
 LOG = logging.getLogger(__name__)
 
 
-class FJDXFCDriver(driver.FibreChannelDriver):
-    """FC Drivers using SMI-S."""
+class FJDXISCSIDriver(driver.ISCSIDriver):
+    """ISCSI Drivers using SMI-S."""
 
     VERSION = "1.2.0"
 
     def __init__(self, *args, **kwargs):
 
-        super(FJDXFCDriver, self).__init__(*args, **kwargs)
-        self.common = fujitsu_eternus_dx_common.FJDXCommon(
-            'FC',
-            configuration=self.configuration)
+        super(FJDXISCSIDriver, self).__init__(*args, **kwargs)
+        self.common = \
+            eternus_dx_common.\
+            FJDXCommon('iSCSI', configuration=self.configuration)
 
     def check_for_setup_error(self):
         pass
@@ -82,7 +83,6 @@ class FJDXFCDriver(driver.FibreChannelDriver):
     @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-
         ctxt = context.get_admin_context()
         volumename = snapshot['volume_name']
         index = volumename.index('-')
@@ -118,95 +118,116 @@ class FJDXFCDriver(driver.FibreChannelDriver):
         """Make sure volume is exported."""
         pass
 
-    @fczm_utils.AddFCZone
     @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
-        Assign any created volume to a compute node/host so that it can be
-        used from that host.
-
-        The  driver returns a driver_volume_type of 'fibre_channel'.
-        The target_wwn can be a single entry or a list of wwns that
-        correspond to the list of remote wwn(s) that will export the volume.
-        Example return values:
+        The iscsi driver returns a driver_volume_type of 'iscsi'.
+        the format of the driver data is defined in smis_get_iscsi_properties.
+        Example return value::
 
             {
-                'driver_volume_type': 'fibre_channel'
+                'driver_volume_type': 'iscsi'
                 'data': {
                     'target_discovered': True,
-                    'target_lun': 1,
-                    'target_wwn': '1234567890123',
-                }
-            }
-
-            or
-
-             {
-                'driver_volume_type': 'fibre_channel'
-                'data': {
-                    'target_discovered': True,
-                    'target_lun': 1,
-                    'target_wwn': ['1234567890123', '0987654321321'],
+                    'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
+                    'target_portal': '127.0.0.0.1:3260',
+                    'volume_id': '12345678-1234-4321-1234-123456789012',
                 }
             }
 
         """
-        device_info = self.common.initialize_connection(volume,
-                                                        connector)
+        self.common.initialize_connection(volume, connector)
+
+        iscsi_properties = self.smis_get_iscsi_properties(volume, connector)
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': iscsi_properties
+        }
+
+    def _do_iscsi_discovery(self, volume):
+
+        LOG.warn(_LW("ISCSI provider_location not stored, using discovery"))
+
+        (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
+                                    '-t', 'sendtargets', '-p',
+                                    self.configuration.iscsi_ip_address,
+                                    run_as_root=True)
+        targets = []
+        for target in out.splitlines():
+            targets.append(target)
+
+        return targets
+
+    def smis_get_iscsi_properties(self, volume, connector):
+        """Gets iscsi configuration.
+
+        We ideally get saved information in the volume entity, but fall back
+        to discovery if need be. Discovery may be completely removed in future
+        The properties are:
+
+        :target_discovered:    boolean indicating whether discovery was used
+
+        :target_iqn:    the IQN of the iSCSI target
+
+        :target_portal:    the portal of the iSCSI target
+
+        :target_lun:    the lun of the iSCSI target
+
+        :volume_id:    the UUID of the volume
+
+        :auth_method:, :auth_username:, :auth_password:
+
+            the authentication details. Right now, either auth_method is not
+            present meaning no authentication, or auth_method == `CHAP`
+            meaning use CHAP with the specified credentials.
+        """
+        iscsiip = self.configuration.iscsi_ip_address
+        properties = {}
+
+        location = self._do_iscsi_discovery(volume)
+        if not location:
+            raise exception.InvalidVolume(_("Could not find iSCSI export "
+                                          " for volume %s") %
+                                          (volume['name']))
+
+        LOG.debug("ISCSI Discovery: Found %s" % (location))
+        properties['target_discovered'] = True
+
+        device_info = self.common.find_device_number(volume, connector)
+        if device_info is None or device_info['hostlunid'] is None:
+            exception_message = (_("Cannot find device number for volume %s")
+                                 % volume['name'])
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
         device_number = device_info['hostlunid']
-        storage_system = device_info['storagesystem']
-        target_wwns, init_targ_map = self._build_initiator_target_map(
-            storage_system, connector)
 
-        data = {'driver_volume_type': 'fibre_channel',
-                'data': {'target_lun': device_number,
-                         'target_discovered': True,
-                         'target_wwn': target_wwns,
-                         'initiator_target_map': init_targ_map}}
+        for loc in location:
+            if iscsiip in loc:
+                results = loc.split(" ")
+                properties['target_portal'] = results[0].split(",")[0]
+                properties['target_iqn'] = results[1]
+                break
 
-        LOG.debug('Return FC data: %(data)s.'
-                  % {'data': data})
+        properties['target_lun'] = device_number
+        properties['volume_id'] = volume['id']
 
-        return data
+        LOG.debug("ISCSI properties: %s" % (properties))
 
-    @fczm_utils.RemoveFCZone
+        auth = volume['provider_auth']
+        if auth:
+            (auth_method, auth_username, auth_secret) = auth.split()
+
+            properties['auth_method'] = auth_method
+            properties['auth_username'] = auth_username
+            properties['auth_password'] = auth_secret
+
+        return properties
+
     @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
-        ctrl = self.common.terminate_connection(volume, connector)
-
-        loc = volume['provider_location']
-        name = eval(loc)
-        storage_system = name['keybindings']['SystemName']
-        target_wwns, init_targ_map = self._build_initiator_target_map(
-            storage_system, connector)
-
-        data = {'driver_volume_type': 'fibre_channel',
-                'data': {}}
-
-        if len(ctrl) == 0:
-            # No more volumes attached to the host
-            data['data'] = {'target_wwn': target_wwns,
-                            'initiator_target_map': init_targ_map}
-
-        LOG.debug('Return FC data: %(data)s.'
-                  % {'data': data})
-
-        return data
-
-    def _build_initiator_target_map(self, storage_system, connector):
-        """Build the target_wwns and the initiator target map."""
-
-        target_wwns = self.common.get_target_portid(connector)
-
-        initiator_wwns = connector['wwpns']
-
-        init_targ_map = {}
-        for initiator in initiator_wwns:
-            init_targ_map[initiator] = target_wwns
-
-        return target_wwns, init_targ_map
+        self.common.terminate_connection(volume, connector)
 
     @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
     def extend_volume(self, volume, new_size):
@@ -228,7 +249,7 @@ class FJDXFCDriver(driver.FibreChannelDriver):
         LOG.debug("Updating volume stats")
         data = self.common.update_volume_stats()
         backend_name = self.configuration.safe_get('volume_backend_name')
-        data['volume_backend_name'] = backend_name or 'FJDXFCDriver'
-        data['storage_protocol'] = 'FC'
+        data['volume_backend_name'] = backend_name or 'FJDXISCSIDriver'
+        data['storage_protocol'] = 'iSCSI'
         data['driver_version'] = self.VERSION
         self._stats = data
