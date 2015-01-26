@@ -112,6 +112,10 @@ class ConnectorTestCase(test.TestCase):
         obj = connector.InitiatorConnector.factory('fibre_channel', None)
         self.assertEqual(obj.__class__.__name__, "FibreChannelConnector")
 
+        obj = connector.InitiatorConnector.factory('fibre_channel', None,
+                                                   arch='s390x')
+        self.assertEqual(obj.__class__.__name__, "FibreChannelConnectorS390X")
+
         obj = connector.InitiatorConnector.factory('aoe', None)
         self.assertEqual(obj.__class__.__name__, "AoEConnector")
 
@@ -722,6 +726,45 @@ class FibreChannelConnectorTestCase(ConnectorTestCase):
         self.assertRaises(exception.NoFibreChannelHostsFound,
                           self.connector.connect_volume,
                           connection_info['data'])
+
+
+class FibreChannelConnectorS390XTestCase(ConnectorTestCase):
+
+    def setUp(self):
+        super(FibreChannelConnectorS390XTestCase, self).setUp()
+        self.connector = connector.FibreChannelConnectorS390X(
+            None, execute=self.fake_execute, use_multipath=False)
+        self.assertIsNotNone(self.connector)
+        self.assertIsNotNone(self.connector._linuxfc)
+        self.assertEqual(self.connector._linuxfc.__class__.__name__,
+                         "LinuxFibreChannelS390X")
+        self.assertIsNotNone(self.connector._linuxscsi)
+
+    @mock.patch.object(linuxfc.LinuxFibreChannelS390X, 'configure_scsi_device')
+    def test_get_host_devices(self, mock_configure_scsi_device):
+        lun = 2
+        possible_devs = [(3, 5), ]
+        devices = self.connector._get_host_devices(possible_devs, lun)
+        mock_configure_scsi_device.assert_called_with(3, 5,
+                                                      "0x0002000000000000")
+        self.assertEqual(1, len(devices))
+        device_path = "/dev/disk/by-path/ccw-3-zfcp-5:0x0002000000000000"
+        self.assertEqual(devices[0], device_path)
+
+    @mock.patch.object(connector.FibreChannelConnectorS390X,
+                       '_get_possible_devices', return_value=[(3, 5), ])
+    @mock.patch.object(linuxfc.LinuxFibreChannelS390X, 'get_fc_hbas_info',
+                       return_value=[])
+    @mock.patch.object(linuxfc.LinuxFibreChannelS390X,
+                       'deconfigure_scsi_device')
+    def test_remove_devices(self, mock_deconfigure_scsi_device,
+                            mock_get_fc_hbas_info, mock_get_possible_devices):
+        connection_properties = {'target_wwn': 5, 'target_lun': 2}
+        self.connector._remove_devices(connection_properties, devices=None)
+        mock_deconfigure_scsi_device.assert_called_with(3, 5,
+                                                        "0x0002000000000000")
+        mock_get_fc_hbas_info.assert_called_once_with()
+        mock_get_possible_devices.assert_called_once_with([], 5)
 
 
 class FakeFixedIntervalLoopingCall(object):
