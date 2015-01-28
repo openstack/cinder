@@ -13,8 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import random
 import time
 
+import mock
 import mox
 from oslo_concurrency import processutils
 import paramiko
@@ -22,10 +24,11 @@ import paramiko
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
+from cinder import ssh_utils
 from cinder import test
+from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import eqlx
-
 
 LOG = logging.getLogger(__name__)
 
@@ -42,6 +45,10 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.configuration.san_password = "bar"
         self.configuration.san_ssh_port = 16022
         self.configuration.san_thin_provision = True
+        self.configuration.san_private_key = 'foo'
+        self.configuration.ssh_min_pool_conn = 1
+        self.configuration.ssh_max_pool_conn = 5
+        self.configuration.ssh_conn_timeout = 30
         self.configuration.eqlx_pool = 'non-default'
         self.configuration.eqlx_use_chap = True
         self.configuration.eqlx_group_name = 'group-0'
@@ -316,6 +323,55 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.mox.ReplayAll()
         self.assertRaises(processutils.ProcessExecutionError,
                           self.driver._ssh_execute, ssh, cmd)
+
+    def test_ensure_retries(self):
+        num_attempts = random.randint(1, 5)
+        self.driver.configuration.eqlx_cli_max_retries = num_attempts
+
+        self.mock_object(self.driver, '_ssh_execute',
+                         mock.Mock(side_effect=exception.
+                                   VolumeBackendAPIException("some error")))
+        # mocks for calls in _run_ssh
+        self.mock_object(utils, 'check_ssh_injection')
+        self.mock_object(ssh_utils, 'SSHPool')
+
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
+        self.mock_object(sshpool.item(), 'close')
+        self.driver.sshpool = mock.Mock(return_value=sshpool)
+        # now call the execute
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._eql_execute, "fake command")
+        self.assertEqual(num_attempts + 1,
+                         self.driver._ssh_execute.call_count)
+
+    def test_ensure_retries_on_channel_timeout(self):
+
+        num_attempts = random.randint(1, 5)
+        self.driver.configuration.eqlx_cli_max_retries = num_attempts
+
+        # mocks for calls and objects in _run_ssh
+        self.mock_object(utils, 'check_ssh_injection')
+        self.mock_object(ssh_utils, 'SSHPool')
+
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
+        self.mock_object(sshpool.item(), 'close')
+        self.driver.sshpool = mock.Mock(return_value=sshpool)
+        # mocks for _ssh_execute and _get_output
+        self.mock_object(self.driver, '_get_output',
+                         mock.Mock(side_effect=exception.
+                                   VolumeBackendAPIException("some error")))
+        # now call the execute
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._eql_execute, "fake command")
+        self.assertEqual(num_attempts + 1, self.driver._get_output.call_count)
 
     def test_with_timeout(self):
         @eqlx.with_timeout
