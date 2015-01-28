@@ -79,6 +79,14 @@ class BrickLvmTestCase(test.TestCase):
         elif 'env, LC_ALL=C, vgs, --noheadings, --unit=g, ' \
              '-o, name,size,free,lv_count,uuid, ' \
              '--separator, :, --nosuffix' in cmd_string:
+            data = ("  test-prov-cap-vg-unit:10.00:10.00:0:"
+                    "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z4\n")
+            if 'test-prov-cap-vg-unit' in cmd_string:
+                return (data, "")
+            data = ("  test-prov-cap-vg-no-unit:10.00:10.00:0:"
+                    "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z4\n")
+            if 'test-prov-cap-vg-no-unit' in cmd_string:
+                return (data, "")
             data = "  fake-vg:10.00:10.00:0:"\
                    "kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
             if 'fake-vg' in cmd_string:
@@ -98,8 +106,19 @@ class BrickLvmTestCase(test.TestCase):
                 raise processutils.ProcessExecutionError(
                     stderr="One or more volume(s) not found."
                 )
-            data = "  fake-vg fake-1 1.00g\n"
-            data += "  fake-vg fake-2 1.00g\n"
+            if 'test-prov-cap-vg-unit' in cmd_string:
+                data = "  fake-vg test-prov-cap-pool-unit 9.50g\n"
+                data += "  fake-vg fake-volume-1 1.00g\n"
+                data += "  fake-vg fake-volume-2 2.00g\n"
+            elif 'test-prov-cap-vg-no-unit' in cmd_string:
+                data = "  fake-vg test-prov-cap-pool-no-unit 9.50\n"
+                data += "  fake-vg fake-volume-1 1.00\n"
+                data += "  fake-vg fake-volume-2 2.00\n"
+            elif 'test-found-lv-name' in cmd_string:
+                data = "  fake-vg test-found-lv-name 9.50\n"
+            else:
+                data = "  fake-vg fake-1 1.00g\n"
+                data += "  fake-vg fake-2 1.00g\n"
         elif ('env, LC_ALL=C, lvdisplay, --noheading, -C, -o, Attr' in
               cmd_string):
             if 'test-volumes' in cmd_string:
@@ -113,7 +132,10 @@ class BrickLvmTestCase(test.TestCase):
             data += "  fake-vg-2:/dev/sdd:10.00:9.99\n"
         elif 'env, LC_ALL=C, lvs, --noheadings, --unit=g' \
              ', -o, size,data_percent, --separator, :' in cmd_string:
-            data = "  9:12\n"
+            if 'test-prov-cap-pool' in cmd_string:
+                data = "  9.5:20\n"
+            else:
+                data = "  9:12\n"
         elif 'lvcreate, -T, -L, ' in cmd_string:
             pass
         elif 'lvcreate, -T, -V, ' in cmd_string:
@@ -161,9 +183,28 @@ class BrickLvmTestCase(test.TestCase):
 
     def test_get_lv_info_notfound(self):
         self.assertEqual(
+            [],
             self.vg.get_lv_info(
-                'sudo', vg_name='fake-vg', lv_name='lv-nothere'),
-            []
+                'sudo', vg_name='fake-vg', lv_name='lv-nothere')
+        )
+
+    def test_get_lv_info_found(self):
+        lv_info = [{'size': '9.50', 'name': 'test-found-lv-name',
+                    'vg': 'fake-vg'}]
+        self.assertEqual(
+            lv_info,
+            self.vg.get_lv_info(
+                'sudo', vg_name='fake-vg',
+                lv_name='test-found-lv-name')
+        )
+
+    def test_get_lv_info_no_lv_name(self):
+        lv_info = [{'name': 'fake-1', 'size': '1.00g', 'vg': 'fake-vg'},
+                   {'name': 'fake-2', 'size': '1.00g', 'vg': 'fake-vg'}]
+        self.assertEqual(
+            lv_info,
+            self.vg.get_lv_info(
+                'sudo', vg_name='fake-vg')
         )
 
     def test_get_all_physical_volumes(self):
@@ -237,6 +278,25 @@ class BrickLvmTestCase(test.TestCase):
         # size.
         for size in ("1g", "1.2g", "1.75g"):
             self.assertEqual(size, self.vg.create_thin_pool(size_str=size))
+
+    def test_thin_pool_provisioned_capacity(self):
+        self.vg.vg_thin_pool = "test-prov-cap-pool-unit"
+        self.vg.vg_name = 'test-prov-cap-vg-unit'
+        self.assertEqual(
+            "9.5g",
+            self.vg.create_thin_pool(name=self.vg.vg_thin_pool))
+        self.assertEqual("9.50", self.vg.vg_thin_pool_size)
+        self.assertEqual(7.6, self.vg.vg_thin_pool_free_space)
+        self.assertEqual(3.0, self.vg.vg_provisioned_capacity)
+
+        self.vg.vg_thin_pool = "test-prov-cap-pool-no-unit"
+        self.vg.vg_name = 'test-prov-cap-vg-no-unit'
+        self.assertEqual(
+            "9.5g",
+            self.vg.create_thin_pool(name=self.vg.vg_thin_pool))
+        self.assertEqual("9.50", self.vg.vg_thin_pool_size)
+        self.assertEqual(7.6, self.vg.vg_thin_pool_free_space)
+        self.assertEqual(3.0, self.vg.vg_provisioned_capacity)
 
     def test_thin_pool_free_space(self):
         # The size of fake-vg-pool is 9g and the allocated data sums up to

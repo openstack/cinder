@@ -109,6 +109,11 @@ class HostState(object):
         self.allocated_capacity_gb = 0
         self.free_capacity_gb = None
         self.reserved_percentage = 0
+        # The apparent allocated space indicating how much capacity
+        # has been provisioned. This could be the sum of sizes of
+        # all volumes on a backend, which could be greater than or
+        # equal to the allocated_capacity_gb.
+        self.provisioned_capacity_gb = 0
 
         # PoolState for all pools
         self.pools = {}
@@ -266,6 +271,7 @@ class HostState(object):
         """Incrementally update host state from an volume."""
         volume_gb = volume['size']
         self.allocated_capacity_gb += volume_gb
+        self.provisioned_capacity_gb += volume_gb
         if self.free_capacity_gb == 'infinite':
             # There's virtually infinite space on back-end
             pass
@@ -306,6 +312,14 @@ class PoolState(HostState):
                 'allocated_capacity_gb', 0)
             self.QoS_support = capability.get('QoS_support', False)
             self.reserved_percentage = capability.get('reserved_percentage', 0)
+            # provisioned_capacity_gb is the apparent total capacity of
+            # all the volumes created on a backend, which is greater than
+            # or equal to allocated_capacity_gb, which is the apparent
+            # total capacity of all the volumes created on a backend
+            # in Cinder. Using allocated_capacity_gb as the default of
+            # provisioned_capacity_gb if it is not set.
+            self.provisioned_capacity_gb = capability.get(
+                'provisioned_capacity_gb', self.allocated_capacity_gb)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
