@@ -432,18 +432,18 @@ class SRBDriverTestCase(test.TestCase):
     def _fake_get_all_physical_volumes(self):
         def check(cmd_string):
             return 'env, LC_ALL=C, pvs, --noheadings, --unit=g, ' \
-                '-o, vg_name,name,size,free, --separator, :, --nosuffix' \
-                in cmd_string
+                '-o, vg_name,name,size,free, --separator, |, ' \
+                '--nosuffix' in cmd_string
 
         def act(cmd):
-            data = "  fake-outer-vg:/dev/fake1:10.00:1.00\n"
+            data = "  fake-outer-vg|/dev/fake1|10.00|1.00\n"
             for vname in self._volumes:
                 vol = self._volumes[vname]
                 for vgname in vol['vgs']:
                     vg = vol['vgs'][vgname]
                     for lvname in vg['lvs']:
                         lv_size = vg['lvs'][lvname]
-                        data += "  %s:/dev/srb/%s/device:%.2f:%.2f\n" %\
+                        data += "  %s|/dev/srb/%s/device|%.2f|%.2f\n" %\
                             (vgname, vol['name'],
                              lv_size / units.Gi, lv_size / units.Gi)
 

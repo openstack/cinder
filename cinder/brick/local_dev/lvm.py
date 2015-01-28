@@ -312,10 +312,12 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with PV info
 
         """
+        field_sep = '|'
+
         cmd = ['env', 'LC_ALL=C', 'pvs', '--noheadings',
                '--unit=g',
                '-o', 'vg_name,name,size,free',
-               '--separator', ':',
+               '--separator', field_sep,
                '--nosuffix']
 
         (out, _err) = putils.execute(*cmd,
@@ -324,11 +326,11 @@ class LVM(executor.Executor):
 
         pvs = out.split()
         if vg_name is not None:
-            pvs = [pv for pv in pvs if vg_name == pv.split(':')[0]]
+            pvs = [pv for pv in pvs if vg_name == pv.split(field_sep)[0]]
 
         pv_list = []
         for pv in pvs:
-            fields = pv.split(':')
+            fields = pv.split(field_sep)
             pv_list.append({'vg': fields[0],
                             'name': fields[1],
                             'size': float(fields[2]),
