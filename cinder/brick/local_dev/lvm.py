@@ -626,6 +626,8 @@ class LVM(executor.Executor):
                 '-f',
                 '%s/%s' % (self.vg_name, name),
                 root_helper=self._root_helper, run_as_root=True)
+            LOG.debug('Successfully deleted volume: %s after '
+                      'udev settle.', name)
 
     def revert(self, snapshot_name):
         """Revert an LV from snapshot.
