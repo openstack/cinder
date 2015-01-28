@@ -147,9 +147,6 @@ class SolidFireDriver(SanISCSIDriver):
             self._update_cluster_status()
         except exception.SolidFireAPIException:
             pass
-        if self.configuration.sf_allow_template_caching:
-            account = self.configuration.sf_template_account_name
-            self._create_sfaccount(account)
 
     def _build_endpoint_info(self, **kwargs):
         endpoint = {}
