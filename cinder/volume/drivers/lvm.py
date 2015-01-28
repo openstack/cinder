@@ -307,6 +307,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             raise exception.VolumeIsBusy(volume_name=volume['name'])
 
         self._delete_volume(volume)
+        LOG.info(_LI('Succesfully deleted volume: %s'), volume['id'])
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -321,6 +322,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             # If the snapshot isn't present, then don't attempt to delete
             LOG.warning(_LW("snapshot: %s not found, "
                             "skipping delete operations") % snapshot['name'])
+            LOG.info(_LI('Succesfully deleted snapshot: %s'), snapshot['id'])
             return True
 
         # TODO(yamahata): zeroing out the whole snapshot triggers COW.

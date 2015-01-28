@@ -3755,7 +3755,10 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.stubs.Set(self.volume.driver.vg, 'lv_has_snapshot',
                        lambda x: False)
         self.output = 'x'
-        self.volume.driver.delete_volume({'name': 'test1', 'size': 1024})
+        self.volume.driver.delete_volume(
+            {'name': 'test1',
+             'size': 1024,
+             'id': '478e14bc-a6a9-11e4-89d3-123b93f75cba'})
 
     def test_lvm_migrate_volume_no_loc_info(self):
         host = {'capabilities': {}}
