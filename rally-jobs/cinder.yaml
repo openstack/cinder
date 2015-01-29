@@ -38,7 +38,7 @@
         size: 1
       runner:
         type: "constant"
-        times: 12
+        times: 8
         concurrency: 4
       context:
         users:
@@ -92,21 +92,21 @@
           volume_type: false
           size:
               min: 1
-              max: 2
+              max: 1
       runner:
         type: "constant"
-        times: 12
-        concurrency: 3
+        times: 6
+        concurrency: 2
       context:
         users:
-          tenants: 2
+          tenants: 1
           users_per_tenant: 1
         servers:
           image:
             name: "^cirros.*uec$"
           flavor:
             name: "m1.tiny"
-          servers_per_tenant: 2
+          servers_per_tenant: 1
       sla:
           failure_rate:
             max: 0
@@ -115,11 +115,11 @@
           volume_type: true
           size:
               min: 1
-              max: 2
+              max: 1
       runner:
         type: "constant"
-        times: 12
-        concurrency: 3
+        times: 6
+        concurrency: 2
       context:
         users:
           tenants: 1
@@ -134,29 +134,3 @@
           failure_rate:
             max: 0
 
-  CinderVolumes.create_nested_snapshots_and_attach_volume:
-    -
-      args:
-          size:
-              min: 1
-              max: 2
-          nested_level:
-              min: 2
-              max: 2
-      runner:
-        type: "constant"
-        times: 12
-        concurrency: 3
-      context:
-        users:
-          tenants: 2
-          users_per_tenant: 1
-        servers:
-          image:
-            name: "^cirros.*uec$"
-          flavor:
-            name: "m1.tiny"
-          servers_per_tenant: 2
-      sla:
-          failure_rate:
-            max: 0
