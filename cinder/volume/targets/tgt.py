@@ -99,19 +99,22 @@ class TgtAdm(iscsi.ISCSITarget):
         # how long should we wait??  I have no idea, let's go big
         # and error on the side of caution
         time.sleep(10)
+
+        (out, err) = (None, None)
         try:
             (out, err) = utils.execute('tgtadm', '--lld', 'iscsi',
                                        '--op', 'new', '--mode',
                                        'logicalunit', '--tid',
                                        tid, '--lun', '1', '-b',
                                        path, run_as_root=True)
-            LOG.debug('StdOut from recreate backing lun: %s' % out)
-            LOG.debug('StdErr from recreate backing lun: %s' % err)
         except putils.ProcessExecutionError as e:
             LOG.error(_LE("Failed to recover attempt to create "
                           "iscsi backing lun for volume "
                           "id:%(vol_id)s: %(e)s")
                       % {'vol_id': name, 'e': e})
+        finally:
+            LOG.debug('StdOut from recreate backing lun: %s' % out)
+            LOG.debug('StdErr from recreate backing lun: %s' % err)
 
     def _iscsi_location(self, ip, target, iqn, lun=None):
         return "%s:%s,%s %s %s" % (ip, self.configuration.iscsi_port,
