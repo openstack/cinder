@@ -571,7 +571,7 @@ class SolidFireDriver(SanISCSIDriver):
     def _verify_image_volume(self, context, image_meta, image_service):
         # This method just verifies that IF we have a cache volume that
         # it's still up to date and current WRT the image in Glance
-        # ie an image-update hasn't occured since we grabbed it
+        # ie an image-update hasn't occurred since we grabbed it
 
         # If it's out of date, just delete it and we'll create a new one
         # Any other case we don't care and just return without doing anything
