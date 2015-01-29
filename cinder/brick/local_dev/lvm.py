@@ -29,6 +29,7 @@ from cinder.brick import exception
 from cinder.brick import executor
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
+from cinder import utils
 
 
 LOG = logging.getLogger(__name__)
@@ -547,6 +548,7 @@ class LVM(executor.Executor):
             LOG.error(_LE('StdErr  :%s') % err.stderr)
             raise
 
+    @utils.retry(putils.ProcessExecutionError)
     def create_lv_snapshot(self, name, source_lv_name, lv_type='default'):
         """Creates a snapshot of a logical volume.
 
