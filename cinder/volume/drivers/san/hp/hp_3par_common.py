@@ -1052,9 +1052,10 @@ class HP3PARCommon(object):
         return volume_settings
 
     def create_volume(self, volume):
-        LOG.debug("CREATE VOLUME (%s : %s %s)",
-                  (volume['display_name'], volume['name'],
-                   self._get_3par_vol_name(volume['id'])))
+        LOG.debug('CREATE VOLUME (%(disp_name)s: %(vol_name)s %(id)s)',
+                  {'disp_name': volume['display_name'],
+                   'vol_name': volume['name'],
+                   'id': self._get_3par_vol_name(volume['id'])})
         try:
             comments = {'volume_id': volume['id'],
                         'name': volume['name'],
@@ -1270,9 +1271,9 @@ class HP3PARCommon(object):
         """Creates a volume from a snapshot.
 
         """
-        LOG.debug("Create Volume from Snapshot\n%s\n%s",
-                  (pprint.pformat(volume['display_name']),
-                   pprint.pformat(snapshot['display_name'])))
+        LOG.debug("Create Volume from Snapshot\n%(vol_name)s\n%(ss_name)s",
+                  {'vol_name': pprint.pformat(volume['display_name']),
+                   'ss_name': pprint.pformat(snapshot['display_name'])})
 
         model_update = None
         if volume['size'] < snapshot['volume_size']:
@@ -1392,12 +1393,13 @@ class HP3PARCommon(object):
 
         If key already exists, the value will be replaced.
         """
-        LOG.debug("VOLUME (%s : %s %s) Updating KEY-VALUE pair: (%s : %s)",
-                  (volume['display_name'],
-                   volume['name'],
-                   self._get_3par_vol_name(volume['id']),
-                   key,
-                   value))
+        LOG.debug("VOLUME (%(disp_name)s : %(vol_name)s %(id)s) "
+                  "Updating KEY-VALUE pair: (%(key)s : %(val)s)",
+                  {'disp_name': volume['display_name'],
+                   'vol_name': volume['name'],
+                   'id': self._get_3par_vol_name(volume['id']),
+                   'key': key,
+                   'val': value})
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
             if value is None:
@@ -1411,9 +1413,12 @@ class HP3PARCommon(object):
     def clear_volume_key_value_pair(self, volume, key):
         """Clears key,value pairs metadata from virtual volume."""
 
-        LOG.debug("VOLUME (%s : %s %s) Clearing Key : %s)",
-                  (volume['display_name'], volume['name'],
-                   self._get_3par_vol_name(volume['id']), key))
+        LOG.debug("VOLUME (%(disp_name)s : %(vol_name)s %(id)s) "
+                  "Clearing Key : %(key)s)",
+                  {'disp_name': volume['display_name'],
+                   'vol_name': volume['name'],
+                   'id': self._get_3par_vol_name(volume['id']),
+                   'key': key})
         try:
             volume_name = self._get_3par_vol_name(volume['id'])
             self.client.removeVolumeMetaData(volume_name, key)
@@ -1455,7 +1460,8 @@ class HP3PARCommon(object):
         dbg = {'id': volume['id'],
                'host': host['host'],
                'status': volume['status']}
-        LOG.debug('enter: migrate_volume: id=%(id)s, host=%(host)s.', dbg)
+        LOG.debug('enter: migrate_volume: id=%(id)s, host=%(host)s, '
+                  'status=%(status)s.', dbg)
 
         ret = False, None
 
@@ -1470,8 +1476,11 @@ class HP3PARCommon(object):
                 LOG.info(_LI('3PAR driver cannot perform migration. '
                              'Retype exception: %s'), e)
 
-        LOG.debug('leave: migrate_volume: id=%(id)s, host=%(host)s.', dbg)
-        LOG.debug('migrate_volume result: %s, %s', ret)
+        LOG.debug('leave: migrate_volume: id=%(id)s, host=%(host)s, '
+                  'status=%(status)s.', dbg)
+        dbg_ret = {'supported': ret[0], 'model_update': ret[1]}
+        LOG.debug('migrate_volume result: %(supported)s, %(model_update)s',
+                  dbg_ret)
         return ret
 
     def _convert_to_base_volume(self, volume, new_cpg=None):
@@ -1554,8 +1563,8 @@ class HP3PARCommon(object):
         return self._get_model_update(volume['host'], cpg)
 
     def delete_snapshot(self, snapshot):
-        LOG.debug("Delete Snapshot id %s %s", (snapshot['id'],
-                                               pprint.pformat(snapshot)))
+        LOG.debug("Delete Snapshot id %(id)s %(name)s",
+                  {'id': snapshot['id'], 'name': pprint.pformat(snapshot)})
 
         try:
             snap_name = self._get_3par_snap_name(snapshot['id'])
