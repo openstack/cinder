@@ -25,6 +25,7 @@ we should look at maybe pushing this up to Oslo
 
 
 import contextlib
+import math
 import os
 import tempfile
 
@@ -238,7 +239,8 @@ def fetch_to_volume_format(context, image_service,
             LOG.debug('Copying image from %(tmp)s to volume %(dest)s - '
                       'size: %(size)s' % {'tmp': tmp, 'dest': dest,
                                           'size': image_meta['size']})
-            volume_utils.copy_volume(tmp, dest, image_meta['size'], blocksize)
+            image_size_m = math.ceil(image_meta['size'] / units.Mi)
+            volume_utils.copy_volume(tmp, dest, image_size_m, blocksize)
             return
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)
