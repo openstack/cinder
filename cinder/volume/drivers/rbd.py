@@ -749,6 +749,9 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
         with RBDVolumeProxy(self, volume_name) as volume:
             try:
                 volume.unprotect_snap(snap_name)
+            except self.rbd.ImageNotFound:
+                LOG.info(_LI("Snapshot %s does not exist in backend."),
+                         snap_name)
             except self.rbd.ImageBusy:
                 children_list = self._get_children_info(volume, snap_name)
 
