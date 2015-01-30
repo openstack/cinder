@@ -65,6 +65,7 @@ def create_snapshot(ctxt,
                     volume_id,
                     display_name='test_snapshot',
                     display_description='this is a test snapshot',
+                    cgsnapshot_id = None,
                     status='creating'):
     vol = db.volume_get(ctxt, volume_id)
     snap = {}
@@ -75,6 +76,7 @@ def create_snapshot(ctxt,
     snap['volume_size'] = vol['size']
     snap['display_name'] = display_name
     snap['display_description'] = display_description
+    snap['cgsnapshot_id'] = cgsnapshot_id
     return db.snapshot_create(ctxt, snap)
 
 
