@@ -33,7 +33,7 @@ from cinder import context
 from cinder.db import base
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LI
 from cinder.image import glance
 from cinder import keymgr
 from cinder.openstack.common import log as logging
@@ -282,6 +282,8 @@ class API(base.Base):
             return
         if volume['attach_status'] == "attached":
             # Volume is still attached, need to detach first
+            LOG.info(_LI('Unable to delete volume: %s, '
+                         'volume is attached.'), volume['id'])
             raise exception.VolumeAttached(volume_id=volume_id)
 
         if not force and volume['status'] not in ["available", "error",
@@ -289,19 +291,31 @@ class API(base.Base):
                                                   "error_extending"]:
             msg = _("Volume status must be available or error, "
                     "but current status is: %s") % volume['status']
+            LOG.info(_LI('Unable to delete volume: %(vol_id)s, '
+                         'volume must be available or '
+                         'error, but is %(vol_status)s.'),
+                     {'vol_id': volume['id'],
+                      'vol_status': volume['status']})
             raise exception.InvalidVolume(reason=msg)
 
         if volume['migration_status'] is not None:
             # Volume is migrating, wait until done
+            LOG.info(_LI('Unable to delete volume: %s, '
+                         'volume is currently migrating.'), volume['id'])
             msg = _("Volume cannot be deleted while migrating")
             raise exception.InvalidVolume(reason=msg)
 
         if volume['consistencygroup_id'] is not None:
             msg = _("Volume cannot be deleted while in a consistency group.")
+            LOG.info(_LI('Unable to delete volume: %s, '
+                         'volume is currently part of a '
+                         'consistency group.'), volume['id'])
             raise exception.InvalidVolume(reason=msg)
 
         snapshots = self.db.snapshot_get_all_for_volume(context, volume_id)
         if len(snapshots):
+            LOG.info(_LI('Unable to delete volume: %s, '
+                         'volume currently has snapshots.'), volume['id'])
             msg = _("Volume still has %d dependent snapshots") % len(snapshots)
             raise exception.InvalidVolume(reason=msg)
 
@@ -317,6 +331,8 @@ class API(base.Base):
                                                    'terminated_at': now})
 
         self.volume_rpcapi.delete_volume(context, volume, unmanage_only)
+        LOG.info(_LI('Succesfully issued request to '
+                     'delete volume: %s'), volume['id'])
 
     @wrap_check_policy
     def update(self, context, volume, fields):
@@ -763,10 +779,19 @@ class API(base.Base):
     @wrap_check_policy
     def delete_snapshot(self, context, snapshot, force=False):
         if not force and snapshot['status'] not in ["available", "error"]:
+            LOG.error(_LE('Unable to delete snapshot: %(snap_id)s, '
+                          'due to invalid status. '
+                          'Status must be available or '
+                          'error, not %(snap_status)s.'),
+                      {'snap_id': snapshot['id'],
+                       'snap_status': snapshot['status']})
             msg = _("Volume Snapshot status must be available or error")
             raise exception.InvalidSnapshot(reason=msg)
         cgsnapshot_id = snapshot.get('cgsnapshot_id', None)
         if cgsnapshot_id:
+            LOG.error(_LE('Unable to delete snapshot: %s, '
+                          'because it is part of a consistency '
+                          'group.'), snapshot['id'])
             msg = _("Snapshot %s is part of a cgsnapshot and has to be "
                     "deleted together with the cgsnapshot.") % snapshot['id']
             LOG.error(msg)
@@ -775,6 +800,8 @@ class API(base.Base):
                                 {'status': 'deleting'})
         volume = self.db.volume_get(context, snapshot['volume_id'])
         self.volume_rpcapi.delete_snapshot(context, snapshot, volume['host'])
+        LOG.info(_LI('Succesfully issued request to '
+                     'delete snapshot: %s'), snapshot['id'])
 
     @wrap_check_policy
     def update_snapshot(self, context, snapshot, fields):
