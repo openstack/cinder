@@ -1129,7 +1129,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
             if disk_conversion:
                 # Clone the temporary backing for disk type conversion.
-                (host, _rp, _folder, summary) = self._select_ds_for_volume(
+                (host, rp, _folder, summary) = self._select_ds_for_volume(
                     volume)
                 datastore = summary.datastore
                 LOG.debug("Cloning temporary backing: %s for disk type "
@@ -1140,7 +1140,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                              volumeops.FULL_CLONE_TYPE,
                                              datastore,
                                              disk_type,
-                                             host)
+                                             host,
+                                             rp)
                 self._delete_temp_backing(backing)
         except Exception:
             # Delete backing and virtual disk created from image.
@@ -1501,7 +1502,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                     new_backing = self.volumeops.clone_backing(
                         volume['name'], backing, None,
                         volumeops.FULL_CLONE_TYPE, datastore, new_disk_type,
-                        host)
+                        host, rp)
                     self._delete_temp_backing(backing)
                     backing = new_backing
                 except error_util.VimException:
@@ -1715,13 +1716,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         renamed = False
         try:
             # Find datastore for clone.
-            (host, _rp, _folder, summary) = self._select_ds_for_volume(volume)
+            (host, rp, _folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
 
             disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
             dest = self.volumeops.clone_backing(dest_name, src, None,
                                                 volumeops.FULL_CLONE_TYPE,
-                                                datastore, disk_type, host)
+                                                datastore, disk_type, host, rp)
             if new_backing:
                 LOG.debug("Created new backing: %s for restoring backup.",
                           dest_name)
@@ -1987,13 +1988,14 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         """
         datastore = None
         host = None
+        rp = None
         if not clone_type == volumeops.LINKED_CLONE_TYPE:
             # Pick a datastore where to create the full clone under any host
-            (host, _rp, _folder, summary) = self._select_ds_for_volume(volume)
+            (host, rp, _folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
         clone = self.volumeops.clone_backing(volume['name'], backing,
                                              snapshot, clone_type, datastore,
-                                             host=host)
+                                             host=host, resource_pool=rp)
         # If the volume size specified by the user is greater than
         # the size of the source volume, the newly created volume will
         # allocate the capacity to the size of the source volume in the backend
