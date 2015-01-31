@@ -1,5 +1,4 @@
 # Copyright (c) 2014 Symantec Corporation
-# Copyright (c) 2014 Red Hat, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
