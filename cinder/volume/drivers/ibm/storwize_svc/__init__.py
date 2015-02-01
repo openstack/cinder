@@ -337,8 +337,8 @@ class StorwizeSVCDriver(san.SanDriver):
 
         """
 
-        LOG.debug('enter: initialize_connection: volume %(vol)s with '
-                  'connector %(conn)s' % {'vol': volume, 'conn': connector})
+        LOG.debug('enter: initialize_connection: volume %(vol)s with connector'
+                  ' %(conn)s', {'vol': volume['id'], 'conn': connector})
 
         vol_opts = self._get_vdisk_params(volume['volume_type_id'])
         volume_name = volume['name']
@@ -491,12 +491,13 @@ class StorwizeSVCDriver(san.SanDriver):
                 LOG.error(_LE('initialize_connection: Failed '
                               'to collect return '
                               'properties for volume %(vol)s and connector '
-                              '%(conn)s.\n') % {'vol': volume,
-                                                'conn': connector})
+                              '%(conn)s.\n'), {'vol': volume,
+                                               'conn': connector})
 
         LOG.debug('leave: initialize_connection:\n volume: %(vol)s\n '
-                  'connector %(conn)s\n properties: %(prop)s'
-                  % {'vol': volume, 'conn': connector, 'prop': properties})
+                  'connector %(conn)s\n properties: %(prop)s',
+                  {'vol': volume['id'], 'conn': connector,
+                   'prop': properties})
 
         return {'driver_volume_type': type_str, 'data': properties, }
 
@@ -522,8 +523,8 @@ class StorwizeSVCDriver(san.SanDriver):
         3. Delete the host if it has no more mappings (hosts are created
            automatically by this driver when mappings are created)
         """
-        LOG.debug('enter: terminate_connection: volume %(vol)s with '
-                  'connector %(conn)s' % {'vol': volume, 'conn': connector})
+        LOG.debug('enter: terminate_connection: volume %(vol)s with connector'
+                  ' %(conn)s', {'vol': volume['id'], 'conn': connector})
 
         vol_name = volume['name']
         if 'host' in connector:
@@ -558,7 +559,8 @@ class StorwizeSVCDriver(san.SanDriver):
         self._helpers.unmap_vol_from_host(vol_name, host_name)
 
         LOG.debug('leave: terminate_connection: volume %(vol)s with '
-                  'connector %(conn)s' % {'vol': volume, 'conn': connector})
+                  'connector %(conn)s', {'vol': volume['id'],
+                                         'conn': connector})
 
         return info
 
