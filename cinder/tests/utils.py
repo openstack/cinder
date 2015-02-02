@@ -13,9 +13,9 @@
 #    under the License.
 #
 
-
 from cinder import context
 from cinder import db
+from cinder.openstack.common import loopingcall
 
 
 def get_test_admin_context():
@@ -121,3 +121,9 @@ def create_cgsnapshot(ctxt,
     for key in kwargs:
         cgsnap[key] = kwargs[key]
     return db.cgsnapshot_create(ctxt, cgsnap)
+
+
+class ZeroIntervalLoopingCall(loopingcall.FixedIntervalLoopingCall):
+    def start(self, interval, **kwargs):
+        kwargs['initial_delay'] = 0
+        return super(ZeroIntervalLoopingCall, self).start(0, **kwargs)

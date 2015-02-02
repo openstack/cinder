@@ -21,6 +21,7 @@ from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder import test
+from cinder.tests.utils import ZeroIntervalLoopingCall
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.emc.emc_cli_fc import EMCCLIFCDriver
 from cinder.volume.drivers.emc.emc_cli_iscsi import EMCCLIISCSIDriver
@@ -1340,6 +1341,8 @@ Time Remaining:  0 second(s)
             mock.call('lun', '-list', '-name', 'vol2', '-attachedSnapshot')]
         fake_cli.assert_has_calls(expect_cmd)
 
+    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+                new=ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot_sync_failed(self):
 
         output_smp = ("""LOGICAL UNIT NUMBER 1
@@ -1460,6 +1463,8 @@ Time Remaining:  0 second(s)
         expected = [mock.call(*self.testData.LUN_EXTEND_CMD('failed_vol1', 2))]
         fake_cli.assert_has_calls(expected)
 
+    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+                new=ZeroIntervalLoopingCall)
     def test_extend_volume_failed(self):
         commands = [self.testData.LUN_PROPERTY_ALL_CMD('failed_vol1')]
         results = [self.testData.LUN_PROPERTY('failed_vol1', size=2)]
