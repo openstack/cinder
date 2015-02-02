@@ -95,7 +95,7 @@ class NimbleISCSIDriver(SanISCSIDriver):
         subnet_label = self.configuration.nimble_subnet_label
         LOG.debug('subnet_label used %(netlabel)s, netconfig %(netconf)s'
                   % {'netlabel': subnet_label, 'netconf': netconfig})
-        ret_discovery_ip = None
+        ret_discovery_ip = ''
         for subnet in netconfig['subnet-list']:
             LOG.info(_LI('Exploring array subnet label %s') % subnet['label'])
             if subnet_label == '*':
@@ -207,7 +207,9 @@ class NimbleISCSIDriver(SanISCSIDriver):
                          self._generate_random_string(12))
         snapshot = {'volume_name': src_vref['name'],
                     'name': snapshot_name,
-                    'volume_size': src_vref['size']}
+                    'volume_size': src_vref['size'],
+                    'display_name': '',
+                    'display_description': ''}
         self.APIExecutor.snap_vol(snapshot)
         self._clone_volume_from_snapshot(volume, snapshot)
         return self._get_model_info(volume['name'])
@@ -310,7 +312,7 @@ class NimbleISCSIDriver(SanISCSIDriver):
                                 'iname': initiator_name})
                     return initiator_group['name']
         LOG.info(_LI('No igroup found for initiator %s') % initiator_name)
-        return None
+        return ''
 
     def initialize_connection(self, volume, connector):
         """Driver entry point to attach a volume to an instance."""
@@ -469,20 +471,21 @@ class NimbleAPIExecutor:
         # Set volume size, display name and description
         volume_size = volume['size'] * units.Gi
         reserve_size = volume_size if reserve else 0
-        display_name = (volume['display_name']
-                        if 'display_name' in volume else '')
-        display_description = (': ' + volume['display_description']
-                               if 'display_description' in volume else '')
-        description = display_name + display_description
+        # Set volume description
+        display_list = [getattr(volume, 'display_name', ''),
+                        getattr(volume, 'display_description', '')]
+        description = ':'.join(filter(None, display_list))
         # Limit description size to 254 characters
         description = description[:254]
 
         LOG.info(_LI('Creating a new volume=%(vol)s size=%(size)s'
-                     ' reserve=%(reserve)s in pool=%(pool)s')
+                     ' reserve=%(reserve)s in pool=%(pool)s'
+                     ' description=%(description)s')
                  % {'vol': volume['name'],
                     'size': volume_size,
                     'reserve': reserve,
-                    'pool': pool_name})
+                    'pool': pool_name,
+                    'description': description})
         return self.client.service.createVol(
             request={'sid': self.sid,
                      'attr': {'name': volume['name'],
@@ -603,13 +606,10 @@ class NimbleAPIExecutor:
         """Execute snapVol API."""
         volume_name = snapshot['volume_name']
         snap_name = snapshot['name']
-        # Set description
-        snap_display_name = (snapshot['display_name']
-                             if 'display_name' in snapshot else '')
-        snap_display_description = (
-            ': ' + snapshot['display_description']
-            if 'display_description' in snapshot else '')
-        snap_description = snap_display_name + snap_display_description
+        # Set snapshot description
+        display_list = [getattr(snapshot, 'display_name', ''),
+                        getattr(snapshot, 'display_description', '')]
+        snap_description = ':'.join(filter(None, display_list))
         # Limit to 254 characters
         snap_description = snap_description[:254]
         LOG.info(_LI('Creating snapshot for volume_name=%(vol)s'
