@@ -115,3 +115,6 @@ class TestLioAdmDriver(test_tgt.TestTgtAdmDriver):
                           self.target.terminate_connection,
                           self.testvol_1,
                           connector)
+
+    def test_iscsi_protocol(self):
+        self.assertEqual(self.target.iscsi_protocol, 'iscsi')

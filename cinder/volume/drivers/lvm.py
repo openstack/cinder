@@ -613,10 +613,11 @@ class LVMISERDriver(LVMVolumeDriver):
     def __init__(self, *args, **kwargs):
         super(LVMISERDriver, self).__init__(*args, **kwargs)
 
-        LOG.warning(_LW('LVMISCSIDriver is deprecated, you should '
+        LOG.warning(_LW('LVMISERDriver is deprecated, you should '
                         'now just use LVMVolumeDriver and specify '
                         'target_helper for the target driver you '
-                        'wish to use.'))
+                        'wish to use. In order to enable iser, please '
+                        'set iscsi_protocol with the value iser.'))
 
         LOG.debug('Attempting to initialize LVM driver with the '
                   'following target_driver: '

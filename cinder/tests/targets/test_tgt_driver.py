@@ -64,7 +64,7 @@ class TestTgtAdmDriver(test.TestCase):
              'target_iqn': 'iqn.2010-10.org.openstack:volume-%s' %
                            self.fake_id_2,
              'target_lun': 0,
-             'target_portal': '10.10.7.1:3260',
+             'target_portal': '10.9.8.7:3260',
              'volume_id': self.fake_id_2}
 
         self.fake_iscsi_scan =\
@@ -110,6 +110,11 @@ class TestTgtAdmDriver(test.TestCase):
     def fake_safe_get(self, value):
         if value == 'volumes_dir':
             return self.fake_volumes_dir
+        elif value == 'iscsi_protocol':
+            return self.configuration.iscsi_protocol
+
+    def test_iscsi_protocol(self):
+        self.assertEqual(self.target.iscsi_protocol, 'iscsi')
 
     def test_get_target(self):
 

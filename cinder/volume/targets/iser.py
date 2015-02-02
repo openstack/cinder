@@ -11,6 +11,7 @@
 #    under the License.
 
 
+from cinder.i18n import _LW
 from cinder.openstack.common import log as logging
 from cinder.volume.targets.tgt import TgtAdm
 
@@ -21,25 +22,18 @@ LOG = logging.getLogger(__name__)
 class ISERTgtAdm(TgtAdm):
     VERSION = '0.2'
 
-    VOLUME_CONF = """
-                <target %s>
-                    driver iser
-                    backing-store %s
-                    write_cache %s
-                </target>
-                  """
-    VOLUME_CONF_WITH_CHAP_AUTH = """
-                                <target %s>
-                                    driver iser
-                                    backing-store %s
-                                    %s
-                                    write_cache %s
-                                </target>
-                                 """
-
     def __init__(self, *args, **kwargs):
         super(ISERTgtAdm, self).__init__(*args, **kwargs)
+
+        LOG.warning(_LW('ISERTgtAdm is deprecated, you should '
+                        'now just use LVMVolumeDriver and specify '
+                        'target_helper for the target driver you '
+                        'wish to use. In order to enable iser, please '
+                        'set iscsi_protocol=iser with lioadm or tgtadm '
+                        'target helpers.'))
+
         self.volumes_dir = self.configuration.safe_get('volumes_dir')
+        self.iscsi_protocol = 'iser'
         self.protocol = 'iSER'
 
         # backwards compatibility mess
@@ -63,7 +57,7 @@ class ISERTgtAdm(TgtAdm):
                 'data': {
                     'target_discovered': True,
                     'target_iqn':
-                    'iqn.2010-10.org.iser.openstack:volume-00000001',
+                    'iqn.2010-10.org.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
                     'volume_id': 1,
                 }

@@ -109,7 +109,8 @@ class LioAdm(TgtAdm):
                             path,
                             name,
                             chap_auth_userid,
-                            chap_auth_password]
+                            chap_auth_password,
+                            self.iscsi_protocol == 'iser']
             utils.execute(*command_args, run_as_root=True)
         except putils.ProcessExecutionError as e:
             LOG.error(_LE("Failed to create iscsi target for volume "
@@ -179,7 +180,7 @@ class LioAdm(TgtAdm):
         iscsi_properties['target_lun'] = 0
 
         return {
-            'driver_volume_type': 'iscsi',
+            'driver_volume_type': self.iscsi_protocol,
             'data': iscsi_properties
         }
 

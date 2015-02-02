@@ -700,7 +700,8 @@ class TestCinderRtstoolCmd(test.TestCase):
                           mock.sentinel.backing_device,
                           mock.sentinel.name,
                           mock.sentinel.userid,
-                          mock.sentinel.password)
+                          mock.sentinel.password,
+                          mock.sentinel.iser_enabled)
 
     def _test_create_rtsllib_error_network_portal(self, ip):
         with contextlib.nested(
@@ -728,12 +729,14 @@ class TestCinderRtstoolCmd(test.TestCase):
                                   mock.sentinel.backing_device,
                                   mock.sentinel.name,
                                   mock.sentinel.userid,
-                                  mock.sentinel.password)
+                                  mock.sentinel.password,
+                                  mock.sentinel.iser_enabled)
             else:
                 cinder_rtstool.create(mock.sentinel.backing_device,
                                       mock.sentinel.name,
                                       mock.sentinel.userid,
-                                      mock.sentinel.password)
+                                      mock.sentinel.password,
+                                      mock.sentinel.iser_enabled)
 
             rts_root.assert_called_once_with()
             block_storage_object.assert_called_once_with(
@@ -788,7 +791,8 @@ class TestCinderRtstoolCmd(test.TestCase):
             cinder_rtstool.create(mock.sentinel.backing_device,
                                   mock.sentinel.name,
                                   mock.sentinel.userid,
-                                  mock.sentinel.password)
+                                  mock.sentinel.password,
+                                  mock.sentinel.iser_enabled)
 
             rts_root.assert_called_once_with()
             block_storage_object.assert_called_once_with(
@@ -961,7 +965,8 @@ class TestCinderRtstoolCmd(test.TestCase):
                         mock.sentinel.name,
                         mock.sentinel.userid,
                         mock.sentinel.password,
-                        mock.sentinel.initiator_iqns]
+                        mock.sentinel.initiator_iqns,
+                        mock.sentinel.iser_enabled]
 
             rc = cinder_rtstool.main()
 
@@ -969,7 +974,8 @@ class TestCinderRtstoolCmd(test.TestCase):
                                            mock.sentinel.name,
                                            mock.sentinel.userid,
                                            mock.sentinel.password,
-                                           mock.sentinel.initiator_iqns)
+                                           mock.sentinel.initiator_iqns,
+                                           mock.sentinel.iser_enabled)
             self.assertEqual(0, rc)
 
     def test_main_add_initiator(self):
