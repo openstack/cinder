@@ -264,6 +264,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
             self._iscsi_port = self._choose_target_iscsi_port()
         return self._iscsi_port
 
+    @utils.retry(exception.PureDriverException, retries=3)
     def _choose_target_iscsi_port(self):
         """Find a reachable iSCSI-enabled port on target array."""
         ports = self._array.list_ports()
@@ -276,8 +277,8 @@ class PureISCSIDriver(san.SanISCSIDriver):
             except processutils.ProcessExecutionError as err:
                 LOG.debug(("iSCSI discovery of port %(port_name)s at "
                            "%(port_portal)s failed with error: %(err_msg)s"),
-                          {"port_name": self._iscsi_port["name"],
-                           "port_portal": self._iscsi_port["portal"],
+                          {"port_name": port["name"],
+                           "port_portal": port["portal"],
                            "err_msg": err.stderr})
             else:
                 LOG.info(_LI("Using port %(name)s on the array at %(portal)s "

@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import sys
+
 import mock
 from oslo_concurrency import processutils
 from oslo_utils import units
@@ -21,7 +23,12 @@ from cinder import exception
 from cinder import test
 
 
-import sys
+def fake_retry(exceptions, interval=1, retries=3, backoff_rate=2):
+    def _decorator(f):
+        return f
+    return _decorator
+
+mock.patch('cinder.utils.retry', fake_retry).start()
 sys.modules['purestorage'] = mock.Mock()
 from cinder.volume.drivers import pure
 
