@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import random
 import time
 
+from eventlet import greenthread
 import mock
 import mox
 from oslo_concurrency import processutils
@@ -324,8 +324,9 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(processutils.ProcessExecutionError,
                           self.driver._ssh_execute, ssh, cmd)
 
-    def test_ensure_retries(self):
-        num_attempts = random.randint(1, 5)
+    @mock.patch.object(greenthread, 'sleep')
+    def test_ensure_retries(self, _gt_sleep):
+        num_attempts = 3
         self.driver.configuration.eqlx_cli_max_retries = num_attempts
 
         self.mock_object(self.driver, '_ssh_execute',
@@ -348,9 +349,9 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual(num_attempts + 1,
                          self.driver._ssh_execute.call_count)
 
-    def test_ensure_retries_on_channel_timeout(self):
-
-        num_attempts = random.randint(1, 5)
+    @mock.patch.object(greenthread, 'sleep')
+    def test_ensure_retries_on_channel_timeout(self, _gt_sleep):
+        num_attempts = 3
         self.driver.configuration.eqlx_cli_max_retries = num_attempts
 
         # mocks for calls and objects in _run_ssh
