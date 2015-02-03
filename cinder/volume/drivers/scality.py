@@ -17,7 +17,6 @@ Scality SOFS Volume Driver.
 """
 
 
-import errno
 import os
 import urllib2
 
@@ -93,20 +92,13 @@ class ScalityDriver(driver.VolumeDriver):
             LOG.warn(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def _makedirs(self, path):
-        try:
-            os.makedirs(path)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
-
     @lockutils.synchronized('mount-sofs', 'cinder-sofs', external=True)
     def _mount_sofs(self):
         config = self.configuration.scality_sofs_config
         mount_path = self.configuration.scality_sofs_mount_point
         sysdir = os.path.join(mount_path, 'sys')
 
-        self._makedirs(mount_path)
+        fileutils.ensure_tree(mount_path)
         if not os.path.isdir(sysdir):
             self._execute('mount', '-t', 'sofs', config, mount_path,
                           run_as_root=True)
@@ -134,8 +126,7 @@ class ScalityDriver(driver.VolumeDriver):
         self._mount_sofs()
         voldir = os.path.join(self.configuration.scality_sofs_mount_point,
                               self.configuration.scality_sofs_volume_dir)
-        if not os.path.isdir(voldir):
-            self._makedirs(voldir)
+        fileutils.ensure_tree(voldir)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
