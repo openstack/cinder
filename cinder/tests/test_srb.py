@@ -173,7 +173,8 @@ class SRBRetryTestCase(test.TestCase):
 
     def test_retry_fail_and_succeed_mixed(self):
 
-        @srb.retry(count=4, exceptions=(Exception))
+        @srb.retry(count=4, exceptions=(Exception),
+                   sleep_mechanism=srb.retry.SLEEP_NONE)
         def _try_failing(self):
             attempted = self.attempts
             self.attempts = self.attempts + 1
