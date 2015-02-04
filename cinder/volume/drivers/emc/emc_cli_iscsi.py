@@ -44,6 +44,10 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                 External Volume Management, Read-only Volume,
                 FC Auto Zoning
         4.1.0 - Consistency group support
+        5.0.0 - Performance enhancement, LUN Number Threshold Support,
+                Initiator Auto Deregistration,
+                Force Deleting LUN in Storage Groups,
+                robust enhancement
     """
 
     def __init__(self, *args, **kwargs):
@@ -98,7 +102,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
 
     def create_export(self, context, volume):
         """Driver entry point to get the export info for a new volume."""
-        self.cli.create_export(context, volume)
+        pass
 
     def remove_export(self, context, volume):
         """Driver entry point to remove an export for a volume."""
