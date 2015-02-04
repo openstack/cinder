@@ -418,3 +418,14 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
         super(HBSDISCSIDriver, self).copy_volume_to_image(context, volume,
                                                           image_service,
                                                           image_meta)
+
+    def manage_existing(self, volume, existing_ref):
+        return self.common.manage_existing(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        self.do_setup_status.wait()
+        return self.common.manage_existing_get_size(volume, existing_ref)
+
+    def unmanage(self, volume):
+        self.do_setup_status.wait()
+        self.common.unmanage(volume)

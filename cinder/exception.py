@@ -903,6 +903,10 @@ class HBSDNotFound(NotFound):
     message = _("Storage resource could not be found.")
 
 
+class HBSDVolumeIsBusy(VolumeIsBusy):
+    message = _("Volume %(volume_name)s is busy.")
+
+
 # Datera driver
 class DateraAPIException(VolumeBackendAPIException):
     message = _("Bad response from Datera API")
