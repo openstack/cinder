@@ -1173,14 +1173,21 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
 
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.cloneVolume.return_value = {
+            'iscsiIqn': self.connector['initiator']}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
             # execute create_cloned_volume
-            self.driver.create_cloned_volume(
+            model_update = self.driver.create_cloned_volume(
                 self.cloned_volume, self.volume)
+
+            expected_iqn = 'iqn.1993-08.org.debian:01:222 0'
+            expected_location = "10.0.1.6:3260,1 %s" % expected_iqn
+            self.assertEqual(expected_location,
+                             model_update['provider_location'])
 
             expected = self.driver_startup_call_stack + [
                 mock.call.getVolumeByName('fakevolume'),
