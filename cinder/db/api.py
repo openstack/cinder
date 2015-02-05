@@ -907,3 +907,12 @@ def cgsnapshot_update(context, cgsnapshot_id, values):
 def cgsnapshot_destroy(context, cgsnapshot_id):
     """Destroy the cgsnapshot or raise if it does not exist."""
     return IMPL.cgsnapshot_destroy(context, cgsnapshot_id)
+
+
+def purge_deleted_rows(context, age_in_days):
+    """Purge deleted rows older than given age from cinder tables
+
+    Raises InvalidParameterValue if age_in_days is incorrect.
+    :returns: number of deleted rows
+    """
+    return IMPL.purge_deleted_rows(context, age_in_days=age_in_days)
