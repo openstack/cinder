@@ -96,9 +96,10 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         1.0.6 - Removing locks bug #1395953
         1.0.7 - Fixed bug #1353137, Server was not removed from the HP
                 Lefthand backend after the last volume was detached.
+        1.0.8 - Fixed bug #1418201, A cloned volume fails to attach.
     """
 
-    VERSION = "1.0.7"
+    VERSION = "1.0.8"
 
     device_stats = {}
 
@@ -377,7 +378,8 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         client = self._login()
         try:
             volume_info = client.getVolumeByName(src_vref['name'])
-            client.cloneVolume(volume['name'], volume_info['id'])
+            clone_info = client.cloneVolume(volume['name'], volume_info['id'])
+            return self._update_provider(clone_info)
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
         finally:
