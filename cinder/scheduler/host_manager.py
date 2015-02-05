@@ -51,6 +51,7 @@ host_manager_opts = [
 CONF = cfg.CONF
 CONF.register_opts(host_manager_opts)
 CONF.import_opt('scheduler_driver', 'cinder.scheduler.manager')
+CONF.import_opt('max_over_subscription_ratio', 'cinder.volume.driver')
 
 LOG = logging.getLogger(__name__)
 
@@ -114,6 +115,9 @@ class HostState(object):
         # all volumes on a backend, which could be greater than or
         # equal to the allocated_capacity_gb.
         self.provisioned_capacity_gb = 0
+        self.max_over_subscription_ratio = 1.0
+        self.thin_provisioning_support = False
+        self.thick_provisioning_support = False
 
         # PoolState for all pools
         self.pools = {}
@@ -320,6 +324,13 @@ class PoolState(HostState):
             # provisioned_capacity_gb if it is not set.
             self.provisioned_capacity_gb = capability.get(
                 'provisioned_capacity_gb', self.allocated_capacity_gb)
+            self.max_over_subscription_ratio = capability.get(
+                'max_over_subscription_ratio',
+                CONF.max_over_subscription_ratio)
+            self.thin_provisioning_support = capability.get(
+                'thin_provisioning_support', False)
+            self.thick_provisioning_support = capability.get(
+                'thick_provisioning_support', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
