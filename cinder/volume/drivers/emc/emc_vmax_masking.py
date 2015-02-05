@@ -71,7 +71,7 @@ class EMCVMAXMasking(object):
             # We must make sure that volume is returned to default storage
             # group if anything goes wrong.
             fastPolicyName = maskingViewDict['fastPolicy']
-            # If FAST is enabled remove the volume from the default SG
+            # If FAST is enabled remove the volume from the default SG.
             if fastPolicyName is not None:
                 defaultStorageGroupInstanceName = (
                     self._get_and_remove_from_storage_group_v2(
@@ -253,7 +253,7 @@ class EMCVMAXMasking(object):
             self._get_storage_group_instance_name(
                 conn, maskingViewDict, storageGroupInstanceName))
         if storageGroupInstanceName is None:
-            # This may be used in exception hence _ instead of _LE
+            # This may be used in exception hence _ instead of _LE.
             msg = (_(
                 "Cannot get or create a storage group: %(sgGroupName)s"
                 " for volume %(volumeName)s ") %
@@ -281,7 +281,7 @@ class EMCVMAXMasking(object):
                 conn, maskingViewInstanceName))
 
         if sgFromMvInstanceName is None:
-            # This may be used in exception hence _ instead of _LE
+            # This may be used in exception hence _ instead of _LE.
             msg = (_(
                 "Cannot get storage group: %(sgGroupName)s "
                 "from masking view %(maskingViewInstanceName)s.") %
@@ -320,7 +320,7 @@ class EMCVMAXMasking(object):
         portGroupInstanceName = self._get_port_group_instance_name(
             conn, controllerConfigService, pgGroupName)
         if portGroupInstanceName is None:
-            # This may be used in exception hence _ instead of _LE
+            # This may be used in exception hence _ instead of _LE.
             msg = (_(
                 "Cannot get port group: %(pgGroupName)s.") %
                 {'pgGroupName': pgGroupName})
@@ -346,7 +346,7 @@ class EMCVMAXMasking(object):
                 conn, controllerConfigService, igGroupName, connector,
                 storageSystemName))
         if initiatorGroupInstanceName is None:
-            # This may be used in exception hence _ instead of _LE
+            # This may be used in exception hence _ instead of _LE.
             msg = (_(
                 "Cannot get or create initiator group: "
                 "%(igGroupName)s.") %
@@ -374,7 +374,7 @@ class EMCVMAXMasking(object):
         if not self._verify_initiator_group_from_masking_view(
                 conn, controllerConfigService, maskingViewName,
                 connector, storageSystemName, igGroupName):
-            # This may be used in exception hence _ instead of _LE
+            # This may be used in exception hence _ instead of _LE.
             msg = (_(
                 "Unable to verify initiator group: %(igGroupName)s "
                 "in masking view %(maskingViewName)s.") %
@@ -403,9 +403,9 @@ class EMCVMAXMasking(object):
                 storageGroupInstanceName, portGroupInstanceName,
                 initiatorGroupInstanceName))
         if maskingViewInstanceName is None:
-            # This may be used in exception hence _ instead of _LE
+            # This may be used in exception hence _ instead of _LE.
             msg = (_(
-                "Cannot create masking view: %(maskingViewName)s. ") %
+                "Cannot create masking view: %(maskingViewName)s.") %
                 {'maskingViewName': maskingViewName})
             LOG.error(msg)
 
@@ -441,7 +441,7 @@ class EMCVMAXMasking(object):
             if not self._is_volume_in_storage_group(
                     conn, storageGroupInstanceName,
                     volumeInstance):
-                # This may be used in exception hence _ instead of _LE
+                # This may be used in exception hence _ instead of _LE.
                 msg = (_(
                     "Volume: %(volumeName)s was not added "
                     "to storage group %(sgGroupName)s.") %
@@ -549,7 +549,7 @@ class EMCVMAXMasking(object):
                 break
 
         if foundMaskingViewInstanceName is not None:
-            # now check that is has not been deleted
+            # Now check that is has not been deleted.
             instance = self.utils.get_existing_instance(
                 conn, foundMaskingViewInstanceName)
             if instance is None:
@@ -676,10 +676,10 @@ class EMCVMAXMasking(object):
             conn, controllerConfigService, initiatorNames)
 
         # If you cannot find an initiatorGroup that matches the connector
-        # info create a new initiatorGroup
+        # info create a new initiatorGroup.
         if foundInitiatorGroupInstanceName is None:
-            # check that our connector information matches the
-            # hardwareId(s) on the symm
+            # Check that our connector information matches the
+            # hardwareId(s) on the symm.
             storageHardwareIDInstanceNames = (
                 self._get_storage_hardware_id_instance_names(
                     conn, initiatorNames, storageSystemName))
@@ -705,7 +705,7 @@ class EMCVMAXMasking(object):
         return foundInitiatorGroupInstanceName
 
     def _find_initiator_names(self, conn, connector):
-        """check the connector object for initiators(ISCSI) or wwpns(FC).
+        """Check the connector object for initiators(ISCSI) or wwpns(FC).
 
         :param conn: the connection to the ecom
         :param connector: the connector object
@@ -823,7 +823,7 @@ class EMCVMAXMasking(object):
         return foundHardwardIDsInstanceNames
 
     def _get_initiator_group_from_job(self, conn, job):
-        """After creating an new initiator group find it and return it
+        """After creating an new initiator group find it and return it.
 
         :param conn: the connection to the ecom server
         :param job: the create initiator group job
@@ -881,7 +881,7 @@ class EMCVMAXMasking(object):
         return rc, job
 
     def find_new_masking_view(self, conn, jobDict):
-        """Find the newly created volume
+        """Find the newly created volume.
 
         :param conn: the connection to the ecom server
         :param jobDict: the job tuple
@@ -1018,7 +1018,7 @@ class EMCVMAXMasking(object):
             self, conn, controllerConfigService, maskingViewName,
             storageGroupInstanceName, portGroupInstanceName,
             initiatorGroupInstanceName):
-        """Gets the masking view instance name
+        """Gets the masking view instance name.
 
         :param conn: the connection to the ecom server
         :param controllerConfigService: the controller configuration server
@@ -1058,8 +1058,8 @@ class EMCVMAXMasking(object):
             foundStorageGroupInstanceName = (
                 self.utils.get_storage_group_from_volume(
                     conn, rollbackDict['volumeInstance'].path))
-            # volume is not associated with any storage group so add it back
-            # to the default
+            # Volume is not associated with any storage group so add it back
+            # to the default.
             if len(foundStorageGroupInstanceName) == 0:
                 LOG.warning(_LW(
                     "No storage group found. "
@@ -1092,11 +1092,12 @@ class EMCVMAXMasking(object):
                     {'foundStorageGroupInstanceName':
                      foundStorageGroupInstanceName})
 
-                # check the name see is it the default storage group or another
+                # Check the name, see is it the default storage group
+                # or another.
                 if (foundStorageGroupInstanceName !=
                         rollbackDict['defaultStorageGroupInstanceName']):
-                    # remove it from its current masking view and return it
-                    # to its default masking view if fast is enabled
+                    # Remove it from its current masking view and return it
+                    # to its default masking view if fast is enabled.
                     self.remove_and_reset_members(
                         conn,
                         rollbackDict['controllerConfigService'],
@@ -1241,7 +1242,7 @@ class EMCVMAXMasking(object):
     def _create_initiator_Group(
             self, conn, controllerConfigService, igGroupName,
             hardwareIdinstanceNames):
-        """Create a new initiator group
+        """Create a new initiator group.
 
         Given a list of hardwareId Instance name create a new
         initiator group
@@ -1297,7 +1298,7 @@ class EMCVMAXMasking(object):
 
     def _get_port_group_from_masking_view(
             self, conn, maskingViewName, storageSystemName):
-        """Given the masking view name get the port group from it
+        """Given the masking view name get the port group from it.
 
         :param conn: connection the the ecom server
         :param maskingViewName: the name of the masking view
@@ -1324,7 +1325,7 @@ class EMCVMAXMasking(object):
     def _delete_masking_view(
             self, conn, controllerConfigService, maskingViewName,
             maskingViewInstanceName):
-        """Delete a masking view
+        """Delete a masking view.
 
         :param conn: connection the ecom server
         :param controllerConfigService: the controller configuration service
@@ -1350,7 +1351,7 @@ class EMCVMAXMasking(object):
 
     def get_masking_view_from_storage_group(
             self, conn, storageGroupInstanceName):
-        """Get the associated maskingview instance name
+        """Get the associated maskingview instance name.
 
         Given storage group instance name, get the associated masking
         view instance name
@@ -1372,7 +1373,7 @@ class EMCVMAXMasking(object):
             self, conn, controllerConfigService, storageGroupInstanceName,
             volumeInstance, volumeName, sgGroupName, fastPolicyName,
             storageSystemName=None):
-        """Add a volume to an existing storage group
+        """Add a volume to an existing storage group.
 
         :param conn: connection to ecom server
         :param controllerConfigService: the controller configuration service
@@ -1447,7 +1448,7 @@ class EMCVMAXMasking(object):
             % {'length': len(assocVolumeInstanceNames),
                'volumeName': volumeName})
 
-        # required for unit tests
+        # Required for unit tests.
         emptyStorageGroupInstanceName = (
             self._wrap_get_storage_group_from_volume(conn, volumeInstanceName))
 
@@ -1476,7 +1477,7 @@ class EMCVMAXMasking(object):
 
     def get_devices_from_storage_group(
             self, conn, storageGroupInstanceName):
-        """Get the associated volume Instance names
+        """Get the associated volume Instance names.
 
         Given the storage group instance name get the associated volume
         Instance names
@@ -1491,20 +1492,31 @@ class EMCVMAXMasking(object):
 
         return volumeInstanceNames
 
-    def get_associated_masking_group_from_device(
+    def get_associated_masking_groups_from_device(
             self, conn, volumeInstanceName):
+        """Get the associated storage groups from the volume Instance name.
+
+        Given the volume instance name get the associated storage group
+        instance names.
+
+        :param conn: connection the the ecom server
+        :param volumeInstanceName: the volume instance name
+        :returns: list of storage group instance names
+        """
         maskingGroupInstanceNames = conn.AssociatorNames(
             volumeInstanceName,
             ResultClass='CIM_DeviceMaskingGroup',
             AssocClass='CIM_OrderedMemberOfCollection')
         if len(maskingGroupInstanceNames) > 0:
-            return maskingGroupInstanceNames[0]
+            return maskingGroupInstanceNames
         else:
+            LOG.info(_LI("Volume %(volumeName)s not in any storage group."),
+                     {'volumeName': volumeInstanceName})
             return None
 
     def remove_and_reset_members(
             self, conn, controllerConfigService, volumeInstance,
-            fastPolicyName, volumeName):
+            fastPolicyName, volumeName, connector=None):
         """Part of unmap device or rollback.
 
         Removes volume from the Device Masking Group that belongs to a
@@ -1518,108 +1530,96 @@ class EMCVMAXMasking(object):
         :param volumeInstance: the volume Instance
         :param fastPolicyName: the fast policy name (if it exists)
         :param volumeName: the volume name
-        :returns: list volumeInstanceNames list of volume instance names
+        :param connector: the connector object
+        :returns: storage group instance name
         """
-        rc = -1
-        maskingGroupInstanceName = (
-            self.get_associated_masking_group_from_device(
-                conn, volumeInstance.path))
+        storageGroupInstanceName = None
+        if connector is not None:
+            storageGroupInstanceName = self._get_sg_associated_with_connector(
+                conn, controllerConfigService, volumeInstance.path,
+                volumeName, connector)
+            if storageGroupInstanceName is None:
+                return None
+        else:
+            storageGroupInstanceNames = (
+                self.get_associated_masking_groups_from_device(
+                    conn, volumeInstance.path))
+            if storageGroupInstanceNames:
+                storageGroupInstanceName = storageGroupInstanceNames[0]
+            else:
+                return None
 
         volumeInstanceNames = self.get_devices_from_storage_group(
-            conn, maskingGroupInstanceName)
+            conn, storageGroupInstanceName)
         storageSystemInstanceName = self.utils.find_storage_system(
             conn, controllerConfigService)
 
-        isTieringPolicySupported = False
-        if fastPolicyName is not None:
-            tierPolicyServiceInstanceName = self.utils.get_tier_policy_service(
-                conn, storageSystemInstanceName)
-
-            isTieringPolicySupported = self.fast.is_tiering_policy_enabled(
-                conn, tierPolicyServiceInstanceName)
-            LOG.debug(
-                "FAST policy enabled on %(storageSystem)s: %(isSupported)s"
-                % {'storageSystem': storageSystemInstanceName,
-                   'isSupported': isTieringPolicySupported})
-
         numVolInMaskingView = len(volumeInstanceNames)
         LOG.debug(
-            "There are %(numVol)d volumes in the masking view %(maskingGroup)s"
-            % {'numVol': numVolInMaskingView,
-               'maskingGroup': maskingGroupInstanceName})
+            "There are %(numVol)d volumes in the storage group "
+            "%(maskingGroup)s",
+            {'numVol': numVolInMaskingView,
+             'maskingGroup': storageGroupInstanceName})
+        isTieringPolicySupported, tierPolicyServiceInstanceName = (
+            self._get_tiering_info(conn, storageSystemInstanceName,
+                                   fastPolicyName))
+        if numVolInMaskingView == 1:
+            # Last volume in the storage group.
+            self._last_volume_delete_masking_view(
+                conn, storageGroupInstanceName)
+            self._get_and_remove_rule_association(
+                conn, fastPolicyName,
+                isTieringPolicySupported,
+                tierPolicyServiceInstanceName,
+                storageSystemInstanceName['name'],
+                storageGroupInstanceName)
 
-        if numVolInMaskingView == 1:  # last volume in the storage group
-            # delete masking view
-            mvInstanceName = self.get_masking_view_from_storage_group(
-                conn, maskingGroupInstanceName)
-            LOG.debug(
-                "Last volume in the storage group, deleting masking view "
-                "%(mvInstanceName)s"
-                % {'mvInstanceName': mvInstanceName})
-            conn.DeleteInstance(mvInstanceName)
-
-            # disassociate storage group from FAST policy
-            if fastPolicyName is not None and isTieringPolicySupported is True:
-                tierPolicyInstanceName = self.fast.get_tier_policy_by_name(
-                    conn, storageSystemInstanceName['Name'], fastPolicyName)
-
-                LOG.info(_LI(
-                    "policy:%(policy)s, policy service:%(service)s, "
-                    "masking group=%(maskingGroup)s")
-                    % {'policy': tierPolicyInstanceName,
-                       'service': tierPolicyServiceInstanceName,
-                       'maskingGroup': maskingGroupInstanceName})
-
-                self.fast.delete_storage_group_from_tier_policy_rule(
-                    conn, tierPolicyServiceInstanceName,
-                    maskingGroupInstanceName, tierPolicyInstanceName)
-
-            rc = self.provision.remove_device_from_storage_group(
-                conn, controllerConfigService, maskingGroupInstanceName,
+            self.provision.remove_device_from_storage_group(
+                conn, controllerConfigService, storageGroupInstanceName,
                 volumeInstance.path, volumeName)
 
             LOG.debug(
-                "Remove the last volume %(volumeName)s completed successfully."
-                % {'volumeName': volumeName})
+                "Remove the last volume %(volumeName)s completed "
+                "successfully.",
+                {'volumeName': volumeName})
 
-            # Delete storage group
-            conn.DeleteInstance(maskingGroupInstanceName)
+            # Delete storage group.
+            conn.DeleteInstance(storageGroupInstanceName)
 
             if isTieringPolicySupported:
                 self._cleanup_tiering(
                     conn, controllerConfigService, fastPolicyName,
                     volumeInstance, volumeName)
         else:
-            # not the last volume
+            # Not the last volume so remove it from storage group in
+            # the masking view.
             LOG.debug("start: number of volumes in masking storage group: "
-                      "%(numVol)d" % {'numVol': len(volumeInstanceNames)})
-            rc = self.provision.remove_device_from_storage_group(
-                conn, controllerConfigService, maskingGroupInstanceName,
+                      "%(numVol)d", {'numVol': len(volumeInstanceNames)})
+            self.provision.remove_device_from_storage_group(
+                conn, controllerConfigService, storageGroupInstanceName,
                 volumeInstance.path, volumeName)
 
             LOG.debug(
                 "RemoveMembers for volume %(volumeName)s completed "
-                "successfully." % {'volumeName': volumeName})
-
-            # if FAST POLICY enabled, move the volume to the default SG
+                "successfully.", {'volumeName': volumeName})
+            # If FAST POLICY enabled, move the volume to the default SG.
             if fastPolicyName is not None and isTieringPolicySupported:
                 self._cleanup_tiering(
                     conn, controllerConfigService, fastPolicyName,
                     volumeInstance, volumeName)
 
-            # validation
             volumeInstanceNames = self.get_devices_from_storage_group(
-                conn, maskingGroupInstanceName)
+                conn, storageGroupInstanceName)
             LOG.debug(
-                "end: number of volumes in masking storage group: %(numVol)d"
-                % {'numVol': len(volumeInstanceNames)})
+                "end: number of volumes in masking storage group: %(numVol)d",
+                {'numVol': len(volumeInstanceNames)})
 
-        return rc
+        return storageGroupInstanceName
 
     def _cleanup_tiering(
             self, conn, controllerConfigService, fastPolicyName,
             volumeInstance, volumeName):
-        """Cleanup tiering
+        """Clean up tiering.
 
         :param conn: the ecom connection
         :param controllerConfigService: the controller configuration service
@@ -1639,7 +1639,7 @@ class EMCVMAXMasking(object):
             self.fast.add_volume_to_default_storage_group_for_fast_policy(
                 conn, controllerConfigService, volumeInstance, volumeName,
                 fastPolicyName))
-        # check default storage group number of volumes
+        # Check default storage group number of volumes.
         volumeInstanceNames = self.get_devices_from_storage_group(
             conn, defaultStorageGroupInstanceName)
         LOG.debug(
@@ -1666,17 +1666,23 @@ class EMCVMAXMasking(object):
             targetWwns.append(targetPortInstanceName['Name'])
         return targetWwns
 
-    def get_masking_view_by_volume(self, conn, volumeInstance):
+    def get_masking_view_by_volume(self, conn, volumeInstance, connector):
         """Given volume, retrieve the masking view instance name.
 
-        :param volume: the volume instance
-        :param mvInstanceName: masking view instance name
+        :param volumeInstance: the volume instance
+        :param connector: the connector object
+        :returns mvInstanceName: masking view instance name
         """
-        sgInstanceName = self.get_associated_masking_group_from_device(
-            conn, volumeInstance.path)
-        mvInstanceName = self.get_masking_view_from_storage_group(
-            conn, sgInstanceName)
-        LOG.debug("Found Masking View %(mv)s: " % {'mv': mvInstanceName})
+
+        storageSystemName = volumeInstance['SystemName']
+        controllerConfigService = (
+            self.utils.find_controller_configuration_service(
+                conn, storageSystemName))
+        volumeName = volumeInstance['ElementName']
+        mvInstanceName = (
+            self._get_sg_or_mv_associated_with_initiator(
+                conn, controllerConfigService, volumeInstance.path,
+                volumeName, connector, False))
         return mvInstanceName
 
     def get_masking_views_by_port_group(self, conn, portGroupInstanceName):
@@ -1706,3 +1712,177 @@ class EMCVMAXMasking(object):
         else:
             LOG.warning(_LW("No port group found in masking view %(mv)s"),
                         {'mv': maskingViewInstanceName})
+
+    def _get_sg_associated_with_connector(
+            self, conn, controllerConfigService, volumeInstanceName,
+            volumeName, connector):
+        """Get storage group associated with connector.
+
+        If the connector gets passed then extra logic required to
+        get storage group.
+
+        :param conn: the ecom connection
+        :param controllerConfigService: storage system instance name
+        :param volumeInstanceName
+        :param volumeName
+        :param connector
+        :returns: storageGroupInstanceName(can be None)
+        """
+        return self._get_sg_or_mv_associated_with_initiator(
+            conn, controllerConfigService, volumeInstanceName,
+            volumeName, connector, True)
+
+    def _get_tiering_info(
+            self, conn, storageSystemInstanceName, fastPolicyName):
+        """Get tiering specifics.
+
+        :param conn: the ecom connection
+        :param storageSystemInstanceName: storage system instance name
+        :param fastPolicyName
+
+        :returns: isTieringPolicySupported, tierPolicyServiceInstanceName
+
+        """
+        isTieringPolicySupported = False
+        tierPolicyServiceInstanceName = None
+        if fastPolicyName is not None:
+            tierPolicyServiceInstanceName = self.utils.get_tier_policy_service(
+                conn, storageSystemInstanceName)
+
+            isTieringPolicySupported = self.fast.is_tiering_policy_enabled(
+                conn, tierPolicyServiceInstanceName)
+            LOG.debug(
+                "FAST policy enabled on %(storageSystem)s: %(isSupported)s",
+                {'storageSystem': storageSystemInstanceName,
+                 'isSupported': isTieringPolicySupported})
+
+        return isTieringPolicySupported, tierPolicyServiceInstanceName
+
+    def _last_volume_delete_masking_view(
+            self, conn, storageGroupInstanceName):
+        """Delete the masking view.
+
+        delete the masking view if the volume is the last one in the
+        storage group
+
+        :param conn: the ecom connection
+        :param storageGroupInstanceName: storage group instance name
+        """
+        # Delete masking view.
+        mvInstanceName = self.get_masking_view_from_storage_group(
+            conn, storageGroupInstanceName)
+        if mvInstanceName is not None:
+            LOG.debug(
+                "Last volume in the storage group, deleting masking view "
+                "%(mvInstanceName)s",
+                {'mvInstanceName': mvInstanceName})
+            conn.DeleteInstance(mvInstanceName)
+
+    def _get_and_remove_rule_association(
+            self, conn, fastPolicyName, isTieringPolicySupported,
+            tierPolicyServiceInstanceName, storageSystemName,
+            storageGroupInstanceName):
+        """Remove the storage group from the policy rule.
+
+        :param conn: the ecom connection
+        :param isTieringPolicySupported: boolean
+        :param tierPolicyServiceInstanceName: the tier policy instance name
+        :param storageSystemName: storage system name
+        :param storageGroupInstanceName: the storage group instance name
+        """
+        # Disassociate storage group from FAST policy.
+        if fastPolicyName is not None and isTieringPolicySupported is True:
+            tierPolicyInstanceName = self.fast.get_tier_policy_by_name(
+                conn, storageSystemName, fastPolicyName)
+
+            LOG.info(_LI(
+                "policy:%(policy)s, policy service:%(service)s, "
+                "masking group=%(maskingGroup)s"),
+                {'policy': tierPolicyInstanceName,
+                 'service': tierPolicyServiceInstanceName,
+                 'maskingGroup': storageGroupInstanceName})
+
+            self.fast.delete_storage_group_from_tier_policy_rule(
+                conn, tierPolicyServiceInstanceName,
+                storageGroupInstanceName, tierPolicyInstanceName)
+
+    def get_initiator_group_from_masking_view(
+            self, conn, maskingViewInstanceName):
+        """Get initiator group in a masking view.
+
+        :param maskingViewInstanceName: masking view instance name
+        :returns: initiatorGroupInstanceName or None if it is not found
+        """
+        initiatorGroupInstanceNames = conn.AssociatorNames(
+            maskingViewInstanceName, ResultClass='SE_InitiatorMaskingGroup')
+        if len(initiatorGroupInstanceNames) > 0:
+            LOG.debug("Found initiator group %(pg)s in masking view %(mv)s.",
+                      {'pg': initiatorGroupInstanceNames[0],
+                       'mv': maskingViewInstanceName})
+            return initiatorGroupInstanceNames[0]
+        else:
+            LOG.warn(_LW("No port group found in masking view %(mv)s."),
+                     {'mv': maskingViewInstanceName})
+
+    def _get_sg_or_mv_associated_with_initiator(
+            self, conn, controllerConfigService, volumeInstanceName,
+            volumeName, connector, getSG=True):
+        """Get storage group or masking view associated with connector.
+
+        If the connector gets passed then extra logic required to
+        get storage group.
+
+        :param conn: the ecom connection
+        :param controllerConfigService: storage system instance name
+        :param volumeInstanceName - volume instance name
+        :param volumeName - volume element name
+        :param connector - the connector object
+        :param getSG - True if to get storage group; otherwise get masking
+        :returns: foundInstanceName(can be None)
+        """
+        foundInstanceName = None
+        initiatorNames = self._find_initiator_names(conn, connector)
+        igInstanceNameFromConnector = self._find_initiator_masking_group(
+            conn, controllerConfigService, initiatorNames)
+        # Device can be shared by multi-SGs in a multi-host attach case.
+        storageGroupInstanceNames = (
+            self.get_associated_masking_groups_from_device(
+                conn, volumeInstanceName))
+        LOG.debug("Found storage groups volume "
+                  "%(volumeName)s is in: %(storageGroups)s",
+                  {'volumeName': volumeName,
+                   'storageGroups': storageGroupInstanceNames})
+        if storageGroupInstanceNames:  # not empty
+            # Get the SG by IGs.
+            for sgInstanceName in storageGroupInstanceNames:
+                # Get maskingview from storage group.
+                mvInstanceName = self.get_masking_view_from_storage_group(
+                    conn, sgInstanceName)
+                LOG.debug("Found masking view associated with SG "
+                          "%(storageGroup)s: %(maskingview)s",
+                          {'maskingview': mvInstanceName,
+                           'storageGroup': sgInstanceName})
+                # Get initiator group from masking view.
+                igInstanceName = (
+                    self.get_initiator_group_from_masking_view(
+                        conn, mvInstanceName))
+                LOG.debug("Initiator Group in masking view %(ig)s: "
+                          "IG associated with connector%(igFromConnector)s",
+                          {'ig': igInstanceName,
+                           'igFromConnector': igInstanceNameFromConnector})
+                if igInstanceName == igInstanceNameFromConnector:
+                    if getSG is True:
+                        foundInstanceName = sgInstanceName
+                        LOG.debug("Found the storage group associated with "
+                                  "initiator %(initiator)s: %(storageGroup)s",
+                                  {'initiator': initiatorNames,
+                                   'storageGroup': foundInstanceName})
+                    else:
+                        foundInstanceName = mvInstanceName
+                        LOG.debug("Found the masking view associated with "
+                                  "initiator %(initiator)s: %(maskingview)s.",
+                                  {'initiator': initiatorNames,
+                                   'maskingview': foundInstanceName})
+
+                    break
+        return foundInstanceName

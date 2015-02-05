@@ -189,8 +189,8 @@ class EMCVMAXCommon(object):
                   % {'snapshotname': snapshotName,
                      'rc': rc})
 
-    def _remove_members(
-            self, controllerConfigService, volumeInstance, extraSpecs):
+    def _remove_members(self, controllerConfigService, volumeInstance,
+                        extraSpecs, connector):
         """This method unmaps a volume from a host.
 
         Removes volume from the Device Masking Group that belongs to
@@ -202,14 +202,16 @@ class EMCVMAXCommon(object):
 
         :param controllerConfigService: instance name of
                                   ControllerConfigurationService
-        :param volume: volume Object
+        :param volumeInstance: volume instanceObject
+        :param extraSpecs: the volume extra specs
+        :param connector: the connector object
         """
         volumeName = volumeInstance['ElementName']
         LOG.debug("Detaching volume %s" % volumeName)
         fastPolicyName = extraSpecs[FASTPOLICY]
         return self.masking.remove_and_reset_members(
             self.conn, controllerConfigService, volumeInstance,
-            fastPolicyName, volumeName)
+            fastPolicyName, volumeName, connector)
 
     def _unmap_lun(self, volume, connector):
         """Unmaps a volume from the host.
@@ -223,7 +225,7 @@ class EMCVMAXCommon(object):
         LOG.info(_LI("Unmap volume: %(volume)s")
                  % {'volume': volumename})
 
-        device_info = self.find_device_number(volume, connector)
+        device_info = self.find_device_number(volume)
         device_number = device_info['hostlunid']
         if device_number is None:
             LOG.info(_LI("Volume %s is not mapped. No volume to unmap.")
@@ -242,7 +244,8 @@ class EMCVMAXCommon(object):
                                  % {'storage_system': storage_system})
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        self._remove_members(configservice, vol_instance, extraSpecs)
+        self._remove_members(configservice, vol_instance,
+                             extraSpecs, connector)
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns device and connection info.
@@ -276,7 +279,7 @@ class EMCVMAXCommon(object):
         LOG.info(_LI("Initialize connection: %(volume)s")
                  % {'volume': volumeName})
         self.conn = self._get_ecom_connection()
-        deviceInfoDict = self._wrap_find_device_number(volume, connector)
+        deviceInfoDict = self.find_device_number(volume)
         if ('hostlunid' in deviceInfoDict and
                 deviceInfoDict['hostlunid'] is not None):
             isSameHost = self._is_same_host(connector, deviceInfoDict)
@@ -320,7 +323,7 @@ class EMCVMAXCommon(object):
             self.conn, maskingViewDict)
 
         # Find host lun id again after the volume is exported to the host.
-        deviceInfoDict = self.find_device_number(volume, connector)
+        deviceInfoDict = self.find_device_number(volume)
         if 'hostlunid' not in deviceInfoDict:
             # Did not successfully attach to host,
             # so a rollback for FAST is required.
@@ -355,15 +358,6 @@ class EMCVMAXCommon(object):
                 if currentHost in deviceInfoDict['maskingview']:
                     return True
         return False
-
-    def _wrap_find_device_number(self, volume, connector):
-        """Aid for unit testing
-
-        :params volume: the volume Object
-        :params connector: the connector Object
-        :returns: deviceInfoDict
-        """
-        return self.find_device_number(volume, connector)
 
     def terminate_connection(self, volume, connector):
         """Disallow connection from connector.
@@ -452,7 +446,7 @@ class EMCVMAXCommon(object):
                 self.conn, storageSystemName))
 
         # create a volume to the size of the
-        # newSize - oldSize = additionalVolumeSize
+        # newSize - oldSize = additionalVolumeSize.
         unboundVolumeInstance = self._create_and_get_unbound_volume(
             self.conn, storageConfigService, volumeInstance.path,
             additionalVolumeSize)
@@ -462,7 +456,7 @@ class EMCVMAXCommon(object):
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
-        # add the new unbound volume to the original composite volume
+        # Add the new unbound volume to the original composite volume.
         rc, modifiedVolumeDict = (
             self._modify_and_get_composite_volume_instance(
                 self.conn, elementCompositionService, volumeInstance,
@@ -475,7 +469,7 @@ class EMCVMAXCommon(object):
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
-        # check the occupied space of the new extended volume
+        # Check the occupied space of the new extended volume.
         extendedVolumeInstance = self.utils.find_volume_instance(
             self.conn, modifiedVolumeDict, volumeName)
         extendedVolumeSize = self.utils.get_volume_size(
@@ -487,7 +481,7 @@ class EMCVMAXCommon(object):
                'volumeSize': extendedVolumeSize})
 
         # If the requested size and the actual size don't
-        # tally throw an exception
+        # tally throw an exception.
         newSizeBits = self.utils.convert_gb_to_bits(newSize)
         diffVolumeSize = self.utils.compare_size(
             newSizeBits, extendedVolumeSize)
@@ -540,7 +534,7 @@ class EMCVMAXCommon(object):
                 "%(emcConfigFileName)s ")
                 % {'arrayName': arrayName,
                    'emcConfigFileName': emcConfigFileName})
-        # This value can be None
+        # This value can be None.
         fastPolicyName = self.utils.parse_fast_policy_name_from_file(
             emcConfigFileName)
         if fastPolicyName is not None:
@@ -670,7 +664,7 @@ class EMCVMAXCommon(object):
         return True
 
     def migrate_volume(self, ctxt, volume, host, new_type=None):
-        """Migrate volume to another host
+        """Migrate volume to another host.
 
         :param ctxt: context
         :param volume: the volume object including the volume_type_id
@@ -691,7 +685,7 @@ class EMCVMAXCommon(object):
     def _migrate_volume(
             self, volume, volumeInstance, targetPoolName,
             targetFastPolicyName, sourceFastPolicyName, new_type=None):
-        """Migrate volume to another host
+        """Migrate volume to another host.
 
         :param volume: the volume object including the volume_type_id
         :param volumeInstance: the volume instance
@@ -713,7 +707,7 @@ class EMCVMAXCommon(object):
 
         if moved is False and sourceFastPolicyName is not None:
             # Return the volume to the default source fast policy storage
-            # group because the migrate was unsuccessful
+            # group because the migrate was unsuccessful.
             LOG.warn(_LW("Failed to migrate: %(volumeName)s from "
                          "default source storage group "
                          "for FAST policy: %(sourceFastPolicyName)s "
@@ -726,7 +720,7 @@ class EMCVMAXCommon(object):
                                       storageSystemName, sourceFastPolicyName,
                                       volumeName)
             else:
-                # migrate was successful but still issues
+                # migrate was successful but still issues.
                 self._migrate_rollback(
                     self.conn, volumeInstance, storageSystemName,
                     sourceFastPolicyName, volumeName, sourcePoolInstanceName)
@@ -756,7 +750,7 @@ class EMCVMAXCommon(object):
     def _migrate_rollback(self, conn, volumeInstance,
                           storageSystemName, sourceFastPolicyName,
                           volumeName, sourcePoolInstanceName):
-        """Full rollback
+        """Full rollback.
 
         Failed on final step on adding migrated volume to new target
         default storage group for the target FAST policy
@@ -797,7 +791,7 @@ class EMCVMAXCommon(object):
     def _migrate_cleanup(self, conn, volumeInstance,
                          storageSystemName, sourceFastPolicyName,
                          volumeName):
-        """If the migrate fails, put volume back to source FAST SG
+        """If the migrate fails, put volume back to source FAST SG.
 
         :param conn: connection info to ECOM
         :param volumeInstance: the volume instance
@@ -816,22 +810,22 @@ class EMCVMAXCommon(object):
             self.utils.find_controller_configuration_service(
                 conn, storageSystemName))
 
-        # Check to see what SG it is in
+        # Check to see what SG it is in.
         assocStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(conn,
                                                      volumeInstance.path))
-        # This is the SG it should be in
+        # This is the SG it should be in.
         defaultStorageGroupInstanceName = (
             self.fast.get_policy_default_storage_group(
                 conn, controllerConfigurationService, sourceFastPolicyName))
 
-        # It is not in any storage group.  Must add it to default source
+        # It is not in any storage group.  Must add it to default source.
         if assocStorageGroupInstanceName is None:
             self.add_to_default_SG(conn, volumeInstance,
                                    storageSystemName, sourceFastPolicyName,
                                    volumeName)
 
-        # It is in the incorrect storage group
+        # It is in the incorrect storage group.
         if (assocStorageGroupInstanceName is not None and
                 (assocStorageGroupInstanceName !=
                     defaultStorageGroupInstanceName)):
@@ -896,7 +890,7 @@ class EMCVMAXCommon(object):
 
     def _migrate_volume_from(self, volume, volumeInstance,
                              targetPoolName, sourceFastPolicyName):
-        """Check FAST policies and migrate from source pool
+        """Check FAST policies and migrate from source pool.
 
         :param volume: the volume object including the volume_type_id
         :param volumeInstance: the volume instance
@@ -913,13 +907,13 @@ class EMCVMAXCommon(object):
                   % {'sourceFastPolicyName': sourceFastPolicyName})
 
         # If the source volume is is FAST enabled it must first be removed
-        # from the default storage group for that policy
+        # from the default storage group for that policy.
         if sourceFastPolicyName is not None:
             self.remove_from_default_SG(
                 self.conn, volumeInstance, storageSystemName,
                 sourceFastPolicyName, volumeName)
 
-        # migrate from one pool to another
+        # Migrate from one pool to another.
         storageRelocationService = self.utils.find_storage_relocation_service(
             self.conn, storageSystemName)
 
@@ -937,8 +931,8 @@ class EMCVMAXCommon(object):
                 self.conn, storageRelocationService, volumeInstance.path,
                 targetPoolInstanceName)
         except Exception as e:
-            # rollback by deleting the volume if adding the volume to the
-            # default storage group were to fail
+            # Rollback by deleting the volume if adding the volume to the
+            # default storage group were to fail.
             LOG.error(_LE("Exception: %s") % six.text_type(e))
             exceptionMessage = (_("Error migrating volume: %(volumename)s. "
                                   "to target pool  %(targetPoolName)s. ")
@@ -947,8 +941,8 @@ class EMCVMAXCommon(object):
             LOG.error(exceptionMessage)
             return falseRet
 
-        # check that the volume is now migrated to the correct storage pool,
-        # if it is terminate the migrate session
+        # Check that the volume is now migrated to the correct storage pool,
+        # if it is terminate the migrate session.
         foundPoolInstanceName = self.utils.get_assoc_pool_from_volume(
             self.conn, volumeInstance.path)
 
@@ -977,7 +971,7 @@ class EMCVMAXCommon(object):
     def remove_from_default_SG(
             self, conn, volumeInstance, storageSystemName,
             sourceFastPolicyName, volumeName):
-        """For FAST, remove volume from default storage group
+        """For FAST, remove volume from default storage group.
 
         :param conn: connection info to ECOM
         :param volumeInstance: the volume instance
@@ -1018,7 +1012,7 @@ class EMCVMAXCommon(object):
     def add_to_default_SG(
             self, conn, volumeInstance, storageSystemName,
             targetFastPolicyName, volumeName):
-        """For FAST, add volume to default storage group
+        """For FAST, add volume to default storage group.
 
         :param conn: connection info to ECOM
         :param volumeInstance: the volume instance
@@ -1088,8 +1082,8 @@ class EMCVMAXCommon(object):
             LOG.error(errorMessage)
             return falseRet
 
-        # get the pool from the source array and check that is is different
-        # to the pool in the target array
+        # Get the pool from the source array and check that is is different
+        # to the pool in the target array.
         assocPoolInstanceName = self.utils.get_assoc_pool_from_volume(
             self.conn, volumeInstanceName)
         assocPoolInstance = self.conn.GetInstance(
@@ -1127,7 +1121,7 @@ class EMCVMAXCommon(object):
         extraSpecs = self.utils.get_volumetype_extraspecs(volume)
         configGroup = None
 
-        # If there are no extra specs then the default case is assumed
+        # If there are no extra specs then the default case is assumed.
         if extraSpecs:
             configGroup = self.configuration.config_group
             LOG.info(_LI("configGroup of current host: %s"), configGroup)
@@ -1138,7 +1132,7 @@ class EMCVMAXCommon(object):
         return extraSpecs, configurationFile
 
     def _get_ecom_connection(self):
-        """Get the ecom connection
+        """Get the ecom connection.
 
         :returns: conn,the ecom connection
         """
@@ -1231,7 +1225,7 @@ class EMCVMAXCommon(object):
 
     def _find_storage_sync_sv_sv(self, snapshot, volume,
                                  waitforsync=True):
-        """Find the storage synchronized name
+        """Find the storage synchronized name.
 
         :param snapshot: snapshot object
         :param volume: volume object
@@ -1262,7 +1256,7 @@ class EMCVMAXCommon(object):
                       "Storage Synchronized instance: %(sync)s."
                       % {'storage_system': storage_system,
                          'sync': foundsyncname})
-            # Wait for SE_StorageSynchronized_SV_SV to be fully synced
+            # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
             if waitforsync:
                 self.utils.wait_for_sync(self.conn, foundsyncname)
 
@@ -1290,17 +1284,17 @@ class EMCVMAXCommon(object):
                      'initiator': foundinitiatornames})
         return foundinitiatornames
 
-    def find_device_number(self, volume, connector):
+    def find_device_number(self, volume):
         """Given the volume dict find a device number.
 
         Find a device number that a host can see for a volume.
 
         :param volume: the volume dict
-        :param connector: the connector dict
         :returns: data, the data dict
 
         """
         foundNumDeviceNumber = None
+        foundMaskingViewName = None
         volumeName = volume['name']
         volumeInstance = self._find_lun(volume)
         storageSystemName = volumeInstance['SystemName']
@@ -1388,7 +1382,7 @@ class EMCVMAXCommon(object):
                           % {'len': len(endpoints)})
                 for targetendpoint in endpoints:
                     wwn = targetendpoint['Name']
-                    # Add target wwn to the list if it is not already there
+                    # Add target wwn to the list if it is not already there.
                     if not any(d == wwn for d in targetWwns):
                         targetWwns.append(wwn)
             else:
@@ -1426,7 +1420,7 @@ class EMCVMAXCommon(object):
                     instance = self.utils.get_existing_instance(
                         self.conn, hardwareIdInstance.path)
                     if instance is None:
-                        # hardwareId doesn't exist any more. Skip it.
+                        # HardwareId doesn't exist any more. Skip it.
                         break
                     foundHardwareIdList.append(hardwareIdInstance.path)
                     break
@@ -1455,7 +1449,7 @@ class EMCVMAXCommon(object):
                 CINDER_EMC_CONFIG_FILE_POSTFIX)
 
         # The file saved in self.configuration may not be the correct one,
-        # double check
+        # double check.
         if configGroupName not in configurationFile:
             configurationFile = (
                 CINDER_EMC_CONFIG_FILE_PREFIX + configGroupName +
@@ -1542,7 +1536,7 @@ class EMCVMAXCommon(object):
                     data=exceptionMessage)
 
             # Get the FAST policy from the file this value can be None if the
-            # user doesn't want to associate with any FAST policy
+            # user doesn't want to associate with any FAST policy.
             fastPolicyName = self.utils.parse_fast_policy_name_from_file(
                 configurationFile)
             if fastPolicyName is not None:
@@ -1627,7 +1621,7 @@ class EMCVMAXCommon(object):
             'OS-' + shortHostName + '-' + poolName + '-' + protocol + '-SG')
         maskingViewDict['maskingViewName'] = (
             'OS-' + shortHostName + '-' + poolName + '-' + protocol + '-MV')
-        # The portGroup is gotten from emc xml config file
+        # The portGroup is gotten from emc xml config file.
         maskingViewDict['pgGroupName'] = (
             self.utils.parse_file_to_get_port_group_name(
                 self.configuration.cinder_emc_config_file))
@@ -1683,8 +1677,8 @@ class EMCVMAXCommon(object):
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
         except Exception as e:
-            # rollback by deleting the volume if adding the volume to the
-            # default storage group were to fail
+            # Rollback by deleting the volume if adding the volume to the
+            # default storage group were to fail.
             LOG.error(_LE("Exception: %s") % six.text_type(e))
             errorMessage = (_(
                 "Rolling back %(volumeName)s by deleting it. ")
@@ -1882,7 +1876,7 @@ class EMCVMAXCommon(object):
         :param fastPolicyName: the FAST policy name(if it exists)
         :returns: rc
         """
-        # check if the source volume contains any meta devices
+        # Check if the source volume contains any meta devices.
         metaHeadInstanceName = self.utils.get_volume_meta_head(
             self.conn, sourceInstance.path)
 
@@ -1890,8 +1884,8 @@ class EMCVMAXCommon(object):
             return self._create_replica_and_delete_clone_relationship(
                 repServiceInstanceName, cloneVolume, sourceVolume,
                 sourceInstance, None, extraSpecs)
-        else:  # composite volume with meta device members
-            # check if the meta members' capacity
+        else:  # Composite volume with meta device members
+            # Check if the meta members' capacity.
             metaMemberInstanceNames = (
                 self.utils.get_meta_members_of_composite_volume(
                     self.conn, metaHeadInstanceName))
@@ -1924,7 +1918,7 @@ class EMCVMAXCommon(object):
                                  "Capacity in bits: %(capInBits)lu ")
                              % {'capInBits': volumeSizeInbits,
                                 'targetVol': baseTargetVolumeInstance.path})
-                else:  # create append volume
+                else:  # Create append volume.
                     targetVolumeName = "MetaVol"
                     volume = {'size': int(self.utils.convert_bits_to_gbs(
                         volumeSizeInbits))}
@@ -1942,8 +1936,8 @@ class EMCVMAXCommon(object):
                         raise exception.VolumeBackendAPIException(
                             data=exceptionMessage)
 
-                    # append the new unbound volume to the
-                    # base target composite volume
+                    # Append the new unbound volume to the
+                    # base target composite volume.
                     baseTargetVolumeInstance = self.utils.find_volume_instance(
                         self.conn, baseVolumeDict, baseVolumeName)
                     elementCompositionService = (
@@ -2001,14 +1995,14 @@ class EMCVMAXCommon(object):
         syncInstanceName, storageSystemName = (
             self._find_storage_sync_sv_sv(cloneVolume, sourceVolume))
 
-        # Remove the Clone relationship so it can be used as a regular lun
-        # 8 - Detach operation
+        # Remove the Clone relationship so it can be used as a regular lun.
+        # 8 - Detach operation.
         rc, job = self.provision.delete_clone_relationship(
             self.conn, repServiceInstanceName, syncInstanceName, cloneName,
             sourceName)
 
-        # if FAST enabled place clone volume or volume from snapshot to
-        # default storage group
+        # If FAST enabled place clone volume or volume from snapshot to
+        # default storage group.
         if extraSpecs[FASTPOLICY] is not None:
             LOG.debug("Adding volume: %(cloneName)s to default storage group "
                       "for FAST policy: %(fastPolicyName)s "
@@ -2032,7 +2026,8 @@ class EMCVMAXCommon(object):
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
 
-            # check if the clone/snapshot volume already part of the default sg
+            # Check if the clone/snapshot volume already part of the default
+            # sg.
             cloneInstance = self.utils.find_volume_instance(
                 self.conn, cloneDict, cloneName)
             inDefaultSG = self.fast.is_volume_in_default_SG(
@@ -2096,14 +2091,16 @@ class EMCVMAXCommon(object):
                     % {'volumename': volumeName,
                        'fastPolicyName': fastPolicyName})
                 LOG.warn(warnMessage)
-                # check if it is part of another storage group
-                self._pre_check_for_deletion(controllerConfigurationService,
-                                             volumeInstance.path, volumeName)
+                # Check if it is part of another storage group.
+                self._remove_device_from_storage_group(
+                    controllerConfigurationService, volumeInstance.path,
+                    volumeName)
 
         else:
-            # check if volume is part of a storage group
-            self._pre_check_for_deletion(controllerConfigurationService,
-                                         volumeInstance.path, volumeName)
+            # Check if volume is part of a storage group.
+            self._remove_device_from_storage_group(
+                controllerConfigurationService,
+                volumeInstance.path, volumeName)
 
         LOG.debug("Delete Volume: %(name)s  Method: EMCReturnToStoragePool "
                   "ConfigServic: %(service)s  TheElement: %(vol_instance)s "
@@ -2118,8 +2115,8 @@ class EMCVMAXCommon(object):
                 volumeName)
 
         except Exception as e:
-            # if we cannot successfully delete the volume then we want to
-            # return the volume to the default storage group
+            # If we cannot successfully delete the volume then we want to
+            # return the volume to the default storage group.
             if (fastPolicyName is not None and
                     defaultStorageGroupInstanceName is not None and
                     storageSystemName is not None):
@@ -2146,9 +2143,10 @@ class EMCVMAXCommon(object):
 
         return (rc, volumeName)
 
-    def _pre_check_for_deletion(self, controllerConfigurationService,
-                                volumeInstanceName, volumeName):
-        """Check is volume is part of a storage group prior to delete
+    def _remove_device_from_storage_group(
+            self, controllerConfigurationService, volumeInstanceName,
+            volumeName):
+        """Check is volume is part of a storage group prior to delete.
 
         Log a warning if volume is part of storage group
 
@@ -2157,20 +2155,21 @@ class EMCVMAXCommon(object):
         :param volumeName: volume name (string)
         """
 
-        storageGroupInstanceName = (
-            self.masking.get_associated_masking_group_from_device(
+        storageGroupInstanceNames = (
+            self.masking.get_associated_masking_groups_from_device(
                 self.conn, volumeInstanceName))
-        if storageGroupInstanceName is not None:
-            LOG.warn(_LW("Pre check for deletion "
-                         "Volume: %(volumeName)s is part of a storage group "
-                         "Attempting removal "
-                         "from %(storageGroupInstanceName)s ")
-                     % {'volumeName': volumeName,
-                        'storageGroupInstanceName': storageGroupInstanceName})
-            self.provision.remove_device_from_storage_group(
-                self.conn, controllerConfigurationService,
-                storageGroupInstanceName,
-                volumeInstanceName, volumeName)
+        if storageGroupInstanceNames:
+            LOG.warn(_LW(
+                "Pre check for deletion "
+                "Volume: %(volumeName)s is part of a storage group "
+                "Attempting removal from %(storageGroupInstanceNames)s"),
+                {'volumeName': volumeName,
+                 'storageGroupInstanceNames': storageGroupInstanceNames})
+            for storageGroupInstanceName in storageGroupInstanceNames:
+                self.provision.remove_device_from_storage_group(
+                    self.conn, controllerConfigurationService,
+                    storageGroupInstanceName,
+                    volumeInstanceName, volumeName)
 
     def _find_lunmasking_scsi_protocol_controller(self, storageSystemName,
                                                   connector):
@@ -2214,7 +2213,7 @@ class EMCVMAXCommon(object):
                                 self.conn, controllerInstanceName)
                             if instance is None:
                                 # Skip this controller as it doesn't exist
-                                # any more
+                                # any more.
                                 pass
                             else:
                                 foundControllerInstanceName = (
@@ -2273,7 +2272,7 @@ class EMCVMAXCommon(object):
                      'connector': connector,
                      'ctrl': ctrl})
 
-        # return 0 if masking view does not exist
+        # Return 0 if masking view does not exist.
         if ctrl is None:
             return 0
 
@@ -2301,12 +2300,14 @@ class EMCVMAXCommon(object):
         :returns: targetWwns, the target WWN list
         """
         targetWwns = []
-        mvInstanceName = self.get_masking_view_by_volume(volume)
-        targetWwns = self.masking.get_target_wwns(self.conn, mvInstanceName)
-        LOG.info(_LI("Target wwns in masking view %(maskingView)s: "
-                     "%(targetWwns)s"),
-                 {'maskingView': mvInstanceName,
-                  'targetWwns': str(targetWwns)})
+        mvInstanceName = self.get_masking_view_by_volume(volume, connector)
+        if mvInstanceName is not None:
+            targetWwns = self.masking.get_target_wwns(
+                self.conn, mvInstanceName)
+            LOG.info(_LI("Target wwns in masking view %(maskingView)s: "
+                         "%(targetWwns)s"),
+                     {'maskingView': mvInstanceName,
+                      'targetWwns': str(targetWwns)})
         return targetWwns
 
     def get_port_group_from_masking_view(self, maskingViewInstanceName):
@@ -2318,18 +2319,18 @@ class EMCVMAXCommon(object):
         return self.masking.get_port_group_from_masking_view(
             self.conn, maskingViewInstanceName)
 
-    def get_masking_view_by_volume(self, volume):
-        """Given volume, retrieve the masking view instance name.
+    def get_masking_view_by_volume(self, volume, connector):
+        """Given volume, retrieve the masking view instance name
 
         :param volume: the volume
-        :param mvInstanceName: masking view instance name
+        :param connector: the connector object
         :returns maskingviewInstanceName
         """
-        LOG.debug("Finding Masking View for volume %(volume)s"
-                  % {'volume': volume})
+        LOG.debug("Finding Masking View for volume %(volume)s",
+                  {'volume': volume})
         volumeInstance = self._find_lun(volume)
         return self.masking.get_masking_view_by_volume(
-            self.conn, volumeInstance)
+            self.conn, volumeInstance, connector)
 
     def get_masking_views_by_port_group(self, portGroupInstanceName):
         """Given port group, retrieve the masking view instance name.
@@ -2384,7 +2385,7 @@ class EMCVMAXCommon(object):
             self.conn, storageSystemName)
 
         # If FAST is intended to be used we must first check that the pool
-        # is associated with the correct storage tier
+        # is associated with the correct storage tier.
         if extraSpecs[FASTPOLICY] is not None:
             foundPoolInstanceName = self.fast.get_pool_associated_to_policy(
                 self.conn, extraSpecs[FASTPOLICY], extraSpecs[ARRAY],
@@ -2409,7 +2410,7 @@ class EMCVMAXCommon(object):
         # Now that we have already checked that the pool is associated with
         # the correct storage tier and the volume was successfully created
         # add the volume to the default storage group created for
-        # volumes in pools associated with this fast policy
+        # volumes in pools associated with this fast policy.
         if extraSpecs[FASTPOLICY]:
             LOG.info(_LI("Adding volume: %(volumeName)s to default storage "
                          "group for FAST policy: %(fastPolicyName)s ")
