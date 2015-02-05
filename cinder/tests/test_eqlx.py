@@ -341,8 +341,10 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                                     password="test",
                                     min_size=1,
                                     max_size=1)
-        self.mock_object(sshpool.item(), 'close')
         self.driver.sshpool = mock.Mock(return_value=sshpool)
+        ssh = mock.Mock(paramiko.SSHClient)
+        self.driver.sshpool.item().__enter__ = mock.Mock(return_value=ssh)
+        self.driver.sshpool.item().__exit__ = mock.Mock(return_value=False)
         # now call the execute
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver._eql_execute, "fake command")
@@ -363,8 +365,10 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                                     password="test",
                                     min_size=1,
                                     max_size=1)
-        self.mock_object(sshpool.item(), 'close')
         self.driver.sshpool = mock.Mock(return_value=sshpool)
+        ssh = mock.Mock(paramiko.SSHClient)
+        self.driver.sshpool.item().__enter__ = mock.Mock(return_value=ssh)
+        self.driver.sshpool.item().__exit__ = mock.Mock(return_value=False)
         # mocks for _ssh_execute and _get_output
         self.mock_object(self.driver, '_get_output',
                          mock.Mock(side_effect=exception.
