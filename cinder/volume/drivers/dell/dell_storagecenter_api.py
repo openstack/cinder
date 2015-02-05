@@ -64,6 +64,9 @@ class HttpClient(object):
         self.header = {}
         self.header['Content-Type'] = 'application/json; charset=utf-8'
         self.header['x-dell-api-version'] = '1.5'
+        # we don't verify.  If the end user has a real SSL cert rather than
+        # a self signed cert they could turn this on
+        self.verify = False
 
     def __enter__(self):
         return self
@@ -78,7 +81,7 @@ class HttpClient(object):
         return self.session.get(
             self.__formatUrl(url),
             headers=self.header,
-            verify=False)
+            verify=self.verify)
 
     def post(self, url, payload):
         return self.session.post(
@@ -86,7 +89,7 @@ class HttpClient(object):
             data=json.dumps(payload,
                             ensure_ascii=False).encode('utf-8'),
             headers=self.header,
-            verify=False)
+            verify=self.verify)
 
     def put(self, url, payload):
         return self.session.put(
@@ -94,13 +97,13 @@ class HttpClient(object):
             data=json.dumps(payload,
                             ensure_ascii=False).encode('utf-8'),
             headers=self.header,
-            verify=False)
+            verify=self.verify)
 
     def delete(self, url):
         return self.session.delete(
             self.__formatUrl(url),
             headers=self.header,
-            verify=False)
+            verify=self.verify)
 
 
 class StorageCenterApiHelper(object):
@@ -131,6 +134,8 @@ class StorageCenterApi(object):
     Handles calls to EnterpriseManager via the REST API interface.
     '''
 
+    APIVERSION = '1.0.1'
+
     def __init__(self, host, port, user, password):
         self.notes = 'Created by Dell Cinder Driver'
         self.client = HttpClient(host,
@@ -158,20 +163,20 @@ class StorageCenterApi(object):
 
     def _get_result(self, blob, attribute, value):
         rsp = None
-        try:
-            content = blob.json()
+        content = self._get_json(blob)
+        if content is not None:
             # we can get a list or a dict or nothing
             if isinstance(content, list):
                 for r in content:
                     if attribute is None or r.get(attribute) == value:
                         rsp = r
                         break
-            else:
+            elif isinstance(content, dict):
                 if attribute is None or content.get(attribute) == value:
                     rsp = content
-        except AttributeError:
-            LOG.error(_LE('Invalid return blob: %s'),
-                      blob)
+            elif attribute is None:
+                rsp = content
+
         if rsp is None:
             LOG.debug('Unable to find result where %(attr)s is %(val)s',
                       {'attr': attribute,
@@ -198,8 +203,11 @@ class StorageCenterApi(object):
 
     def open_connection(self):
         # Authenticate against EM
+        payload = {}
+        payload['Application'] = 'Cinder REST Driver'
+        payload['ApplicationVersion'] = self.APIVERSION
         r = self.client.post('ApiConnection/Login',
-                             {})
+                             payload)
         if r.status_code != 200:
             LOG.error(_LE('Login error: %(c)d %(r)s'),
                       {'c': r.status_code,
@@ -439,7 +447,7 @@ class StorageCenterApi(object):
                      'c': r.status_code,
                      'r': r.reason})
             # json return should be true or false
-            return r.json()
+            return self._get_json(r)
         LOG.warning(_LW('delete_volume: unable to find volume %s'),
                     name)
         # If we can't find the volume then it is effectively gone.
@@ -489,7 +497,7 @@ class StorageCenterApi(object):
         r = self.client.post('StorageCenter/ScServerOperatingSystem/GetList',
                              pf.payload)
         if r.status_code == 200:
-            oslist = r.json()
+            oslist = self._get_json(r)
             for srvos in oslist:
                 name = srvos.get('name', 'nope')
                 if name.lower() == osname.lower():
@@ -582,6 +590,35 @@ class StorageCenterApi(object):
         '''
         scserver = None
         # we search for our server by first finding our HBA
+        hba = self._find_serverhba(ssn, instance_name)
+        # once created hbas stay in the system.  So it isn't enough
+        # that we found one it actually has to be attached to a
+        # server.
+        if hba is not None and hba.get('server') is not None:
+            pf = PayloadFilter()
+            pf.append('scSerialNumber', ssn)
+            pf.append('instanceId', self._get_id(hba['server']))
+            r = self.client.post('StorageCenter/ScServer/GetList',
+                                 pf.payload)
+            if r.status_code != 200:
+                LOG.error(_LE('ScServer error: %(c)d %(r)s'),
+                          {'c': r.status_code,
+                           'r': r.reason})
+            else:
+                scserver = self._first_result(r)
+        if scserver is None:
+            LOG.debug('Server (%s) not found.',
+                      instance_name)
+        return scserver
+
+    def _find_serverhba(self, ssn, instance_name):
+        '''Hunts for a sc server HBA by looking for an HBA with the
+        server's IQN or wwn.
+
+        If found, the sc server HBA is returned.
+        '''
+        scserverhba = None
+        # we search for our server by first finding our HBA
         pf = PayloadFilter()
         pf.append('scSerialNumber', ssn)
         pf.append('instanceName', instance_name)
@@ -592,26 +629,8 @@ class StorageCenterApi(object):
                       {'c': r.status_code,
                        'r': r.reason})
         else:
-            hba = self._first_result(r)
-            # once created hbas stay in the system.  So it isn't enough
-            # that we found one it actually has to be attached to a
-            # server.
-            if hba is not None and hba.get('server') is not None:
-                pf = PayloadFilter()
-                pf.append('scSerialNumber', ssn)
-                pf.append('instanceId', self._get_id(hba['server']))
-                r = self.client.post('StorageCenter/ScServer/GetList',
-                                     pf.payload)
-                if r.status_code != 200:
-                    LOG.error(_LE('ScServer error: %(c)d %(r)s'),
-                              {'c': r.status_code,
-                               'r': r.reason})
-                else:
-                    scserver = self._first_result(r)
-        if scserver is None:
-            LOG.debug('Server (%s) not found.',
-                      instance_name)
-        return scserver
+            scserverhba = self._first_result(r)
+        return scserverhba
 
     def _find_domain(self, cportid, domainip):
         '''Returns the fault domain which a given controller port can
@@ -620,7 +639,7 @@ class StorageCenterApi(object):
         r = self.client.get('StorageCenter/ScControllerPort/%s/FaultDomainList'
                             % cportid)
         if r.status_code == 200:
-            domains = r.json()
+            domains = self._get_json(r)
             # wiffle through the domains looking for our
             # configured ip
             for domain in domains:
@@ -643,7 +662,7 @@ class StorageCenterApi(object):
         r = self.client.get('StorageCenter/ScServer/%s/HbaList'
                             % self._get_id(scserver))
         if r.status_code == 200:
-            hbas = r.json()
+            hbas = self._get_json(r)
             for hba in hbas:
                 wwn = hba.get('instanceName')
                 if hba.get('portType') == 'FibreChannel' and\
@@ -660,7 +679,7 @@ class StorageCenterApi(object):
         r = self.client.get('StorageCenter/ScServer/%s/MappingList'
                             % self._get_id(scserver))
         if r.status_code == 200:
-            mappings = r.json()
+            mappings = self._get_json(r)
             return len(mappings)
         # Panic mildly but do not return 0.
         return -1
@@ -675,7 +694,7 @@ class StorageCenterApi(object):
             r = self.client.get('StorageCenter/ScVolume/%s/MappingList'
                                 % self._get_id(scvolume))
             if r.status_code == 200:
-                mappings = r.json()
+                mappings = self._get_json(r)
             else:
                 LOG.debug('MappingList error: %(c)d %(r)s',
                           {'c': r.status_code,
@@ -907,7 +926,7 @@ class StorageCenterApi(object):
         r = self.client.get('StorageCenter/ScVolume/%s/ReplayList'
                             % self._get_id(scvolume))
         try:
-            content = r.json()
+            content = self._get_json(r)
             # this will be a list.  If it isn't bail
             if isinstance(content, list):
                 for r in content:
@@ -1019,6 +1038,7 @@ class StorageCenterApi(object):
         r = self.client.post('StorageCenter/ScVolume/%s/ExpandToSize'
                              % self._get_id(scvolume),
                              payload)
+        vol = None
         if r.status_code == 200:
             vol = self._get_json(r)
         else:
