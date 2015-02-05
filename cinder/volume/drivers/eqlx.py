@@ -37,26 +37,31 @@ LOG = logging.getLogger(__name__)
 eqlx_opts = [
     cfg.StrOpt('eqlx_group_name',
                default='group-0',
-               help='Group name to use for creating volumes'),
+               help='Group name to use for creating volumes. Defaults to '
+                    '"group-0".'),
     cfg.IntOpt('eqlx_cli_timeout',
                default=30,
-               help='Timeout for the Group Manager cli command execution'),
+               help='Timeout for the Group Manager cli command execution. '
+                    'Default is 30.'),
     cfg.IntOpt('eqlx_cli_max_retries',
                default=5,
-               help='Maximum retry count for reconnection'),
+               help='Maximum retry count for reconnection. Default is 5.'),
     cfg.BoolOpt('eqlx_use_chap',
                 default=False,
-                help='Use CHAP authentication for targets?'),
+                help='Use CHAP authentication for targets. Defaults to '
+                     '"False".'),
     cfg.StrOpt('eqlx_chap_login',
                default='admin',
-               help='Existing CHAP account name'),
+               help='Existing CHAP account name. Defaults to "admin".'),
     cfg.StrOpt('eqlx_chap_password',
                default='password',
-               help='Password for specified CHAP account name',
+               help='Password for specified CHAP account name. Defaults '
+                    'to "password".',
                secret=True),
     cfg.StrOpt('eqlx_pool',
                default='default',
-               help='Pool in which volumes will be created')
+               help='Pool in which volumes will be created. Defaults '
+                    'to "default".')
 ]
 
 
