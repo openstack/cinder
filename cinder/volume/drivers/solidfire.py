@@ -147,6 +147,23 @@ class SolidFireDriver(SanISCSIDriver):
             self._update_cluster_status()
         except exception.SolidFireAPIException:
             pass
+        if self.configuration.sf_allow_template_caching:
+            account = self.configuration.sf_template_account_name
+            self._create_template_account(account)
+
+    def _create_template_account(self, account_name):
+        chap_secret = self._generate_random_string(12)
+        params = {'username': account_name,
+                  'initiatorSecret': chap_secret,
+                  'targetSecret': chap_secret,
+                  'attributes': {}}
+        try:
+            self._issue_api_request('AddAccount', params)
+        except exception.SolidFireAPIException as ex:
+            if 'DuplicateUsername' in ex.msg:
+                pass
+            else:
+                raise
 
     def _build_endpoint_info(self, **kwargs):
         endpoint = {}
@@ -481,10 +498,9 @@ class SolidFireDriver(SanISCSIDriver):
             if uuid in v['name'] or uuid in alt_id:
                 found_count += 1
                 sf_volref = v
-                LOG.debug("Mapped SolidFire volumeID %(sfid)s "
-                          "to cinder ID %(uuid)s." %
-                          {'sfid': v['volumeID'],
-                           'uuid': uuid})
+                LOG.debug("Mapped SolidFire volumeID %s "
+                          "to cinder ID %s.",
+                          v['volumeID'], uuid)
 
         if found_count == 0:
             # NOTE(jdg): Previously we would raise here, but there are cases
@@ -564,7 +580,7 @@ class SolidFireDriver(SanISCSIDriver):
 
         self._detach_volume(context, attach_info, tvol, properties)
         sf_vol = self._get_sf_volume(image_id, params)
-        LOG.debug('Successfully created SolidFire Image Template ',
+        LOG.debug('Successfully created SolidFire Image Template '
                   'for image-id: %s', image_id)
         return sf_vol
 
@@ -576,8 +592,9 @@ class SolidFireDriver(SanISCSIDriver):
         # If it's out of date, just delete it and we'll create a new one
         # Any other case we don't care and just return without doing anything
 
-        account = self.configuration.sf_template_account_name
-        sfaccount = self._get_sfaccount(account)
+        sfaccount = self._get_sfaccount(
+            self.configuration.sf_template_account_name)
+
         params = {'accountID': sfaccount['accountID']}
         sf_vol = self._get_sf_volume(image_meta['id'], params)
         if sf_vol is None:
