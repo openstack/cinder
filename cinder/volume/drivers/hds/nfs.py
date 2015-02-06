@@ -81,14 +81,14 @@ def _read_config(xml_config_file):
     """
 
     if not os.access(xml_config_file, os.R_OK):
-        raise exception.NotFound(_LE("Can't open config file: %s"),
-                                 xml_config_file)
+        msg = (_("Can't open config file: %s") % xml_config_file)
+        raise exception.NotFound(message=msg)
 
     try:
         root = ETree.parse(xml_config_file).getroot()
     except Exception:
-        raise exception.ConfigNotFound(_LE("Error parsing config file: %s"),
-                                       xml_config_file)
+        msg = (_("Error parsing config file: %s") % xml_config_file)
+        raise exception.ConfigNotFound(message=msg)
 
     # mandatory parameters
     config = {}

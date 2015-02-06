@@ -15,10 +15,12 @@
 #
 
 import os
+from StringIO import StringIO
 import tempfile
 
 import mock
 
+from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
@@ -42,6 +44,33 @@ HNASCONF = """<?xml version="1.0" encoding="UTF-8" ?>
   <svc_1>
     <volume_type>silver</volume_type>
     <hdp>172.17.39.133:/cinder</hdp>
+  </svc_1>
+</config>
+"""
+
+HNAS_WRONG_CONF1 = """<?xml version="1.0" encoding="UTF-8" ?>
+<config>
+  <hnas_cmd>ssc</hnas_cmd>
+  <mgmt_ip0>172.17.44.15</mgmt_ip0>
+  <username>supervisor</username>
+  <password>supervisor</password>
+    <volume_type>default</volume_type>
+    <hdp>172.17.39.132:/cinder</hdp>
+  </svc_0>
+</config>
+"""
+
+HNAS_WRONG_CONF2 = """<?xml version="1.0" encoding="UTF-8" ?>
+<config>
+  <hnas_cmd>ssc</hnas_cmd>
+  <mgmt_ip0>172.17.44.15</mgmt_ip0>
+  <username>supervisor</username>
+  <password>supervisor</password>
+  <svc_0>
+    <volume_type>default</volume_type>
+  </svc_0>
+  <svc_1>
+    <volume_type>silver</volume_type>
   </svc_1>
 </config>
 """
@@ -134,6 +163,26 @@ class HDSNFSDriverTest(test.TestCase):
     def _clean(self):
         os.remove(self.config_file)
         os.remove(self.shares_file)
+
+    @mock.patch('__builtin__.open')
+    @mock.patch.object(os, 'access')
+    def test_read_config(self, m_access, m_open):
+        # Test exception when file is not found
+        m_access.return_value = False
+        m_open.return_value = StringIO(HNASCONF)
+        self.assertRaises(exception.NotFound, nfs._read_config, '')
+
+        # Test exception when config file has parsing errors
+        # due to missing <svc> tag
+        m_access.return_value = True
+        m_open.return_value = StringIO(HNAS_WRONG_CONF1)
+        self.assertRaises(exception.ConfigNotFound, nfs._read_config, '')
+
+        # Test exception when config file has parsing errors
+        # due to missing <hdp> tag
+        m_open.return_value = StringIO(HNAS_WRONG_CONF2)
+        self.configuration.hds_hnas_iscsi_config_file = ''
+        self.assertRaises(exception.ParameterNotFound, nfs._read_config, '')
 
     @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol')
     @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')

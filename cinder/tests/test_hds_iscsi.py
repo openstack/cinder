@@ -19,10 +19,12 @@ Self test for Hitachi Unified Storage (HUS-HNAS) platform.
 """
 
 import os
+from StringIO import StringIO
 import tempfile
 
 import mock
 
+from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
@@ -45,6 +47,33 @@ HNASCONF = """<?xml version="1.0" encoding="UTF-8" ?>
     <volume_type>silver</volume_type>
     <iscsi_ip>172.17.39.133</iscsi_ip>
     <hdp>fs2</hdp>
+  </svc_1>
+</config>
+"""
+
+HNAS_WRONG_CONF1 = """<?xml version="1.0" encoding="UTF-8" ?>
+<config>
+  <hnas_cmd>ssc</hnas_cmd>
+  <mgmt_ip0>172.17.44.15</mgmt_ip0>
+  <username>supervisor</username>
+  <password>supervisor</password>
+    <volume_type>default</volume_type>
+    <hdp>172.17.39.132:/cinder</hdp>
+  </svc_0>
+</config>
+"""
+
+HNAS_WRONG_CONF2 = """<?xml version="1.0" encoding="UTF-8" ?>
+<config>
+  <hnas_cmd>ssc</hnas_cmd>
+  <mgmt_ip0>172.17.44.15</mgmt_ip0>
+  <username>supervisor</username>
+  <password>supervisor</password>
+  <svc_0>
+    <volume_type>default</volume_type>
+  </svc_0>
+  <svc_1>
+    <volume_type>silver</volume_type>
   </svc_1>
 </config>
 """
@@ -290,6 +319,26 @@ class HNASiSCSIDriverTest(test.TestCase):
         vol = _VOLUME.copy()
         vol['provider_location'] = loc['provider_location']
         return vol
+
+    @mock.patch('__builtin__.open')
+    @mock.patch.object(os, 'access')
+    def test_read_config(self, m_access, m_open):
+        # Test exception when file is not found
+        m_access.return_value = False
+        m_open.return_value = StringIO(HNASCONF)
+        self.assertRaises(exception.NotFound, iscsi._read_config, '')
+
+        # Test exception when config file has parsing errors
+        # due to missing <svc> tag
+        m_access.return_value = True
+        m_open.return_value = StringIO(HNAS_WRONG_CONF1)
+        self.assertRaises(exception.ConfigNotFound, iscsi._read_config, '')
+
+        # Test exception when config file has parsing errors
+        # due to missing <hdp> tag
+        m_open.return_value = StringIO(HNAS_WRONG_CONF2)
+        self.configuration.hds_hnas_iscsi_config_file = ''
+        self.assertRaises(exception.ParameterNotFound, iscsi._read_config, '')
 
     def test_create_volume(self):
         loc = self.driver.create_volume(_VOLUME)
