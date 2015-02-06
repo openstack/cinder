@@ -1241,7 +1241,8 @@ class BrickUtils(test.TestCase):
         mock_conf.my_ip = '1.2.3.4'
         output = utils.brick_get_connector_properties()
         mock_helper.assert_called_once_with()
-        mock_get.assert_called_once_with(mock_helper.return_value, '1.2.3.4')
+        mock_get.assert_called_once_with(mock_helper.return_value, '1.2.3.4',
+                                         False, False)
         self.assertEqual(mock_get.return_value, output)
 
     @mock.patch('cinder.brick.initiator.connector.InitiatorConnector.factory')

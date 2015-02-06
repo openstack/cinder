@@ -13,21 +13,76 @@
 #    under the License.
 
 import os.path
+import socket
 import string
 import tempfile
 import time
 
+import mock
 from oslo_concurrency import processutils as putils
+from oslo_config import cfg
 
 from cinder.brick import exception
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
+from cinder.brick.initiator import linuxfc
 from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import test
 
 LOG = logging.getLogger(__name__)
+CONF = cfg.CONF
+
+
+class ConnectorUtilsTestCase(test.TestCase):
+
+    @mock.patch.object(socket, 'gethostname', return_value='fakehost')
+    @mock.patch.object(connector.ISCSIConnector, 'get_initiator',
+                       return_value='fakeinitiator')
+    @mock.patch.object(linuxfc.LinuxFibreChannel, 'get_fc_wwpns',
+                       return_value=None)
+    @mock.patch.object(linuxfc.LinuxFibreChannel, 'get_fc_wwnns',
+                       return_value=None)
+    def _test_brick_get_connector_properties(self, multipath,
+                                             enforce_multipath,
+                                             multipath_result,
+                                             mock_wwnns, mock_wwpns,
+                                             mock_initiator, mock_gethostname):
+        props_actual = connector.get_connector_properties('sudo',
+                                                          CONF.my_ip,
+                                                          multipath,
+                                                          enforce_multipath)
+        props = {'initiator': 'fakeinitiator',
+                 'host': 'fakehost',
+                 'ip': CONF.my_ip,
+                 'multipath': multipath_result}
+        self.assertEqual(props, props_actual)
+
+    def test_brick_get_connector_properties(self):
+        self._test_brick_get_connector_properties(False, False, False)
+
+    @mock.patch.object(putils, 'execute')
+    def test_brick_get_connector_properties_multipath(self, mock_execute):
+        self._test_brick_get_connector_properties(True, True, True)
+        mock_execute.assert_called_once_with('multipathd', 'show', 'status',
+                                             run_as_root=True,
+                                             root_helper='sudo')
+
+    @mock.patch.object(putils, 'execute',
+                       side_effect=putils.ProcessExecutionError)
+    def test_brick_get_connector_properties_fallback(self, mock_execute):
+        self._test_brick_get_connector_properties(True, False, False)
+        mock_execute.assert_called_once_with('multipathd', 'show', 'status',
+                                             run_as_root=True,
+                                             root_helper='sudo')
+
+    @mock.patch.object(putils, 'execute',
+                       side_effect=putils.ProcessExecutionError)
+    def test_brick_get_connector_properties_raise(self, mock_execute):
+        self.assertRaises(putils.ProcessExecutionError,
+                          self._test_brick_get_connector_properties,
+                          True, True, None)
 
 
 class ConnectorTestCase(test.TestCase):
@@ -117,6 +172,8 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
         super(ISCSIConnectorTestCase, self).setUp()
         self.connector = connector.ISCSIConnector(
             None, execute=self.fake_execute, use_multipath=False)
+        self.connector_with_multipath = connector.ISCSIConnector(
+            None, execute=self.fake_execute, use_multipath=True)
         self.stubs.Set(self.connector._linuxscsi,
                        'get_name_from_path', lambda x: "/dev/sdb")
 
@@ -128,6 +185,17 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                 'target_portal': location,
                 'target_iqn': iqn,
                 'target_lun': 1,
+            }
+        }
+
+    def iscsi_connection_multipath(self, volume, locations, iqns, luns):
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': {
+                'volume_id': volume['id'],
+                'target_portals': locations,
+                'target_iqns': iqns,
+                'target_luns': luns,
             }
         }
 
@@ -200,8 +268,6 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
         vol = {'id': 1, 'name': name}
         connection_properties = self.iscsi_connection(vol, location, iqn)
 
-        self.connector_with_multipath =\
-            connector.ISCSIConnector(None, use_multipath=True)
         self.stubs.Set(self.connector_with_multipath,
                        '_run_iscsiadm_bare',
                        lambda *args, **kwargs: "%s %s" % (location, iqn))
@@ -226,6 +292,116 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
         expected_result = {'path': 'iqn.2010-10.org.openstack:volume-00000001',
                            'type': 'block'}
         self.assertEqual(result, expected_result)
+
+    @mock.patch.object(os.path, 'exists', return_value=True)
+    @mock.patch.object(host_driver.HostDriver, 'get_all_block_devices')
+    @mock.patch.object(connector.ISCSIConnector, '_rescan_multipath')
+    @mock.patch.object(connector.ISCSIConnector, '_run_multipath')
+    @mock.patch.object(connector.ISCSIConnector, '_get_multipath_device_name')
+    @mock.patch.object(connector.ISCSIConnector, '_get_multipath_iqn')
+    def test_connect_volume_with_multiple_portals(
+            self, mock_get_iqn, mock_device_name, mock_run_multipath,
+            mock_rescan_multipath, mock_devices, mock_exists):
+        location1 = '10.0.2.15:3260'
+        location2 = '10.0.3.15:3260'
+        name1 = 'volume-00000001-1'
+        name2 = 'volume-00000001-2'
+        iqn1 = 'iqn.2010-10.org.openstack:%s' % name1
+        iqn2 = 'iqn.2010-10.org.openstack:%s' % name2
+        fake_multipath_dev = '/dev/mapper/fake-multipath-dev'
+        vol = {'id': 1, 'name': name1}
+        connection_properties = self.iscsi_connection_multipath(
+            vol, [location1, location2], [iqn1, iqn2], [1, 2])
+        devs = ['/dev/disk/by-path/ip-%s-iscsi-%s-lun-1' % (location1, iqn1),
+                '/dev/disk/by-path/ip-%s-iscsi-%s-lun-2' % (location2, iqn2)]
+        mock_devices.return_value = devs
+        mock_device_name.return_value = fake_multipath_dev
+        mock_get_iqn.return_value = [iqn1, iqn2]
+
+        result = self.connector_with_multipath.connect_volume(
+            connection_properties['data'])
+        expected_result = {'path': fake_multipath_dev, 'type': 'block'}
+        cmd_format = 'iscsiadm -m node -T %s -p %s --%s'
+        expected_commands = [cmd_format % (iqn1, location1, 'login'),
+                             cmd_format % (iqn2, location2, 'login')]
+        self.assertEqual(expected_result, result)
+        for command in expected_commands:
+            self.assertIn(command, self.cmds)
+        mock_device_name.assert_called_once_with(devs[0])
+
+        self.cmds = []
+        self.connector_with_multipath.disconnect_volume(
+            connection_properties['data'], result)
+        expected_commands = [cmd_format % (iqn1, location1, 'logout'),
+                             cmd_format % (iqn2, location2, 'logout')]
+        for command in expected_commands:
+            self.assertIn(command, self.cmds)
+
+    @mock.patch.object(os.path, 'exists')
+    @mock.patch.object(host_driver.HostDriver, 'get_all_block_devices')
+    @mock.patch.object(connector.ISCSIConnector, '_rescan_multipath')
+    @mock.patch.object(connector.ISCSIConnector, '_run_multipath')
+    @mock.patch.object(connector.ISCSIConnector, '_get_multipath_device_name')
+    @mock.patch.object(connector.ISCSIConnector, '_get_multipath_iqn')
+    @mock.patch.object(connector.ISCSIConnector, '_run_iscsiadm')
+    def test_connect_volume_with_multiple_portals_primary_error(
+            self, mock_iscsiadm, mock_get_iqn, mock_device_name,
+            mock_run_multipath, mock_rescan_multipath, mock_devices,
+            mock_exists):
+        location1 = '10.0.2.15:3260'
+        location2 = '10.0.3.15:3260'
+        name1 = 'volume-00000001-1'
+        name2 = 'volume-00000001-2'
+        iqn1 = 'iqn.2010-10.org.openstack:%s' % name1
+        iqn2 = 'iqn.2010-10.org.openstack:%s' % name2
+        fake_multipath_dev = '/dev/mapper/fake-multipath-dev'
+        vol = {'id': 1, 'name': name1}
+        connection_properties = self.iscsi_connection_multipath(
+            vol, [location1, location2], [iqn1, iqn2], [1, 2])
+        dev1 = '/dev/disk/by-path/ip-%s-iscsi-%s-lun-1' % (location1, iqn1)
+        dev2 = '/dev/disk/by-path/ip-%s-iscsi-%s-lun-2' % (location2, iqn2)
+
+        def fake_run_iscsiadm(iscsi_properties, iscsi_command, **kwargs):
+            if iscsi_properties['target_portal'] == location1:
+                if iscsi_command == ('--login',):
+                    raise putils.ProcessExecutionError(None, None, 21)
+            return mock.DEFAULT
+
+        mock_exists.side_effect = lambda x: x != dev1
+        mock_devices.return_value = [dev2]
+        mock_device_name.return_value = fake_multipath_dev
+        mock_get_iqn.return_value = [iqn2]
+        mock_iscsiadm.side_effect = fake_run_iscsiadm
+
+        props = connection_properties['data'].copy()
+        result = self.connector_with_multipath.connect_volume(
+            connection_properties['data'])
+
+        expected_result = {'path': fake_multipath_dev, 'type': 'block'}
+        self.assertEqual(expected_result, result)
+        mock_device_name.assert_called_once_with(dev2)
+        props['target_portal'] = location1
+        props['target_iqn'] = iqn1
+        mock_iscsiadm.assert_any_call(props, ('--login',),
+                                      check_exit_code=[0, 255])
+        props['target_portal'] = location2
+        props['target_iqn'] = iqn2
+        mock_iscsiadm.assert_any_call(props, ('--login',),
+                                      check_exit_code=[0, 255])
+
+        mock_iscsiadm.reset_mock()
+        self.connector_with_multipath.disconnect_volume(
+            connection_properties['data'], result)
+
+        props = connection_properties['data'].copy()
+        props['target_portal'] = location1
+        props['target_iqn'] = iqn1
+        mock_iscsiadm.assert_any_call(props, ('--logout',),
+                                      check_exit_code=[0, 21, 255])
+        props['target_portal'] = location2
+        props['target_iqn'] = iqn2
+        mock_iscsiadm.assert_any_call(props, ('--logout',),
+                                      check_exit_code=[0, 21, 255])
 
     def test_connect_volume_with_not_found_device(self):
         self.stubs.Set(os.path, 'exists', lambda x: False)

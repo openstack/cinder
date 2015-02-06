@@ -116,9 +116,13 @@ class TgtAdm(iscsi.ISCSITarget):
             LOG.debug('StdOut from recreate backing lun: %s' % out)
             LOG.debug('StdErr from recreate backing lun: %s' % err)
 
-    def _iscsi_location(self, ip, target, iqn, lun=None):
-        return "%s:%s,%s %s %s" % (ip, self.configuration.iscsi_port,
-                                   target, iqn, lun)
+    def _iscsi_location(self, ip, target, iqn, lun=None, ip_secondary=None):
+        ip_secondary = ip_secondary or []
+        port = self.configuration.iscsi_port
+        portals = map(lambda x: "%s:%s" % (x, port), [ip] + ip_secondary)
+        return ("%(portals)s,%(target)s %(iqn)s %(lun)s"
+                % ({'portals': ";".join(portals),
+                    'target': target, 'iqn': iqn, 'lun': lun}))
 
     def _get_iscsi_target(self, context, vol_id):
         return 0
@@ -321,7 +325,8 @@ class TgtAdm(iscsi.ISCSITarget):
                                        iscsi_write_cache=iscsi_write_cache)
         data = {}
         data['location'] = self._iscsi_location(
-            self.configuration.iscsi_ip_address, tid, iscsi_name, lun)
+            self.configuration.iscsi_ip_address, tid, iscsi_name, lun,
+            self.configuration.iscsi_secondary_ip_addresses)
         LOG.debug('Set provider_location to: %s', data['location'])
         data['auth'] = self._iscsi_authentication(
             'CHAP', chap_username, chap_password)
@@ -353,7 +358,9 @@ class TgtAdm(iscsi.ISCSITarget):
         self.remove_iscsi_target(iscsi_target, 0, volume['id'], volume['name'])
 
     def initialize_connection(self, volume, connector):
-        iscsi_properties = self._get_iscsi_properties(volume)
+        iscsi_properties = self._get_iscsi_properties(volume,
+                                                      connector.get(
+                                                          'multipath'))
         return {
             'driver_volume_type': self.iscsi_protocol,
             'data': iscsi_properties

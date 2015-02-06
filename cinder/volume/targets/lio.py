@@ -173,7 +173,9 @@ class LioAdm(TgtAdm):
             raise exception.ISCSITargetAttachFailed(
                 volume_id=volume['id'])
 
-        iscsi_properties = self._get_iscsi_properties(volume)
+        iscsi_properties = self._get_iscsi_properties(volume,
+                                                      connector.get(
+                                                          'multipath'))
 
         # FIXME(jdg): For LIO the target_lun is 0, other than that all data
         # is the same as it is for tgtadm, just modify it here
