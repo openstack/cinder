@@ -165,14 +165,14 @@ class RemoteFsDriverTestCase(test.TestCase):
             secure_file_permissions,
             nas_mount, is_new_install)
 
-        self.assertEqual(nas_option, 'true')
+        self.assertEqual('true', nas_option)
 
         secure_file_operations = 'auto'
         nas_option = drv._determine_nas_security_option_setting(
             secure_file_operations,
             nas_mount, is_new_install)
 
-        self.assertEqual(nas_option, 'true')
+        self.assertEqual('true', nas_option)
 
     @mock.patch('os.path.join')
     @mock.patch('os.path.isfile')
@@ -201,14 +201,14 @@ class RemoteFsDriverTestCase(test.TestCase):
             secure_file_permissions,
             nas_mount, is_new_install)
 
-        self.assertEqual(nas_option, 'true')
+        self.assertEqual('true', nas_option)
 
         secure_file_operations = 'auto'
         nas_option = drv._determine_nas_security_option_setting(
             secure_file_operations,
             nas_mount, is_new_install)
 
-        self.assertEqual(nas_option, 'true')
+        self.assertEqual('true', nas_option)
 
     @mock.patch('os.path.join')
     @mock.patch('os.path.isfile')
@@ -236,14 +236,14 @@ class RemoteFsDriverTestCase(test.TestCase):
             secure_file_permissions,
             nas_mount, is_new_install)
 
-        self.assertEqual(nas_option, 'false')
+        self.assertEqual('false', nas_option)
 
         secure_file_operations = 'auto'
         nas_option = drv._determine_nas_security_option_setting(
             secure_file_operations,
             nas_mount, is_new_install)
 
-        self.assertEqual(nas_option, 'false')
+        self.assertEqual('false', nas_option)
 
     def test_determine_nas_security_options_when_admin_set_true(self):
         """Test the setting of the NAS Security Option
@@ -263,14 +263,14 @@ class RemoteFsDriverTestCase(test.TestCase):
             secure_file_permissions,
             nas_mount, is_new_install)
 
-        self.assertEqual(nas_option, 'true')
+        self.assertEqual('true', nas_option)
 
         secure_file_operations = 'true'
         nas_option = drv._determine_nas_security_option_setting(
             secure_file_operations,
             nas_mount, is_new_install)
 
-        self.assertEqual(nas_option, 'true')
+        self.assertEqual('true', nas_option)
 
     def test_determine_nas_security_options_when_admin_set_false(self):
         """Test the setting of the NAS Security Option
@@ -290,14 +290,14 @@ class RemoteFsDriverTestCase(test.TestCase):
             secure_file_permissions,
             nas_mount, is_new_install)
 
-        self.assertEqual(nas_option, 'false')
+        self.assertEqual('false', nas_option)
 
         secure_file_operations = 'false'
         nas_option = drv._determine_nas_security_option_setting(
             secure_file_operations,
             nas_mount, is_new_install)
 
-        self.assertEqual(nas_option, 'false')
+        self.assertEqual('false', nas_option)
 
     @mock.patch.object(remotefs, 'LOG')
     def test_set_nas_security_options(self, LOG):
@@ -311,9 +311,9 @@ class RemoteFsDriverTestCase(test.TestCase):
 
         drv.set_nas_security_options(is_new_install)
 
-        self.assertEqual(drv.configuration.nas_secure_file_operations, 'false')
-        self.assertEqual(drv.configuration.nas_secure_file_permissions,
-                         'false')
+        self.assertEqual('false', drv.configuration.nas_secure_file_operations)
+        self.assertEqual('false',
+                         drv.configuration.nas_secure_file_permissions)
         self.assertTrue(LOG.warn.called)
 
     def test_secure_file_operations_enabled_true(self):
@@ -532,10 +532,10 @@ class NfsDriverTestCase(test.TestCase):
 
         self.assertIn(self.TEST_NFS_EXPORT1, drv.shares)
         self.assertIn(self.TEST_NFS_EXPORT2, drv.shares)
-        self.assertEqual(len(drv.shares), 2)
+        self.assertEqual(2, len(drv.shares))
 
-        self.assertEqual(drv.shares[self.TEST_NFS_EXPORT2],
-                         self.TEST_NFS_EXPORT2_OPTIONS)
+        self.assertEqual(self.TEST_NFS_EXPORT2_OPTIONS,
+                         drv.shares[self.TEST_NFS_EXPORT2])
 
         mox.VerifyAll()
 
@@ -860,7 +860,7 @@ class NfsDriverTestCase(test.TestCase):
         with mock.patch.object(drv, '_execute') as mock_execute:
             drv.delete_volume(volume)
 
-            self.assertEqual(mock_execute.call_count, 0)
+            self.assertEqual(0, mock_execute.call_count)
 
     def test_get_volume_stats(self):
         """get_volume_stats must fill the correct values."""
@@ -884,8 +884,8 @@ class NfsDriverTestCase(test.TestCase):
         mox.ReplayAll()
 
         drv.get_volume_stats()
-        self.assertEqual(drv._stats['total_capacity_gb'], 30.0)
-        self.assertEqual(drv._stats['free_capacity_gb'], 5.0)
+        self.assertEqual(30.0, drv._stats['total_capacity_gb'])
+        self.assertEqual(5.0, drv._stats['free_capacity_gb'])
 
         mox.VerifyAll()
 
@@ -1039,8 +1039,8 @@ class NfsDriverTestCase(test.TestCase):
 
         drv.set_nas_security_options(is_new_install)
 
-        self.assertEqual(drv.configuration.nas_secure_file_operations, 'true')
-        self.assertEqual(drv.configuration.nas_secure_file_permissions, 'true')
+        self.assertEqual('true', drv.configuration.nas_secure_file_operations)
+        self.assertEqual('true', drv.configuration.nas_secure_file_permissions)
         self.assertFalse(LOG.warn.called)
 
     @mock.patch.object(nfs, 'LOG')
@@ -1062,9 +1062,9 @@ class NfsDriverTestCase(test.TestCase):
 
         drv.set_nas_security_options(is_new_install)
 
-        self.assertEqual(drv.configuration.nas_secure_file_operations, 'false')
-        self.assertEqual(drv.configuration.nas_secure_file_permissions,
-                         'false')
+        self.assertEqual('false', drv.configuration.nas_secure_file_operations)
+        self.assertEqual('false',
+                         drv.configuration.nas_secure_file_permissions)
         self.assertTrue(LOG.warn.called)
 
     def test_set_nas_security_options_exception_if_no_mounted_shares(self):
