@@ -73,7 +73,7 @@ class BrickLvmTestCase(test.TestCase):
             data = "  fake-vg\n"
         elif 'env, LC_ALL=C, vgs, --version' in cmd_string:
             data = "  LVM version:     2.02.95(2) (2012-03-06)\n"
-        elif ('env, LC_ALL=C, vgs, --noheadings, -o uuid, fake-vg' in
+        elif ('env, LC_ALL=C, vgs, --noheadings, -o, uuid, fake-vg' in
               cmd_string):
             data = "  kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
         elif 'env, LC_ALL=C, vgs, --noheadings, --unit=g, ' \

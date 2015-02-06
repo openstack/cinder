@@ -19,6 +19,7 @@ LVM class for performing LVM operations.
 
 import itertools
 import math
+import os
 import re
 import time
 
@@ -37,10 +38,11 @@ LOG = logging.getLogger(__name__)
 
 class LVM(executor.Executor):
     """LVM object to enable various LVM related operations."""
+    LVM_CMD_PREFIX = ['env', 'LC_ALL=C']
 
     def __init__(self, vg_name, root_helper, create_vg=False,
                  physical_volumes=None, lvm_type='default',
-                 executor=putils.execute):
+                 executor=putils.execute, lvm_conf=None):
 
         """Initialize the LVM object.
 
@@ -97,6 +99,10 @@ class LVM(executor.Executor):
 
             self.activate_lv(self.vg_thin_pool)
         self.pv_list = self.get_all_physical_volumes(root_helper, vg_name)
+        if lvm_conf and os.path.isfile(lvm_conf):
+            LVM.LVM_CMD_PREFIX = ['env',
+                                  'LC_ALL=C',
+                                  'LVM_SYSTEM_DIR=/etc/cinder']
 
     def _vg_exists(self):
         """Simple check to see if VG exists.
@@ -105,9 +111,11 @@ class LVM(executor.Executor):
 
         """
         exists = False
-        (out, _err) = self._execute(
-            'env', 'LC_ALL=C', 'vgs', '--noheadings', '-o', 'name',
-            self.vg_name, root_helper=self._root_helper, run_as_root=True)
+        cmd = LVM.LVM_CMD_PREFIX + ['vgs', '--noheadings',
+                                    '-o', 'name', self.vg_name]
+        (out, _err) = self._execute(*cmd,
+                                    root_helper=self._root_helper,
+                                    run_as_root=True)
 
         if out is not None:
             volume_groups = out.split()
@@ -121,8 +129,11 @@ class LVM(executor.Executor):
         self._execute(*cmd, root_helper=self._root_helper, run_as_root=True)
 
     def _get_vg_uuid(self):
-        (out, _err) = self._execute('env', 'LC_ALL=C', 'vgs', '--noheadings',
-                                    '-o uuid', self.vg_name)
+        cmd = LVM.LVM_CMD_PREFIX + ['vgs', '--noheadings',
+                                    '-o', 'uuid', self.vg_name]
+        (out, _err) = self._execute(*cmd,
+                                    root_helper=self._root_helper,
+                                    run_as_root=True)
         if out is not None:
             return out.split()
         else:
@@ -136,9 +147,10 @@ class LVM(executor.Executor):
         :returns: Free space in GB (float), calculated using data_percent
 
         """
-        cmd = ['env', 'LC_ALL=C', 'lvs', '--noheadings', '--unit=g',
-               '-o', 'size,data_percent', '--separator', ':', '--nosuffix']
-
+        cmd = LVM.LVM_CMD_PREFIX +\
+            ['lvs', '--noheadings', '--unit=g',
+             '-o', 'size,data_percent', '--separator',
+             ':', '--nosuffix']
         # NOTE(gfidente): data_percent only applies to some types of LV so we
         # make sure to append the actual thin pool name
         cmd.append("/dev/%s/%s" % (vg_name, thin_pool_name))
@@ -174,7 +186,7 @@ class LVM(executor.Executor):
 
         """
 
-        cmd = ['env', 'LC_ALL=C', 'vgs', '--version']
+        cmd = LVM.LVM_CMD_PREFIX + ['vgs', '--version']
         (out, _err) = putils.execute(*cmd,
                                      root_helper=root_helper,
                                      run_as_root=True)
@@ -247,9 +259,8 @@ class LVM(executor.Executor):
 
         """
 
-        cmd = ['env', 'LC_ALL=C', 'lvs', '--noheadings', '--unit=g',
-               '-o', 'vg_name,name,size', '--nosuffix']
-
+        cmd = LVM.LVM_CMD_PREFIX + ['lvs', '--noheadings', '--unit=g',
+                                    '-o', 'vg_name,name,size', '--nosuffix']
         if lv_name is not None and vg_name is not None:
             cmd.append("%s/%s" % (vg_name, lv_name))
         elif vg_name is not None:
@@ -314,13 +325,11 @@ class LVM(executor.Executor):
 
         """
         field_sep = '|'
-
-        cmd = ['env', 'LC_ALL=C', 'pvs', '--noheadings',
-               '--unit=g',
-               '-o', 'vg_name,name,size,free',
-               '--separator', field_sep,
-               '--nosuffix']
-
+        cmd = LVM.LVM_CMD_PREFIX + ['pvs', '--noheadings',
+                                    '--unit=g',
+                                    '-o', 'vg_name,name,size,free',
+                                    '--separator', field_sep,
+                                    '--nosuffix']
         (out, _err) = putils.execute(*cmd,
                                      root_helper=root_helper,
                                      run_as_root=True)
@@ -357,10 +366,11 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with VG info
 
         """
-        cmd = ['env', 'LC_ALL=C', 'vgs', '--noheadings', '--unit=g',
-               '-o', 'name,size,free,lv_count,uuid', '--separator', ':',
-               '--nosuffix']
-
+        cmd = LVM.LVM_CMD_PREFIX + ['vgs', '--noheadings',
+                                    '--unit=g', '-o',
+                                    'name,size,free,lv_count,uuid',
+                                    '--separator', ':',
+                                    '--nosuffix']
         if vg_name is not None:
             cmd.append(vg_name)
 
@@ -678,10 +688,11 @@ class LVM(executor.Executor):
                       run_as_root=True)
 
     def lv_has_snapshot(self, name):
-        out, _err = self._execute(
-            'env', 'LC_ALL=C', 'lvdisplay', '--noheading',
-            '-C', '-o', 'Attr', '%s/%s' % (self.vg_name, name),
-            root_helper=self._root_helper, run_as_root=True)
+        cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
+                                    'Attr', '%s/%s' % (self.vg_name, name)]
+        out, _err = self._execute(*cmd,
+                                  root_helper=self._root_helper,
+                                  run_as_root=True)
         if out:
             out = out.strip()
             if (out[0] == 'o') or (out[0] == 'O'):
