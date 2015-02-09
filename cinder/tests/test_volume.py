@@ -45,6 +45,7 @@ from cinder.openstack.common import fileutils
 from cinder.openstack.common import importutils
 from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
 from cinder.openstack.common import timeutils
 from cinder.openstack.common import units
 import cinder.policy
@@ -2750,6 +2751,33 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(volume['host'], 'newhost')
         self.assertIsNone(volume['migration_status'])
 
+    def test_migrate_volume_error(self):
+        def fake_create_volume(ctxt, volume, host, req_spec, filters,
+                               allow_reschedule=True):
+            db.volume_update(ctxt, volume['id'],
+                             {'status': 'available'})
+
+        with contextlib.nested(
+            mock.patch.object(self.volume.driver, 'migrate_volume'),
+            mock.patch.object(self.volume.driver, 'create_export')
+        ) as (mock_migrate, mock_create_export):
+
+            # Exception case at self.driver.migrate_volume and create_export
+            mock_migrate.side_effect = processutils.ProcessExecutionError
+            mock_create_export.side_effect = processutils.ProcessExecutionError
+            volume = tests_utils.create_volume(self.context, size=0,
+                                               host=CONF.host)
+            host_obj = {'host': 'newhost', 'capabilities': {}}
+            self.assertRaises(processutils.ProcessExecutionError,
+                              self.volume.migrate_volume,
+                              self.context,
+                              volume['id'],
+                              host_obj,
+                              False)
+            volume = db.volume_get(context.get_admin_context(), volume['id'])
+            self.assertIsNone(volume['migration_status'])
+            self.assertEqual('available', volume['status'])
+
     def test_migrate_volume_generic(self):
         def fake_migr(vol, host):
             raise Exception('should not be called')
@@ -2783,6 +2811,109 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertIsNone(volume['migration_status'])
         self.assertEqual(volume['status'], 'available')
         self.assertEqual(error_logs, [])
+
+    def test_migrate_volume_generic_copy_error(self):
+        def fake_create_volume(ctxt, volume, host, req_spec, filters,
+                               allow_reschedule=True):
+            db.volume_update(ctxt, volume['id'],
+                             {'status': 'available'})
+
+        with contextlib.nested(
+            mock.patch.object(self.volume.driver, 'migrate_volume'),
+            mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume'),
+            mock.patch.object(self.volume.driver, 'copy_volume_data'),
+            mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'),
+            mock.patch.object(self.volume, 'migrate_volume_completion'),
+            mock.patch.object(self.volume.driver, 'create_export')
+        ) as (_unused1, mock_create_volume, mock_copy_volume, _u2, _u3, _u4):
+
+            # Exception case at migrate_volume_generic
+            # source_volume['migration_status'] is 'migrating'
+            mock_create_volume.side_effect = fake_create_volume
+            mock_copy_volume.side_effect = processutils.ProcessExecutionError
+            volume = tests_utils.create_volume(self.context, size=0,
+                                               host=CONF.host)
+            host_obj = {'host': 'newhost', 'capabilities': {}}
+            self.assertRaises(processutils.ProcessExecutionError,
+                              self.volume.migrate_volume,
+                              self.context,
+                              volume['id'],
+                              host_obj,
+                              True)
+            volume = db.volume_get(context.get_admin_context(), volume['id'])
+            self.assertIsNone(volume['migration_status'])
+            self.assertEqual('available', volume['status'])
+
+    def test_migrate_volume_generic_create_export_error(self):
+        def fake_create_volume(ctxt, volume, host, req_spec, filters,
+                               allow_reschedule=True):
+            db.volume_update(ctxt, volume['id'],
+                             {'status': 'available'})
+
+        with contextlib.nested(
+            mock.patch.object(self.volume.driver, 'migrate_volume'),
+            mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume'),
+            mock.patch.object(self.volume.driver, 'copy_volume_data'),
+            mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'),
+            mock.patch.object(self.volume, 'migrate_volume_completion'),
+            mock.patch.object(self.volume.driver, 'create_export'),
+        ) as (_unused1, mock_create_volume, mock_copy_volume, _u2, _u3,
+              mock_create_export):
+
+            # Exception case at create_export
+            mock_create_volume.side_effect = fake_create_volume
+            mock_copy_volume.side_effect = processutils.ProcessExecutionError
+            mock_create_export.side_effect = processutils.ProcessExecutionError
+            volume = tests_utils.create_volume(self.context, size=0,
+                                               host=CONF.host)
+            host_obj = {'host': 'newhost', 'capabilities': {}}
+            self.assertRaises(processutils.ProcessExecutionError,
+                              self.volume.migrate_volume,
+                              self.context,
+                              volume['id'],
+                              host_obj,
+                              True)
+            volume = db.volume_get(context.get_admin_context(), volume['id'])
+            self.assertIsNone(volume['migration_status'])
+            self.assertEqual('available', volume['status'])
+
+    def test_migrate_volume_generic_migrate_volume_completion_error(self):
+        def fake_create_volume(ctxt, volume, host, req_spec, filters,
+                               allow_reschedule=True):
+            db.volume_update(ctxt, volume['id'],
+                             {'status': 'available'})
+
+        def fake_migrate_volume_completion(ctxt, volume_id, new_volume_id,
+                                           error=False):
+            db.volume_update(ctxt, volume['id'],
+                             {'migration_status': 'completing'})
+            raise processutils.ProcessExecutionError
+
+        with contextlib.nested(
+            mock.patch.object(self.volume.driver, 'migrate_volume'),
+            mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume'),
+            mock.patch.object(self.volume.driver, 'copy_volume_data'),
+            mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'),
+            mock.patch.object(self.volume, 'migrate_volume_completion'),
+            mock.patch.object(self.volume.driver, 'create_export')
+        ) as (_unused1, mock_create_volume, _u2, _u3, mock_migrate_compl, _u4):
+
+            # Exception case at delete_volume
+            # source_volume['migration_status'] is 'completing'
+            mock_create_volume.side_effect = fake_create_volume
+            mock_migrate_compl.side_effect = fake_migrate_volume_completion
+            volume = tests_utils.create_volume(self.context, size=0,
+                                               host=CONF.host)
+            host_obj = {'host': 'newhost', 'capabilities': {}}
+            self.assertRaises(processutils.ProcessExecutionError,
+                              self.volume.migrate_volume,
+                              self.context,
+                              volume['id'],
+                              host_obj,
+                              True)
+            volume = db.volume_get(context.get_admin_context(), volume['id'])
+            self.assertIsNone(volume['migration_status'])
+            self.assertEqual('available', volume['status'])
 
     def _test_migrate_volume_completion(self, status='available',
                                         instance_uuid=None, attached_host=None,
