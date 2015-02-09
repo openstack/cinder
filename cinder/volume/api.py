@@ -71,7 +71,6 @@ CONF.register_opt(volume_same_az_opt)
 CONF.register_opt(az_cache_time_opt)
 
 CONF.import_opt('glance_core_properties', 'cinder.image.glance')
-CONF.import_opt('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS

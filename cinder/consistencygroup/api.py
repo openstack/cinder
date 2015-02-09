@@ -37,7 +37,6 @@ from cinder.volume import volume_types
 
 
 CONF = cfg.CONF
-CONF.import_opt('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
 CGQUOTAS = quota.CGQUOTAS
