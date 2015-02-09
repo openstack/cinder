@@ -389,10 +389,14 @@ class TgtAdm(iscsi.ISCSITarget):
                           iqn,
                           run_as_root=True)
         except putils.ProcessExecutionError as e:
-            LOG.error(_LE("Failed to remove iscsi target for volume "
-                          "id:%(vol_id)s: %(e)s")
-                      % {'vol_id': vol_id, 'e': e})
-            raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
+            if "can't find the target" in e.stderr:
+                LOG.warning(_LW("Failed target removal because target "
+                                "couldn't be found for iqn: %s."), iqn)
+            else:
+                LOG.error(_LE("Failed to remove iscsi target for volume "
+                              "id:%(vol_id)s: %(e)s"),
+                          {'vol_id': vol_id, 'e': e})
+                raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
         # NOTE(jdg): There's a bug in some versions of tgt that
         # will sometimes fail silently when using the force flag
         #    https://bugs.launchpad.net/ubuntu/+source/tgt/+bug/1305343

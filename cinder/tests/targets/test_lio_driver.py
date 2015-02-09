@@ -80,6 +80,14 @@ class TestLioAdmDriver(test_tgt.TestTgtAdmDriver):
                           self.fake_volumes_dir,
                           chap_auth)
 
+    def test_delete_target_not_found(self):
+        # NOTE(jdg): This test inherits from the
+        # tgt driver tests, this particular test
+        # is tgt driver specific and does not apply here.
+        # We implement it and pass because if we don't it
+        # calls the parent and fails due to missing mocks.
+        pass
+
     @mock.patch.object(lio.LioAdm, 'create_iscsi_target')
     def test_ensure_export(self, _mock_create):
 
