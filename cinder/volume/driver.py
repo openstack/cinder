@@ -17,11 +17,13 @@
 Drivers for volumes.
 """
 
+import abc
 import time
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import excutils
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
@@ -186,7 +188,8 @@ CONF.register_opts(volume_opts)
 CONF.register_opts(iser_opts)
 
 
-class VolumeDriver(object):
+@six.add_metaclass(abc.ABCMeta)
+class BaseVD(object):
     """Executes commands relating to Volumes.
 
        Base Driver for Cinder Volume Control Path,
@@ -210,7 +213,6 @@ class VolumeDriver(object):
        relationship and just provide an interface to the specific connector
        methods.  How you do this in your own driver is of course up to you.
     """
-
     VERSION = "N/A"
 
     def __init__(self, execute=utils.execute, *args, **kwargs):
@@ -320,9 +322,11 @@ class VolumeDriver(object):
         """Get the current version of this driver."""
         return self.VERSION
 
+    @abc.abstractmethod
     def check_for_setup_error(self):
-        raise NotImplementedError()
+        return
 
+    @abc.abstractmethod
     def create_volume(self, volume):
         """Creates a volume. Can optionally return a Dictionary of
         changes to the volume object to be persisted.
@@ -335,60 +339,26 @@ class VolumeDriver(object):
             volume['replication_status'] = 'copying'
             volume['replication_extended_status'] = driver specific value
             volume['driver_data'] = driver specific value
-
         """
-        raise NotImplementedError()
+        return
 
-    def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a volume from a snapshot.
-
-        If volume_type extra specs includes 'replication: <is> True'
-        the driver needs to create a volume replica (secondary),
-        and setup replication between the newly created volume and
-        the secondary volume.
-        """
-
-        raise NotImplementedError()
-
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume.
-
-        If volume_type extra specs includes 'replication: <is> True' the
-        driver needs to create a volume replica (secondary)
-        and setup replication between the newly created volume
-        and the secondary volume.
-
-        """
-
-        raise NotImplementedError()
-
-    def create_replica_test_volume(self, volume, src_vref):
-        """Creates a test replica clone of the specified replicated volume.
-
-        Create a clone of the replicated (secondary) volume.
-
-        """
-        raise NotImplementedError()
-
+    @abc.abstractmethod
     def delete_volume(self, volume):
         """Deletes a volume.
 
         If volume_type extra specs includes 'replication: <is> True'
         then the driver needs to delete the volume replica too.
-
         """
-        raise NotImplementedError()
+        return
 
-    def create_snapshot(self, snapshot):
-        """Creates a snapshot."""
-        raise NotImplementedError()
+    def secure_file_operations_enabled(self):
+        """Determine if driver is running in Secure File Operations mode.
 
-    def delete_snapshot(self, snapshot):
-        """Deletes a snapshot."""
-        raise NotImplementedError()
-
-    def local_path(self, volume):
-        raise NotImplementedError()
+        The Cinder Volume driver needs to query if this driver is running
+        in a secure file operations mode. By default, it is False: any driver
+        that does support secure file operations should override this method.
+        """
+        return False
 
     def get_volume_stats(self, refresh=False):
         """Return the current state of the volume service. If 'refresh' is
@@ -396,7 +366,6 @@ class VolumeDriver(object):
 
            For replication the following state should be reported:
            replication_support = True (None or false disables replication)
-
         """
         return None
 
@@ -570,24 +539,6 @@ class VolumeDriver(object):
     def clone_image(self, context, volume,
                     image_location, image_meta,
                     image_service):
-        """Create a volume efficiently from an existing image.
-
-        image_location is a string whose format depends on the
-        image service backend in use. The driver should use it
-        to determine whether cloning is possible.
-
-        image_meta is a dictionary that includes 'disk_format' (e.g.
-        raw, qcow2) and other image attributes that allow drivers to
-        decide whether they can clone the image without first requiring
-        conversion.
-
-        image_service is the reference of the image_service to use.
-        Note that this is needed to be passed here for drivers that
-        will want to fetch images from the image service directly.
-
-        Returns a dict of volume properties eg. provider_location,
-        boolean indicating whether cloning occurred
-        """
         return None, False
 
     def backup_volume(self, context, backup, backup_service):
@@ -651,10 +602,168 @@ class VolumeDriver(object):
         """Clean up after an interrupted image copy."""
         pass
 
-    def extend_volume(self, volume, new_size):
-        msg = _("Extend volume not implemented")
-        raise NotImplementedError(msg)
+    def attach_volume(self, context, volume, instance_uuid, host_name,
+                      mountpoint):
+        """Callback for volume attached to instance or host."""
+        pass
 
+    def detach_volume(self, context, volume):
+        """Callback for volume detached."""
+        pass
+
+    def do_setup(self, context):
+        """Any initialization the volume driver does while starting."""
+        pass
+
+    def validate_connector(self, connector):
+        """Fail if connector doesn't contain all the data needed by driver."""
+        pass
+
+    @staticmethod
+    def validate_connector_has_setting(connector, setting):
+        pass
+
+    # #######  Interface methods for DataPath (Connector) ########
+    @abc.abstractmethod
+    def ensure_export(self, context, volume):
+        """Synchronously recreates an export for a volume."""
+        return
+
+    @abc.abstractmethod
+    def create_export(self, context, volume):
+        """Exports the volume.
+
+        Can optionally return a Dictionary of changes
+        to the volume object to be persisted.
+        """
+        return
+
+    @abc.abstractmethod
+    def remove_export(self, context, volume):
+        """Removes an export for a volume."""
+        return
+
+    @abc.abstractmethod
+    def initialize_connection(self, volume, connector):
+        """Allow connection to connector and return connection info."""
+        return
+
+    @abc.abstractmethod
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Disallow connection from connector"""
+        return
+
+    def get_pool(self, volume):
+        """Return pool name where volume reside on.
+
+        :param volume: The volume hosted by the the driver.
+        :return: name of the pool where given volume is in.
+        """
+        return None
+
+
+@six.add_metaclass(abc.ABCMeta)
+class LocalVD(object):
+    @abc.abstractmethod
+    def local_path(self, volume):
+        return
+
+
+@six.add_metaclass(abc.ABCMeta)
+class SnapshotVD(object):
+    @abc.abstractmethod
+    def create_snapshot(self, snapshot):
+        """Creates a snapshot."""
+        return
+
+    @abc.abstractmethod
+    def delete_snapshot(self, snapshot):
+        """Deletes a snapshot."""
+        return
+
+    @abc.abstractmethod
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot.
+
+        If volume_type extra specs includes 'replication: <is> True'
+        the driver needs to create a volume replica (secondary),
+        and setup replication between the newly created volume and
+        the secondary volume.
+        """
+        return
+
+
+@six.add_metaclass(abc.ABCMeta)
+class ConsistencyGroupVD(object):
+    @abc.abstractmethod
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Creates a cgsnapshot."""
+        return
+
+    @abc.abstractmethod
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+        return
+
+    @abc.abstractmethod
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+        return
+
+    @abc.abstractmethod
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group."""
+        return
+
+
+@six.add_metaclass(abc.ABCMeta)
+class CloneableVD(object):
+    @abc.abstractmethod
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume.
+
+        If volume_type extra specs includes 'replication: <is> True' the
+        driver needs to create a volume replica (secondary)
+        and setup replication between the newly created volume
+        and the secondary volume.
+        """
+
+        return
+
+
+@six.add_metaclass(abc.ABCMeta)
+class CloneableImageVD(object):
+    @abc.abstractmethod
+    def clone_image(self, volume, image_location,
+                    image_id, image_meta, image_service):
+        """Create a volume efficiently from an existing image.
+
+        image_location is a string whose format depends on the
+        image service backend in use. The driver should use it
+        to determine whether cloning is possible.
+
+        image_id is a string which represents id of the image.
+        It can be used by the driver to introspect internal
+        stores or registry to do an efficient image clone.
+
+        image_meta is a dictionary that includes 'disk_format' (e.g.
+        raw, qcow2) and other image attributes that allow drivers to
+        decide whether they can clone the image without first requiring
+        conversion.
+
+        image_service is the reference of the image_service to use.
+        Note that this is needed to be passed here for drivers that
+        will want to fetch images from the image service directly.
+
+        Returns a dict of volume properties eg. provider_location,
+        boolean indicating whether cloning occurred
+        """
+        return None, False
+
+
+@six.add_metaclass(abc.ABCMeta)
+class MigrateVD(object):
+    @abc.abstractmethod
     def migrate_volume(self, context, volume, host):
         """Migrate the volume to the specified host.
 
@@ -669,6 +778,17 @@ class VolumeDriver(object):
         """
         return (False, None)
 
+
+@six.add_metaclass(abc.ABCMeta)
+class ExtendVD(object):
+    @abc.abstractmethod
+    def extend_volume(self, volume, new_size):
+        return
+
+
+@six.add_metaclass(abc.ABCMeta)
+class RetypeVD(object):
+    @abc.abstractmethod
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
 
@@ -701,10 +821,17 @@ class VolumeDriver(object):
         """
         return False, None
 
+
+@six.add_metaclass(abc.ABCMeta)
+class TransferVD(object):
     def accept_transfer(self, context, volume, new_user, new_project):
         """Accept the transfer of a volume for a new user/project."""
         pass
 
+
+@six.add_metaclass(abc.ABCMeta)
+class ManageableVD(object):
+    @abc.abstractmethod
     def manage_existing(self, volume, existing_ref):
         """Brings an existing backend storage object under Cinder management.
 
@@ -733,17 +860,17 @@ class VolumeDriver(object):
         object.  If they are incompatible, raise a
         ManageExistingVolumeTypeMismatch, specifying a reason for the failure.
         """
-        msg = _("Manage existing volume not implemented.")
-        raise NotImplementedError(msg)
+        return
 
+    @abc.abstractmethod
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing.
 
         When calculating the size, round up to the next GB.
         """
-        msg = _("Manage existing volume not implemented.")
-        raise NotImplementedError(msg)
+        return
 
+    @abc.abstractmethod
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management.
 
@@ -756,27 +883,10 @@ class VolumeDriver(object):
         """
         pass
 
-    def attach_volume(self, context, volume, instance_uuid, host_name,
-                      mountpoint):
-        """Callback for volume attached to instance or host."""
-        pass
 
-    def detach_volume(self, context, volume):
-        """Callback for volume detached."""
-        pass
-
-    def do_setup(self, context):
-        """Any initialization the volume driver does while starting."""
-        pass
-
-    def validate_connector(self, connector):
-        """Fail if connector doesn't contain all the data needed by driver."""
-        pass
-
-    @staticmethod
-    def validate_connector_has_setting(connector, setting):
-        pass
-
+@six.add_metaclass(abc.ABCMeta)
+class ReplicaVD(object):
+    @abc.abstractmethod
     def reenable_replication(self, context, volume):
         """Re-enable replication between the replica and primary volume.
 
@@ -801,10 +911,8 @@ class VolumeDriver(object):
 
         :param context: Context
         :param volume: A dictionary describing the volume
-
         """
-        msg = _("sync_replica not implemented.")
-        raise NotImplementedError(msg)
+        return
 
     def get_replication_status(self, context, volume):
         """Query the actual volume replication status from the driver.
@@ -828,6 +936,7 @@ class VolumeDriver(object):
         """
         return None
 
+    @abc.abstractmethod
     def promote_replica(self, context, volume):
         """Promote the replica to be the primary volume.
 
@@ -850,28 +959,92 @@ class VolumeDriver(object):
         :param context: Context
         :param volume: A dictionary describing the volume
         """
+        return
+
+    @abc.abstractmethod
+    def create_replica_test_volume(self, volume, src_vref):
+        """Creates a test replica clone of the specified replicated volume.
+
+        Create a clone of the replicated (secondary) volume.
+        """
+        return
+
+
+class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
+                   CloneableVD, CloneableImageVD, SnapshotVD, ReplicaVD,
+                   RetypeVD, LocalVD, MigrateVD, BaseVD):
+    """This class will be deprecated soon. Please us the abstract classes
+       above for new drivers.
+    """
+    def check_for_setup_error(self):
+        raise NotImplementedError()
+
+    def create_volume(self, volume):
+        raise NotImplementedError()
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        raise NotImplementedError()
+
+    def create_cloned_volume(self, volume, src_vref):
+        raise NotImplementedError()
+
+    def create_replica_test_volume(self, volume, src_vref):
+        raise NotImplementedError()
+
+    def delete_volume(self, volume):
+        raise NotImplementedError()
+
+    def create_snapshot(self, snapshot):
+        raise NotImplementedError()
+
+    def delete_snapshot(self, snapshot):
+        raise NotImplementedError()
+
+    def local_path(self, volume):
+        raise NotImplementedError()
+
+    def clear_download(self, context, volume):
+        pass
+
+    def extend_volume(self, volume, new_size):
+        msg = _("Extend volume not implemented")
+        raise NotImplementedError(msg)
+
+    def manage_existing(self, volume, existing_ref):
+        msg = _("Manage existing volume not implemented.")
+        raise NotImplementedError(msg)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        msg = _("Manage existing volume not implemented.")
+        raise NotImplementedError(msg)
+
+    def unmanage(self, volume):
+        msg = _("Unmanage volume not implemented.")
+        raise NotImplementedError(msg)
+
+    def retype(self, volume):
+        msg = _("Retype existing volume not implemented.")
+        raise NotImplementedError(msg)
+
+    def reenable_replication(self, context, volume):
+        msg = _("sync_replica not implemented.")
+        raise NotImplementedError(msg)
+
+    def promote_replica(self, context, volume):
         msg = _("promote_replica not implemented.")
         raise NotImplementedError(msg)
 
     # #######  Interface methods for DataPath (Connector) ########
     def ensure_export(self, context, volume):
-        """Synchronously recreates an export for a volume."""
         raise NotImplementedError()
 
     def create_export(self, context, volume):
-        """Exports the volume.
-
-        Can optionally return a Dictionary of changes
-        to the volume object to be persisted.
-        """
         raise NotImplementedError()
 
     def remove_export(self, context, volume):
-        """Removes an export for a volume."""
         raise NotImplementedError()
 
     def initialize_connection(self, volume, connector):
-        """Allow connection to connector and return connection info."""
         raise NotImplementedError()
 
     def terminate_connection(self, volume, connector, **kwargs):
@@ -893,6 +1066,10 @@ class VolumeDriver(object):
         """Deletes a cgsnapshot."""
         raise NotImplementedError()
 
+    def clone_image(self, volume, image_location, image_id, image_meta,
+                    image_service):
+        return None, False
+
     def get_pool(self, volume):
         """Return pool name where volume reside on.
 
@@ -900,15 +1077,6 @@ class VolumeDriver(object):
         :return: name of the pool where given volume is in.
         """
         return None
-
-    def secure_file_operations_enabled(self):
-        """Determine if driver is running in Secure File Operations mode.
-
-        The Cinder Volume driver needs to query if this driver is running
-        in a secure file operations mode. By default, it is False: any driver
-        that does support secure file operations should override this method.
-        """
-        return False
 
     def update_migrated_volume(self, ctxt, volume, new_volume):
         """Return model update for migrated volume.
@@ -919,6 +1087,9 @@ class VolumeDriver(object):
         :return model_update to update DB with any needed changes
         """
         return None
+
+    def migrate_volume(self, context, volume, host):
+        return (False, None)
 
 
 class ProxyVD(object):
