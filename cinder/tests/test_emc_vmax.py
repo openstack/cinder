@@ -1746,8 +1746,12 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        EMCVMAXUtils,
+        '_wait_for_job_complete',
+        return_value=None)
     def test_delete_volume_failed(
-            self, _mock_volume_type, mock_storage_system):
+            self, _mock_volume_type, mock_storage_system, mock_wait):
         self.driver.create_volume(self.data.failed_delete_vol)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_volume,
@@ -1932,9 +1936,13 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_snapshot_different_sizes_meta_no_fast_success(
             self, mock_volume_type, mock_volume,
-            mock_meta, mock_size, mock_pool):
+            mock_meta, mock_size, mock_pool, mock_wait):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
         volumeDict = {'classname': u'Symm_StorageVolume',
@@ -1967,8 +1975,13 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         EMCVMAXUtils,
         'get_meta_members_capacity_in_bit',
         return_value=[1234567])
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_volume_from_same_size_meta_snapshot(
-            self, mock_volume_type, mock_sync_sv, mock_meta, mock_size):
+            self, mock_volume_type, mock_sync_sv, mock_meta,
+            mock_size, mock_wait):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.create_volume_from_snapshot(
             self.data.test_volume, self.data.test_volume)
@@ -1996,9 +2009,13 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         EMCVMAXUtils,
         'get_volume_meta_head',
         return_value=None)
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_clone_simple_volume_no_fast_success(
             self, mock_volume_type, mock_volume, mock_sync_sv,
-            mock_simple_volume):
+            mock_simple_volume, mock_wait):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.create_cloned_volume(self.data.test_volume,
                                          EMCVMAXCommonData.test_source_volume)
@@ -2405,9 +2422,13 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_snapshot_different_sizes_meta_fast_success(
             self, mock_volume_type, mock_volume, mock_meta,
-            mock_size, mock_pool, mock_policy):
+            mock_size, mock_pool, mock_policy, mock_wait):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
 
@@ -2443,8 +2464,13 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         EMCVMAXUtils,
         'get_meta_members_capacity_in_bit',
         return_value=[1234567])
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_volume_from_same_size_meta_snapshot(
-            self, mock_volume_type, mock_sync_sv, mock_meta, mock_size):
+            self, mock_volume_type, mock_sync_sv, mock_meta,
+            mock_size, mock_wait):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.common.utils.find_storage_configuration_service = (
             mock.Mock(return_value=EMCVMAXCommonData.storage_system))
@@ -2472,8 +2498,13 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         EMCVMAXUtils,
         'get_volume_meta_head',
         return_value=None)
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_volume_from_snapshot_fast_failed(
-            self, mock_type, mock_rep_service, mock_sync_sv, mock_meta):
+            self, mock_type, mock_rep_service, mock_sync_sv,
+            mock_meta, mock_wait):
 
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -2497,9 +2528,13 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         EMCVMAXUtils,
         'get_volume_meta_head',
         return_value=None)
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_clone_simple_volume_fast_success(
             self, mock_volume_type, mock_volume, mock_sync_sv,
-            mock_simple_volume):
+            mock_simple_volume, mock_wait):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.common.utils.find_storage_configuration_service = (
             mock.Mock(return_value=EMCVMAXCommonData.storage_system))
@@ -2534,9 +2569,13 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_clone_fast_failed(
             self, mock_volume_type, mock_vol, mock_policy, mock_meta,
-            mock_size, mock_pool):
+            mock_size, mock_pool, mock_wait):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.common._modify_and_get_composite_volume_instance = (
             mock.Mock(return_value=(1L, None)))
@@ -2775,8 +2814,12 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        EMCVMAXUtils,
+        '_wait_for_job_complete',
+        return_value=None)
     def test_delete_volume_failed(
-            self, _mock_volume_type, mock_storage_system):
+            self, _mock_volume_type, mock_storage_system, mock_wait):
         self.driver.create_volume(self.data.failed_delete_vol)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_volume,
@@ -3277,9 +3320,13 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_snapshot_different_sizes_meta_fast_success(
             self, mock_volume_type, mock_volume, mock_meta,
-            mock_size, mock_pool, mock_policy):
+            mock_size, mock_pool, mock_policy, mock_wait):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
 
@@ -3315,9 +3362,13 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         EMCVMAXUtils,
         'get_volume_meta_head',
         return_value=None)
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_clone_simple_volume_fast_success(
-            self, mock_volume_type,
-            mock_volume, mock_sync_sv, mock_meta):
+            self, mock_volume_type, mock_volume,
+            mock_sync_sv, mock_meta, mock_wait):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.common.utils.find_storage_configuration_service = (
             mock.Mock(return_value=EMCVMAXCommonData.storage_system))
@@ -3353,9 +3404,13 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        EMCVMAXUtils,
+        'wait_for_sync',
+        return_value=None)
     def test_create_clone_fast_failed(
             self, mock_volume_type, mock_vol,
-            mock_policy, mock_meta, mock_size, mock_pool):
+            mock_policy, mock_meta, mock_size, mock_pool, mock_wait):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.common._modify_and_get_composite_volume_instance = (
             mock.Mock(return_value=(1L, None)))
