@@ -908,7 +908,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res_dict['overLimit']['code'], 413)
         self.assertEqual(res_dict['overLimit']['message'],
                          'Requested volume or snapshot exceeds allowed '
-                         'Gigabytes quota. Requested 2G, quota is 3G and '
+                         'gigabytes quota. Requested 2G, quota is 3G and '
                          '2G has been consumed.')
 
     @mock.patch('cinder.backup.API.restore')

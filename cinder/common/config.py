@@ -175,7 +175,7 @@ global_opts = [
                      'with its options'),
     cfg.BoolOpt('no_snapshot_gb_quota',
                 default=False,
-                help='Whether snapshots count against GigaByte quota'),
+                help='Whether snapshots count against gigabyte quota'),
     cfg.StrOpt('transfer_api_class',
                default='cinder.transfer.api.API',
                help='The full class name of the volume transfer API class'),

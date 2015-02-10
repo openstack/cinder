@@ -444,13 +444,13 @@ class QuotaError(CinderException):
 
 
 class VolumeSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested volume or snapshot exceeds allowed Gigabytes "
+    message = _("Requested volume or snapshot exceeds allowed gigabytes "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
                 "%(consumed)sG has been consumed.")
 
 
 class VolumeBackupSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested backup exceeds allowed Backup Gigabytes "
+    message = _("Requested backup exceeds allowed Backup gigabytes "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
                 "%(consumed)sG has been consumed.")
 
