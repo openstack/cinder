@@ -347,6 +347,16 @@ class VolumeManager(manager.SchedulerDependentManager):
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
 
+        # conditionally run replication status task
+        stats = self.driver.get_volume_stats(refresh=True)
+        if stats and stats.get('replication', False):
+
+            @periodic_task.periodic_task
+            def run_replication_task(self, ctxt):
+                self._update_replication_relationship_status(ctxt)
+
+            self.add_periodic_task(run_replication_task)
+
     def create_volume(self, context, volume_id, request_spec=None,
                       filter_properties=None, allow_reschedule=True,
                       snapshot_id=None, image_id=None, source_volid=None,
@@ -1620,36 +1630,23 @@ class VolumeManager(manager.SchedulerDependentManager):
             raise exception.ReplicationError(reason=err_msg,
                                              volume_id=volume_id)
 
-    @periodic_task.periodic_task
     def _update_replication_relationship_status(self, ctxt):
         LOG.info(_LI('Updating volume replication status.'))
-        if not self.driver.initialized:
-            if self.driver.configuration.config_group is None:
-                config_group = ''
-            else:
-                config_group = ('(config name %s)' %
-                                self.driver.configuration.config_group)
-
-            LOG.warning(_LW('Unable to update volume replication status, '
-                            '%(driver_name)s -%(driver_version)s '
-                            '%(config_group)s driver is uninitialized.') %
-                        {'driver_name': self.driver.__class__.__name__,
-                         'driver_version': self.driver.get_version(),
-                         'config_group': config_group})
-        else:
-            volumes = self.db.volume_get_all_by_host(ctxt, self.host)
-            for vol in volumes:
-                model_update = None
-                try:
-                    model_update = self.driver.get_replication_status(
-                        ctxt, vol)
-                    if model_update:
-                        self.db.volume_update(ctxt,
-                                              vol['id'],
-                                              model_update)
-                except Exception:
-                    LOG.exception(_LE("Error checking replication status for "
-                                      "volume %s") % vol['id'])
+        # Only want volumes that do not have a 'disabled' replication status
+        filters = {'replication_status': ['active', 'copying', 'error',
+                                          'active-stopped', 'inactive']}
+        volumes = self.db.volume_get_all_by_host(ctxt, self.host,
+                                                 filters=filters)
+        for vol in volumes:
+            model_update = None
+            try:
+                model_update = self.driver.get_replication_status(
+                    ctxt, vol)
+                if model_update:
+                    self.db.volume_update(ctxt, vol['id'], model_update)
+            except Exception:
+                LOG.exception(_LE("Error checking replication status for "
+                                  "volume %s") % vol['id'])
 
     def create_consistencygroup(self, context, group_id):
         """Creates the consistency group."""

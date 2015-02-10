@@ -402,7 +402,7 @@ class BaseVD(object):
            True, run the update first.
 
            For replication the following state should be reported:
-           replication_support = True (None or false disables replication)
+           replication = True (None or false disables replication)
         """
         return None
 
