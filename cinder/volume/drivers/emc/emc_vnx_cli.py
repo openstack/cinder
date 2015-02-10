@@ -257,9 +257,11 @@ class CommandLineHelper(object):
     CLI_RESP_PATTERN_LUN_NOT_EXIST = 'The (pool lun) may not exist'
     CLI_RESP_PATTERN_SMP_NOT_ATTACHED = ('The specified Snapshot mount point '
                                          'is not currently attached.')
-    CLI_RESP_PATTERN_SG_NAME_IN_USE = "Storage Group name already in use"
-    CLI_RESP_PATTERN_LUN_IN_SG_1 = "contained in a Storage Group"
-    CLI_RESP_PATTERN_LUN_IN_SG_2 = "Host LUN/LUN mapping still exists"
+    CLI_RESP_PATTERN_SG_NAME_IN_USE = 'Storage Group name already in use'
+    CLI_RESP_PATTERN_LUN_IN_SG_1 = 'contained in a Storage Group'
+    CLI_RESP_PATTERN_LUN_IN_SG_2 = 'Host LUN/LUN mapping still exists'
+    CLI_RESP_PATTERN_LUN_NOT_MIGRATING = ('The specified source LUN '
+                                          'is not currently migrating')
 
     def __init__(self, configuration):
         configuration.append_config_values(san.san_opts)
@@ -900,29 +902,75 @@ class CommandLineHelper(object):
             LOG.debug("Migration output: %s", out)
             if rc == 0:
                 # parse the percentage
-                out = re.split(r'\n', out)
-                log = "Migration in process %s %%." % out[7].split(":  ")[1]
-                LOG.debug(log)
+                state = re.search(r'Current State:\s*([^\n]+)', out)
+                percentage = re.search(r'Percent Complete:\s*([^\n]+)', out)
+                if state is not None:
+                    current_state = state.group(1)
+                    percentage_complete = percentage.group(1)
+                else:
+                    self._raise_cli_error(cmd_migrate_list, rc, out)
+                if ("FAULTED" in current_state or
+                        "STOPPED" in current_state):
+                    reason = _("Migration of LUN %s has been stopped or"
+                               " faulted.") % src_id
+                    raise exception.VolumeBackendAPIException(data=reason)
+                if ("TRANSITIONING" in current_state or
+                        "MIGRATING" in current_state):
+                    LOG.debug("Migration of LUN %(src_id)s in process "
+                              "%(percentage)s %%.",
+                              {"src_id": src_id,
+                               "percentage": percentage_complete})
             else:
-                if re.search(r'The specified source LUN '
-                             'is not currently migrating', out):
+                if re.search(self.CLI_RESP_PATTERN_LUN_NOT_MIGRATING, out):
                     LOG.debug("Migration of LUN %s is finished.", src_id)
                     mig_ready = True
                 else:
-                    reason = _("Querying migrating status error.")
-                    LOG.error(reason)
-                    raise exception.VolumeBackendAPIException(
-                        data="%(reason)s : %(output)s" %
-                        {'reason': reason, 'output': out})
+                    self._raise_cli_error(cmd_migrate_list, rc, out)
             return mig_ready
 
+        def migration_disappeared(poll=False):
+            cmd_migrate_list = ('migrate', '-list', '-source', src_id)
+            out, rc = self.command_execute(*cmd_migrate_list,
+                                           poll=poll)
+            if rc != 0:
+                if re.search(self.CLI_RESP_PATTERN_LUN_NOT_MIGRATING, out):
+                    LOG.debug("Migration of LUN %s is finished.", src_id)
+                    return True
+                else:
+                    LOG.error(_LE("Failed to query migration status of LUN."),
+                              src_id)
+                    self._raise_cli_error(cmd_migrate_list, rc, out)
+            return False
+
         eventlet.sleep(INTERVAL_30_SEC)
-        if migration_is_ready(True):
-            return True
-        self._wait_for_a_condition(migration_is_ready,
-                                   interval=INTERVAL_30_SEC)
+
+        try:
+            if migration_is_ready(True):
+                return True
+            self._wait_for_a_condition(
+                migration_is_ready,
+                interval=INTERVAL_30_SEC,
+                ignorable_exception_arbiter=lambda ex:
+                type(ex) is not exception.VolumeBackendAPIException)
+        # Migration cancellation for clean up
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Migration of LUN %s failed to complete."),
+                          src_id)
+                self.migration_cancel(src_id)
+                self._wait_for_a_condition(migration_disappeared,
+                                           interval=INTERVAL_30_SEC)
 
         return True
+
+    # Cancel migration in case where status is faulted or stopped
+    def migration_cancel(self, src_id):
+        LOG.info(_LI("Cancelling Migration from LUN %s."), src_id)
+        cmd_migrate_cancel = ('migrate', '-cancel', '-source', src_id,
+                              '-o')
+        out, rc = self.command_execute(*cmd_migrate_cancel)
+        if rc != 0:
+            self._raise_cli_error(cmd_migrate_cancel, rc, out)
 
     def get_storage_group(self, name, poll=True):
 
@@ -1604,7 +1652,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.03.04'
+    VERSION = '05.03.05'
     stats = {'driver_version': VERSION,
              'storage_protocol': None,
              'vendor_name': 'EMC',

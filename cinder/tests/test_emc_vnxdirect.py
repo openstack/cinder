@@ -439,6 +439,26 @@ class EMCVNXCLIDriverTestData():
     NDU_LIST_RESULT_WO_LICENSE = (
         "Name of the software package:   -Unisphere ",
         0)
+    MIGRATE_PROPERTY_MIGRATING = """\
+        Source LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d
+        Source LU ID:  63950
+        Dest LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d_dest
+        Dest LU ID:  136
+        Migration Rate:  high
+        Current State:  MIGRATING
+        Percent Complete:  50
+        Time Remaining:  0 second(s)
+        """
+    MIGRATE_PROPERTY_STOPPED = """\
+        Source LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d
+        Source LU ID:  63950
+        Dest LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d_dest
+        Dest LU ID:  136
+        Migration Rate:  high
+        Current State:  STOPPED - Destination full
+        Percent Complete:  60
+        Time Remaining:  0 second(s)
+        """
 
     def SNAP_MP_CREATE_CMD(self, name='vol1', source='vol1'):
         return ('lun', '-create', '-type', 'snap', '-primaryLunName',
@@ -481,6 +501,9 @@ class EMCVNXCLIDriverTestData():
 
     def MIGRATION_VERIFY_CMD(self, src_id):
         return ("migrate", "-list", "-source", src_id)
+
+    def MIGRATION_CANCEL_CMD(self, src_id):
+        return ("migrate", "-cancel", "-source", src_id, '-o')
 
     def GETPORT_CMD(self):
         return ("connection", "-getport", "-address", "-vlanid")
@@ -1469,6 +1492,52 @@ Time Remaining:  0 second(s)
                                 poll=True)]
         fake_cli.assert_has_calls(expect_cmd)
 
+    @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
+                "CommandLineHelper.create_lun_by_cmd",
+                mock.Mock(
+                    return_value={'lun_id': 1}))
+    @mock.patch(
+        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
+        mock.Mock(
+            side_effect=[1, 1]))
+    @mock.patch(
+        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase."
+        "get_lun_id_by_name",
+        mock.Mock(return_value=1))
+    def test_volume_migration_stopped(self):
+
+        commands = [self.testData.MIGRATION_CMD(),
+                    self.testData.MIGRATION_VERIFY_CMD(1),
+                    self.testData.MIGRATION_CANCEL_CMD(1)]
+
+        results = [SUCCEED, [(self.testData.MIGRATE_PROPERTY_MIGRATING, 0),
+                             (self.testData.MIGRATE_PROPERTY_STOPPED, 0),
+                             ('The specified source LUN is not '
+                              'currently migrating', 23)],
+                   SUCCEED]
+        fake_cli = self.driverSetup(commands, results)
+        fake_host = {'capabilities': {'location_info':
+                                      "unit_test_pool2|fakeSerial",
+                                      'storage_protocol': 'iSCSI'}}
+
+        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
+                                "Migration of LUN 1 has been stopped or"
+                                " faulted.",
+                                self.driver.migrate_volume,
+                                None, self.testData.test_volume, fake_host)
+
+        expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(),
+                                retry_disable=True,
+                                poll=True),
+                      mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
+                                poll=True),
+                      mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
+                                poll=False),
+                      mock.call(*self.testData.MIGRATION_CANCEL_CMD(1)),
+                      mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
+                                poll=False)]
+        fake_cli.assert_has_calls(expect_cmd)
+
     def test_create_destroy_volume_snapshot(self):
         fake_cli = self.driverSetup()
 
@@ -1930,11 +1999,17 @@ Time Remaining:  0 second(s)
         cmd_detach_lun = ('lun', '-detach', '-name', 'vol2')
         output_migrate = ("", 0)
         cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
+        output_migrate_verify = (r'The specified source LUN '
+                                 'is not currently migrating', 23)
+        cmd_migrate_cancel = self.testData.MIGRATION_CANCEL_CMD(1)
+        output_migrate_cancel = ("", 0)
 
         commands = [cmd_dest, cmd_dest_np, cmd_migrate,
-                    cmd_migrate_verify]
+                    cmd_migrate_verify, cmd_migrate_cancel]
         results = [output_dest, output_dest, output_migrate,
-                   FAKE_ERROR_RETURN]
+                   [FAKE_ERROR_RETURN, output_migrate_verify],
+                   output_migrate_cancel]
+
         fake_cli = self.driverSetup(commands, results)
 
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -1962,6 +2037,9 @@ Time Remaining:  0 second(s)
                       poll=True),
             mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
                       poll=True),
+            mock.call(*self.testData.MIGRATION_CANCEL_CMD(1)),
+            mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
+                      poll=False),
             mock.call(*self.testData.LUN_DELETE_CMD('vol2_dest')),
             mock.call(*cmd_detach_lun),
             mock.call(*self.testData.LUN_DELETE_CMD('vol2'))]
