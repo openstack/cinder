@@ -113,12 +113,13 @@ class DrbdManageDriver(driver.VolumeDriver):
         try once to reconnect.
         """
         try:
-            return apply(fn, args)
+            return fn(*args)
         except dbus.DBusException as e:
             LOG.warn(_LW("got disconnected; trying to reconnect. (%s)") %
                      six.text_type(e))
             self.dbus_connect()
-            return apply(fn, args)
+            # Old function object is invalid, get new one.
+            return getattr(self.odm, fn._method_name)(*args)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
