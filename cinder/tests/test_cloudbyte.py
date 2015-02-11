@@ -637,7 +637,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         self.driver = CloudByteISCSIDriver(configuration=configuration)
 
         # override some parts of driver configuration
-        self.driver.configuration.tsm_name = 'openstack'
+        self.driver.configuration.cb_tsm_name = 'openstack'
         self.driver.configuration.cb_account_name = 'CustomerA'
 
     def _side_effect_api_req(self, cmd, params, version='1.0'):
@@ -930,7 +930,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
 
         # assert equality checks for certain configuration attributes
         self.assertEqual(
-            'openstack', self.driver.configuration.tsm_name)
+            'openstack', self.driver.configuration.cb_tsm_name)
         self.assertEqual(
             'CustomerA', self.driver.configuration.cb_account_name)
         self.assertThat(
@@ -1179,6 +1179,8 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         self.assertEqual(1, mock_api_req.call_count)
 
         # assert the result attributes with respective values
+        self.assertEqual(1024.0, vol_stats['total_capacity_gb'])
+        self.assertEqual(824.0, vol_stats['free_capacity_gb'])
         self.assertEqual(0, vol_stats['reserved_percentage'])
         self.assertEqual('CloudByte', vol_stats['vendor_name'])
         self.assertEqual('iSCSI', vol_stats['storage_protocol'])
