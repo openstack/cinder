@@ -824,7 +824,7 @@ class HP3PARCommon(object):
         qos_specs_id = volume_type.get('qos_specs_id')
         specs = volume_type.get('extra_specs')
 
-        #NOTE(kmartin): We prefer the qos_specs association
+        # NOTE(kmartin): We prefer the qos_specs association
         # and override any existing extra-specs settings
         # if present.
         if qos_specs_id is not None:

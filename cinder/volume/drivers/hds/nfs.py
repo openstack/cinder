@@ -444,7 +444,6 @@ class HDSNFSDriver(nfs.NfsDriver):
         nfs_info = self._get_nfs_info()
 
         for share in self.shares:
-            #export = share.split(':')[1]
             if share in nfs_info.keys():
                 LOG.info(_LI("share: %(share)s -> %(info)s"),
                          {'share': share, 'info': nfs_info[share]['path']})

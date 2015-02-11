@@ -38,7 +38,7 @@ class BrickLvmTestCase(test.TestCase):
         self.configuration.volume_group_name = 'fake-vg'
         super(BrickLvmTestCase, self).setUp()
 
-        #Stub processutils.execute for static methods
+        # Stub processutils.execute for static methods
         self.stubs.Set(processutils, 'execute',
                        self.fake_execute)
         self.vg = brick.LVM(self.configuration.volume_group_name,

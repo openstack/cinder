@@ -835,7 +835,6 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                      mock_init):
         context = {}
         volume = {'id': self.VOLUME.get(u'name')}
-        #self.driver.ensure_export(context, volume)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.ensure_export,
                           context,

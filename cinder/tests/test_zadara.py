@@ -193,7 +193,7 @@ class FakeRequest(object):
             if vol_name == vol:
                 attachments = params['attachments']
                 if srv in attachments:
-                    #already attached - ok
+                    # already attached - ok
                     return RUNTIME_VARS['good']
                 else:
                     attachments.append(srv)
@@ -247,7 +247,7 @@ class FakeRequest(object):
             if params['cg-name'] == cg_name:
                 snapshots = params['snapshots']
                 if snap_name in snapshots:
-                    #already attached
+                    # already attached
                     return RUNTIME_VARS['bad_volume']
                 else:
                     snapshots.append(snap_name)

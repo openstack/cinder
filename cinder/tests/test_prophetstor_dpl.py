@@ -31,7 +31,6 @@ VOLUMEUUID = 'a000000000000000000000000000001'
 INITIATOR = 'iqn.2013-08.org.debian:01:aaaaaaaa'
 DATA_IN_VOLUME = {'id': VOLUMEUUID}
 DATA_IN_CONNECTOR = {'initiator': INITIATOR}
-## dpl.getpool
 DATA_SERVER_INFO = 0, {
     'metadata': {'vendor': 'ProphetStor',
                  'version': '1.5'}}
@@ -67,7 +66,6 @@ DATA_POOLINFO = 0, {
     'objectType': 'application/cdmi-container',
     'percentComplete': 100}
 
-## dpl.assignvdev
 DATA_ASSIGNVDEV = 0, {
     'children': [],
     'childrenrange': '',

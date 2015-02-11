@@ -351,7 +351,7 @@ class TemplateElement(object):
     def getAttrib(self, obj):
         """Get attribute."""
         tmpattrib = {}
-        #Now set up all the attributes...
+        # Now set up all the attributes...
         for key, value in self.attrib.items():
             try:
                 tmpattrib[key] = value(obj)
@@ -393,7 +393,7 @@ class TemplateElement(object):
         tagnameList = self._splitTagName(tagname)
         insertIndex = 0
 
-        #If parent is not none and has same tagname
+        # If parent is not none and has same tagname
         if parent is not None:
             for i in range(0, len(tagnameList)):
                 tmpInsertPos = parent.find(tagnameList[i])
@@ -407,19 +407,19 @@ class TemplateElement(object):
         if insertIndex >= len(tagnameList):
             insertIndex = insertIndex - 1
 
-        #Create root elem
+        # Create root elem
         elem = etree.Element(tagnameList[insertIndex], nsmap=nsmap)
         rootelem = elem
         subelem = elem
 
-        #Create subelem
+        # Create subelem
         for i in range((insertIndex + 1), len(tagnameList)):
             subelem = etree.SubElement(elem, tagnameList[i])
             elem = subelem
 
         # If we have a parent, append the node to the parent
         if parent is not None:
-            #If we can merge this element, then insert
+            # If we can merge this element, then insert
             if insertIndex > 0:
                 parent.insert(len(list(parent)), rootelem)
             else:

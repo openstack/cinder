@@ -21,7 +21,7 @@ from cinder import test
 import cinder.volume.drivers.openvstorage as ovsvd
 
 
-#MOCKUPS
+# MOCKUPS
 MOCK_hostname = 'test-hostname'
 MOCK_mountpoint = '/mnt/test'
 MOCK_vdisk_guid = '0000'

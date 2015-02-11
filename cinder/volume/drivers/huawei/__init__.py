@@ -70,7 +70,7 @@ class HuaweiVolumeDriver(object):
             'Huawei OceanStor %(product)s series storage arrays.')
             % {'protocol': protocol,
                'product': product})
-        #Map HVS to 18000
+        # Map HVS to 18000
         if product in MAPPING:
             LOG.warn(_LW("Product name %s is deprecated, update your "
                          "configuration to the new product name."), product)

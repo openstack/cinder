@@ -2424,7 +2424,7 @@ def qos_specs_get_all(context, inactive=False, filters=None):
         ]
     """
     filters = filters or {}
-    #TODO(zhiteng) Add filters for 'consumer'
+    # TODO(zhiteng) Add filters for 'consumer'
 
     read_deleted = "yes" if inactive else "no"
     rows = model_query(context, models.QualityOfServiceSpecs,

@@ -263,7 +263,7 @@ class ISCSIConnector(InitiatorConnector):
         device_info = {'type': 'block'}
 
         if self.use_multipath:
-            #multipath installed, discovering other targets if available
+            # multipath installed, discovering other targets if available
             for ip, iqn in self._discover_iscsi_portals(connection_properties):
                 props = copy.deepcopy(connection_properties)
                 props['target_portal'] = ip
@@ -310,7 +310,7 @@ class ISCSIConnector(InitiatorConnector):
         host_device = next(dev for dev in host_devices if os.path.exists(dev))
 
         if self.use_multipath:
-            #we use the multipath device instead of the single path device
+            # we use the multipath device instead of the single path device
             self._rescan_multipath()
             multipath_device = self._get_multipath_device_name(host_device)
             if multipath_device is not None:
@@ -514,8 +514,8 @@ class ISCSIConnector(InitiatorConnector):
                                   "node.session.auth.password",
                                   connection_properties['auth_password'])
 
-        #duplicate logins crash iscsiadm after load,
-        #so we scan active sessions to see if the node is logged in.
+        # duplicate logins crash iscsiadm after load,
+        # so we scan active sessions to see if the node is logged in.
         out = self._run_iscsiadm_bare(["-m", "session"],
                                       run_as_root=True,
                                       check_exit_code=[0, 1, 21])[0] or ""
@@ -536,8 +536,8 @@ class ISCSIConnector(InitiatorConnector):
                                    ("--login",),
                                    check_exit_code=[0, 255])
             except putils.ProcessExecutionError as err:
-                #as this might be one of many paths,
-                #only set successful logins to startup automatically
+                # as this might be one of many paths,
+                # only set successful logins to startup automatically
                 if err.exit_code in [15]:
                     self._iscsiadm_update(connection_properties,
                                           "node.startup",
@@ -855,7 +855,7 @@ class AoEConnector(InitiatorConnector):
 
         waiting_status = {'tries': 0}
 
-        #NOTE(jbr_): Device path is not always present immediately
+        # NOTE(jbr_): Device path is not always present immediately
         def _wait_for_discovery(aoe_path):
             if os.path.exists(aoe_path):
                 raise loopingcall.LoopingCallDone

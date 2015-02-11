@@ -217,7 +217,7 @@ class QoSSpecsController(wsgi.Controller):
 
         force = req.params.get('force', None)
 
-        #convert string to bool type in strict manner
+        # Convert string to bool type in strict manner
         force = strutils.bool_from_string(force)
         LOG.debug("Delete qos_spec: %(id)s, force: %(force)s" %
                   {'id': id, 'force': force})

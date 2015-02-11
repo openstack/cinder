@@ -3032,7 +3032,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Make sure that the volumes have been created
         self._assert_vol_exists(volume['name'], True)
 
-        #Set up one WWPN that won't match and one that will.
+        # Set up one WWPN that won't match and one that will.
         self.driver._state['storage_nodes']['1']['WWPN'] = ['123456789ABCDEF0',
                                                             'AABBCCDDEEFF0010']
 
@@ -3066,7 +3066,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Make sure that the volumes have been created
         self._assert_vol_exists(volume['name'], True)
 
-        #Set up WWPNs that will not match what is available.
+        # Set up WWPNs that will not match what is available.
         self.driver._state['storage_nodes']['1']['WWPN'] = ['123456789ABCDEF0',
                                                             '123456789ABCDEF1']
 
@@ -3100,7 +3100,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Make sure that the volumes have been created
         self._assert_vol_exists(volume['name'], True)
 
-        #Set up one WWPN.
+        # Set up one WWPN.
         self.driver._state['storage_nodes']['1']['WWPN'] = ['AABBCCDDEEFF0012']
 
         wwpns = ['ff00000000000000', 'ff00000000000001']

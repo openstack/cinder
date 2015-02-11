@@ -341,7 +341,7 @@ class BackupsController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=msg)
         context = req.environ['cinder.context']
         import_data = body['backup-record']
-        #Verify that body elements are provided
+        # Verify that body elements are provided
         try:
             backup_service = import_data['backup_service']
             backup_url = import_data['backup_url']

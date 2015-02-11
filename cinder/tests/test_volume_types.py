@@ -283,7 +283,7 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertDictMatch(expected, res)
 
     def test_volume_types_diff(self):
-        #type_ref 1 and 2 have the same extra_specs, while 3 has different
+        # type_ref 1 and 2 have the same extra_specs, while 3 has different
         keyvals1 = {"key1": "val1", "key2": "val2"}
         keyvals2 = {"key1": "val0", "key2": "val2"}
         type_ref1 = volume_types.create(self.ctxt, "type1", keyvals1)
@@ -300,7 +300,7 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertEqual(same, False)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val0'))
 
-        #qos_ref 1 and 2 have the same specs, while 3 has different
+        # qos_ref 1 and 2 have the same specs, while 3 has different
         qos_keyvals1 = {'k1': 'v1', 'k2': 'v2', 'k3': 'v3'}
         qos_keyvals2 = {'k1': 'v0', 'k2': 'v2', 'k3': 'v3'}
         qos_ref1 = qos_specs.create(self.ctxt, 'qos-specs-1', qos_keyvals1)

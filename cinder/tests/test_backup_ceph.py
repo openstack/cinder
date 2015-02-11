@@ -718,7 +718,6 @@ class BackupCephTestCase(test.TestCase):
             self.service.delete(self.backup)
             self.assertTrue(mock_del_backup_snap.called)
 
-        #self.assertFalse(self.mock_rbd.ImageNotFound.called)
         self.assertTrue(self.mock_rbd.RBD.return_value.list.called)
         self.assertTrue(self.mock_rbd.RBD.return_value.remove.called)
 

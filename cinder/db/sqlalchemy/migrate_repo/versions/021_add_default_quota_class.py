@@ -52,20 +52,20 @@ def upgrade(migrate_engine):
         return
 
     try:
-        #Set default volumes
+        # Set default volumes
         qci = quota_classes.insert()
         qci.execute({'created_at': CREATED_AT,
                      'class_name': CLASS_NAME,
                      'resource': 'volumes',
                      'hard_limit': CONF.quota_volumes,
                      'deleted': False, })
-        #Set default snapshots
+        # Set default snapshots
         qci.execute({'created_at': CREATED_AT,
                      'class_name': CLASS_NAME,
                      'resource': 'snapshots',
                      'hard_limit': CONF.quota_snapshots,
                      'deleted': False, })
-        #Set default gigabytes
+        # Set default gigabytes
         qci.execute({'created_at': CREATED_AT,
                      'class_name': CLASS_NAME,
                      'resource': 'gigabytes',

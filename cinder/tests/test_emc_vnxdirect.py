@@ -891,7 +891,7 @@ class DriverTestCaseBase(test.TestCase):
         self.configuration.storage_vnx_pool_name = 'unit_test_pool'
         self.configuration.san_login = 'sysadmin'
         self.configuration.san_password = 'sysadmin'
-        #set the timeout to 0.012s = 0.0002 * 60 = 1.2ms
+        # set the timeout to 0.012s = 0.0002 * 60 = 1.2ms
         self.configuration.default_timeout = 0.0002
         self.configuration.initiator_auto_registration = True
         self.configuration.check_max_pool_luns_threshold = False
@@ -1010,9 +1010,9 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        #case
+        # case
         self.driver.create_volume(self.testData.test_volume_with_type)
-        #verification
+        # verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
                 'vol_with_type', 1,
@@ -1046,10 +1046,10 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        #case
+        # case
         self.driver.create_volume(self.testData.test_volume_with_type)
 
-        #verification
+        # verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
                 'vol_with_type', 1,
@@ -1082,10 +1082,10 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        #case
+        # case
         self.driver.create_volume(self.testData.test_volume_with_type)
 
-        #verification
+        # verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
                 'vol_with_type', 1,
@@ -1112,10 +1112,10 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
                                     '-Deduplication',
                                     '-ThinProvisioning',
                                     '-FAST']
-        #case
+        # case
         self.driver.create_volume(self.testData.test_volume_with_type)
 
-        #verification
+        # verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
                 'vol_with_type', 1,
@@ -1268,7 +1268,7 @@ Time Remaining:  0 second(s)
         ret = self.driver.migrate_volume(None, self.testData.test_volume,
                                          fakehost)[0]
         self.assertTrue(ret)
-        #verification
+        # verification
         expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(1, 1),
                                 retry_disable=True,
                                 poll=True),
@@ -1317,7 +1317,7 @@ Time Remaining:  0 second(s)
         ret = self.driver.migrate_volume(None, self.testData.test_volume,
                                          fake_host)[0]
         self.assertTrue(ret)
-        #verification
+        # verification
         expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(),
                                 retry_disable=True,
                                 poll=True),
@@ -1364,7 +1364,7 @@ Time Remaining:  0 second(s)
         ret = self.driver.migrate_volume(None, self.testData.test_volume5,
                                          fakehost)[0]
         self.assertTrue(ret)
-        #verification
+        # verification
         expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(5, 5),
                                 retry_disable=True,
                                 poll=True),
@@ -1396,7 +1396,7 @@ Time Remaining:  0 second(s)
         ret = self.driver.migrate_volume(None, self.testData.test_volume,
                                          fakehost)[0]
         self.assertFalse(ret)
-        #verification
+        # verification
         expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(),
                                 retry_disable=True,
                                 poll=True)]
@@ -1405,11 +1405,11 @@ Time Remaining:  0 second(s)
     def test_create_destroy_volume_snapshot(self):
         fake_cli = self.driverSetup()
 
-        #case
+        # case
         self.driver.create_snapshot(self.testData.test_snapshot)
         self.driver.delete_snapshot(self.testData.test_snapshot)
 
-        #verification
+        # verification
         expect_cmd = [mock.call(*self.testData.SNAP_CREATE_CMD('snapshot1'),
                                 poll=False),
                       mock.call(*self.testData.SNAP_DELETE_CMD('snapshot1'),
@@ -1715,12 +1715,12 @@ Time Remaining:  0 second(s)
         results = [FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
 
-        #case
+        # case
         self.assertRaises(EMCVnxCLICmdError,
                           self.driver.create_snapshot,
                           self.testData.test_failed_snapshot)
 
-        #verification
+        # verification
         expect_cmd = [
             mock.call(
                 *self.testData.SNAP_CREATE_CMD('failed_snapshot'),
@@ -1729,7 +1729,7 @@ Time Remaining:  0 second(s)
         fake_cli.assert_has_calls(expect_cmd)
 
     def test_create_volume_from_snapshot(self):
-        #set up
+        # set up
         cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
         cmd_dest_np = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
         output_dest = self.testData.LUN_PROPERTY("vol2_dest")
@@ -2022,7 +2022,7 @@ Time Remaining:  0 second(s)
             self.testData.test_pool_name
         self.driver = EMCCLIISCSIDriver(configuration=self.configuration)
         assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
-        #mock the command executor
+        # mock the command executor
         fake_command_execute = self.get_command_execute_simulator(
             commands, results)
         fake_cli = mock.MagicMock(side_effect=fake_command_execute)
@@ -2044,7 +2044,7 @@ Time Remaining:  0 second(s)
         self.configuration.storage_vnx_pool_name = invalid_pool_name
         self.driver = EMCCLIISCSIDriver(configuration=self.configuration)
         assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
-        #mock the command executor
+        # mock the command executor
         fake_command_execute = self.get_command_execute_simulator(
             commands, results)
         fake_cli = mock.MagicMock(side_effect=fake_command_execute)
@@ -2073,7 +2073,7 @@ Time Remaining:  0 second(s)
         self.driver = EMCCLIISCSIDriver(configuration=self.configuration)
         assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
 
-        #mock the command executor
+        # mock the command executor
         fake_command_execute = self.get_command_execute_simulator(
             commands, results)
         fake_cli = mock.MagicMock(side_effect=fake_command_execute)
@@ -2085,7 +2085,7 @@ Time Remaining:  0 second(s)
         expected = [mock.call(*get_lun_cmd, poll=True)]
         assert get_size == test_size
         fake_cli.assert_has_calls(expected)
-        #Test the function with invalid reference.
+        # Test the function with invalid reference.
         invaild_ref = {'fake': 'fake_ref'}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size,

@@ -180,9 +180,9 @@ class API(base.Base):
                 finally:
                     QUOTAS.rollback(context, reservations)
 
-        #TODO(DuncanT): In future, when we have a generic local attach,
-        #               this can go via the scheduler, which enables
-        #               better load balancing and isolation of services
+        # TODO(DuncanT): In future, when we have a generic local attach,
+        #                this can go via the scheduler, which enables
+        #                better load balancing and isolation of services
         self.backup_rpcapi.create_backup(context,
                                          backup['host'],
                                          backup['id'],

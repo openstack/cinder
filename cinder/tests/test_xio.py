@@ -683,7 +683,7 @@ class XIOISEDriverTestCase(object):
             raise exception.Invalid()
 
 #################################
-##        UNIT TESTS           ##
+#         UNIT TESTS            #
 #################################
     def test_do_setup(self, mock_req):
         self.setup_driver()

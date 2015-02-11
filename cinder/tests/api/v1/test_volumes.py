@@ -645,9 +645,9 @@ class VolumeApiTest(test.TestCase):
             self.assertEqual(len(volumes), 1)
             self.assertEqual(volumes[0]['id'], 2)
 
-        #admin case
+        # admin case
         volume_detail_limit_offset(is_admin=True)
-        #non_admin case
+        # non_admin case
         volume_detail_limit_offset(is_admin=False)
 
     def test_volume_show_with_admin_metadata(self):

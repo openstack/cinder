@@ -389,7 +389,6 @@ class FileNotFound(NotFound):
     message = _("File %(file_path)s could not be found.")
 
 
-#TODO(bcwaldon): EOL this exception!
 class Duplicate(CinderException):
     pass
 
@@ -722,7 +721,7 @@ class BadHTTPResponseStatus(ZadaraException):
     message = _("Bad HTTP response status %(status)s")
 
 
-#SolidFire
+# SolidFire
 class SolidFireAPIException(VolumeBackendAPIException):
     message = _("Bad response from SolidFire API")
 

@@ -160,7 +160,7 @@ def get_default_volume_type():
         except exception.VolumeTypeNotFoundByName as e:
             # Couldn't find volume type with the name in default_volume_type
             # flag, record this issue and move on
-            #TODO(zhiteng) consider add notification to warn admin
+            # TODO(zhiteng) consider add notification to warn admin
             LOG.exception(_LE('Default volume type is not found,'
                           'please check default_volume_type config: %s') %
                           six.text_type(e))

@@ -36,7 +36,7 @@ from cinder.volume import driver
 LOG = logging.getLogger(__name__)
 
 nas_opts = [
-    #TODO(eharney): deprecate nas_ip and change this to nas_host
+    # TODO(eharney): deprecate nas_ip and change this to nas_host
     cfg.StrOpt('nas_ip',
                default='',
                help='IP address or Hostname of NAS system.'),

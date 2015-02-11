@@ -3978,7 +3978,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
-            #Setup a single ISCSI IP
+            # Setup a single ISCSI IP
             iscsi_ips = ["10.10.220.253"]
             self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
 
@@ -4000,7 +4000,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
-            #Setup two ISCSI IPs
+            # Setup two ISCSI IPs
             iscsi_ips = ["10.10.220.252", "10.10.220.253"]
             self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
 
@@ -4024,7 +4024,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
-            #Setup two ISCSI IPs
+            # Setup two ISCSI IPs
             iscsi_ips = ["10.10.220.252", "10.10.220.253"]
             self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
 
@@ -4046,7 +4046,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.getPorts.return_value = PORTS1_RET
         mock_client.getVLUNs.return_value = VLUNS5_RET
 
-        #Setup two ISCSI IPs
+        # Setup two ISCSI IPs
         iscsi_ips = ["10.10.220.252", "10.10.220.253"]
         self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
 

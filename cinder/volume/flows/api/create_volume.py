@@ -231,7 +231,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # exist, this is expected as it signals that the image_id is missing.
         image_meta = self.image_service.show(context, image_id)
 
-        #check whether image is active
+        # check whether image is active
         if image_meta['status'] != 'active':
             msg = _('Image %(image_id)s is not active.')\
                 % {'image_id': image_id}

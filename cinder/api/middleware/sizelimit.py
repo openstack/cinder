@@ -26,7 +26,7 @@ from cinder.openstack.common import log as logging
 from cinder import wsgi
 
 
-#default request size is 112k
+# Default request size is 112k
 max_request_body_size_opt = cfg.IntOpt('osapi_max_request_body_size',
                                        default=114688,
                                        help='Max size for body of a request')

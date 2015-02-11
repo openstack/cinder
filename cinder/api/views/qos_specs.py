@@ -43,7 +43,7 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, qos_spec):
         """Detailed view of a single qos_spec."""
-        #TODO(zhiteng) Add associations to detailed view
+        # TODO(zhiteng) Add associations to detailed view
         return {
             'qos_specs': qos_spec,
             'links': self._get_links(request,

@@ -74,7 +74,7 @@ class CapacityWeigher(weights.BaseHostWeigher):
         total_space = host_state.total_capacity_gb
         if (free_space == 'infinite' or free_space == 'unknown' or
                 total_space == 'infinite' or total_space == 'unknown'):
-            #(zhiteng) 'infinite' and 'unknown' are treated the same
+            # (zhiteng) 'infinite' and 'unknown' are treated the same
             # here, for sorting purpose.
 
             # As a partial fix for bug #1350638, 'infinite' and 'unknown' are
