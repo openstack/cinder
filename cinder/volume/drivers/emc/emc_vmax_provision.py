@@ -389,7 +389,7 @@ class EMCVMAXProvision(object):
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
 
-        # Find the newly created volume
+        # Find the newly created volume.
         volumeDict = self.get_volume_dict_from_job(conn, job['Job'])
 
         return volumeDict, rc
@@ -639,7 +639,7 @@ class EMCVMAXProvision(object):
         return rc, job
 
     def get_target_endpoints(self, conn, storageHardwareService, hardwareId):
-        """Given the hardwareId get the
+        """Given the hardwareId, get the target end points.
 
         :param conn: the connection to the ecom server
         :param storageHardwareService: the storage HardwareId Service

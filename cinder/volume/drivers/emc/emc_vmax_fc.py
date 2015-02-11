@@ -15,7 +15,7 @@
 import six
 
 from cinder import context
-from cinder.i18n import _LI
+from cinder.i18n import _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vmax_common
@@ -186,38 +186,42 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         LOG.info(_LI("Start FC detach process for volume: %(volume)s")
                  % {'volume': volume['name']})
 
-        target_wwns, init_targ_map = self._build_initiator_target_map(
-            storage_system, volume, connector)
+        mvInstanceName = self.common.get_masking_view_by_volume(
+            volume, connector)
+        data = {'driver_volume_type': 'fibre_channel',
+                'data': {}}
+        if mvInstanceName is not None:
+            portGroupInstanceName = (
+                self.common.get_port_group_from_masking_view(
+                    mvInstanceName))
 
-        mvInstanceName = self.common.get_masking_view_by_volume(volume)
-        portGroupInstanceName = self.common.get_port_group_from_masking_view(
-            mvInstanceName)
+            LOG.info(_LI("Found port group: %(portGroup)s "
+                         "in masking view %(maskingView)s"),
+                     {'portGroup': portGroupInstanceName,
+                      'maskingView': mvInstanceName})
 
-        LOG.info(_LI("Found port group: %(portGroup)s "
-                     "in masking view %(maskingView)s"),
-                 {'portGroup': portGroupInstanceName,
-                  'maskingView': mvInstanceName})
+            self.common.terminate_connection(volume, connector)
 
-        self.common.terminate_connection(volume, connector)
+            LOG.debug("Looking for masking views still associated with "
+                      "Port Group %s", portGroupInstanceName)
+            mvInstances = self.common.get_masking_views_by_port_group(
+                portGroupInstanceName)
+            if len(mvInstances) > 0:
+                LOG.debug("Found %(numViews)lu MaskingViews.",
+                          {'numViews': len(mvInstances)})
+            else:  # No views found.
+                target_wwns, init_targ_map = self._build_initiator_target_map(
+                    storage_system, volume, connector)
+                LOG.debug("No MaskingViews were found. Deleting zone.")
+                data = {'driver_volume_type': 'fibre_channel',
+                        'data': {'target_wwn': target_wwns,
+                                 'initiator_target_map': init_targ_map}}
 
-        LOG.info(_LI("Looking for masking views still associated with"
-                     "Port Group %s"), portGroupInstanceName)
-        mvInstances = self.common.get_masking_views_by_port_group(
-            portGroupInstanceName)
-        if len(mvInstances) > 0:
-            LOG.debug("Found %(numViews)lu maskingviews."
-                      % {'numViews': len(mvInstances)})
-            data = {'driver_volume_type': 'fibre_channel',
-                    'data': {}}
-        else:  # no views found
-            LOG.debug("No Masking Views were found. Deleting zone.")
-            data = {'driver_volume_type': 'fibre_channel',
-                    'data': {'target_wwn': target_wwns,
-                             'initiator_target_map': init_targ_map}}
-
-        LOG.debug("Return FC data for zone removal: %(data)s."
-                  % {'data': data})
-
+            LOG.debug("Return FC data for zone removal: %(data)s.",
+                      {'data': data})
+        else:
+            LOG.warn(_LW("Volume %(volume)s is not in any masking view."),
+                     {'volume': volume['name']})
         return data
 
     def _build_initiator_target_map(self, storage_system, volume, connector):
@@ -238,7 +242,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
                 target_wwns.extend(map_d['target_port_wwn_list'])
                 for initiator in map_d['initiator_port_wwn_list']:
                     init_targ_map[initiator] = map_d['target_port_wwn_list']
-        else:  # no lookup service, pre-zoned case
+        else:  # No lookup service, pre-zoned case.
             target_wwns = self.common.get_target_wwns(storage_system,
                                                       connector)
             for initiator in initiator_wwns:

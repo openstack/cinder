@@ -534,7 +534,8 @@ class FakeEcomConnection():
             result = self._enum_fcscsiendpoint()
         elif ResultClass == 'CIM_TargetMaskingGroup':
             result = self._assocnames_portgroup()
-
+        elif ResultClass == 'Symm_LunMaskingView':
+            result = self._enum_maskingView()
         else:
             result = self._default_assocnames(objectpath)
         return result
@@ -1114,6 +1115,14 @@ class FakeEcomConnection():
         portgroup['ElementName'] = self.data.port_group
         portgroups.append(portgroup)
         return portgroups
+
+    def _enum_maskingView(self):
+        maskingViews = []
+        maskingView = {}
+        maskingView['CreationClassName'] = 'Symm_LunMaskingView'
+        maskingView['ElementName'] = 'myMaskingView'
+        maskingViews.append(maskingView)
+        return maskingViews
 
     def _default_enum(self):
         names = []
@@ -1753,10 +1762,6 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         '_wrap_get_storage_group_from_volume',
         return_value=None)
     @mock.patch.object(
-        EMCVMAXCommon,
-        '_wrap_find_device_number',
-        return_value={'storagesystem': EMCVMAXCommonData.storage_system})
-    @mock.patch.object(
         EMCVMAXUtils,
         'find_storage_masking_group',
         return_value='value')
@@ -1767,7 +1772,6 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def test_map_new_masking_view_no_fast_success(self,
                                                   mock_check,
                                                   mock_storage_group,
-                                                  mock_wrap_device,
                                                   mock_wrap_group,
                                                   mock_volume_type):
         self.driver.initialize_connection(self.data.test_volume,
@@ -1783,7 +1787,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         return_value=None)
     @mock.patch.object(
         EMCVMAXCommon,
-        '_wrap_find_device_number',
+        'find_device_number',
         return_value={'hostlunid': 1,
                       'storagesystem': EMCVMAXCommonData.storage_system})
     @mock.patch.object(
@@ -1818,7 +1822,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         return_value=None)
     @mock.patch.object(
         EMCVMAXCommon,
-        '_wrap_find_device_number',
+        'find_device_number',
         return_value={'hostlunid': 1,
                       'storagesystem': EMCVMAXCommonData.storage_system})
     @mock.patch.object(
@@ -1839,7 +1843,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         return_value=None)
     @mock.patch.object(
         EMCVMAXCommon,
-        '_wrap_find_device_number',
+        'find_device_number',
         return_value={'storagesystem': EMCVMAXCommonData.storage_system})
     def test_map_no_fast_failed(self, mock_wrap_group, mock_wrap_device):
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -2291,7 +2295,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         return_value=None)
     @mock.patch.object(
         EMCVMAXCommon,
-        '_wrap_find_device_number',
+        'find_device_number',
         return_value={'hostlunid': 1,
                       'storagesystem': EMCVMAXCommonData.storage_system})
     @mock.patch.object(
@@ -2309,7 +2313,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         return_value=None)
     @mock.patch.object(
         EMCVMAXCommon,
-        '_wrap_find_device_number',
+        'find_device_number',
         return_value={'storagesystem': EMCVMAXCommonData.storage_system})
     def test_map_fast_failed(self, mock_wrap_group, mock_wrap_device):
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -2947,6 +2951,8 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         driver.common.conn = FakeEcomConnection()
         driver.zonemanager_lookup_service = None
         self.driver = driver
+        self.driver.utils = EMCVMAXUtils(object)
+        self.driver.masking = EMCVMAXMasking('FC')
 
     def create_fake_config_file_fast(self):
 
@@ -3202,7 +3208,12 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         EMCVMAXMasking,
         'get_masking_view_by_volume',
         return_value=EMCVMAXCommonData.lunmaskctrl_name)
-    def test_detach_fast_success(self, mock_volume_type, mock_maskingview):
+    @mock.patch.object(
+        EMCVMAXCommon,
+        'get_masking_views_by_port_group',
+        return_value=[])
+    def test_detach_fast_success(self, mock_volume_type, mock_maskingview,
+                                 mock_mvs):
         common = self.driver.common
         common.get_target_wwns = mock.Mock(
             return_value=EMCVMAXCommonData.target_wwns)
@@ -3210,8 +3221,8 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
                                                 self.data.connector)
         common.get_target_wwns.assert_called_once_with(
             EMCVMAXCommonData.storage_system, EMCVMAXCommonData.connector)
-
-        self.assertEqual(0, len(data['data']))
+        numTargetWwns = len(EMCVMAXCommonData.target_wwns)
+        self.assertEqual(numTargetWwns, len(data['data']))
 
     @mock.patch.object(
         volume_types,
@@ -3378,6 +3389,35 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         self.driver.retype(
             self.data.test_ctxt, self.data.test_volume, self.data.new_type,
             self.data.diff, self.data.test_host)
+
+    # Bug 1382641
+    def test_get_sg_associated_with_connector(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+
+        mockSgInstanceName1 = {}
+        mockSgInstanceName1['CreationClassName'] = 'CIM_DeviceMaskingGroup'
+        mockSgInstanceName1['ElementName'] = 'OS_1382641_SG'
+        mockSgInstanceName2 = {}
+        mockSgInstanceName2['CreationClassName'] = 'CIM_DeviceMaskingGroup'
+        mockSgInstanceName2['ElementName'] = 'OS_not_1382641_SG'
+        self.driver.masking.get_associated_masking_groups_from_device = (
+            mock.Mock(return_value=[mockSgInstanceName1, mockSgInstanceName2]))
+
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeName = "1382641-Vol"
+        sgInstanceName = self.driver.masking._get_sg_associated_with_connector(
+            conn, controllerConfigService, volumeInstanceName,
+            volumeName, self.data.connector)
+
+        (self.driver.masking.get_associated_masking_groups_from_device.
+         assert_called_once_with(conn, volumeInstanceName))
+
+        self.assertEqual(mockSgInstanceName1['ElementName'],
+                         sgInstanceName['ElementName'])
 
     def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)

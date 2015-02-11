@@ -64,7 +64,7 @@ class EMCVMAXUtils(object):
         self.protocol = prtcl
 
     def find_storage_configuration_service(self, conn, storageSystemName):
-        """Given the storage system name, get the storage configuration service
+        """Given the storage system name, get the storage configuration service.
 
         :param conn: connection to the ecom server
         :param storageSystemName: the storage system name
@@ -835,18 +835,18 @@ class EMCVMAXUtils(object):
             if compositeTypeStr.lower() == stripedStr.lower():
                 compositeType = 3
         except KeyError:
-            # Default to concatenated if not defined
+            # Default to concatenated if not defined.
             pass
 
         return compositeType
 
     def is_volume_bound_to_pool(self, conn, volumeInstance):
-        '''Check if volume is bound to a pool.
+        """Check if volume is bound to a pool.
 
         :param conn: the connection information to the ecom server
         :param storageServiceInstanceName: the storageSystem instance Name
         :returns: foundIsSupportsTieringPolicies - true/false
-        '''
+        """
         propertiesList = volumeInstance.properties.items()
         for properties in propertiesList:
             if properties[0] == 'EMCIsBound':
@@ -861,12 +861,12 @@ class EMCVMAXUtils(object):
         return 'Undetermined'
 
     def get_space_consumed(self, conn, volumeInstance):
-        '''Check the space consumed of a volume.
+        """Check the space consumed of a volume.
 
         :param conn: the connection information to the ecom server
         :param volumeInstance: the volume Instance
         :returns: spaceConsumed
-        '''
+        """
         foundSpaceConsumed = None
         unitnames = conn.References(
             volumeInstance, ResultClass='CIM_AllocatedFromStoragePool',
@@ -885,14 +885,14 @@ class EMCVMAXUtils(object):
         return foundSpaceConsumed
 
     def get_volume_size(self, conn, volumeInstance):
-        '''Get the volume size.
+        """Get the volume size.
 
         ConsumableBlocks * BlockSize
 
         :param conn: the connection information to the ecom server
         :param volumeInstance: the volume Instance
         :returns: volumeSizeOut
-        '''
+        """
         volumeSizeOut = 'Undetermined'
         numBlocks = 0
         blockSize = 0
@@ -913,7 +913,7 @@ class EMCVMAXUtils(object):
         return volumeSizeOut
 
     def determine_member_count(self, sizeStr, memberCount, compositeType):
-        '''Determines how many members a volume should contain.
+        """Determines how many members a volume should contain.
 
         Based on the size of the proposed volume, the compositeType and the
         memberCount, determine (or validate) how many meta members there
@@ -924,7 +924,7 @@ class EMCVMAXUtils(object):
         :param compositeType: the composite type
         :returns: memberCount - string
         :returns: errorDesc - the error description
-        '''
+        """
         errorDesc = None
         if compositeType in 'concatenated' and int(sizeStr) > 240:
             newMemberCount = int(sizeStr) / 240
@@ -1091,23 +1091,23 @@ class EMCVMAXUtils(object):
         return volumeTypeName
 
     def get_volumes_from_pool(self, conn, poolInstanceName):
-        '''Check the space consumed of a volume.
+        """Check the space consumed of a volume.
 
         :param conn: the connection information to the ecom server
         :param volumeInstance: the volume Instance
         :returns: spaceConsumed
-        '''
+        """
         return conn.AssociatorNames(
             poolInstanceName, AssocClass='CIM_AllocatedFromStoragePool',
             ResultClass='CIM_StorageVolume')
 
     def check_is_volume_bound_to_pool(self, conn, volumeInstance):
-        '''Check the space consumed of a volume.
+        """Check the space consumed of a volume.
 
         :param conn: the connection information to the ecom server
         :param volumeInstance: the volume Instance
         :returns: spaceConsumed
-        '''
+        """
         foundSpaceConsumed = None
         unitnames = conn.References(
             volumeInstance, ResultClass='CIM_AllocatedFromStoragePool',
@@ -1130,11 +1130,11 @@ class EMCVMAXUtils(object):
             return 'Undetermined'
 
     def get_short_protocol_type(self, protocol):
-        '''Given the protocol type, return I for iscsi and F for fc
+        """Given the protocol type, return I for iscsi and F for fc
 
         :param protocol: iscsi or fc
         :returns: 'I' or 'F'
-        '''
+        """
         if protocol.lower() == ISCSI.lower():
             return 'I'
         elif protocol.lower() == FC.lower():
@@ -1157,12 +1157,12 @@ class EMCVMAXUtils(object):
         return hardwareIdInstances
 
     def find_ip_protocol_endpoint(self, conn, storageSystemName):
-        '''Find the IP protocol endpoint for ISCSI.
+        """Find the IP protocol endpoint for ISCSI.
 
         :param conn: the connection to the ecom server
         :param storageSystemName: the storage system name
         :returns: foundIpAddress
-        '''
+        """
         foundIpAddress = None
         ipProtocolEndpointInstances = conn.EnumerateInstances(
             'CIM_IPProtocolEndpoint')
@@ -1262,10 +1262,10 @@ class EMCVMAXUtils(object):
         instance = None
         code, desc = arg[0], arg[1]
         if code == CIM_ERR_NOT_FOUND:
-            # Object doesn't exist any more
+            # Object doesn't exist any more.
             instance = None
         else:
-            # Something else that we cannot recover from has happened
+            # Something else that we cannot recover from has happened.
             LOG.error(_LE("Exception: %s"), six.text_type(desc))
             exceptionMessage = (_(
                 "Cannot verify the existence of object:"
