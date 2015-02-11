@@ -521,7 +521,8 @@ Available Capacity (GBs):  3257.851
                   'target_iqn':
                   'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
                   'target_lun': 2,
-                  'target_portal': '10.244.214.118:3260'},
+                  'target_portal': '10.244.214.118:3260',
+                  'volume_id': '1'},
          'driver_volume_type': 'iscsi'}
 
     iscsi_connection_info_rw = \
@@ -530,7 +531,21 @@ Available Capacity (GBs):  3257.851
                   'target_iqn':
                   'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
                   'target_lun': 2,
-                  'target_portal': '10.244.214.118:3260'},
+                  'target_portal': '10.244.214.118:3260',
+                  'volume_id': '1'},
+         'driver_volume_type': 'iscsi'}
+
+    iscsi_connection_info_mp = \
+        {'data': {'access_mode': 'rw',
+                  'target_discovered': True,
+                  'target_iqns': [
+                      'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
+                      'iqn.1992-04.com.emc:cx.fnm00124000215.a5'],
+                  'target_luns': [2, 2],
+                  'target_portals': [
+                      '10.244.214.118:3260',
+                      '10.244.214.119:3260'],
+                  'volume_id': '1'},
          'driver_volume_type': 'iscsi'}
 
     PING_OK = ("Reply from 10.0.0.2:  bytes=32 time=1ms TTL=30\n" +
@@ -666,6 +681,25 @@ Available Capacity (GBs):  3257.851
           HBA UID                                          SP Name     SPPort
           -------                                          -------     ------
           iqn.1993-08.org.debian:01:222                     SP A         4
+
+        HLU/ALU Pairs:
+
+          HLU Number     ALU Number
+          ----------     ----------
+            1               1
+        Shareable:             YES""" % sgname, 0)
+
+    def STORAGE_GROUP_HAS_MAP_MP(self, sgname):
+
+        return ("""\
+        Storage Group Name:    %s
+        Storage Group UID:     54:46:57:0F:15:A2:E3:11:9A:8D:FF:E5:3A:03:FD:6D
+        HBA/SP Pairs:
+
+          HBA UID                                          SP Name     SPPort
+          -------                                          -------     ------
+          iqn.1993-08.org.debian:01:222                     SP A         4
+          iqn.1993-08.org.debian:01:222                     SP A         5
 
         HLU/ALU Pairs:
 
@@ -1111,7 +1145,7 @@ class EMCVNXCLIDriverISCSITestCase(test.TestCase):
             "volume backend name is not correct")
         self.assertTrue(stats['location_info'] == "unit_test_pool|fakeSerial")
         self.assertTrue(
-            stats['driver_version'] == "05.00.00",
+            stats['driver_version'] == "05.01.00",
             "driver version is incorrect.")
 
     def test_get_volume_stats_too_many_luns(self):
@@ -1410,6 +1444,46 @@ Time Remaining:  0 second(s)
                               poll=False),
                     mock.call(*self.testData.PINGNODE_CMD('A', 4, 0,
                                                           '10.0.0.2'))]
+        fake_cli.assert_has_calls(expected)
+
+    @mock.patch('random.randint',
+                mock.Mock(return_value=0))
+    def test_initialize_connection_multipath(self):
+        self.configuration.initiator_auto_registration = False
+
+        commands = [('storagegroup', '-list', '-gname', 'fakehost')]
+        results = [self.testData.STORAGE_GROUP_HAS_MAP_MP('fakehost')]
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.cli.iscsi_targets = {
+            'A': [
+                {'Port WWN': 'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
+                 'SP': 'A',
+                 'Port ID': 4,
+                 'Virtual Port ID': 0,
+                 'IP Address': '10.244.214.118'},
+                {'Port WWN': 'iqn.1992-04.com.emc:cx.fnm00124000215.a5',
+                 'SP': 'A',
+                 'Port ID': 5,
+                 'Virtual Port ID': 1,
+                 'IP Address': '10.244.214.119'}],
+            'B': []}
+        test_volume_rw = self.testData.test_volume_rw.copy()
+        test_volume_rw['provider_location'] = 'system^fakesn|type^lun|id^1'
+        connector_m = dict(self.testData.connector)
+        connector_m['multipath'] = True
+        connection_info = self.driver.initialize_connection(
+            test_volume_rw,
+            connector_m)
+
+        self.assertEqual(connection_info,
+                         self.testData.iscsi_connection_info_mp)
+
+        expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
+                              poll=False),
+                    mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
+                              '-gname', 'fakehost', poll=False),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                              poll=False)]
         fake_cli.assert_has_calls(expected)
 
     @mock.patch(
@@ -3156,7 +3230,7 @@ class EMCVNXCLIDriverFCTestCase(test.TestCase):
             "volume backend name is not correct")
         self.assertTrue(stats['location_info'] == "unit_test_pool|fakeSerial")
         self.assertTrue(
-            stats['driver_version'] == "05.00.00",
+            stats['driver_version'] == "05.01.00",
             "driver version is incorrect.")
 
     def test_get_volume_stats_too_many_luns(self):

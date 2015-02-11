@@ -1337,10 +1337,11 @@ class CommandLineHelper(object):
                     connection_pingnode)
         return False
 
-    def find_avaialable_iscsi_target_one(self, hostname,
-                                         preferred_sp,
-                                         registered_spport_set,
-                                         all_iscsi_targets):
+    def find_available_iscsi_targets(self, hostname,
+                                     preferred_sp,
+                                     registered_spport_set,
+                                     all_iscsi_targets,
+                                     multipath=False):
         if self.iscsi_initiator_map and hostname in self.iscsi_initiator_map:
             iscsi_initiator_ips = list(self.iscsi_initiator_map[hostname])
             random.shuffle(iscsi_initiator_ips)
@@ -1351,6 +1352,21 @@ class CommandLineHelper(object):
             target_sps = ('A', 'B')
         else:
             target_sps = ('B', 'A')
+
+        if multipath:
+            target_portals = []
+            for target_sp in target_sps:
+                sp_portals = all_iscsi_targets[target_sp]
+                for portal in sp_portals:
+                    spport = (portal['SP'], portal['Port ID'])
+                    if spport not in registered_spport_set:
+                        LOG.debug("Skip SP Port %(port)s since "
+                                  "no path from %(host)s is through it",
+                                  {'port': spport,
+                                   'host': hostname})
+                        continue
+                    target_portals.append(portal)
+            return target_portals
 
         for target_sp in target_sps:
             target_portals = list(all_iscsi_targets[target_sp])
@@ -1366,7 +1382,7 @@ class CommandLineHelper(object):
                 if iscsi_initiator_ips is not None:
                     for initiator_ip in iscsi_initiator_ips:
                         if self.ping_node(target_portal, initiator_ip):
-                            return target_portal
+                            return [target_portal]
                 else:
                     LOG.debug("No iSCSI IP address of %(hostname)s is known. "
                               "Return a random target portal %(portal)s.",
@@ -1533,7 +1549,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.00.00'
+    VERSION = '05.01.00'
     stats = {'driver_version': VERSION,
              'free_capacity_gb': 'unknown',
              'reserved_percentage': 0,
@@ -2515,34 +2531,54 @@ class EMCVnxCliBase(object):
 
     def vnx_get_iscsi_properties(self, volume, connector, hlu, sg_raw_output):
         storage_group = connector['host']
+        multipath = connector.get('multipath', False)
         owner_sp = self.get_lun_owner(volume)
         registered_spports = self._client.get_registered_spport_set(
             connector['initiator'],
             storage_group,
             sg_raw_output)
-        target = self._client.find_avaialable_iscsi_target_one(
+        targets = self._client.find_available_iscsi_targets(
             storage_group, owner_sp,
             registered_spports,
-            self.iscsi_targets)
-        properties = {'target_discovered': True,
-                      'target_iqn': 'unknown',
-                      'target_portal': 'unknown',
-                      'target_lun': 'unknown',
-                      'volume_id': volume['id']}
-        if target:
-            properties = {'target_discovered': True,
-                          'target_iqn': target['Port WWN'],
-                          'target_portal': "%s:3260" % target['IP Address'],
-                          'target_lun': hlu}
-            LOG.debug("iSCSI Properties: %s", properties)
-            auth = volume['provider_auth']
-            if auth:
-                (auth_method, auth_username, auth_secret) = auth.split()
-                properties['auth_method'] = auth_method
-                properties['auth_username'] = auth_username
-                properties['auth_password'] = auth_secret
+            self.iscsi_targets,
+            multipath)
+
+        properties = {}
+
+        if not multipath:
+            properties = {'target_discovered': False,
+                          'target_iqn': 'unknown',
+                          'target_portal': 'unknown',
+                          'target_lun': 'unknown',
+                          'volume_id': volume['id']}
+            if targets:
+                properties['target_discovered'] = True
+                properties['target_iqn'] = targets[0]['Port WWN']
+                properties['target_portal'] = \
+                    "%s:3260" % targets[0]['IP Address']
+                properties['target_lun'] = hlu
+
+                auth = volume['provider_auth']
+                if auth:
+                    (auth_method, auth_username, auth_secret) = auth.split()
+                    properties['auth_method'] = auth_method
+                    properties['auth_username'] = auth_username
+                    properties['auth_password'] = auth_secret
         else:
-            LOG.error(_LE('Failed to find an available iSCSI targets for %s.'),
+            properties = {'target_discovered': False,
+                          'target_iqns': None,
+                          'target_portals': None,
+                          'target_luns': None,
+                          'volume_id': volume['id']}
+            if targets:
+                properties['target_discovered'] = True
+                properties['target_iqns'] = [t['Port WWN'] for t in targets]
+                properties['target_portals'] = [
+                    "%s:3260" % t['IP Address'] for t in targets]
+                properties['target_luns'] = [hlu] * len(targets)
+
+        if not targets:
+            LOG.error(_LE('Failed to find available iSCSI targets for %s.'),
                       storage_group)
 
         return properties

@@ -51,6 +51,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                 Initiator Auto Deregistration,
                 Force Deleting LUN in Storage Groups,
                 robust enhancement
+        5.1.0 - iSCSI multipath enhancement
     """
 
     def __init__(self, *args, **kwargs):
