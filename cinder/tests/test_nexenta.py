@@ -110,7 +110,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.nms_mock.scsidisk.create_lu('cinder/volume1', {})
         self.nms_mock.scsidisk.lu_shared('cinder/volume1')
         self.nms_mock.scsidisk.add_lun_mapping_entry(
-            'cinder/volume1', {'target_group': 'cinder/volume1', 'lun': '0'})
+            'cinder/volume1', {'target_group': 'cinder/volume1'})
         self.mox.ReplayAll()
         self.drv.create_volume(self.TEST_VOLUME_REF)
 
@@ -247,7 +247,7 @@ class TestNexentaISCSIDriver(test.TestCase):
             True, ),
         ('scsidisk', 'lu_shared', ('cinder/volume1', ), 0, False, ),
         ('scsidisk', 'add_lun_mapping_entry', ('cinder/volume1', {
-            'target_group': 'cinder/volume1', 'lun': '0'}),
+            'target_group': 'cinder/volume1'}),
             u"Unable to add view to zvol 'cinder/volume1' (LUNs in use: ):\n"
             u" stmfadm: view entry exists\n", True, ),
     ]
