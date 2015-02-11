@@ -17,13 +17,13 @@ import errno
 import os
 import time
 
+from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 import six
 
-from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils

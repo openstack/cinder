@@ -17,8 +17,8 @@ Mock unit tests for the NetApp cmode nfs storage driver
 """
 
 import mock
+from os_brick.remotefs import remotefs as remotefs_brick
 
-from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp import fakes as na_fakes
 from cinder import utils

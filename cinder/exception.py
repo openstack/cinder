@@ -687,6 +687,18 @@ class ReadOnlyFieldError(CinderException):
     msg_fmt = _('Cannot modify readonly field %(field)s')
 
 
+class VolumeGroupNotFound(CinderException):
+    msg_fmt = _('Unable to find Volume Group: %(vg_name)s')
+
+
+class VolumeGroupCreationFailed(CinderException):
+    msg_fmt = _('Failed to create Volume Group: %(vg_name)s')
+
+
+class VolumeDeviceNotFound(CinderException):
+    msg_fmt = _('Volume device not found at %(device)s.')
+
+
 # Driver specific exceptions
 # Coraid
 class CoraidException(VolumeDriverException):

@@ -27,11 +27,11 @@ import tempfile
 import zlib
 
 import mock
+from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_config import cfg
 from oslo_log import log as logging
 
 from cinder.backup.drivers import nfs
-from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import context
 from cinder import db
 from cinder import exception

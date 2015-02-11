@@ -16,8 +16,8 @@ from mox3 import mox
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 
-from cinder.brick import exception
 from cinder.brick.local_dev import lvm as brick
+from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 

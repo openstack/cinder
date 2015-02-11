@@ -22,12 +22,12 @@ import math
 import os
 import re
 
+from os_brick import executor
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 from oslo_utils import excutils
 
-from cinder.brick import exception
-from cinder.brick import executor
+from cinder import exception
 from cinder.i18n import _LE, _LI
 from cinder import utils
 
