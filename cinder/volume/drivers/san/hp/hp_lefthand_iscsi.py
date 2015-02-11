@@ -52,9 +52,10 @@ class HPLeftHandISCSIDriver(driver.VolumeDriver):
         1.0.2 - Added support for volume migrate
         1.0.3 - Fix for no handler for logger during tests
         1.0.4 - Removing locks bug #1395953
+        1.0.5 - Adding support for manage/unmanage.
     """
 
-    VERSION = "1.0.4"
+    VERSION = "1.0.5"
 
     def __init__(self, *args, **kwargs):
         super(HPLeftHandISCSIDriver, self).__init__(*args, **kwargs)
@@ -152,3 +153,12 @@ class HPLeftHandISCSIDriver(driver.VolumeDriver):
     def migrate_volume(self, ctxt, volume, host):
         """Migrate directly if source and dest are managed by same storage."""
         return self.proxy.migrate_volume(ctxt, volume, host)
+
+    def manage_existing(self, volume, existing_ref):
+        return self.proxy.manage_existing(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        return self.proxy.manage_existing_get_size(volume, existing_ref)
+
+    def unmanage(self, volume):
+        return self.proxy.unmanage(volume)
