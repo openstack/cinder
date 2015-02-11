@@ -18,6 +18,7 @@ from oslo_concurrency import processutils as putils
 from oslo_utils import timeutils
 
 from cinder import context
+from cinder import exception
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
@@ -236,6 +237,51 @@ class TestTgtAdmDriver(test.TestCase):
                 1,
                 0,
                 self.fake_volumes_dir))
+
+    @mock.patch('os.path.isfile', return_value=True)
+    @mock.patch('os.path.exists', return_value=True)
+    @mock.patch.object(utils, 'execute')
+    @mock.patch('os.unlink', return_value=None)
+    def test_delete_target_not_found(self,
+                                     mock_unlink,
+                                     mock_exec,
+                                     mock_pathexists,
+                                     mock_isfile):
+        def _fake_execute(*args, **kwargs):
+            raise putils.ProcessExecutionError(
+                exit_code=1,
+                stdout='',
+                stderr='can\'t find the target',
+                cmd='tgt-admin --force --delete')
+
+        def _fake_execute_wrong_message(*args, **kwargs):
+            raise putils.ProcessExecutionError(
+                exit_code=1,
+                stdout='',
+                stderr='this isnt the error your looking for',
+                cmd='tgt-admin --force --delete')
+
+        mock_exec.side_effect = _fake_execute
+
+        test_vol_id = '83c2e877-feed-46be-8435-77884fe55b45'
+        test_vol_name = 'volume-83c2e877-feed-46be-8435-77884fe55b45'
+
+        with mock.patch.object(self.target, '_get_target', return_value=False):
+            self.assertEqual(
+                None,
+                self.target.remove_iscsi_target(
+                    1,
+                    0,
+                    test_vol_id,
+                    test_vol_name))
+
+            mock_exec.side_effect = _fake_execute_wrong_message
+            self.assertRaises(exception.ISCSITargetRemoveFailed,
+                              self.target.remove_iscsi_target,
+                              1,
+                              0,
+                              test_vol_id,
+                              test_vol_name)
 
     def test_create_export(self):
 
