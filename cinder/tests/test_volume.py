@@ -356,6 +356,25 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(volume.status, "error")
         db.volume_destroy(context.get_admin_context(), volume_id)
 
+    def test_create_driver_not_initialized_rescheduling(self):
+        self.volume.driver._initialized = False
+
+        volume = tests_utils.create_volume(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            **self.volume_params)
+
+        volume_id = volume['id']
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.create_volume,
+                          self.context, volume_id,
+                          {'volume_properties': self.volume_params})
+        # NOTE(dulek): Volume should be rescheduled as we passed request_spec,
+        # assert that it wasn't counted in allocated_capacity tracking.
+        self.assertEqual(self.volume.stats['pools'], {})
+
+        db.volume_destroy(context.get_admin_context(), volume_id)
+
     @mock.patch.object(QUOTAS, 'rollback')
     @mock.patch.object(QUOTAS, 'commit')
     @mock.patch.object(QUOTAS, 'reserve')
@@ -2598,14 +2617,17 @@ class VolumeTestCase(BaseVolumeTestCase):
                                               **self.volume_params)['id']
         # creating volume testdata
         try:
+            request_spec = {'volume_properties': self.volume_params}
             self.volume.create_volume(self.context,
                                       volume_id,
+                                      request_spec,
                                       image_id=image_id)
         finally:
             # cleanup
             os.unlink(dst_path)
             volume = db.volume_get(self.context, volume_id)
-            return volume
+
+        return volume
 
     def test_create_volume_from_image_cloned_status_available(self):
         """Test create volume from image via cloning.
@@ -2660,6 +2682,25 @@ class VolumeTestCase(BaseVolumeTestCase):
         # cleanup
         db.volume_destroy(self.context, volume_id)
         os.unlink(dst_path)
+
+    def test_create_volume_from_image_copy_exception_rescheduling(self):
+        """Test create volume with ImageCopyFailure
+
+        This exception should not trigger rescheduling and allocated_capacity
+        should be incremented so we're having assert for that here.
+        """
+        def fake_copy_image_to_volume(context, volume, image_service,
+                                      image_id):
+            raise exception.ImageCopyFailure()
+
+        self.stubs.Set(self.volume.driver, 'copy_image_to_volume',
+                       fake_copy_image_to_volume)
+        self.assertRaises(exception.ImageCopyFailure,
+                          self._create_volume_from_image)
+        # NOTE(dulek): Rescheduling should not occur, so lets assert that
+        # allocated_capacity is incremented.
+        self.assertDictEqual(self.volume.stats['pools'],
+                             {'_pool0': {'allocated_capacity_gb': 1}})
 
     def test_create_volume_from_exact_sized_image(self):
         """Verify that an image which is exactly the same size as the

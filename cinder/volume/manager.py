@@ -47,6 +47,7 @@ from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 from osprofiler import profiler
+from taskflow import exceptions as tfe
 
 from cinder import compute
 from cinder import context
@@ -420,15 +421,30 @@ class VolumeManager(manager.SchedulerDependentManager):
         def _run_flow_locked():
             _run_flow()
 
-        if locked_action is None:
-            _run_flow()
-        else:
-            _run_flow_locked()
+        # NOTE(dulek): Flag to indicate if volume was rescheduled. Used to
+        # decide if allocated_capacity should be incremented.
+        rescheduled = False
 
-        # Fetch created volume from storage
-        vol_ref = flow_engine.storage.fetch('volume')
-        # Update volume stats
-        self._update_allocated_capacity(vol_ref)
+        try:
+            if locked_action is None:
+                _run_flow()
+            else:
+                _run_flow_locked()
+        except exception.CinderException as e:
+            if hasattr(e, 'rescheduled'):
+                rescheduled = e.rescheduled
+            raise
+        finally:
+            try:
+                vol_ref = flow_engine.storage.fetch('volume_ref')
+            except tfe.NotFound as e:
+                # Flow was reverted, fetching volume_ref from the DB.
+                vol_ref = self.db.volume_get(context, volume_id)
+
+            if not rescheduled:
+                # NOTE(dulek): Volume wasn't rescheduled so we need to update
+                # volume stats as these are decremented on delete.
+                self._update_allocated_capacity(vol_ref)
 
         return vol_ref['id']
 
