@@ -1194,10 +1194,10 @@ def volume_get_all(context, marker, limit, sort_key, sort_dir,
     :param limit: maximum number of items to return
     :param sort_key: single attributes by which results should be sorted
     :param sort_dir: direction in which results should be sorted (asc, desc)
-    :param filters: Filters for the query. A filter key/value of
-                    'no_migration_targets'=True causes volumes with either
-                    a NULL 'migration_status' or a 'migration_status' that
-                    does not start with 'target:' to be retrieved.
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see _process_volume_filters
+                    function for more information
     :returns: list of matching volumes
     """
     session = get_session()
@@ -1212,8 +1212,17 @@ def volume_get_all(context, marker, limit, sort_key, sort_dir,
 
 
 @require_admin_context
-def volume_get_all_by_host(context, host):
-    """Retrieves all volumes hosted on a host."""
+def volume_get_all_by_host(context, host, filters=None):
+    """Retrieves all volumes hosted on a host.
+
+    :param context: context to query under
+    :param host: host for all volumes being retrieved
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see _process_volume_filters
+                    function for more information
+    :returns: list of matching volumes
+    """
     # As a side effect of the introduction of pool-aware scheduler,
     # newly created volumes will have pool information appended to
     # 'host' field of a volume record. So a volume record in DB can
@@ -1226,16 +1235,36 @@ def volume_get_all_by_host(context, host):
             host_attr = getattr(models.Volume, 'host')
             conditions = [host_attr == host,
                           host_attr.op('LIKE')(host + '#%')]
-            result = _volume_get_query(context).filter(or_(*conditions)).all()
-            return result
+            query = _volume_get_query(context).filter(or_(*conditions))
+            if filters:
+                query = _process_volume_filters(query, filters)
+                # No volumes would match, return empty list
+                if query is None:
+                    return []
+            return query.all()
     elif not host:
         return []
 
 
 @require_admin_context
-def volume_get_all_by_group(context, group_id):
-    return _volume_get_query(context).filter_by(consistencygroup_id=group_id).\
-        all()
+def volume_get_all_by_group(context, group_id, filters=None):
+    """Retrieves all volumes associated with the group_id.
+
+    :param context: context to query under
+    :param group_id: group ID for all volumes being retrieved
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see _process_volume_filters
+                    function for more information
+    :returns: list of matching volumes
+    """
+    query = _volume_get_query(context).filter_by(consistencygroup_id=group_id)
+    if filters:
+        query = _process_volume_filters(query, filters)
+        # No volumes would match, return empty list
+        if query is None:
+            return []
+    return query.all()
 
 
 @require_context
@@ -1250,10 +1279,10 @@ def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
     :param limit: maximum number of items to return
     :param sort_key: single attributes by which results should be sorted
     :param sort_dir: direction in which results should be sorted (asc, desc)
-    :param filters: Filters for the query. A filter key/value of
-                    'no_migration_targets'=True causes volumes with either
-                    a NULL 'migration_status' or a 'migration_status' that
-                    does not start with 'target:' to be retrieved.
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see _process_volume_filters
+                    function for more information
     :returns: list of matching volumes
     """
     session = get_session()
@@ -1285,82 +1314,18 @@ def _generate_paginate_query(context, session, marker, limit, sort_key,
     :param limit: maximum number of items to return
     :param sort_key: single attributes by which results should be sorted
     :param sort_dir: direction in which results should be sorted (asc, desc)
-    :param filters: dictionary of filters; values that are lists,
-                    tuples, sets, or frozensets cause an 'IN' test to
-                    be performed, while exact matching ('==' operator)
-                    is used for other values
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see _process_volume_filters
+                    function for more information
     :returns: updated query or None
     """
     query = _volume_get_query(context, session=session)
 
     if filters:
-        filters = filters.copy()
-
-        # 'no_migration_targets' is unique, must be either NULL or
-        # not start with 'target:'
-        if ('no_migration_targets' in filters and
-                filters['no_migration_targets'] is True):
-            filters.pop('no_migration_targets')
-            try:
-                column_attr = getattr(models.Volume, 'migration_status')
-                conditions = [column_attr == None,  # noqa
-                              column_attr.op('NOT LIKE')('target:%')]
-                query = query.filter(or_(*conditions))
-            except AttributeError:
-                log_msg = _("'migration_status' column could not be found.")
-                LOG.debug(log_msg)
-                return None
-
-        # Apply exact match filters for everything else, ensure that the
-        # filter value exists on the model
-        for key in filters.keys():
-            # metadata is unique, must be a dict
-            if key == 'metadata':
-                if not isinstance(filters[key], dict):
-                    log_msg = _("'metadata' filter value is not valid.")
-                    LOG.debug(log_msg)
-                    return None
-                continue
-            try:
-                column_attr = getattr(models.Volume, key)
-                # Do not allow relationship properties since those require
-                # schema specific knowledge
-                prop = getattr(column_attr, 'property')
-                if isinstance(prop, RelationshipProperty):
-                    log_msg = (_("'%s' filter key is not valid, "
-                                 "it maps to a relationship.")) % key
-                    LOG.debug(log_msg)
-                    return None
-            except AttributeError:
-                log_msg = _("'%s' filter key is not valid.") % key
-                LOG.debug(log_msg)
-                return None
-
-        # Holds the simple exact matches
-        filter_dict = {}
-
-        # Iterate over all filters, special case the filter is necessary
-        for key, value in filters.iteritems():
-            if key == 'metadata':
-                # model.VolumeMetadata defines the backref to Volumes as
-                # 'volume_metadata' or 'volume_admin_metadata', use those as
-                # column attribute keys
-                col_attr = getattr(models.Volume, 'volume_metadata')
-                col_ad_attr = getattr(models.Volume, 'volume_admin_metadata')
-                for k, v in value.iteritems():
-                    query = query.filter(or_(col_attr.any(key=k, value=v),
-                                             col_ad_attr.any(key=k, value=v)))
-            elif isinstance(value, (list, tuple, set, frozenset)):
-                # Looking for values in a list; apply to query directly
-                column_attr = getattr(models.Volume, key)
-                query = query.filter(column_attr.in_(value))
-            else:
-                # OK, simple exact match; save for later
-                filter_dict[key] = value
-
-        # Apply simple exact matches
-        if filter_dict:
-            query = query.filter_by(**filter_dict)
+        query = _process_volume_filters(query, filters)
+        if query is None:
+            return None
 
     marker_volume = None
     if marker is not None:
@@ -1370,6 +1335,88 @@ def _generate_paginate_query(context, session, marker, limit, sort_key,
                                           [sort_key, 'created_at', 'id'],
                                           marker=marker_volume,
                                           sort_dir=sort_dir)
+
+
+def _process_volume_filters(query, filters):
+    """Common filter processing for Volume queries.
+
+    Filter values that are in lists, tuples, or sets cause an 'IN' operator
+    to be used, while exact matching ('==' operator) is used for other values.
+
+    A filter key/value of 'no_migration_targets'=True causes volumes with
+    either a NULL 'migration_status' or a 'migration_status' that does not
+    start with 'target:' to be retrieved.
+
+    A 'metadata' filter key must correspond to a dictionary value of metadata
+    key-value pairs.
+
+    :param query: Model query to use
+    :param filters: dictionary of filters
+    :returns: updated query or None
+    """
+    filters = filters.copy()
+
+    # 'no_migration_targets' is unique, must be either NULL or
+    # not start with 'target:'
+    if filters.get('no_migration_targets', False):
+        filters.pop('no_migration_targets')
+        try:
+            column_attr = getattr(models.Volume, 'migration_status')
+            conditions = [column_attr == None,  # noqa
+                          column_attr.op('NOT LIKE')('target:%')]
+            query = query.filter(or_(*conditions))
+        except AttributeError:
+            LOG.debug("'migration_status' column could not be found.")
+            return None
+
+    # Apply exact match filters for everything else, ensure that the
+    # filter value exists on the model
+    for key in filters.keys():
+        # metadata is unique, must be a dict
+        if key == 'metadata':
+            if not isinstance(filters[key], dict):
+                LOG.debug("'metadata' filter value is not valid.")
+                return None
+            continue
+        try:
+            column_attr = getattr(models.Volume, key)
+            # Do not allow relationship properties since those require
+            # schema specific knowledge
+            prop = getattr(column_attr, 'property')
+            if isinstance(prop, RelationshipProperty):
+                LOG.debug(("'%s' filter key is not valid, "
+                           "it maps to a relationship."), key)
+                return None
+        except AttributeError:
+            LOG.debug("'%s' filter key is not valid.", key)
+            return None
+
+    # Holds the simple exact matches
+    filter_dict = {}
+
+    # Iterate over all filters, special case the filter if necessary
+    for key, value in filters.iteritems():
+        if key == 'metadata':
+            # model.VolumeMetadata defines the backref to Volumes as
+            # 'volume_metadata' or 'volume_admin_metadata', use those as
+            # column attribute keys
+            col_attr = getattr(models.Volume, 'volume_metadata')
+            col_ad_attr = getattr(models.Volume, 'volume_admin_metadata')
+            for k, v in value.iteritems():
+                query = query.filter(or_(col_attr.any(key=k, value=v),
+                                         col_ad_attr.any(key=k, value=v)))
+        elif isinstance(value, (list, tuple, set, frozenset)):
+            # Looking for values in a list; apply to query directly
+            column_attr = getattr(models.Volume, key)
+            query = query.filter(column_attr.in_(value))
+        else:
+            # OK, simple exact match; save for later
+            filter_dict[key] = value
+
+    # Apply simple exact matches
+    if filter_dict:
+        query = query.filter_by(**filter_dict)
+    return query
 
 
 @require_admin_context
