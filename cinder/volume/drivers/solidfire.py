@@ -255,7 +255,7 @@ class SolidFireDriver(SanISCSIDriver):
     def _create_sfaccount(self, project_id):
         """Create account on SolidFire device if it doesn't already exist.
 
-        We're first going to check if the account already exits, if it does
+        We're first going to check if the account already exists, if it does
         just return it.  If not, then create it.
 
         """
@@ -587,7 +587,7 @@ class SolidFireDriver(SanISCSIDriver):
     def _verify_image_volume(self, context, image_meta, image_service):
         # This method just verifies that IF we have a cache volume that
         # it's still up to date and current WRT the image in Glance
-        # ie an image-update hasn't occured since we grabbed it
+        # ie an image-update hasn't occurred since we grabbed it
 
         # If it's out of date, just delete it and we'll create a new one
         # Any other case we don't care and just return without doing anything
