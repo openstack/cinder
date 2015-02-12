@@ -21,6 +21,7 @@ import requests
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
+from cinder import utils
 
 
 LOG = logging.getLogger(__name__)
@@ -77,12 +78,14 @@ class HttpClient(object):
     def __formatUrl(self, url):
         return '%s%s' % (self.baseUrl, url if url[0] != '/' else url[1:])
 
+    @utils.retry(exceptions=(requests.ConnectionError, ))
     def get(self, url):
         return self.session.get(
             self.__formatUrl(url),
             headers=self.header,
             verify=self.verify)
 
+    @utils.retry(exceptions=(requests.ConnectionError, ))
     def post(self, url, payload):
         return self.session.post(
             self.__formatUrl(url),
@@ -91,6 +94,7 @@ class HttpClient(object):
             headers=self.header,
             verify=self.verify)
 
+    @utils.retry(exceptions=(requests.ConnectionError, ))
     def put(self, url, payload):
         return self.session.put(
             self.__formatUrl(url),
@@ -99,6 +103,7 @@ class HttpClient(object):
             headers=self.header,
             verify=self.verify)
 
+    @utils.retry(exceptions=(requests.ConnectionError, ))
     def delete(self, url):
         return self.session.delete(
             self.__formatUrl(url),
@@ -181,7 +186,7 @@ class StorageCenterApi(object):
             LOG.debug('Unable to find result where %(attr)s is %(val)s',
                       {'attr': attribute,
                        'val': value})
-            LOG.debug('Blob was %(blob)s', {'blob': blob})
+            LOG.debug('Blob was %(blob)s', {'blob': blob.text})
         return rsp
 
     def _get_json(self, blob):
