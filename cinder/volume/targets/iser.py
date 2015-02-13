@@ -44,25 +44,3 @@ class ISERTgtAdm(tgt.TgtAdm):
         self.configuration.iscsi_ip_address = \
             self.configuration.iser_ip_address
         self.configuration.iscsi_port = self.configuration.iser_port
-
-    def initialize_connection(self, volume, connector):
-        """Initializes the connection and returns connection info.
-        The iser driver returns a driver_volume_type of 'iser'.
-        The format of the driver data is defined in _get_iscsi_properties.
-        Example return value::
-            {
-                'driver_volume_type': 'iser'
-                'data': {
-                    'target_discovered': True,
-                    'target_iqn':
-                    'iqn.2010-10.org.openstack:volume-00000001',
-                    'target_portal': '127.0.0.0.1:3260',
-                    'volume_id': 1,
-                }
-            }
-        """
-        iser_properties = self._get_iscsi_properties(volume)
-        return {
-            'driver_volume_type': 'iser',
-            'data': iser_properties
-        }
