@@ -19,12 +19,12 @@
 Scheduler base class that all Schedulers should inherit from
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import importutils
+from oslo_utils import timeutils
 
 from cinder import db
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import importutils
-from cinder.openstack.common import timeutils
+from cinder.i18n import _
 from cinder.volume import rpcapi as volume_rpcapi
 
 
@@ -49,6 +49,16 @@ def volume_update_db(context, volume_id, host):
     now = timeutils.utcnow()
     values = {'host': host, 'scheduled_at': now}
     return db.volume_update(context, volume_id, values)
+
+
+def group_update_db(context, group_id, host):
+    """Set the host and the scheduled_at field of a consistencygroup.
+
+    :returns: A Consistencygroup with the updated fields set properly.
+    """
+    now = timeutils.utcnow()
+    values = {'host': host, 'updated_at': now}
+    return db.consistencygroup_update(context, group_id, values)
 
 
 class Scheduler(object):
@@ -81,3 +91,15 @@ class Scheduler(object):
     def schedule_create_volume(self, context, request_spec, filter_properties):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_("Must implement schedule_create_volume"))
+
+    def schedule_create_consistencygroup(self, context, group_id,
+                                         request_spec_list,
+                                         filter_properties_list):
+        """Must override schedule method for scheduler to work."""
+        raise NotImplementedError(_(
+            "Must implement schedule_create_consistencygroup"))
+
+    def get_pools(self, context, filters):
+        """Must override schedule method for scheduler to work."""
+        raise NotImplementedError(_(
+            "Must implement schedule_get_pools"))

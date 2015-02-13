@@ -19,17 +19,16 @@ Drivers for volumes.
 
 import time
 
-from oslo.config import cfg
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_utils import excutils
 
 from cinder import exception
+from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
-from cinder.openstack.common import excutils
 from cinder.openstack.common import fileutils
-from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import utils
-from cinder.volume import iscsi
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 
@@ -51,6 +50,9 @@ volume_opts = [
     cfg.StrOpt('iscsi_ip_address',
                default='$my_ip',
                help='The IP address that the iSCSI daemon is listening on'),
+    cfg.ListOpt('iscsi_secondary_ip_addresses',
+                default=[],
+                help='The list of secondary IP addresses of the iSCSI daemon'),
     cfg.IntOpt('iscsi_port',
                default=3260,
                help='The port that the iSCSI daemon is listening on'),
@@ -66,6 +68,11 @@ volume_opts = [
                 default=False,
                 help='Do we attach/detach volumes in cinder using multipath '
                      'for volume to image and image to volume transfers?'),
+    cfg.BoolOpt('enforce_multipath_for_image_xfer',
+                default=False,
+                help='If this is set to True, attachment of volumes for '
+                     'image transfer will be aborted when multipathd is not '
+                     'running. Otherwise, it will fallback to single path.'),
     cfg.StrOpt('volume_clear',
                default='zero',
                help='Method used to wipe old volumes (valid options are: '
@@ -92,9 +99,8 @@ volume_opts = [
                help='IET configuration file'),
     cfg.StrOpt('lio_initiator_iqns',
                default='',
-               help=('Comma-separated list of initiator IQNs '
-                     'allowed to connect to the '
-                     'iSCSI target. (From Nova compute nodes.)')),
+               help='This option is deprecated and unused. '
+                    'It will be removed in the next release.'),
     cfg.StrOpt('iscsi_iotype',
                default='fileio',
                help=('Sets the behavior of the iSCSI target '
@@ -119,6 +125,36 @@ volume_opts = [
                     'perform write-back(on) or write-through(off). '
                     'This parameter is valid if iscsi_helper is set '
                     'to tgtadm or iseradm.'),
+    cfg.StrOpt('iscsi_protocol',
+               default='iscsi',
+               help='Determines the iSCSI protocol for new iSCSI volumes, '
+                    'created with tgtadm or lioadm target helpers. In '
+                    'order to enable RDMA, this parameter should be set '
+                    'with the value "iser". The supported iSCSI protocol '
+                    'values are "iscsi" and "iser".'),
+    cfg.StrOpt('driver_client_cert_key',
+               default=None,
+               help='The path to the client certificate key for verification, '
+                    'if the driver supports it.'),
+    cfg.StrOpt('driver_client_cert',
+               default=None,
+               help='The path to the client certificate for verification, '
+                    'if the driver supports it.'),
+    cfg.BoolOpt('driver_use_ssl',
+                default=False,
+                help='Tell driver to use SSL for connection to backend '
+                     'storage if the driver supports it.'),
+    cfg.FloatOpt('max_over_subscription_ratio',
+                 default=2.0,
+                 help='Float representation of the over subscription ratio '
+                      'when thin provisioning is involved. Default ratio is '
+                      '2.0, meaning provisioned capacity can be twice of the '
+                      'total physical capacity. If the ratio is 10.5, it '
+                      'means provisioned capacity can be 10.5 times of the '
+                      'total physical capacity. A ratio of 1.0 means '
+                      'provisioned capacity cannot exceed the total physical '
+                      'capacity. A ratio lower than 1.0 will be ignored and '
+                      'the default value will be used instead.'),
 ]
 
 # for backward compatibility
@@ -131,7 +167,7 @@ iser_opts = [
                default=100,
                help='The maximum number of iSER target IDs per host'),
     cfg.StrOpt('iser_target_prefix',
-               default='iqn.2010-10.org.iser.openstack:',
+               default='iqn.2010-10.org.openstack:',
                help='Prefix for iSER volumes'),
     cfg.StrOpt('iser_ip_address',
                default='$my_ip',
@@ -167,7 +203,7 @@ class VolumeDriver(object):
        data path related implementation should be a *member object*
        that we call a connector.  The point here is that for example
        don't allow the LVM driver to implement iSCSI methods, instead
-       call whatever connector it has configued via conf file
+       call whatever connector it has configured via conf file
        (iSCSI{LIO, TGT, IET}, FC, etc).
 
        In the base class and for example the LVM driver we do this via a has-a
@@ -188,6 +224,18 @@ class VolumeDriver(object):
             self.configuration.append_config_values(iser_opts)
         self.set_execute(execute)
         self._stats = {}
+
+        self.pools = []
+
+        # We set these mappings up in the base driver so they
+        # can be used by children
+        # (intended for LVM and BlockDevice, but others could use as well)
+        self.target_mapping = {
+            'fake': 'cinder.volume.targets.fake.FakeTarget',
+            'ietadm': 'cinder.volume.targets.iet.IetAdm',
+            'iseradm': 'cinder.volume.targets.iser.ISERTgtAdm',
+            'lioadm': 'cinder.volume.targets.lio.LioAdm',
+            'tgtadm': 'cinder.volume.targets.tgt.TgtAdm', }
 
         # set True by manager after successful check_for_setup
         self._initialized = False
@@ -218,8 +266,8 @@ class VolumeDriver(object):
                         self._is_non_recoverable(ex.stderr, non_recoverable):
                     raise
 
-                LOG.exception(_("Recovering from a failed execute.  "
-                                "Try number %s"), tries)
+                LOG.exception(_LE("Recovering from a failed execute.  "
+                                  "Try number %s"), tries)
                 time.sleep(tries ** 2)
 
     def _detach_volume(self, context, attach_info, volume, properties,
@@ -252,8 +300,8 @@ class VolumeDriver(object):
                 LOG.debug(("volume %s: removing export"), volume['id'])
                 self.remove_export(context, volume)
             except Exception as ex:
-                LOG.exception(_("Error detaching volume %(volume)s, "
-                                "due to remove export failure."),
+                LOG.exception(_LE("Error detaching volume %(volume)s, "
+                                  "due to remove export failure."),
                               {"volume": volume['id']})
                 raise exception.RemoveExportException(volume=volume['id'],
                                                       reason=ex)
@@ -278,19 +326,57 @@ class VolumeDriver(object):
     def create_volume(self, volume):
         """Creates a volume. Can optionally return a Dictionary of
         changes to the volume object to be persisted.
+
+        If volume_type extra specs includes
+        'capabilities:replication <is> True' the driver
+        needs to create a volume replica (secondary), and setup replication
+        between the newly created volume and the secondary volume.
+        Returned dictionary should include:
+            volume['replication_status'] = 'copying'
+            volume['replication_extended_status'] = driver specific value
+            volume['driver_data'] = driver specific value
+
         """
         raise NotImplementedError()
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a volume from a snapshot."""
+        """Creates a volume from a snapshot.
+
+        If volume_type extra specs includes 'replication: <is> True'
+        the driver needs to create a volume replica (secondary),
+        and setup replication between the newly created volume and
+        the secondary volume.
+        """
+
         raise NotImplementedError()
 
     def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
+        """Creates a clone of the specified volume.
+
+        If volume_type extra specs includes 'replication: <is> True' the
+        driver needs to create a volume replica (secondary)
+        and setup replication between the newly created volume
+        and the secondary volume.
+
+        """
+
+        raise NotImplementedError()
+
+    def create_replica_test_volume(self, volume, src_vref):
+        """Creates a test replica clone of the specified replicated volume.
+
+        Create a clone of the replicated (secondary) volume.
+
+        """
         raise NotImplementedError()
 
     def delete_volume(self, volume):
-        """Deletes a volume."""
+        """Deletes a volume.
+
+        If volume_type extra specs includes 'replication: <is> True'
+        then the driver needs to delete the volume replica too.
+
+        """
         raise NotImplementedError()
 
     def create_snapshot(self, snapshot):
@@ -307,6 +393,10 @@ class VolumeDriver(object):
     def get_volume_stats(self, refresh=False):
         """Return the current state of the volume service. If 'refresh' is
            True, run the update first.
+
+           For replication the following state should be reported:
+           replication_support = True (None or false disables replication)
+
         """
         return None
 
@@ -315,7 +405,10 @@ class VolumeDriver(object):
         LOG.debug(('copy_data_between_volumes %(src)s -> %(dest)s.')
                   % {'src': src_vol['name'], 'dest': dest_vol['name']})
 
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
         dest_remote = True if remote in ['dest', 'both'] else False
         dest_orig_status = dest_vol['status']
         try:
@@ -371,7 +464,10 @@ class VolumeDriver(object):
         """Fetch the image from image_service and write it to the volume."""
         LOG.debug(('copy_image_to_volume %s.') % volume['name'])
 
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
@@ -388,7 +484,10 @@ class VolumeDriver(object):
         """Copy the volume to the specified image."""
         LOG.debug(('copy_volume_to_image %s.') % volume['name'])
 
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
@@ -419,9 +518,9 @@ class VolumeDriver(object):
                                                    model_update)
             except exception.CinderException as ex:
                 if model_update:
-                    LOG.exception(_("Failed updating model of volume "
-                                    "%(volume_id)s with driver provided model "
-                                    "%(model)s") %
+                    LOG.exception(_LE("Failed updating model of volume "
+                                      "%(volume_id)s with driver provided "
+                                      "model %(model)s") %
                                   {'volume_id': volume['id'],
                                    'model': model_update})
                     raise exception.ExportFailure(reason=ex)
@@ -441,7 +540,9 @@ class VolumeDriver(object):
                     LOG.error(err_msg)
                     raise exception.VolumeBackendAPIException(data=ex_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
+        return self._connect_device(conn)
 
+    def _connect_device(self, conn):
         # Use Brick's code to do attach/detach
         use_multipath = self.configuration.use_multipath_for_image_xfer
         device_scan_attempts = self.configuration.num_volume_device_scan_tries
@@ -454,7 +555,10 @@ class VolumeDriver(object):
         device = connector.connect_volume(conn['data'])
         host_device = device['path']
 
-        if not connector.check_valid_device(host_device):
+        # Secure network file systems will NOT run as root.
+        root_access = not self.secure_file_operations_enabled()
+
+        if not connector.check_valid_device(host_device, root_access):
             raise exception.DeviceUnavailable(path=host_device,
                                               reason=(_("Unable to access "
                                                         "the backend storage "
@@ -463,21 +567,23 @@ class VolumeDriver(object):
                                                       {'path': host_device}))
         return {'conn': conn, 'device': device, 'connector': connector}
 
-    def clone_image(self, volume, image_location, image_id, image_meta):
+    def clone_image(self, context, volume,
+                    image_location, image_meta,
+                    image_service):
         """Create a volume efficiently from an existing image.
 
         image_location is a string whose format depends on the
         image service backend in use. The driver should use it
         to determine whether cloning is possible.
 
-        image_id is a string which represents id of the image.
-        It can be used by the driver to introspect internal
-        stores or registry to do an efficient image clone.
-
         image_meta is a dictionary that includes 'disk_format' (e.g.
         raw, qcow2) and other image attributes that allow drivers to
         decide whether they can clone the image without first requiring
         conversion.
+
+        image_service is the reference of the image_service to use.
+        Note that this is needed to be passed here for drivers that
+        will want to fetch images from the image service directly.
 
         Returns a dict of volume properties eg. provider_location,
         boolean indicating whether cloning occurred
@@ -491,14 +597,23 @@ class VolumeDriver(object):
         LOG.debug(('Creating a new backup for volume %s.') %
                   volume['name'])
 
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
             volume_path = attach_info['device']['path']
-            with utils.temporary_chown(volume_path):
+
+            # Secure network file systems will not chown files.
+            if self.secure_file_operations_enabled():
                 with fileutils.file_open(volume_path) as volume_file:
                     backup_service.backup(backup, volume_file)
+            else:
+                with utils.temporary_chown(volume_path):
+                    with fileutils.file_open(volume_path) as volume_file:
+                        backup_service.backup(backup, volume_file)
 
         finally:
             self._detach_volume(context, attach_info, volume, properties)
@@ -510,14 +625,24 @@ class VolumeDriver(object):
                   {'backup': backup['id'],
                    'volume': volume['name']})
 
-        properties = utils.brick_get_connector_properties()
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
+        properties = utils.brick_get_connector_properties(use_multipath,
+                                                          enforce_multipath)
         attach_info = self._attach_volume(context, volume, properties)
 
         try:
             volume_path = attach_info['device']['path']
-            with utils.temporary_chown(volume_path):
+
+            # Secure network file systems will not chown files.
+            if self.secure_file_operations_enabled():
                 with fileutils.file_open(volume_path, 'wb') as volume_file:
                     backup_service.restore(backup, volume['id'], volume_file)
+            else:
+                with utils.temporary_chown(volume_path):
+                    with fileutils.file_open(volume_path, 'wb') as volume_file:
+                        backup_service.restore(backup, volume['id'],
+                                               volume_file)
 
         finally:
             self._detach_volume(context, attach_info, volume, properties)
@@ -547,7 +672,24 @@ class VolumeDriver(object):
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
 
-        Returns a boolean indicating whether the retype occurred.
+        Returns either:
+        A boolean indicating whether the retype occurred, or
+        A tuple (retyped, model_update) where retyped is a boolean
+        indicating if the retype occurred, and the model_update includes
+        changes for the volume db.
+        if diff['extra_specs'] includes 'replication' then:
+            if  ('True', _ ) then replication should be disabled:
+                Volume replica should be deleted
+                volume['replication_status'] should be changed to 'disabled'
+                volume['replication_extended_status'] = None
+                volume['replication_driver_data'] = None
+            if  (_, 'True') then replication should be enabled:
+                Volume replica (secondary) should be created, and replication
+                should be setup between the volume and the newly created
+                replica
+                volume['replication_status'] = 'copying'
+                volume['replication_extended_status'] = driver specific value
+                volume['replication_driver_data'] = driver specific value
 
         :param ctxt: Context
         :param volume: A dictionary describing the volume to migrate
@@ -557,7 +699,7 @@ class VolumeDriver(object):
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
         """
-        return False
+        return False, None
 
     def accept_transfer(self, context, volume, new_user, new_project):
         """Accept the transfer of a volume for a new user/project."""
@@ -635,6 +777,82 @@ class VolumeDriver(object):
     def validate_connector_has_setting(connector, setting):
         pass
 
+    def reenable_replication(self, context, volume):
+        """Re-enable replication between the replica and primary volume.
+
+        This is used to re-enable/fix the replication between primary
+        and secondary. One use is as part of the fail-back process, when
+        you re-synchorize your old primary with the promoted volume
+        (the old replica).
+        Returns model_update for the volume to reflect the actions of the
+        driver.
+        The driver is expected to update the following entries:
+            'replication_status'
+            'replication_extended_status'
+            'replication_driver_data'
+        Possible 'replication_status' values (in model_update) are:
+        'error' - replication in error state
+        'copying' - replication copying data to secondary (inconsistent)
+        'active' - replication copying data to secondary (consistent)
+        'active-stopped' - replication data copy on hold (consistent)
+        'inactive' - replication data copy on hold (inconsistent)
+        Values in 'replication_extended_status' and 'replication_driver_data'
+        are managed by the driver.
+
+        :param context: Context
+        :param volume: A dictionary describing the volume
+
+        """
+        msg = _("sync_replica not implemented.")
+        raise NotImplementedError(msg)
+
+    def get_replication_status(self, context, volume):
+        """Query the actual volume replication status from the driver.
+
+        Returns model_update for the volume.
+        The driver is expected to update the following entries:
+            'replication_status'
+            'replication_extended_status'
+            'replication_driver_data'
+        Possible 'replication_status' values (in model_update) are:
+        'error' - replication in error state
+        'copying' - replication copying data to secondary (inconsistent)
+        'active' - replication copying data to secondary (consistent)
+        'active-stopped' - replication data copy on hold (consistent)
+        'inactive' - replication data copy on hold (inconsistent)
+        Values in 'replication_extended_status' and 'replication_driver_data'
+        are managed by the driver.
+
+        :param context: Context
+        :param volume: A dictionary describing the volume
+        """
+        return None
+
+    def promote_replica(self, context, volume):
+        """Promote the replica to be the primary volume.
+
+        Following this command, replication between the volumes at
+        the storage level should be stopped, the replica should be
+        available to be attached, and the replication status should
+        be in status 'inactive'.
+
+        Returns model_update for the volume.
+        The driver is expected to update the following entries:
+            'replication_status'
+            'replication_extended_status'
+            'replication_driver_data'
+        Possible 'replication_status' values (in model_update) are:
+        'error' - replication in error state
+        'inactive' - replication data copy on hold (inconsistent)
+        Values in 'replication_extended_status' and 'replication_driver_data'
+        are managed by the driver.
+
+        :param context: Context
+        :param volume: A dictionary describing the volume
+        """
+        msg = _("promote_replica not implemented.")
+        raise NotImplementedError(msg)
+
     # #######  Interface methods for DataPath (Connector) ########
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a volume."""
@@ -659,6 +877,62 @@ class VolumeDriver(object):
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
 
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+        raise NotImplementedError()
+
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group."""
+        raise NotImplementedError()
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Creates a cgsnapshot."""
+        raise NotImplementedError()
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+        raise NotImplementedError()
+
+    def get_pool(self, volume):
+        """Return pool name where volume reside on.
+
+        :param volume: The volume hosted by the the driver.
+        :return: name of the pool where given volume is in.
+        """
+        return None
+
+    def secure_file_operations_enabled(self):
+        """Determine if driver is running in Secure File Operations mode.
+
+        The Cinder Volume driver needs to query if this driver is running
+        in a secure file operations mode. By default, it is False: any driver
+        that does support secure file operations should override this method.
+        """
+        return False
+
+    def update_migrated_volume(self, ctxt, volume, new_volume):
+        """Return model update for migrated volume.
+
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :return model_update to update DB with any needed changes
+        """
+        return None
+
+
+class ProxyVD(object):
+    """Proxy Volume Driver to mark proxy drivers
+
+        If a driver uses a proxy class (e.g. by using __setattr__ and
+        __getattr__) without directly inheriting from base volume driver this
+        class can help marking them and retrieve the actual used driver object.
+    """
+    def _get_driver(self):
+        """Returns the actual driver object. Can be overloaded by the proxy.
+        """
+        return getattr(self, "driver", None)
+
 
 class ISCSIDriver(VolumeDriver):
     """Executes commands relating to ISCSI volumes.
@@ -682,7 +956,8 @@ class ISCSIDriver(VolumeDriver):
     def _do_iscsi_discovery(self, volume):
         # TODO(justinsb): Deprecate discovery and use stored info
         # NOTE(justinsb): Discovery won't work with CHAP-secured targets (?)
-        LOG.warn(_("ISCSI provider_location not stored, using discovery"))
+        LOG.warn(_LW("ISCSI provider_location not "
+                     "stored, using discovery"))
 
         volume_name = volume['name']
 
@@ -695,7 +970,7 @@ class ISCSIDriver(VolumeDriver):
                                         volume['host'].split('@')[0],
                                         run_as_root=True)
         except processutils.ProcessExecutionError as ex:
-            LOG.error(_("ISCSI discovery attempt failed for:%s") %
+            LOG.error(_LE("ISCSI discovery attempt failed for:%s") %
                       volume['host'].split('@')[0])
             LOG.debug("Error from iscsiadm -m discovery: %s" % ex.stderr)
             return None
@@ -706,7 +981,7 @@ class ISCSIDriver(VolumeDriver):
                 return target
         return None
 
-    def _get_iscsi_properties(self, volume):
+    def _get_iscsi_properties(self, volume, multipath=False):
         """Gets iscsi configuration
 
         We ideally get saved information in the volume entity, but fall back
@@ -731,6 +1006,11 @@ class ISCSIDriver(VolumeDriver):
 
         :access_mode:    the volume access mode allow client used
                          ('rw' or 'ro' currently supported)
+
+        In some of drivers, When multipath=True is specified, :target_iqn,
+        :target_portal, :target_lun may be replaced with :target_iqns,
+        :target_portals, :target_luns, which contain lists of multiple values.
+        In this case, the initiator should establish sessions to all the path.
         """
 
         properties = {}
@@ -752,19 +1032,30 @@ class ISCSIDriver(VolumeDriver):
             properties['target_discovered'] = True
 
         results = location.split(" ")
-        properties['target_portal'] = results[0].split(",")[0]
-        properties['target_iqn'] = results[1]
+        portals = results[0].split(",")[0].split(";")
+        iqn = results[1]
+        nr_portals = len(portals)
+
         try:
-            properties['target_lun'] = int(results[2])
+            lun = int(results[2])
         except (IndexError, ValueError):
             if (self.configuration.volume_driver in
                     ['cinder.volume.drivers.lvm.LVMISCSIDriver',
                      'cinder.volume.drivers.lvm.LVMISERDriver',
                      'cinder.volume.drivers.lvm.ThinLVMVolumeDriver'] and
                     self.configuration.iscsi_helper in ('tgtadm', 'iseradm')):
-                properties['target_lun'] = 1
+                lun = 1
             else:
-                properties['target_lun'] = 0
+                lun = 0
+
+        if multipath:
+            properties['target_portals'] = portals
+            properties['target_iqns'] = [iqn] * nr_portals
+            properties['target_luns'] = [lun] * nr_portals
+        else:
+            properties['target_portal'] = portals[0]
+            properties['target_iqn'] = iqn
+            properties['target_lun'] = lun
 
         properties['volume_id'] = volume['id']
 
@@ -833,11 +1124,13 @@ class ISCSIDriver(VolumeDriver):
             }
 
         """
-
-        if CONF.iscsi_helper == 'lioadm':
-            self.target_helper.initialize_connection(volume, connector)
-
-        iscsi_properties = self._get_iscsi_properties(volume)
+        # NOTE(jdg): Yes, this is duplicated in the volume/target
+        # drivers, for now leaving it as there are 3'rd party
+        # drivers that don't use target drivers, but inherit from
+        # this base class and use this init data
+        iscsi_properties = self._get_iscsi_properties(volume,
+                                                      connector.get(
+                                                          'multipath'))
         return {
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties
@@ -845,11 +1138,12 @@ class ISCSIDriver(VolumeDriver):
 
     def validate_connector(self, connector):
         # iSCSI drivers require the initiator information
-        if 'initiator' not in connector:
-            err_msg = (_('The volume driver requires the iSCSI initiator '
-                         'name in the connector.'))
-            LOG.error(err_msg)
-            raise exception.VolumeBackendAPIException(data=err_msg)
+        required = 'initiator'
+        if required not in connector:
+            err_msg = (_LE('The volume driver requires %(data)s '
+                           'in the connector.'), {'data': required})
+            LOG.error(*err_msg)
+            raise exception.InvalidConnectorException(missing=required)
 
     def terminate_connection(self, volume, connector, **kwargs):
         pass
@@ -874,32 +1168,37 @@ class ISCSIDriver(VolumeDriver):
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'iSCSI'
+        data["pools"] = []
 
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
-        data['QoS_support'] = False
-        self._stats = data
-
-    def get_target_helper(self, db):
-        root_helper = utils.get_root_helper()
-        if CONF.iscsi_helper == 'iseradm':
-            return iscsi.ISERTgtAdm(root_helper, CONF.volumes_dir,
-                                    CONF.iscsi_target_prefix, db=db)
-        elif CONF.iscsi_helper == 'tgtadm':
-            return iscsi.TgtAdm(root_helper,
-                                CONF.volumes_dir,
-                                CONF.iscsi_target_prefix,
-                                db=db)
-        elif CONF.iscsi_helper == 'fake':
-            return iscsi.FakeIscsiHelper()
-        elif CONF.iscsi_helper == 'lioadm':
-            return iscsi.LioAdm(root_helper,
-                                CONF.lio_initiator_iqns,
-                                CONF.iscsi_target_prefix, db=db)
+        # provisioned_capacity_gb is set to None by default below, but
+        # None won't be used in calculation. It will be overridden by
+        # driver's provisioned_capacity_gb if reported, otherwise it
+        # defaults to allocated_capacity_gb in host_manager.py.
+        if self.pools:
+            for pool in self.pools:
+                new_pool = {}
+                new_pool.update(dict(
+                    pool_name=pool,
+                    total_capacity_gb=0,
+                    free_capacity_gb=0,
+                    provisioned_capacity_gb=None,
+                    reserved_percentage=100,
+                    QoS_support=False
+                ))
+                data["pools"].append(new_pool)
         else:
-            return iscsi.IetAdm(root_helper, CONF.iet_conf, CONF.iscsi_iotype,
-                                db=db)
+            # No pool configured, the whole backend will be treated as a pool
+            single_pool = {}
+            single_pool.update(dict(
+                pool_name=data["volume_backend_name"],
+                total_capacity_gb=0,
+                free_capacity_gb=0,
+                provisioned_capacity_gb=None,
+                reserved_percentage=100,
+                QoS_support=False
+            ))
+            data["pools"].append(single_pool)
+        self._stats = data
 
 
 class FakeISCSIDriver(ISCSIDriver):
@@ -1015,7 +1314,6 @@ class ISERDriver(ISCSIDriver):
             }
 
         """
-
         iser_properties = self._get_iscsi_properties(volume)
         return {
             'driver_volume_type': 'iser',
@@ -1032,21 +1330,31 @@ class ISERDriver(ISCSIDriver):
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'iSER'
+        data["pools"] = []
 
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 100
-        data['QoS_support'] = False
-        self._stats = data
-
-    def get_target_helper(self, db):
-        root_helper = utils.get_root_helper()
-
-        if CONF.iser_helper == 'fake':
-            return iscsi.FakeIscsiHelper()
+        if self.pools:
+            for pool in self.pools:
+                new_pool = {}
+                new_pool.update(dict(
+                    pool_name=pool,
+                    total_capacity_gb=0,
+                    free_capacity_gb=0,
+                    reserved_percentage=100,
+                    QoS_support=False
+                ))
+                data["pools"].append(new_pool)
         else:
-            return iscsi.ISERTgtAdm(root_helper,
-                                    CONF.volumes_dir, db=db)
+            # No pool configured, the whole backend will be treated as a pool
+            single_pool = {}
+            single_pool.update(dict(
+                pool_name=data["volume_backend_name"],
+                total_capacity_gb=0,
+                free_capacity_gb=0,
+                reserved_percentage=100,
+                QoS_support=False
+            ))
+            data["pools"].append(single_pool)
+        self._stats = data
 
 
 class FakeISERDriver(FakeISCSIDriver):
@@ -1119,8 +1427,9 @@ class FibreChannelDriver(VolumeDriver):
     def validate_connector_has_setting(connector, setting):
         """Test for non-empty setting in connector."""
         if setting not in connector or not connector[setting]:
-            msg = (_(
+            msg = (_LE(
                 "FibreChannelDriver validate_connector failed. "
-                "No '%s'. Make sure HBA state is Online.") % setting)
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+                "No '%(setting)s'. Make sure HBA state is Online."),
+                {'setting': setting})
+            LOG.error(*msg)
+            raise exception.InvalidConnectorException(missing=setting)

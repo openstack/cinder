@@ -20,13 +20,13 @@
 """Unit tests for FC Zone Manager."""
 
 import mock
+from mock import Mock
 
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.zonemanager.drivers.fc_zone_driver import FCZoneDriver
 from cinder.zonemanager import fc_zone_manager
-from mock import Mock
 
 fabric_name = 'BRCD_FAB_3'
 init_target_map = {'10008c7cff523b01': ['20240002ac000a50']}
@@ -60,7 +60,7 @@ class TestFCZoneManager(test.TestCase):
                 as add_connection_mock:
             self.zm.driver.get_san_context.return_value = fabric_map
             self.zm.add_connection(init_target_map)
-            self.zm.driver.get_san_context.assert_called_once(target_list)
+            self.zm.driver.get_san_context.assert_called_once_with(target_list)
             add_connection_mock.assert_called_once_with(fabric_name,
                                                         init_target_map)
 

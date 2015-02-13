@@ -17,11 +17,11 @@ Unit Tests for cinder.volume.rpcapi
 """
 import copy
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_serialization import jsonutils
 
 from cinder import context
 from cinder import db
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.volume import rpcapi as volume_rpcapi
 
@@ -146,6 +146,8 @@ class VolumeRpcAPITestCase(test.TestCase):
                               snapshot_id='fake_snapshot_id',
                               image_id='fake_image_id',
                               source_volid='fake_src_id',
+                              source_replicaid='fake_replica_id',
+                              consistencygroup_id='fake_cg_id',
                               version='1.4')
 
     def test_create_volume_serialization(self):
@@ -160,6 +162,8 @@ class VolumeRpcAPITestCase(test.TestCase):
                               snapshot_id='fake_snapshot_id',
                               image_id='fake_image_id',
                               source_volid='fake_src_id',
+                              source_replicaid='fake_replica_id',
+                              consistencygroup_id='fake_cg_id',
                               version='1.4')
 
     def test_delete_volume(self):
@@ -230,7 +234,7 @@ class VolumeRpcAPITestCase(test.TestCase):
 
     def test_accept_transfer(self):
         self._test_volume_api('accept_transfer',
-                              rpc_method='cast',
+                              rpc_method='call',
                               volume=self.fake_volume,
                               new_user='e5565fd0-06c8-11e3-'
                                        '8ffd-0800200c9b77',
@@ -288,3 +292,15 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume,
                               ref={'lv_name': 'foo'},
                               version='1.15')
+
+    def test_promote_replica(self):
+        self._test_volume_api('promote_replica',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              version='1.17')
+
+    def test_reenable_replica(self):
+        self._test_volume_api('reenable_replication',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              version='1.17')

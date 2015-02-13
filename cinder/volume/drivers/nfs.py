@@ -15,25 +15,26 @@
 
 import errno
 import os
-import re
+import time
 
-from oslo.config import cfg
+from oslo_concurrency import processutils as putils
+from oslo_config import cfg
+from oslo_utils import units
+import six
 
-from cinder.brick.remotefs import remotefs
+from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import exception
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
-from cinder.openstack.common import units
 from cinder import utils
-from cinder.volume import driver
+from cinder.volume.drivers import remotefs
 
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 
 LOG = logging.getLogger(__name__)
 
-volume_opts = [
+nfs_opts = [
     cfg.StrOpt('nfs_shares_config',
                default='/etc/cinder/nfs_shares',
                help='File with the list of available nfs shares'),
@@ -59,340 +60,19 @@ volume_opts = [
                default=None,
                help=('Mount options passed to the nfs client. See section '
                      'of the nfs man page for details.')),
-]
-
-nas_opts = [
-    cfg.StrOpt('nas_ip',
-               default='',
-               help='IP address or Hostname of NAS system.'),
-    cfg.StrOpt('nas_login',
-               default='admin',
-               help='User name to connect to NAS system.'),
-    cfg.StrOpt('nas_password',
-               default='',
-               help='Password to connect to NAS system.',
-               secret=True),
-    cfg.IntOpt('nas_ssh_port',
-               default=22,
-               help='SSH port to use to connect to NAS system.'),
-    cfg.StrOpt('nas_private_key',
-               default='',
-               help='Filename of private key to use for SSH authentication.'),
+    cfg.IntOpt('nfs_mount_attempts',
+               default=3,
+               help=('The number of attempts to mount nfs shares before '
+                     'raising an error.  At least one attempt will be '
+                     'made to mount an nfs share, regardless of the '
+                     'value specified.')),
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(volume_opts)
-CONF.register_opts(nas_opts)
+CONF.register_opts(nfs_opts)
 
 
-class RemoteFsDriver(driver.VolumeDriver):
-    """Common base for drivers that work like NFS."""
-
-    VERSION = "0.0.0"
-
-    def __init__(self, *args, **kwargs):
-        super(RemoteFsDriver, self).__init__(*args, **kwargs)
-        self.shares = {}
-        self._mounted_shares = []
-
-    def check_for_setup_error(self):
-        """Just to override parent behavior."""
-        pass
-
-    def initialize_connection(self, volume, connector):
-        """Allow connection to connector and return connection info.
-
-        :param volume: volume reference
-        :param connector: connector reference
-        """
-        data = {'export': volume['provider_location'],
-                'name': volume['name']}
-        if volume['provider_location'] in self.shares:
-            data['options'] = self.shares[volume['provider_location']]
-        return {
-            'driver_volume_type': self.driver_volume_type,
-            'data': data,
-            'mount_point_base': self._get_mount_point_base()
-        }
-
-    def _get_mount_point_base(self):
-        """Returns the mount point base for the remote fs.
-
-           This method facilitates returning mount point base
-           for the specific remote fs. Override this method
-           in the respective driver to return the entry to be
-           used while attach/detach using brick in cinder.
-           If not overridden then it returns None without
-           raising exception to continue working for cases
-           when not used with brick.
-        """
-        LOG.debug("Driver specific implementation needs to return"
-                  " mount_point_base.")
-        return None
-
-    def create_volume(self, volume):
-        """Creates a volume.
-
-        :param volume: volume reference
-        """
-        self._ensure_shares_mounted()
-
-        volume['provider_location'] = self._find_share(volume['size'])
-
-        LOG.info(_('casted to %s') % volume['provider_location'])
-
-        self._do_create_volume(volume)
-
-        return {'provider_location': volume['provider_location']}
-
-    def _do_create_volume(self, volume):
-        """Create a volume on given remote share.
-
-        :param volume: volume reference
-        """
-        volume_path = self.local_path(volume)
-        volume_size = volume['size']
-
-        if getattr(self.configuration,
-                   self.driver_prefix + '_sparsed_volumes'):
-            self._create_sparsed_file(volume_path, volume_size)
-        else:
-            self._create_regular_file(volume_path, volume_size)
-
-        self._set_rw_permissions_for_all(volume_path)
-
-    def _ensure_shares_mounted(self):
-        """Look for remote shares in the flags and tries to mount them
-        locally.
-        """
-        self._mounted_shares = []
-
-        self._load_shares_config(getattr(self.configuration,
-                                         self.driver_prefix +
-                                         '_shares_config'))
-
-        for share in self.shares.keys():
-            try:
-                self._ensure_share_mounted(share)
-                self._mounted_shares.append(share)
-            except Exception as exc:
-                LOG.warning(_('Exception during mounting %s') % (exc,))
-
-        LOG.debug('Available shares %s' % self._mounted_shares)
-
-    def create_cloned_volume(self, volume, src_vref):
-        raise NotImplementedError()
-
-    def delete_volume(self, volume):
-        """Deletes a logical volume.
-
-        :param volume: volume reference
-        """
-        if not volume['provider_location']:
-            LOG.warn(_('Volume %s does not have provider_location specified, '
-                     'skipping'), volume['name'])
-            return
-
-        self._ensure_share_mounted(volume['provider_location'])
-
-        mounted_path = self.local_path(volume)
-
-        self._execute('rm', '-f', mounted_path, run_as_root=True)
-
-    def ensure_export(self, ctx, volume):
-        """Synchronously recreates an export for a logical volume."""
-        self._ensure_share_mounted(volume['provider_location'])
-
-    def create_export(self, ctx, volume):
-        """Exports the volume. Can optionally return a Dictionary of changes
-        to the volume object to be persisted.
-        """
-        pass
-
-    def remove_export(self, ctx, volume):
-        """Removes an export for a logical volume."""
-        pass
-
-    def delete_snapshot(self, snapshot):
-        """Do nothing for this driver, but allow manager to handle deletion
-           of snapshot in error state.
-        """
-        pass
-
-    def _create_sparsed_file(self, path, size):
-        """Creates file with 0 disk usage."""
-        self._execute('truncate', '-s', '%sG' % size,
-                      path, run_as_root=True)
-
-    def _create_regular_file(self, path, size):
-        """Creates regular file of given size. Takes a lot of time for large
-        files.
-        """
-
-        block_size_mb = 1
-        block_count = size * units.Gi / (block_size_mb * units.Mi)
-
-        self._execute('dd', 'if=/dev/zero', 'of=%s' % path,
-                      'bs=%dM' % block_size_mb,
-                      'count=%d' % block_count,
-                      run_as_root=True)
-
-    def _create_qcow2_file(self, path, size_gb):
-        """Creates a QCOW2 file of a given size."""
-
-        self._execute('qemu-img', 'create', '-f', 'qcow2',
-                      '-o', 'preallocation=metadata',
-                      path, str(size_gb * units.Gi),
-                      run_as_root=True)
-
-    def _set_rw_permissions_for_all(self, path):
-        """Sets 666 permissions for the path."""
-        self._execute('chmod', 'ugo+rw', path, run_as_root=True)
-
-    def local_path(self, volume):
-        """Get volume path (mounted locally fs path) for given volume
-        :param volume: volume reference
-        """
-        nfs_share = volume['provider_location']
-        return os.path.join(self._get_mount_point_for_share(nfs_share),
-                            volume['name'])
-
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
-        image_utils.fetch_to_raw(context,
-                                 image_service,
-                                 image_id,
-                                 self.local_path(volume),
-                                 self.configuration.volume_dd_blocksize,
-                                 size=volume['size'])
-
-        # NOTE (leseb): Set the virtual size of the image
-        # the raw conversion overwrote the destination file
-        # (which had the correct size)
-        # with the fetched glance image size,
-        # thus the initial 'size' parameter is not honored
-        # this sets the size to the one asked in the first place by the user
-        # and then verify the final virtual size
-        image_utils.resize_image(self.local_path(volume), volume['size'])
-
-        data = image_utils.qemu_img_info(self.local_path(volume))
-        virt_size = data.virtual_size / units.Gi
-        if virt_size != volume['size']:
-            raise exception.ImageUnacceptable(
-                image_id=image_id,
-                reason=(_("Expected volume size was %d") % volume['size'])
-                + (_(" but size is now %d") % virt_size))
-
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
-        image_utils.upload_volume(context,
-                                  image_service,
-                                  image_meta,
-                                  self.local_path(volume))
-
-    def _read_config_file(self, config_file):
-        # Returns list of lines in file
-        with open(config_file) as f:
-            return f.readlines()
-
-    def _load_shares_config(self, share_file):
-        self.shares = {}
-
-        for share in self._read_config_file(share_file):
-            # A configuration line may be either:
-            #  host:/vol_name
-            # or
-            #  host:/vol_name -o options=123,rw --other
-            if not share.strip():
-                # Skip blank or whitespace-only lines
-                continue
-            if share.startswith('#'):
-                continue
-
-            share_info = share.split(' ', 1)
-            # results in share_info =
-            #  [ 'address:/vol', '-o options=123,rw --other' ]
-
-            share_address = share_info[0].strip().decode('unicode_escape')
-            share_opts = share_info[1].strip() if len(share_info) > 1 else None
-
-            if not re.match(r'.+:/.+', share_address):
-                LOG.warn("Share %s ignored due to invalid format.  Must be of "
-                         "form address:/export." % share_address)
-                continue
-
-            self.shares[share_address] = share_opts
-
-        LOG.debug("shares loaded: %s", self.shares)
-
-    def _get_mount_point_for_share(self, path):
-        raise NotImplementedError()
-
-    def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector."""
-        pass
-
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, update the stats first.
-        """
-        if refresh or not self._stats:
-            self._update_volume_stats()
-
-        return self._stats
-
-    def _update_volume_stats(self):
-        """Retrieve stats info from volume group."""
-
-        data = {}
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        data['volume_backend_name'] = backend_name or self.volume_backend_name
-        data['vendor_name'] = 'Open Source'
-        data['driver_version'] = self.get_version()
-        data['storage_protocol'] = self.driver_volume_type
-
-        self._ensure_shares_mounted()
-
-        global_capacity = 0
-        global_free = 0
-        for share in self._mounted_shares:
-            capacity, free, used = self._get_capacity_info(share)
-            global_capacity += capacity
-            global_free += free
-
-        data['total_capacity_gb'] = global_capacity / float(units.Gi)
-        data['free_capacity_gb'] = global_free / float(units.Gi)
-        data['reserved_percentage'] = 0
-        data['QoS_support'] = False
-        self._stats = data
-
-    def _do_mount(self, cmd, ensure, share):
-        """Finalize mount command.
-
-        :param cmd: command to do the actual mount
-        :param ensure: boolean to allow remounting a share with a warning
-        :param share: description of the share for error reporting
-        """
-        try:
-            self._execute(*cmd, run_as_root=True)
-        except putils.ProcessExecutionError as exc:
-            if ensure and 'already mounted' in exc.stderr:
-                LOG.warn(_("%s is already mounted"), share)
-            else:
-                raise
-
-    def _get_capacity_info(self, nfs_share):
-        raise NotImplementedError()
-
-    def _find_share(self, volume_size_in_gib):
-        raise NotImplementedError()
-
-    def _ensure_share_mounted(self, nfs_share):
-        raise NotImplementedError()
-
-
-class NfsDriver(RemoteFsDriver):
+class NfsDriver(remotefs.RemoteFSDriver):
     """NFS based cinder driver. Creates file on NFS share for using it
     as block device on hypervisor.
     """
@@ -405,7 +85,7 @@ class NfsDriver(RemoteFsDriver):
     def __init__(self, execute=putils.execute, *args, **kwargs):
         self._remotefsclient = None
         super(NfsDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(volume_opts)
+        self.configuration.append_config_values(nfs_opts)
         root_helper = utils.get_root_helper()
         # base bound to instance is used in RemoteFsConnector.
         self.base = getattr(self.configuration,
@@ -414,7 +94,15 @@ class NfsDriver(RemoteFsDriver):
         opts = getattr(self.configuration,
                        'nfs_mount_options',
                        CONF.nfs_mount_options)
-        self._remotefsclient = remotefs.RemoteFsClient(
+
+        nas_mount_options = getattr(self.configuration,
+                                    'nas_mount_options',
+                                    None)
+        if nas_mount_options is not None:
+            LOG.debug('overriding nfs_mount_options with nas_mount_options')
+            opts = nas_mount_options
+
+        self._remotefsclient = remotefs_brick.RemoteFsClient(
             'nfs', root_helper, execute=execute,
             nfs_mount_point_base=self.base,
             nfs_mount_options=opts)
@@ -455,20 +143,42 @@ class NfsDriver(RemoteFsDriver):
 
         self.shares = {}  # address : options
 
-        # Check if mount.nfs is installed
+        # Check if mount.nfs is installed on this system; note that we don't
+        # need to be root to see if the package is installed.
+        package = 'mount.nfs'
         try:
-            self._execute('mount.nfs', check_exit_code=False, run_as_root=True)
+            self._execute(package, check_exit_code=False,
+                          run_as_root=False)
         except OSError as exc:
             if exc.errno == errno.ENOENT:
-                raise exception.NfsException('mount.nfs is not installed')
+                msg = _('%s is not installed') % package
+                raise exception.NfsException(msg)
             else:
                 raise exc
+
+        # Now that all configuration data has been loaded (shares),
+        # we can "set" our final NAS file security options.
+        self.set_nas_security_options(self._is_voldb_empty_at_startup)
 
     def _ensure_share_mounted(self, nfs_share):
         mnt_flags = []
         if self.shares.get(nfs_share) is not None:
             mnt_flags = self.shares[nfs_share].split()
-        self._remotefsclient.mount(nfs_share, mnt_flags)
+        num_attempts = max(1, self.configuration.nfs_mount_attempts)
+        for attempt in range(num_attempts):
+            try:
+                self._remotefsclient.mount(nfs_share, mnt_flags)
+                return
+            except Exception as e:
+                if attempt == (num_attempts - 1):
+                    LOG.error(_LE('Mount failure for %(share)s after '
+                                  '%(count)d attempts.') % {
+                              'share': nfs_share,
+                              'count': num_attempts})
+                    raise exception.NfsException(e)
+                LOG.debug('Mount attempt %d failed: %s.\nRetrying mount ...' %
+                          (attempt, six.text_type(e)))
+                time.sleep(1)
 
     def _find_share(self, volume_size_in_gib):
         """Choose NFS share among available ones for given volume size.
@@ -488,7 +198,7 @@ class NfsDriver(RemoteFsDriver):
         for nfs_share in self._mounted_shares:
             if not self._is_share_eligible(nfs_share, volume_size_in_gib):
                 continue
-            total_size, total_available, total_allocated = \
+            _total_size, _total_available, total_allocated = \
                 self._get_capacity_info(nfs_share)
             if target_share is not None:
                 if target_share_reserved > total_allocated:
@@ -555,17 +265,19 @@ class NfsDriver(RemoteFsDriver):
 
         :param nfs_share: example 172.18.194.100:/var/nfs
         """
+        run_as_root = self._execute_as_root
 
         mount_point = self._get_mount_point_for_share(nfs_share)
 
         df, _ = self._execute('stat', '-f', '-c', '%S %b %a', mount_point,
-                              run_as_root=True)
+                              run_as_root=run_as_root)
         block_size, blocks_total, blocks_avail = map(float, df.split())
         total_available = block_size * blocks_avail
         total_size = block_size * blocks_total
 
         du, _ = self._execute('du', '-sb', '--apparent-size', '--exclude',
-                              '*snapshot*', mount_point, run_as_root=True)
+                              '*snapshot*', mount_point,
+                              run_as_root=run_as_root)
         total_allocated = float(du.split()[0])
         return total_size, total_available, total_allocated
 
@@ -574,7 +286,7 @@ class NfsDriver(RemoteFsDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
-        LOG.info(_('Extending volume %s.'), volume['id'])
+        LOG.info(_LI('Extending volume %s.'), volume['id'])
         extend_by = int(new_size) - volume['size']
         if not self._is_share_eligible(volume['provider_location'],
                                        extend_by):
@@ -582,14 +294,72 @@ class NfsDriver(RemoteFsDriver):
                                               ' extend volume %s to %sG'
                                               % (volume['id'], new_size))
         path = self.local_path(volume)
-        LOG.info(_('Resizing file to %sG...'), new_size)
-        image_utils.resize_image(path, new_size)
+        LOG.info(_LI('Resizing file to %sG...'), new_size)
+        image_utils.resize_image(path, new_size,
+                                 run_as_root=self._execute_as_root)
         if not self._is_file_size_equal(path, new_size):
             raise exception.ExtendVolumeError(
                 reason='Resizing image file failed.')
 
     def _is_file_size_equal(self, path, size):
         """Checks if file size at path is equal to size."""
-        data = image_utils.qemu_img_info(path)
+        data = image_utils.qemu_img_info(path,
+                                         run_as_root=self._execute_as_root)
         virt_size = data.virtual_size / units.Gi
         return virt_size == size
+
+    def set_nas_security_options(self, is_new_cinder_install):
+        """Determine the setting to use for Secure NAS options.
+
+        Value of each NAS Security option is checked and updated. If the
+        option is currently 'auto', then it is set to either true or false
+        based upon if this is a new Cinder installation. The RemoteFS variable
+        '_execute_as_root' will be updated for this driver.
+
+        :param is_new_cinder_install: bool indication of new Cinder install
+        """
+        doc_html = "http://docs.openstack.org/admin-guide-cloud/content" \
+                   "/nfs_backend.html"
+
+        self._ensure_shares_mounted()
+        if not self._mounted_shares:
+            raise exception.NfsNoSharesMounted()
+
+        nfs_mount = self._get_mount_point_for_share(self._mounted_shares[0])
+
+        self.configuration.nas_secure_file_permissions = \
+            self._determine_nas_security_option_setting(
+                self.configuration.nas_secure_file_permissions,
+                nfs_mount, is_new_cinder_install)
+
+        LOG.debug('NAS variable secure_file_permissions setting is: %s' %
+                  self.configuration.nas_secure_file_permissions)
+
+        if self.configuration.nas_secure_file_permissions == 'false':
+            LOG.warn(_LW("The NAS file permissions mode will be 666 (allowing "
+                         "other/world read & write access). "
+                         "This is considered an insecure NAS environment. "
+                         "Please see %s for information on a secure "
+                         "NFS configuration.") %
+                     doc_html)
+
+        self.configuration.nas_secure_file_operations = \
+            self._determine_nas_security_option_setting(
+                self.configuration.nas_secure_file_operations,
+                nfs_mount, is_new_cinder_install)
+
+        # If secure NAS, update the '_execute_as_root' flag to not
+        # run as the root user; run as process' user ID.
+        if self.configuration.nas_secure_file_operations == 'true':
+            self._execute_as_root = False
+
+        LOG.debug('NAS variable secure_file_operations setting is: %s' %
+                  self.configuration.nas_secure_file_operations)
+
+        if self.configuration.nas_secure_file_operations == 'false':
+            LOG.warn(_LW("The NAS file operations will be run as "
+                         "root: allowing root level access at the storage "
+                         "backend. This is considered an insecure NAS "
+                         "environment. Please see %s "
+                         "for information on a secure NAS configuration.") %
+                     doc_html)

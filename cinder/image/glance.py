@@ -27,14 +27,15 @@ import sys
 import time
 
 import glanceclient.exc
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_serialization import jsonutils
+from oslo_utils import timeutils
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import jsonutils
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
+
 
 glance_opts = [
     cfg.ListOpt('allowed_direct_url_schemes',
@@ -84,6 +85,7 @@ def _create_glance_client(context, netloc, use_ssl,
         # https specific params
         params['insecure'] = CONF.glance_api_insecure
         params['ssl_compression'] = CONF.glance_api_ssl_compression
+        params['cacert'] = CONF.glance_ca_certificates_file
     else:
         scheme = 'http'
     if CONF.auth_strategy == 'keystone':
@@ -126,6 +128,13 @@ class GlanceClientWrapper(object):
             self.client = None
         self.api_servers = None
         self.version = version
+
+        if CONF.glance_num_retries < 0:
+            LOG.warning(_LW(
+                "glance_num_retries shouldn't be a negative value. "
+                "The number of retries will be set to 0 until this is"
+                "corrected in the cinder.conf."))
+            CONF.set_override('glance_num_retries', 0)
 
     def _create_static_client(self, context, netloc, use_ssl, version):
         """Create a client that we'll use for every call."""
@@ -458,14 +467,14 @@ def _remove_read_only(image_meta):
 
 def _reraise_translated_image_exception(image_id):
     """Transform the exception for the image but keep its traceback intact."""
-    exc_type, exc_value, exc_trace = sys.exc_info()
+    _exc_type, exc_value, exc_trace = sys.exc_info()
     new_exc = _translate_image_exception(image_id, exc_value)
     raise new_exc, None, exc_trace
 
 
 def _reraise_translated_exception():
     """Transform the exception but keep its traceback intact."""
-    exc_type, exc_value, exc_trace = sys.exc_info()
+    _exc_type, exc_value, exc_trace = sys.exc_info()
     new_exc = _translate_plain_exception(exc_value)
     raise new_exc, None, exc_trace
 

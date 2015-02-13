@@ -19,12 +19,13 @@
 iSCSI Cinder Volume driver for Hitachi Unified Storage (HUS) platform.
 """
 
-from oslo.config import cfg
 from xml.etree import ElementTree as ETree
 
+from oslo_config import cfg
+from oslo_utils import excutils
+
 from cinder import exception
-from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
@@ -91,7 +92,7 @@ def _xml_read(root, element, check=None):
     """Read an xml element."""
     try:
         val = root.findtext(element)
-        LOG.info(_("%(element)s: %(val)s")
+        LOG.info(_LI("%(element)s: %(val)s")
                  % {'element': element,
                     'val': val})
         if val:
@@ -102,9 +103,9 @@ def _xml_read(root, element, check=None):
     except ETree.ParseError:
         if check:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("XML exception reading parameter: %s") % element)
+                LOG.error(_LE("XML exception reading parameter: %s") % element)
         else:
-            LOG.info(_("XML exception reading parameter: %s") % element)
+            LOG.info(_LI("XML exception reading parameter: %s") % element)
             return None
 
 
@@ -196,7 +197,7 @@ class HUSDriver(driver.ISCSIDriver):
             service = (svc['iscsi_ip'], svc['iscsi_port'], svc['ctl'],
                        svc['port'], svc['hdp'])  # ip, ipp, ctl, port, hdp
         else:
-            LOG.error(_("No configuration found for service: %s") % label)
+            LOG.error(_LE("No configuration found for service: %s") % label)
             raise exception.ParameterNotFound(param=label)
         return service
 
@@ -249,7 +250,7 @@ class HUSDriver(driver.ISCSIDriver):
         lst.extend([self.config['snapshot_hdp'], ])
         for hdp in lst:
             if hdp not in hdpl:
-                LOG.error(_("HDP not found: %s") % hdp)
+                LOG.error(_LE("HDP not found: %s") % hdp)
                 err = "HDP not found: " + hdp
                 raise exception.ParameterNotFound(param=err)
 
@@ -288,7 +289,8 @@ class HUSDriver(driver.ISCSIDriver):
                 self.config['services'][svc]['iscsi_port'] = (
                     iscsi_info[svc_ip]['iscsi_port'])
             else:          # config iscsi address not found on device!
-                LOG.error(_("iSCSI portal not found for service: %s") % svc_ip)
+                LOG.error(_LE("iSCSI portal not found "
+                              "for service: %s") % svc_ip)
                 raise exception.ParameterNotFound(param=svc_ip)
         return
 
@@ -384,7 +386,7 @@ class HUSDriver(driver.ISCSIDriver):
         info = _loc_info(prov_loc)
         (arid, lun) = info['id_lu']
         if 'tgt' in info.keys():  # connected?
-            (_portal, iqn, loc, ctl, port) = info['tgt']
+            (_portal, iqn, _loc, ctl, port) = info['tgt']
             self.bend.del_iscsi_conn(self.config['hus_cmd'],
                                      HDS_VERSION,
                                      self.config['mgmt_ip0'],

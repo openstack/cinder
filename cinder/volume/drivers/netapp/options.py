@@ -1,6 +1,6 @@
-# Copyright (c) 2012 NetApp, Inc.
-# Copyright (c) 2012 OpenStack Foundation
-# All Rights Reserved.
+# Copyright (c) 2012 NetApp, Inc.  All rights reserved.
+# Copyright (c) 2014 Navneet Singh.  All rights reserved.
+# Copyright (c) 2014 Bob Callaway.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -24,7 +24,7 @@ individual modules. It is recommended to Keep options at a single
 place to ensure re usability and better management of configuration options.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 netapp_proxy_opts = [
     cfg.StrOpt('netapp_storage_family',
@@ -36,7 +36,8 @@ netapp_proxy_opts = [
     cfg.StrOpt('netapp_storage_protocol',
                default=None,
                help=('The storage protocol to be used on the data path with '
-                     'the storage system; valid values are iscsi or nfs.')), ]
+                     'the storage system; valid values are iscsi, fc, or '
+                     'nfs.')), ]
 
 netapp_connection_opts = [
     cfg.StrOpt('netapp_server_hostname',
@@ -44,12 +45,11 @@ netapp_connection_opts = [
                help='The hostname (or IP address) for the storage system or '
                     'proxy server.'),
     cfg.IntOpt('netapp_server_port',
-               default=80,
+               default=None,
                help=('The TCP port to use for communication with the storage '
-                     'system or proxy server. Traditionally, port 80 is used '
-                     'for HTTP and port 443 is used for HTTPS; however, this '
-                     'value should be changed if an alternate port has been '
-                     'configured on the storage system or proxy server.')), ]
+                     'system or proxy server. If not specified, Data ONTAP '
+                     'drivers will use 80 for HTTP and 443 for HTTPS; '
+                     'E-Series will use 8080 for HTTP and 8443 for HTTPS.')), ]
 
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',
@@ -79,8 +79,8 @@ netapp_provisioning_opts = [
     cfg.StrOpt('netapp_volume_list',
                default=None,
                help=('This option is only utilized when the storage protocol '
-                     'is configured to use iSCSI. This option is used to '
-                     'restrict provisioning to the specified controller '
+                     'is configured to use iSCSI or FC. This option is used '
+                     'to restrict provisioning to the specified controller '
                      'volumes. Specify the value of this option to be a '
                      'comma separated list of NetApp controller volume names '
                      'to be used for provisioning.')), ]
@@ -90,15 +90,7 @@ netapp_cluster_opts = [
                default=None,
                help=('This option specifies the virtual storage server '
                      '(Vserver) name on the storage cluster on which '
-                     'provisioning of block storage volumes should occur. If '
-                     'using the NFS storage protocol, this parameter is '
-                     'mandatory for storage service catalog support (utilized'
-                     ' by Cinder volume type extra_specs support). If this '
-                     'option is specified, the exports belonging to the '
-                     'Vserver will only be used for provisioning in the '
-                     'future. Block storage volumes on exports not belonging '
-                     'to the Vserver specified by this option will continue '
-                     'to function normally.')), ]
+                     'provisioning of block storage volumes should occur.')), ]
 
 netapp_7mode_opts = [
     cfg.StrOpt('netapp_vfiler',
@@ -106,10 +98,16 @@ netapp_7mode_opts = [
                help=('The vFiler unit on which provisioning of block storage '
                      'volumes will be done. This option is only used by the '
                      'driver when connecting to an instance with a storage '
-                     'family of Data ONTAP operating in 7-Mode and the '
-                     'storage protocol selected is iSCSI. Only use this '
+                     'family of Data ONTAP operating in 7-Mode. Only use this '
                      'option when utilizing the MultiStore feature on the '
-                     'NetApp storage system.')), ]
+                     'NetApp storage system.')),
+    cfg.StrOpt('netapp_partner_backend_name',
+               default=None,
+               help=('The name of the config.conf stanza for a Data ONTAP '
+                     '(7-mode) HA partner.  This option is only used by the '
+                     'driver when connecting to an instance with a storage '
+                     'family of Data ONTAP operating in 7-Mode, and it is '
+                     'required if the storage protocol selected is FC.')), ]
 
 netapp_img_cache_opts = [
     cfg.IntOpt('thres_avl_size_perc_start',
@@ -161,7 +159,13 @@ netapp_eseries_opts = [
                      'specified storage pools. Only dynamic disk pools are '
                      'currently supported. Specify the value of this option to'
                      ' be a comma separated list of disk pool names to be used'
-                     ' for provisioning.')), ]
+                     ' for provisioning.')),
+    cfg.StrOpt('netapp_eseries_host_type',
+               default='linux_dm_mp',
+               help=('This option is used to define how the controllers in '
+                     'the E-Series storage array will work with the '
+                     'particular operating system on the hosts that are '
+                     'connected to it.')), ]
 netapp_nfs_extra_opts = [
     cfg.StrOpt('netapp_copyoffload_tool_path',
                default=None,

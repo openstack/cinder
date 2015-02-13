@@ -17,7 +17,9 @@
 import datetime
 
 from lxml import etree
-from oslo.config import cfg
+import mock
+from oslo_config import cfg
+import six
 import six.moves.urllib.parse as urlparse
 import webob
 
@@ -31,12 +33,11 @@ from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.tests import fake_notifier
 from cinder.tests.image import fake as fake_image
-from cinder import utils
 from cinder.volume import api as volume_api
 
 CONF = cfg.CONF
 
-NS = '{http://docs.openstack.org/api/openstack-volume/2.0/content}'
+NS = '{http://docs.openstack.org/api/openstack-block-storage/2.0/content}'
 
 TEST_SNAPSHOT_UUID = '00000000-0000-0000-0000-000000000001'
 
@@ -94,16 +95,18 @@ class VolumeApiTest(test.TestCase):
                            'volume_id': '1'}],
                          'availability_zone': 'zone1:host1',
                          'bootable': 'false',
-                         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                         'consistencygroup_id': None,
+                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                          'description': 'Volume Test Desc',
                          'id': '1',
                          'links':
-                         [{'href': 'http://localhost/v2/fake/volumes/1',
+                         [{'href': 'http://localhost/v2/fakeproject/volumes/1',
                            'rel': 'self'},
-                          {'href': 'http://localhost/fake/volumes/1',
+                          {'href': 'http://localhost/fakeproject/volumes/1',
                            'rel': 'bookmark'}],
                          'metadata': {},
                          'name': 'Volume Test Name',
+                         'replication_status': 'disabled',
                          'size': 100,
                          'snapshot_id': None,
                          'source_volid': None,
@@ -112,6 +115,36 @@ class VolumeApiTest(test.TestCase):
                          'volume_type': 'vol_type_name',
                          'encrypted': False}}
         self.assertEqual(res_dict, ex)
+
+    def test_volume_create_with_consistencygroup_invalid_type(self):
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        vol_type = db.volume_type_create(
+            context.get_admin_context(),
+            dict(name=CONF.default_volume_type, extra_specs={})
+        )
+        db_vol_type = db.volume_type_get(context.get_admin_context(),
+                                         vol_type.id)
+        cg = {
+            'id': '1',
+            'name': 'cg1',
+            'volume_type_id': db_vol_type['id'],
+        }
+        fake_type = {
+            'id': '9999',
+            'name': 'fake',
+        }
+        vol_api = volume_api.API()
+
+        self.assertRaises(exception.InvalidInput,
+                          vol_api.create,
+                          ctxt, 1, 'vol1', 'volume 1',
+                          consistencygroup=cg)
+
+        self.assertRaises(exception.InvalidInput,
+                          vol_api.create,
+                          ctxt, 1, 'vol1', 'volume 1',
+                          volume_type=fake_type,
+                          consistencygroup=cg)
 
     def test_volume_create_with_type(self):
         vol_type = db.volume_type_create(
@@ -179,7 +212,7 @@ class VolumeApiTest(test.TestCase):
                           self.controller.create,
                           req, body)
 
-    def test_volume_create_with_image_id(self):
+    def test_volume_create_with_image_ref(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
 
@@ -196,17 +229,19 @@ class VolumeApiTest(test.TestCase):
                                           'volume_id': '1'}],
                          'availability_zone': 'nova',
                          'bootable': 'false',
-                         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                         'consistencygroup_id': None,
+                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                          'description': 'Volume Test Desc',
                          'encrypted': False,
                          'id': '1',
                          'links':
-                         [{'href': 'http://localhost/v2/fake/volumes/1',
+                         [{'href': 'http://localhost/v2/fakeproject/volumes/1',
                            'rel': 'self'},
-                          {'href': 'http://localhost/fake/volumes/1',
+                          {'href': 'http://localhost/fakeproject/volumes/1',
                            'rel': 'bookmark'}],
                          'metadata': {},
                          'name': 'Volume Test Name',
+                         'replication_status': 'disabled',
                          'size': '1',
                          'snapshot_id': None,
                          'source_volid': None,
@@ -216,9 +251,9 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
-        self.assertEqual(res_dict, ex)
+        self.assertEqual(ex, res_dict)
 
-    def test_volume_create_with_image_id_is_integer(self):
+    def test_volume_create_with_image_ref_is_integer(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {
@@ -235,7 +270,7 @@ class VolumeApiTest(test.TestCase):
                           req,
                           body)
 
-    def test_volume_create_with_image_id_not_uuid_format(self):
+    def test_volume_create_with_image_ref_not_uuid_format(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {
@@ -252,7 +287,7 @@ class VolumeApiTest(test.TestCase):
                           req,
                           body)
 
-    def test_volume_create_with_image_id_with_empty_string(self):
+    def test_volume_create_with_image_ref_with_empty_string(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = {"size": 1,
@@ -260,6 +295,183 @@ class VolumeApiTest(test.TestCase):
                "display_description": "Volume Test Desc",
                "availability_zone": "cinder",
                "imageRef": ''}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_volume_create_with_image_id(self):
+        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+               "name": "Volume Test Name",
+               "description": "Volume Test Desc",
+               "availability_zone": "nova",
+               "image_id": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
+        ex = {'volume': {'attachments': [{'device': '/',
+                                          'host_name': None,
+                                          'id': '1',
+                                          'server_id': 'fakeuuid',
+                                          'volume_id': '1'}],
+                         'availability_zone': 'nova',
+                         'bootable': 'false',
+                         'consistencygroup_id': None,
+                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
+                         'description': 'Volume Test Desc',
+                         'encrypted': False,
+                         'id': '1',
+                         'links':
+                         [{'href': 'http://localhost/v2/fakeproject/volumes/1',
+                           'rel': 'self'},
+                          {'href': 'http://localhost/fakeproject/volumes/1',
+                           'rel': 'bookmark'}],
+                         'metadata': {},
+                         'name': 'Volume Test Name',
+                         'replication_status': 'disabled',
+                         'size': '1',
+                         'snapshot_id': None,
+                         'source_volid': None,
+                         'status': 'fakestatus',
+                         'user_id': 'fakeuser',
+                         'volume_type': 'vol_type_name'}}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        res_dict = self.controller.create(req, body)
+        self.assertEqual(ex, res_dict)
+
+    def test_volume_create_with_image_id_is_integer(self):
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {
+            "size": '1',
+            "name": "Volume Test Name",
+            "description": "Volume Test Desc",
+            "availability_zone": "cinder",
+            "image_id": 1234,
+        }
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_volume_create_with_image_id_not_uuid_format(self):
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {
+            "size": '1',
+            "name": "Volume Test Name",
+            "description": "Volume Test Desc",
+            "availability_zone": "cinder",
+            "image_id": '12345'
+        }
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_volume_create_with_image_id_with_empty_string(self):
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": 1,
+               "display_name": "Volume Test Name",
+               "display_description": "Volume Test Desc",
+               "availability_zone": "cinder",
+               "image_id": ''}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_volume_create_with_image_name(self):
+        self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
+
+        test_id = "Fedora-x86_64-20-20140618-sda"
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+               "name": "Volume Test Name",
+               "description": "Volume Test Desc",
+               "availability_zone": "nova",
+               "imageRef": test_id}
+        ex = {'volume': {'attachments': [{'device': '/',
+                                          'host_name': None,
+                                          'id': '1',
+                                          'server_id': 'fakeuuid',
+                                          'volume_id': '1'}],
+                         'availability_zone': 'nova',
+                         'bootable': 'false',
+                         'consistencygroup_id': None,
+                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
+                         'description': 'Volume Test Desc',
+                         'encrypted': False,
+                         'id': '1',
+                         'links':
+                         [{'href': 'http://localhost/v2/fakeproject/volumes/1',
+                           'rel': 'self'},
+                          {'href': 'http://localhost/fakeproject/volumes/1',
+                           'rel': 'bookmark'}],
+                         'metadata': {},
+                         'name': 'Volume Test Name',
+                         'replication_status': 'disabled',
+                         'size': '1',
+                         'snapshot_id': None,
+                         'source_volid': None,
+                         'status': 'fakestatus',
+                         'user_id': 'fakeuser',
+                         'volume_type': 'vol_type_name'}}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        res_dict = self.controller.create(req, body)
+        self.assertEqual(ex, res_dict)
+
+    def test_volume_create_with_image_name_has_multiple(self):
+        self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
+
+        test_id = "multi"
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+               "name": "Volume Test Name",
+               "description": "Volume Test Desc",
+               "availability_zone": "nova",
+               "imageRef": test_id}
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_volume_create_with_image_name_no_match(self):
+        self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
+
+        test_id = "MissingName"
+        self.ext_mgr.extensions = {'os-image-create': 'fake'}
+        vol = {"size": '1',
+               "name": "Volume Test Name",
+               "description": "Volume Test Desc",
+               "availability_zone": "nova",
+               "imageRef": test_id}
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -285,7 +497,9 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'Updated Test Name',
+                'replication_status': 'disabled',
                 'attachments': [
                     {
                         'id': '1',
@@ -301,15 +515,15 @@ class VolumeApiTest(test.TestCase):
                 'source_volid': None,
                 'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
-                        'href': 'http://localhost/v2/fake/volumes/1',
+                        'href': 'http://localhost/v2/fakeproject/volumes/1',
                         'rel': 'self'
                     },
                     {
-                        'href': 'http://localhost/fake/volumes/1',
+                        'href': 'http://localhost/fakeproject/volumes/1',
                         'rel': 'bookmark'
                     }
                 ],
@@ -337,7 +551,9 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'Updated Test Name',
+                'replication_status': 'disabled',
                 'attachments': [
                     {
                         'id': '1',
@@ -353,15 +569,15 @@ class VolumeApiTest(test.TestCase):
                 'source_volid': None,
                 'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
-                        'href': 'http://localhost/v2/fake/volumes/1',
+                        'href': 'http://localhost/v2/fakeproject/volumes/1',
                         'rel': 'self'
                     },
                     {
-                        'href': 'http://localhost/fake/volumes/1',
+                        'href': 'http://localhost/fakeproject/volumes/1',
                         'rel': 'bookmark'
                     }
                 ],
@@ -392,7 +608,9 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'New Name',
+                'replication_status': 'disabled',
                 'attachments': [
                     {
                         'id': '1',
@@ -408,15 +626,15 @@ class VolumeApiTest(test.TestCase):
                 'source_volid': None,
                 'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
-                        'href': 'http://localhost/v2/fake/volumes/1',
+                        'href': 'http://localhost/v2/fakeproject/volumes/1',
                         'rel': 'self'
                     },
                     {
-                        'href': 'http://localhost/fake/volumes/1',
+                        'href': 'http://localhost/fakeproject/volumes/1',
                         'rel': 'bookmark'
                     }
                 ],
@@ -442,7 +660,9 @@ class VolumeApiTest(test.TestCase):
             'encrypted': False,
             'availability_zone': 'fakeaz',
             'bootable': 'false',
+            'consistencygroup_id': None,
             'name': 'displayname',
+            'replication_status': 'disabled',
             'attachments': [{
                 'id': '1',
                 'volume_id': '1',
@@ -458,15 +678,15 @@ class VolumeApiTest(test.TestCase):
                          "readonly": "False",
                          "attached_mode": "rw"},
             'id': '1',
-            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1,
             'links': [
                 {
-                    'href': 'http://localhost/v2/fake/volumes/1',
+                    'href': 'http://localhost/v2/fakeproject/volumes/1',
                     'rel': 'self'
                 },
                 {
-                    'href': 'http://localhost/fake/volumes/1',
+                    'href': 'http://localhost/fakeproject/volumes/1',
                     'rel': 'bookmark'
                 }
             ],
@@ -503,7 +723,9 @@ class VolumeApiTest(test.TestCase):
             'encrypted': False,
             'availability_zone': 'fakeaz',
             'bootable': 'false',
+            'consistencygroup_id': None,
             'name': 'Updated Test Name',
+            'replication_status': 'disabled',
             'attachments': [{
                 'id': '1',
                 'volume_id': '1',
@@ -518,7 +740,7 @@ class VolumeApiTest(test.TestCase):
             'metadata': {'key': 'value',
                          'readonly': 'True'},
             'id': '1',
-            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1,
             'links': [
                 {
@@ -575,11 +797,12 @@ class VolumeApiTest(test.TestCase):
                     'id': '1',
                     'links': [
                         {
-                            'href': 'http://localhost/v2/fake/volumes/1',
+                            'href': 'http://localhost/v2/fakeproject/volumes/'
+                                    '1',
                             'rel': 'self'
                         },
                         {
-                            'href': 'http://localhost/fake/volumes/1',
+                            'href': 'http://localhost/fakeproject/volumes/1',
                             'rel': 'bookmark'
                         }
                     ],
@@ -605,7 +828,9 @@ class VolumeApiTest(test.TestCase):
                     'encrypted': False,
                     'availability_zone': 'fakeaz',
                     'bootable': 'false',
+                    'consistencygroup_id': None,
                     'name': 'displayname',
+                    'replication_status': 'disabled',
                     'attachments': [
                         {
                             'device': '/',
@@ -621,15 +846,16 @@ class VolumeApiTest(test.TestCase):
                     'source_volid': None,
                     'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
                     'id': '1',
-                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                     'size': 1,
                     'links': [
                         {
-                            'href': 'http://localhost/v2/fake/volumes/1',
+                            'href': 'http://localhost/v2/fakeproject/volumes/'
+                                    '1',
                             'rel': 'self'
                         },
                         {
-                            'href': 'http://localhost/fake/volumes/1',
+                            'href': 'http://localhost/fakeproject/volumes/1',
                             'rel': 'bookmark'
                         }
                     ],
@@ -664,7 +890,9 @@ class VolumeApiTest(test.TestCase):
                     'encrypted': False,
                     'availability_zone': 'fakeaz',
                     'bootable': 'false',
+                    'consistencygroup_id': None,
                     'name': 'displayname',
+                    'replication_status': 'disabled',
                     'attachments': [
                         {
                             'device': '/',
@@ -680,7 +908,7 @@ class VolumeApiTest(test.TestCase):
                     'source_volid': None,
                     'metadata': {'key': 'value', 'readonly': 'True'},
                     'id': '1',
-                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                     'size': 1,
                     'links': [
                         {
@@ -731,7 +959,7 @@ class VolumeApiTest(test.TestCase):
         links = res_dict['volumes_links']
         self.assertEqual(links[0]['rel'], 'next')
         href_parts = urlparse.urlparse(links[0]['href'])
-        self.assertEqual('/v2/fake/volumes', href_parts.path)
+        self.assertEqual('/v2/fakeproject/volumes', href_parts.path)
         params = urlparse.parse_qs(href_parts.query)
         self.assertTrue('marker' in params)
         self.assertEqual('1', params['limit'][0])
@@ -820,7 +1048,7 @@ class VolumeApiTest(test.TestCase):
         links = res_dict['volumes_links']
         self.assertEqual(links[0]['rel'], 'next')
         href_parts = urlparse.urlparse(links[0]['href'])
-        self.assertEqual('/v2/fake/volumes/detail', href_parts.path)
+        self.assertEqual('/v2/fakeproject/volumes/detail', href_parts.path)
         params = urlparse.parse_qs(href_parts.query)
         self.assertTrue('marker' in params)
         self.assertEqual('1', params['limit'][0])
@@ -900,7 +1128,7 @@ class VolumeApiTest(test.TestCase):
             '''Verify next link and url.'''
             self.assertEqual(links[0]['rel'], 'next')
             href_parts = urlparse.urlparse(links[0]['href'])
-            self.assertEqual('/v2/fake/%s' % key, href_parts.path)
+            self.assertEqual('/v2/fakeproject/%s' % key, href_parts.path)
 
         # Verify both the index and detail queries
         api_keys = ['volumes', 'volumes/detail']
@@ -913,7 +1141,7 @@ class VolumeApiTest(test.TestCase):
                                 viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
                     for i in xrange(CONF.osapi_max_limit)]
-            if limit == None or limit >= len(vols):
+            if limit is None or limit >= len(vols):
                 return vols
             return vols[:limit]
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all)
@@ -932,7 +1160,7 @@ class VolumeApiTest(test.TestCase):
                                  viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
                     for i in xrange(100)]
-            if limit == None or limit >= len(vols):
+            if limit is None or limit >= len(vols):
                 return vols
             return vols[:limit]
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all2)
@@ -950,7 +1178,7 @@ class VolumeApiTest(test.TestCase):
                                  viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
                     for i in xrange(CONF.osapi_max_limit + 100)]
-            if limit == None or limit >= len(vols):
+            if limit is None or limit >= len(vols):
                 return vols
             return vols[:limit]
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all3)
@@ -1063,7 +1291,9 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'displayname',
+                'replication_status': 'disabled',
                 'attachments': [
                     {
                         'device': '/',
@@ -1079,15 +1309,15 @@ class VolumeApiTest(test.TestCase):
                 'source_volid': None,
                 'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
-                        'href': 'http://localhost/v2/fake/volumes/1',
+                        'href': 'http://localhost/v2/fakeproject/volumes/1',
                         'rel': 'self'
                     },
                     {
-                        'href': 'http://localhost/fake/volumes/1',
+                        'href': 'http://localhost/fakeproject/volumes/1',
                         'rel': 'bookmark'
                     }
                 ],
@@ -1112,7 +1342,9 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'displayname',
+                'replication_status': 'disabled',
                 'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
@@ -1120,15 +1352,15 @@ class VolumeApiTest(test.TestCase):
                 'source_volid': None,
                 'metadata': {'readonly': 'False'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
-                        'href': 'http://localhost/v2/fake/volumes/1',
+                        'href': 'http://localhost/v2/fakeproject/volumes/1',
                         'rel': 'self'
                     },
                     {
-                        'href': 'http://localhost/fake/volumes/1',
+                        'href': 'http://localhost/fakeproject/volumes/1',
                         'rel': 'bookmark'
                     }
                 ],
@@ -1169,7 +1401,9 @@ class VolumeApiTest(test.TestCase):
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
                 'bootable': 'false',
+                'consistencygroup_id': None,
                 'name': 'displayname',
+                'replication_status': 'disabled',
                 'attachments': [
                     {
                         'device': '/',
@@ -1186,7 +1420,7 @@ class VolumeApiTest(test.TestCase):
                 'metadata': {'key': 'value',
                              'readonly': 'True'},
                 'id': '1',
-                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                 'size': 1,
                 'links': [
                     {
@@ -1236,9 +1470,11 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.delete,
-                          req, 1)
+        exp = self.assertRaises(webob.exc.HTTPBadRequest,
+                                self.controller.delete,
+                                req, 1)
+        expect_msg = "Volume cannot be deleted while in attached state"
+        self.assertEqual(expect_msg, six.text_type(exp))
 
     def test_volume_delete_no_volume(self):
         self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
@@ -1306,31 +1542,41 @@ class VolumeApiTest(test.TestCase):
         body = {'volume': 'string'}
         self._create_volume_bad_request(body=body)
 
-    def test_add_visible_admin_metadata_visible_key_only(self):
-        admin_metadata = [{"key": "invisible_key", "value": "invisible_value"},
-                          {"key": "readonly", "value": "visible"},
-                          {"key": "attached_mode", "value": "visible"}]
-        metadata = [{"key": "key", "value": "value"}]
-        volume = dict(volume_admin_metadata=admin_metadata,
-                      volume_metadata=metadata)
-        utils.add_visible_admin_metadata(volume)
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_string(self, get_all):
+        req = mock.MagicMock()
+        context = mock.Mock()
+        req.environ = {'cinder.context': context}
+        req.params = {'display_name': 'Volume-573108026'}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            context, None, None, 'created_at', 'desc',
+            {'display_name': 'Volume-573108026'}, viewable_admin_meta=True)
 
-        self.assertEqual(volume['volume_metadata'],
-                         [{"key": "key", "value": "value"},
-                          {"key": "readonly", "value": "visible"},
-                          {"key": "attached_mode", "value": "visible"}])
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_list(self, get_all):
+        req = mock.MagicMock()
+        context = mock.Mock()
+        req.environ = {'cinder.context': context}
+        req.params = {'id': "['1', '2', '3']"}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            context, None, None, 'created_at', 'desc',
+            {'id': ['1', '2', '3']}, viewable_admin_meta=True)
 
-        admin_metadata = {"invisible_key": "invisible_value",
-                          "readonly": "visible",
-                          "attached_mode": "visible"}
-        metadata = {"key": "value"}
-        volume = dict(admin_metadata=admin_metadata,
-                      metadata=metadata)
-        utils.add_visible_admin_metadata(volume)
-        self.assertEqual(volume['metadata'],
-                         {'key': 'value',
-                          'attached_mode': 'visible',
-                          'readonly': 'visible'})
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_expression(self, get_all):
+        req = mock.MagicMock()
+        context = mock.Mock()
+        req.environ = {'cinder.context': context}
+        req.params = {'name': "d-"}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            context, None, None, 'created_at', 'desc',
+            {'display_name': 'd-'}, viewable_admin_meta=True)
 
 
 class VolumeSerializerTest(test.TestCase):

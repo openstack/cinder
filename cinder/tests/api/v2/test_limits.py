@@ -18,17 +18,17 @@ Tests dealing with HTTP rate-limiting.
 """
 
 import httplib
+from xml.dom import minidom
 
 from lxml import etree
+from oslo_serialization import jsonutils
 import six
 import webob
-from xml.dom import minidom
 
 from cinder.api.v2 import limits
 from cinder.api import views
 from cinder.api import xmlutil
 import cinder.context
-from cinder.openstack.common import jsonutils
 from cinder import test
 
 

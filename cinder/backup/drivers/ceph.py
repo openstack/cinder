@@ -42,22 +42,22 @@ was deemed the safest action to take. It is therefore recommended to always
 restore to a new volume (default).
 """
 
-import eventlet
 import fcntl
 import os
 import re
 import subprocess
 import time
 
-from oslo.config import cfg
+import eventlet
+from oslo_config import cfg
+from oslo_utils import encodeutils
+from oslo_utils import excutils
+from oslo_utils import units
 
 from cinder.backup.driver import BackupDriver
 from cinder import exception
-from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
-from cinder.openstack.common import units
 from cinder import utils
 import cinder.volume.drivers.rbd as rbd_driver
 
@@ -103,7 +103,7 @@ class VolumeMetadataBackup(object):
 
     @property
     def name(self):
-        return strutils.safe_encode("backup.%s.meta" % self._backup_id)
+        return encodeutils.safe_encode("backup.%s.meta" % self._backup_id)
 
     @property
     def exists(self):
@@ -177,14 +177,14 @@ class CephBackupDriver(BackupDriver):
             self.rbd_stripe_unit = CONF.backup_ceph_stripe_unit
             self.rbd_stripe_count = CONF.backup_ceph_stripe_count
         else:
-            LOG.info(_("RBD striping not supported - ignoring configuration "
-                       "settings for rbd striping"))
+            LOG.info(_LI("RBD striping not supported - ignoring configuration "
+                         "settings for rbd striping"))
             self.rbd_stripe_count = 0
             self.rbd_stripe_unit = 0
 
-        self._ceph_backup_user = strutils.safe_encode(CONF.backup_ceph_user)
-        self._ceph_backup_pool = strutils.safe_encode(CONF.backup_ceph_pool)
-        self._ceph_backup_conf = strutils.safe_encode(CONF.backup_ceph_conf)
+        self._ceph_backup_user = encodeutils.safe_encode(CONF.backup_ceph_user)
+        self._ceph_backup_pool = encodeutils.safe_encode(CONF.backup_ceph_pool)
+        self._ceph_backup_conf = encodeutils.safe_encode(CONF.backup_ceph_conf)
 
     def _validate_string_args(self, *args):
         """Ensure all args are non-None and non-empty."""
@@ -240,7 +240,8 @@ class CephBackupDriver(BackupDriver):
                                   conffile=self._ceph_backup_conf)
         try:
             client.connect()
-            pool_to_open = strutils.safe_encode(pool or self._ceph_backup_pool)
+            pool_to_open = encodeutils.safe_encode(pool or
+                                                   self._ceph_backup_pool)
             ioctx = client.open_ioctx(pool_to_open)
             return client, ioctx
         except self.rados.Error:
@@ -263,13 +264,13 @@ class CephBackupDriver(BackupDriver):
         """
         # Ensure no unicode
         if diff_format:
-            return strutils.safe_encode("volume-%s.backup.base" % volume_id)
+            return encodeutils.safe_encode("volume-%s.backup.base" % volume_id)
         else:
             if backup_id is None:
                 msg = _("Backup id required")
                 raise exception.InvalidParameterValue(msg)
-            return strutils.safe_encode("volume-%s.backup.%s" %
-                                        (volume_id, backup_id))
+            return encodeutils.safe_encode("volume-%s.backup.%s" %
+                                           (volume_id, backup_id))
 
     def _discard_bytes(self, volume, offset, length):
         """Trim length bytes from offset.
@@ -432,15 +433,15 @@ class CephBackupDriver(BackupDriver):
                 snap, rem = self._delete_backup_snapshot(client, base_name,
                                                          backup_id)
                 if rem:
-                    msg = (_("Backup base image of volume %(volume)s still "
-                             "has %(snapshots)s snapshots so skipping base "
-                             "image delete.") %
+                    msg = (_LI("Backup base image of volume %(volume)s still "
+                               "has %(snapshots)s snapshots so skipping base "
+                               "image delete.") %
                            {'snapshots': rem, 'volume': volume_id})
                     LOG.info(msg)
                     return
 
-                LOG.info(_("Deleting backup base image='%(basename)s' of "
-                           "volume %(volume)s.") %
+                LOG.info(_LI("Deleting backup base image='%(basename)s' of "
+                             "volume %(volume)s.") %
                          {'basename': base_name, 'volume': volume_id})
                 # Delete base if no more snapshots
                 try:
@@ -448,16 +449,17 @@ class CephBackupDriver(BackupDriver):
                 except self.rbd.ImageBusy as exc:
                     # Allow a retry if the image is busy
                     if retries > 0:
-                        LOG.info(_("Backup image of volume %(volume)s is "
-                                   "busy, retrying %(retries)s more time(s) "
-                                   "in %(delay)ss.") %
+                        LOG.info(_LI("Backup image of volume %(volume)s is "
+                                     "busy, retrying %(retries)s more time(s) "
+                                     "in %(delay)ss.") %
                                  {'retries': retries,
                                   'delay': delay,
                                   'volume': volume_id})
                         eventlet.sleep(delay)
                     else:
-                        LOG.error(_("Max retries reached deleting backup "
-                                    "%(basename)s image of volume %(volume)s.")
+                        LOG.error(_LE("Max retries reached deleting backup "
+                                      "%(basename)s image of volume "
+                                      "%(volume)s.")
                                   % {'volume': volume_id,
                                      'basename': base_name})
                         raise exc
@@ -471,7 +473,7 @@ class CephBackupDriver(BackupDriver):
 
             # Since we have deleted the base image we can delete the source
             # volume backup snapshot.
-            src_name = strutils.safe_encode(volume_id)
+            src_name = encodeutils.safe_encode(volume_id)
             if src_name in self.rbd.RBD().list(client.ioctx):
                 LOG.debug("Deleting source volume snapshot '%(snapshot)s' "
                           "for backup %(basename)s." %
@@ -491,7 +493,7 @@ class CephBackupDriver(BackupDriver):
             p1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE)
         except OSError as e:
-            LOG.error(_("Pipe1 failed - %s ") % unicode(e))
+            LOG.error(_LE("Pipe1 failed - %s ") % unicode(e))
             raise
 
         # NOTE(dosaboy): ensure that the pipe is blocking. This is to work
@@ -505,7 +507,7 @@ class CephBackupDriver(BackupDriver):
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE)
         except OSError as e:
-            LOG.error(_("Pipe2 failed - %s ") % unicode(e))
+            LOG.error(_LE("Pipe2 failed - %s ") % unicode(e))
             raise
 
         p1.stdout.close()
@@ -536,15 +538,15 @@ class CephBackupDriver(BackupDriver):
         if from_snap is not None:
             cmd1.extend(['--from-snap', from_snap])
         if src_snap:
-            path = strutils.safe_encode("%s/%s@%s" %
-                                        (src_pool, src_name, src_snap))
+            path = encodeutils.safe_encode("%s/%s@%s" %
+                                           (src_pool, src_name, src_snap))
         else:
-            path = strutils.safe_encode("%s/%s" % (src_pool, src_name))
+            path = encodeutils.safe_encode("%s/%s" % (src_pool, src_name))
 
         cmd1.extend([path, '-'])
 
         cmd2 = ['rbd', 'import-diff'] + dest_ceph_args
-        rbd_path = strutils.safe_encode("%s/%s" % (dest_pool, dest_name))
+        rbd_path = encodeutils.safe_encode("%s/%s" % (dest_pool, dest_name))
         cmd2.extend(['-', rbd_path])
 
         ret, stderr = self._piped_execute(cmd1, cmd2)
@@ -757,8 +759,8 @@ class CephBackupDriver(BackupDriver):
         return backup_snaps
 
     def _get_new_snap_name(self, backup_id):
-        return strutils.safe_encode("backup.%s.snap.%s" %
-                                    (backup_id, time.time()))
+        return encodeutils.safe_encode("backup.%s.snap.%s" %
+                                       (backup_id, time.time()))
 
     def _get_backup_snap_name(self, rbd_image, name, backup_id):
         """Return the name of the snapshot associated with backup_id.
@@ -932,7 +934,7 @@ class CephBackupDriver(BackupDriver):
         with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
             adjust_size = 0
             base_image = self.rbd.Image(client.ioctx,
-                                        strutils.safe_encode(backup_base),
+                                        encodeutils.safe_encode(backup_base),
                                         read_only=True)
             try:
                 if restore_length != base_image.size():
@@ -942,8 +944,8 @@ class CephBackupDriver(BackupDriver):
 
         if adjust_size:
             with rbd_driver.RADOSClient(self, src_pool) as client:
-                dest_image = self.rbd.Image(client.ioctx,
-                                            strutils.safe_encode(restore_vol))
+                restore_vol_encode = encodeutils.safe_encode(restore_vol)
+                dest_image = self.rbd.Image(client.ioctx, restore_vol_encode)
                 try:
                     LOG.debug("Adjusting restore vol size")
                     dest_image.resize(adjust_size)
@@ -969,8 +971,8 @@ class CephBackupDriver(BackupDriver):
                                     dest_user=rbd_user, dest_conf=rbd_conf,
                                     src_snap=restore_point)
         except exception.BackupRBDOperationFailed:
-            LOG.exception(_("Differential restore failed, trying full "
-                            "restore"))
+            LOG.exception(_LE("Differential restore failed, trying full "
+                              "restore"))
             raise
 
         # If the volume we are restoring to is larger than the backup volume,
@@ -1082,8 +1084,9 @@ class CephBackupDriver(BackupDriver):
 
                 return True, restore_point
             else:
-                LOG.info(_("No restore point found for backup='%(backup)s' of "
-                           "volume %(volume)s - forcing full copy.") %
+                LOG.info(_LI("No restore point found for "
+                             "backup='%(backup)s' of "
+                             "volume %(volume)s - forcing full copy.") %
                          {'backup': backup['id'],
                           'volume': backup['volume_id']})
 
@@ -1170,8 +1173,8 @@ class CephBackupDriver(BackupDriver):
             LOG.debug('Restore to volume %s finished successfully.' %
                       volume_id)
         except exception.BackupOperationError as e:
-            LOG.error(_('Restore to volume %(volume)s finished with error - '
-                        '%(error)s.') % {'error': e, 'volume': volume_id})
+            LOG.error(_LE('Restore to volume %(volume)s finished with error - '
+                          '%(error)s.') % {'error': e, 'volume': volume_id})
             raise
 
     def delete(self, backup):
@@ -1182,8 +1185,8 @@ class CephBackupDriver(BackupDriver):
         try:
             self._try_delete_base_image(backup['id'], backup['volume_id'])
         except self.rbd.ImageNotFound:
-            msg = (_("RBD image for backup %(backup)s of volume %(volume)s "
-                     "not found. Deleting backup metadata.")
+            msg = (_LW("RBD image for backup %(backup)s of volume %(volume)s "
+                       "not found. Deleting backup metadata.")
                    % {'backup': backup['id'], 'volume': backup['volume_id']})
             LOG.warning(msg)
             delete_failed = True
@@ -1192,8 +1195,9 @@ class CephBackupDriver(BackupDriver):
             VolumeMetadataBackup(client, backup['id']).remove_if_exists()
 
         if delete_failed:
-            LOG.info(_("Delete of backup '%(backup)s' for volume '%(volume)s' "
-                       "finished with warning.") %
+            LOG.info(_LI("Delete of backup '%(backup)s' "
+                         "for volume '%(volume)s' "
+                         "finished with warning.") %
                      {'backup': backup['id'], 'volume': backup['volume_id']})
         else:
             LOG.debug("Delete of backup '%(backup)s' for volume "

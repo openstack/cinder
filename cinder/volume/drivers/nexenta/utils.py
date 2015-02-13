@@ -23,10 +23,10 @@
 
 import re
 
+from oslo_utils import units
 import six.moves.urllib.parse as urlparse
 
-from cinder.openstack.common.gettextutils import _
-from cinder import units
+from cinder.i18n import _
 
 
 def str2size(s, scale=1024):

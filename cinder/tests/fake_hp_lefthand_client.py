@@ -15,13 +15,14 @@
 #
 """Fake HP client for testing LeftHand without installing the client."""
 
-import mock
 import sys
+
+import mock
 
 from cinder.tests import fake_hp_client_exceptions as hpexceptions
 
 hplefthand = mock.Mock()
-hplefthand.version = "3.0.0"
+hplefthand.version = "1.0.3"
 hplefthand.exceptions = hpexceptions
 
 sys.modules['hplefthandclient'] = hplefthand

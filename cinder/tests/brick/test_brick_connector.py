@@ -13,19 +13,76 @@
 #    under the License.
 
 import os.path
+import socket
 import string
+import tempfile
 import time
+
+import mock
+from oslo_concurrency import processutils as putils
+from oslo_config import cfg
 
 from cinder.brick import exception
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
-from cinder.openstack.common.gettextutils import _
+from cinder.brick.initiator import linuxfc
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import processutils as putils
 from cinder import test
 
 LOG = logging.getLogger(__name__)
+CONF = cfg.CONF
+
+
+class ConnectorUtilsTestCase(test.TestCase):
+
+    @mock.patch.object(socket, 'gethostname', return_value='fakehost')
+    @mock.patch.object(connector.ISCSIConnector, 'get_initiator',
+                       return_value='fakeinitiator')
+    @mock.patch.object(linuxfc.LinuxFibreChannel, 'get_fc_wwpns',
+                       return_value=None)
+    @mock.patch.object(linuxfc.LinuxFibreChannel, 'get_fc_wwnns',
+                       return_value=None)
+    def _test_brick_get_connector_properties(self, multipath,
+                                             enforce_multipath,
+                                             multipath_result,
+                                             mock_wwnns, mock_wwpns,
+                                             mock_initiator, mock_gethostname):
+        props_actual = connector.get_connector_properties('sudo',
+                                                          CONF.my_ip,
+                                                          multipath,
+                                                          enforce_multipath)
+        props = {'initiator': 'fakeinitiator',
+                 'host': 'fakehost',
+                 'ip': CONF.my_ip,
+                 'multipath': multipath_result}
+        self.assertEqual(props, props_actual)
+
+    def test_brick_get_connector_properties(self):
+        self._test_brick_get_connector_properties(False, False, False)
+
+    @mock.patch.object(putils, 'execute')
+    def test_brick_get_connector_properties_multipath(self, mock_execute):
+        self._test_brick_get_connector_properties(True, True, True)
+        mock_execute.assert_called_once_with('multipathd', 'show', 'status',
+                                             run_as_root=True,
+                                             root_helper='sudo')
+
+    @mock.patch.object(putils, 'execute',
+                       side_effect=putils.ProcessExecutionError)
+    def test_brick_get_connector_properties_fallback(self, mock_execute):
+        self._test_brick_get_connector_properties(True, False, False)
+        mock_execute.assert_called_once_with('multipathd', 'show', 'status',
+                                             run_as_root=True,
+                                             root_helper='sudo')
+
+    @mock.patch.object(putils, 'execute',
+                       side_effect=putils.ProcessExecutionError)
+    def test_brick_get_connector_properties_raise(self, mock_execute):
+        self.assertRaises(putils.ProcessExecutionError,
+                          self._test_brick_get_connector_properties,
+                          True, True, None)
 
 
 class ConnectorTestCase(test.TestCase):
@@ -115,6 +172,8 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
         super(ISCSIConnectorTestCase, self).setUp()
         self.connector = connector.ISCSIConnector(
             None, execute=self.fake_execute, use_multipath=False)
+        self.connector_with_multipath = connector.ISCSIConnector(
+            None, execute=self.fake_execute, use_multipath=True)
         self.stubs.Set(self.connector._linuxscsi,
                        'get_name_from_path', lambda x: "/dev/sdb")
 
@@ -126,6 +185,17 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                 'target_portal': location,
                 'target_iqn': iqn,
                 'target_lun': 1,
+            }
+        }
+
+    def iscsi_connection_multipath(self, volume, locations, iqns, luns):
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': {
+                'volume_id': volume['id'],
+                'target_portals': locations,
+                'target_iqns': iqns,
+                'target_luns': luns,
             }
         }
 
@@ -198,8 +268,6 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
         vol = {'id': 1, 'name': name}
         connection_properties = self.iscsi_connection(vol, location, iqn)
 
-        self.connector_with_multipath =\
-            connector.ISCSIConnector(None, use_multipath=True)
         self.stubs.Set(self.connector_with_multipath,
                        '_run_iscsiadm_bare',
                        lambda *args, **kwargs: "%s %s" % (location, iqn))
@@ -224,6 +292,116 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
         expected_result = {'path': 'iqn.2010-10.org.openstack:volume-00000001',
                            'type': 'block'}
         self.assertEqual(result, expected_result)
+
+    @mock.patch.object(os.path, 'exists', return_value=True)
+    @mock.patch.object(host_driver.HostDriver, 'get_all_block_devices')
+    @mock.patch.object(connector.ISCSIConnector, '_rescan_multipath')
+    @mock.patch.object(connector.ISCSIConnector, '_run_multipath')
+    @mock.patch.object(connector.ISCSIConnector, '_get_multipath_device_name')
+    @mock.patch.object(connector.ISCSIConnector, '_get_multipath_iqn')
+    def test_connect_volume_with_multiple_portals(
+            self, mock_get_iqn, mock_device_name, mock_run_multipath,
+            mock_rescan_multipath, mock_devices, mock_exists):
+        location1 = '10.0.2.15:3260'
+        location2 = '10.0.3.15:3260'
+        name1 = 'volume-00000001-1'
+        name2 = 'volume-00000001-2'
+        iqn1 = 'iqn.2010-10.org.openstack:%s' % name1
+        iqn2 = 'iqn.2010-10.org.openstack:%s' % name2
+        fake_multipath_dev = '/dev/mapper/fake-multipath-dev'
+        vol = {'id': 1, 'name': name1}
+        connection_properties = self.iscsi_connection_multipath(
+            vol, [location1, location2], [iqn1, iqn2], [1, 2])
+        devs = ['/dev/disk/by-path/ip-%s-iscsi-%s-lun-1' % (location1, iqn1),
+                '/dev/disk/by-path/ip-%s-iscsi-%s-lun-2' % (location2, iqn2)]
+        mock_devices.return_value = devs
+        mock_device_name.return_value = fake_multipath_dev
+        mock_get_iqn.return_value = [iqn1, iqn2]
+
+        result = self.connector_with_multipath.connect_volume(
+            connection_properties['data'])
+        expected_result = {'path': fake_multipath_dev, 'type': 'block'}
+        cmd_format = 'iscsiadm -m node -T %s -p %s --%s'
+        expected_commands = [cmd_format % (iqn1, location1, 'login'),
+                             cmd_format % (iqn2, location2, 'login')]
+        self.assertEqual(expected_result, result)
+        for command in expected_commands:
+            self.assertIn(command, self.cmds)
+        mock_device_name.assert_called_once_with(devs[0])
+
+        self.cmds = []
+        self.connector_with_multipath.disconnect_volume(
+            connection_properties['data'], result)
+        expected_commands = [cmd_format % (iqn1, location1, 'logout'),
+                             cmd_format % (iqn2, location2, 'logout')]
+        for command in expected_commands:
+            self.assertIn(command, self.cmds)
+
+    @mock.patch.object(os.path, 'exists')
+    @mock.patch.object(host_driver.HostDriver, 'get_all_block_devices')
+    @mock.patch.object(connector.ISCSIConnector, '_rescan_multipath')
+    @mock.patch.object(connector.ISCSIConnector, '_run_multipath')
+    @mock.patch.object(connector.ISCSIConnector, '_get_multipath_device_name')
+    @mock.patch.object(connector.ISCSIConnector, '_get_multipath_iqn')
+    @mock.patch.object(connector.ISCSIConnector, '_run_iscsiadm')
+    def test_connect_volume_with_multiple_portals_primary_error(
+            self, mock_iscsiadm, mock_get_iqn, mock_device_name,
+            mock_run_multipath, mock_rescan_multipath, mock_devices,
+            mock_exists):
+        location1 = '10.0.2.15:3260'
+        location2 = '10.0.3.15:3260'
+        name1 = 'volume-00000001-1'
+        name2 = 'volume-00000001-2'
+        iqn1 = 'iqn.2010-10.org.openstack:%s' % name1
+        iqn2 = 'iqn.2010-10.org.openstack:%s' % name2
+        fake_multipath_dev = '/dev/mapper/fake-multipath-dev'
+        vol = {'id': 1, 'name': name1}
+        connection_properties = self.iscsi_connection_multipath(
+            vol, [location1, location2], [iqn1, iqn2], [1, 2])
+        dev1 = '/dev/disk/by-path/ip-%s-iscsi-%s-lun-1' % (location1, iqn1)
+        dev2 = '/dev/disk/by-path/ip-%s-iscsi-%s-lun-2' % (location2, iqn2)
+
+        def fake_run_iscsiadm(iscsi_properties, iscsi_command, **kwargs):
+            if iscsi_properties['target_portal'] == location1:
+                if iscsi_command == ('--login',):
+                    raise putils.ProcessExecutionError(None, None, 21)
+            return mock.DEFAULT
+
+        mock_exists.side_effect = lambda x: x != dev1
+        mock_devices.return_value = [dev2]
+        mock_device_name.return_value = fake_multipath_dev
+        mock_get_iqn.return_value = [iqn2]
+        mock_iscsiadm.side_effect = fake_run_iscsiadm
+
+        props = connection_properties['data'].copy()
+        result = self.connector_with_multipath.connect_volume(
+            connection_properties['data'])
+
+        expected_result = {'path': fake_multipath_dev, 'type': 'block'}
+        self.assertEqual(expected_result, result)
+        mock_device_name.assert_called_once_with(dev2)
+        props['target_portal'] = location1
+        props['target_iqn'] = iqn1
+        mock_iscsiadm.assert_any_call(props, ('--login',),
+                                      check_exit_code=[0, 255])
+        props['target_portal'] = location2
+        props['target_iqn'] = iqn2
+        mock_iscsiadm.assert_any_call(props, ('--login',),
+                                      check_exit_code=[0, 255])
+
+        mock_iscsiadm.reset_mock()
+        self.connector_with_multipath.disconnect_volume(
+            connection_properties['data'], result)
+
+        props = connection_properties['data'].copy()
+        props['target_portal'] = location1
+        props['target_iqn'] = iqn1
+        mock_iscsiadm.assert_any_call(props, ('--logout',),
+                                      check_exit_code=[0, 21, 255])
+        props['target_portal'] = location2
+        props['target_iqn'] = iqn2
+        mock_iscsiadm.assert_any_call(props, ('--logout',),
+                                      check_exit_code=[0, 21, 255])
 
     def test_connect_volume_with_not_found_device(self):
         self.stubs.Set(os.path, 'exists', lambda x: False)
@@ -302,6 +480,7 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                        lambda x: iqns.pop())
         self.stubs.Set(self.connector, '_disconnect_from_iscsi_portal',
                        fake_disconnect_from_iscsi_portal)
+        self.stubs.Set(os.path, 'exists', lambda x: True)
         fake_property = {'target_portal': portal,
                          'target_iqn': iqn1}
         self.connector._disconnect_volume_multipath_iscsi(fake_property,
@@ -326,6 +505,35 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                        lambda: [])
         self.stubs.Set(self.connector, '_disconnect_from_iscsi_portal',
                        fake_disconnect_from_iscsi_portal)
+        self.stubs.Set(os.path, 'exists', lambda x: True)
+        fake_property = {'target_portal': portal,
+                         'target_iqn': iqn}
+        self.connector._disconnect_volume_multipath_iscsi(fake_property,
+                                                          'fake/multipath')
+        # Target not in use by other mp devices, disconnect
+        self.assertEqual([fake_property], result)
+
+    def test_disconnect_volume_multipath_iscsi_with_invalid_symlink(self):
+        result = []
+
+        def fake_disconnect_from_iscsi_portal(properties):
+            result.append(properties)
+
+        portal = '10.0.0.1:3260'
+        name = 'volume-00000001'
+        iqn = 'iqn.2010-10.org.openstack:%s' % name
+        dev = ('ip-%s-iscsi-%s-lun-0' % (portal, iqn))
+        self.stubs.Set(self.connector,
+                       '_get_target_portals_from_iscsiadm_output',
+                       lambda x: [[portal, iqn]])
+        self.stubs.Set(self.connector, '_rescan_iscsi', lambda: None)
+        self.stubs.Set(self.connector, '_rescan_multipath', lambda: None)
+        self.stubs.Set(self.connector.driver, 'get_all_block_devices',
+                       lambda: [dev, '/dev/mapper/md-1'])
+        self.stubs.Set(self.connector, '_disconnect_from_iscsi_portal',
+                       fake_disconnect_from_iscsi_portal)
+        # Simulate a broken symlink by returning False for os.path.exists(dev)
+        self.stubs.Set(os.path, 'exists', lambda x: False)
         fake_property = {'target_portal': portal,
                          'target_iqn': iqn}
         self.connector._disconnect_volume_multipath_iscsi(fake_property,
@@ -459,7 +667,7 @@ class FakeFixedIntervalLoopingCall(object):
             except loopingcall.LoopingCallDone:
                 return self
             except Exception:
-                LOG.exception(_('in fixed duration looping call'))
+                LOG.exception(_LE('in fixed duration looping call'))
                 raise
 
 
@@ -523,14 +731,14 @@ class AoEConnectorTestCase(ConnectorTestCase):
         self.assertDictMatch(volume_info, expected_info)
 
     def test_connect_volume_could_not_discover_path(self):
-        aoe_device, aoe_path = self.connector._get_aoe_info(
+        _aoe_device, aoe_path = self.connector._get_aoe_info(
             self.connection_properties)
 
         number_of_calls = 4
         self._mock_path_exists(aoe_path, [False] * (number_of_calls + 1))
         self.mox.StubOutWithMock(self.connector, '_execute')
 
-        for i in xrange(number_of_calls):
+        for _i in xrange(number_of_calls):
             self.connector._execute('aoe-discover',
                                     run_as_root=True,
                                     root_helper='sudo',
@@ -612,3 +820,201 @@ class LocalConnectorTestCase(test.TestCase):
         cprops = {}
         self.assertRaises(ValueError,
                           self.connector.connect_volume, cprops)
+
+
+class HuaweiStorHyperConnectorTestCase(ConnectorTestCase):
+    """Test cases for StorHyper initiator class."""
+
+    attached = False
+
+    def setUp(self):
+        super(HuaweiStorHyperConnectorTestCase, self).setUp()
+        self.fake_sdscli_file = tempfile.mktemp()
+        self.addCleanup(os.remove, self.fake_sdscli_file)
+        newefile = open(self.fake_sdscli_file, 'w')
+        newefile.write('test')
+        newefile.close()
+
+        self.connector = connector.HuaweiStorHyperConnector(
+            None, execute=self.fake_execute)
+        self.connector.cli_path = self.fake_sdscli_file
+        self.connector.iscliexist = True
+
+        self.connector_fail = connector.HuaweiStorHyperConnector(
+            None, execute=self.fake_execute_fail)
+        self.connector_fail.cli_path = self.fake_sdscli_file
+        self.connector_fail.iscliexist = True
+
+        self.connector_nocli = connector.HuaweiStorHyperConnector(
+            None, execute=self.fake_execute_fail)
+        self.connector_nocli.cli_path = self.fake_sdscli_file
+        self.connector_nocli.iscliexist = False
+
+        self.connection_properties = {
+            'access_mode': 'rw',
+            'qos_specs': None,
+            'volume_id': 'volume-b2911673-863c-4380-a5f2-e1729eecfe3f'
+        }
+
+        self.device_info = {'type': 'block',
+                            'path': '/dev/vdxxx'}
+        HuaweiStorHyperConnectorTestCase.attached = False
+
+    def fake_execute(self, *cmd, **kwargs):
+        method = cmd[2]
+        self.cmds.append(string.join(cmd))
+        if 'attach' == method:
+            HuaweiStorHyperConnectorTestCase.attached = True
+            return 'ret_code=0', None
+        if 'querydev' == method:
+            if HuaweiStorHyperConnectorTestCase.attached:
+                return 'ret_code=0\ndev_addr=/dev/vdxxx', None
+            else:
+                return 'ret_code=1\ndev_addr=/dev/vdxxx', None
+        if 'detach' == method:
+            HuaweiStorHyperConnectorTestCase.attached = False
+            return 'ret_code=0', None
+
+    def fake_execute_fail(self, *cmd, **kwargs):
+        method = cmd[2]
+        self.cmds.append(string.join(cmd))
+        if 'attach' == method:
+            HuaweiStorHyperConnectorTestCase.attached = False
+            return 'ret_code=330151401', None
+        if 'querydev' == method:
+            if HuaweiStorHyperConnectorTestCase.attached:
+                return 'ret_code=0\ndev_addr=/dev/vdxxx', None
+            else:
+                return 'ret_code=1\ndev_addr=/dev/vdxxx', None
+        if 'detach' == method:
+            HuaweiStorHyperConnectorTestCase.attached = True
+            return 'ret_code=330155007', None
+
+    def test_connect_volume(self):
+        """Test the basic connect volume case."""
+
+        retval = self.connector.connect_volume(self.connection_properties)
+        self.assertEqual(self.device_info, retval)
+
+        expected_commands = [self.fake_sdscli_file + ' -c attach'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
+                             self.fake_sdscli_file + ' -c querydev'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f']
+        LOG.debug("self.cmds = %s." % self.cmds)
+        LOG.debug("expected = %s." % expected_commands)
+
+        self.assertEqual(expected_commands, self.cmds)
+
+    def test_disconnect_volume(self):
+        """Test the basic disconnect volume case."""
+        self.connector.connect_volume(self.connection_properties)
+        self.assertEqual(True, HuaweiStorHyperConnectorTestCase.attached)
+        self.connector.disconnect_volume(self.connection_properties,
+                                         self.device_info)
+        self.assertEqual(False, HuaweiStorHyperConnectorTestCase.attached)
+
+        expected_commands = [self.fake_sdscli_file + ' -c attach'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
+                             self.fake_sdscli_file + ' -c querydev'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
+                             self.fake_sdscli_file + ' -c detach'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f']
+
+        LOG.debug("self.cmds = %s." % self.cmds)
+        LOG.debug("expected = %s." % expected_commands)
+
+        self.assertEqual(expected_commands, self.cmds)
+
+    def test_is_volume_connected(self):
+        """Test if volume connected to host case."""
+        self.connector.connect_volume(self.connection_properties)
+        self.assertEqual(True, HuaweiStorHyperConnectorTestCase.attached)
+        is_connected = self.connector.is_volume_connected(
+            'volume-b2911673-863c-4380-a5f2-e1729eecfe3f')
+        self.assertEqual(HuaweiStorHyperConnectorTestCase.attached,
+                         is_connected)
+        self.connector.disconnect_volume(self.connection_properties,
+                                         self.device_info)
+        self.assertEqual(False, HuaweiStorHyperConnectorTestCase.attached)
+        is_connected = self.connector.is_volume_connected(
+            'volume-b2911673-863c-4380-a5f2-e1729eecfe3f')
+        self.assertEqual(HuaweiStorHyperConnectorTestCase.attached,
+                         is_connected)
+
+        expected_commands = [self.fake_sdscli_file + ' -c attach'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
+                             self.fake_sdscli_file + ' -c querydev'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
+                             self.fake_sdscli_file + ' -c querydev'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
+                             self.fake_sdscli_file + ' -c detach'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
+                             self.fake_sdscli_file + ' -c querydev'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f']
+
+        LOG.debug("self.cmds = %s." % self.cmds)
+        LOG.debug("expected = %s." % expected_commands)
+
+        self.assertEqual(expected_commands, self.cmds)
+
+    def test__analyze_output(self):
+        cliout = 'ret_code=0\ndev_addr=/dev/vdxxx\nret_desc="success"'
+        analyze_result = {'dev_addr': '/dev/vdxxx',
+                          'ret_desc': '"success"',
+                          'ret_code': '0'}
+        result = self.connector._analyze_output(cliout)
+        self.assertEqual(analyze_result, result)
+
+    def test_connect_volume_fail(self):
+        """Test the fail connect volume case."""
+        self.assertRaises(exception.BrickException,
+                          self.connector_fail.connect_volume,
+                          self.connection_properties)
+        expected_commands = [self.fake_sdscli_file + ' -c attach'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f']
+        LOG.debug("self.cmds = %s." % self.cmds)
+        LOG.debug("expected = %s." % expected_commands)
+        self.assertEqual(expected_commands, self.cmds)
+
+    def test_disconnect_volume_fail(self):
+        """Test the fail disconnect volume case."""
+        self.connector.connect_volume(self.connection_properties)
+        self.assertEqual(True, HuaweiStorHyperConnectorTestCase.attached)
+        self.assertRaises(exception.BrickException,
+                          self.connector_fail.disconnect_volume,
+                          self.connection_properties,
+                          self.device_info)
+
+        expected_commands = [self.fake_sdscli_file + ' -c attach'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
+                             self.fake_sdscli_file + ' -c querydev'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
+                             self.fake_sdscli_file + ' -c detach'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f']
+
+        LOG.debug("self.cmds = %s." % self.cmds)
+        LOG.debug("expected = %s." % expected_commands)
+
+        self.assertEqual(expected_commands, self.cmds)
+
+    def test_connect_volume_nocli(self):
+        """Test the fail connect volume case."""
+        self.assertRaises(exception.BrickException,
+                          self.connector_nocli.connect_volume,
+                          self.connection_properties)
+
+    def test_disconnect_volume_nocli(self):
+        """Test the fail disconnect volume case."""
+        self.connector.connect_volume(self.connection_properties)
+        self.assertEqual(True, HuaweiStorHyperConnectorTestCase.attached)
+        self.assertRaises(exception.BrickException,
+                          self.connector_nocli.disconnect_volume,
+                          self.connection_properties,
+                          self.device_info)
+        expected_commands = [self.fake_sdscli_file + ' -c attach'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
+                             self.fake_sdscli_file + ' -c querydev'
+                             ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f']
+
+        LOG.debug("self.cmds = %s." % self.cmds)
+        LOG.debug("expected = %s." % expected_commands)

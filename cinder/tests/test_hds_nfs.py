@@ -123,6 +123,9 @@ class HDSNFSDriverTest(test.TestCase):
         self.configuration.nfs_shares_config = self.shares_file
         self.configuration.nfs_mount_point_base = '/opt/stack/cinder/mnt'
         self.configuration.nfs_mount_options = None
+        self.configuration.nas_ip = None
+        self.configuration.nas_share_path = None
+        self.configuration.nas_mount_options = None
 
         self.driver = nfs.HDSNFSDriver(configuration=self.configuration)
         self.driver.do_setup("")
@@ -131,7 +134,6 @@ class HDSNFSDriverTest(test.TestCase):
     def _clean(self):
         os.remove(self.config_file)
         os.remove(self.shares_file)
-        super(HDSNFSDriverTest, self).tearDown()
 
     @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol')
     @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')

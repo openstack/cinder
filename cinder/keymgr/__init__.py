@@ -13,9 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.config import cfg
-
-from cinder.openstack.common import importutils
+from oslo_config import cfg
+from oslo_utils import importutils
 
 keymgr_opts = [
     cfg.StrOpt('api_class',

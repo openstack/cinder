@@ -21,10 +21,10 @@ import base64
 import urllib2
 
 import mox as mox_lib
+from oslo_utils import units
 
 from cinder import context
 from cinder import db
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nexenta
@@ -663,6 +663,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.configuration.nexenta_volume_compression = 'on'
         self.configuration.nfs_mount_point_base = '/mnt/test'
         self.configuration.nfs_mount_options = None
+        self.configuration.nas_mount_options = None
         self.configuration.nexenta_nms_cache_volroot = False
         self.nms_mock = self.mox.CreateMockAnything()
         for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc',

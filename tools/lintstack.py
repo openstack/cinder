@@ -30,9 +30,18 @@ from six.moves import cStringIO as StringIO
 ignore_codes = ["E1103"]
 # Note(maoy): the error message is the pattern of E0202. It should be ignored
 # for cinder.tests modules
-#Note(fengqian): the second error message is the pattern of [E0611].
-#It should be ignored because use six module to keep py3.X compatibility.
-ignore_messages = ["An attribute affected in cinder.tests", "No name 'urllib' in module '_MovedItems'"]
+# Note(fengqian): the second error message is the pattern of [E0611].
+# It should be ignored because use six module to keep py3.X compatibility.
+# Note(e0ne): the third error message is for SQLAlchemy update() calls
+# in DB schema migrations.
+# Note(xyang): the fourth and fifth error messages are for the code [E1101].
+# They should be ignored because 'sha256' and 'sha224' are functions in
+# 'hashlib'.
+ignore_messages = ["An attribute affected in cinder.tests",
+                   "No name 'urllib' in module '_MovedItems'",
+                   "No value passed for parameter 'dml'",
+                   "Module 'hashlib' has no 'sha256' member",
+                   "Module 'hashlib' has no 'sha224' member"]
 # Note(maoy): we ignore all errors in openstack.common because it should be
 # checked elsewhere. We also ignore cinder.tests for now due to high false
 # positive rate.

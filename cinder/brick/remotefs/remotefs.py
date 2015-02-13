@@ -18,12 +18,13 @@
 import hashlib
 import os
 import re
+
+from oslo_concurrency import processutils as putils
 import six
 
 from cinder.brick import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
 
@@ -41,6 +42,12 @@ class RemoteFsClient(object):
                     err=_('nfs_mount_point_base required'))
             self._mount_options = kwargs.get('nfs_mount_options', None)
             self._check_nfs_options()
+        elif mount_type == "cifs":
+            self._mount_base = kwargs.get('smbfs_mount_point_base', None)
+            if not self._mount_base:
+                raise exception.InvalidParameterValue(
+                    err=_('smbfs_mount_point_base required'))
+            self._mount_options = kwargs.get('smbfs_mount_options', None)
         elif mount_type == "glusterfs":
             self._mount_base = kwargs.get('glusterfs_mount_point_base', None)
             if not self._mount_base:
@@ -70,7 +77,7 @@ class RemoteFsClient(object):
                             self._get_hash_str(device_name))
 
     def _read_mounts(self):
-        (out, err) = self._execute('mount', check_exit_code=0)
+        (out, _err) = self._execute('mount', check_exit_code=0)
         lines = out.split('\n')
         mounts = {}
         for line in lines:
@@ -86,7 +93,7 @@ class RemoteFsClient(object):
         mount_path = self.get_mount_point(share)
 
         if mount_path in self._read_mounts():
-            LOG.info(_('Already mounted: %s') % mount_path)
+            LOG.info(_LI('Already mounted: %s') % mount_path)
             return
 
         self._execute('mkdir', '-p', mount_path, check_exit_code=0)
@@ -126,7 +133,7 @@ class RemoteFsClient(object):
             except Exception as e:
                 mnt_errors[mnt_type] = six.text_type(e)
                 LOG.debug('Failed to do %s mount.', mnt_type)
-        raise exception.BrickException(_("NFS mount failed for share %(sh)s."
+        raise exception.BrickException(_("NFS mount failed for share %(sh)s. "
                                          "Error - %(error)s")
                                        % {'sh': nfs_share,
                                           'error': mnt_errors})

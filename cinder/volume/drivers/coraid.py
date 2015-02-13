@@ -26,15 +26,15 @@ import math
 import urllib
 import urllib2
 
-from oslo.config import cfg
+from oslo_concurrency import lockutils
+from oslo_config import cfg
+from oslo_serialization import jsonutils
+from oslo_utils import units
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import jsonutils
-from cinder.openstack.common import lockutils
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder.volume import driver
 from cinder.volume import volume_types
 
@@ -57,6 +57,9 @@ coraid_opts = [
     cfg.StrOpt('coraid_repository_key',
                default='coraid_repository',
                help='Volume Type key name to store ESM Repository Name'),
+    cfg.StrOpt('coraid_default_repository',
+               help='ESM Repository Name to use if not specified in '
+                    'Volume Type keys'),
 ]
 
 CONF = cfg.CONF
@@ -353,7 +356,12 @@ class CoraidAppliance(object):
         request = {'addr': 'cms',
                    'data': {
                        'repoName': repository_name,
-                       'lvName': snapshot_name},
+                       'lvName': snapshot_name,
+                       # NOTE(novel): technically, the 'newLvName' is not
+                       # required for 'delClSnap' command. However, some
+                       # versions of ESM have a bug that fails validation
+                       # if we don't specify that. Hence, this fake value.
+                       'newLvName': "noop"},
                    'op': 'orchStrLunMods',
                    'args': 'delClSnap'}
         esm_result = self.esm_command(request)
@@ -441,8 +449,18 @@ class CoraidDriver(driver.VolumeDriver):
         """
         volume_type_id = volume_type['id']
         repository_key_name = self.configuration.coraid_repository_key
-        repository = volume_types.get_volume_type_extra_specs(
-            volume_type_id, repository_key_name)
+        repository = (volume_types.get_volume_type_extra_specs(
+            volume_type_id, repository_key_name) or
+            self.configuration.coraid_default_repository)
+
+        # if there's no repository still, we cannot move forward
+        if not repository:
+            message = ("The Coraid repository not specified neither "
+                       "in Volume Type '%s' key nor in the "
+                       "'coraid_default_repository' config option" %
+                       self.configuration.coraid_repository_key)
+            raise exception.CoraidException(message=message)
+
         # Remove <in> keyword from repository name if needed
         if repository.startswith('<in> '):
             return repository[len('<in> '):]

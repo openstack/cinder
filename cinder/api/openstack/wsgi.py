@@ -17,24 +17,26 @@
 import inspect
 import math
 import time
-
-from lxml import etree
-import six
-import webob
 from xml.dom import minidom
 from xml.parsers import expat
 
+from lxml import etree
+from oslo_serialization import jsonutils
+from oslo_utils import excutils
+import six
+import webob
+
 from cinder import exception
-from cinder.openstack.common import gettextutils
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import jsonutils
+from cinder import i18n
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import wsgi
 
 
-XMLNS_V1 = 'http://docs.openstack.org/volume/api/v1'
-XMLNS_ATOM = 'http://www.w3.org/2005/Atom'
+XML_NS_V1 = 'http://docs.openstack.org/api/openstack-block-storage/1.0/content'
+XML_NS_V2 = 'http://docs.openstack.org/api/openstack-block-storage/2.0/content'
+XML_NS_ATOM = 'http://www.w3.org/2005/Atom'
 
 LOG = logging.getLogger(__name__)
 
@@ -131,6 +133,86 @@ class Request(webob.Request):
             return None
         return resources.get(resource_id)
 
+    def cache_db_items(self, key, items, item_key='id'):
+        """Allow API methods to store objects from a DB query to be
+        used by API extensions within the same API request.
+
+        An instance of this class only lives for the lifetime of a
+        single API request, so there's no need to implement full
+        cache management.
+        """
+        self.cache_resource(items, item_key, key)
+
+    def get_db_items(self, key):
+        """Allow an API extension to get previously stored objects within
+        the same API request.
+
+        Note that the object data will be slightly stale.
+        """
+        return self.cached_resource(key)
+
+    def get_db_item(self, key, item_key):
+        """Allow an API extension to get a previously stored object
+        within the same API request.
+
+        Note that the object data will be slightly stale.
+        """
+        return self.get_db_items(key).get(item_key)
+
+    def cache_db_volumes(self, volumes):
+        # NOTE(mgagne) Cache it twice for backward compatibility reasons
+        self.cache_db_items('volumes', volumes, 'id')
+        self.cache_db_items(self.path, volumes, 'id')
+
+    def cache_db_volume(self, volume):
+        # NOTE(mgagne) Cache it twice for backward compatibility reasons
+        self.cache_db_items('volumes', [volume], 'id')
+        self.cache_db_items(self.path, [volume], 'id')
+
+    def get_db_volumes(self):
+        return (self.get_db_items('volumes') or
+                self.get_db_items(self.path))
+
+    def get_db_volume(self, volume_id):
+        return (self.get_db_item('volumes', volume_id) or
+                self.get_db_item(self.path, volume_id))
+
+    def cache_db_volume_types(self, volume_types):
+        self.cache_db_items('volume_types', volume_types, 'id')
+
+    def cache_db_volume_type(self, volume_type):
+        self.cache_db_items('volume_types', [volume_type], 'id')
+
+    def get_db_volume_types(self):
+        return self.get_db_items('volume_types')
+
+    def get_db_volume_type(self, volume_type_id):
+        return self.get_db_item('volume_types', volume_type_id)
+
+    def cache_db_snapshots(self, snapshots):
+        self.cache_db_items('snapshots', snapshots, 'id')
+
+    def cache_db_snapshot(self, snapshot):
+        self.cache_db_items('snapshots', [snapshot], 'id')
+
+    def get_db_snapshots(self):
+        return self.get_db_items('snapshots')
+
+    def get_db_snapshot(self, snapshot_id):
+        return self.get_db_item('snapshots', snapshot_id)
+
+    def cache_db_backups(self, backups):
+        self.cache_db_items('backups', backups, 'id')
+
+    def cache_db_backup(self, backup):
+        self.cache_db_items('backups', [backup], 'id')
+
+    def get_db_backups(self):
+        return self.get_db_items('backups')
+
+    def get_db_backup(self, backup_id):
+        return self.get_db_item('backups', backup_id)
+
     def best_match_content_type(self):
         """Determine the requested response content-type."""
         if 'cinder.best_content_type' not in self.environ:
@@ -177,7 +259,7 @@ class Request(webob.Request):
         """
         if not self.accept_language:
             return None
-        all_languages = gettextutils.get_available_languages('cinder')
+        all_languages = i18n.get_available_languages()
         return self.accept_language.best_match(all_languages)
 
 
@@ -669,15 +751,15 @@ class ResourceExceptionHandler(object):
                 code=ex_value.code, explanation=ex_value.msg))
         elif isinstance(ex_value, TypeError):
             exc_info = (ex_type, ex_value, ex_traceback)
-            LOG.error(_(
+            LOG.error(_LE(
                 'Exception handling resource: %s') %
                 ex_value, exc_info=exc_info)
             raise Fault(webob.exc.HTTPBadRequest())
         elif isinstance(ex_value, Fault):
-            LOG.info(_("Fault thrown: %s"), unicode(ex_value))
+            LOG.info(_LI("Fault thrown: %s"), unicode(ex_value))
             raise ex_value
         elif isinstance(ex_value, webob.exc.HTTPException):
-            LOG.info(_("HTTP exception thrown: %s"), unicode(ex_value))
+            LOG.info(_LI("HTTP exception thrown: %s"), unicode(ex_value))
             raise Fault(ex_value)
 
         # We didn't handle the exception
@@ -994,11 +1076,15 @@ class Resource(wsgi.Application):
                 meth = getattr(self, action)
             else:
                 meth = getattr(self.controller, action)
-        except AttributeError:
-            if (not self.wsgi_actions or
-                    action not in ['action', 'create', 'delete']):
-                # Propagate the error
-                raise
+        except AttributeError as e:
+            with excutils.save_and_reraise_exception(e) as ctxt:
+                if (not self.wsgi_actions or action not in ['action',
+                                                            'create',
+                                                            'delete',
+                                                            'update']):
+                    LOG.exception(six.text_type(e))
+                else:
+                    ctxt.reraise = False
         else:
             return meth, self.wsgi_extensions.get(action, [])
 
@@ -1159,7 +1245,7 @@ class Fault(webob.exc.HTTPException):
         fault_data = {
             fault_name: {
                 'code': code,
-                'message': gettextutils.translate(explanation, locale)}}
+                'message': i18n.translate(explanation, locale)}}
         if code == 413:
             retry = self.wrapped_exc.headers.get('Retry-After', None)
             if retry:
@@ -1168,7 +1254,7 @@ class Fault(webob.exc.HTTPException):
         # 'code' is an attribute on the fault tag itself
         metadata = {'attributes': {fault_name: 'code'}}
 
-        xml_serializer = XMLDictSerializer(metadata, XMLNS_V1)
+        xml_serializer = XMLDictSerializer(metadata, XML_NS_V2)
 
         content_type = req.best_match_content_type()
         serializer = {
@@ -1222,14 +1308,14 @@ class OverLimitFault(webob.exc.HTTPException):
 
         def translate(msg):
             locale = request.best_match_language()
-            return gettextutils.translate(msg, locale)
+            return i18n.translate(msg, locale)
 
         self.content['overLimitFault']['message'] = \
             translate(self.content['overLimitFault']['message'])
         self.content['overLimitFault']['details'] = \
             translate(self.content['overLimitFault']['details'])
 
-        xml_serializer = XMLDictSerializer(metadata, XMLNS_V1)
+        xml_serializer = XMLDictSerializer(metadata, XML_NS_V2)
         serializer = {
             'application/xml': xml_serializer,
             'application/json': JSONDictSerializer(),

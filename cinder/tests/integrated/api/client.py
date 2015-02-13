@@ -12,13 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import netaddr
+from oslo_serialization import jsonutils
+from oslo_utils import netutils
 import requests
-
 import six.moves.urllib.parse as urlparse
 
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import jsonutils
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 
 
@@ -89,16 +88,16 @@ class TestOpenStackClient(object):
         hostname = parsed_url.hostname
         scheme = parsed_url.scheme
 
-        if netaddr.valid_ipv6(hostname):
+        if netutils.is_valid_ipv6(hostname):
             hostname = "[%s]" % hostname
 
         relative_url = parsed_url.path
         if parsed_url.query:
             relative_url = relative_url + "?" + parsed_url.query
-        LOG.info(_("Doing %(method)s on %(relative_url)s"),
+        LOG.info(_LI("Doing %(method)s on %(relative_url)s"),
                  {'method': method, 'relative_url': relative_url})
         if body:
-            LOG.info(_("Body: %s") % body)
+            LOG.info(_LI("Body: %s") % body)
 
         if port:
             _url = "%s://%s:%d%s" % (scheme, hostname, int(port), relative_url)

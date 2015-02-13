@@ -21,11 +21,11 @@
 .. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
 """
 
-import urllib
 import urllib2
 
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import jsonutils
+from oslo_serialization import jsonutils
+
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers import nexenta
 
@@ -38,9 +38,9 @@ class NexentaJSONException(nexenta.NexentaException):
 
 class NexentaJSONProxy(object):
 
-    def __init__(self, protocol, host, port, path, user, password, auto=False,
+    def __init__(self, scheme, host, port, path, user, password, auto=False,
                  obj=None, method=None):
-        self.protocol = protocol.lower()
+        self.scheme = scheme.lower()
         self.host = host
         self.port = port
         self.path = path
@@ -57,19 +57,19 @@ class NexentaJSONProxy(object):
             obj, method = self.obj, name
         else:
             obj, method = '%s.%s' % (self.obj, self.method), name
-        return NexentaJSONProxy(self.protocol, self.host, self.port, self.path,
+        return NexentaJSONProxy(self.scheme, self.host, self.port, self.path,
                                 self.user, self.password, self.auto, obj,
                                 method)
 
     @property
     def url(self):
-        return '%s://%s:%s%s' % (self.protocol, self.host, self.port, self.path)
+        return '%s://%s:%s%s' % (self.scheme, self.host, self.port, self.path)
 
     def __hash__(self):
         return self.url.__hash__()
 
     def __repr__(self):
-        return 'HTTP JSON proxy: %s' % self.url
+        return 'NMS proxy: %s' % self.url
 
     def __call__(self, *args):
         data = jsonutils.dumps({
@@ -86,11 +86,11 @@ class NexentaJSONProxy(object):
         request = urllib2.Request(self.url, data, headers)
         response_obj = urllib2.urlopen(request)
         if response_obj.info().status == 'EOF in headers':
-            if not self.auto or self.protocol != 'http':
-                LOG.error(_('No headers in server response'))
+            if not self.auto or self.scheme != 'http':
+                LOG.error(_LE('No headers in server response'))
                 raise NexentaJSONException(_('Bad response from server'))
-            LOG.info(_('Auto switching to HTTPS connection to %s'), self.url)
-            self.protocol = 'https'
+            LOG.info(_LI('Auto switching to HTTPS connection to %s'), self.url)
+            self.scheme = 'https'
             request = urllib2.Request(self.url, data, headers)
             response_obj = urllib2.urlopen(request)
 
@@ -133,16 +133,10 @@ class NexentaEdgeResourceProxy(object):
         return 'HTTP Resource proxy: %s' % self.url
 
     def __call__(self, *args):
-        d = None
         self.path += args[0]
-
+        data = None
         if len(args) > 1:
-            if self.method == 'delete':
-                self.path += '/' + args[1]
-            elif self.method == 'get':
-                self.path += '?' + urllib.urlencode(args[1])
-            else:
-                d = args[1]
+            data = jsonutils.dumps(args[1])
 
         auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
         headers = {
@@ -152,22 +146,20 @@ class NexentaEdgeResourceProxy(object):
 
         LOG.debug('Sending JSON data: %s', self.url)
 
-        #
-        # urllib2 will use POST if data is provided, otherwise it'll be GET
-        #
-        data = None
-        if d:
-            data = jsonutils.dumps(d)
-
         try:
             request = urllib2.Request(self.url, data, headers)
-            if self.method == 'delete':
+            if self.method == 'get':
+                request.get_method = lambda: 'GET'
+            elif self.method == 'post':
+                request.get_method = lambda: 'POST'
+            elif self.method == 'put':
+                request.get_method = lambda: 'PUT'
+            elif self.method == 'delete':
                 request.get_method = lambda: 'DELETE'
+
             response_obj = urllib2.urlopen(request)
 
-            #
             # Handle 'auto' switch mode.. from HTTP to HTTPS
-            #
             if response_obj.info().status == 'EOF in headers':
                 if not self.auto or self.protocol != 'http':
                     LOG.error(_('No headers in server response'))
@@ -175,7 +167,13 @@ class NexentaEdgeResourceProxy(object):
                 LOG.info(_('Auto switching to HTTPS connection to %s'), self.url)
                 self.protocol = 'https'
                 request = urllib2.Request(self.url, data, headers)
-                if self.method == 'delete':
+                if self.method == 'get':
+                    request.get_method = lambda: 'GET'
+                elif self.method == 'post':
+                    request.get_method = lambda: 'POST'
+                elif self.method == 'put':
+                    request.get_method = lambda: 'PUT'
+                elif self.method == 'delete':
                     request.get_method = lambda: 'DELETE'
                 response_obj = urllib2.urlopen(request)
 
@@ -188,7 +186,7 @@ class NexentaEdgeResourceProxy(object):
             rsp = { 'code' : str(e.reason), 'message' : str(e) }
         except Exception, e:
             rsp = { 'code' : 'UNKNOWN_ERROR',
-                "message" : _("Received Unknown Error from the backend") }
+                "message" : (_("Received Unknown Error: %s"), str(e)) }
 
         LOG.debug('Got response: %s', rsp)
 

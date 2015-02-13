@@ -13,9 +13,9 @@
 #    under the License.
 #
 
-
 from cinder import context
 from cinder import db
+from cinder.openstack.common import loopingcall
 
 
 def get_test_admin_context():
@@ -31,6 +31,10 @@ def create_volume(ctxt,
                   size=1,
                   availability_zone='fake_az',
                   volume_type_id=None,
+                  replication_status='disabled',
+                  replication_extended_status=None,
+                  replication_driver_data=None,
+                  consistencygroup_id=None,
                   **kwargs):
     """Create a volume object in the DB."""
     vol = {}
@@ -44,10 +48,16 @@ def create_volume(ctxt,
     vol['display_description'] = display_description
     vol['attach_status'] = 'detached'
     vol['availability_zone'] = availability_zone
+    if consistencygroup_id:
+        vol['consistencygroup_id'] = consistencygroup_id
     if volume_type_id:
         vol['volume_type_id'] = volume_type_id
     for key in kwargs:
         vol[key] = kwargs[key]
+    vol['replication_status'] = replication_status
+    vol['replication_extended_status'] = replication_extended_status
+    vol['replication_driver_data'] = replication_driver_data
+
     return db.volume_create(ctxt, vol)
 
 
@@ -55,6 +65,7 @@ def create_snapshot(ctxt,
                     volume_id,
                     display_name='test_snapshot',
                     display_description='this is a test snapshot',
+                    cgsnapshot_id = None,
                     status='creating'):
     vol = db.volume_get(ctxt, volume_id)
     snap = {}
@@ -65,4 +76,54 @@ def create_snapshot(ctxt,
     snap['volume_size'] = vol['size']
     snap['display_name'] = display_name
     snap['display_description'] = display_description
+    snap['cgsnapshot_id'] = cgsnapshot_id
     return db.snapshot_create(ctxt, snap)
+
+
+def create_consistencygroup(ctxt,
+                            host='test_host',
+                            name='test_cg',
+                            description='this is a test cg',
+                            status='available',
+                            availability_zone='fake_az',
+                            volume_type_id=None,
+                            **kwargs):
+    """Create a consistencygroup object in the DB."""
+    cg = {}
+    cg['host'] = host
+    cg['user_id'] = ctxt.user_id
+    cg['project_id'] = ctxt.project_id
+    cg['status'] = status
+    cg['name'] = name
+    cg['description'] = description
+    cg['availability_zone'] = availability_zone
+    if volume_type_id:
+        cg['volume_type_id'] = volume_type_id
+    for key in kwargs:
+        cg[key] = kwargs[key]
+    return db.consistencygroup_create(ctxt, cg)
+
+
+def create_cgsnapshot(ctxt,
+                      name='test_cgsnap',
+                      description='this is a test cgsnap',
+                      status='available',
+                      consistencygroup_id=None,
+                      **kwargs):
+    """Create a cgsnapshot object in the DB."""
+    cgsnap = {}
+    cgsnap['user_id'] = ctxt.user_id
+    cgsnap['project_id'] = ctxt.project_id
+    cgsnap['status'] = status
+    cgsnap['name'] = name
+    cgsnap['description'] = description
+    cgsnap['consistencygroup_id'] = consistencygroup_id
+    for key in kwargs:
+        cgsnap[key] = kwargs[key]
+    return db.cgsnapshot_create(ctxt, cgsnap)
+
+
+class ZeroIntervalLoopingCall(loopingcall.FixedIntervalLoopingCall):
+    def start(self, interval, **kwargs):
+        kwargs['initial_delay'] = 0
+        return super(ZeroIntervalLoopingCall, self).start(0, **kwargs)

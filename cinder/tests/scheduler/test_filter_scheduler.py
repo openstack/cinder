@@ -24,12 +24,87 @@ from cinder.scheduler import filter_scheduler
 from cinder.scheduler import host_manager
 from cinder.tests.scheduler import fakes
 from cinder.tests.scheduler import test_scheduler
+from cinder.volume import utils
 
 
 class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
     """Test case for Filter Scheduler."""
 
     driver_cls = filter_scheduler.FilterScheduler
+
+    def test_create_consistencygroup_no_hosts(self):
+        # Ensure empty hosts result in NoValidHosts exception.
+        sched = fakes.FakeFilterScheduler()
+
+        fake_context = context.RequestContext('user', 'project')
+        request_spec = {'volume_properties': {'project_id': 1,
+                                              'size': 0},
+                        'volume_type': {'name': 'Type1',
+                                        'extra_specs': {}}}
+        request_spec2 = {'volume_properties': {'project_id': 1,
+                                               'size': 0},
+                         'volume_type': {'name': 'Type2',
+                                         'extra_specs': {}}}
+        request_spec_list = [request_spec, request_spec2]
+        self.assertRaises(exception.NoValidHost,
+                          sched.schedule_create_consistencygroup,
+                          fake_context, 'faki-id1', request_spec_list, {})
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_schedule_consistencygroup(self,
+                                       _mock_service_get_all_by_topic):
+        # Make sure _schedule_group() can find host successfully.
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project',
+                                              is_admin=True)
+
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+
+        specs = {'capabilities:consistencygroup_support': '<is> True'}
+        request_spec = {'volume_properties': {'project_id': 1,
+                                              'size': 0},
+                        'volume_type': {'name': 'Type1',
+                                        'extra_specs': specs}}
+        request_spec2 = {'volume_properties': {'project_id': 1,
+                                               'size': 0},
+                         'volume_type': {'name': 'Type2',
+                                         'extra_specs': specs}}
+        request_spec_list = [request_spec, request_spec2]
+        weighed_host = sched._schedule_group(fake_context,
+                                             request_spec_list,
+                                             {})
+        self.assertIsNotNone(weighed_host.obj)
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_schedule_consistencygroup_no_cg_support_in_extra_specs(
+            self,
+            _mock_service_get_all_by_topic):
+        # Make sure _schedule_group() can find host successfully even
+        # when consistencygroup_support is not specified in volume type's
+        # extra specs
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project',
+                                              is_admin=True)
+
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+
+        request_spec = {'volume_properties': {'project_id': 1,
+                                              'size': 0},
+                        'volume_type': {'name': 'Type1',
+                                        'extra_specs': {}}}
+        request_spec2 = {'volume_properties': {'project_id': 1,
+                                               'size': 0},
+                         'volume_type': {'name': 'Type2',
+                                         'extra_specs': {}}}
+        request_spec_list = [request_spec, request_spec2]
+        weighed_host = sched._schedule_group(fake_context,
+                                             request_spec_list,
+                                             {})
+        self.assertIsNotNone(weighed_host.obj)
+        self.assertTrue(_mock_service_get_all_by_topic.called)
 
     def test_create_volume_no_hosts(self):
         # Ensure empty hosts/child_zones result in NoValidHosts exception.
@@ -211,8 +286,24 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                         'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
-        ret_host = sched.host_passes_filters(ctx, 'host1', request_spec, {})
-        self.assertEqual(ret_host.host, 'host1')
+        ret_host = sched.host_passes_filters(ctx, 'host1#lvm1',
+                                             request_spec, {})
+        self.assertEqual(utils.extract_host(ret_host.host), 'host1')
+        self.assertTrue(_mock_service_get_topic.called)
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_host_passes_filters_default_pool_happy_day(
+            self, _mock_service_get_topic):
+        """Do a successful pass through of with host_passes_filters()."""
+        sched, ctx = self._host_passes_filters_setup(
+            _mock_service_get_topic)
+        request_spec = {'volume_id': 1,
+                        'volume_type': {'name': 'LVM_iSCSI'},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 1}}
+        ret_host = sched.host_passes_filters(ctx, 'host5#_pool0',
+                                             request_spec, {})
+        self.assertEqual(utils.extract_host(ret_host.host), 'host5')
         self.assertTrue(_mock_service_get_topic.called)
 
     @mock.patch('cinder.db.service_get_all_by_topic')
@@ -226,7 +317,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                               'size': 1024}}
         self.assertRaises(exception.NoValidHost,
                           sched.host_passes_filters,
-                          ctx, 'host1', request_spec, {})
+                          ctx, 'host1#lvm1', request_spec, {})
         self.assertTrue(_mock_service_get_topic.called)
 
     @mock.patch('cinder.db.service_get_all_by_topic')
@@ -243,11 +334,32 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                         'extra_specs': extra_specs},
                         'volume_properties': {'project_id': 1,
                                               'size': 200,
-                                              'host': 'host4'}}
+                                              'host': 'host4#lvm4'}}
         host_state = sched.find_retype_host(ctx, request_spec,
                                             filter_properties={},
                                             migration_policy='never')
-        self.assertEqual(host_state.host, 'host4')
+        self.assertEqual(utils.extract_host(host_state.host), 'host4')
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_retype_with_pool_policy_never_migrate_pass(
+            self, _mock_service_get_topic):
+        # Retype should pass if current host passes filters and
+        # policy=never. host4 doesn't have enough space to hold an additional
+        # 200GB, but it is already the host of this volume and should not be
+        # counted twice.
+        sched, ctx = self._host_passes_filters_setup(
+            _mock_service_get_topic)
+        extra_specs = {'volume_backend_name': 'lvm3'}
+        request_spec = {'volume_id': 1,
+                        'volume_type': {'name': 'LVM_iSCSI',
+                                        'extra_specs': extra_specs},
+                        'volume_properties': {'project_id': 1,
+                                              'size': 200,
+                                              'host': 'host3#lvm3'}}
+        host_state = sched.find_retype_host(ctx, request_spec,
+                                            filter_properties={},
+                                            migration_policy='never')
+        self.assertEqual(host_state.host, 'host3#lvm3')
 
     @mock.patch('cinder.db.service_get_all_by_topic')
     def test_retype_policy_never_migrate_fail(self, _mock_service_get_topic):
@@ -282,7 +394,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         host_state = sched.find_retype_host(ctx, request_spec,
                                             filter_properties={},
                                             migration_policy='on-demand')
-        self.assertEqual(host_state.host, 'host1')
+        self.assertEqual(utils.extract_host(host_state.host), 'host1')
 
     @mock.patch('cinder.db.service_get_all_by_topic')
     def test_retype_policy_demand_migrate_fail(self, _mock_service_get_topic):

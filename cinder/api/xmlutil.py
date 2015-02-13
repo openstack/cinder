@@ -14,10 +14,11 @@
 #    under the License.
 
 import os.path
+import re
 
 from lxml import etree
 
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder import utils
 
 
@@ -25,9 +26,12 @@ XMLNS_V10 = 'http://docs.rackspacecloud.com/servers/api/v1.0'
 XMLNS_V11 = 'http://docs.openstack.org/compute/api/v1.1'
 XMLNS_COMMON_V10 = 'http://docs.openstack.org/common/api/v1.0'
 XMLNS_ATOM = 'http://www.w3.org/2005/Atom'
-XMLNS_VOLUME_V1 = 'http://docs.openstack.org/volume/api/v1'
-XMLNS_VOLUME_V2 = ('http://docs.openstack.org/api/openstack-volume/2.0/'
+XMLNS_VOLUME_V1 = ('http://docs.openstack.org/api/openstack-block-storage/1.0/'
                    'content')
+XMLNS_VOLUME_V2 = ('http://docs.openstack.org/api/openstack-block-storage/2.0/'
+                   'content')
+
+_split_pattern = re.compile(r'([^:{]*{[^}]*}[^:]*|[^:]+)')
 
 
 def validate_schema(xml, schema_name):
@@ -356,6 +360,10 @@ class TemplateElement(object):
                 pass
         return tmpattrib
 
+    @staticmethod
+    def _splitTagName(name):
+        return _split_pattern.findall(name)
+
     def _render(self, parent, datum, patches, nsmap):
         """Internal rendering.
 
@@ -382,7 +390,7 @@ class TemplateElement(object):
         else:
             tmpattrib = {}
 
-        tagnameList = tagname.split(':')
+        tagnameList = self._splitTagName(tagname)
         insertIndex = 0
 
         #If parent is not none and has same tagname

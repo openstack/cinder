@@ -15,6 +15,7 @@
 
 import uuid
 
+from oslo_utils import timeutils
 import routes
 import webob
 import webob.dec
@@ -28,8 +29,6 @@ from cinder.api.v2 import limits
 from cinder.api.v2 import router
 from cinder.api import versions
 from cinder import context
-from cinder import exception as exc
-from cinder.openstack.common import timeutils
 from cinder import wsgi
 
 
@@ -83,20 +82,6 @@ def wsgi_app(inner_app_v2=None, fake_auth=True, fake_auth_context=None,
     return mapper
 
 
-def stub_out_key_pair_funcs(stubs, have_key_pair=True):
-    def key_pair(context, user_id):
-        return [dict(name='key', public_key='public_key')]
-
-    def one_key_pair(context, user_id, name):
-        if name == 'key':
-            return dict(name='key', public_key='public_key')
-        else:
-            raise exc.KeypairNotFound(user_id=user_id, name=name)
-
-    def no_key_pair(context, user_id):
-        return []
-
-
 class FakeToken(object):
     id_count = 0
 
@@ -120,7 +105,7 @@ class HTTPRequest(webob.Request):
 
     @classmethod
     def blank(cls, *args, **kwargs):
-        if args != None:
+        if args is not None:
             if args[0].find('v1') == 0:
                 kwargs['base_url'] = 'http://localhost/v1'
             else:
@@ -130,7 +115,7 @@ class HTTPRequest(webob.Request):
         out = os_wsgi.Request.blank(*args, **kwargs)
         out.environ['cinder.context'] = FakeRequestContext(
             'fake_user',
-            'fake',
+            'fakeproject',
             is_admin=use_admin_context)
         return out
 

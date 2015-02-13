@@ -19,15 +19,13 @@
 SQLAlchemy models for cinder data.
 """
 
-
+from oslo_config import cfg
+from oslo_db.sqlalchemy import models
+from oslo_utils import timeutils
 from sqlalchemy import Column, Integer, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean
-from sqlalchemy.orm import relationship, backref
-from oslo.config import cfg
-from oslo.db.sqlalchemy import models
-
-from cinder.openstack.common import timeutils
+from sqlalchemy.orm import relationship, backref, validates
 
 
 CONF = cfg.CONF
@@ -65,6 +63,42 @@ class Service(BASE, CinderBase):
     disabled = Column(Boolean, default=False)
     availability_zone = Column(String(255), default='cinder')
     disabled_reason = Column(String(255))
+
+
+class ConsistencyGroup(BASE, CinderBase):
+    """Represents a consistencygroup."""
+    __tablename__ = 'consistencygroups'
+    id = Column(String(36), primary_key=True)
+
+    user_id = Column(String(255), nullable=False)
+    project_id = Column(String(255), nullable=False)
+
+    host = Column(String(255))
+    availability_zone = Column(String(255))
+    name = Column(String(255))
+    description = Column(String(255))
+    volume_type_id = Column(String(255))
+    status = Column(String(255))
+
+
+class Cgsnapshot(BASE, CinderBase):
+    """Represents a cgsnapshot."""
+    __tablename__ = 'cgsnapshots'
+    id = Column(String(36), primary_key=True)
+
+    consistencygroup_id = Column(String(36))
+    user_id = Column(String(255), nullable=False)
+    project_id = Column(String(255), nullable=False)
+
+    name = Column(String(255))
+    description = Column(String(255))
+    status = Column(String(255))
+
+    consistencygroup = relationship(
+        ConsistencyGroup,
+        backref="cgsnapshots",
+        foreign_keys=consistencygroup_id,
+        primaryjoin='Cgsnapshot.consistencygroup_id == ConsistencyGroup.id')
 
 
 class Volume(BASE, CinderBase):
@@ -112,13 +146,26 @@ class Volume(BASE, CinderBase):
     provider_location = Column(String(255))
     provider_auth = Column(String(255))
     provider_geometry = Column(String(255))
+    provider_id = Column(String(255))
 
     volume_type_id = Column(String(36))
     source_volid = Column(String(36))
     encryption_key_id = Column(String(36))
 
+    consistencygroup_id = Column(String(36))
+
     deleted = Column(Boolean, default=False)
     bootable = Column(Boolean, default=False)
+
+    replication_status = Column(String(255))
+    replication_extended_status = Column(String(255))
+    replication_driver_data = Column(String(255))
+
+    consistencygroup = relationship(
+        ConsistencyGroup,
+        backref="volumes",
+        foreign_keys=consistencygroup_id,
+        primaryjoin='Volume.consistencygroup_id == ConsistencyGroup.id')
 
 
 class VolumeMetadata(BASE, CinderBase):
@@ -154,15 +201,38 @@ class VolumeTypes(BASE, CinderBase):
     __tablename__ = "volume_types"
     id = Column(String(36), primary_key=True)
     name = Column(String(255))
+    description = Column(String(255))
     # A reference to qos_specs entity
     qos_specs_id = Column(String(36),
                           ForeignKey('quality_of_service_specs.id'))
+    is_public = Column(Boolean, default=True)
     volumes = relationship(Volume,
                            backref=backref('volume_type', uselist=False),
                            foreign_keys=id,
                            primaryjoin='and_('
                            'Volume.volume_type_id == VolumeTypes.id, '
                            'VolumeTypes.deleted == False)')
+
+
+class VolumeTypeProjects(BASE, CinderBase):
+    """Represent projects associated volume_types."""
+    __tablename__ = "volume_type_projects"
+    __table_args__ = (schema.UniqueConstraint(
+        "volume_type_id", "project_id", "deleted",
+        name="uniq_volume_type_projects0volume_type_id0project_id0deleted"),
+    )
+    id = Column(Integer, primary_key=True)
+    volume_type_id = Column(Integer, ForeignKey('volume_types.id'),
+                            nullable=False)
+    project_id = Column(String(255))
+
+    volume_type = relationship(
+        VolumeTypes,
+        backref="projects",
+        foreign_keys=volume_type_id,
+        primaryjoin='and_('
+        'VolumeTypeProjects.volume_type_id == VolumeTypes.id,'
+        'VolumeTypeProjects.deleted == False)')
 
 
 class VolumeTypeExtraSpecs(BASE, CinderBase):
@@ -350,6 +420,7 @@ class Snapshot(BASE, CinderBase):
     project_id = Column(String(255))
 
     volume_id = Column(String(36))
+    cgsnapshot_id = Column(String(36))
     status = Column(String(255))
     progress = Column(String(255))
     volume_size = Column(Integer)
@@ -361,10 +432,17 @@ class Snapshot(BASE, CinderBase):
     volume_type_id = Column(String(36))
 
     provider_location = Column(String(255))
+    provider_id = Column(String(255))
 
     volume = relationship(Volume, backref="snapshots",
                           foreign_keys=volume_id,
                           primaryjoin='Snapshot.volume_id == Volume.id')
+
+    cgsnapshot = relationship(
+        Cgsnapshot,
+        backref="snapshots",
+        foreign_keys=cgsnapshot_id,
+        primaryjoin='Snapshot.cgsnapshot_id == Cgsnapshot.id')
 
 
 class SnapshotMetadata(BASE, CinderBase):
@@ -424,6 +502,10 @@ class Backup(BASE, CinderBase):
     size = Column(Integer)
     object_count = Column(Integer)
 
+    @validates('fail_reason')
+    def validate_fail_reason(self, key, fail_reason):
+        return fail_reason and fail_reason[:255] or ''
+
 
 class Encryption(BASE, CinderBase):
     """Represents encryption requirement for a volume type.
@@ -433,13 +515,12 @@ class Encryption(BASE, CinderBase):
     """
 
     __tablename__ = 'encryption'
+    encryption_id = Column(String(36), primary_key=True)
     cipher = Column(String(255))
     key_size = Column(Integer)
     provider = Column(String(255))
     control_location = Column(String(255))
-    volume_type_id = Column(String(36),
-                            ForeignKey('volume_types.id'),
-                            primary_key=True)
+    volume_type_id = Column(String(36), ForeignKey('volume_types.id'))
     volume_type = relationship(
         VolumeTypes,
         backref="encryption",
@@ -484,6 +565,8 @@ def register_models():
               VolumeTypeExtraSpecs,
               VolumeTypes,
               VolumeGlanceMetadata,
+              ConsistencyGroup,
+              Cgsnapshot
               )
     engine = create_engine(CONF.database.connection, echo=False)
     for model in models:

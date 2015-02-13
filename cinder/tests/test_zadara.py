@@ -243,7 +243,7 @@ class FakeRequest(object):
         cg_name = self.url.split('/')[3]
         snap_name = params['display_name']
 
-        for (vol_name, params) in RUNTIME_VARS['volumes']:
+        for (_vol_name, params) in RUNTIME_VARS['volumes']:
             if params['cg-name'] == cg_name:
                 snapshots = params['snapshots']
                 if snap_name in snapshots:
@@ -258,7 +258,7 @@ class FakeRequest(object):
     def _delete_snapshot(self):
         snap = self.url.split('/')[3].split('.')[0]
 
-        for (vol_name, params) in RUNTIME_VARS['volumes']:
+        for (_vol_name, params) in RUNTIME_VARS['volumes']:
             if snap in params['snapshots']:
                 params['snapshots'].remove(snap)
                 return RUNTIME_VARS['good']
@@ -431,7 +431,7 @@ class FakeRequest(object):
                     <pool-name>pool-00000001</pool-name>
                 </snapshot>"""
 
-        for (vol_name, params) in RUNTIME_VARS['volumes']:
+        for (_vol_name, params) in RUNTIME_VARS['volumes']:
             if params['cg-name'] == cg_name:
                 snapshots = params['snapshots']
                 resp = header

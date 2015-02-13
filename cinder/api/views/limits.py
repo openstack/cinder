@@ -15,7 +15,7 @@
 
 import datetime
 
-from cinder.openstack.common import timeutils
+from oslo_utils import timeutils
 
 
 class ViewBuilder(object):
@@ -46,8 +46,10 @@ class ViewBuilder(object):
             "instances": ["maxTotalInstances"],
             "cores": ["maxTotalCores"],
             "gigabytes": ["maxTotalVolumeGigabytes"],
+            "backup_gigabytes": ["maxTotalBackupGigabytes"],
             "volumes": ["maxTotalVolumes"],
             "snapshots": ["maxTotalSnapshots"],
+            "backups": ["maxTotalBackups"],
             "key_pairs": ["maxTotalKeypairs"],
             "floating_ips": ["maxTotalFloatingIps"],
             "metadata_items": ["maxServerMeta", "maxImageMeta"],

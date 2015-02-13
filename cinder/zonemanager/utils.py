@@ -19,10 +19,11 @@ Utility functions related to the Zone Manager.
 """
 import logging
 
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _LI, _LW
 from cinder.openstack.common import log
 from cinder.volume.configuration import Configuration
 from cinder.volume import manager
+from cinder.zonemanager import fc_san_lookup_service
 from cinder.zonemanager import fc_zone_manager
 
 LOG = log.getLogger(__name__)
@@ -36,8 +37,8 @@ def create_zone_manager():
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Zone Manager enabled.")
         zm = fc_zone_manager.ZoneManager(configuration=config)
-        LOG.info(_("Using FC Zone Manager %(zm_version)s,"
-                   " Driver %(drv_name)s %(drv_version)s.") %
+        LOG.info(_LI("Using FC Zone Manager %(zm_version)s,"
+                     " Driver %(drv_name)s %(drv_version)s.") %
                  {'zm_version': zm.get_version(),
                   'drv_name': zm.driver.__class__.__name__,
                   'drv_version': zm.driver.get_version()})
@@ -47,13 +48,35 @@ def create_zone_manager():
         return None
 
 
+def create_lookup_service():
+    config = Configuration(manager.volume_manager_opts)
+    LOG.debug("zoning mode %s" % config.safe_get('zoning_mode'))
+    if config.safe_get('zoning_mode') == 'fabric':
+        LOG.debug("FC Lookup Service enabled.")
+        lookup = fc_san_lookup_service.FCSanLookupService(configuration=config)
+        LOG.info(_LI("Using FC lookup service %s") % lookup.lookup_service)
+        return lookup
+    else:
+        LOG.debug("FC Lookup Service not enabled in cinder.conf.")
+        return None
+
+
+def get_formatted_wwn(wwn_str):
+    """Utility API that formats WWN to insert ':'."""
+    if (len(wwn_str) != 16):
+        return wwn_str.lower()
+    else:
+        return (':'.join([wwn_str[i:i + 2]
+                         for i in range(0, len(wwn_str), 2)])).lower()
+
+
 def AddFCZone(initialize_connection):
     """Decorator to add a FC Zone."""
     def decorator(self, *args, **kwargs):
         conn_info = initialize_connection(self, *args, **kwargs)
         if not conn_info:
-            LOG.warn(_("Driver didn't return connection info, "
-                       "can't add zone."))
+            LOG.warn(_LW("Driver didn't return connection info, "
+                         "can't add zone."))
             return None
 
         vol_type = conn_info.get('driver_volume_type', None)
@@ -77,8 +100,8 @@ def RemoveFCZone(terminate_connection):
     def decorator(self, *args, **kwargs):
         conn_info = terminate_connection(self, *args, **kwargs)
         if not conn_info:
-            LOG.warn(_("Driver didn't return connection info from "
-                       "terminate_connection call."))
+            LOG.warn(_LW("Driver didn't return connection info from "
+                         "terminate_connection call."))
             return None
 
         vol_type = conn_info.get('driver_volume_type', None)

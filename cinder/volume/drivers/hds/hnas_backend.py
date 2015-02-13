@@ -18,10 +18,12 @@
 Hitachi Unified Storage (HUS-HNAS) platform. Backend operations.
 """
 
-from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
-from cinder import utils
 import re
+
+from oslo_utils import units
+
+from cinder.openstack.common import log as logging
+from cinder import utils
 
 LOG = logging.getLogger("cinder.volume.driver")
 
@@ -84,7 +86,7 @@ class HnasBackend():
         for line in lines:
             if 'evs' in line and 'admin' not in line:
                 inf = line.split()
-                (evsnum, evsname, ip) = (inf[1], inf[2], inf[3])
+                (evsnum, ip) = (inf[1], inf[3])
                 newout += "CTL: %s Port: 0 IP: %s Port: 3260 Link: Up\n" \
                           % (evsnum, ip)
 
@@ -112,8 +114,8 @@ class HnasBackend():
                 continue
             if 'GB' in line or 'TB' in line:
                 inf = line.split()
-                (fsid, fslabel, evsnum, capacity, used, perstr) = \
-                    (inf[0], inf[1], inf[2], inf[3], inf[5], inf[7])
+                (fsid, fslabel, capacity, used, perstr) = \
+                    (inf[0], inf[1], inf[3], inf[5], inf[7])
                 (availunit, usedunit) = (inf[4], inf[6])
                 if usedunit == 'GB':
                     usedmultiplier = units.Ki

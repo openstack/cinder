@@ -11,17 +11,17 @@
 #    under the License.
 
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import timeutils
+from oslo_utils import units
 import taskflow.engines
 from taskflow.patterns import linear_flow
-from taskflow.utils import misc
+from taskflow.types import failure as ft
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
 from cinder import policy
 from cinder import quota
 from cinder import utils
@@ -40,6 +40,8 @@ QUOTAS = quota.QUOTAS
 # from, 'error' being the common example.
 SNAPSHOT_PROCEED_STATUS = ('available',)
 SRC_VOL_PROCEED_STATUS = ('available', 'in-use',)
+REPLICA_PROCEED_STATUS = ('active', 'active-stopped')
+CG_PROCEED_STATUS = ('available',)
 
 
 class ExtractVolumeRequestTask(flow_utils.CinderTask):
@@ -58,13 +60,32 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
     # reconstructed elsewhere and continued).
     default_provides = set(['availability_zone', 'size', 'snapshot_id',
                             'source_volid', 'volume_type', 'volume_type_id',
-                            'encryption_key_id'])
+                            'encryption_key_id', 'source_replicaid',
+                            'consistencygroup_id'])
 
     def __init__(self, image_service, availability_zones, **kwargs):
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
                                                        **kwargs)
         self.image_service = image_service
         self.availability_zones = availability_zones
+
+    @staticmethod
+    def _extract_consistencygroup(consistencygroup):
+        """Extracts the consistencygroup id from the provided consistencygroup.
+
+        This function validates the input consistencygroup dict and checks that
+        the status of that consistencygroup is valid for creating a volume in.
+        """
+
+        consistencygroup_id = None
+        if consistencygroup is not None:
+            if consistencygroup['status'] not in CG_PROCEED_STATUS:
+                msg = _("Originating consistencygroup status must be one"
+                        " of '%s' values")
+                msg = msg % (", ".join(CG_PROCEED_STATUS))
+                raise exception.InvalidConsistencyGroup(reason=msg)
+            consistencygroup_id = consistencygroup['id']
+        return consistencygroup_id
 
     @staticmethod
     def _extract_snapshot(snapshot):
@@ -112,6 +133,38 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         return source_volid
 
     @staticmethod
+    def _extract_source_replica(source_replica):
+        """Extracts the volume id from the provided replica (if provided).
+
+        This function validates the input replica_volume dict and checks that
+        the status of that replica_volume is valid for creating a volume from.
+        """
+
+        source_replicaid = None
+        if source_replica is not None:
+            if source_replica['status'] not in SRC_VOL_PROCEED_STATUS:
+                msg = _("Unable to create a volume from an originating source"
+                        " volume when its status is not one of %s"
+                        " values")
+                msg = msg % (", ".join(SRC_VOL_PROCEED_STATUS))
+                # TODO(harlowja): what happens if the status changes after this
+                # initial volume status check occurs??? Seems like someone
+                # could delete the volume after this check passes but before
+                # the volume is officially created?
+                raise exception.InvalidVolume(reason=msg)
+            replication_status = source_replica['replication_status']
+            if replication_status not in REPLICA_PROCEED_STATUS:
+                msg = _("Unable to create a volume from a replica"
+                        " when replication status is not one of %s"
+                        " values")
+                msg = msg % (", ".join(REPLICA_PROCEED_STATUS))
+                # TODO(ronenkat): what happens if the replication status
+                # changes after this initial volume status check occurs???
+                raise exception.InvalidVolume(reason=msg)
+            source_replicaid = source_replica['id']
+        return source_replicaid
+
+    @staticmethod
     def _extract_size(size, source_volume, snapshot):
         """Extracts and validates the volume size.
 
@@ -122,7 +175,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         def validate_snap_size(size):
             if snapshot and size < snapshot['volume_size']:
-                msg = _("Volume size %(size)sGB cannot be smaller than"
+                msg = _("Volume size '%(size)s'GB cannot be smaller than"
                         " the snapshot size %(snap_size)sGB. "
                         "They must be >= original snapshot size.")
                 msg = msg % {'size': size,
@@ -131,7 +184,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         def validate_source_size(size):
             if source_volume and size < source_volume['size']:
-                msg = _("Volume size %(size)sGB cannot be smaller than "
+                msg = _("Volume size '%(size)s'GB cannot be smaller than "
                         "original volume size  %(source_size)sGB. "
                         "They must be >= original volume size.")
                 msg = msg % {'size': size,
@@ -140,7 +193,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         def validate_int(size):
             if not isinstance(size, int) or size <= 0:
-                msg = _("Volume size %(size)s must be an integer and"
+                msg = _("Volume size '%(size)s' must be an integer and"
                         " greater than 0") % {'size': size}
                 raise exception.InvalidInput(reason=msg)
 
@@ -159,7 +212,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             size = snapshot['volume_size']
 
         size = utils.as_int(size)
-        LOG.debug("Validating volume %(size)s using %(functors)s" %
+        LOG.debug("Validating volume '%(size)s' using %(functors)s" %
                   {'size': size,
                    'functors': ", ".join([common.make_pretty_name(func)
                                           for func in validator_functors])})
@@ -285,15 +338,13 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         return availability_zone
 
     def _get_encryption_key_id(self, key_manager, context, volume_type_id,
-                               snapshot, source_volume, backup_source_volume):
+                               snapshot, source_volume):
         encryption_key_id = None
         if volume_types.is_encrypted(context, volume_type_id):
             if snapshot is not None:  # creating from snapshot
                 encryption_key_id = snapshot['encryption_key_id']
             elif source_volume is not None:  # cloning volume
                 encryption_key_id = source_volume['encryption_key_id']
-            elif backup_source_volume is not None:  # creating from backup
-                encryption_key_id = backup_source_volume['encryption_key_id']
 
             # NOTE(joel-coffman): References to the encryption key should *not*
             # be copied because the key is deleted when the volume is deleted.
@@ -307,8 +358,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         return encryption_key_id
 
-    def _get_volume_type_id(self, volume_type, source_volume, snapshot,
-                            backup_source_volume):
+    def _get_volume_type_id(self, volume_type, source_volume, snapshot):
         volume_type_id = None
         if not volume_type and source_volume:
             volume_type_id = source_volume['volume_type_id']
@@ -321,8 +371,6 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                             "be the same as the source volume.")
                     LOG.warn(msg)
             volume_type_id = snapshot['volume_type_id']
-        elif backup_source_volume is not None:
-            volume_type_id = backup_source_volume['volume_type_id']
         else:
             volume_type_id = volume_type.get('id')
 
@@ -330,7 +378,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata,
-                key_manager, backup_source_volume):
+                key_manager, source_replica,
+                consistencygroup):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -341,7 +390,9 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # volume will remain available after we do this initial verification??
         snapshot_id = self._extract_snapshot(snapshot)
         source_volid = self._extract_source_volume(source_volume)
+        source_replicaid = self._extract_source_replica(source_replica)
         size = self._extract_size(size, source_volume, snapshot)
+        consistencygroup_id = self._extract_consistencygroup(consistencygroup)
 
         self._check_image_metadata(context, image_id, size)
 
@@ -354,19 +405,24 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # should copy encryption metadata from the encrypted volume type to the
         # volume upon creation and propagate that information to each snapshot.
         # This strategy avoid any dependency upon the encrypted volume type.
+        def_vol_type = volume_types.get_default_volume_type()
         if not volume_type and not source_volume and not snapshot:
-            volume_type = volume_types.get_default_volume_type()
+            volume_type = def_vol_type
+
+        # When creating a clone of a replica (replication test), we can't
+        # use the volume type of the replica, therefore, we use the default.
+        # NOTE(ronenkat): this assumes the default type is not replicated.
+        if source_replicaid:
+            volume_type = def_vol_type
 
         volume_type_id = self._get_volume_type_id(volume_type,
-                                                  source_volume, snapshot,
-                                                  backup_source_volume)
+                                                  source_volume, snapshot)
 
         encryption_key_id = self._get_encryption_key_id(key_manager,
                                                         context,
                                                         volume_type_id,
                                                         snapshot,
-                                                        source_volume,
-                                                        backup_source_volume)
+                                                        source_volume)
 
         specs = {}
         if volume_type_id:
@@ -387,6 +443,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             'volume_type_id': volume_type_id,
             'encryption_key_id': encryption_key_id,
             'qos_specs': specs,
+            'source_replicaid': source_replicaid,
+            'consistencygroup_id': consistencygroup_id,
         }
 
 
@@ -401,7 +459,8 @@ class EntryCreateTask(flow_utils.CinderTask):
     def __init__(self, db):
         requires = ['availability_zone', 'description', 'metadata',
                     'name', 'reservations', 'size', 'snapshot_id',
-                    'source_volid', 'volume_type_id', 'encryption_key_id']
+                    'source_volid', 'volume_type_id', 'encryption_key_id',
+                    'source_replicaid', 'consistencygroup_id', ]
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
         self.db = db
@@ -427,6 +486,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             # Rename these to the internal name.
             'display_description': kwargs.pop('description'),
             'display_name': kwargs.pop('name'),
+            'replication_status': 'disabled',
         }
 
         # Merge in the other required arguments which should provide the rest
@@ -450,7 +510,7 @@ class EntryCreateTask(flow_utils.CinderTask):
 
     def revert(self, context, result, optional_args, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
         if optional_args['is_quota_committed']:
@@ -466,7 +526,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             #
             # NOTE(harlowja): Being unable to destroy a volume is pretty
             # bad though!!
-            LOG.exception(_("Failed destroying volume entry %s"), vol_id)
+            LOG.exception(_LE("Failed destroying volume entry %s"), vol_id)
 
 
 class QuotaReserveTask(flow_utils.CinderTask):
@@ -535,7 +595,7 @@ class QuotaReserveTask(flow_utils.CinderTask):
 
     def revert(self, context, result, optional_args, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
         if optional_args['is_quota_committed']:
@@ -550,8 +610,8 @@ class QuotaReserveTask(flow_utils.CinderTask):
         except exception.CinderException:
             # We are already reverting, therefore we should silence this
             # exception since a second exception being active will be bad.
-            LOG.exception(_("Failed rolling back quota for"
-                            " %s reservations"), reservations)
+            LOG.exception(_LE("Failed rolling back quota for"
+                              " %s reservations"), reservations)
 
 
 class QuotaCommitTask(flow_utils.CinderTask):
@@ -581,7 +641,7 @@ class QuotaCommitTask(flow_utils.CinderTask):
 
     def revert(self, context, result, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
         volume = result['volume_properties']
         try:
@@ -596,8 +656,8 @@ class QuotaCommitTask(flow_utils.CinderTask):
                 QUOTAS.commit(context, reservations,
                               project_id=context.project_id)
         except Exception:
-            LOG.exception(_("Failed to update quota for deleting volume: %s"),
-                          volume['id'])
+            LOG.exception(_LE("Failed to update quota for deleting "
+                              "volume: %s"), volume['id'])
 
 
 class VolumeCastTask(flow_utils.CinderTask):
@@ -612,7 +672,8 @@ class VolumeCastTask(flow_utils.CinderTask):
     def __init__(self, scheduler_rpcapi, volume_rpcapi, db):
         requires = ['image_id', 'scheduler_hints', 'snapshot_id',
                     'source_volid', 'volume_id', 'volume_type',
-                    'volume_properties']
+                    'volume_properties', 'source_replicaid',
+                    'consistencygroup_id']
         super(VolumeCastTask, self).__init__(addons=[ACTION],
                                              requires=requires)
         self.volume_rpcapi = volume_rpcapi
@@ -621,12 +682,18 @@ class VolumeCastTask(flow_utils.CinderTask):
 
     def _cast_create_volume(self, context, request_spec, filter_properties):
         source_volid = request_spec['source_volid']
+        source_replicaid = request_spec['source_replicaid']
         volume_id = request_spec['volume_id']
         snapshot_id = request_spec['snapshot_id']
         image_id = request_spec['image_id']
+        group_id = request_spec['consistencygroup_id']
         host = None
 
-        if snapshot_id and CONF.snapshot_same_host:
+        if group_id:
+            group = self.db.consistencygroup_get(context, group_id)
+            if group:
+                host = group.get('host', None)
+        elif snapshot_id and CONF.snapshot_same_host:
             # NOTE(Rongze Zhu): A simple solution for bug 1008866.
             #
             # If snapshot_id is set, make the call create volume directly to
@@ -638,6 +705,9 @@ class VolumeCastTask(flow_utils.CinderTask):
             host = source_volume_ref['host']
         elif source_volid:
             source_volume_ref = self.db.volume_get(context, source_volid)
+            host = source_volume_ref['host']
+        elif source_replicaid:
+            source_volume_ref = self.db.volume_get(context, source_replicaid)
             host = source_volume_ref['host']
 
         if not host:
@@ -666,7 +736,9 @@ class VolumeCastTask(flow_utils.CinderTask):
                 allow_reschedule=False,
                 snapshot_id=snapshot_id,
                 image_id=image_id,
-                source_volid=source_volid)
+                source_volid=source_volid,
+                source_replicaid=source_replicaid,
+                consistencygroup_id=group_id)
 
     def execute(self, context, **kwargs):
         scheduler_hints = kwargs.pop('scheduler_hints', None)
@@ -677,18 +749,18 @@ class VolumeCastTask(flow_utils.CinderTask):
         self._cast_create_volume(context, request_spec, filter_properties)
 
     def revert(self, context, result, flow_failures, **kwargs):
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
         # Restore the source volume status and set the volume to error status.
         volume_id = kwargs['volume_id']
         common.restore_source_status(context, self.db, kwargs)
         common.error_out_volume(context, self.db, volume_id)
-        LOG.error(_("Volume %s: create failed"), volume_id)
+        LOG.error(_LE("Volume %s: create failed"), volume_id)
         exc_info = False
         if all(flow_failures[-1].exc_info):
             exc_info = flow_failures[-1].exc_info
-        LOG.error(_('Unexpected build error:'), exc_info=exc_info)
+        LOG.error(_LE('Unexpected build error:'), exc_info=exc_info)
 
 
 def get_flow(scheduler_rpcapi, volume_rpcapi, db_api,

@@ -16,17 +16,14 @@
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey
 from sqlalchemy import Integer, MetaData, String, Table
 
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
 
 
-def upgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
+def define_tables(meta):
     migrations = Table(
         'migrations', meta,
         Column('created_at', DateTime),
@@ -217,21 +214,27 @@ def upgrade(migrate_engine):
                nullable=True),
         mysql_engine='InnoDB'
     )
+    return [sm_flavors,
+            sm_backend_config,
+            snapshots,
+            volume_types,
+            volumes,
+            iscsi_targets,
+            migrations,
+            quotas,
+            services,
+            sm_volume,
+            volume_metadata,
+            volume_type_extra_specs]
+
+
+def upgrade(migrate_engine):
+    meta = MetaData()
+    meta.bind = migrate_engine
 
     # create all tables
     # Take care on create order for those with FK dependencies
-    tables = [sm_flavors,
-              sm_backend_config,
-              snapshots,
-              volume_types,
-              volumes,
-              iscsi_targets,
-              migrations,
-              quotas,
-              services,
-              sm_volume,
-              volume_metadata,
-              volume_type_extra_specs]
+    tables = define_tables(meta)
 
     for table in tables:
         try:
@@ -256,15 +259,22 @@ def upgrade(migrate_engine):
                   "volume_metadata",
                   "volume_type_extra_specs"]
 
-        sql = "SET foreign_key_checks = 0;"
+        migrate_engine.execute("SET foreign_key_checks = 0")
         for table in tables:
-            sql += "ALTER TABLE %s CONVERT TO CHARACTER SET utf8;" % table
-        sql += "SET foreign_key_checks = 1;"
-        sql += "ALTER DATABASE %s DEFAULT CHARACTER SET utf8;" \
-            % migrate_engine.url.database
-        sql += "ALTER TABLE %s Engine=InnoDB;" % table
-        migrate_engine.execute(sql)
+            migrate_engine.execute(
+                "ALTER TABLE %s CONVERT TO CHARACTER SET utf8" % table)
+        migrate_engine.execute("SET foreign_key_checks = 1")
+        migrate_engine.execute(
+            "ALTER DATABASE %s DEFAULT CHARACTER SET utf8" %
+            migrate_engine.url.database)
+        migrate_engine.execute("ALTER TABLE %s Engine=InnoDB" % table)
 
 
 def downgrade(migrate_engine):
-    LOG.exception(_('Downgrade from initial Cinder install is unsupported.'))
+    meta = MetaData()
+    meta.bind = migrate_engine
+    tables = define_tables(meta)
+    tables.reverse()
+    for table in tables:
+        LOG.info("dropping table %(table)s" % {'table': table})
+        table.drop()

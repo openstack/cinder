@@ -27,28 +27,27 @@ It also allows setting of formatting information through conf.
 
 """
 
+import copy
 import inspect
 import itertools
 import logging
 import logging.config
 import logging.handlers
 import os
+import socket
 import sys
 import traceback
 
 from oslo.config import cfg
+from oslo.serialization import jsonutils
+from oslo.utils import importutils
 import six
 from six import moves
 
 _PY26 = sys.version_info[0:2] == (2, 6)
 
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import importutils
-from cinder.openstack.common import jsonutils
+from cinder.openstack.common._i18n import _
 from cinder.openstack.common import local
-# NOTE(flaper87): Pls, remove when graduating this module
-# from the incubator.
-from cinder.openstack.common.strutils import mask_password  # noqa
 
 
 _DEFAULT_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -126,7 +125,9 @@ DEFAULT_LOG_LEVELS = ['amqp=WARN', 'amqplib=WARN', 'boto=WARN',
                       'qpid=WARN', 'sqlalchemy=WARN', 'suds=INFO',
                       'oslo.messaging=INFO', 'iso8601=WARN',
                       'requests.packages.urllib3.connectionpool=WARN',
-                      'urllib3.connectionpool=WARN', 'websocket=WARN']
+                      'urllib3.connectionpool=WARN', 'websocket=WARN',
+                      "keystonemiddleware=WARN", "routes.middleware=WARN",
+                      "stevedore=WARN"]
 
 log_opts = [
     cfg.StrOpt('logging_context_format_string',
@@ -173,6 +174,16 @@ CONF.register_cli_opts(common_cli_opts)
 CONF.register_cli_opts(logging_cli_opts)
 CONF.register_opts(generic_log_opts)
 CONF.register_opts(log_opts)
+
+
+def list_opts():
+    """Entry point for oslo.config-generator."""
+    return [(None, copy.deepcopy(common_cli_opts)),
+            (None, copy.deepcopy(logging_cli_opts)),
+            (None, copy.deepcopy(generic_log_opts)),
+            (None, copy.deepcopy(log_opts)),
+            ]
+
 
 # our new audit level
 # NOTE(jkoelker) Since we synthesized an audit level, make the logging
@@ -300,11 +311,10 @@ class ContextAdapter(BaseLoggerAdapter):
         self.warn(stdmsg, *args, **kwargs)
 
     def process(self, msg, kwargs):
-        # NOTE(mrodden): catch any Message/other object and
-        #                coerce to unicode before they can get
-        #                to the python logging and possibly
-        #                cause string encoding trouble
-        if not isinstance(msg, six.string_types):
+        # NOTE(jecarey): If msg is not unicode, coerce it into unicode
+        #                before it can get to the python logging and
+        #                possibly cause string encoding trouble
+        if not isinstance(msg, six.text_type):
             msg = six.text_type(msg)
 
         if 'extra' not in kwargs:
@@ -429,12 +439,12 @@ def set_defaults(logging_context_format_string=None,
     # later in a backwards in-compatible change
     if default_log_levels is not None:
         cfg.set_defaults(
-                log_opts,
-                default_log_levels=default_log_levels)
+            log_opts,
+            default_log_levels=default_log_levels)
     if logging_context_format_string is not None:
         cfg.set_defaults(
-                log_opts,
-                logging_context_format_string=logging_context_format_string)
+            log_opts,
+            logging_context_format_string=logging_context_format_string)
 
 
 def _find_facility_from_conf():
@@ -483,18 +493,6 @@ def _setup_logging_from_conf(project, version):
     for handler in log_root.handlers:
         log_root.removeHandler(handler)
 
-    if CONF.use_syslog:
-        facility = _find_facility_from_conf()
-        # TODO(bogdando) use the format provided by RFCSysLogHandler
-        #   after existing syslog format deprecation in J
-        if CONF.use_syslog_rfc_format:
-            syslog = RFCSysLogHandler(address='/dev/log',
-                                      facility=facility)
-        else:
-            syslog = logging.handlers.SysLogHandler(address='/dev/log',
-                                                    facility=facility)
-        log_root.addHandler(syslog)
-
     logpath = _get_log_file_path()
     if logpath:
         filelog = logging.handlers.WatchedFileHandler(logpath)
@@ -511,14 +509,9 @@ def _setup_logging_from_conf(project, version):
         log_root.addHandler(streamlog)
 
     if CONF.publish_errors:
-        try:
-            handler = importutils.import_object(
-                "cinder.openstack.common.log_handler.PublishErrorsHandler",
-                logging.ERROR)
-        except ImportError:
-            handler = importutils.import_object(
-                "oslo.messaging.notify.log_handler.PublishErrorsHandler",
-                logging.ERROR)
+        handler = importutils.import_object(
+            "oslo.messaging.notify.log_handler.PublishErrorsHandler",
+            logging.ERROR)
         log_root.addHandler(handler)
 
     datefmt = CONF.log_date_format
@@ -552,6 +545,22 @@ def _setup_logging_from_conf(project, version):
             logger.setLevel(level)
         else:
             logger.setLevel(level_name)
+
+    if CONF.use_syslog:
+        try:
+            facility = _find_facility_from_conf()
+            # TODO(bogdando) use the format provided by RFCSysLogHandler
+            #   after existing syslog format deprecation in J
+            if CONF.use_syslog_rfc_format:
+                syslog = RFCSysLogHandler(address='/dev/log',
+                                          facility=facility)
+            else:
+                syslog = logging.handlers.SysLogHandler(address='/dev/log',
+                                                        facility=facility)
+            log_root.addHandler(syslog)
+        except socket.error:
+            log_root.error('Unable to add syslog handler. Verify that syslog '
+                           'is running.')
 
 
 _loggers = {}
@@ -621,6 +630,12 @@ class ContextFormatter(logging.Formatter):
 
     def format(self, record):
         """Uses contextstring if request_id is set, otherwise default."""
+
+        # NOTE(jecarey): If msg is not unicode, coerce it into unicode
+        #                before it can get to the python logging and
+        #                possibly cause string encoding trouble
+        if not isinstance(record.msg, six.text_type):
+            record.msg = six.text_type(record.msg)
 
         # store project info
         record.project = self.project

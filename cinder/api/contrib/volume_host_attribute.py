@@ -16,7 +16,6 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder.openstack.common import log as logging
-from cinder import volume
 
 
 LOG = logging.getLogger(__name__)
@@ -25,12 +24,8 @@ authorize = extensions.soft_extension_authorizer('volume',
 
 
 class VolumeHostAttributeController(wsgi.Controller):
-    def __init__(self, *args, **kwargs):
-        super(VolumeHostAttributeController, self).__init__(*args, **kwargs)
-        self.volume_api = volume.API()
-
     def _add_volume_host_attribute(self, context, req, resp_volume):
-        db_volume = req.cached_resource_by_id(resp_volume['id'])
+        db_volume = req.get_db_volume(resp_volume['id'])
         key = "%s:host" % Volume_host_attribute.alias
         resp_volume[key] = db_volume['host']
 
@@ -47,8 +42,8 @@ class VolumeHostAttributeController(wsgi.Controller):
         context = req.environ['cinder.context']
         if authorize(context):
             resp_obj.attach(xml=VolumeListHostAttributeTemplate())
-            for volume in list(resp_obj.obj['volumes']):
-                self._add_volume_host_attribute(context, req, volume)
+            for vol in list(resp_obj.obj['volumes']):
+                self._add_volume_host_attribute(context, req, vol)
 
 
 class Volume_host_attribute(extensions.ExtensionDescriptor):
@@ -57,7 +52,7 @@ class Volume_host_attribute(extensions.ExtensionDescriptor):
     name = "VolumeHostAttribute"
     alias = "os-vol-host-attr"
     namespace = ("http://docs.openstack.org/volume/ext/"
-                 "volume_host_attribute/api/v1")
+                 "volume_host_attribute/api/v2")
     updated = "2011-11-03T00:00:00+00:00"
 
     def get_controller_extensions(self):

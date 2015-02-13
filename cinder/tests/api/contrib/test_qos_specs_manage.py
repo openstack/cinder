@@ -14,9 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from lxml import etree
 from xml.dom import minidom
 
+from lxml import etree
 import webob
 
 from cinder.api.contrib import qos_specs_manage
@@ -145,10 +145,7 @@ class QoSSpecManageApiTest(test.TestCase):
         self.flags(host='fake')
         self.controller = qos_specs_manage.QoSSpecsController()
 
-        #reset notifier drivers left over from other api/contrib tests
-        # NOTE(flaper87) WTF? ^^^^ Cleanups should happen in each test,
-        # not the purpose of this patch, though.
-        fake_notifier.reset()
+        # Reset notifications for each test
         self.addCleanup(fake_notifier.reset)
 
     def test_index(self):
@@ -323,8 +320,12 @@ class QoSSpecManageApiTest(test.TestCase):
     def test_create_no_body(self):
         self._create_qos_specs_bad_body(body=None)
 
-    def test_create_missing_specs_name(self):
+    def test_create_invalid_body(self):
         body = {'foo': {'a': 'b'}}
+        self._create_qos_specs_bad_body(body=body)
+
+    def test_create_missing_specs_name(self):
+        body = {'qos_specs': {'a': 'b'}}
         self._create_qos_specs_bad_body(body=body)
 
     def test_create_malformed_entity(self):

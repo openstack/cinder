@@ -16,14 +16,15 @@
 
 import os
 import re
+import urllib
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six.moves.urllib.parse as urlparse
 import webob
 
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder import utils
 
@@ -46,10 +47,11 @@ CONF.register_opts(api_common_opts)
 LOG = logging.getLogger(__name__)
 
 
-XML_NS_V1 = 'http://docs.openstack.org/volume/api/v1'
+XML_NS_V1 = 'http://docs.openstack.org/api/openstack-block-storage/1.0/content'
+XML_NS_V2 = 'http://docs.openstack.org/api/openstack-block-storage/2.0/content'
 
 
-# Regex that matches alphanumeric characters, periods, hypens,
+# Regex that matches alphanumeric characters, periods, hyphens,
 # colons and underscores:
 # ^ assert position at start of the string
 # [\w\.\-\:\_] match expression
@@ -196,16 +198,6 @@ def remove_version_from_href(href):
     return urlparse.urlunsplit(parsed_url)
 
 
-def dict_to_query_str(params):
-    # TODO(throughnothing): we should just use urllib.urlencode instead of this
-    # But currently we don't work with urlencoded url's
-    param_str = ""
-    for key, val in params.iteritems():
-        param_str = param_str + '='.join([str(key), str(val)]) + '&'
-
-    return param_str.rstrip('&')
-
-
 class ViewBuilder(object):
     """Model API responses as dictionaries."""
 
@@ -226,7 +218,7 @@ class ViewBuilder(object):
         url = os.path.join(prefix,
                            request.environ["cinder.context"].project_id,
                            collection_name)
-        return "%s?%s" % (url, dict_to_query_str(params))
+        return "%s?%s" % (url, urllib.urlencode(params))
 
     def _get_href_link(self, request, identifier):
         """Return an href string pointing to this object."""

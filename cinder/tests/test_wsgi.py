@@ -16,18 +16,23 @@
 
 """Unit tests for `cinder.wsgi`."""
 
-import mock
 import os.path
+import re
+import socket
+import ssl
 import tempfile
+import time
 import urllib2
 
-from oslo.config import cfg
+import mock
+from oslo_config import cfg
+from oslo_i18n import fixture as i18n_fixture
 import testtools
 import webob
 import webob.dec
 
 from cinder import exception
-from cinder.openstack.common import gettextutils
+from cinder.i18n import _
 from cinder import test
 import cinder.wsgi
 
@@ -35,6 +40,21 @@ CONF = cfg.CONF
 
 TEST_VAR_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                'var'))
+
+
+def open_no_proxy(*args, **kwargs):
+    # NOTE(coreycb):
+    # Deal with more secure certification chain verficiation
+    # introduced in python 2.7.9 under PEP-0476
+    # https://github.com/python/peps/blob/master/pep-0476.txt
+    if hasattr(ssl, "_create_unverified_context"):
+        opener = urllib2.build_opener(
+            urllib2.ProxyHandler({}),
+            urllib2.HTTPSHandler(context=ssl._create_unverified_context())
+        )
+    else:
+        opener = urllib2.build_opener(urllib2.ProxyHandler({}))
+    return opener.open(*args, **kwargs)
 
 
 class TestLoaderNothingExists(test.TestCase):
@@ -117,6 +137,17 @@ class TestWSGIServer(test.TestCase):
         server.stop()
         server.wait()
 
+    def test_server_pool_waitall(self):
+        # test pools waitall method gets called while stopping server
+        server = cinder.wsgi.Server("test_server", None,
+                                    host="127.0.0.1", port=4444)
+        server.start()
+        with mock.patch.object(server._pool,
+                               'waitall') as mock_waitall:
+            server.stop()
+            server.wait()
+            mock_waitall.assert_called_once_with()
+
     def test_app(self):
         greetings = 'Hello, World!!!'
 
@@ -132,9 +163,43 @@ class TestWSGIServer(test.TestCase):
                                     host="127.0.0.1", port=0)
         server.start()
 
-        response = urllib2.urlopen('http://127.0.0.1:%d/' % server.port)
+        response = open_no_proxy('http://127.0.0.1:%d/' % server.port)
         self.assertEqual(greetings, response.read())
+        server.stop()
 
+    def test_client_socket_timeout(self):
+        CONF.set_default("client_socket_timeout", 0.1)
+        greetings = 'Hello, World!!!'
+
+        def hello_world(env, start_response):
+            start_response('200 OK', [('Content-Type', 'text/plain')])
+            return [greetings]
+
+        server = cinder.wsgi.Server("test_app", hello_world,
+                                    host="127.0.0.1", port=0)
+        server.start()
+
+        s = socket.socket()
+        s.connect(("127.0.0.1", server.port))
+
+        fd = s.makefile('rw')
+        fd.write(b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n')
+        fd.flush()
+
+        buf = fd.read()
+        self.assertTrue(re.search(greetings, buf))
+
+        s2 = socket.socket()
+        s2.connect(("127.0.0.1", server.port))
+        time.sleep(0.2)
+
+        fd = s2.makefile('rw')
+        fd.write(b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n')
+        fd.flush()
+
+        buf = fd.read()
+        # connection is closed so we get nothing from the server
+        self.assertFalse(buf)
         server.stop()
 
     def test_app_using_ssl(self):
@@ -154,7 +219,7 @@ class TestWSGIServer(test.TestCase):
 
         server.start()
 
-        response = urllib2.urlopen('https://127.0.0.1:%d/' % server.port)
+        response = open_no_proxy('https://127.0.0.1:%d/' % server.port)
         self.assertEqual(greetings, response.read())
 
         server.stop()
@@ -179,7 +244,7 @@ class TestWSGIServer(test.TestCase):
                                     port=0)
         server.start()
 
-        response = urllib2.urlopen('https://[::1]:%d/' % server.port)
+        response = open_no_proxy('https://[::1]:%d/' % server.port)
         self.assertEqual(greetings, response.read())
 
         server.stop()
@@ -200,14 +265,16 @@ class TestWSGIServer(test.TestCase):
 
 class ExceptionTest(test.TestCase):
 
+    def setUp(self):
+        super(ExceptionTest, self).setUp()
+        self.useFixture(i18n_fixture.ToggleLazy(True))
+
     def _wsgi_app(self, inner_app):
         # NOTE(luisg): In order to test localization, we need to
         # make sure the lazy _() is installed in the 'fault' module
         # also we don't want to install the _() system-wide and
         # potentially break other test cases, so we do it here for this
         # test suite only.
-        gettextutils.install('')
-        gettextutils.enable_lazy()
         from cinder.api.middleware import fault
         return fault.FaultWrapper(inner_app)
 
@@ -278,11 +345,11 @@ class ExceptionTest(test.TestCase):
         resp = webob.Request.blank('/').get_response(api)
         self.assertEqual(500, resp.status_int)
 
-    @mock.patch('cinder.openstack.common.gettextutils.translate')
+    @mock.patch('cinder.i18n.translate')
     def test_cinder_exception_with_localized_explanation(self, mock_t9n):
         msg = 'My Not Found'
         msg_translation = 'Mi No Encontrado'
-        message = gettextutils.Message(msg, '')
+        message = _(msg)  # noqa
 
         @webob.dec.wsgify
         def fail(req):
@@ -305,9 +372,7 @@ class ExceptionTest(test.TestCase):
 
         # Test response with localization
         def mock_translate(msgid, locale):
-            if isinstance(msgid, gettextutils.Message):
-                return msg_translation
-            return msgid
+            return msg_translation
 
         mock_t9n.side_effect = mock_translate
 

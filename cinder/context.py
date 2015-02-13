@@ -18,30 +18,25 @@
 """RequestContext: context for requests that persist through all of cinder."""
 
 import copy
-import uuid
 
-from cinder.openstack.common.gettextutils import _
+from oslo_context import context
+from oslo_utils import timeutils
+
+from cinder.i18n import _
 from cinder.openstack.common import local
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 from cinder import policy
 
 
 LOG = logging.getLogger(__name__)
 
 
-def generate_request_id():
-    return 'req-' + str(uuid.uuid4())
-
-
-class RequestContext(object):
+class RequestContext(context.RequestContext):
     """Security context and request information.
 
     Represents the user taking a given action within the system.
 
     """
-    user_idt_format = '{user} {tenant} {domain} {user_domain} {p_domain}'
-
     def __init__(self, user_id, project_id, is_admin=None, read_deleted="no",
                  roles=None, project_name=None, remote_address=None,
                  timestamp=None, request_id=None, auth_token=None,
@@ -61,18 +56,16 @@ class RequestContext(object):
             because they possibly came in from older rpc messages.
         """
 
-        self.user_id = user_id
-        self.project_id = project_id
-        self.domain = domain
-        self.user_domain = user_domain
-        self.project_domain = project_domain
+        super(RequestContext, self).__init__(auth_token=auth_token,
+                                             user=user_id,
+                                             tenant=project_id,
+                                             domain=domain,
+                                             user_domain=user_domain,
+                                             project_domain=project_domain,
+                                             is_admin=is_admin,
+                                             request_id=request_id)
         self.roles = roles or []
         self.project_name = project_name
-        self.is_admin = is_admin
-        if self.is_admin is None:
-            self.is_admin = policy.check_is_admin(self.roles)
-        elif self.is_admin and 'admin' not in self.roles:
-            self.roles.append('admin')
         self.read_deleted = read_deleted
         self.remote_address = remote_address
         if not timestamp:
@@ -80,10 +73,6 @@ class RequestContext(object):
         if isinstance(timestamp, basestring):
             timestamp = timeutils.parse_strtime(timestamp)
         self.timestamp = timestamp
-        if not request_id:
-            request_id = generate_request_id()
-        self.request_id = request_id
-        self.auth_token = auth_token
         self.quota_class = quota_class
         if overwrite or not hasattr(local.store, 'context'):
             self.update_store()
@@ -91,10 +80,19 @@ class RequestContext(object):
         if service_catalog:
             # Only include required parts of service_catalog
             self.service_catalog = [s for s in service_catalog
-                                    if s.get('type') in ('compute',)]
+                                    if s.get('type') in
+                                    ('identity', 'compute', 'object-store')]
         else:
             # if list is empty or none
             self.service_catalog = []
+
+        # We need to have RequestContext attributes defined
+        # when policy.check_is_admin invokes request logging
+        # to make it loggable.
+        if self.is_admin is None:
+            self.is_admin = policy.check_is_admin(self.roles)
+        elif self.is_admin and 'admin' not in self.roles:
+            self.roles.append('admin')
 
     def _get_read_deleted(self):
         return self._read_deleted
@@ -115,31 +113,18 @@ class RequestContext(object):
         local.store.context = self
 
     def to_dict(self):
-        user_idt = (
-            self.user_idt_format.format(user=self.user or '-',
-                                        tenant=self.tenant or '-',
-                                        domain=self.domain or '-',
-                                        user_domain=self.user_domain or '-',
-                                        p_domain=self.project_domain or '-'))
-
-        return {'user_id': self.user_id,
-                'project_id': self.project_id,
-                'project_name': self.project_name,
-                'domain': self.domain,
-                'user_domain': self.user_domain,
-                'project_domain': self.project_domain,
-                'is_admin': self.is_admin,
-                'read_deleted': self.read_deleted,
-                'roles': self.roles,
-                'remote_address': self.remote_address,
-                'timestamp': timeutils.strtime(self.timestamp),
-                'request_id': self.request_id,
-                'auth_token': self.auth_token,
-                'quota_class': self.quota_class,
-                'service_catalog': self.service_catalog,
-                'tenant': self.tenant,
-                'user': self.user,
-                'user_identity': user_idt}
+        default = super(RequestContext, self).to_dict()
+        extra = {'user_id': self.user_id,
+                 'project_id': self.project_id,
+                 'project_name': self.project_name,
+                 'domain': self.domain,
+                 'read_deleted': self.read_deleted,
+                 'roles': self.roles,
+                 'remote_address': self.remote_address,
+                 'timestamp': timeutils.strtime(self.timestamp),
+                 'quota_class': self.quota_class,
+                 'service_catalog': self.service_catalog}
+        return dict(default.items() + extra.items())
 
     @classmethod
     def from_dict(cls, values):
@@ -147,7 +132,7 @@ class RequestContext(object):
 
     def elevated(self, read_deleted=None, overwrite=False):
         """Return a version of this context with admin flag set."""
-        context = copy.copy(self)
+        context = self.deepcopy()
         context.is_admin = True
 
         if 'admin' not in context.roles:
@@ -162,17 +147,26 @@ class RequestContext(object):
         return copy.deepcopy(self)
 
     # NOTE(sirp): the openstack/common version of RequestContext uses
-    # tenant/user whereas the Cinder version uses project_id/user_id. We need
-    # this shim in order to use context-aware code from openstack/common, like
-    # logging, until we make the switch to using openstack/common's version of
-    # RequestContext.
+    # tenant/user whereas the Cinder version uses project_id/user_id.
+    # NOTE(adrienverge): The Cinder version of RequestContext now uses
+    # tenant/user internally, so it is compatible with context-aware code from
+    # openstack/common. We still need this shim for the rest of Cinder's
+    # code.
     @property
-    def tenant(self):
-        return self.project_id
+    def project_id(self):
+        return self.tenant
+
+    @project_id.setter
+    def project_id(self, value):
+        self.tenant = value
 
     @property
-    def user(self):
-        return self.user_id
+    def user_id(self):
+        return self.user
+
+    @user_id.setter
+    def user_id(self, value):
+        self.user = value
 
 
 def get_admin_context(read_deleted="no"):

@@ -22,10 +22,10 @@
 Unified Volume driver for IBM XIV and DS8K Storage Systems.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import importutils
 
 from cinder import exception
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san import san
 
@@ -64,10 +64,10 @@ class XIVDS8KDriver(san.SanDriver):
 
         proxy = importutils.import_class(self.configuration.xiv_ds8k_proxy)
 
-        #NOTE: All Array specific configurations are prefixed with:
-        #"xiv_ds8k_array_"
-        #These additional flags should be specified in the cinder.conf
-        #preferably in each backend configuration.
+        # NOTE: All Array specific configurations are prefixed with:
+        # "xiv_ds8k_array_"
+        # These additional flags should be specified in the cinder.conf
+        # preferably in each backend configuration.
 
         self.xiv_ds8k_proxy = proxy(
             {
@@ -201,3 +201,28 @@ class XIVDS8KDriver(san.SanDriver):
         """Removes the specified volume from Cinder management."""
 
         return self.xiv_ds8k_proxy.unmanage_volume(volume)
+
+    def reenable_replication(self, context, volume):
+        """Re-enable volume replication. """
+
+        return self.xiv_ds8k_proxy.reenable_replication(context, volume)
+
+    def get_replication_status(self, context, volume):
+        """Return replication status."""
+
+        return self.xiv_ds8k_proxy.get_replication_status(context, volume)
+
+    def promote_replica(self, context, volume):
+        """Promote the replica to be the primary volume."""
+
+        return self.xiv_ds8k_proxy.promote_replica(context, volume)
+
+    def create_replica_test_volume(self, volume, src_vref):
+        """Creates a test replica clone of the specified replicated volume."""
+
+        return self.xiv_ds8k_proxy.create_replica_test_volume(volume, src_vref)
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Convert the volume to be of the new type."""
+
+        return self.xiv_ds8k_proxy.retype(ctxt, volume, new_type, diff, host)

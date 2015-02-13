@@ -20,13 +20,14 @@ You can customize this scheduler by specifying your own volume Filters and
 Weighing Functions.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder.scheduler import driver
 from cinder.scheduler import scheduler_options
+from cinder.volume import utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -60,6 +61,25 @@ class FilterScheduler(driver.Scheduler):
         filter_properties['user_id'] = vol.get('user_id')
         filter_properties['metadata'] = vol.get('metadata')
         filter_properties['qos_specs'] = vol.get('qos_specs')
+
+    def schedule_create_consistencygroup(self, context, group_id,
+                                         request_spec_list,
+                                         filter_properties_list):
+
+        weighed_host = self._schedule_group(
+            context,
+            request_spec_list,
+            filter_properties_list)
+
+        if not weighed_host:
+            raise exception.NoValidHost(reason="No weighed hosts available")
+
+        host = weighed_host.obj.host
+
+        updated_group = driver.group_update_db(context, group_id, host)
+
+        self.volume_rpcapi.create_consistencygroup(context,
+                                                   updated_group, host)
 
     def schedule_create_volume(self, context, request_spec, filter_properties):
         weighed_host = self._schedule(context, request_spec,
@@ -96,7 +116,7 @@ class FilterScheduler(driver.Scheduler):
             if host_state.host == host:
                 return host_state
 
-        msg = (_('cannot place volume %(id)s on %(host)s')
+        msg = (_('Cannot place volume %(id)s on %(host)s')
                % {'id': request_spec['volume_id'], 'host': host})
         raise exception.NoValidHost(reason=msg)
 
@@ -123,6 +143,21 @@ class FilterScheduler(driver.Scheduler):
             if host_state.host == current_host:
                 return host_state
 
+        if utils.extract_host(current_host, 'pool') is None:
+            # legacy volumes created before pool is introduced has no pool
+            # info in host.  But host_state.host always include pool level
+            # info. In this case if above exact match didn't work out, we
+            # find host_state that are of the same host of volume being
+            # retyped. In other words, for legacy volumes, retyping could
+            # cause migration between pools on same host, which we consider
+            # it is different from migration between hosts thus allow that
+            # to happen even migration policy is 'never'.
+            for weighed_host in weighed_hosts:
+                host_state = weighed_host.obj
+                backend = utils.extract_host(host_state.host, 'backend')
+                if backend == current_host:
+                    return host_state
+
         if migration_policy == 'never':
             msg = (_('Current host not valid for volume %(id)s with type '
                      '%(type)s, migration not allowed')
@@ -132,6 +167,10 @@ class FilterScheduler(driver.Scheduler):
 
         top_host = self._choose_top_host(weighed_hosts, request_spec)
         return top_host.obj
+
+    def get_pools(self, context, filters):
+        #TODO(zhiteng) Add filters support
+        return self.host_manager.get_pools(context)
 
     def _post_select_populate_filter_properties(self, filter_properties,
                                                 host_state):
@@ -265,15 +304,114 @@ class FilterScheduler(driver.Scheduler):
                                                             filter_properties)
         return weighed_hosts
 
+    def _get_weighted_candidates_group(self, context, request_spec_list,
+                                       filter_properties_list=None):
+        """Finds hosts that supports the consistencygroup.
+
+        Returns a list of hosts that meet the required specs,
+        ordered by their fitness.
+        """
+        elevated = context.elevated()
+
+        weighed_hosts = []
+        index = 0
+        for request_spec in request_spec_list:
+            volume_properties = request_spec['volume_properties']
+            # Since Cinder is using mixed filters from Oslo and it's own, which
+            # takes 'resource_XX' and 'volume_XX' as input respectively,
+            # copying 'volume_XX' to 'resource_XX' will make both filters
+            # happy.
+            resource_properties = volume_properties.copy()
+            volume_type = request_spec.get("volume_type", None)
+            resource_type = request_spec.get("volume_type", None)
+            request_spec.update({'resource_properties': resource_properties})
+
+            config_options = self._get_configuration_options()
+
+            filter_properties = {}
+            if filter_properties_list:
+                filter_properties = filter_properties_list[index]
+                if filter_properties is None:
+                    filter_properties = {}
+            self._populate_retry(filter_properties, resource_properties)
+
+            # Add consistencygroup_support in extra_specs if it is not there.
+            # Make sure it is populated in filter_properties
+            if 'consistencygroup_support' not in resource_type.get(
+                    'extra_specs', {}):
+                resource_type['extra_specs'].update(
+                    consistencygroup_support='<is> True')
+
+            filter_properties.update({'context': context,
+                                      'request_spec': request_spec,
+                                      'config_options': config_options,
+                                      'volume_type': volume_type,
+                                      'resource_type': resource_type})
+
+            self.populate_filter_properties(request_spec,
+                                            filter_properties)
+
+            # Find our local list of acceptable hosts by filtering and
+            # weighing our options. we virtually consume resources on
+            # it so subsequent selections can adjust accordingly.
+
+            # Note: remember, we are using an iterator here. So only
+            # traverse this list once.
+            all_hosts = self.host_manager.get_all_host_states(elevated)
+            if not all_hosts:
+                return []
+
+            # Filter local hosts based on requirements ...
+            hosts = self.host_manager.get_filtered_hosts(all_hosts,
+                                                         filter_properties)
+
+            if not hosts:
+                return []
+
+            LOG.debug("Filtered %s" % hosts)
+
+            # weighted_host = WeightedHost() ... the best
+            # host for the job.
+            temp_weighed_hosts = self.host_manager.get_weighed_hosts(
+                hosts,
+                filter_properties)
+            if not temp_weighed_hosts:
+                return []
+            if index == 0:
+                weighed_hosts = temp_weighed_hosts
+            else:
+                new_weighed_hosts = []
+                for host1 in weighed_hosts:
+                    for host2 in temp_weighed_hosts:
+                        if host1.obj.host == host2.obj.host:
+                            new_weighed_hosts.append(host1)
+                weighed_hosts = new_weighed_hosts
+                if not weighed_hosts:
+                    return []
+
+            index += 1
+
+        return weighed_hosts
+
     def _schedule(self, context, request_spec, filter_properties=None):
         weighed_hosts = self._get_weighted_candidates(context, request_spec,
                                                       filter_properties)
         if not weighed_hosts:
-            LOG.warning(_('No weighed hosts found for volume '
-                          'with properties: %s'),
+            LOG.warning(_LW('No weighed hosts found for volume '
+                            'with properties: %s'),
                         filter_properties['request_spec']['volume_type'])
             return None
         return self._choose_top_host(weighed_hosts, request_spec)
+
+    def _schedule_group(self, context, request_spec_list,
+                        filter_properties_list=None):
+        weighed_hosts = self._get_weighted_candidates_group(
+            context,
+            request_spec_list,
+            filter_properties_list)
+        if not weighed_hosts:
+            return None
+        return self._choose_top_host_group(weighed_hosts, request_spec_list)
 
     def _choose_top_host(self, weighed_hosts, request_spec):
         top_host = weighed_hosts[0]
@@ -281,4 +419,10 @@ class FilterScheduler(driver.Scheduler):
         LOG.debug("Choosing %s" % host_state.host)
         volume_properties = request_spec['volume_properties']
         host_state.consume_from_volume(volume_properties)
+        return top_host
+
+    def _choose_top_host_group(self, weighed_hosts, request_spec_list):
+        top_host = weighed_hosts[0]
+        host_state = top_host.obj
+        LOG.debug("Choosing %s" % host_state.host)
         return top_host

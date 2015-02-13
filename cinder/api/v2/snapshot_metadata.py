@@ -14,13 +14,13 @@
 #    under the License.
 
 import webob
+from webob import exc
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder import volume
-from webob import exc
 
 
 class Controller(wsgi.Controller):

@@ -19,24 +19,36 @@
 #   Avishay Traeger <avishay@il.ibm.com>
 
 
-import mox
-from oslo.config import cfg
+import copy
 
+import mox
+from oslo_config import cfg
+
+from cinder import context
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import xiv_ds8k
+from cinder.volume import volume_types
 
 
 FAKE = "fake"
 VOLUME = {'size': 16,
           'name': FAKE,
           'id': 1}
+
 MANAGED_FAKE = "managed_fake"
 MANAGED_VOLUME = {'size': 16,
                   'name': MANAGED_FAKE,
                   'id': 2}
+
+REPLICA_FAKE = "repicated_fake"
+REPLICATED_VOLUME = {'size': 64,
+                     'name': REPLICA_FAKE,
+                     'id': 2}
+
+CONTEXT = {}
 
 CONNECTOR = {'initiator': "iqn.2012-07.org.fake:01:948f189c4695", }
 
@@ -129,6 +141,36 @@ class XIVDS8KFakeProxyDriver(object):
 
         return (self.volumes[volume['name']].get('attached', None)
                 == connector)
+
+    def reenable_replication(self, context, volume):
+        model_update = {}
+        if volume['replication_status'] == 'inactive':
+            model_update['replication_status'] = 'active'
+        elif volume['replication_status'] == 'invalid_status_val':
+            raise exception.CinderException()
+        model_update['replication_extended_status'] = 'some_status'
+        model_update['replication_driver_data'] = 'some_data'
+        return model_update
+
+    def get_replication_status(self, context, volume):
+        if volume['replication_status'] == 'invalid_status_val':
+            raise exception.CinderException()
+        return {'replication_status': 'active'}
+
+    def promote_replica(self, context, volume):
+        if volume['replication_status'] == 'invalid_status_val':
+            raise exception.CinderException()
+        return {'replication_status': 'inactive'}
+
+    def create_replica_test_volume(self, volume, src_vref):
+        if volume['size'] != src_vref['size']:
+            raise exception.InvalidVolume(
+                reason="Target and source volumes have different size.")
+        return
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        volume['easytier'] = new_type['extra_specs']['easytier']
+        return True, volume
 
 
 class XIVDS8KVolumeDriverTest(test.TestCase):
@@ -300,9 +342,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         self.driver.do_setup(None)
         self.driver.create_volume(MANAGED_VOLUME)
         existing_ref = {'source-name': MANAGED_VOLUME['name']}
-        has_volume = self.driver.manage_existing(
-            VOLUME,
-            existing_ref)
+        self.driver.manage_existing(VOLUME, existing_ref)
         self.assertEqual(VOLUME['size'], MANAGED_VOLUME['size'])
 
         # cover both case, whether driver renames the volume or not
@@ -319,3 +359,207 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
                           self.driver.manage_existing,
                           VOLUME,
                           existing_ref)
+
+    def test_reenable_replication(self):
+        """Test that reenable_replication returns successfully. """
+
+        self.driver.do_setup(None)
+        # assume the replicated volume is inactive
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        replicated_volume['replication_status'] = 'inactive'
+        model_update = self.driver.reenable_replication(
+            CONTEXT,
+            replicated_volume
+        )
+        self.assertEqual(
+            model_update['replication_status'],
+            'active'
+        )
+        self.assertTrue('replication_extended_status' in model_update)
+        self.assertTrue('replication_driver_data' in model_update)
+
+    def test_reenable_replication_fail_on_cinder_exception(self):
+        """Test that reenable_replication fails on driver raising exception."""
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # on purpose - set invalid value to replication_status
+        # expect an exception.
+        replicated_volume['replication_status'] = 'invalid_status_val'
+        self.assertRaises(
+            exception.CinderException,
+            self.driver.reenable_replication,
+            CONTEXT,
+            replicated_volume
+        )
+
+    def test_get_replication_status(self):
+        """Test that get_replication_status return successfully. """
+
+        self.driver.do_setup(None)
+
+        # assume the replicated volume is inactive
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        replicated_volume['replication_status'] = 'inactive'
+        model_update = self.driver.get_replication_status(
+            CONTEXT,
+            replicated_volume
+        )
+        self.assertEqual(
+            model_update['replication_status'],
+            'active'
+        )
+
+    def test_get_replication_status_fail_on_exception(self):
+        """Test that get_replication_status fails on exception"""
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # on purpose - set invalid value to replication_status
+        # expect an exception.
+        replicated_volume['replication_status'] = 'invalid_status_val'
+        self.assertRaises(
+            exception.CinderException,
+            self.driver.get_replication_status,
+            CONTEXT,
+            replicated_volume
+        )
+
+    def test_promote_replica(self):
+        """Test that promote_replica returns successfully. """
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # assume the replication_status should be active
+        replicated_volume['replication_status'] = 'active'
+        model_update = self.driver.promote_replica(
+            CONTEXT,
+            replicated_volume
+        )
+        # after promoting, replication_status should be inactive
+        self.assertEqual(
+            model_update['replication_status'],
+            'inactive'
+        )
+
+    def test_promote_replica_fail_on_cinder_exception(self):
+        """Test that promote_replica fails on CinderException. """
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # on purpose - set invalid value to replication_status
+        # expect an exception.
+        replicated_volume['replication_status'] = 'invalid_status_val'
+        self.assertRaises(
+            exception.CinderException,
+            self.driver.promote_replica,
+            CONTEXT,
+            replicated_volume
+        )
+
+    def test_create_replica_test_volume(self):
+        """Test that create_replica_test_volume returns successfully."""
+
+        self.driver.do_setup(None)
+        tgt_volume = copy.deepcopy(VOLUME)
+        src_volume = copy.deepcopy(REPLICATED_VOLUME)
+        tgt_volume['size'] = src_volume['size']
+        model_update = self.driver.create_replica_test_volume(
+            tgt_volume,
+            src_volume
+        )
+        self.assertTrue(model_update is None)
+
+    def test_create_replica_test_volume_fail_on_diff_size(self):
+        """Test that create_replica_test_volume fails on diff size."""
+
+        self.driver.do_setup(None)
+        tgt_volume = copy.deepcopy(VOLUME)
+        src_volume = copy.deepcopy(REPLICATED_VOLUME)
+        self.assertRaises(
+            exception.InvalidVolume,
+            self.driver.create_replica_test_volume,
+            tgt_volume,
+            src_volume
+        )
+
+    def test_retype(self):
+        """Test that retype returns successfully."""
+
+        self.driver.do_setup(None)
+
+        # prepare parameters
+        ctxt = context.get_admin_context()
+
+        host = {
+            'host': 'foo',
+            'capabilities': {
+                'location_info': 'xiv_ds8k_fake_1',
+                'extent_size': '1024'
+            }
+        }
+
+        key_specs_old = {'easytier': False, 'warning': 2, 'autoexpand': True}
+        key_specs_new = {'easytier': True, 'warning': 5, 'autoexpand': False}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, equal = volume_types.volume_types_diff(
+            ctxt,
+            old_type_ref['id'],
+            new_type_ref['id'],
+        )
+
+        volume = copy.deepcopy(VOLUME)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.create_volume(volume)
+        ret = self.driver.retype(ctxt, volume, new_type, diff, host)
+        self.assertTrue(ret)
+        self.assertTrue(volume['easytier'])
+
+    def test_retype_fail_on_exception(self):
+        """Test that retype fails on exception."""
+
+        self.driver.do_setup(None)
+
+        # prepare parameters
+        ctxt = context.get_admin_context()
+
+        host = {
+            'host': 'foo',
+            'capabilities': {
+                'location_info': 'xiv_ds8k_fake_1',
+                'extent_size': '1024'
+            }
+        }
+
+        key_specs_old = {'easytier': False, 'warning': 2, 'autoexpand': True}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new')
+
+        diff, equal = volume_types.volume_types_diff(
+            ctxt,
+            old_type_ref['id'],
+            new_type_ref['id'],
+        )
+
+        volume = copy.deepcopy(VOLUME)
+        old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
+        volume['volume_type'] = old_type
+        volume['host'] = host
+        new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
+
+        self.driver.create_volume(volume)
+        self.assertRaises(
+            KeyError,
+            self.driver.retype,
+            ctxt, volume, new_type, diff, host
+        )

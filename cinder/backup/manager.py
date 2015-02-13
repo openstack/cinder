@@ -33,18 +33,22 @@ Volume backups can be created, restored, deleted and listed.
 
 """
 
-from oslo.config import cfg
 from oslo import messaging
+from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import importutils
 
+from cinder.backup import driver
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import exception
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder import manager
-from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
+from cinder import quota
+from cinder import rpc
 from cinder import utils
+from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -62,6 +66,7 @@ mapper = {'cinder.backup.services.swift': 'cinder.backup.drivers.swift',
 
 CONF = cfg.CONF
 CONF.register_opts(backup_manager_opts)
+QUOTAS = quota.QUOTAS
 
 
 class BackupManager(manager.SchedulerDependentManager):
@@ -110,7 +115,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 LOG.debug("Got backend '%s'." % (backend))
                 return backend
 
-        LOG.info(_("Backend not found in hostname (%s) so using default.") %
+        LOG.info(_LI("Backend not found in hostname (%s) so using default.") %
                  (host))
 
         if 'default' not in self.volume_managers:
@@ -161,15 +166,15 @@ class BackupManager(manager.SchedulerDependentManager):
             self.volume_managers['default'] = default
 
     def _init_volume_driver(self, ctxt, driver):
-        LOG.info(_("Starting volume driver %(driver_name)s (%(version)s).") %
+        LOG.info(_LI("Starting volume driver %(driver_name)s (%(version)s).") %
                  {'driver_name': driver.__class__.__name__,
                   'version': driver.get_version()})
         try:
             driver.do_setup(ctxt)
             driver.check_for_setup_error()
         except Exception as ex:
-            LOG.error(_("Error encountered during initialization of driver: "
-                        "%(name)s.") %
+            LOG.error(_LE("Error encountered during initialization of driver: "
+                          "%(name)s.") %
                       {'name': driver.__class__.__name__})
             LOG.exception(ex)
             # we don't want to continue since we failed
@@ -187,18 +192,19 @@ class BackupManager(manager.SchedulerDependentManager):
         for mgr in self.volume_managers.itervalues():
             self._init_volume_driver(ctxt, mgr.driver)
 
-        LOG.info(_("Cleaning up incomplete backup operations."))
+        LOG.info(_LI("Cleaning up incomplete backup operations."))
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
         for volume in volumes:
-            backend = self._get_volume_backend(host=volume['host'])
+            volume_host = volume_utils.extract_host(volume['host'], 'backend')
+            backend = self._get_volume_backend(host=volume_host)
             if volume['status'] == 'backing-up':
-                LOG.info(_('Resetting volume %s to available '
-                           '(was backing-up).') % volume['id'])
+                LOG.info(_LI('Resetting volume %s to available '
+                             '(was backing-up).') % volume['id'])
                 mgr = self._get_manager(backend)
                 mgr.detach_volume(ctxt, volume['id'])
             if volume['status'] == 'restoring-backup':
-                LOG.info(_('Resetting volume %s to error_restoring '
-                           '(was restoring-backup).') % volume['id'])
+                LOG.info(_LI('Resetting volume %s to error_restoring '
+                             '(was restoring-backup).') % volume['id'])
                 mgr = self._get_manager(backend)
                 mgr.detach_volume(ctxt, volume['id'])
                 self.db.volume_update(ctxt, volume['id'],
@@ -209,18 +215,19 @@ class BackupManager(manager.SchedulerDependentManager):
         backups = self.db.backup_get_all_by_host(ctxt, self.host)
         for backup in backups:
             if backup['status'] == 'creating':
-                LOG.info(_('Resetting backup %s to error (was creating).')
+                LOG.info(_LI('Resetting backup %s to error (was creating).')
                          % backup['id'])
                 err = 'incomplete backup reset on manager restart'
                 self.db.backup_update(ctxt, backup['id'], {'status': 'error',
                                                            'fail_reason': err})
             if backup['status'] == 'restoring':
-                LOG.info(_('Resetting backup %s to available (was restoring).')
+                LOG.info(_LI('Resetting backup %s to '
+                             ' available (was restoring).')
                          % backup['id'])
                 self.db.backup_update(ctxt, backup['id'],
                                       {'status': 'available'})
             if backup['status'] == 'deleting':
-                LOG.info(_('Resuming delete on backup: %s.') % backup['id'])
+                LOG.info(_LI('Resuming delete on backup: %s.') % backup['id'])
                 self.delete_backup(ctxt, backup['id'])
 
     def create_backup(self, context, backup_id):
@@ -228,10 +235,13 @@ class BackupManager(manager.SchedulerDependentManager):
         backup = self.db.backup_get(context, backup_id)
         volume_id = backup['volume_id']
         volume = self.db.volume_get(context, volume_id)
-        LOG.info(_('Create backup started, backup: %(backup_id)s '
-                   'volume: %(volume_id)s.') %
+        LOG.info(_LI('Create backup started, backup: %(backup_id)s '
+                     'volume: %(volume_id)s.') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
-        backend = self._get_volume_backend(host=volume['host'])
+
+        self._notify_about_backup_usage(context, backup, "create.start")
+        volume_host = volume_utils.extract_host(volume['host'], 'backend')
+        backend = self._get_volume_backend(host=volume_host)
 
         self.db.backup_update(context, backup_id, {'host': self.host,
                                                    'service':
@@ -281,21 +291,24 @@ class BackupManager(manager.SchedulerDependentManager):
                                        'fail_reason': unicode(err)})
 
         self.db.volume_update(context, volume_id, {'status': 'available'})
-        self.db.backup_update(context, backup_id, {'status': 'available',
-                                                   'size': volume['size'],
-                                                   'availability_zone':
-                                                   self.az})
-        LOG.info(_('Create backup finished. backup: %s.'), backup_id)
+        backup = self.db.backup_update(context, backup_id,
+                                       {'status': 'available',
+                                        'size': volume['size'],
+                                        'availability_zone': self.az})
+        LOG.info(_LI('Create backup finished. backup: %s.'), backup_id)
+        self._notify_about_backup_usage(context, backup, "create.end")
 
     def restore_backup(self, context, backup_id, volume_id):
         """Restore volume backups from configured backup service."""
-        LOG.info(_('Restore backup started, backup: %(backup_id)s '
-                   'volume: %(volume_id)s.') %
+        LOG.info(_LI('Restore backup started, backup: %(backup_id)s '
+                     'volume: %(volume_id)s.') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
 
         backup = self.db.backup_get(context, backup_id)
         volume = self.db.volume_get(context, volume_id)
-        backend = self._get_volume_backend(host=volume['host'])
+        volume_host = volume_utils.extract_host(volume['host'], 'backend')
+        backend = self._get_volume_backend(host=volume_host)
+        self._notify_about_backup_usage(context, backup, "restore.start")
 
         self.db.backup_update(context, backup_id, {'host': self.host})
 
@@ -322,9 +335,9 @@ class BackupManager(manager.SchedulerDependentManager):
             raise exception.InvalidBackup(reason=err)
 
         if volume['size'] > backup['size']:
-            LOG.info(_('Volume: %(vol_id)s, size: %(vol_size)d is '
-                       'larger than backup: %(backup_id)s, '
-                       'size: %(backup_size)d, continuing with restore.'),
+            LOG.info(_LI('Volume: %(vol_id)s, size: %(vol_size)d is '
+                         'larger than backup: %(backup_id)s, '
+                         'size: %(backup_size)d, continuing with restore.'),
                      {'vol_id': volume['id'],
                       'vol_size': volume['size'],
                       'backup_id': backup['id'],
@@ -363,10 +376,12 @@ class BackupManager(manager.SchedulerDependentManager):
                                       {'status': 'available'})
 
         self.db.volume_update(context, volume_id, {'status': 'available'})
-        self.db.backup_update(context, backup_id, {'status': 'available'})
-        LOG.info(_('Restore backup finished, backup %(backup_id)s restored'
-                   ' to volume %(volume_id)s.') %
+        backup = self.db.backup_update(context, backup_id,
+                                       {'status': 'available'})
+        LOG.info(_LI('Restore backup finished, backup %(backup_id)s restored'
+                     ' to volume %(volume_id)s.') %
                  {'backup_id': backup_id, 'volume_id': volume_id})
+        self._notify_about_backup_usage(context, backup, "restore.end")
 
     def delete_backup(self, context, backup_id):
         """Delete volume backup from configured backup service."""
@@ -383,20 +398,20 @@ class BackupManager(manager.SchedulerDependentManager):
                                            'fail_reason':
                                            unicode(err)})
 
-        LOG.info(_('Delete backup started, backup: %s.'), backup_id)
+        LOG.info(_LI('Delete backup started, backup: %s.'), backup_id)
         backup = self.db.backup_get(context, backup_id)
+        self._notify_about_backup_usage(context, backup, "delete.start")
         self.db.backup_update(context, backup_id, {'host': self.host})
 
         expected_status = 'deleting'
         actual_status = backup['status']
         if actual_status != expected_status:
             err = _('Delete_backup aborted, expected backup status '
-                    '%(expected_status)s but got %(actual_status)s.') % {
-                'expected_status': expected_status,
-                'actual_status': actual_status,
-            }
-            self.db.backup_update(context, backup_id, {'status': 'error',
-                                                       'fail_reason': err})
+                    '%(expected_status)s but got %(actual_status)s.') \
+                % {'expected_status': expected_status,
+                   'actual_status': actual_status}
+            self.db.backup_update(context, backup_id,
+                                  {'status': 'error', 'fail_reason': err})
             raise exception.InvalidBackup(reason=err)
 
         backup_service = self._map_service_to_driver(backup['service'])
@@ -406,10 +421,9 @@ class BackupManager(manager.SchedulerDependentManager):
                 err = _('Delete backup aborted, the backup service currently'
                         ' configured [%(configured_service)s] is not the'
                         ' backup service that was used to create this'
-                        ' backup [%(backup_service)s].') % {
-                    'configured_service': configured_service,
-                    'backup_service': backup_service,
-                }
+                        ' backup [%(backup_service)s].')\
+                    % {'configured_service': configured_service,
+                       'backup_service': backup_service}
                 self.db.backup_update(context, backup_id,
                                       {'status': 'error'})
                 raise exception.InvalidBackup(reason=err)
@@ -424,9 +438,39 @@ class BackupManager(manager.SchedulerDependentManager):
                                            'fail_reason':
                                            unicode(err)})
 
+        # Get reservations
+        try:
+            reserve_opts = {
+                'backups': -1,
+                'backup_gigabytes': -backup['size'],
+            }
+            reservations = QUOTAS.reserve(context,
+                                          project_id=backup['project_id'],
+                                          **reserve_opts)
+        except Exception:
+            reservations = None
+            LOG.exception(_LE("Failed to update usages deleting backup"))
+
         context = context.elevated()
         self.db.backup_destroy(context, backup_id)
-        LOG.info(_('Delete backup finished, backup %s deleted.'), backup_id)
+
+        # Commit the reservations
+        if reservations:
+            QUOTAS.commit(context, reservations,
+                          project_id=backup['project_id'])
+
+        LOG.info(_LI('Delete backup finished, backup %s deleted.'), backup_id)
+        self._notify_about_backup_usage(context, backup, "delete.end")
+
+    def _notify_about_backup_usage(self,
+                                   context,
+                                   backup,
+                                   event_suffix,
+                                   extra_usage_info=None):
+        volume_utils.notify_about_backup_usage(
+            context, backup, event_suffix,
+            extra_usage_info=extra_usage_info,
+            host=self.host)
 
     def export_record(self, context, backup_id):
         """Export all volume backup metadata details to allow clean import.
@@ -441,7 +485,7 @@ class BackupManager(manager.SchedulerDependentManager):
         :returns: 'backup_service' describing the needed driver.
         :raises: InvalidBackup
         """
-        LOG.info(_('Export record started, backup: %s.'), backup_id)
+        LOG.info(_LI('Export record started, backup: %s.'), backup_id)
 
         backup = self.db.backup_get(context, backup_id)
 
@@ -477,7 +521,7 @@ class BackupManager(manager.SchedulerDependentManager):
             msg = unicode(err)
             raise exception.InvalidBackup(reason=msg)
 
-        LOG.info(_('Export record finished, backup %s exported.'), backup_id)
+        LOG.info(_LI('Export record finished, backup %s exported.'), backup_id)
         return backup_record
 
     def import_record(self,
@@ -496,7 +540,7 @@ class BackupManager(manager.SchedulerDependentManager):
         :raises: InvalidBackup
         :raises: ServiceNotFound
         """
-        LOG.info(_('Import record started, backup_url: %s.'), backup_url)
+        LOG.info(_LI('Import record started, backup_url: %s.'), backup_url)
 
         # Can we import this backup?
         if (backup_service != self.driver_name):
@@ -560,12 +604,14 @@ class BackupManager(manager.SchedulerDependentManager):
 
             # Verify backup
             try:
-                backup_service.verify(backup_id)
-            except NotImplementedError:
-                LOG.warn(_('Backup service %(service)s does not support '
-                           'verify. Backup id %(id)s is not verified. '
-                           'Skipping verify.') % {'service': self.driver_name,
-                                                  'id': backup_id})
+                if isinstance(backup_service, driver.BackupDriverWithVerify):
+                    backup_service.verify(backup_id)
+                else:
+                    LOG.warn(_LW('Backup service %(service)s does not support '
+                                 'verify. Backup id %(id)s is not verified. '
+                                 'Skipping verify.') % {'service':
+                                                        self.driver_name,
+                                                        'id': backup_id})
             except exception.InvalidBackup as err:
                 with excutils.save_and_reraise_exception():
                     self.db.backup_update(context, backup_id,
@@ -573,5 +619,99 @@ class BackupManager(manager.SchedulerDependentManager):
                                            'fail_reason':
                                            unicode(err)})
 
-            LOG.info(_('Import record id %s metadata from driver '
-                       'finished.') % backup_id)
+            LOG.info(_LI('Import record id %s metadata from driver '
+                         'finished.') % backup_id)
+
+    def reset_status(self, context, backup_id, status):
+        """Reset volume backup status.
+
+        :param context: running context
+        :param backup_id: The backup id for reset status operation
+        :param status: The status to be set
+        :raises: InvalidBackup
+        :raises: BackupVerifyUnsupportedDriver
+        :raises: AttributeError
+        """
+        LOG.info(_LI('Reset backup status started, backup_id: '
+                     '%(backup_id)s, status: %(status)s.'),
+                 {'backup_id': backup_id,
+                  'status': status})
+        try:
+            # NOTE(flaper87): Verify the driver is enabled
+            # before going forward. The exception will be caught
+            # and the backup status updated. Fail early since there
+            # are no other status to change but backup's
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Backup driver has not been initialized"))
+
+        backup = self.db.backup_get(context, backup_id)
+        backup_service = self._map_service_to_driver(backup['service'])
+        LOG.info(_LI('Backup service: %s.'), backup_service)
+        if backup_service is not None:
+            configured_service = self.driver_name
+            if backup_service != configured_service:
+                err = _('Reset backup status aborted, the backup service'
+                        ' currently configured [%(configured_service)s] '
+                        'is not the backup service that was used to create'
+                        ' this backup [%(backup_service)s].') % \
+                    {'configured_service': configured_service,
+                     'backup_service': backup_service}
+                raise exception.InvalidBackup(reason=err)
+            # Verify backup
+            try:
+                # check whether the backup is ok or not
+                if status == 'available' and backup['status'] != 'restoring':
+                    # check whether we could verify the backup is ok or not
+                    if isinstance(backup_service,
+                                  driver.BackupDriverWithVerify):
+                        backup_service.verify(backup_id)
+                        self.db.backup_update(context, backup_id,
+                                              {'status': status})
+                    # driver does not support verify function
+                    else:
+                        msg = (_('Backup service %(configured_service)s '
+                                 'does not support verify. Backup id'
+                                 ' %(id)s is not verified. '
+                                 'Skipping verify.') %
+                               {'configured_service': self.driver_name,
+                                'id': backup_id})
+                        raise exception.BackupVerifyUnsupportedDriver(
+                            reason=msg)
+                # reset status to error or from restoring to available
+                else:
+                    if (status == 'error' or
+                        (status == 'available' and
+                            backup['status'] == 'restoring')):
+                        self.db.backup_update(context, backup_id,
+                                              {'status': status})
+            except exception.InvalidBackup:
+                with excutils.save_and_reraise_exception():
+                    msg = (_("Backup id %(id)s is not invalid. "
+                             "Skipping reset.") % {'id': backup_id})
+                    LOG.error(msg)
+            except exception.BackupVerifyUnsupportedDriver:
+                with excutils.save_and_reraise_exception():
+                    msg = (_('Backup service %(configured_service)s '
+                             'does not support verify. Backup id'
+                             ' %(id)s is not verified. '
+                             'Skipping verify.') %
+                           {'configured_service': self.driver_name,
+                            'id': backup_id})
+                    LOG.error(msg)
+            except AttributeError:
+                msg = (_('Backup service %(service)s does not support '
+                         'verify. Backup id %(id)s is not verified. '
+                         'Skipping reset.') %
+                       {'service': self.driver_name,
+                        'id': backup_id})
+                LOG.error(msg)
+                raise exception.BackupVerifyUnsupportedDriver(
+                    reason=msg)
+
+            # send notification to ceilometer
+            notifier_info = {'id': backup_id, 'update': {'status': status}}
+            notifier = rpc.get_notifier('backupStatusUpdate')
+            notifier.info(context, "backups" + '.reset_status.end',
+                          notifier_info)

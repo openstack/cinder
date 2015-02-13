@@ -13,23 +13,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import base64
-import httplib
 import json
+import math
 import random
 import socket
 import string
 import time
-import uuid
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import timeutils
+from oslo_utils import units
+import requests
+from six import wraps
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE, _LI, _LW
+from cinder.image import image_utils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
 from cinder.volume.drivers.san.san import SanISCSIDriver
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
@@ -52,6 +53,17 @@ sf_opts = [
                     'and will create a prefix using the cinder node hostsname '
                     '(previous default behavior).  The default is NO prefix.'),
 
+    cfg.StrOpt('sf_template_account_name',
+               default='openstack-vtemplate',
+               help='Account name on the SolidFire Cluster to use as owner of '
+                    'template/cache volumes (created if doesnt exist).'),
+
+    cfg.BoolOpt('sf_allow_template_caching',
+                default=True,
+                help='Create an internal cache of copy of images when '
+                     'a bootable volume is created to eliminate fetch from '
+                     'glance and qemu-conversion on subsequent calls.'),
+
     cfg.IntOpt('sf_api_port',
                default=443,
                help='SolidFire API port. Useful if the device api is behind '
@@ -62,16 +74,46 @@ CONF = cfg.CONF
 CONF.register_opts(sf_opts)
 
 
+def retry(exc_tuple, tries=5, delay=1, backoff=2):
+    def retry_dec(f):
+        @wraps(f)
+        def func_retry(*args, **kwargs):
+            _tries, _delay = tries, delay
+            while _tries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except exc_tuple:
+                    time.sleep(_delay)
+                    _tries -= 1
+                    _delay *= backoff
+                    LOG.debug('Retrying %s, (%s attempts remaining)...' %
+                              (args, _tries))
+            # NOTE(jdg): Don't log the params passed here
+            # some cmds like createAccount will have sensitive
+            # info in the params, grab only the second tuple
+            # which should be the Method
+            msg = (_('Retry count exceeded for command: %s') %
+                    (args[1],))
+            LOG.error(msg)
+            raise exception.SolidFireAPIException(message=msg)
+        return func_retry
+    return retry_dec
+
+
 class SolidFireDriver(SanISCSIDriver):
     """OpenStack driver to enable SolidFire cluster.
 
     Version history:
         1.0 - Initial driver
         1.1 - Refactor, clone support, qos by type and minor bug fixes
+        1.2 - Add xfr and retype support
+        1.2.1 - Add export/import support
+        1.2.2 - Catch VolumeNotFound on accept xfr
+        2.0.0 - Move from httplib to requests
 
     """
 
-    VERSION = '1.2.0'
+    VERSION = '2.0.0'
 
     sf_qos_dict = {'slow': {'minIOPS': 100,
                             'maxIOPS': 200,
@@ -89,121 +131,87 @@ class SolidFireDriver(SanISCSIDriver):
 
     sf_qos_keys = ['minIOPS', 'maxIOPS', 'burstIOPS']
     cluster_stats = {}
+    retry_exc_tuple = (exception.SolidFireRetryableException,
+                       requests.exceptions.ConnectionError)
+    retryable_errors = ['xDBVersionMismatch',
+                        'xMaxSnapshotsPerVolumeExceeded',
+                        'xMaxClonesPerVolumeExceeded',
+                        'xMaxSnapshotsPerNodeExceeded',
+                        'xMaxClonesPerNodeExceeded']
 
     def __init__(self, *args, **kwargs):
         super(SolidFireDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(sf_opts)
+        self._endpoint = self._build_endpoint_info()
         try:
             self._update_cluster_status()
         except exception.SolidFireAPIException:
             pass
+        if self.configuration.sf_allow_template_caching:
+            account = self.configuration.sf_template_account_name
+            self._create_template_account(account)
 
-    def _issue_api_request(self, method_name, params, version='1.0'):
-        """All API requests to SolidFire device go through this method.
-
-        Simple json-rpc web based API calls.
-        each call takes a set of parameters (dict)
-        and returns results in a dict as well.
-
-        """
-        max_simultaneous_clones = ['xMaxSnapshotsPerVolumeExceeded',
-                                   'xMaxClonesPerVolumeExceeded',
-                                   'xMaxSnapshotsPerNodeExceeded',
-                                   'xMaxClonesPerNodeExceeded']
-        host = self.configuration.san_ip
-        port = self.configuration.sf_api_port
-
-        cluster_admin = self.configuration.san_login
-        cluster_password = self.configuration.san_password
-
-        # NOTE(jdg): We're wrapping a retry loop for a know XDB issue
-        # Shows up in very high request rates (ie create 1000 volumes)
-        # we have to wrap the whole sequence because the request_id
-        # can't be re-used
-        retry_count = 5
-        while retry_count > 0:
-            request_id = hash(uuid.uuid4())  # just generate a random number
-            command = {'method': method_name,
-                       'id': request_id}
-
-            if params is not None:
-                command['params'] = params
-
-            payload = json.dumps(command, ensure_ascii=False)
-            payload.encode('utf-8')
-            header = {'Content-Type': 'application/json-rpc; charset=utf-8'}
-
-            if cluster_password is not None:
-                # base64.encodestring includes a newline character
-                # in the result, make sure we strip it off
-                auth_key = base64.encodestring('%s:%s' % (cluster_admin,
-                                               cluster_password))[:-1]
-                header['Authorization'] = 'Basic %s' % auth_key
-
-            LOG.debug("Payload for SolidFire API call: %s", payload)
-
-            api_endpoint = '/json-rpc/%s' % version
-            connection = httplib.HTTPSConnection(host, port)
-            try:
-                connection.request('POST', api_endpoint, payload, header)
-            except Exception as ex:
-                LOG.error(_('Failed to make httplib connection '
-                            'SolidFire Cluster: %s (verify san_ip '
-                            'settings)') % ex.message)
-                msg = _("Failed to make httplib connection: %s") % ex.message
-                raise exception.SolidFireAPIException(msg)
-            response = connection.getresponse()
-
-            data = {}
-            if response.status != 200:
-                connection.close()
-                LOG.error(_('Request to SolidFire cluster returned '
-                            'bad status: %(status)s / %(reason)s (check '
-                            'san_login/san_password settings)') %
-                          {'status': response.status,
-                           'reason': response.reason})
-                msg = (_("HTTP request failed, with status: %(status)s "
-                         "and reason: %(reason)s") %
-                       {'status': response.status, 'reason': response.reason})
-                raise exception.SolidFireAPIException(msg)
-
+    def _create_template_account(self, account_name):
+        chap_secret = self._generate_random_string(12)
+        params = {'username': account_name,
+                  'initiatorSecret': chap_secret,
+                  'targetSecret': chap_secret,
+                  'attributes': {}}
+        try:
+            self._issue_api_request('AddAccount', params)
+        except exception.SolidFireAPIException as ex:
+            if 'DuplicateUsername' in ex.msg:
+                pass
             else:
-                data = response.read()
-                try:
-                    data = json.loads(data)
-                except (TypeError, ValueError) as exc:
-                    connection.close()
-                    msg = _("Call to json.loads() raised "
-                            "an exception: %s") % exc
-                    raise exception.SfJsonEncodeFailure(msg)
+                raise
 
-                connection.close()
+    def _build_endpoint_info(self, **kwargs):
+        endpoint = {}
 
-            LOG.debug("Results of SolidFire API call: %s", data)
+        endpoint['mvip'] =\
+            kwargs.get('mvip', self.configuration.san_ip)
+        endpoint['login'] =\
+            kwargs.get('login', self.configuration.san_login)
+        endpoint['passwd'] =\
+            kwargs.get('passwd', self.configuration.san_password)
+        endpoint['port'] =\
+            kwargs.get('port', self.configuration.sf_api_port)
+        endpoint['url'] = 'https://%s:%s' % (endpoint['mvip'],
+                                             endpoint['port'])
 
-            if 'error' in data:
-                if data['error']['name'] in max_simultaneous_clones:
-                    LOG.warning(_('Clone operation '
-                                  'encountered: %s') % data['error']['name'])
-                    LOG.warning(_(
-                        'Waiting for outstanding operation '
-                        'before retrying snapshot: %s') % params['name'])
-                    time.sleep(5)
-                    # Don't decrement the retry count for this one
-                elif 'xDBVersionMismatch' in data['error']['name']:
-                    LOG.warning(_('Detected xDBVersionMismatch, '
-                                'retry %s of 5') % (5 - retry_count))
-                    time.sleep(1)
-                    retry_count -= 1
-                elif 'xUnknownAccount' in data['error']['name']:
-                    retry_count = 0
-                else:
-                    msg = _("API response: %s") % data
-                    raise exception.SolidFireAPIException(msg)
-            else:
-                retry_count = 0
+        # TODO(jdg): consider a call to GetAPI and setting version
+        return endpoint
 
-        return data
+    @retry(retry_exc_tuple, tries=6)
+    def _issue_api_request(self, method, params, version='1.0', endpoint=None):
+        if params is None:
+            params = {}
+
+        if endpoint is None:
+            endpoint = self._endpoint
+        payload = {'method': method, 'params': params}
+
+        url = '%s/json-rpc/%s/' % (endpoint['url'], version)
+        req = requests.post(url,
+                            data=json.dumps(payload),
+                            auth=(endpoint['login'], endpoint['passwd']),
+                            verify=False,
+                            timeout=30)
+
+        response = req.json()
+        req.close()
+        if (('error' in response) and
+                (response['error']['name'] in self.retryable_errors)):
+            msg = ('Retryable error (%s) encountered during '
+                   'SolidFire API call.' % response['error']['name'])
+            LOG.debug(msg)
+            raise exception.SolidFireRetryableException(message=msg)
+
+        if 'error' in response:
+            msg = _('API response: %s') % response
+            raise exception.SolidFireAPIException(msg)
+
+        return response
 
     def _get_volumes_by_sfaccount(self, account_id):
         """Get all volumes on cluster for specified account."""
@@ -216,10 +224,16 @@ class SolidFireDriver(SanISCSIDriver):
         """Get SolidFire account object by name."""
         sfaccount = None
         params = {'username': sf_account_name}
-        data = self._issue_api_request('GetAccountByName', params)
-        if 'result' in data and 'account' in data['result']:
-            LOG.debug('Found solidfire account: %s', sf_account_name)
-            sfaccount = data['result']['account']
+        try:
+            data = self._issue_api_request('GetAccountByName', params)
+            if 'result' in data and 'account' in data['result']:
+                LOG.debug('Found solidfire account: %s', sf_account_name)
+                sfaccount = data['result']['account']
+        except exception.SolidFireAPIException as ex:
+            if 'xUnknownAccount' in ex.msg:
+                return sfaccount
+            else:
+                raise
         return sfaccount
 
     def _get_sf_account_name(self, project_id):
@@ -311,8 +325,8 @@ class SolidFireDriver(SanISCSIDriver):
             iteration_count += 1
 
         if not found_volume:
-            LOG.error(_('Failed to retrieve volume SolidFire-'
-                        'ID: %s in get_by_account!') % sf_volume_id)
+            LOG.error(_LE('Failed to retrieve volume SolidFire-'
+                          'ID: %s in get_by_account!') % sf_volume_id)
             raise exception.VolumeNotFound(volume_id=sf_volume_id)
 
         model_update = {}
@@ -344,6 +358,7 @@ class SolidFireDriver(SanISCSIDriver):
         params = {'accountID': sfaccount['accountID']}
 
         sf_vol = self._get_sf_volume(src_uuid, params)
+
         if sf_vol is None:
             raise exception.VolumeNotFound(volume_id=src_uuid)
 
@@ -397,6 +412,15 @@ class SolidFireDriver(SanISCSIDriver):
             mesg = _('Failed to get model update from clone')
             raise exception.SolidFireAPIException(mesg)
 
+        # Increment the usage count, just for data collection
+        cloned_count = sf_vol['attributes'].get('cloned_count', 0)
+        cloned_count += 1
+        attributes = sf_vol['attributes']
+        attributes['cloned_count'] = cloned_count
+
+        params = {'volumeID': int(sf_vol['volumeID'])}
+        params['attributes'] = attributes
+        data = self._issue_api_request('ModifyVolume', params)
         return (data, sfaccount, model_update)
 
     def _do_volume_create(self, project_id, params):
@@ -421,8 +445,8 @@ class SolidFireDriver(SanISCSIDriver):
                    if i.key == 'sf-qos' and i.value in valid_presets]
         if len(presets) > 0:
             if len(presets) > 1:
-                LOG.warning(_('More than one valid preset was '
-                              'detected, using %s') % presets[0])
+                LOG.warning(_LW('More than one valid preset was '
+                                'detected, using %s') % presets[0])
             qos = self.sf_qos_dict[presets[0]]
         else:
             # look for explicit settings
@@ -454,6 +478,9 @@ class SolidFireDriver(SanISCSIDriver):
         return qos
 
     def _get_sf_volume(self, uuid, params):
+        # TODO(jdg): Going to fix this shortly to not iterate
+        # but instead use the cinder UUID and our internal
+        # mapping to get this more efficiently
         data = self._issue_api_request('ListVolumesForAccount', params)
         if 'result' not in data:
             msg = _("Failed to get SolidFire Volume: %s") % data
@@ -462,27 +489,187 @@ class SolidFireDriver(SanISCSIDriver):
         found_count = 0
         sf_volref = None
         for v in data['result']['volumes']:
-            if uuid in v['name']:
+            # NOTE(jdg): In the case of "name" we can't
+            # update that on manage/import, so we use
+            # the uuid attribute
+            meta = v.get('attributes')
+            alt_id = meta.get('uuid', 'empty')
+
+            if uuid in v['name'] or uuid in alt_id:
                 found_count += 1
                 sf_volref = v
-                LOG.debug("Mapped SolidFire volumeID %(sfid)s "
-                          "to cinder ID %(uuid)s." %
-                          {'sfid': v['volumeID'],
-                           'uuid': uuid})
+                LOG.debug("Mapped SolidFire volumeID %s "
+                          "to cinder ID %s.",
+                          v['volumeID'], uuid)
 
         if found_count == 0:
             # NOTE(jdg): Previously we would raise here, but there are cases
             # where this might be a cleanup for a failed delete.
             # Until we get better states we'll just log an error
-            LOG.error(_("Volume %s, not found on SF Cluster."), uuid)
+            LOG.error(_LE("Volume %s, not found on SF Cluster."), uuid)
 
         if found_count > 1:
-            LOG.error(_("Found %(count)s volumes mapped to id: %(uuid)s.") %
+            LOG.error(_LE("Found %(count)s volumes mapped to id: %(uuid)s.") %
                       {'count': found_count,
                        'uuid': uuid})
             raise exception.DuplicateSfVolumeNames(vol_name=uuid)
 
         return sf_volref
+
+    def _create_image_volume(self, context,
+                             image_meta, image_service,
+                             image_id):
+        # NOTE(jdg): It's callers responsibility to ensure that
+        # the optional properties.virtual_size is set on the image
+        # before we get here
+        virt_size = int(image_meta['properties'].get('virtual_size'))
+        min_sz_in_bytes =\
+            math.ceil(virt_size / float(units.Gi)) * float(units.Gi)
+        min_sz_in_gig = math.ceil(min_sz_in_bytes / float(units.Gi))
+
+        attributes = {}
+        attributes['image_info'] = {}
+        attributes['image_info']['image_updated_at'] =\
+            image_meta['updated_at'].isoformat()
+        attributes['image_info']['image_name'] =\
+            image_meta['name']
+        attributes['image_info']['image_created_at'] =\
+            image_meta['created_at'].isoformat()
+        attributes['image_info']['image_id'] = image_meta['id']
+
+        params = {'name': 'OpenStackIMG-%s' % image_id,
+                  'accountID': None,
+                  'sliceCount': 1,
+                  'totalSize': int(min_sz_in_bytes),
+                  'enable512e': self.configuration.sf_emulate_512,
+                  'attributes': attributes,
+                  'qos': {}}
+
+        account = self.configuration.sf_template_account_name
+        template_vol = self._do_volume_create(account, params)
+        tvol = {}
+        tvol['id'] = image_id
+        tvol['provider_location'] = template_vol['provider_location']
+        tvol['provider_auth'] = template_vol['provider_auth']
+
+        connector = 'na'
+        conn = self.initialize_connection(tvol, connector)
+        attach_info = super(SolidFireDriver, self)._connect_device(conn)
+
+        sfaccount = self._get_sfaccount(account)
+        params = {'accountID': sfaccount['accountID']}
+        properties = 'na'
+
+        try:
+            image_utils.fetch_to_raw(context,
+                                     image_service,
+                                     image_id,
+                                     attach_info['device']['path'],
+                                     self.configuration.volume_dd_blocksize,
+                                     size=min_sz_in_gig)
+        except Exception as exc:
+            params['volumeID'] = template_vol['volumeID']
+            LOG.error(_LE('Failed image conversion during cache creation: %s'),
+                      exc)
+            LOG.debug('Removing SolidFire Cache Volume (SF ID): %s',
+                      template_vol['volumeID'])
+
+            self._detach_volume(context, attach_info, tvol, properties)
+            self._issue_api_request('DeleteVolume', params)
+            return
+
+        self._detach_volume(context, attach_info, tvol, properties)
+        sf_vol = self._get_sf_volume(image_id, params)
+        LOG.debug('Successfully created SolidFire Image Template '
+                  'for image-id: %s', image_id)
+        return sf_vol
+
+    def _verify_image_volume(self, context, image_meta, image_service):
+        # This method just verifies that IF we have a cache volume that
+        # it's still up to date and current WRT the image in Glance
+        # ie an image-update hasn't occured since we grabbed it
+
+        # If it's out of date, just delete it and we'll create a new one
+        # Any other case we don't care and just return without doing anything
+
+        sfaccount = self._get_sfaccount(
+            self.configuration.sf_template_account_name)
+
+        params = {'accountID': sfaccount['accountID']}
+        sf_vol = self._get_sf_volume(image_meta['id'], params)
+        if sf_vol is None:
+            return
+
+        # Check updated_at field, delete copy and update if needed
+        if sf_vol['attributes']['image_info']['image_updated_at'] ==\
+                image_meta['updated_at'].isoformat():
+            return
+        else:
+            # Bummer, it's been updated, delete it
+            params = {'accountID': sfaccount['accountID']}
+            params = {'volumeID': sf_vol['volumeID']}
+            data = self._issue_api_request('DeleteVolume', params)
+            if 'result' not in data:
+                msg = _("Failed to delete SolidFire Image-Volume: %s") % data
+                raise exception.SolidFireAPIException(msg)
+
+            if not self._create_image_volume(context,
+                                             image_meta,
+                                             image_service,
+                                             image_meta['id']):
+                msg = _("Failed to create SolidFire Image-Volume")
+                raise exception.SolidFireAPIException(msg)
+
+    def clone_image(self, context,
+                    volume, image_location,
+                    image_meta, image_service):
+
+        # Check out pre-requisites:
+        # Is template caching enabled?
+        if not self.configuration.sf_allow_template_caching:
+            return None, False
+
+        # Is the image owned by this tenant or public?
+        if ((not image_meta.get('is_public', False)) and
+                (image_meta['owner'] != volume['project_id'])):
+                LOG.warning(_LW("Requested image is not "
+                                "accesible by current Tenant."))
+                return None, False
+
+        # Is virtual_size property set on the image?
+        if ((not image_meta.get('properties', None)) or
+                (not image_meta['properties'].get('virtual_size', None))):
+            LOG.info(_LI('Unable to create cache volume because image: %s '
+                         'does not include properties.virtual_size'),
+                     image_meta['id'])
+            return None, False
+
+        try:
+            self._verify_image_volume(context,
+                                      image_meta,
+                                      image_service)
+        except exception.SolidFireAPIException:
+            return None, False
+
+        account = self.configuration.sf_template_account_name
+        try:
+            (data, sfaccount, model) = self._do_clone_volume(image_meta['id'],
+                                                             account,
+                                                             volume)
+        except exception.VolumeNotFound:
+            if self._create_image_volume(context,
+                                         image_meta,
+                                         image_service,
+                                         image_meta['id']) is None:
+                # We failed, dump out
+                return None, False
+
+            # Ok, should be good to go now, try it again
+            (data, sfaccount, model) = self._do_clone_volume(image_meta['id'],
+                                                             account,
+                                                             volume)
+
+        return model, True
 
     def create_volume(self, volume):
         """Create volume on SolidFire device.
@@ -527,11 +714,20 @@ class SolidFireDriver(SanISCSIDriver):
                   'attributes': attributes,
                   'qos': qos}
 
+        # NOTE(jdg): Check if we're a migration tgt, if so
+        # use the old volume-id here for the SF Name
+        migration_status = volume.get('migration_status', None)
+        if migration_status and 'target' in migration_status:
+            k, v = migration_status.split(':')
+            params['name'] = 'UUID-%s' % v
+            params['attributes']['migration_uuid'] = volume['id']
+            params['attributes']['uuid'] = v
+
         return self._do_volume_create(volume['project_id'], params)
 
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of an existing volume."""
-        (data, sfaccount, model) = self._do_clone_volume(
+        (_data, _sfaccount, model) = self._do_clone_volume(
             src_vref['id'],
             src_vref['project_id'],
             volume)
@@ -550,10 +746,11 @@ class SolidFireDriver(SanISCSIDriver):
 
         sfaccount = self._get_sfaccount(volume['project_id'])
         if sfaccount is None:
-            LOG.error(_("Account for Volume ID %s was not found on "
-                        "the SolidFire Cluster!") % volume['id'])
-            LOG.error(_("This usually means the volume was never "
-                        "successfully created."))
+            LOG.error(_LE("Account for Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "delete_volume operation!") % volume['id'])
+            LOG.error(_LE("This usually means the volume was never "
+                          "successfully created."))
             return
 
         params = {'accountID': sfaccount['accountID']}
@@ -568,8 +765,9 @@ class SolidFireDriver(SanISCSIDriver):
                 msg = _("Failed to delete SolidFire Volume: %s") % data
                 raise exception.SolidFireAPIException(msg)
         else:
-            LOG.error(_("Volume ID %s was not found on "
-                        "the SolidFire Cluster!"), volume['id'])
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "delete_volume operation!"), volume['id'])
 
         LOG.debug("Leaving SolidFire delete_volume")
 
@@ -596,20 +794,20 @@ class SolidFireDriver(SanISCSIDriver):
         Note that for SolidFire Clusters currently there is no snapshot
         implementation.  Due to the way SF does cloning there's no performance
         hit or extra space used.  The only thing that's lacking from this is
-        the abilit to restore snaps.
+        the ability to restore snaps.
 
         After GA a true snapshot implementation will be available with
         restore at which time we'll rework this appropriately.
 
         """
-        (data, sfaccount, model) = self._do_clone_volume(
+        (_data, _sfaccount, _model) = self._do_clone_volume(
             snapshot['volume_id'],
             snapshot['project_id'],
             snapshot)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from the specified snapshot."""
-        (data, sfaccount, model) = self._do_clone_volume(
+        (_data, _sfaccount, model) = self._do_clone_volume(
             snapshot['id'],
             snapshot['project_id'],
             volume)
@@ -642,8 +840,9 @@ class SolidFireDriver(SanISCSIDriver):
         sf_vol = self._get_sf_volume(volume['id'], params)
 
         if sf_vol is None:
-            LOG.error(_("Volume ID %s was not found on "
-                        "the SolidFire Cluster!"), volume['id'])
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "extend_volume operation!"), volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         params = {
@@ -669,7 +868,7 @@ class SolidFireDriver(SanISCSIDriver):
         # of stats data, this is just one of the calls
         results = self._issue_api_request('GetClusterCapacity', params)
         if 'result' not in results:
-            LOG.error(_('Failed to get updated stats'))
+            LOG.error(_LE('Failed to get updated stats'))
 
         results = results['result']['clusterCapacity']
         free_capacity =\
@@ -706,8 +905,9 @@ class SolidFireDriver(SanISCSIDriver):
 
         sf_vol = self._get_sf_volume(volume['id'], params)
         if sf_vol is None:
-            LOG.error(_("Volume ID %s was not found on "
-                        "the SolidFire Cluster!"), volume['id'])
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "attach_volume operation!"), volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         attributes = sf_vol['attributes']
@@ -731,8 +931,9 @@ class SolidFireDriver(SanISCSIDriver):
 
         sf_vol = self._get_sf_volume(volume['id'], params)
         if sf_vol is None:
-            LOG.error(_("Volume ID %s was not found on "
-                        "the SolidFire Cluster!"), volume['id'])
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "detach_volume operation!"), volume['id'])
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         attributes = sf_vol['attributes']
@@ -754,7 +955,11 @@ class SolidFireDriver(SanISCSIDriver):
         sfaccount = self._get_sfaccount(volume['project_id'])
         params = {'accountID': sfaccount['accountID']}
         sf_vol = self._get_sf_volume(volume['id'], params)
-
+        if sf_vol is None:
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "accept_transfer operation!"), volume['id'])
+            raise exception.VolumeNotFound(volume_id=volume['id'])
         if new_project != volume['project_id']:
             # do a create_sfaccount here as this tenant
             # may not exist on the cluster yet
@@ -813,3 +1018,108 @@ class SolidFireDriver(SanISCSIDriver):
 
         self._issue_api_request('ModifyVolume', params)
         return True
+
+    def manage_existing(self, volume, external_ref):
+        """Manages an existing SolidFire Volume (import to Cinder).
+
+        Renames the Volume to match the expected name for the volume.
+        Also need to consider things like QoS, Emulation, account/tenant.
+        """
+
+        sfid = external_ref.get('source-id', None)
+        sfname = external_ref.get('name', None)
+        if sfid is None:
+            raise exception.SolidFireAPIException("Manage existing volume "
+                                                  "requires 'source-id'.")
+
+        # First get the volume on the SF cluster (MUST be active)
+        params = {'startVolumeID': sfid,
+                  'limit': 1}
+        data = self._issue_api_request('ListActiveVolumes', params)
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
+        sf_ref = data['result']['volumes'][0]
+
+        sfaccount = self._create_sfaccount(volume['project_id'])
+
+        attributes = {}
+        qos = {}
+        if (self.configuration.sf_allow_tenant_qos and
+                volume.get('volume_metadata')is not None):
+            qos = self._set_qos_presets(volume)
+
+        ctxt = context.get_admin_context()
+        type_id = volume.get('volume_type_id', None)
+        if type_id is not None:
+            qos = self._set_qos_by_volume_type(ctxt, type_id)
+
+        import_time = timeutils.strtime(volume['created_at'])
+        attributes = {'uuid': volume['id'],
+                      'is_clone': 'False',
+                      'os_imported_at': import_time,
+                      'old_name': sfname}
+        if qos:
+            for k, v in qos.items():
+                attributes[k] = str(v)
+
+        params = {'name': volume['name'],
+                  'volumeID': sf_ref['volumeID'],
+                  'accountID': sfaccount['accountID'],
+                  'enable512e': self.configuration.sf_emulate_512,
+                  'attributes': attributes,
+                  'qos': qos}
+
+        data = self._issue_api_request('ModifyVolume',
+                                       params, version='5.0')
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
+
+        return self._get_model_info(sfaccount, sf_ref['volumeID'])
+
+    def manage_existing_get_size(self, volume, external_ref):
+        """Return size of an existing LV for manage_existing.
+
+        existing_ref is a dictionary of the form:
+        {'name': <name of existing volume on SF Cluster>}
+        """
+
+        sfid = external_ref.get('source-id', None)
+        if sfid is None:
+            raise exception.SolidFireAPIException("Manage existing get size "
+                                                  "requires 'id'.")
+
+        params = {'startVolumeID': int(sfid),
+                  'limit': 1}
+        data = self._issue_api_request('ListActiveVolumes', params)
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)
+        sf_ref = data['result']['volumes'][0]
+        return int(sf_ref['totalSize']) / int(units.Gi)
+
+    def unmanage(self, volume):
+        """Mark SolidFire Volume as unmanaged (export from Cinder)."""
+
+        LOG.debug("Enter SolidFire unmanage...")
+        sfaccount = self._get_sfaccount(volume['project_id'])
+        if sfaccount is None:
+            LOG.error(_LE("Account for Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "unmanage operation!") % volume['id'])
+            raise exception.SolidFireAPIException("Failed to find account "
+                                                  "for volume.")
+
+        params = {'accountID': sfaccount['accountID']}
+        sf_vol = self._get_sf_volume(volume['id'], params)
+        if sf_vol is None:
+            raise exception.VolumeNotFound(volume_id=volume['id'])
+
+        export_time = timeutils.strtime()
+        attributes = sf_vol['attributes']
+        attributes['os_exported_at'] = export_time
+        params = {'volumeID': int(sf_vol['volumeID']),
+                  'attributes': attributes}
+
+        data = self._issue_api_request('ModifyVolume',
+                                       params, version='5.0')
+        if 'result' not in data:
+            raise exception.SolidFireAPIDataException(data=data)

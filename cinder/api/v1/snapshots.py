@@ -15,6 +15,7 @@
 
 """The volumes snapshots api."""
 
+from oslo_utils import strutils
 import webob
 from webob import exc
 
@@ -22,9 +23,8 @@ from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
 from cinder import utils
 from cinder import volume
 
@@ -106,17 +106,18 @@ class SnapshotsController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         try:
-            vol = self.volume_api.get_snapshot(context, id)
+            snapshot = self.volume_api.get_snapshot(context, id)
+            req.cache_db_snapshot(snapshot)
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
-        return {'snapshot': _translate_snapshot_detail_view(context, vol)}
+        return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
 
     def delete(self, req, id):
         """Delete a snapshot."""
         context = req.environ['cinder.context']
 
-        LOG.info(_("Delete snapshot with id: %s"), id, context=context)
+        LOG.info(_LI("Delete snapshot with id: %s"), id, context=context)
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
@@ -152,6 +153,7 @@ class SnapshotsController(wsgi.Controller):
         snapshots = self.volume_api.get_all_snapshots(context,
                                                       search_opts=search_opts)
         limited_list = common.limited(snapshots, req)
+        req.cache_db_snapshots(limited_list)
         res = [entity_maker(context, snapshot) for snapshot in limited_list]
         return {'snapshots': res}
 
@@ -200,6 +202,7 @@ class SnapshotsController(wsgi.Controller):
                 snapshot.get('display_name'),
                 snapshot.get('display_description'),
                 **kwargs)
+        req.cache_db_snapshot(new_snapshot)
 
         retval = _translate_snapshot_detail_view(context, new_snapshot)
 
@@ -235,6 +238,7 @@ class SnapshotsController(wsgi.Controller):
             raise exc.HTTPNotFound()
 
         snapshot.update(update_dict)
+        req.cache_db_snapshot(snapshot)
 
         return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
 

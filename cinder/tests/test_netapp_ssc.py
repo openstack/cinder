@@ -1,4 +1,3 @@
-
 # Copyright (c) 2012 NetApp, Inc.
 # All Rights Reserved.
 #
@@ -18,15 +17,15 @@
 import BaseHTTPServer
 import copy
 import httplib
+
 from lxml import etree
 from mox import IgnoreArg
-
 import six
 
 from cinder import exception
 from cinder import test
-from cinder.volume.drivers.netapp import api
-from cinder.volume.drivers.netapp import ssc_utils
+from cinder.volume.drivers.netapp.dataontap.client import api
+from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 
 
 class FakeHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -293,7 +292,7 @@ class FakeDirectCmodeHTTPConnection(object):
 
 
 def createNetAppVolume(**kwargs):
-    vol = ssc_utils.NetAppVolume(kwargs['name'], kwargs['vs'])
+    vol = ssc_cmode.NetAppVolume(kwargs['name'], kwargs['vs'])
     vol.state['vserver_root'] = kwargs.get('vs_root')
     vol.state['status'] = kwargs.get('status')
     vol.state['junction_active'] = kwargs.get('junc_active')
@@ -384,29 +383,29 @@ class SscUtilsTestCase(test.TestCase):
                               'rel_type': 'data_protection',
                               'mirr_state': 'broken'}]}
 
-        self.mox.StubOutWithMock(ssc_utils, 'query_cluster_vols_for_ssc')
-        self.mox.StubOutWithMock(ssc_utils, 'get_sis_vol_dict')
-        self.mox.StubOutWithMock(ssc_utils, 'get_snapmirror_vol_dict')
-        self.mox.StubOutWithMock(ssc_utils, 'query_aggr_options')
-        self.mox.StubOutWithMock(ssc_utils, 'query_aggr_storage_disk')
-        ssc_utils.query_cluster_vols_for_ssc(
+        self.mox.StubOutWithMock(ssc_cmode, 'query_cluster_vols_for_ssc')
+        self.mox.StubOutWithMock(ssc_cmode, 'get_sis_vol_dict')
+        self.mox.StubOutWithMock(ssc_cmode, 'get_snapmirror_vol_dict')
+        self.mox.StubOutWithMock(ssc_cmode, 'query_aggr_options')
+        self.mox.StubOutWithMock(ssc_cmode, 'query_aggr_storage_disk')
+        ssc_cmode.query_cluster_vols_for_ssc(
             na_server, vserver, None).AndReturn(test_vols)
-        ssc_utils.get_sis_vol_dict(na_server, vserver, None).AndReturn(sis)
-        ssc_utils.get_snapmirror_vol_dict(na_server, vserver, None).AndReturn(
+        ssc_cmode.get_sis_vol_dict(na_server, vserver, None).AndReturn(sis)
+        ssc_cmode.get_snapmirror_vol_dict(na_server, vserver, None).AndReturn(
             mirrored)
         raiddp = {'ha_policy': 'cfo', 'raid_type': 'raiddp'}
-        ssc_utils.query_aggr_options(
+        ssc_cmode.query_aggr_options(
             na_server, IgnoreArg()).AndReturn(raiddp)
-        ssc_utils.query_aggr_storage_disk(
+        ssc_cmode.query_aggr_storage_disk(
             na_server, IgnoreArg()).AndReturn('SSD')
         raid4 = {'ha_policy': 'cfo', 'raid_type': 'raid4'}
-        ssc_utils.query_aggr_options(
+        ssc_cmode.query_aggr_options(
             na_server, IgnoreArg()).AndReturn(raid4)
-        ssc_utils.query_aggr_storage_disk(
+        ssc_cmode.query_aggr_storage_disk(
             na_server, IgnoreArg()).AndReturn('SAS')
         self.mox.ReplayAll()
 
-        res_vols = ssc_utils.get_cluster_vols_with_ssc(
+        res_vols = ssc_cmode.get_cluster_vols_with_ssc(
             na_server, vserver, volume=None)
 
         self.mox.VerifyAll()
@@ -430,24 +429,24 @@ class SscUtilsTestCase(test.TestCase):
                               'rel_type': 'data_protection',
                               'mirr_state': 'snapmirrored'}]}
 
-        self.mox.StubOutWithMock(ssc_utils, 'query_cluster_vols_for_ssc')
-        self.mox.StubOutWithMock(ssc_utils, 'get_sis_vol_dict')
-        self.mox.StubOutWithMock(ssc_utils, 'get_snapmirror_vol_dict')
-        self.mox.StubOutWithMock(ssc_utils, 'query_aggr_options')
-        self.mox.StubOutWithMock(ssc_utils, 'query_aggr_storage_disk')
-        ssc_utils.query_cluster_vols_for_ssc(
+        self.mox.StubOutWithMock(ssc_cmode, 'query_cluster_vols_for_ssc')
+        self.mox.StubOutWithMock(ssc_cmode, 'get_sis_vol_dict')
+        self.mox.StubOutWithMock(ssc_cmode, 'get_snapmirror_vol_dict')
+        self.mox.StubOutWithMock(ssc_cmode, 'query_aggr_options')
+        self.mox.StubOutWithMock(ssc_cmode, 'query_aggr_storage_disk')
+        ssc_cmode.query_cluster_vols_for_ssc(
             na_server, vserver, 'vola').AndReturn(test_vols)
-        ssc_utils.get_sis_vol_dict(
+        ssc_cmode.get_sis_vol_dict(
             na_server, vserver, 'vola').AndReturn(sis)
-        ssc_utils.get_snapmirror_vol_dict(
+        ssc_cmode.get_snapmirror_vol_dict(
             na_server, vserver, 'vola').AndReturn(mirrored)
         raiddp = {'ha_policy': 'cfo', 'raid_type': 'raiddp'}
-        ssc_utils.query_aggr_options(
+        ssc_cmode.query_aggr_options(
             na_server, 'aggr1').AndReturn(raiddp)
-        ssc_utils.query_aggr_storage_disk(na_server, 'aggr1').AndReturn('SSD')
+        ssc_cmode.query_aggr_storage_disk(na_server, 'aggr1').AndReturn('SSD')
         self.mox.ReplayAll()
 
-        res_vols = ssc_utils.get_cluster_vols_with_ssc(
+        res_vols = ssc_cmode.get_cluster_vols_with_ssc(
             na_server, vserver, volume='vola')
 
         self.mox.VerifyAll()
@@ -460,12 +459,12 @@ class SscUtilsTestCase(test.TestCase):
         test_vols = set(
             [self.vol1, self.vol2, self.vol3, self.vol4, self.vol5])
 
-        self.mox.StubOutWithMock(ssc_utils, 'get_cluster_vols_with_ssc')
-        ssc_utils.get_cluster_vols_with_ssc(
+        self.mox.StubOutWithMock(ssc_cmode, 'get_cluster_vols_with_ssc')
+        ssc_cmode.get_cluster_vols_with_ssc(
             na_server, vserver).AndReturn(test_vols)
         self.mox.ReplayAll()
 
-        res_map = ssc_utils.get_cluster_ssc(na_server, vserver)
+        res_map = ssc_cmode.get_cluster_ssc(na_server, vserver)
 
         self.mox.VerifyAll()
         self.assertEqual(len(res_map['mirrored']), 1)
@@ -491,16 +490,16 @@ class SscUtilsTestCase(test.TestCase):
         for type in test_map.keys():
             # type
             extra_specs = {test_map[type][0]: 'true'}
-            res = ssc_utils.get_volumes_for_specs(ssc_map, extra_specs)
+            res = ssc_cmode.get_volumes_for_specs(ssc_map, extra_specs)
             self.assertEqual(len(res), len(ssc_map[type]))
             # opposite type
             extra_specs = {test_map[type][1]: 'true'}
-            res = ssc_utils.get_volumes_for_specs(ssc_map, extra_specs)
+            res = ssc_cmode.get_volumes_for_specs(ssc_map, extra_specs)
             self.assertEqual(len(res), len(ssc_map['all'] - ssc_map[type]))
             # both types
             extra_specs =\
                 {test_map[type][0]: 'true', test_map[type][1]: 'true'}
-            res = ssc_utils.get_volumes_for_specs(ssc_map, extra_specs)
+            res = ssc_cmode.get_volumes_for_specs(ssc_map, extra_specs)
             self.assertEqual(len(res), len(ssc_map['all']))
 
     def test_vols_for_optional_specs(self):
@@ -514,13 +513,13 @@ class SscUtilsTestCase(test.TestCase):
         extra_specs =\
             {'netapp_dedup': 'true',
              'netapp:raid_type': 'raid4', 'netapp:disk_type': 'SSD'}
-        res = ssc_utils.get_volumes_for_specs(ssc_map, extra_specs)
+        res = ssc_cmode.get_volumes_for_specs(ssc_map, extra_specs)
         self.assertEqual(len(res), 1)
 
     def test_query_cl_vols_for_ssc(self):
         na_server = api.NaServer('127.0.0.1')
         na_server.set_api_version(1, 15)
-        vols = ssc_utils.query_cluster_vols_for_ssc(na_server, 'Openstack')
+        vols = ssc_cmode.query_cluster_vols_for_ssc(na_server, 'Openstack')
         self.assertEqual(len(vols), 2)
         for vol in vols:
             if vol.id['name'] != 'iscsi' or vol.id['name'] != 'nfsvol':
@@ -530,7 +529,7 @@ class SscUtilsTestCase(test.TestCase):
 
     def test_query_aggr_options(self):
         na_server = api.NaServer('127.0.0.1')
-        aggr_attribs = ssc_utils.query_aggr_options(na_server, 'aggr0')
+        aggr_attribs = ssc_cmode.query_aggr_options(na_server, 'aggr0')
         if aggr_attribs:
             self.assertEqual(aggr_attribs['ha_policy'], 'cfo')
             self.assertEqual(aggr_attribs['raid_type'], 'raid_dp')
@@ -539,5 +538,5 @@ class SscUtilsTestCase(test.TestCase):
 
     def test_query_aggr_storage_disk(self):
         na_server = api.NaServer('127.0.0.1')
-        eff_disk_type = ssc_utils.query_aggr_storage_disk(na_server, 'aggr0')
+        eff_disk_type = ssc_cmode.query_aggr_storage_disk(na_server, 'aggr0')
         self.assertEqual(eff_disk_type, 'SATA')

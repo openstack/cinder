@@ -19,9 +19,10 @@
 Self test for Hitachi Unified Storage (HUS) platform.
 """
 
-import mox
 import os
 import tempfile
+
+import mox
 
 from cinder import test
 from cinder.volume import configuration as conf

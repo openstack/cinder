@@ -14,13 +14,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
+
+import mock
 import mox
+from oslo_utils import timeutils
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.solidfire import SolidFireDriver
@@ -47,14 +50,53 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.sf_emulate_512 = True
         self.configuration.sf_account_prefix = 'cinder'
         self.configuration.reserved_percentage = 25
+        self.configuration.iscsi_helper = None
+        self.configuration.sf_template_account_name = 'openstack-vtemplate'
+        self.configuration.sf_allow_template_caching = False
 
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
                        self.fake_issue_api_request)
+        self.stubs.Set(SolidFireDriver, '_build_endpoint_info',
+                       self.fake_build_endpoint_info)
 
         self.expected_qos_results = {'minIOPS': 1000,
                                      'maxIOPS': 10000,
                                      'burstIOPS': 20000}
+        self.mock_stats_data =\
+            {'result':
+                {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
+                                     'usedSpace': 1073741824,
+                                     'compressionPercent': 100,
+                                     'deDuplicationPercent': 100,
+                                     'thinProvisioningPercent': 100}}}
+        self.mock_volume = {'project_id': 'testprjid',
+                            'name': 'testvol',
+                            'size': 1,
+                            'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                            'volume_type_id': 'fast',
+                            'created_at': timeutils.utcnow()}
+        self.fake_image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                                'updated_at': datetime.datetime(2013, 9,
+                                                                28, 15,
+                                                                27, 36,
+                                                                325355),
+                                'is_public': True,
+                                'owner': 'testprjid'}
+        self.fake_image_service = 'null'
+
+    def fake_build_endpoint_info(obj, **kwargs):
+        endpoint = {}
+        endpoint['mvip'] = '1.1.1.1'
+        endpoint['login'] = 'admin'
+        endpoint['passwd'] = 'admin'
+        endpoint['port'] = '443'
+        endpoint['url'] = '{scheme}://{mvip}'.format(mvip='%s:%s' %
+                                                     (endpoint['mvip'],
+                                                      endpoint['port']),
+                                                     scheme='https')
+
+        return endpoint
 
     def fake_issue_api_request(obj, method, params, version='1.0'):
         if method is 'GetClusterCapacity' and version == '1.0':
@@ -130,10 +172,27 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'iqn': test_name}]}}
             return result
 
+        elif method is 'ListActiveVolumes':
+            test_name = "existing_volume"
+            result = {'result': {
+                'volumes': [{'volumeID': 5,
+                             'name': test_name,
+                             'accountID': 8,
+                             'sliceCount': 1,
+                             'totalSize': 1 * units.Gi,
+                             'enable512e': True,
+                             'access': "readWrite",
+                             'status': "active",
+                             'attributes': {},
+                             'qos': None,
+                             'iqn': test_name}]}}
+            return result
         else:
             LOG.error('Crap, unimplemented API call in Fake:%s' % method)
 
-    def fake_issue_api_request_fails(obj, method, params, version='1.0'):
+    def fake_issue_api_request_fails(obj, method,
+                                     params, version='1.0',
+                                     endpoint=None):
         return {'error': {'code': 000,
                           'name': 'DummyError',
                           'message': 'This is a fake error response'},
@@ -265,8 +324,8 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         sfv = SolidFireDriver(configuration=self.configuration)
         properties = sfv.initialize_connection(testvol, connector)
-        self.assertEqual(properties['data']['physical_block_size'], '4096')
-        self.assertEqual(properties['data']['logical_block_size'], '4096')
+        self.assertEqual('4096', properties['data']['physical_block_size'])
+        self.assertEqual('4096', properties['data']['logical_block_size'])
 
     def test_create_volume_with_qos(self):
         preset_qos = {}
@@ -496,6 +555,22 @@ class SolidFireVolumeTestCase(test.TestCase):
                                              'new_user', 'new_project'),
                          expected)
 
+    def test_accept_transfer_volume_not_found_raises(self):
+        sfv = SolidFireDriver(configuration=self.configuration)
+        self.stubs.Set(SolidFireDriver, '_issue_api_request',
+                       self.fake_issue_api_request)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'test_volume',
+                   'size': 1,
+                   'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                   'created_at': timeutils.utcnow()}
+        self.assertRaises(exception.VolumeNotFound,
+                          sfv.accept_transfer,
+                          self.ctxt,
+                          testvol,
+                          'new_user',
+                          'new_project')
+
     def test_retype(self):
         sfv = SolidFireDriver(configuration=self.configuration)
         self.stubs.Set(SolidFireDriver, '_issue_api_request',
@@ -572,3 +647,195 @@ class SolidFireVolumeTestCase(test.TestCase):
         sfv._update_cluster_status()
         self.assertEqual(sfv.cluster_stats['free_capacity_gb'], 99.0)
         self.assertEqual(sfv.cluster_stats['total_capacity_gb'], 100.0)
+
+    def test_manage_existing_volume(self):
+        external_ref = {'name': 'existing volume', 'source-id': 5}
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+        self.stubs.Set(SolidFireDriver, '_issue_api_request',
+                       self.fake_issue_api_request)
+        sfv = SolidFireDriver(configuration=self.configuration)
+        model_update = sfv.manage_existing(testvol, external_ref)
+        self.assertIsNotNone(model_update)
+        self.assertIsNone(model_update.get('provider_geometry', None))
+
+    def test_create_volume_for_migration(self):
+        def _fake_do_v_create(self, project_id, params):
+            return project_id, params
+
+        self.stubs.Set(SolidFireDriver, '_issue_api_request',
+                       self.fake_issue_api_request)
+        self.stubs.Set(SolidFireDriver, '_do_volume_create', _fake_do_v_create)
+
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'b830b3c0-d1f0-11e1-9b23-1900200c9a77',
+                   'volume_type_id': None,
+                   'created_at': timeutils.utcnow(),
+                   'migration_status': 'target:'
+                                       'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+
+        sfv = SolidFireDriver(configuration=self.configuration)
+        proj_id, sf_vol_object = sfv.create_volume(testvol)
+        self.assertEqual('a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                         sf_vol_object['attributes']['uuid'])
+        self.assertEqual('b830b3c0-d1f0-11e1-9b23-1900200c9a77',
+                         sf_vol_object['attributes']['migration_uuid'])
+        self.assertEqual('UUID-a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                         sf_vol_object['name'])
+
+    @mock.patch.object(SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(SolidFireDriver, '_get_sfaccount')
+    @mock.patch.object(SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(SolidFireDriver, '_create_image_volume')
+    def test_verify_image_volume_out_of_date(self,
+                                             _mock_create_image_volume,
+                                             _mock_get_sf_volume,
+                                             _mock_get_sfaccount,
+                                             _mock_issue_api_request):
+        fake_sf_vref = {
+            'status': 'active', 'volumeID': 1,
+            'attributes': {
+                'image_info':
+                    {'image_updated_at': '2014-12-17T00:16:23+00:00',
+                     'image_id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                     'image_name': 'fake-image',
+                     'image_created_at': '2014-12-17T00:16:23+00:00'}}}
+
+        stats_data =\
+            {'result':
+                {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
+                                     'usedSpace': 1073741824,
+                                     'compressionPercent': 100,
+                                     'deDuplicationPercent': 100,
+                                     'thinProvisioningPercent': 100}}}
+
+        _mock_issue_api_request.return_value = stats_data
+        _mock_get_sfaccount.return_value = {'username': 'openstack-vtemplate',
+                                            'accountID': 7777}
+        _mock_get_sf_volume.return_value = fake_sf_vref
+        _mock_create_image_volume.return_value = fake_sf_vref
+
+        image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                      'updated_at': datetime.datetime(2013, 9, 28,
+                                                      15, 27, 36,
+                                                      325355)}
+        image_service = 'null'
+
+        sfv = SolidFireDriver(configuration=self.configuration)
+        _mock_issue_api_request.return_value = {'result': 'ok'}
+        sfv._verify_image_volume(self.ctxt, image_meta, image_service)
+        self.assertTrue(_mock_create_image_volume.called)
+
+    @mock.patch.object(SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(SolidFireDriver, '_get_sfaccount')
+    @mock.patch.object(SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(SolidFireDriver, '_create_image_volume')
+    def test_verify_image_volume_ok(self,
+                                    _mock_create_image_volume,
+                                    _mock_get_sf_volume,
+                                    _mock_get_sfaccount,
+                                    _mock_issue_api_request):
+
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_get_sfaccount.return_value = {'username': 'openstack-vtemplate',
+                                            'accountID': 7777}
+        _mock_get_sf_volume.return_value =\
+            {'status': 'active', 'volumeID': 1,
+             'attributes': {
+                 'image_info':
+                     {'image_updated_at': '2013-09-28T15:27:36.325355',
+                      'image_id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                      'image_name': 'fake-image',
+                      'image_created_at': '2014-12-17T00:16:23+00:00'}}}
+        _mock_create_image_volume.return_value = None
+
+        image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                      'updated_at': datetime.datetime(2013, 9, 28,
+                                                      15, 27, 36,
+                                                      325355)}
+        image_service = 'null'
+
+        sfv = SolidFireDriver(configuration=self.configuration)
+        _mock_issue_api_request.return_value = {'result': 'ok'}
+
+        sfv._verify_image_volume(self.ctxt, image_meta, image_service)
+        self.assertFalse(_mock_create_image_volume.called)
+
+    @mock.patch.object(SolidFireDriver, '_issue_api_request')
+    def test_clone_image_not_configured(self, _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+
+        sfv = SolidFireDriver(configuration=self.configuration)
+        self.assertEqual((None, False),
+                         sfv.clone_image(self.ctxt,
+                                         self.mock_volume,
+                                         'fake',
+                                         self.fake_image_meta,
+                                         'fake'))
+
+    @mock.patch.object(SolidFireDriver, '_issue_api_request')
+    def test_clone_image_authorization(self, _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        self.configuration.sf_allow_template_caching = True
+        sfv = SolidFireDriver(configuration=self.configuration)
+
+        # Make sure if it's NOT public and we're NOT the owner it
+        # doesn't try and cache
+        _fake_image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                            'updated_at': datetime.datetime(2013, 9,
+                                                            28, 15,
+                                                            27, 36,
+                                                            325355),
+                            'properties': {'virtual_size': 1},
+                            'is_public': False,
+                            'owner': 'wrong-owner'}
+        self.assertEqual((None, False),
+                         sfv.clone_image(self.ctxt,
+                                         self.mock_volume,
+                                         'fake',
+                                         _fake_image_meta,
+                                         'fake'))
+
+        # And is_public False, but the correct owner does work
+        # expect raise AccountNotFound as that's the next call after
+        # auth checks
+        _fake_image_meta['owner'] = 'testprjid'
+        self.assertRaises(exception.SolidFireAccountNotFound,
+                          sfv.clone_image, self.ctxt,
+                          self.mock_volume, 'fake',
+                          _fake_image_meta, 'fake')
+
+        # And is_public True, even if not the correct owner
+        _fake_image_meta['is_public'] = True
+        _fake_image_meta['owner'] = 'wrong-owner'
+        self.assertRaises(exception.SolidFireAccountNotFound,
+                          sfv.clone_image, self.ctxt,
+                          self.mock_volume, 'fake',
+                          _fake_image_meta, 'fake')
+
+    @mock.patch.object(SolidFireDriver, '_issue_api_request')
+    def test_clone_image_virt_size_not_set(self, _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        self.configuration.sf_allow_template_caching = True
+        sfv = SolidFireDriver(configuration=self.configuration)
+
+        # Don't run clone_image if virtual_size property not on image
+        _fake_image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
+                            'updated_at': datetime.datetime(2013, 9,
+                                                            28, 15,
+                                                            27, 36,
+                                                            325355),
+                            'is_public': True,
+                            'owner': 'testprjid'}
+
+        self.assertEqual((None, False),
+                         sfv.clone_image(self.ctxt,
+                                         self.mock_volume,
+                                         'fake',
+                                         _fake_image_meta,
+                                         'fake'))

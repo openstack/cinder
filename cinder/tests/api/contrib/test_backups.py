@@ -18,9 +18,10 @@ Tests for Backup code.
 """
 
 import json
-import mock
 from xml.dom import minidom
 
+import mock
+from oslo_utils import timeutils
 import webob
 
 # needed for stubs to work
@@ -28,9 +29,8 @@ import cinder.backup
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests import utils
@@ -58,13 +58,13 @@ class BackupsAPITestCase(test.TestCase):
                        display_description='this is a test backup',
                        container='volumebackups',
                        status='creating',
-                       size=0, object_count=0):
+                       size=0, object_count=0, host='testhost'):
         """Create a backup object."""
         backup = {}
         backup['volume_id'] = volume_id
         backup['user_id'] = 'fake'
         backup['project_id'] = 'fake'
-        backup['host'] = 'testhost'
+        backup['host'] = host
         backup['availability_zone'] = 'az1'
         backup['display_name'] = display_name
         backup['display_description'] = display_description
@@ -908,7 +908,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res_dict['overLimit']['code'], 413)
         self.assertEqual(res_dict['overLimit']['message'],
                          'Requested volume or snapshot exceeds allowed '
-                         'Gigabytes quota. Requested 2G, quota is 3G and '
+                         'gigabytes quota. Requested 2G, quota is 3G and '
                          '2G has been consumed.')
 
     @mock.patch('cinder.backup.API.restore')
@@ -980,6 +980,33 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 202)
         self.assertEqual(res_dict['restore']['backup_id'], backup_id)
         self.assertEqual(res_dict['restore']['volume_id'], volume_id)
+
+        db.volume_destroy(context.get_admin_context(), volume_id)
+        db.backup_destroy(context.get_admin_context(), backup_id)
+
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.restore_backup')
+    def test_restore_backup_with_different_host(self, mock_restore_backup):
+        backup_id = self._create_backup(status='available', size=10,
+                                        host='HostA@BackendB#PoolA')
+        volume_id = utils.create_volume(self.context, size=10,
+                                        host='HostB@BackendB#PoolB')['id']
+
+        body = {"restore": {"volume_id": volume_id, }}
+        req = webob.Request.blank('/v2/fake/backups/%s/restore' %
+                                  backup_id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(res.status_int, 202)
+        self.assertEqual(res_dict['restore']['backup_id'], backup_id)
+        self.assertEqual(res_dict['restore']['volume_id'], volume_id)
+        mock_restore_backup.assert_called_once_with(mock.ANY,
+                                                    'HostB',
+                                                    backup_id,
+                                                    volume_id)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
         db.backup_destroy(context.get_admin_context(), backup_id)

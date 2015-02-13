@@ -15,10 +15,10 @@
 
 
 from lxml import etree
+from oslo_serialization import jsonutils
 import webob
 
 from cinder.api.contrib import extended_snapshot_attributes
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder import volume
@@ -78,7 +78,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         self.assertEqual(snapshot.get('%sprogress' % self.prefix), progress)
 
     def test_show(self):
-        url = '/v2/fake/snapshots/%s' % UUID2
+        url = '/v2/fake/snapshots/%s' % UUID1
         res = self._make_request(url)
 
         self.assertEqual(res.status_int, 200)
@@ -91,7 +91,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         res = self._make_request(url)
 
         self.assertEqual(res.status_int, 200)
-        for i, snapshot in enumerate(self._get_snapshots(res.body)):
+        for snapshot in self._get_snapshots(res.body):
             self.assertSnapshotAttributes(snapshot,
                                           project_id='fake',
                                           progress='0%')

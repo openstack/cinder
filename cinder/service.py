@@ -22,17 +22,21 @@ import inspect
 import os
 import random
 
-from oslo.config import cfg
 from oslo import messaging
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_db import exception as db_exc
+from oslo_utils import importutils
+import osprofiler.notifier
+from osprofiler import profiler
+import osprofiler.web
 
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import importutils
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import processutils
 from cinder.openstack.common import service
 from cinder import rpc
 from cinder import version
@@ -64,8 +68,35 @@ service_opts = [
                help='Number of workers for OpenStack Volume API service. '
                     'The default is equal to the number of CPUs available.'), ]
 
+profiler_opts = [
+    cfg.BoolOpt("profiler_enabled", default=False,
+                help=_('If False fully disable profiling feature.')),
+    cfg.BoolOpt("trace_sqlalchemy", default=False,
+                help=_("If False doesn't trace SQL requests."))
+]
+
 CONF = cfg.CONF
 CONF.register_opts(service_opts)
+CONF.register_opts(profiler_opts, group="profiler")
+
+
+def setup_profiler(binary, host):
+    if CONF.profiler.profiler_enabled:
+        _notifier = osprofiler.notifier.create(
+            "Messaging", messaging, context.get_admin_context().to_dict(),
+            rpc.TRANSPORT, "cinder", binary, host)
+        osprofiler.notifier.set(_notifier)
+        LOG.warning("OSProfiler is enabled.\nIt means that person who knows "
+                    "any of hmac_keys that are specified in "
+                    "/etc/cinder/api-paste.ini can trace his requests. \n"
+                    "In real life only operator can read this file so there "
+                    "is no security issue. Note that even if person can "
+                    "trigger profiler, only admin user can retrieve trace "
+                    "information.\n"
+                    "To disable OSprofiler set in cinder.conf:\n"
+                    "[profiler]\nenabled=false")
+    else:
+        osprofiler.web.disable()
 
 
 class Service(service.Service):
@@ -89,6 +120,8 @@ class Service(service.Service):
         self.topic = topic
         self.manager_class_name = manager
         manager_class = importutils.import_class(self.manager_class_name)
+        manager_class = profiler.trace_cls("rpc")(manager_class)
+
         self.manager = manager_class(host=self.host,
                                      service_name=service_name,
                                      *args, **kwargs)
@@ -98,6 +131,8 @@ class Service(service.Service):
         self.basic_config_check()
         self.saved_args, self.saved_kwargs = args, kwargs
         self.timers = []
+
+        setup_profiler(binary, host)
 
     def start(self):
         version_string = version.version_string()
@@ -270,8 +305,7 @@ class Service(service.Service):
                 self.model_disconnected = False
                 LOG.error(_('Recovered model server connection!'))
 
-        # TODO(vish): this should probably only catch connection errors
-        except Exception:  # pylint: disable=W0702
+        except db_exc.DBConnectionError:
             if not getattr(self, 'model_disconnected', False):
                 self.model_disconnected = True
                 LOG.exception(_('model server went away'))
@@ -294,14 +328,17 @@ class WSGIService(object):
         self.app = self.loader.load_app(name)
         self.host = getattr(CONF, '%s_listen' % name, "0.0.0.0")
         self.port = getattr(CONF, '%s_listen_port' % name, 0)
-        self.workers = getattr(CONF, '%s_workers' % name,
-                               processutils.get_worker_count())
-        if self.workers < 1:
-            LOG.warn(_("Value of config option %(name)s_workers must be "
-                       "integer greater than 1.  Input value ignored.") %
-                     {'name': name})
-            # Reset workers to default
-            self.workers = processutils.get_worker_count()
+        self.workers = (getattr(CONF, '%s_workers' % name, None) or
+                        processutils.get_worker_count())
+        if self.workers and self.workers < 1:
+            worker_name = '%s_workers' % name
+            msg = (_("%(worker_name)s value of %(workers)d is invalid, "
+                     "must be greater than 0.") %
+                   {'worker_name': worker_name,
+                    'workers': self.workers})
+            raise exception.InvalidInput(msg)
+        setup_profiler(name, self.host)
+
         self.server = wsgi.Server(name,
                                   self.app,
                                   host=self.host,

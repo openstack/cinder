@@ -15,13 +15,14 @@
 #
 """Fake HP client for testing 3PAR without installing the client."""
 
-import mock
 import sys
+
+import mock
 
 from cinder.tests import fake_hp_client_exceptions as hpexceptions
 
 hp3par = mock.Mock()
-hp3par.version = "3.0.0"
+hp3par.version = "3.1.2"
 hp3par.exceptions = hpexceptions
 
 sys.modules['hp3parclient'] = hp3par

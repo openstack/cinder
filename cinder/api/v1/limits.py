@@ -24,15 +24,15 @@ import math
 import re
 import time
 
+from oslo_serialization import jsonutils
+from oslo_utils import importutils
 import webob.dec
 import webob.exc
 
 from cinder.api.openstack import wsgi
 from cinder.api.views import limits as limits_views
 from cinder.api import xmlutil
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import importutils
-from cinder.openstack.common import jsonutils
+from cinder.i18n import _
 from cinder import quota
 from cinder import wsgi as base_wsgi
 

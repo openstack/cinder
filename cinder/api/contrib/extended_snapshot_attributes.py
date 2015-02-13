@@ -15,15 +15,10 @@
 """The Extended Snapshot Attributes API extension."""
 
 
-from webob import exc
-
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
-from cinder import exception
-from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
-from cinder import volume
 
 
 LOG = logging.getLogger(__name__)
@@ -33,20 +28,11 @@ authorize = extensions.soft_extension_authorizer(
 
 
 class ExtendedSnapshotAttributesController(wsgi.Controller):
-    def __init__(self, *args, **kwargs):
-        super(ExtendedSnapshotAttributesController, self).__init__(*args,
-                                                                   **kwargs)
-        self.volume_api = volume.API()
-
-    def _get_snapshots(self, context):
-        snapshots = self.volume_api.get_all_snapshots(context)
-        rval = dict((snapshot['id'], snapshot) for snapshot in snapshots)
-        return rval
-
-    def _extend_snapshot(self, snapshot, data):
+    def _extend_snapshot(self, req, resp_snap):
+        db_snap = req.get_db_snapshot(resp_snap['id'])
         for attr in ['project_id', 'progress']:
             key = "%s:%s" % (Extended_snapshot_attributes.alias, attr)
-            snapshot[key] = data[attr]
+            resp_snap[key] = db_snap[attr]
 
     @wsgi.extends
     def show(self, req, resp_obj, id):
@@ -54,15 +40,8 @@ class ExtendedSnapshotAttributesController(wsgi.Controller):
         if authorize(context):
             # Attach our slave template to the response object
             resp_obj.attach(xml=ExtendedSnapshotAttributeTemplate())
-
-            try:
-                snapshot = self.volume_api.get_snapshot(context, id)
-            except exception.NotFound:
-                explanation = _("Snapshot not found.")
-                raise exc.HTTPNotFound(explanation=explanation)
-
-            self._extend_snapshot(snapshot=resp_obj.obj['snapshot'],
-                                  data=snapshot)
+            snapshot = resp_obj.obj['snapshot']
+            self._extend_snapshot(req, snapshot)
 
     @wsgi.extends
     def detail(self, req, resp_obj):
@@ -70,18 +49,8 @@ class ExtendedSnapshotAttributesController(wsgi.Controller):
         if authorize(context):
             # Attach our slave template to the response object
             resp_obj.attach(xml=ExtendedSnapshotAttributesTemplate())
-
-            snapshots = list(resp_obj.obj.get('snapshots', []))
-            db_snapshots = self._get_snapshots(context)
-
-            for snapshot_object in snapshots:
-                try:
-                    snapshot_data = db_snapshots[snapshot_object['id']]
-                except KeyError:
-                    continue
-
-                self._extend_snapshot(snapshot=snapshot_object,
-                                      data=snapshot_data)
+            for snapshot in list(resp_obj.obj['snapshots']):
+                self._extend_snapshot(req, snapshot)
 
 
 class Extended_snapshot_attributes(extensions.ExtensionDescriptor):

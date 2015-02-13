@@ -15,19 +15,19 @@
 
 """The hosts admin extension."""
 
-
-from oslo.config import cfg
-import webob.exc
 from xml.parsers import expat
+
+from oslo_config import cfg
+from oslo_utils import timeutils
+import webob.exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume import api as volume_api
 
@@ -107,7 +107,7 @@ def _list_hosts(req, service=None):
     hosts = []
     for host in services:
         delta = curr_time - (host['updated_at'] or host['created_at'])
-        alive = abs(utils.total_seconds(delta)) <= CONF.service_down_time
+        alive = abs(delta.total_seconds()) <= CONF.service_down_time
         status = (alive and "available") or "unavailable"
         active = 'enabled'
         if host['disabled']:
@@ -178,7 +178,7 @@ class HostController(wsgi.Controller):
         """Sets the specified host's ability to accept new volumes."""
         context = req.environ['cinder.context']
         state = "enabled" if enabled else "disabled"
-        LOG.info(_("Setting host %(host)s to %(state)s."),
+        LOG.info(_LI("Setting host %(host)s to %(state)s."),
                  {'host': host, 'state': state})
         result = self.api.set_host_enabled(context,
                                            host=host,

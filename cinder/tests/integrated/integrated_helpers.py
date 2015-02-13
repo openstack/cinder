@@ -21,6 +21,8 @@ import random
 import string
 import uuid
 
+import fixtures
+
 from cinder.openstack.common import log as logging
 from cinder import service
 from cinder import test  # For the flags
@@ -62,6 +64,9 @@ class _IntegratedTestBase(test.TestCase):
         self.flags(**f)
         self.flags(verbose=True)
 
+        for var in ('http_proxy', 'HTTP_PROXY'):
+            self.useFixture(fixtures.EnvironmentVariable(var))
+
         # set up services
         self.volume = self.start_service('volume')
         self.scheduler = self.start_service('scheduler')
@@ -75,7 +80,7 @@ class _IntegratedTestBase(test.TestCase):
         self.osapi.start()
         # FIXME(ja): this is not the auth url - this is the service url
         # FIXME(ja): this needs fixed in nova as well
-        self.auth_url = 'http://%s:%s/v1' % (self.osapi.host, self.osapi.port)
+        self.auth_url = 'http://%s:%s/v2' % (self.osapi.host, self.osapi.port)
         LOG.warn(self.auth_url)
 
     def _get_flags(self):

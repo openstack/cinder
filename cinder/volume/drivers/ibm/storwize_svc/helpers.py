@@ -16,26 +16,41 @@
 
 import random
 import re
-import six
+import time
 import unicodedata
 
+
 from eventlet import greenthread
+from oslo_utils import excutils
+from oslo_utils import strutils
+import six
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import strutils
 from cinder.volume.drivers.ibm.storwize_svc import ssh as storwize_ssh
+from cinder.volume import qos_specs
 from cinder.volume import utils
 from cinder.volume import volume_types
 
+INTERVAL_1_SEC = 1
+DEFAULT_TIMEOUT = 15
 LOG = logging.getLogger(__name__)
 
 
 class StorwizeHelpers(object):
+
+    # All the supported QoS key are saved in this dict. When a new
+    # key is going to add, three values MUST be set:
+    # 'default': to indicate the value, when the parameter is disabled.
+    # 'param': to indicate the corresponding parameter in the command.
+    # 'type': to indicate the type of this value.
+    svc_qos_keys = {'IOThrottling': {'default': '0',
+                                     'param': 'rate',
+                                     'type': int}}
+
     def __init__(self, run_ssh):
         self.ssh = storwize_ssh.StorwizeSSH(run_ssh)
         self.check_fcmapping_interval = 3
@@ -141,7 +156,7 @@ class StorwizeHelpers(object):
                 if 'unconfigured' != s:
                     wwpns.add(i)
             node['WWPN'] = list(wwpns)
-            LOG.info(_('WWPN on node %(node)s: %(wwpn)s')
+            LOG.info(_LI('WWPN on node %(node)s: %(wwpn)s')
                      % {'node': node['id'], 'wwpn': node['WWPN']})
 
     def add_chap_secret_to_host(self, host_name):
@@ -330,15 +345,15 @@ class StorwizeHelpers(object):
         # Check if the mapping exists
         resp = self.ssh.lsvdiskhostmap(volume_name)
         if not len(resp):
-            LOG.warning(_('unmap_vol_from_host: No mapping of volume '
-                          '%(vol_name)s to any host found.') %
+            LOG.warning(_LW('unmap_vol_from_host: No mapping of volume '
+                            '%(vol_name)s to any host found.') %
                         {'vol_name': volume_name})
             return
         if host_name is None:
             if len(resp) > 1:
-                LOG.warning(_('unmap_vol_from_host: Multiple mappings of '
-                              'volume %(vol_name)s found, no host '
-                              'specified.') % {'vol_name': volume_name})
+                LOG.warning(_LW('unmap_vol_from_host: Multiple mappings of '
+                                'volume %(vol_name)s found, no host '
+                                'specified.') % {'vol_name': volume_name})
                 return
             else:
                 host_name = resp[0]['host_name']
@@ -348,8 +363,8 @@ class StorwizeHelpers(object):
                 if h == host_name:
                     found = True
             if not found:
-                LOG.warning(_('unmap_vol_from_host: No mapping of volume '
-                              '%(vol_name)s to host %(host)s found.') %
+                LOG.warning(_LW('unmap_vol_from_host: No mapping of volume '
+                                '%(vol_name)s to host %(host)s found.') %
                             {'vol_name': volume_name, 'host': host_name})
 
         # We now know that the mapping exists
@@ -373,6 +388,7 @@ class StorwizeHelpers(object):
         elif protocol.lower() == 'iscsi':
             protocol = 'iSCSI'
 
+        cluster_partner = config.storwize_svc_stretched_cluster_partner
         opt = {'rsize': config.storwize_svc_vol_rsize,
                'warning': config.storwize_svc_vol_warning,
                'autoexpand': config.storwize_svc_vol_autoexpand,
@@ -381,7 +397,10 @@ class StorwizeHelpers(object):
                'easytier': config.storwize_svc_vol_easytier,
                'protocol': protocol,
                'multipath': config.storwize_svc_multipath_enabled,
-               'iogrp': config.storwize_svc_vol_iogrp}
+               'iogrp': config.storwize_svc_vol_iogrp,
+               'qos': None,
+               'stretched_cluster': cluster_partner,
+               'replication': False}
         return opt
 
     @staticmethod
@@ -434,54 +453,154 @@ class StorwizeHelpers(object):
                 % {'iogrp': opts['iogrp'],
                    'avail': avail_grps})
 
-    def get_vdisk_params(self, config, state, type_id, volume_type=None):
+    def _get_opts_from_specs(self, opts, specs):
+        qos = {}
+        for k, value in specs.iteritems():
+            # Get the scope, if using scope format
+            key_split = k.split(':')
+            if len(key_split) == 1:
+                scope = None
+                key = key_split[0]
+            else:
+                scope = key_split[0]
+                key = key_split[1]
+
+            # We generally do not look at capabilities in the driver, but
+            # protocol is a special case where the user asks for a given
+            # protocol and we want both the scheduler and the driver to act
+            # on the value.
+            if ((not scope or scope == 'capabilities') and
+                    key == 'storage_protocol'):
+                scope = None
+                key = 'protocol'
+                words = value.split()
+                if not (words and len(words) == 2 and words[0] == '<in>'):
+                    LOG.error(_LE('Protocol must be specified as '
+                                  '\'<in> iSCSI\' or \'<in> FC\'.'))
+                del words[0]
+                value = words[0]
+
+            # We generally do not look at capabilities in the driver, but
+            # replication is a special case where the user asks for
+            # a volume to be replicated, and we want both the scheduler and
+            # the driver to act on the value.
+            if ((not scope or scope == 'capabilities') and
+               key == 'replication'):
+                scope = None
+                key = 'replication'
+                words = value.split()
+                if not (words and len(words) == 2 and words[0] == '<is>'):
+                    LOG.error(_LE('Replication must be specified as '
+                                  '\'<is> True\' or \'<is> False\'.'))
+                del words[0]
+                value = words[0]
+
+            # Add the QoS.
+            if scope and scope == 'qos':
+                if key in self.svc_qos_keys.keys():
+                    try:
+                        type_fn = self.svc_qos_keys[key]['type']
+                        value = type_fn(value)
+                        qos[key] = value
+                    except ValueError:
+                        continue
+
+            # Any keys that the driver should look at should have the
+            # 'drivers' scope.
+            if scope and scope != 'drivers':
+                continue
+            if key in opts:
+                this_type = type(opts[key]).__name__
+                if this_type == 'int':
+                    value = int(value)
+                elif this_type == 'bool':
+                    value = strutils.bool_from_string(value)
+                opts[key] = value
+        if len(qos) != 0:
+            opts['qos'] = qos
+        return opts
+
+    def _get_qos_from_volume_metadata(self, volume_metadata):
+        """Return the QoS information from the volume metadata."""
+        qos = {}
+        for i in volume_metadata:
+            k = i.get('key', None)
+            value = i.get('value', None)
+            key_split = k.split(':')
+            if len(key_split) == 1:
+                scope = None
+                key = key_split[0]
+            else:
+                scope = key_split[0]
+                key = key_split[1]
+            # Add the QoS.
+            if scope and scope == 'qos':
+                if key in self.svc_qos_keys.keys():
+                    try:
+                        type_fn = self.svc_qos_keys[key]['type']
+                        value = type_fn(value)
+                        qos[key] = value
+                    except ValueError:
+                        continue
+        return qos
+
+    def _wait_for_a_condition(self, testmethod, timeout=None,
+                              interval=INTERVAL_1_SEC):
+        start_time = time.time()
+        if timeout is None:
+            timeout = DEFAULT_TIMEOUT
+
+        def _inner():
+            try:
+                testValue = testmethod()
+            except Exception as ex:
+                testValue = False
+                LOG.debug('Helper.'
+                          '_wait_for_condition: %(method_name)s '
+                          'execution failed for %(exception)s',
+                          {'method_name': testmethod.__name__,
+                           'exception': ex.message})
+            if testValue:
+                raise loopingcall.LoopingCallDone()
+
+            if int(time.time()) - start_time > timeout:
+                msg = (_('CommandLineHelper._wait_for_condition: %s timeout')
+                       % testmethod.__name__)
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        timer = loopingcall.FixedIntervalLoopingCall(_inner)
+        timer.start(interval=interval).wait()
+
+    def get_vdisk_params(self, config, state, type_id, volume_type=None,
+                         volume_metadata=None):
         """Return the parameters for creating the vdisk.
 
         Takes volume type and defaults from config options into account.
         """
         opts = self.build_default_opts(config)
+        ctxt = context.get_admin_context()
         if volume_type is None and type_id is not None:
-            ctxt = context.get_admin_context()
             volume_type = volume_types.get_volume_type(ctxt, type_id)
         if volume_type:
+            qos_specs_id = volume_type.get('qos_specs_id')
             specs = dict(volume_type).get('extra_specs')
-            for k, value in specs.iteritems():
-                # Get the scope, if using scope format
-                key_split = k.split(':')
-                if len(key_split) == 1:
-                    scope = None
-                    key = key_split[0]
-                else:
-                    scope = key_split[0]
-                    key = key_split[1]
 
-                # We generally do not look at capabilities in the driver, but
-                # protocol is a special case where the user asks for a given
-                # protocol and we want both the scheduler and the driver to act
-                # on the value.
-                if ((not scope or scope == 'capabilities') and
-                        key == 'storage_protocol'):
-                    scope = None
-                    key = 'protocol'
-                    words = value.split()
-                    if not (words and len(words) == 2 and words[0] == '<in>'):
-                        LOG.error(_('Protocol must be specified as '
-                                    '\'<in> iSCSI\' or \'<in> FC\'.'))
-                    del words[0]
-                    value = words[0]
-
-                # Any keys that the driver should look at should have the
-                # 'drivers' scope.
-                if scope and scope != 'drivers':
-                    continue
-
-                if key in opts:
-                    this_type = type(opts[key]).__name__
-                    if this_type == 'int':
-                        value = int(value)
-                    elif this_type == 'bool':
-                        value = strutils.bool_from_string(value)
-                    opts[key] = value
+            # NOTE(vhou): We prefer the qos_specs association
+            # and over-ride any existing
+            # extra-specs settings if present
+            if qos_specs_id is not None:
+                kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
+                # Merge the qos_specs into extra_specs and qos_specs has higher
+                # priority than extra_specs if they have different values for
+                # the same key.
+                specs.update(kvs)
+            opts = self._get_opts_from_specs(opts, specs)
+        if (opts['qos'] is None and config.storwize_svc_allow_tenant_qos
+                and volume_metadata):
+            qos = self._get_qos_from_volume_metadata(volume_metadata)
+            if len(qos) != 0:
+                opts['qos'] = qos
 
         self.check_vdisk_opts(state, opts)
         return opts
@@ -522,6 +641,62 @@ class StorwizeHelpers(object):
         attrs = self.get_vdisk_attributes(vdisk_name)
         return attrs is not None
 
+    def find_vdisk_copy_id(self, vdisk, pool):
+        resp = self.ssh.lsvdiskcopy(vdisk)
+        for copy_id, mdisk_grp in resp.select('copy_id', 'mdisk_grp_name'):
+            if mdisk_grp == pool:
+                return copy_id
+        msg = _('Failed to find a vdisk copy in the expected pool.')
+        LOG.error(msg)
+        raise exception.VolumeDriverException(message=msg)
+
+    def get_vdisk_copy_attrs(self, vdisk, copy_id):
+        return self.ssh.lsvdiskcopy(vdisk, copy_id=copy_id)[0]
+
+    def get_vdisk_copies(self, vdisk):
+        copies = {'primary': None,
+                  'secondary': None}
+
+        resp = self.ssh.lsvdiskcopy(vdisk)
+        for copy_id, status, sync, primary, mdisk_grp in \
+            resp.select('copy_id', 'status', 'sync',
+                        'primary', 'mdisk_grp_name'):
+            copy = {'copy_id': copy_id,
+                    'status': status,
+                    'sync': sync,
+                    'primary': primary,
+                    'mdisk_grp_name': mdisk_grp,
+                    'sync_progress': None}
+            if copy['sync'] != 'yes':
+                progress_info = self.ssh.lsvdisksyncprogress(vdisk, copy_id)
+                copy['sync_progress'] = progress_info['progress']
+            if copy['primary'] == 'yes':
+                copies['primary'] = copy
+            else:
+                copies['secondary'] = copy
+        return copies
+
+    def check_copy_ok(self, vdisk, pool, copy_type):
+        try:
+            copy_id = self.find_vdisk_copy_id(vdisk, pool)
+            attrs = self.get_vdisk_copy_attrs(vdisk, copy_id)
+        except (exception.VolumeBackendAPIException,
+                exception.VolumeDriverException):
+            extended = ('No %(type)s copy in pool %(pool)s' %
+                        {'type': copy_type, 'pool': pool})
+            return ('error', extended)
+        if attrs['status'] != 'online':
+            extended = 'The %s copy is offline' % copy_type
+            return ('error', extended)
+        if copy_type == 'secondary':
+            if attrs['sync'] == 'yes':
+                return ('active', None)
+            else:
+                progress_info = self.ssh.lsvdisksyncprogress(vdisk, copy_id)
+                extended = 'progress: %s%%' % progress_info['progress']
+                return ('copying', extended)
+        return (None, None)
+
     def _prepare_fc_map(self, fc_map_id, timeout):
         self.ssh.prestartfcmap(fc_map_id)
         mapping_ready = False
@@ -555,10 +730,93 @@ class StorwizeHelpers(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
+    def start_fc_consistgrp(self, fc_consistgrp):
+        self.ssh.startfcconsistgrp(fc_consistgrp)
+
+    def create_fc_consistgrp(self, fc_consistgrp):
+        self.ssh.mkfcconsistgrp(fc_consistgrp)
+
+    def delete_fc_consistgrp(self, fc_consistgrp):
+        self.ssh.rmfcconsistgrp(fc_consistgrp)
+
+    def stop_fc_consistgrp(self, fc_consistgrp):
+        self.ssh.stopfcconsistgrp(fc_consistgrp)
+
+    def run_consistgrp_snapshots(self, fc_consistgrp, snapshots, state,
+                                 config, timeout):
+        cgsnapshot = {'status': 'available'}
+        try:
+            for snapshot in snapshots:
+                opts = self.get_vdisk_params(config, state,
+                                             snapshot['volume_type_id'])
+                self.create_flashcopy_to_consistgrp(snapshot['volume_name'],
+                                                    snapshot['name'],
+                                                    fc_consistgrp,
+                                                    config, opts)
+                snapshot['status'] = 'available'
+
+            self.prepare_fc_consistgrp(fc_consistgrp, timeout)
+            self.start_fc_consistgrp(fc_consistgrp)
+            # There is CG limitation that could not create more than 128 CGs.
+            # After start CG, we delete CG to avoid CG limitation.
+            # Cinder general will maintain the CG and snapshots relationship.
+            self.delete_fc_consistgrp(fc_consistgrp)
+        except exception.VolumeBackendAPIException as err:
+            for snapshot in snapshots:
+                snapshot['status'] = 'error'
+            cgsnapshot['status'] = 'error'
+            # Release cg
+            self.delete_fc_consistgrp(fc_consistgrp)
+            LOG.error(_LE("Failed to create CGSnapshot. "
+                          "Exception: %s"), err)
+
+        return cgsnapshot, snapshots
+
+    def delete_consistgrp_snapshots(self, fc_consistgrp, snapshots):
+        """Delete flashcopy maps and consistent group."""
+        cgsnapshot = {'status': 'available'}
+        try:
+            for snapshot in snapshots:
+                self.ssh.rmvdisk(snapshot['name'], True)
+                snapshot['status'] = 'deleted'
+        except exception.VolumeBackendAPIException as err:
+            for snapshot in snapshots:
+                snapshot['status'] = 'error_deleting'
+            cgsnapshot['status'] = 'error_deleting'
+            LOG.error(_LE("Failed to delete the snapshot %(snap)s of "
+                          "CGSnapshot. Exception: %(exception)s"),
+                      {'snap': snapshot['name'], 'exception': err})
+        return cgsnapshot, snapshots
+
+    def prepare_fc_consistgrp(self, fc_consistgrp, timeout):
+        """Prepare FC Consistency Group."""
+        self.ssh.prestartfcconsistgrp(fc_consistgrp)
+
+        def prepare_fc_consistgrp_success():
+            mapping_ready = False
+            mapping_attrs = self._get_flashcopy_consistgrp_attr(fc_consistgrp)
+            if (mapping_attrs is None or
+                    'status' not in mapping_attrs):
+                pass
+            if mapping_attrs['status'] == 'prepared':
+                mapping_ready = True
+            elif mapping_attrs['status'] == 'stopped':
+                self.ssh.prestartfcconsistgrp(fc_consistgrp)
+            elif mapping_attrs['status'] != 'preparing':
+                msg = (_('Unexpected mapping status %(status)s for mapping'
+                         '%(id)s. Attributes: %(attr)s') %
+                       {'status': mapping_attrs['status'],
+                        'id': fc_consistgrp,
+                        'attr': mapping_attrs})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return mapping_ready
+        self._wait_for_a_condition(prepare_fc_consistgrp_success, timeout)
+
     def run_flashcopy(self, source, target, timeout, full_copy=True):
         """Create a FlashCopy mapping from the source to the target."""
         LOG.debug('enter: run_flashcopy: execute FlashCopy from source '
-                  '%(source)s to target %(target)s' %
+                  '%(source)s to target %(target)s',
                   {'source': source, 'target': target})
 
         fc_map_id = self.ssh.mkfcmap(source, target, full_copy)
@@ -566,7 +824,35 @@ class StorwizeHelpers(object):
         self.ssh.startfcmap(fc_map_id)
 
         LOG.debug('leave: run_flashcopy: FlashCopy started from '
-                  '%(source)s to %(target)s' %
+                  '%(source)s to %(target)s',
+                  {'source': source, 'target': target})
+
+    def create_flashcopy_to_consistgrp(self, source, target, consistgrp,
+                                       config, opts, full_copy=False,
+                                       pool=None):
+        """Create a FlashCopy mapping and add to consistent group."""
+        LOG.debug('enter: create_flashcopy_to_consistgrp: create FlashCopy'
+                  ' from source %(source)s to target %(target)s'
+                  'Then add the flashcopy to %(cg)s',
+                  {'source': source, 'target': target, 'cg': consistgrp})
+
+        src_attrs = self.get_vdisk_attributes(source)
+        if src_attrs is None:
+            msg = (_('create_copy: Source vdisk %(src)s '
+                     'does not exist') % {'src': source})
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        src_size = src_attrs['capacity']
+        # In case we need to use a specific pool
+        if not pool:
+            pool = config.storwize_svc_volpool_name
+        self.create_vdisk(target, src_size, 'b', pool, opts)
+
+        self.ssh.mkfcmap(source, target, full_copy, consistgrp)
+
+        LOG.debug('leave: create_flashcopy_to_consistgrp: '
+                  'FlashCopy started from  %(source)s to %(target)s',
                   {'source': source, 'target': target})
 
     def _get_vdisk_fc_mappings(self, vdisk):
@@ -579,6 +865,12 @@ class StorwizeHelpers(object):
 
     def _get_flashcopy_mapping_attributes(self, fc_map_id):
         resp = self.ssh.lsfcmap(fc_map_id)
+        if not len(resp):
+            return None
+        return resp[0]
+
+    def _get_flashcopy_consistgrp_attr(self, fc_map_id):
+        resp = self.ssh.lsfcconsistgrp(fc_map_id)
         if not len(resp):
             return None
         return resp[0]
@@ -654,13 +946,14 @@ class StorwizeHelpers(object):
         """Ensures that vdisk is not part of FC mapping and deletes it."""
         LOG.debug('enter: delete_vdisk: vdisk %s' % vdisk)
         if not self.is_vdisk_defined(vdisk):
-            LOG.info(_('Tried to delete non-existant vdisk %s.') % vdisk)
+            LOG.info(_LI('Tried to delete non-existant vdisk %s.') % vdisk)
             return
         self.ensure_vdisk_no_fc_mappings(vdisk)
         self.ssh.rmvdisk(vdisk, force=force)
         LOG.debug('leave: delete_vdisk: vdisk %s' % vdisk)
 
-    def create_copy(self, src, tgt, src_id, config, opts, full_copy):
+    def create_copy(self, src, tgt, src_id, config, opts,
+                    full_copy, pool=None):
         """Create a new snapshot using FlashCopy."""
         LOG.debug('enter: create_copy: snapshot %(src)s to %(tgt)s' %
                   {'tgt': tgt, 'src': src})
@@ -673,7 +966,9 @@ class StorwizeHelpers(object):
             raise exception.VolumeDriverException(message=msg)
 
         src_size = src_attrs['capacity']
-        pool = config.storwize_svc_volpool_name
+        # In case we need to use a specific pool
+        if not pool:
+            pool = config.storwize_svc_volpool_name
         self.create_vdisk(tgt, src_size, 'b', pool, opts)
         timeout = config.storwize_svc_flashcopy_timeout
         try:
@@ -736,6 +1031,41 @@ class StorwizeHelpers(object):
             return None
         return dest_pool
 
+    def add_vdisk_qos(self, vdisk, qos):
+        """Add the QoS configuration to the volume."""
+        for key, value in qos.iteritems():
+            if key in self.svc_qos_keys.keys():
+                param = self.svc_qos_keys[key]['param']
+                self.ssh.chvdisk(vdisk, ['-' + param, str(value)])
+
+    def update_vdisk_qos(self, vdisk, qos):
+        """Update all the QoS in terms of a key and value.
+
+        svc_qos_keys saves all the supported QoS parameters. Going through
+        this dict, we set the new values to all the parameters. If QoS is
+        available in the QoS configuration, the value is taken from it;
+        if not, the value will be set to default.
+        """
+        for key, value in self.svc_qos_keys.iteritems():
+            param = value['param']
+            if key in qos.keys():
+                # If the value is set in QoS, take the value from
+                # the QoS configuration.
+                v = qos[key]
+            else:
+                # If not, set the value to default.
+                v = value['default']
+            self.ssh.chvdisk(vdisk, ['-' + param, str(v)])
+
+    def disable_vdisk_qos(self, vdisk, qos):
+        """Disable the QoS."""
+        for key, value in qos.iteritems():
+            if key in self.svc_qos_keys.keys():
+                param = self.svc_qos_keys[key]['param']
+                # Take the default value.
+                value = self.svc_qos_keys[key]['default']
+                self.ssh.chvdisk(vdisk, ['-' + param, value])
+
     def change_vdisk_options(self, vdisk, changes, opts, state):
         if 'warning' in opts:
             opts['warning'] = '%s%%' % str(opts['warning'])
@@ -786,3 +1116,6 @@ class StorwizeHelpers(object):
 
     def rename_vdisk(self, vdisk, new_name):
         self.ssh.chvdisk(vdisk, ['-name', new_name])
+
+    def change_vdisk_primary_copy(self, vdisk, copy_id):
+        self.ssh.chvdisk(vdisk, ['-primary', copy_id])

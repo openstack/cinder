@@ -13,12 +13,11 @@
 #   under the License.
 
 import mock
-
+from oslo_serialization import jsonutils
 import webob
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
 
@@ -37,6 +36,7 @@ vols = {snapshot_vol_id: {'id': snapshot_vol_id,
                           'host': 'fake_host',
                           'project_id': 'fake_project',
                           'migration_status': None,
+                          'consistencygroup_id': None,
                           'encryption_key_id': None},
         detached_vol_id: {'id': detached_vol_id,
                           'status': 'available',
@@ -44,6 +44,7 @@ vols = {snapshot_vol_id: {'id': snapshot_vol_id,
                           'host': 'fake_host',
                           'project_id': 'fake_project',
                           'migration_status': None,
+                          'consistencygroup_id': None,
                           'encryption_key_id': None},
         attached_vol_id: {'id': attached_vol_id,
                           'status': 'available',
@@ -51,6 +52,7 @@ vols = {snapshot_vol_id: {'id': snapshot_vol_id,
                           'host': 'fake_host',
                           'project_id': 'fake_project',
                           'migration_status': None,
+                          'consistencygroup_id': None,
                           'encryption_key_id': None}
         }
 

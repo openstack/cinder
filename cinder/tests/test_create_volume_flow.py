@@ -42,12 +42,15 @@ class fake_volume_api(object):
                       request_spec, filter_properties,
                       allow_reschedule=True,
                       snapshot_id=None, image_id=None,
-                      source_volid=None):
+                      source_volid=None,
+                      source_replicaid=None):
 
         self.test_inst.assertEqual(self.expected_spec, request_spec)
         self.test_inst.assertEqual(request_spec['source_volid'], source_volid)
         self.test_inst.assertEqual(request_spec['snapshot_id'], snapshot_id)
         self.test_inst.assertEqual(request_spec['image_id'], image_id)
+        self.test_inst.assertEqual(request_spec['source_replicaid'],
+                                   source_replicaid)
 
 
 class fake_db(object):
@@ -60,6 +63,9 @@ class fake_db(object):
 
     def snapshot_get(self, *args, **kwargs):
         return {'volume_id': 1}
+
+    def consistencygroup_get(self, *args, **kwargs):
+        return {'consistencygroup_id': 1}
 
 
 class CreateVolumeFlowTestCase(test.TestCase):
@@ -84,7 +90,9 @@ class CreateVolumeFlowTestCase(test.TestCase):
         spec = {'volume_id': None,
                 'source_volid': None,
                 'snapshot_id': None,
-                'image_id': None}
+                'image_id': None,
+                'source_replicaid': None,
+                'consistencygroup_id': None}
 
         task = create_volume.VolumeCastTask(
             fake_scheduler_rpc_api(spec, self),
@@ -96,7 +104,9 @@ class CreateVolumeFlowTestCase(test.TestCase):
         spec = {'volume_id': 1,
                 'source_volid': 2,
                 'snapshot_id': 3,
-                'image_id': 4}
+                'image_id': 4,
+                'source_replicaid': 5,
+                'consistencygroup_id': 5}
 
         task = create_volume.VolumeCastTask(
             fake_scheduler_rpc_api(spec, self),

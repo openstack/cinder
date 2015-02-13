@@ -16,10 +16,10 @@
 Client side of the scheduler manager RPC API.
 """
 
-from oslo.config import cfg
 from oslo import messaging
+from oslo_config import cfg
+from oslo_serialization import jsonutils
 
-from cinder.openstack.common import jsonutils
 from cinder import rpc
 
 
@@ -38,6 +38,8 @@ class SchedulerAPI(object):
         1.3 - Add migrate_volume_to_host() method
         1.4 - Add retype method
         1.5 - Add manage_existing method
+        1.6 - Add create_consistencygroup method
+        1.7 - Add get_active_pools method
     '''
 
     RPC_API_VERSION = '1.0'
@@ -46,7 +48,23 @@ class SchedulerAPI(object):
         super(SchedulerAPI, self).__init__()
         target = messaging.Target(topic=CONF.scheduler_topic,
                                   version=self.RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.5')
+        self.client = rpc.get_client(target, version_cap='1.7')
+
+    def create_consistencygroup(self, ctxt, topic, group_id,
+                                request_spec_list=None,
+                                filter_properties_list=None):
+
+        cctxt = self.client.prepare(version='1.6')
+        request_spec_p_list = []
+        for request_spec in request_spec_list:
+            request_spec_p = jsonutils.to_primitive(request_spec)
+            request_spec_p_list.append(request_spec_p)
+
+        return cctxt.cast(ctxt, 'create_consistencygroup',
+                          topic=topic,
+                          group_id=group_id,
+                          request_spec_list=request_spec_p_list,
+                          filter_properties_list=filter_properties_list)
 
     def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
@@ -96,6 +114,11 @@ class SchedulerAPI(object):
                           volume_id=volume_id,
                           request_spec=request_spec_p,
                           filter_properties=filter_properties)
+
+    def get_pools(self, ctxt, filters=None):
+        cctxt = self.client.prepare(version='1.7')
+        return cctxt.call(ctxt, 'get_pools',
+                          filters=filters)
 
     def update_service_capabilities(self, ctxt,
                                     service_name, host,

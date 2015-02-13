@@ -229,8 +229,6 @@ def FakeImageService_reset():
 
 
 def stub_out_image_service(stubs):
-    def fake_get_remote_image_service(context, image_href):
-        return (FakeImageService(), image_href)
     stubs.Set(cinder.image.glance, 'get_remote_image_service',
               lambda x, y: (FakeImageService(), y))
     stubs.Set(cinder.image.glance, 'get_default_image_service',

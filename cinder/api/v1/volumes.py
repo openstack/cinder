@@ -16,6 +16,8 @@
 """The volumes api."""
 
 import ast
+
+from oslo_utils import uuidutils
 import webob
 from webob import exc
 
@@ -23,9 +25,8 @@ from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import uuidutils
 from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import utils as volume_utils
@@ -101,8 +102,7 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     if vol['volume_type_id'] and vol.get('volume_type'):
         d['volume_type'] = vol['volume_type']['name']
     else:
-        # TODO(bcwaldon): remove str cast once we use uuids
-        d['volume_type'] = str(vol['volume_type_id'])
+        d['volume_type'] = vol['volume_type_id']
 
     d['snapshot_id'] = vol['snapshot_id']
     d['source_volid'] = vol['source_volid']
@@ -112,7 +112,7 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     if image_id:
         d['image_id'] = image_id
 
-    LOG.info(_("vol=%s"), vol, context=context)
+    LOG.info(_LI("vol=%s"), vol, context=context)
 
     if vol.get('volume_metadata'):
         metadata = vol.get('volume_metadata')
@@ -231,7 +231,7 @@ class VolumeController(wsgi.Controller):
 
         try:
             vol = self.volume_api.get(context, id, viewable_admin_meta=True)
-            req.cache_resource(vol)
+            req.cache_db_volume(vol)
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
@@ -243,7 +243,7 @@ class VolumeController(wsgi.Controller):
         """Delete a volume."""
         context = req.environ['cinder.context']
 
-        LOG.info(_("Delete volume with id: %s"), id, context=context)
+        LOG.info(_LI("Delete volume with id: %s"), id, context=context)
 
         try:
             volume = self.volume_api.get(context, id)
@@ -270,8 +270,11 @@ class VolumeController(wsgi.Controller):
         search_opts.pop('limit', None)
         search_opts.pop('offset', None)
 
-        if 'metadata' in search_opts:
-            search_opts['metadata'] = ast.literal_eval(search_opts['metadata'])
+        for k, v in search_opts.iteritems():
+            try:
+                search_opts[k] = ast.literal_eval(v)
+            except (ValueError, SyntaxError):
+                LOG.debug('Could not evaluate value %s, assuming string', v)
 
         context = req.environ['cinder.context']
         utils.remove_invalid_filter_options(context,
@@ -289,7 +292,8 @@ class VolumeController(wsgi.Controller):
             utils.add_visible_admin_metadata(volume)
 
         limited_list = common.limited(volumes, req)
-        req.cache_resource(limited_list)
+        req.cache_db_volumes(limited_list)
+
         res = [entity_maker(context, vol) for vol in limited_list]
         return {'volumes': res}
 
@@ -367,7 +371,7 @@ class VolumeController(wsgi.Controller):
         elif size is None and kwargs['source_volume'] is not None:
             size = kwargs['source_volume']['size']
 
-        LOG.info(_("Create volume of %s GB"), size, context=context)
+        LOG.info(_LI("Create volume of %s GB"), size, context=context)
 
         image_href = None
         image_uuid = None

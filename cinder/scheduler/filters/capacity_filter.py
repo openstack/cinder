@@ -1,5 +1,6 @@
 # Copyright (c) 2012 Intel
 # Copyright (c) 2012 OpenStack Foundation
+# Copyright (c) 2015 EMC Corporation
 #
 # All Rights Reserved.
 #
@@ -18,7 +19,7 @@
 
 import math
 
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 
@@ -41,24 +42,74 @@ class CapacityFilter(filters.BaseHostFilter):
 
         if host_state.free_capacity_gb is None:
             # Fail Safe
-            LOG.error(_("Free capacity not set: "
-                        "volume node info collection broken."))
+            LOG.error(_LE("Free capacity not set: "
+                          "volume node info collection broken."))
             return False
 
         free_space = host_state.free_capacity_gb
-        if free_space == 'infinite' or free_space == 'unknown':
+        total_space = host_state.total_capacity_gb
+        reserved = float(host_state.reserved_percentage) / 100
+        if free_space in ['infinite', 'unknown']:
             # NOTE(zhiteng) for those back-ends cannot report actual
             # available capacity, we assume it is able to serve the
             # request.  Even if it was not, the retry mechanism is
             # able to handle the failure by rescheduling
             return True
-        reserved = float(host_state.reserved_percentage) / 100
-        free = math.floor(free_space * (1 - reserved))
+        elif total_space in ['infinite', 'unknown']:
+            # If total_space is 'infinite' or 'unknown' and reserved
+            # is 0, we assume the back-ends can serve the request.
+            # If total_space is 'infinite' or 'unknown' and reserved
+            # is not 0, we cannot calculate the reserved space.
+            # float(total_space) will throw an exception. total*reserved
+            # also won't work. So the back-ends cannot serve the request.
+            if reserved == 0:
+                return True
+            return False
+        total = float(total_space)
+        if total <= 0:
+            LOG.warning(_LW("Insufficient free space for volume creation. "
+                            "Total capacity is %(total).2f on host %(host)s."),
+                        {"total": total,
+                         "host": host_state.host})
+            return False
+        # Calculate how much free space is left after taking into account
+        # the reserved space.
+        free = free_space - math.floor(total * reserved)
+
+        msg_args = {"host": host_state.host,
+                    "requested": volume_size,
+                    "available": free}
         if free < volume_size:
-            LOG.warning(_("Insufficient free space for volume creation "
-                          "(requested / avail): "
-                          "%(requested)s/%(available)s")
-                        % {'requested': volume_size,
-                           'available': free})
+            LOG.warning(_LW("Insufficient free space for volume creation "
+                            "on host %(host)s (requested / avail): "
+                            "%(requested)s/%(available)s"), msg_args)
+            return free >= volume_size
+        else:
+            LOG.debug("Space information for volume creation "
+                      "on host %(host)s (requested / avail): "
+                      "%(requested)s/%(available)s", msg_args)
+
+        # Only evaluate using max_over_subscription_ratio if
+        # thin_provisioning_support is True. Check if the ratio of
+        # provisioned capacity over total capacity has exceeded over
+        # subscription ratio.
+        if (host_state.thin_provisioning_support and
+                host_state.max_over_subscription_ratio >= 1):
+            provisioned_ratio = ((host_state.provisioned_capacity_gb +
+                                  volume_size) / total)
+            if provisioned_ratio >= host_state.max_over_subscription_ratio:
+                LOG.warning(_LW(
+                    "Insufficient free space for thin provisioning. "
+                    "The ratio of provisioned capacity over total capacity "
+                    "%(provisioned_ratio).2f has exceeded the maximum over "
+                    "subscription ratio %(oversub_ratio).2f on host "
+                    "%(host)s."),
+                    {"provisioned_ratio": provisioned_ratio,
+                     "oversub_ratio": host_state.max_over_subscription_ratio,
+                     "host": host_state.host})
+                return False
+            else:
+                free_virtual = free * host_state.max_over_subscription_ratio
+                return free_virtual >= volume_size
 
         return free >= volume_size

@@ -18,9 +18,9 @@ Unit Tests for cinder.scheduler.rpcapi
 """
 
 import copy
-import mock
 
-from oslo.config import cfg
+import mock
+from oslo_config import cfg
 
 from cinder import context
 from cinder.scheduler import rpcapi as scheduler_rpcapi
@@ -123,3 +123,9 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  version='1.5')
+
+    def test_get_pools(self):
+        self._test_scheduler_api('get_pools',
+                                 rpc_method='call',
+                                 filters=None,
+                                 version='1.7')

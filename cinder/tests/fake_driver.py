@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 from cinder.tests.brick.fake_lvm import FakeBrickLVM
 from cinder.volume import driver
@@ -38,17 +38,18 @@ class FakeISCSIDriver(lvm.LVMISCSIDriver):
 
     def initialize_connection(self, volume, connector):
         volume_metadata = {}
+
         for metadata in volume['volume_admin_metadata']:
             volume_metadata[metadata['key']] = metadata['value']
+
         access_mode = volume_metadata.get('attached_mode')
         if access_mode is None:
             access_mode = ('ro'
                            if volume_metadata.get('readonly') == 'True'
                            else 'rw')
-        return {
-            'driver_volume_type': 'iscsi',
-            'data': {'access_mode': access_mode}
-        }
+
+        return {'driver_volume_type': 'iscsi',
+                'data': {'access_mode': access_mode}}
 
     def terminate_connection(self, volume, connector, **kwargs):
         pass
@@ -132,7 +133,7 @@ class LoggingVolumeDriver(driver.VolumeDriver):
         self.log_action('clear_volume', volume)
 
     def local_path(self, volume):
-        LOG.error(_("local_path not implemented"))
+        LOG.error(_LE("local_path not implemented"))
         raise NotImplementedError()
 
     def ensure_export(self, context, volume):

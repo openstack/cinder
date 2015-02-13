@@ -19,17 +19,17 @@
 Scheduler Service
 """
 
-from oslo.config import cfg
 from oslo import messaging
+from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import importutils
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import flow_utils
+from cinder.i18n import _, _LE
 from cinder import manager
-from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder import quota
 from cinder import rpc
@@ -53,7 +53,7 @@ LOG = logging.getLogger(__name__)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
-    RPC_API_VERSION = '1.5'
+    RPC_API_VERSION = '1.7'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -87,6 +87,30 @@ class SchedulerManager(manager.Manager):
                                                 host,
                                                 capabilities)
 
+    def create_consistencygroup(self, context, topic,
+                                group_id,
+                                request_spec_list=None,
+                                filter_properties_list=None):
+        try:
+            self.driver.schedule_create_consistencygroup(
+                context, group_id,
+                request_spec_list,
+                filter_properties_list)
+        except exception.NoValidHost:
+            msg = (_("Could not find a host for consistency group "
+                     "%(group_id)s.") %
+                   {'group_id': group_id})
+            LOG.error(msg)
+            db.consistencygroup_update(context, group_id,
+                                       {'status': 'error'})
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Failed to create consistency group "
+                                  "%(group_id)s."),
+                              {'group_id': group_id})
+                db.consistencygroup_update(context, group_id,
+                                           {'status': 'error'})
+
     def create_volume(self, context, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
                       filter_properties=None):
@@ -100,7 +124,8 @@ class SchedulerManager(manager.Manager):
                                                  snapshot_id,
                                                  image_id)
         except Exception:
-            LOG.exception(_("Failed to create scheduler manager volume flow"))
+            LOG.exception(_LE("Failed to create scheduler "
+                              "manager volume flow"))
             raise exception.CinderException(
                 _("Failed to create scheduler manager volume flow"))
 
@@ -215,6 +240,10 @@ class SchedulerManager(manager.Manager):
         else:
             volume_rpcapi.VolumeAPI().manage_existing(context, volume_ref,
                                                       request_spec.get('ref'))
+
+    def get_pools(self, context, filters=None):
+        """Get active pools from scheduler's cache."""
+        return self.driver.get_pools(context, filters)
 
     def _set_volume_state_and_notify(self, method, updates, context, ex,
                                      request_spec, msg=None):

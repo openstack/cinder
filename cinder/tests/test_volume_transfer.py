@@ -59,6 +59,7 @@ class VolumeTransferTestCase(test.TestCase):
         self.assertEqual('in-use', volume['status'], 'Unexpected state')
 
     def test_transfer_accept(self):
+        svc = self.start_service('volume', host='test_host')
         tx_api = transfer_api.API()
         utils.create_volume(self.ctxt, id='1',
                             updated_at=self.updated_at)
@@ -96,6 +97,8 @@ class VolumeTransferTestCase(test.TestCase):
                          'Unexpected volume id in response.')
         self.assertEqual(transfer['id'], response['id'],
                          'Unexpected transfer id in response.')
+
+        svc.stop()
 
     def test_transfer_get(self):
         tx_api = transfer_api.API()

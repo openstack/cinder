@@ -76,9 +76,9 @@ class VolumeImageMetadataController(wsgi.Controller):
         if authorize(context):
             resp_obj.attach(xml=VolumesImageMetadataTemplate())
             all_meta = self._get_all_images_metadata(context)
-            for volume in list(resp_obj.obj.get('volumes', [])):
-                image_meta = all_meta.get(volume['id'], {})
-                self._add_image_metadata(context, volume, image_meta)
+            for vol in list(resp_obj.obj.get('volumes', [])):
+                image_meta = all_meta.get(vol['id'], {})
+                self._add_image_metadata(context, vol, image_meta)
 
 
 class Volume_image_metadata(extensions.ExtensionDescriptor):

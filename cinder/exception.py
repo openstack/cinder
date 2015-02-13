@@ -22,13 +22,13 @@ SHOULD include dedicated exception logging.
 
 """
 
-import six
 import sys
 
-from oslo.config import cfg
+from oslo_config import cfg
+import six
 import webob.exc
 
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 
 
@@ -37,7 +37,7 @@ LOG = logging.getLogger(__name__)
 exc_log_opts = [
     cfg.BoolOpt('fatal_exception_format_errors',
                 default=False,
-                help='make exception message format errors fatal'),
+                help='Make exception message format errors fatal.'),
 ]
 
 CONF = cfg.CONF
@@ -71,6 +71,7 @@ class CinderException(Exception):
 
     def __init__(self, message=None, **kwargs):
         self.kwargs = kwargs
+        self.kwargs['message'] = message
 
         if 'code' not in self.kwargs:
             try:
@@ -82,7 +83,7 @@ class CinderException(Exception):
             if isinstance(v, Exception):
                 self.kwargs[k] = six.text_type(v)
 
-        if not message:
+        if self._should_format():
             try:
                 message = self.message % kwargs
 
@@ -90,7 +91,7 @@ class CinderException(Exception):
                 exc_info = sys.exc_info()
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                LOG.exception(_('Exception in string format operation'))
+                LOG.exception(_LE('Exception in string format operation'))
                 for name, value in kwargs.iteritems():
                     LOG.error("%s: %s" % (name, value))
                 if CONF.fatal_exception_format_errors:
@@ -105,6 +106,9 @@ class CinderException(Exception):
         # overshadowed by the class' message attribute
         self.msg = message
         super(CinderException, self).__init__(message)
+
+    def _should_format(self):
+        return self.kwargs['message'] is None or '%(message)' in self.message
 
     def __unicode__(self):
         return unicode(self.msg)
@@ -225,6 +229,19 @@ class InvalidUUID(Invalid):
     message = _("Expected a uuid but received %(uuid)s.")
 
 
+class APIException(CinderException):
+    message = _("Error while requesting %(service)s API.")
+
+    def __init__(self, message=None, **kwargs):
+        if 'service' not in kwargs:
+            kwargs['service'] = 'unknown'
+        super(APIException, self).__init__(message, **kwargs)
+
+
+class APITimeout(APIException):
+    message = _("Timeout while requesting %(service)s API.")
+
+
 class NotFound(CinderException):
     message = _("Resource could not be found.")
     code = 404
@@ -267,6 +284,11 @@ class VolumeTypeNotFoundByName(VolumeTypeNotFound):
                 "could not be found.")
 
 
+class VolumeTypeAccessNotFound(NotFound):
+    message = _("Volume type access not found for %(volume_type_id)s / "
+                "%(project_id)s combination.")
+
+
 class VolumeTypeExtraSpecsNotFound(NotFound):
     message = _("Volume Type %(volume_type_id)s has no extra specs with "
                 "key %(extra_specs_key)s.")
@@ -279,6 +301,10 @@ class VolumeTypeInUse(CinderException):
 
 class SnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
+
+
+class ServerNotFound(NotFound):
+    message = _("Instance %(uuid)s could not be found.")
 
 
 class VolumeIsBusy(CinderException):
@@ -372,6 +398,11 @@ class VolumeTypeExists(Duplicate):
     message = _("Volume Type %(id)s already exists.")
 
 
+class VolumeTypeAccessExists(Duplicate):
+    message = _("Volume type access for %(volume_type_id)s / "
+                "%(project_id)s combination already exists.")
+
+
 class VolumeTypeEncryptionExists(Invalid):
     message = _("Volume type encryption for type %(type_id)s already exists.")
 
@@ -413,7 +444,13 @@ class QuotaError(CinderException):
 
 
 class VolumeSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested volume or snapshot exceeds allowed Gigabytes "
+    message = _("Requested volume or snapshot exceeds allowed gigabytes "
+                "quota. Requested %(requested)sG, quota is %(quota)sG and "
+                "%(consumed)sG has been consumed.")
+
+
+class VolumeBackupSizeExceedsAvailableQuota(QuotaError):
+    message = _("Requested backup exceeds allowed Backup gigabytes "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
                 "%(consumed)sG has been consumed.")
 
@@ -426,6 +463,10 @@ class SnapshotLimitExceeded(QuotaError):
     message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded")
 
 
+class BackupLimitExceeded(QuotaError):
+    message = _("Maximum number of backups allowed (%(allowed)d) exceeded")
+
+
 class DuplicateSfVolumeNames(Duplicate):
     message = _("Detected more than one volume with name %(vol_name)s")
 
@@ -433,6 +474,10 @@ class DuplicateSfVolumeNames(Duplicate):
 class VolumeTypeCreateFailed(CinderException):
     message = _("Cannot create volume_type with "
                 "name %(name)s and specs %(extra_specs)s")
+
+
+class VolumeTypeUpdateFailed(CinderException):
+    message = _("Cannot update volume_type %(id)s")
 
 
 class UnknownCmd(VolumeDriverException):
@@ -447,6 +492,10 @@ class FailedCmdWithDump(VolumeDriverException):
     message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
 
 
+class InvalidConnectorException(VolumeDriverException):
+    message = _("Connector doesn't have required information: %(missing)s")
+
+
 class GlanceMetadataExists(Invalid):
     message = _("Glance metadata cannot be updated, key %(key)s"
                 " exists for volume id %(volume_id)s")
@@ -458,6 +507,10 @@ class GlanceMetadataNotFound(NotFound):
 
 class ExportFailure(Invalid):
     message = _("Failed to export for volume: %(reason)s")
+
+
+class RemoveExportException(VolumeDriverException):
+    message = _("Failed to remove export for volume %(volume)s: %(reason)s")
 
 
 class MetadataCreateFailure(Invalid):
@@ -488,12 +541,20 @@ class BackupMetadataUnsupportedVersion(BackupDriverException):
     message = _("Unsupported backup metadata version requested")
 
 
+class BackupVerifyUnsupportedDriver(BackupDriverException):
+    message = _("Unsupported backup verify driver")
+
+
 class VolumeMetadataBackupExists(BackupDriverException):
     message = _("Metadata backup already exists for this volume")
 
 
 class BackupRBDOperationFailed(BackupDriverException):
     message = _("Backup RBD operation failed")
+
+
+class EncryptedBackupOperationFailed(BackupDriverException):
+    message = _("Backup operation of an encrypted volume failed.")
 
 
 class BackupNotFound(NotFound):
@@ -574,6 +635,16 @@ class ManageExistingInvalidReference(CinderException):
                 "reference %(existing_ref)s: %(reason)s")
 
 
+class ReplicationError(CinderException):
+    message = _("Volume %(volume_id)s replication "
+                "error: %(reason)s")
+
+
+class ReplicationNotFound(NotFound):
+    message = _("Volume replication for %(volume_id)s "
+                "could not be found.")
+
+
 class ManageExistingVolumeTypeMismatch(CinderException):
     message = _("Manage existing volume failed due to volume type mismatch: "
                 "%(reason)s")
@@ -581,6 +652,10 @@ class ManageExistingVolumeTypeMismatch(CinderException):
 
 class ExtendVolumeError(CinderException):
     message = _("Error extending volume: %(reason)s")
+
+
+class EvaluatorParseException(Exception):
+    message = _("Error during evaluator parsing: %(reason)s")
 
 
 # Driver specific exceptions
@@ -616,10 +691,6 @@ class CoraidESMNotAvailable(CoraidException):
 # Pure Storage
 class PureDriverException(VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")
-
-
-class PureAPIException(VolumeBackendAPIException):
-    message = _("Bad response from Pure Storage REST API: %(reason)s")
 
 
 # Zadara
@@ -669,39 +740,65 @@ class SolidFireAccountNotFound(SolidFireDriverException):
                 "Solidfire device")
 
 
+class SolidFireRetryableException(VolumeBackendAPIException):
+    message = _("Retryable SolidFire Exception encountered")
+
+
 # HP 3Par
 class Invalid3PARDomain(VolumeDriverException):
     message = _("Invalid 3PAR Domain: %(err)s")
 
 
+# RemoteFS drivers
+class RemoteFSException(VolumeDriverException):
+    message = _("Unknown RemoteFS exception")
+
+
+class RemoteFSNoSharesMounted(RemoteFSException):
+    message = _("No mounted shares found")
+
+
+class RemoteFSNoSuitableShareFound(RemoteFSException):
+    message = _("There is no share which can host %(volume_size)sG")
+
+
 # NFS driver
-class NfsException(VolumeDriverException):
+class NfsException(RemoteFSException):
     message = _("Unknown NFS exception")
 
 
-class NfsNoSharesMounted(VolumeDriverException):
+class NfsNoSharesMounted(RemoteFSNoSharesMounted):
     message = _("No mounted NFS shares found")
 
 
-class NfsNoSuitableShareFound(VolumeDriverException):
+class NfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
     message = _("There is no share which can host %(volume_size)sG")
+
+
+# Smbfs driver
+class SmbfsException(RemoteFSException):
+    message = _("Unknown SMBFS exception.")
+
+
+class SmbfsNoSharesMounted(RemoteFSNoSharesMounted):
+    message = _("No mounted SMBFS shares found.")
+
+
+class SmbfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
+    message = _("There is no share which can host %(volume_size)sG.")
 
 
 # Gluster driver
-class GlusterfsException(VolumeDriverException):
+class GlusterfsException(RemoteFSException):
     message = _("Unknown Gluster exception")
 
 
-class GlusterfsNoSharesMounted(VolumeDriverException):
+class GlusterfsNoSharesMounted(RemoteFSNoSharesMounted):
     message = _("No mounted Gluster shares found")
 
 
-class GlusterfsNoSuitableShareFound(VolumeDriverException):
+class GlusterfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
     message = _("There is no share which can host %(volume_size)sG")
-
-
-class RemoveExportException(VolumeDriverException):
-    message = _("Failed to remove export for volume %(volume)s: %(reason)s")
 
 
 # HP MSA
@@ -738,5 +835,113 @@ class BrocadeZoningCliException(CinderException):
     message = _("Fibre Channel Zoning CLI error: %(reason)s")
 
 
+class CiscoZoningCliException(CinderException):
+    message = _("Fibre Channel Zoning CLI error: %(reason)s")
+
+
 class NetAppDriverException(VolumeDriverException):
     message = _("NetApp Cinder Driver exception.")
+
+
+class EMCVnxCLICmdError(VolumeBackendAPIException):
+    message = _("EMC VNX Cinder Driver CLI exception: %(cmd)s "
+                "(Return Code: %(rc)s) (Output: %(out)s).")
+
+
+# ConsistencyGroup
+class ConsistencyGroupNotFound(NotFound):
+    message = _("ConsistencyGroup %(consistencygroup_id)s could not be found.")
+
+
+class InvalidConsistencyGroup(Invalid):
+    message = _("Invalid ConsistencyGroup: %(reason)s")
+
+
+# CgSnapshot
+class CgSnapshotNotFound(NotFound):
+    message = _("CgSnapshot %(cgsnapshot_id)s could not be found.")
+
+
+class InvalidCgSnapshot(Invalid):
+    message = _("Invalid CgSnapshot: %(reason)s")
+
+
+# Hitachi Block Storage Driver
+class HBSDError(CinderException):
+    message = _("HBSD error occurs.")
+
+
+class HBSDCmdError(HBSDError):
+
+    def __init__(self, message=None, ret=None, err=None):
+        self.ret = ret
+        self.stderr = err
+
+        super(HBSDCmdError, self).__init__(message=message)
+
+
+class HBSDBusy(HBSDError):
+    message = "Device or resource is busy."
+
+
+class HBSDNotFound(NotFound):
+    message = _("Storage resource could not be found.")
+
+
+class HBSDVolumeIsBusy(VolumeIsBusy):
+    message = _("Volume %(volume_name)s is busy.")
+
+
+# Datera driver
+class DateraAPIException(VolumeBackendAPIException):
+    message = _("Bad response from Datera API")
+
+
+# Target drivers
+class ISCSITargetCreateFailed(CinderException):
+    message = _("Failed to create iscsi target for volume %(volume_id)s.")
+
+
+class ISCSITargetRemoveFailed(CinderException):
+    message = _("Failed to remove iscsi target for volume %(volume_id)s.")
+
+
+class ISCSITargetAttachFailed(CinderException):
+    message = _("Failed to attach iSCSI target for volume %(volume_id)s.")
+
+
+class ISCSITargetDetachFailed(CinderException):
+    message = _("Failed to detach iSCSI target for volume %(volume_id)s.")
+
+
+# X-IO driver exception.
+class XIODriverException(VolumeDriverException):
+    message = _("X-IO Volume Driver exception!")
+
+
+# Violin Memory drivers
+class ViolinInvalidBackendConfig(CinderException):
+    message = _("Volume backend config is invalid: %(reason)s")
+
+
+class ViolinRequestRetryTimeout(CinderException):
+    message = _("Backend service retry timeout hit: %(timeout)s sec")
+
+
+class ViolinBackendErr(CinderException):
+    message = _("Backend reports: %(message)s")
+
+
+class ViolinBackendErrExists(CinderException):
+    message = _("Backend reports: item already exists")
+
+
+class ViolinBackendErrNotFound(CinderException):
+    message = _("Backend reports: item not found")
+
+
+# ZFSSA NFS driver exception.
+class WebDAVClientError(CinderException):
+        message = _("The WebDAV request failed. Reason: %(msg)s, "
+                    "Return code/reason: %(code)s, Source Volume: %(src)s, "
+                    "Destination Volume: %(dst)s, Method: %(method)s.")

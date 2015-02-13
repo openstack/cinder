@@ -32,10 +32,12 @@ class FakeController(object):
         self.ext_mgr = ext_mgr
 
     def index(self, req):
-        return {}
+        obj_type = req.path.split("/")[3]
+        return {obj_type: []}
 
     def detail(self, req):
-        return {}
+        obj_type = req.path.split("/")[3]
+        return {obj_type: []}
 
 
 def create_resource(ext_mgr):
@@ -224,35 +226,35 @@ class VolumeRouterTestCase(test.TestCase):
         self.assertEqual(set(ids), set(['v1.0']))
 
     def test_volumes(self):
-        req = fakes.HTTPRequest.blank('/fake/volumes')
+        req = fakes.HTTPRequest.blank('/fakeproject/volumes')
         req.method = 'GET'
         req.content_type = 'application/json'
         response = req.get_response(self.app)
         self.assertEqual(200, response.status_int)
 
     def test_volumes_detail(self):
-        req = fakes.HTTPRequest.blank('/fake/volumes/detail')
+        req = fakes.HTTPRequest.blank('/fakeproject/volumes/detail')
         req.method = 'GET'
         req.content_type = 'application/json'
         response = req.get_response(self.app)
         self.assertEqual(200, response.status_int)
 
     def test_types(self):
-        req = fakes.HTTPRequest.blank('/fake/types')
+        req = fakes.HTTPRequest.blank('/fakeproject/types')
         req.method = 'GET'
         req.content_type = 'application/json'
         response = req.get_response(self.app)
         self.assertEqual(200, response.status_int)
 
     def test_snapshots(self):
-        req = fakes.HTTPRequest.blank('/fake/snapshots')
+        req = fakes.HTTPRequest.blank('/fakeproject/snapshots')
         req.method = 'GET'
         req.content_type = 'application/json'
         response = req.get_response(self.app)
         self.assertEqual(200, response.status_int)
 
     def test_snapshots_detail(self):
-        req = fakes.HTTPRequest.blank('/fake/snapshots/detail')
+        req = fakes.HTTPRequest.blank('/fakeproject/snapshots/detail')
         req.method = 'GET'
         req.content_type = 'application/json'
         response = req.get_response(self.app)

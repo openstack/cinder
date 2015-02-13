@@ -21,7 +21,7 @@ WSGI middleware for OpenStack API controllers.
 import routes
 
 from cinder.api.openstack import wsgi
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder import wsgi as base_wsgi
 
@@ -111,8 +111,8 @@ class APIRouter(base_wsgi.Router):
             controller = extension.controller
 
             if collection not in self.resources:
-                LOG.warning(_('Extension %(ext_name)s: Cannot extend '
-                              'resource %(collection)s: No such resource'),
+                LOG.warning(_LW('Extension %(ext_name)s: Cannot extend '
+                                'resource %(collection)s: No such resource'),
                             {'ext_name': extension.extension.name,
                              'collection': collection})
                 continue
@@ -128,13 +128,3 @@ class APIRouter(base_wsgi.Router):
 
     def _setup_routes(self, mapper, ext_mgr):
         raise NotImplementedError
-
-
-class FaultWrapper(base_wsgi.Middleware):
-
-    def __init__(self, application):
-        LOG.warn(_('cinder.api.openstack:FaultWrapper is deprecated. Please '
-                   'use cinder.api.middleware.fault:FaultWrapper instead.'))
-        # Avoid circular imports from here. Can I just remove this class?
-        from cinder.api.middleware import fault
-        super(FaultWrapper, self).__init__(fault.FaultWrapper(application))

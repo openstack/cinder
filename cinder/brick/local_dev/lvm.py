@@ -17,26 +17,32 @@
 LVM class for performing LVM operations.
 """
 
-import math
-import re
-
 import itertools
+import math
+import os
+import re
+import time
+
+from oslo_concurrency import processutils as putils
+from oslo_utils import excutils
 
 from cinder.brick import exception
 from cinder.brick import executor
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
+from cinder import utils
+
 
 LOG = logging.getLogger(__name__)
 
 
 class LVM(executor.Executor):
     """LVM object to enable various LVM related operations."""
+    LVM_CMD_PREFIX = ['env', 'LC_ALL=C']
 
     def __init__(self, vg_name, root_helper, create_vg=False,
                  physical_volumes=None, lvm_type='default',
-                 executor=putils.execute):
+                 executor=putils.execute, lvm_conf=None):
 
         """Initialize the LVM object.
 
@@ -55,7 +61,6 @@ class LVM(executor.Executor):
         super(LVM, self).__init__(execute=executor, root_helper=root_helper)
         self.vg_name = vg_name
         self.pv_list = []
-        self.lv_list = []
         self.vg_size = 0.0
         self.vg_free_space = 0.0
         self.vg_lv_count = 0
@@ -65,6 +70,7 @@ class LVM(executor.Executor):
         self.vg_thin_pool_free_space = 0.0
         self._supports_snapshot_lv_activation = None
         self._supports_lvchange_ignoreskipactivation = None
+        self.vg_provisioned_capacity = 0.0
 
         if create_vg and physical_volumes is not None:
             self.pv_list = physical_volumes
@@ -72,14 +78,14 @@ class LVM(executor.Executor):
             try:
                 self._create_vg(physical_volumes)
             except putils.ProcessExecutionError as err:
-                LOG.exception(_('Error creating Volume Group'))
-                LOG.error(_('Cmd     :%s') % err.cmd)
-                LOG.error(_('StdOut  :%s') % err.stdout)
-                LOG.error(_('StdErr  :%s') % err.stderr)
+                LOG.exception(_LE('Error creating Volume Group'))
+                LOG.error(_LE('Cmd     :%s') % err.cmd)
+                LOG.error(_LE('StdOut  :%s') % err.stdout)
+                LOG.error(_LE('StdErr  :%s') % err.stderr)
                 raise exception.VolumeGroupCreationFailed(vg_name=self.vg_name)
 
         if self._vg_exists() is False:
-            LOG.error(_('Unable to locate Volume Group %s') % vg_name)
+            LOG.error(_LE('Unable to locate Volume Group %s') % vg_name)
             raise exception.VolumeGroupNotFound(vg_name=vg_name)
 
         # NOTE: we assume that the VG has been activated outside of Cinder
@@ -93,6 +99,10 @@ class LVM(executor.Executor):
 
             self.activate_lv(self.vg_thin_pool)
         self.pv_list = self.get_all_physical_volumes(root_helper, vg_name)
+        if lvm_conf and os.path.isfile(lvm_conf):
+            LVM.LVM_CMD_PREFIX = ['env',
+                                  'LC_ALL=C',
+                                  'LVM_SYSTEM_DIR=/etc/cinder']
 
     def _vg_exists(self):
         """Simple check to see if VG exists.
@@ -101,9 +111,11 @@ class LVM(executor.Executor):
 
         """
         exists = False
-        (out, err) = self._execute(
-            'env', 'LC_ALL=C', 'vgs', '--noheadings', '-o', 'name',
-            self.vg_name, root_helper=self._root_helper, run_as_root=True)
+        cmd = LVM.LVM_CMD_PREFIX + ['vgs', '--noheadings',
+                                    '-o', 'name', self.vg_name]
+        (out, _err) = self._execute(*cmd,
+                                    root_helper=self._root_helper,
+                                    run_as_root=True)
 
         if out is not None:
             volume_groups = out.split()
@@ -117,8 +129,11 @@ class LVM(executor.Executor):
         self._execute(*cmd, root_helper=self._root_helper, run_as_root=True)
 
     def _get_vg_uuid(self):
-        (out, err) = self._execute('env', 'LC_ALL=C', 'vgs', '--noheadings',
-                                   '-o uuid', self.vg_name)
+        cmd = LVM.LVM_CMD_PREFIX + ['vgs', '--noheadings',
+                                    '-o', 'uuid', self.vg_name]
+        (out, _err) = self._execute(*cmd,
+                                    root_helper=self._root_helper,
+                                    run_as_root=True)
         if out is not None:
             return out.split()
         else:
@@ -132,9 +147,10 @@ class LVM(executor.Executor):
         :returns: Free space in GB (float), calculated using data_percent
 
         """
-        cmd = ['env', 'LC_ALL=C', 'lvs', '--noheadings', '--unit=g',
-               '-o', 'size,data_percent', '--separator', ':', '--nosuffix']
-
+        cmd = LVM.LVM_CMD_PREFIX +\
+            ['lvs', '--noheadings', '--unit=g',
+             '-o', 'size,data_percent', '--separator',
+             ':', '--nosuffix']
         # NOTE(gfidente): data_percent only applies to some types of LV so we
         # make sure to append the actual thin pool name
         cmd.append("/dev/%s/%s" % (vg_name, thin_pool_name))
@@ -154,10 +170,10 @@ class LVM(executor.Executor):
                 free_space = pool_size - consumed_space
                 free_space = round(free_space, 2)
         except putils.ProcessExecutionError as err:
-            LOG.exception(_('Error querying thin pool about data_percent'))
-            LOG.error(_('Cmd     :%s') % err.cmd)
-            LOG.error(_('StdOut  :%s') % err.stdout)
-            LOG.error(_('StdErr  :%s') % err.stderr)
+            LOG.exception(_LE('Error querying thin pool about data_percent'))
+            LOG.error(_LE('Cmd     :%s') % err.cmd)
+            LOG.error(_LE('StdOut  :%s') % err.stdout)
+            LOG.error(_LE('StdErr  :%s') % err.stderr)
 
         return free_space
 
@@ -170,10 +186,10 @@ class LVM(executor.Executor):
 
         """
 
-        cmd = ['env', 'LC_ALL=C', 'vgs', '--version']
-        (out, err) = putils.execute(*cmd,
-                                    root_helper=root_helper,
-                                    run_as_root=True)
+        cmd = LVM.LVM_CMD_PREFIX + ['vgs', '--version']
+        (out, _err) = putils.execute(*cmd,
+                                     root_helper=root_helper,
+                                     run_as_root=True)
         lines = out.split('\n')
 
         for line in lines:
@@ -233,24 +249,41 @@ class LVM(executor.Executor):
         return self._supports_lvchange_ignoreskipactivation
 
     @staticmethod
-    def get_all_volumes(root_helper, vg_name=None):
-        """Static method to get all LV's on a system.
+    def get_lv_info(root_helper, vg_name=None, lv_name=None):
+        """Retrieve info about LVs (all, in a VG, or a single LV).
 
         :param root_helper: root_helper to use for execute
         :param vg_name: optional, gathers info for only the specified VG
+        :param lv_name: optional, gathers info for only the specified LV
         :returns: List of Dictionaries with LV info
 
         """
 
-        cmd = ['env', 'LC_ALL=C', 'lvs', '--noheadings', '--unit=g',
-               '-o', 'vg_name,name,size', '--nosuffix']
-
-        if vg_name is not None:
+        cmd = LVM.LVM_CMD_PREFIX + ['lvs', '--noheadings', '--unit=g',
+                                    '-o', 'vg_name,name,size', '--nosuffix']
+        if lv_name is not None and vg_name is not None:
+            cmd.append("%s/%s" % (vg_name, lv_name))
+        elif vg_name is not None:
             cmd.append(vg_name)
 
-        (out, err) = putils.execute(*cmd,
-                                    root_helper=root_helper,
-                                    run_as_root=True)
+        lvs_start = time.time()
+        try:
+            (out, _err) = putils.execute(*cmd,
+                                         root_helper=root_helper,
+                                         run_as_root=True)
+        except putils.ProcessExecutionError as err:
+            with excutils.save_and_reraise_exception(reraise=True) as ctx:
+                if "not found" in err.stderr:
+                    ctx.reraise = False
+                    msg = _LI("'Not found' when querying LVM info. "
+                              "(vg_name=%(vg)s, lv_name=%(lv)s")
+                    LOG.info(msg, {'vg': vg_name, 'lv': lv_name})
+                    out = None
+
+        total_time = time.time() - lvs_start
+        if total_time > 60:
+            LOG.warning(_LW('Took %s seconds to get logical volume info.'),
+                        total_time)
 
         lv_list = []
         if out is not None:
@@ -260,14 +293,15 @@ class LVM(executor.Executor):
 
         return lv_list
 
-    def get_volumes(self):
+    def get_volumes(self, lv_name=None):
         """Get all LV's associated with this instantiation (VG).
 
         :returns: List of Dictionaries with LV info
 
         """
-        self.lv_list = self.get_all_volumes(self._root_helper, self.vg_name)
-        return self.lv_list
+        return self.get_lv_info(self._root_helper,
+                                self.vg_name,
+                                lv_name)
 
     def get_volume(self, name):
         """Get reference object of volume specified by name.
@@ -275,10 +309,11 @@ class LVM(executor.Executor):
         :returns: dict representation of Logical Volume if exists
 
         """
-        ref_list = self.get_volumes()
+        ref_list = self.get_volumes(name)
         for r in ref_list:
             if r['name'] == name:
                 return r
+        return None
 
     @staticmethod
     def get_all_physical_volumes(root_helper, vg_name=None):
@@ -289,23 +324,23 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with PV info
 
         """
-        cmd = ['env', 'LC_ALL=C', 'pvs', '--noheadings',
-               '--unit=g',
-               '-o', 'vg_name,name,size,free',
-               '--separator', ':',
-               '--nosuffix']
-
-        (out, err) = putils.execute(*cmd,
-                                    root_helper=root_helper,
-                                    run_as_root=True)
+        field_sep = '|'
+        cmd = LVM.LVM_CMD_PREFIX + ['pvs', '--noheadings',
+                                    '--unit=g',
+                                    '-o', 'vg_name,name,size,free',
+                                    '--separator', field_sep,
+                                    '--nosuffix']
+        (out, _err) = putils.execute(*cmd,
+                                     root_helper=root_helper,
+                                     run_as_root=True)
 
         pvs = out.split()
         if vg_name is not None:
-            pvs = [pv for pv in pvs if vg_name == pv.split(':')[0]]
+            pvs = [pv for pv in pvs if vg_name == pv.split(field_sep)[0]]
 
         pv_list = []
         for pv in pvs:
-            fields = pv.split(':')
+            fields = pv.split(field_sep)
             pv_list.append({'vg': fields[0],
                             'name': fields[1],
                             'size': float(fields[2]),
@@ -331,16 +366,22 @@ class LVM(executor.Executor):
         :returns: List of Dictionaries with VG info
 
         """
-        cmd = ['env', 'LC_ALL=C', 'vgs', '--noheadings', '--unit=g',
-               '-o', 'name,size,free,lv_count,uuid', '--separator', ':',
-               '--nosuffix']
-
+        cmd = LVM.LVM_CMD_PREFIX + ['vgs', '--noheadings',
+                                    '--unit=g', '-o',
+                                    'name,size,free,lv_count,uuid',
+                                    '--separator', ':',
+                                    '--nosuffix']
         if vg_name is not None:
             cmd.append(vg_name)
 
-        (out, err) = putils.execute(*cmd,
-                                    root_helper=root_helper,
-                                    run_as_root=True)
+        start_vgs = time.time()
+        (out, _err) = putils.execute(*cmd,
+                                     root_helper=root_helper,
+                                     run_as_root=True)
+        total_time = time.time() - start_vgs
+        if total_time > 60:
+            LOG.warning(_LW('Took %s seconds to get '
+                            'volume groups.'), total_time)
 
         vg_list = []
         if out is not None:
@@ -367,7 +408,7 @@ class LVM(executor.Executor):
         vg_list = self.get_all_volume_groups(self._root_helper, self.vg_name)
 
         if len(vg_list) != 1:
-            LOG.error(_('Unable to find VG: %s') % self.vg_name)
+            LOG.error(_LE('Unable to find VG: %s') % self.vg_name)
             raise exception.VolumeGroupNotFound(vg_name=self.vg_name)
 
         self.vg_size = float(vg_list[0]['size'])
@@ -375,13 +416,50 @@ class LVM(executor.Executor):
         self.vg_lv_count = int(vg_list[0]['lv_count'])
         self.vg_uuid = vg_list[0]['uuid']
 
+        total_vols_size = 0.0
         if self.vg_thin_pool is not None:
-            for lv in self.get_all_volumes(self._root_helper, self.vg_name):
+            # NOTE(xyang): If providing only self.vg_name,
+            # get_lv_info will output info on the thin pool and all
+            # individual volumes.
+            # get_lv_info(self._root_helper, 'stack-vg')
+            # sudo lvs --noheadings --unit=g -o vg_name,name,size
+            # --nosuffix stack-vg
+            # stack-vg stack-pool               9.51
+            # stack-vg volume-13380d16-54c3-4979-9d22-172082dbc1a1  1.00
+            # stack-vg volume-629e13ab-7759-46a5-b155-ee1eb20ca892  1.00
+            # stack-vg volume-e3e6281c-51ee-464c-b1a7-db6c0854622c  1.00
+            #
+            # If providing both self.vg_name and self.vg_thin_pool,
+            # get_lv_info will output only info on the thin pool, but not
+            # individual volumes.
+            # get_lv_info(self._root_helper, 'stack-vg', 'stack-pool')
+            # sudo lvs --noheadings --unit=g -o vg_name,name,size
+            # --nosuffix stack-vg/stack-pool
+            # stack-vg stack-pool               9.51
+            #
+            # We need info on both the thin pool and the volumes,
+            # therefore we should provide only self.vg_name, but not
+            # self.vg_thin_pool here.
+            for lv in self.get_lv_info(self._root_helper,
+                                       self.vg_name):
+                lvsize = lv['size']
+                # get_lv_info runs "lvs" command with "--nosuffix".
+                # This removes "g" from "1.00g" and only outputs "1.00".
+                # Running "lvs" command without "--nosuffix" will output
+                # "1.00g" if "g" is the unit.
+                # Remove the unit if it is in lv['size'].
+                if not lv['size'][-1].isdigit():
+                    lvsize = lvsize[:-1]
                 if lv['name'] == self.vg_thin_pool:
-                    self.vg_thin_pool_size = lv['size']
+                    self.vg_thin_pool_size = lvsize
                     tpfs = self._get_thin_pool_free_space(self.vg_name,
                                                           self.vg_thin_pool)
                     self.vg_thin_pool_free_space = tpfs
+                else:
+                    total_vols_size = total_vols_size + float(lvsize)
+            total_vols_size = round(total_vols_size, 2)
+
+        self.vg_provisioned_capacity = total_vols_size
 
     def _calculate_thin_pool_size(self):
         """Calculates the correct size for a thin pool.
@@ -417,9 +495,9 @@ class LVM(executor.Executor):
         """
 
         if not self.supports_thin_provisioning(self._root_helper):
-            LOG.error(_('Requested to setup thin provisioning, '
-                        'however current LVM version does not '
-                        'support it.'))
+            LOG.error(_LE('Requested to setup thin provisioning, '
+                          'however current LVM version does not '
+                          'support it.'))
             return None
 
         if name is None:
@@ -474,12 +552,13 @@ class LVM(executor.Executor):
                           root_helper=self._root_helper,
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
-            LOG.exception(_('Error creating Volume'))
-            LOG.error(_('Cmd     :%s') % err.cmd)
-            LOG.error(_('StdOut  :%s') % err.stdout)
-            LOG.error(_('StdErr  :%s') % err.stderr)
+            LOG.exception(_LE('Error creating Volume'))
+            LOG.error(_LE('Cmd     :%s') % err.cmd)
+            LOG.error(_LE('StdOut  :%s') % err.stdout)
+            LOG.error(_LE('StdErr  :%s') % err.stderr)
             raise
 
+    @utils.retry(putils.ProcessExecutionError)
     def create_lv_snapshot(self, name, source_lv_name, lv_type='default'):
         """Creates a snapshot of a logical volume.
 
@@ -490,7 +569,7 @@ class LVM(executor.Executor):
         """
         source_lvref = self.get_volume(source_lv_name)
         if source_lvref is None:
-            LOG.error(_("Trying to create snapshot by non-existent LV: %s")
+            LOG.error(_LE("Trying to create snapshot by non-existent LV: %s")
                       % source_lv_name)
             raise exception.VolumeDeviceNotFound(device=source_lv_name)
         cmd = ['lvcreate', '--name', name,
@@ -504,10 +583,10 @@ class LVM(executor.Executor):
                           root_helper=self._root_helper,
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
-            LOG.exception(_('Error creating snapshot'))
-            LOG.error(_('Cmd     :%s') % err.cmd)
-            LOG.error(_('StdOut  :%s') % err.stdout)
-            LOG.error(_('StdErr  :%s') % err.stderr)
+            LOG.exception(_LE('Error creating snapshot'))
+            LOG.error(_LE('Cmd     :%s') % err.cmd)
+            LOG.error(_LE('StdOut  :%s') % err.stdout)
+            LOG.error(_LE('StdErr  :%s') % err.stderr)
             raise
 
     def _mangle_lv_name(self, name):
@@ -547,10 +626,10 @@ class LVM(executor.Executor):
                           root_helper=self._root_helper,
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
-            LOG.exception(_('Error activating LV'))
-            LOG.error(_('Cmd     :%s') % err.cmd)
-            LOG.error(_('StdOut  :%s') % err.stdout)
-            LOG.error(_('StdErr  :%s') % err.stderr)
+            LOG.exception(_LE('Error activating LV'))
+            LOG.error(_LE('Cmd     :%s') % err.cmd)
+            LOG.error(_LE('StdOut  :%s') % err.stdout)
+            LOG.error(_LE('StdErr  :%s') % err.stderr)
             raise
 
     def delete(self, name):
@@ -597,6 +676,8 @@ class LVM(executor.Executor):
                 '-f',
                 '%s/%s' % (self.vg_name, name),
                 root_helper=self._root_helper, run_as_root=True)
+            LOG.debug('Successfully deleted volume: %s after '
+                      'udev settle.', name)
 
     def revert(self, snapshot_name):
         """Revert an LV from snapshot.
@@ -609,10 +690,11 @@ class LVM(executor.Executor):
                       run_as_root=True)
 
     def lv_has_snapshot(self, name):
-        out, err = self._execute(
-            'env', 'LC_ALL=C', 'lvdisplay', '--noheading',
-            '-C', '-o', 'Attr', '%s/%s' % (self.vg_name, name),
-            root_helper=self._root_helper, run_as_root=True)
+        cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
+                                    'Attr', '%s/%s' % (self.vg_name, name)]
+        out, _err = self._execute(*cmd,
+                                  root_helper=self._root_helper,
+                                  run_as_root=True)
         if out:
             out = out.strip()
             if (out[0] == 'o') or (out[0] == 'O'):
@@ -628,10 +710,10 @@ class LVM(executor.Executor):
                           root_helper=self._root_helper,
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
-            LOG.exception(_('Error extending Volume'))
-            LOG.error(_('Cmd     :%s') % err.cmd)
-            LOG.error(_('StdOut  :%s') % err.stdout)
-            LOG.error(_('StdErr  :%s') % err.stderr)
+            LOG.exception(_LE('Error extending Volume'))
+            LOG.error(_LE('Cmd     :%s') % err.cmd)
+            LOG.error(_LE('StdOut  :%s') % err.stdout)
+            LOG.error(_LE('StdErr  :%s') % err.stderr)
             raise
 
     def vg_mirror_free_space(self, mirror_count):
@@ -666,8 +748,8 @@ class LVM(executor.Executor):
                           root_helper=self._root_helper,
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
-            LOG.exception(_('Error renaming logical volume'))
-            LOG.error(_('Cmd     :%s') % err.cmd)
-            LOG.error(_('StdOut  :%s') % err.stdout)
-            LOG.error(_('StdErr  :%s') % err.stderr)
+            LOG.exception(_LE('Error renaming logical volume'))
+            LOG.error(_LE('Cmd     :%s') % err.cmd)
+            LOG.error(_LE('StdOut  :%s') % err.stdout)
+            LOG.error(_LE('StdErr  :%s') % err.stderr)
             raise

@@ -12,17 +12,17 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-import webob
 
 from oslo import messaging
+from oslo_utils import strutils
+import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
 from cinder import utils
 from cinder import volume
 
@@ -195,6 +195,9 @@ class VolumeActionsController(wsgi.Controller):
             info = self.volume_api.initialize_connection(context,
                                                          volume,
                                                          connector)
+        except exception.InvalidInput as err:
+            raise webob.exc.HTTPBadRequest(
+                explanation=err)
         except exception.VolumeBackendAPIException as error:
             msg = _("Unable to fetch connection information from backend.")
             raise webob.exc.HTTPInternalServerError(explanation=msg)

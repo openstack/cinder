@@ -22,6 +22,22 @@ class TestUtilsTestCase(test.TestCase):
         """get_test_admin_context's return value behaves like admin context."""
         ctxt = test_utils.get_test_admin_context()
 
-        # TODO(soren): This should verify the full interface context
-        # objects expose.
+        self.assertIsNone(ctxt.project_id)
+        self.assertIsNone(ctxt.user_id)
+        self.assertIsNone(ctxt.domain)
+        self.assertIsNone(ctxt.project_domain)
+        self.assertIsNone(ctxt.user_domain)
+        self.assertIsNone(ctxt.project_name)
+        self.assertIsNone(ctxt.remote_address)
+        self.assertIsNone(ctxt.auth_token)
+        self.assertIsNone(ctxt.quota_class)
+
+        self.assertIsNotNone(ctxt.request_id)
+        self.assertIsNotNone(ctxt.timestamp)
+
+        self.assertEqual(['admin'], ctxt.roles)
+        self.assertEqual([], ctxt.service_catalog)
+        self.assertEqual('no', ctxt.read_deleted)
+
+        self.assertTrue(ctxt.read_deleted)
         self.assertTrue(ctxt.is_admin)

@@ -14,7 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Tests for qaulity_of_service_specs table."""
+"""Tests for quality_of_service_specs table."""
 
 
 import time

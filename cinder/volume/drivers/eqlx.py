@@ -21,13 +21,13 @@ import random
 import eventlet
 from eventlet import greenthread
 import greenlet
-from oslo.config import cfg
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_utils import excutils
 
 from cinder import exception
-from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE, _LW, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import ssh_utils
 from cinder import utils
 from cinder.volume.drivers.san import SanISCSIDriver
@@ -37,26 +37,31 @@ LOG = logging.getLogger(__name__)
 eqlx_opts = [
     cfg.StrOpt('eqlx_group_name',
                default='group-0',
-               help='Group name to use for creating volumes'),
+               help='Group name to use for creating volumes. Defaults to '
+                    '"group-0".'),
     cfg.IntOpt('eqlx_cli_timeout',
                default=30,
-               help='Timeout for the Group Manager cli command execution'),
+               help='Timeout for the Group Manager cli command execution. '
+                    'Default is 30.'),
     cfg.IntOpt('eqlx_cli_max_retries',
                default=5,
-               help='Maximum retry count for reconnection'),
+               help='Maximum retry count for reconnection. Default is 5.'),
     cfg.BoolOpt('eqlx_use_chap',
                 default=False,
-                help='Use CHAP authentication for targets?'),
+                help='Use CHAP authentication for targets. Defaults to '
+                     '"False".'),
     cfg.StrOpt('eqlx_chap_login',
                default='admin',
-               help='Existing CHAP account name'),
+               help='Existing CHAP account name. Defaults to "admin".'),
     cfg.StrOpt('eqlx_chap_password',
                default='password',
-               help='Password for specified CHAP account name',
+               help='Password for specified CHAP account name. Defaults '
+                    'to "password".',
                secret=True),
     cfg.StrOpt('eqlx_pool',
                default='default',
-               help='Pool in which volumes will be created')
+               help='Pool in which volumes will be created. Defaults '
+                    'to "default".')
 ]
 
 
@@ -135,8 +140,17 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
     def _get_output(self, chan):
         out = ''
         ending = '%s> ' % self.configuration.eqlx_group_name
-        while not out.endswith(ending):
-            out += chan.recv(102400)
+        while out.find(ending) == -1:
+            ret = chan.recv(102400)
+            if len(ret) == 0:
+                # According to paramiko.channel.Channel documentation, which
+                # says "If a string of length zero is returned, the channel
+                # stream has closed". So we can confirm that the EQL server
+                # has closed the connection.
+                msg = _("The EQL array has closed the connection.")
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            out += ret
 
         LOG.debug("CLI output\n%s", out)
         return out.splitlines()
@@ -151,29 +165,36 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
     def _ssh_execute(self, ssh, command, *arg, **kwargs):
         transport = ssh.get_transport()
         chan = transport.open_session()
-        chan.invoke_shell()
+        completed = False
 
-        LOG.debug("Reading CLI MOTD")
-        self._get_output(chan)
+        try:
+            chan.invoke_shell()
 
-        cmd = 'stty columns 255'
-        LOG.debug("Setting CLI terminal width: '%s'", cmd)
-        chan.send(cmd + '\r')
-        out = self._get_output(chan)
+            LOG.debug("Reading CLI MOTD")
+            self._get_output(chan)
 
-        LOG.debug("Sending CLI command: '%s'", command)
-        chan.send(command + '\r')
-        out = self._get_output(chan)
+            cmd = 'stty columns 255'
+            LOG.debug("Setting CLI terminal width: '%s'", cmd)
+            chan.send(cmd + '\r')
+            out = self._get_output(chan)
 
-        chan.close()
+            LOG.debug("Sending CLI command: '%s'", command)
+            chan.send(command + '\r')
+            out = self._get_output(chan)
 
-        if any(line.startswith(('% Error', 'Error:')) for line in out):
-            desc = _("Error executing EQL command")
-            cmdout = '\n'.join(out)
-            LOG.error(cmdout)
-            raise processutils.ProcessExecutionError(
-                stdout=cmdout, cmd=command, description=desc)
-        return out
+            completed = True
+
+            if any(ln.startswith(('% Error', 'Error:')) for ln in out):
+                desc = _("Error executing EQL command")
+                cmdout = '\n'.join(out)
+                LOG.error(cmdout)
+                raise processutils.ProcessExecutionError(
+                    stdout=cmdout, cmd=command, description=desc)
+            return out
+        finally:
+            if not completed:
+                LOG.debug("Timed out executing command: '%s'", command)
+            chan.close()
 
     def _run_ssh(self, cmd_list, attempts=1):
         utils.check_ssh_injection(cmd_list)
@@ -199,7 +220,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                 while attempts > 0:
                     attempts -= 1
                     try:
-                        LOG.info(_('EQL-driver: executing "%s"') % command)
+                        LOG.info(_LI('EQL-driver: executing "%s".'), command)
                         return self._ssh_execute(
                             ssh, command,
                             timeout=self.configuration.eqlx_cli_timeout)
@@ -210,16 +231,24 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 msg = (_("SSH Command failed after '%(total_attempts)r' "
                          "attempts : '%(command)s'") %
-                       {'total_attempts': total_attempts, 'command': command})
+                       {'total_attempts': total_attempts - attempts,
+                        'command': command})
                 raise exception.VolumeBackendAPIException(data=msg)
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error running SSH command: %s") % command)
+                LOG.error(_LE('Error running SSH command: "%s".'), command)
+
+    def check_for_setup_error(self):
+        super(DellEQLSanISCSIDriver, self).check_for_setup_error()
+        if self.configuration.eqlx_cli_max_retries < 0:
+            raise exception.InvalidInput(
+                reason=_("eqlx_cli_max_retries must be greater than or "
+                         "equal to 0"))
 
     def _eql_execute(self, *args, **kwargs):
         return self._run_ssh(
-            args, attempts=self.configuration.eqlx_cli_max_retries)
+            args, attempts=self.configuration.eqlx_cli_max_retries + 1)
 
     def _get_volume_data(self, lines):
         prefix = 'iSCSI target name is '
@@ -247,7 +276,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from eqlx group."""
 
-        LOG.debug("Updating volume stats")
+        LOG.debug('Updating volume stats.')
         data = {}
         backend_name = "eqlx"
         if self.configuration:
@@ -295,11 +324,11 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         and returns the correct connection id.
         """
         lines = [line for line in out if line != '']
-        #Every record has 2 lines
+        # Every record has 2 lines
         for i in xrange(0, len(lines), 2):
             try:
                 int(lines[i][0])
-                #sanity check
+                # sanity check
                 if len(lines[i + 1].split()) == 1:
                     check = lines[i].split()[1] + lines[i + 1].strip()
                     if connector['initiator'] == check:
@@ -322,11 +351,11 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                     out_tup = line.rstrip().partition(' ')
                     self._group_ip = out_tup[-1]
 
-            LOG.info(_("EQL-driver: Setup is complete, group IP is %s"),
+            LOG.info(_LI('EQL-driver: Setup is complete, group IP is "%s".'),
                      self._group_ip)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to setup the Dell EqualLogic driver'))
+                LOG.error(_LE('Failed to setup the Dell EqualLogic driver.'))
 
     def create_volume(self, volume):
         """Create a volume."""
@@ -343,7 +372,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             return self._get_volume_data(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to create volume %s'), volume['name'])
+                LOG.error(_LE('Failed to create volume "%s".'), volume['name'])
 
     def add_multihost_access(self, volume):
         """Add multihost-access to a volume. Needed for live migration."""
@@ -353,7 +382,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             self._eql_execute(*cmd)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to add multi-host access for volume %s'),
+                LOG.error(_LE('Failed to add multihost-access '
+                              'for volume "%s".'),
                           volume['name'])
 
     def delete_volume(self, volume):
@@ -363,11 +393,12 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             self._eql_execute('volume', 'select', volume['name'], 'offline')
             self._eql_execute('volume', 'delete', volume['name'])
         except exception.VolumeNotFound:
-            LOG.warn(_('Volume %s was not found while trying to delete it'),
+            LOG.warn(_LW('Volume %s was not found while trying to delete it.'),
                      volume['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to delete volume %s'), volume['name'])
+                LOG.error(_LE('Failed to delete '
+                              'volume "%s".'), volume['name'])
 
     def create_snapshot(self, snapshot):
         """"Create snapshot of existing volume on appliance."""
@@ -382,7 +413,7 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                               snapshot['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to create snapshot of volume %s'),
+                LOG.error(_LE('Failed to create snapshot of volume "%s".'),
                           snapshot['volume_name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -396,21 +427,20 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             return self._get_volume_data(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to create volume from snapshot %s'),
+                LOG.error(_LE('Failed to create volume from snapshot "%s".'),
                           snapshot['name'])
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         try:
-            src_volume_name = self.configuration.\
-                volume_name_template % src_vref['id']
+            src_volume_name = src_vref['name']
             out = self._eql_execute('volume', 'select', src_volume_name,
                                     'clone', volume['name'])
             self.add_multihost_access(volume)
             return self._get_volume_data(out)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to create clone of volume %s'),
+                LOG.error(_LE('Failed to create clone of volume "%s".'),
                           volume['name'])
 
     def delete_snapshot(self, snapshot):
@@ -420,8 +450,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                               'snapshot', 'delete', snapshot['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to delete snapshot %(snap)s of '
-                            'volume %(vol)s'),
+                LOG.error(_LE('Failed to delete snapshot %(snap)s of '
+                              'volume %(vol)s.'),
                           {'snap': snapshot['name'],
                            'vol': snapshot['volume_name']})
 
@@ -441,7 +471,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             }
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to initialize connection to volume %s'),
+                LOG.error(_LE('Failed to initialize connection '
+                              'to volume "%s".'),
                           volume['name'])
 
     def terminate_connection(self, volume, connector, force=False, **kwargs):
@@ -450,12 +481,13 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
             out = self._eql_execute('volume', 'select', volume['name'],
                                     'access', 'show')
             connection_id = self._parse_connection(connector, out)
-            if connection_id != None:
+            if connection_id is not None:
                 self._eql_execute('volume', 'select', volume['name'],
                                   'access', 'delete', connection_id)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to terminate connection to volume %s'),
+                LOG.error(_LE('Failed to terminate connection '
+                              'to volume "%s".'),
                           volume['name'])
 
     def create_export(self, context, volume):
@@ -476,11 +508,11 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         try:
             self._check_volume(volume)
         except exception.VolumeNotFound:
-            LOG.warn(_('Volume %s is not found!, it may have been deleted'),
+            LOG.warn(_LW('Volume %s is not found!, it may have been deleted.'),
                      volume['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to ensure export of volume %s'),
+                LOG.error(_LE('Failed to ensure export of volume "%s".'),
                           volume['name'])
 
     def remove_export(self, context, volume):
@@ -499,8 +531,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
                               'size', "%sG" % new_size)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_('Failed to extend_volume %(name)s from '
-                            '%(current_size)sGB to %(new_size)sGB'),
+                LOG.error(_LE('Failed to extend_volume %(name)s from '
+                              '%(current_size)sGB to %(new_size)sGB.'),
                           {'name': volume['name'],
                            'current_size': volume['size'],
                            'new_size': new_size})

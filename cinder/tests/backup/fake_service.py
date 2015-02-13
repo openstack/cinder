@@ -21,7 +21,7 @@ LOG = logging.getLogger(__name__)
 
 class FakeBackupService(BackupDriver):
     def __init__(self, context, db_driver=None):
-        super(FakeBackupService, self).__init__(db_driver)
+        super(FakeBackupService, self).__init__(context, db_driver)
 
     def backup(self, backup, volume_file):
         pass

@@ -21,7 +21,7 @@ This driver requires ISCSI target role installed
 
 import os
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
@@ -167,9 +167,6 @@ class WindowsDriver(driver.ISCSIDriver):
         """Fetch the image from image_service and create a volume using it."""
         # Convert to VHD and file back to VHD
         vhd_type = self.utils.get_supported_vhd_type()
-        if (CONF.image_conversion_dir and not
-                os.path.exists(CONF.image_conversion_dir)):
-            os.makedirs(CONF.image_conversion_dir)
         with image_utils.temporary_file(suffix='.vhd') as tmp:
             volume_path = self.local_path(volume)
             image_utils.fetch_to_vhd(context, image_service, image_id, tmp,
@@ -187,6 +184,9 @@ class WindowsDriver(driver.ISCSIDriver):
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
         disk_format = self.utils.get_supported_format()
+        if not os.path.exists(self.configuration.image_conversion_dir):
+            fileutils.ensure_tree(self.configuration.image_conversion_dir)
+
         temp_vhd_path = os.path.join(self.configuration.image_conversion_dir,
                                      str(image_meta['id']) + '.' + disk_format)
         upload_image = temp_vhd_path
@@ -201,7 +201,7 @@ class WindowsDriver(driver.ISCSIDriver):
                                           constants.VHD_TYPE_DYNAMIC)
 
             image_utils.upload_volume(context, image_service, image_meta,
-                                      upload_image, 'vpc')
+                                      upload_image, 'vhd')
         finally:
             fileutils.delete_if_exists(temp_vhd_path)
             fileutils.delete_if_exists(upload_image)

@@ -17,12 +17,11 @@ Tests For HostManager
 """
 
 import mock
-
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import timeutils
 
 from cinder import exception
 from cinder.openstack.common.scheduler import filters
-from cinder.openstack.common import timeutils
 from cinder.scheduler import host_manager
 from cinder import test
 
@@ -85,7 +84,7 @@ class HostManagerTestCase(test.TestCase):
         self.assertEqual(expected, mock_func.call_args_list)
         self.assertEqual(set(result), set(self.fake_hosts))
 
-    @mock.patch('cinder.openstack.common.timeutils.utcnow')
+    @mock.patch('oslo_utils.timeutils.utcnow')
     def test_update_service_capabilities(self, _mock_utcnow):
         service_states = self.host_manager.service_states
         self.assertDictMatch(service_states, {})
@@ -116,6 +115,57 @@ class HostManagerTestCase(test.TestCase):
                     'host2': host2_volume_capabs,
                     'host3': host3_volume_capabs}
         self.assertDictMatch(service_states, expected)
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.utils.service_is_up')
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_update_and_get_pools(self, _mock_utcnow,
+                                  _mock_service_is_up,
+                                  _mock_service_get_all_by_topic):
+        """Test interaction between update and get_pools
+
+        This test verifies that each time that get_pools is called it gets the
+        latest copy of service_capabilities, which is timestamped with the
+        current date/time.
+        """
+        context = 'fake_context'
+        _mock_utcnow.side_effect = [400, 401, 402]
+
+        services = [
+            # This is the first call to utcnow()
+            dict(id=1, host='host1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+        ]
+
+        mocked_service_states = {
+            'host1': dict(volume_backend_name='AAA',
+                          total_capacity_gb=512, free_capacity_gb=200,
+                          timestamp=None, reserved_percentage=0),
+        }
+
+        _mock_service_get_all_by_topic.return_value = services
+        _mock_service_is_up.return_value = True
+        _mock_warning = mock.Mock()
+        host_manager.LOG.warn = _mock_warning
+
+        host_volume_capabs = dict(free_capacity_gb=4321)
+
+        service_name = 'volume'
+        with mock.patch.dict(self.host_manager.service_states,
+                             mocked_service_states):
+            self.host_manager.update_service_capabilities(service_name,
+                                                          'host1',
+                                                          host_volume_capabs)
+            res = self.host_manager.get_pools(context)
+            self.assertEqual(1, len(res))
+            self.assertEqual(401, res[0]['capabilities']['timestamp'])
+
+            self.host_manager.update_service_capabilities(service_name,
+                                                          'host1',
+                                                          host_volume_capabs)
+            res = self.host_manager.get_pools(context)
+            self.assertEqual(1, len(res))
+            self.assertEqual(402, res[0]['capabilities']['timestamp'])
 
     @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch('cinder.utils.service_is_up')
@@ -189,21 +239,223 @@ class HostManagerTestCase(test.TestCase):
             self.assertEqual(host_state_map[host].service,
                              volume_node)
 
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.utils.service_is_up')
+    def test_get_pools(self, _mock_service_is_up,
+                       _mock_service_get_all_by_topic):
+        context = 'fake_context'
+
+        services = [
+            dict(id=1, host='host1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=2, host='host2@back1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=3, host='host2@back2', topic='volume', disabled=False,
+                 availability_zone='zone2', updated_at=timeutils.utcnow()),
+        ]
+
+        mocked_service_states = {
+            'host1': dict(volume_backend_name='AAA',
+                          total_capacity_gb=512, free_capacity_gb=200,
+                          timestamp=None, reserved_percentage=0,
+                          provisioned_capacity_gb=312),
+            'host2@back1': dict(volume_backend_name='BBB',
+                                total_capacity_gb=256, free_capacity_gb=100,
+                                timestamp=None, reserved_percentage=0,
+                                provisioned_capacity_gb=156),
+            'host2@back2': dict(volume_backend_name='CCC',
+                                total_capacity_gb=10000, free_capacity_gb=700,
+                                timestamp=None, reserved_percentage=0,
+                                provisioned_capacity_gb=9300),
+        }
+
+        _mock_service_get_all_by_topic.return_value = services
+        _mock_service_is_up.return_value = True
+        _mock_warning = mock.Mock()
+        host_manager.LOG.warn = _mock_warning
+
+        with mock.patch.dict(self.host_manager.service_states,
+                             mocked_service_states):
+            res = self.host_manager.get_pools(context)
+
+            # check if get_pools returns all 3 pools
+            self.assertEqual(3, len(res))
+
+            expected = [
+                {
+                    'name': 'host1#AAA',
+                    'capabilities': {
+                        'timestamp': None,
+                        'volume_backend_name': 'AAA',
+                        'free_capacity_gb': 200,
+                        'driver_version': None,
+                        'total_capacity_gb': 512,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'provisioned_capacity_gb': 312},
+                },
+                {
+                    'name': 'host2@back1#BBB',
+                    'capabilities': {
+                        'timestamp': None,
+                        'volume_backend_name': 'BBB',
+                        'free_capacity_gb': 100,
+                        'driver_version': None,
+                        'total_capacity_gb': 256,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'provisioned_capacity_gb': 156},
+                },
+                {
+                    'name': 'host2@back2#CCC',
+                    'capabilities': {
+                        'timestamp': None,
+                        'volume_backend_name': 'CCC',
+                        'free_capacity_gb': 700,
+                        'driver_version': None,
+                        'total_capacity_gb': 10000,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'provisioned_capacity_gb': 9300},
+                }
+            ]
+            self.assertEqual(len(expected), len(res))
+            self.assertEqual(sorted(expected), sorted(res))
+
 
 class HostStateTestCase(test.TestCase):
     """Test case for HostState class."""
 
-    def test_update_from_volume_capability(self):
+    def test_update_from_volume_capability_nopool(self):
         fake_host = host_manager.HostState('host1')
         self.assertIsNone(fake_host.free_capacity_gb)
 
         volume_capability = {'total_capacity_gb': 1024,
                              'free_capacity_gb': 512,
+                             'provisioned_capacity_gb': 512,
                              'reserved_percentage': 0,
                              'timestamp': None}
 
         fake_host.update_from_volume_capability(volume_capability)
-        self.assertEqual(fake_host.free_capacity_gb, 512)
+        # Backend level stats remain uninitialized
+        self.assertEqual(0, fake_host.total_capacity_gb)
+        self.assertEqual(None, fake_host.free_capacity_gb)
+        # Pool stats has been updated
+        self.assertEqual(1024, fake_host.pools['_pool0'].total_capacity_gb)
+        self.assertEqual(512, fake_host.pools['_pool0'].free_capacity_gb)
+        self.assertEqual(512,
+                         fake_host.pools['_pool0'].provisioned_capacity_gb)
+
+        # Test update for existing host state
+        volume_capability.update(dict(total_capacity_gb=1000))
+        fake_host.update_from_volume_capability(volume_capability)
+        self.assertEqual(fake_host.pools['_pool0'].total_capacity_gb, 1000)
+
+        # Test update for existing host state with different backend name
+        volume_capability.update(dict(volume_backend_name='magic'))
+        fake_host.update_from_volume_capability(volume_capability)
+        self.assertEqual(1000, fake_host.pools['magic'].total_capacity_gb)
+        self.assertEqual(512, fake_host.pools['magic'].free_capacity_gb)
+        self.assertEqual(512,
+                         fake_host.pools['magic'].provisioned_capacity_gb)
+        # 'pool0' becomes nonactive pool, and is deleted
+        self.assertRaises(KeyError, lambda: fake_host.pools['pool0'])
+
+    def test_update_from_volume_capability_with_pools(self):
+        fake_host = host_manager.HostState('host1')
+        self.assertIsNone(fake_host.free_capacity_gb)
+        capability = {
+            'volume_backend_name': 'Local iSCSI',
+            'vendor_name': 'OpenStack',
+            'driver_version': '1.0.1',
+            'storage_protocol': 'iSCSI',
+            'pools': [
+                {'pool_name': '1st pool',
+                 'total_capacity_gb': 500,
+                 'free_capacity_gb': 230,
+                 'allocated_capacity_gb': 270,
+                 'provisioned_capacity_gb': 270,
+                 'QoS_support': 'False',
+                 'reserved_percentage': 0,
+                 'dying_disks': 100,
+                 'super_hero_1': 'spider-man',
+                 'super_hero_2': 'flash',
+                 'super_hero_3': 'neoncat',
+                 },
+                {'pool_name': '2nd pool',
+                 'total_capacity_gb': 1024,
+                 'free_capacity_gb': 1024,
+                 'allocated_capacity_gb': 0,
+                 'provisioned_capacity_gb': 0,
+                 'QoS_support': 'False',
+                 'reserved_percentage': 0,
+                 'dying_disks': 200,
+                 'super_hero_1': 'superman',
+                 'super_hero_2': ' ',
+                 'super_hero_2': 'Hulk',
+                 }
+            ],
+            'timestamp': None,
+        }
+
+        fake_host.update_from_volume_capability(capability)
+
+        self.assertEqual(fake_host.volume_backend_name, 'Local iSCSI')
+        self.assertEqual(fake_host.storage_protocol, 'iSCSI')
+        self.assertEqual(fake_host.vendor_name, 'OpenStack')
+        self.assertEqual(fake_host.driver_version, '1.0.1')
+
+        # Backend level stats remain uninitialized
+        self.assertEqual(fake_host.total_capacity_gb, 0)
+        self.assertEqual(fake_host.free_capacity_gb, None)
+        # Pool stats has been updated
+        self.assertEqual(len(fake_host.pools), 2)
+
+        self.assertEqual(500, fake_host.pools['1st pool'].total_capacity_gb)
+        self.assertEqual(230, fake_host.pools['1st pool'].free_capacity_gb)
+        self.assertEqual(270,
+                         fake_host.pools['1st pool'].provisioned_capacity_gb)
+        self.assertEqual(1024, fake_host.pools['2nd pool'].total_capacity_gb)
+        self.assertEqual(1024, fake_host.pools['2nd pool'].free_capacity_gb)
+        self.assertEqual(0,
+                         fake_host.pools['2nd pool'].provisioned_capacity_gb)
+
+        capability = {
+            'volume_backend_name': 'Local iSCSI',
+            'vendor_name': 'OpenStack',
+            'driver_version': '1.0.2',
+            'storage_protocol': 'iSCSI',
+            'pools': [
+                {'pool_name': '3rd pool',
+                 'total_capacity_gb': 10000,
+                 'free_capacity_gb': 10000,
+                 'allocated_capacity_gb': 0,
+                 'provisioned_capacity_gb': 0,
+                 'QoS_support': 'False',
+                 'reserved_percentage': 0,
+                 },
+            ],
+            'timestamp': None,
+        }
+
+        # test update HostState Record
+        fake_host.update_from_volume_capability(capability)
+
+        self.assertEqual(fake_host.driver_version, '1.0.2')
+
+        # Non-active pool stats has been removed
+        self.assertEqual(len(fake_host.pools), 1)
+
+        self.assertRaises(KeyError, lambda: fake_host.pools['1st pool'])
+        self.assertRaises(KeyError, lambda: fake_host.pools['2nd pool'])
+
+        self.assertEqual(10000, fake_host.pools['3rd pool'].total_capacity_gb)
+        self.assertEqual(10000, fake_host.pools['3rd pool'].free_capacity_gb)
+        self.assertEqual(0,
+                         fake_host.pools['3rd pool'].provisioned_capacity_gb)
 
     def test_update_from_volume_infinite_capability(self):
         fake_host = host_manager.HostState('host1')
@@ -215,8 +467,14 @@ class HostStateTestCase(test.TestCase):
                              'timestamp': None}
 
         fake_host.update_from_volume_capability(volume_capability)
-        self.assertEqual(fake_host.total_capacity_gb, 'infinite')
-        self.assertEqual(fake_host.free_capacity_gb, 'infinite')
+        # Backend level stats remain uninitialized
+        self.assertEqual(fake_host.total_capacity_gb, 0)
+        self.assertEqual(fake_host.free_capacity_gb, None)
+        # Pool stats has been updated
+        self.assertEqual(fake_host.pools['_pool0'].total_capacity_gb,
+                         'infinite')
+        self.assertEqual(fake_host.pools['_pool0'].free_capacity_gb,
+                         'infinite')
 
     def test_update_from_volume_unknown_capability(self):
         fake_host = host_manager.HostState('host1')
@@ -228,5 +486,53 @@ class HostStateTestCase(test.TestCase):
                              'timestamp': None}
 
         fake_host.update_from_volume_capability(volume_capability)
-        self.assertEqual(fake_host.total_capacity_gb, 'infinite')
-        self.assertEqual(fake_host.free_capacity_gb, 'unknown')
+        # Backend level stats remain uninitialized
+        self.assertEqual(fake_host.total_capacity_gb, 0)
+        self.assertEqual(fake_host.free_capacity_gb, None)
+        # Pool stats has been updated
+        self.assertEqual(fake_host.pools['_pool0'].total_capacity_gb,
+                         'infinite')
+        self.assertEqual(fake_host.pools['_pool0'].free_capacity_gb,
+                         'unknown')
+
+    def test_update_from_empty_volume_capability(self):
+        fake_host = host_manager.HostState('host1')
+
+        vol_cap = {'timestamp': None}
+
+        fake_host.update_from_volume_capability(vol_cap)
+        self.assertEqual(fake_host.total_capacity_gb, 0)
+        self.assertEqual(fake_host.free_capacity_gb, None)
+        # Pool stats has been updated
+        self.assertEqual(0,
+                         fake_host.pools['_pool0'].total_capacity_gb)
+        self.assertEqual(0,
+                         fake_host.pools['_pool0'].free_capacity_gb)
+        self.assertEqual(0,
+                         fake_host.pools['_pool0'].provisioned_capacity_gb)
+
+
+class PoolStateTestCase(test.TestCase):
+    """Test case for HostState class."""
+
+    def test_update_from_volume_capability(self):
+        fake_pool = host_manager.PoolState('host1', None, 'pool0')
+        self.assertIsNone(fake_pool.free_capacity_gb)
+
+        volume_capability = {'total_capacity_gb': 1024,
+                             'free_capacity_gb': 512,
+                             'reserved_percentage': 0,
+                             'provisioned_capacity_gb': 512,
+                             'timestamp': None,
+                             'cap1': 'val1',
+                             'cap2': 'val2'}
+
+        fake_pool.update_from_volume_capability(volume_capability)
+        self.assertEqual('host1#pool0', fake_pool.host)
+        self.assertEqual('pool0', fake_pool.pool_name)
+        self.assertEqual(1024, fake_pool.total_capacity_gb)
+        self.assertEqual(512, fake_pool.free_capacity_gb)
+        self.assertEqual(512,
+                         fake_pool.provisioned_capacity_gb)
+
+        self.assertDictMatch(fake_pool.capabilities, volume_capability)

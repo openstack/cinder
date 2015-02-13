@@ -1,4 +1,4 @@
-# Copyright 2013 IBM Corp.
+# Copyright 2014 IBM Corp.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,11 +14,13 @@
 # Authors:
 #   Nilesh Bhosale <nilesh.bhosale@in.ibm.com>
 #   Sasikanth Eda <sasikanth.eda@in.ibm.com>
+
 """
 IBM NAS Volume Driver.
 Currently, it supports the following IBM Storage Systems:
 1. IBM Scale Out NAS (SONAS)
 2. IBM Storwize V7000 Unified
+3. NAS based IBM GPFS Storage Systems
 
 Notes:
 1. If you specify both a password and a key file, this driver will use the
@@ -30,31 +32,44 @@ Notes:
 import os
 import re
 
-from oslo.config import cfg
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_utils import units
 
 from cinder import exception
+from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
-from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers import nfs
-from cinder.volume.drivers.nfs import nas_opts
+from cinder.volume.drivers.remotefs import nas_opts
 from cinder.volume.drivers.san import san
 
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 
 LOG = logging.getLogger(__name__)
+
+platform_opts = [
+    cfg.StrOpt('ibmnas_platform_type',
+               default='v7ku',
+               help=('IBMNAS platform type to be used as backend storage; '
+                     'valid values are - '
+                     'v7ku : for using IBM Storwize V7000 Unified, '
+                     'sonas : for using IBM Scale Out NAS, '
+                     'gpfs-nas : for using NFS based IBM GPFS deployments.')),
+]
+
 CONF = cfg.CONF
+CONF.register_opts(platform_opts)
 
 
 class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
-    """IBM NAS NFS based cinder driver.
+    """IBMNAS NFS based cinder driver.
 
     Creates file on NFS share for using it as block device on hypervisor.
     Version history:
     1.0.0 - Initial driver
+    1.1.0 - Support for NFS based GPFS storage backend
     """
 
     driver_volume_type = 'nfs'
@@ -64,12 +79,17 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
         self._context = None
         super(IBMNAS_NFSDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(nas_opts)
+        self.configuration.append_config_values(platform_opts)
         self.configuration.san_ip = self.configuration.nas_ip
         self.configuration.san_login = self.configuration.nas_login
         self.configuration.san_password = self.configuration.nas_password
         self.configuration.san_private_key = \
             self.configuration.nas_private_key
         self.configuration.san_ssh_port = self.configuration.nas_ssh_port
+        self.configuration.ibmnas_platform_type = \
+            self.configuration.ibmnas_platform_type.lower()
+        LOG.info(_LI('Initialized driver for IBMNAS Platform: %s.'),
+                 self.configuration.ibmnas_platform_type)
 
     def set_execute(self, execute):
         self._execute = utils.execute
@@ -81,7 +101,9 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def check_for_setup_error(self):
         """Ensure that the flags are set properly."""
-        required_flags = ['nas_ip', 'nas_ssh_port', 'nas_login']
+        required_flags = ['nas_ip', 'nas_ssh_port', 'nas_login',
+                          'ibmnas_platform_type']
+        valid_platforms = ['v7ku', 'sonas', 'gpfs-nas']
 
         for flag in required_flags:
             if not self.configuration.safe_get(flag):
@@ -95,16 +117,24 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
                          'authentication: set either nas_password or '
                          'nas_private_key option'))
 
+        # Ensure whether ibmnas platform type is set to appropriate value
+        if self.configuration.ibmnas_platform_type not in valid_platforms:
+            raise exception.InvalidInput(
+                reason = (_("Unsupported ibmnas_platform_type: %(given)s."
+                            " Supported platforms: %(valid)s")
+                          % {'given': self.configuration.ibmnas_platform_type,
+                             'valid': (', '.join(valid_platforms))}))
+
     def _get_provider_location(self, volume_id):
         """Returns provider location for given volume."""
-        LOG.debug("Enter _get_provider_location: volume_id %s" % volume_id)
+        LOG.debug("Enter _get_provider_location: volume_id %s", volume_id)
         volume = self.db.volume_get(self._context, volume_id)
         LOG.debug("Exit _get_provider_location")
         return volume['provider_location']
 
     def _get_export_path(self, volume_id):
         """Returns NFS export path for the given volume."""
-        LOG.debug("Enter _get_export_path: volume_id %s" % volume_id)
+        LOG.debug("Enter _get_export_path: volume_id %s", volume_id)
         return self._get_provider_location(volume_id).split(':')[1]
 
     def _update_volume_stats(self):
@@ -134,54 +164,59 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
         self._stats = data
         LOG.debug("Exit _update_volume_stats")
 
+    def _ssh_operation(self, ssh_cmd):
+        try:
+            self._run_ssh(ssh_cmd)
+        except processutils.ProcessExecutionError as e:
+            msg = (_('Failed in _ssh_operation while execution of ssh_cmd:'
+                   '%(cmd)s. Error: %(error)s') % {'cmd': ssh_cmd, 'error': e})
+            LOG.exception(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
     def _create_ibmnas_snap(self, src, dest, mount_path):
         """Create volume clones and snapshots."""
-        LOG.debug("Enter _create_ibmnas_snap: src %(src)s, dest %(dest)s"
-                  % {'src': src, 'dest': dest})
-        if mount_path is not None:
-            tmp_file_path = dest + '.snap'
-            ssh_cmd = ['mkclone', '-p', dest, '-s', src, '-t', tmp_file_path]
-            try:
-                self._run_ssh(ssh_cmd)
-            except processutils.ProcessExecutionError as e:
-                msg = (_("Failed in _create_ibmnas_snap during "
-                         "create_snapshot. Error: %s") % e.stderr)
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-
-            #Now remove the tmp file
-            tmp_file_local_path = os.path.join(mount_path,
-                                               os.path.basename(tmp_file_path))
-            self._execute('rm', '-f', tmp_file_local_path, run_as_root=True)
+        LOG.debug("Enter _create_ibmnas_snap: src %(src)s, dest %(dest)s",
+                  {'src': src, 'dest': dest})
+        if self.configuration.ibmnas_platform_type == 'gpfs-nas':
+            ssh_cmd = ['mmclone', 'snap', src, dest]
+            self._ssh_operation(ssh_cmd)
         else:
-            ssh_cmd = ['mkclone', '-s', src, '-t', dest]
-            try:
-                self._run_ssh(ssh_cmd)
-            except processutils.ProcessExecutionError as e:
-                msg = (_("Failed in _create_ibmnas_snap during "
-                         "create_volume_from_snapshot. Error: %s") % e.stderr)
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
+            if mount_path is not None:
+                tmp_file_path = dest + '.snap'
+                ssh_cmd = ['mkclone', '-p', dest, '-s', src, '-t',
+                           tmp_file_path]
+                try:
+                    self._ssh_operation(ssh_cmd)
+                finally:
+                    # Now remove the tmp file
+                    tmp_file_local_path = os.path.join(mount_path, os.path.
+                                                       basename(tmp_file_path))
+                    self._execute('rm', '-f', tmp_file_local_path,
+                                  run_as_root=True)
+            else:
+                ssh_cmd = ['mkclone', '-s', src, '-t', dest]
+                self._ssh_operation(ssh_cmd)
         LOG.debug("Exit _create_ibmnas_snap")
 
     def _create_ibmnas_copy(self, src, dest, snap):
         """Create a cloned volume, parent & the clone both remain writable."""
         LOG.debug('Enter _create_ibmnas_copy: src %(src)s, dest %(dest)s, '
-                  'snap %(snap)s' % {'src': src,
-                                     'dest': dest,
-                                     'snap': snap})
-        ssh_cmd = ['mkclone', '-p', snap, '-s', src, '-t', dest]
-        try:
-            self._run_ssh(ssh_cmd)
-        except processutils.ProcessExecutionError as e:
-            msg = (_("Failed in _create_ibmnas_copy. Error: %s") % e.stderr)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+                  'snap %(snap)s', {'src': src,
+                                    'dest': dest,
+                                    'snap': snap})
+        if self.configuration.ibmnas_platform_type == 'gpfs-nas':
+            ssh_cmd = ['mmclone', 'snap', src, snap]
+            self._ssh_operation(ssh_cmd)
+            ssh_cmd = ['mmclone', 'copy', snap, dest]
+            self._ssh_operation(ssh_cmd)
+        else:
+            ssh_cmd = ['mkclone', '-p', snap, '-s', src, '-t', dest]
+            self._ssh_operation(ssh_cmd)
         LOG.debug("Exit _create_ibmnas_copy")
 
     def _resize_volume_file(self, path, new_size):
         """Resize the image file on share to new size."""
-        LOG.info(_('Resizing file to %sG'), new_size)
+        LOG.debug("Resizing file to %sG.", new_size)
         try:
             image_utils.resize_image(path, new_size, run_as_root=True)
         except processutils.ProcessExecutionError as e:
@@ -195,16 +230,19 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
-        LOG.info(_('Extending volume %s.'), volume['name'])
+        LOG.debug("Extending volume %s", volume['name'])
         path = self.local_path(volume)
         self._resize_volume_file(path, new_size)
 
     def _delete_snapfiles(self, fchild, mount_point):
         LOG.debug('Enter _delete_snapfiles: fchild %(fchild)s, '
-                  'mount_point %(mount_point)s'
-                  % {'fchild': fchild,
-                     'mount_point': mount_point})
-        ssh_cmd = ['lsclone', fchild]
+                  'mount_point %(mount_point)s',
+                  {'fchild': fchild,
+                   'mount_point': mount_point})
+        if self.configuration.ibmnas_platform_type == 'gpfs-nas':
+            ssh_cmd = ['mmclone', 'show', fchild]
+        else:
+            ssh_cmd = ['lsclone', fchild]
         try:
             (out, _err) = self._run_ssh(ssh_cmd, check_exit_code=False)
         except processutils.ProcessExecutionError as e:
@@ -246,8 +284,9 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         if not volume['provider_location']:
-            LOG.warn(_('Volume %s does not have provider_location specified, '
-                     'skipping.'), volume['name'])
+            LOG.warn(_LW('Volume %s does not have '
+                         'provider_location specified, '
+                         'skipping.'), volume['name'])
             return
 
         export_path = self._get_export_path(volume['id'])
@@ -296,13 +335,18 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
         export_path = self._get_export_path(snapshot['volume_id'])
         snapshot_path = os.path.join(export_path, snapshot.name)
         volume_path = os.path.join(export_path, volume['name'])
-        self._create_ibmnas_snap(snapshot_path, volume_path, None)
+
+        if self.configuration.ibmnas_platform_type == 'gpfs-nas':
+            ssh_cmd = ['mmclone', 'copy', snapshot_path, volume_path]
+            self._ssh_operation(ssh_cmd)
+        else:
+            self._create_ibmnas_snap(snapshot_path, volume_path, None)
 
         volume['provider_location'] = self._find_share(volume['size'])
         volume_path = self.local_path(volume)
-        self._set_rw_permissions_for_all(volume_path)
+        self._set_rw_permissions_for_owner(volume_path)
 
-        #Extend the volume if required
+        # Extend the volume if required
         self._resize_volume_file(volume_path, volume['size'])
         return {'provider_location': volume['provider_location']}
 
@@ -322,10 +366,9 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
         volume['provider_location'] = self._find_share(volume['size'])
         volume_path = self.local_path(volume)
+        self._set_rw_permissions_for_owner(volume_path)
 
-        self._set_rw_permissions_for_all(volume_path)
-
-        #Extend the volume if required
+        # Extend the volume if required
         self._resize_volume_file(volume_path, volume['size'])
 
         return {'provider_location': volume['provider_location']}

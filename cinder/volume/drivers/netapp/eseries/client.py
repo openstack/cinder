@@ -1,5 +1,5 @@
-# Copyright (c) 2014 NetApp, Inc.
-# All Rights Reserved.
+# Copyright (c) 2014 NetApp, Inc.  All rights reserved.
+# Copyright (c) 2014 Navneet Singh.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,13 +16,14 @@
 Client classes for web services.
 """
 
+import copy
 import json
-import requests
 
+import requests
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 
 
@@ -71,8 +72,8 @@ class WebserviceClient(object):
         # Catching error conditions other than the perceived ones.
         # Helps propagating only known exceptions back to the caller.
         except Exception as e:
-            LOG.exception(_("Unexpected error while invoking web service."
-                            " Error - %s."), e)
+            LOG.exception(_LE("Unexpected error while invoking web service."
+                              " Error - %s."), e)
             raise exception.NetAppDriverException(
                 _("Invoking web service failed."))
         self._eval_response(response)
@@ -117,20 +118,27 @@ class RestClient(WebserviceClient):
     def _invoke(self, method, path, data=None, use_system=True,
                 timeout=None, verify=False, **kwargs):
         """Invokes end point for resource on path."""
-        params = {'m': method, 'p': path, 'd': data, 'sys': use_system,
-                  't': timeout, 'v': verify, 'k': kwargs}
+        scrubbed_data = copy.deepcopy(data)
+        if scrubbed_data:
+            if 'password' in scrubbed_data:
+                scrubbed_data['password'] = "****"
+            if 'storedPassword' in scrubbed_data:
+                scrubbed_data['storedPassword'] = "****"
+
+        params = {'m': method, 'p': path, 'd': scrubbed_data,
+                  'sys': use_system, 't': timeout, 'v': verify, 'k': kwargs}
         LOG.debug("Invoking rest with method: %(m)s, path: %(p)s,"
                   " data: %(d)s, use_system: %(sys)s, timeout: %(t)s,"
                   " verify: %(v)s, kwargs: %(k)s." % (params))
         url = self._get_resource_url(path, use_system, **kwargs)
         if self._content_type == 'json':
-                headers = {'Accept': 'application/json',
-                           'Content-Type': 'application/json'}
-                data = json.dumps(data) if data else None
-                res = self.invoke_service(method, url, data=data,
-                                          headers=headers,
-                                          timeout=timeout, verify=verify)
-                return res.json() if res.text else None
+            headers = {'Accept': 'application/json',
+                       'Content-Type': 'application/json'}
+            data = json.dumps(data) if data else None
+            res = self.invoke_service(method, url, data=data,
+                                      headers=headers,
+                                      timeout=timeout, verify=verify)
+            return res.json() if res.text else None
         else:
             raise exception.NetAppDriverException(
                 _("Content type not supported."))
@@ -216,6 +224,12 @@ class RestClient(WebserviceClient):
         """Creates host on array with given port information."""
         port = {'type': port_type, 'port': port_id, 'label': port_label}
         return self.create_host(label, host_type, [port], group_id)
+
+    def update_host_type(self, host_ref, host_type):
+        """Updates host type for a given host."""
+        path = "/storage-systems/{system-id}/hosts/{object-id}"
+        data = {'hostType': host_type}
+        return self._invoke('POST', path, data, **{'object-id': host_ref})
 
     def list_host_types(self):
         """Lists host types in storage system."""

@@ -17,13 +17,17 @@
    Note, this is not iSCSI.
 """
 import os
+import re
+
+from oslo_concurrency import processutils as putils
 
 from cinder.brick import executor
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
 
 LOG = logging.getLogger(__name__)
+
+MULTIPATH_ERROR_REGEX = re.compile("\w{3} \d+ \d\d:\d\d:\d\d \|.*$")
 
 
 class LinuxSCSI(executor.Executor):
@@ -62,8 +66,8 @@ class LinuxSCSI(executor.Executor):
             self.echo_scsi_command(path, "1")
 
     def get_device_info(self, device):
-        (out, err) = self._execute('sg_scan', device, run_as_root=True,
-                                   root_helper=self._root_helper)
+        (out, _err) = self._execute('sg_scan', device, run_as_root=True,
+                                    root_helper=self._root_helper)
         dev_info = {'device': device, 'host': None,
                     'channel': None, 'id': None, 'lun': None}
         if out:
@@ -102,7 +106,7 @@ class LinuxSCSI(executor.Executor):
                           root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
             msg = _("Failed to flush IO buffers prior to removing"
-                    "device: (%(code)s)") % {'code': exc.exit_code}
+                    " device: (%(code)s)") % {'code': exc.exit_code}
             LOG.warn(msg)
 
     def flush_multipath_device(self, device):
@@ -111,7 +115,7 @@ class LinuxSCSI(executor.Executor):
             self._execute('multipath', '-f', device, run_as_root=True,
                           root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
-            LOG.warn(_("multipath call failed exit (%(code)s)")
+            LOG.warn(_LW("multipath call failed exit (%(code)s)")
                      % {'code': exc.exit_code})
 
     def flush_multipath_devices(self):
@@ -119,7 +123,7 @@ class LinuxSCSI(executor.Executor):
             self._execute('multipath', '-F', run_as_root=True,
                           root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
-            LOG.warn(_("multipath call failed exit (%(code)s)")
+            LOG.warn(_LW("multipath call failed exit (%(code)s)")
                      % {'code': exc.exit_code})
 
     def find_multipath_device(self, device):
@@ -132,17 +136,19 @@ class LinuxSCSI(executor.Executor):
         devices = []
         out = None
         try:
-            (out, err) = self._execute('multipath', '-l', device,
-                                       run_as_root=True,
-                                       root_helper=self._root_helper)
+            (out, _err) = self._execute('multipath', '-l', device,
+                                        run_as_root=True,
+                                        root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
-            LOG.warn(_("multipath call failed exit (%(code)s)")
+            LOG.warn(_LW("multipath call failed exit (%(code)s)")
                      % {'code': exc.exit_code})
             return None
 
         if out:
             lines = out.strip()
             lines = lines.split("\n")
+            lines = [line for line in lines
+                     if not re.match(MULTIPATH_ERROR_REGEX, line)]
             if lines:
                 line = lines[0]
                 info = line.split(" ")
@@ -157,7 +163,7 @@ class LinuxSCSI(executor.Executor):
                     mdev_id = mdev_id.replace(')', '')
 
                 if mdev is None:
-                    LOG.warn(_("Couldn't find multipath device %(line)s")
+                    LOG.warn(_LW("Couldn't find multipath device %(line)s")
                              % {'line': line})
                     return None
 

@@ -16,15 +16,16 @@
 
 import math
 
+import mock
 import mox
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_serialization import jsonutils
+from oslo_utils import units
 
 from cinder.brick.initiator import connector
 from cinder import exception
 from cinder.image import image_utils
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
@@ -233,6 +234,7 @@ class CoraidDriverTestCase(test.TestCase):
         super(CoraidDriverTestCase, self).setUp()
         configuration = mox.MockObject(conf.Configuration)
         configuration.append_config_values(mox.IgnoreArg())
+        configuration.coraid_default_repository = 'default_repository'
         configuration.coraid_esm_address = fake_esm_ipaddress
         configuration.coraid_user = fake_esm_username
         configuration.coraid_group = fake_esm_group
@@ -241,6 +243,7 @@ class CoraidDriverTestCase(test.TestCase):
         configuration.snapshot_name_template = "snapshot-%s"
         configuration.coraid_repository_key = fake_coraid_repository_key
         configuration.use_multipath_for_image_xfer = False
+        configuration.enforce_multipath_for_image_xfer = False
         configuration.num_volume_device_scan_tries = 3
         configuration.volume_dd_blocksize = '1M'
         self.fake_rpc = FakeRpc()
@@ -343,6 +346,52 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
         self.driver.create_volume(fake_volume)
 
         self.mox.VerifyAll()
+
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_create_volume_volume_type_no_repo_key(self, volume_specs_mock):
+        """Test volume creation without repo specified in volume type."""
+        volume_specs_mock.return_value = None
+
+        create_volume_request = {'addr': 'cms',
+                                 'data': {
+                                     'servers': [],
+                                     'size':
+                                         coraid_volume_size(fake_volume_size),
+                                     'repoName': 'default_repository',
+                                     'lvName': fake_volume_name},
+                                 'op': 'orchStrLun',
+                                 'args': 'add'}
+        pack_data(create_volume_request)
+
+        self.fake_rpc.handle('configure', {}, [create_volume_request],
+                             {'configState': 'completedSuccessfully',
+                              'firstParam': 'fake_first_param'})
+
+        self.driver.create_volume(fake_volume)
+
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_create_volume_volume_type_no_repo_data(self, volume_specs_mock):
+        """Test volume creation w/o repo in volume type nor config."""
+        volume_specs_mock.return_value = None
+        self.driver.configuration.coraid_default_repository = None
+
+        create_volume_request = {'addr': 'cms',
+                                 'data': {
+                                     'servers': [],
+                                     'size':
+                                         coraid_volume_size(fake_volume_size),
+                                     'repoName': 'default_repository',
+                                     'lvName': fake_volume_name},
+                                 'op': 'orchStrLun',
+                                 'args': 'add'}
+        pack_data(create_volume_request)
+
+        self.fake_rpc.handle('configure', {}, [create_volume_request],
+                             {'configState': 'completedSuccessfully',
+                              'firstParam': 'fake_first_param'})
+
+        self.assertRaises(exception.CoraidException,
+                          self.driver.create_volume, fake_volume)
 
     def test_delete_volume(self):
         delete_volume_request = {'addr': 'cms',
@@ -489,7 +538,8 @@ class CoraidDriverIntegrationalTestCase(CoraidDriverLoginSuccessTestCase):
         delete_snapshot_request = {'addr': 'cms',
                                    'data': {
                                        'repoName': fake_repository_name,
-                                       'lvName': fake_snapshot_name},
+                                       'lvName': fake_snapshot_name,
+                                       'newLvName': 'noop'},
                                    'op': 'orchStrLunMods',
                                    'args': 'delClSnap'}
         pack_data(delete_snapshot_request)
@@ -766,7 +816,7 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
 
         self.mox.StubOutWithMock(connector, 'get_connector_properties')
         connector.get_connector_properties(root_helper,
-                                           CONF.my_ip).\
+                                           CONF.my_ip, False, False).\
             AndReturn({})
 
         self.mox.StubOutWithMock(utils, 'brick_get_connector')
@@ -783,7 +833,7 @@ class CoraidDriverImageTestCases(CoraidDriverTestCase):
             .connect_volume(self.fake_connection['data'])\
             .AndReturn({'path': self.fake_dev_path})
 
-        aoe_initiator.check_valid_device(self.fake_dev_path)\
+        aoe_initiator.check_valid_device(self.fake_dev_path, mox.IgnoreArg())\
             .AndReturn(True)
 
         aoe_initiator.disconnect_volume(

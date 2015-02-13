@@ -17,8 +17,8 @@
 import datetime
 
 import glanceclient.exc
-from glanceclient.v2 import client as glance_client_v2
-from oslo.config import cfg
+import mock
+from oslo_config import cfg
 
 from cinder import context
 from cinder import exception
@@ -79,7 +79,7 @@ class TestGlanceImageService(test.TestCase):
     At a high level, the translations involved are:
 
         1. Glance -> ImageService - This is needed so we can support
-           multple ImageServices (Glance, Local, etc)
+           multiple ImageServices (Glance, Local, etc)
 
         2. ImageService -> API - This is needed so we can support multple
            APIs (OpenStack, EC2)
@@ -522,8 +522,8 @@ class TestGlanceImageService(test.TestCase):
     def test_glance_client_image_id(self):
         fixture = self._make_fixture(name='test image')
         image_id = self.service.create(self.context, fixture)['id']
-        (service, same_id) = glance.get_remote_image_service(self.context,
-                                                             image_id)
+        (_service, same_id) = glance.get_remote_image_service(self.context,
+                                                              image_id)
         self.assertEqual(same_id, image_id)
 
     def test_glance_client_image_ref(self):
@@ -588,45 +588,24 @@ class TestGlanceImageService(test.TestCase):
 
 class TestGlanceClientVersion(test.TestCase):
     """Tests the version of the glance client generated."""
-    def setUp(self):
-        super(TestGlanceClientVersion, self).setUp()
 
-        def fake_get_model(self):
-            return
-
-        self.stubs.Set(glance_client_v2.Client, '_get_image_model',
-                       fake_get_model)
-
-        try:
-            self.stubs.Set(glance_client_v2.Client, '_get_member_model',
-                           fake_get_model)
-        except AttributeError:
-            # method requires stubbing only with newer glanceclients.
-            pass
-
-    def test_glance_version_by_flag(self):
+    @mock.patch('cinder.image.glance.glanceclient.Client')
+    def test_glance_version_by_flag(self, _mockglanceclient):
         """Test glance version set by flag is honoured."""
-        client_wrapper_v1 = glance.GlanceClientWrapper('fake', 'fake_host',
-                                                       9292)
-        self.assertEqual(client_wrapper_v1.client.__module__,
-                         'glanceclient.v1.client')
+        glance.GlanceClientWrapper('fake', 'fake_host', 9292)
+        self.assertEqual('1', _mockglanceclient.call_args[0][0])
         self.flags(glance_api_version=2)
-        client_wrapper_v2 = glance.GlanceClientWrapper('fake', 'fake_host',
-                                                       9292)
-        self.assertEqual(client_wrapper_v2.client.__module__,
-                         'glanceclient.v2.client')
+        glance.GlanceClientWrapper('fake', 'fake_host', 9292)
+        self.assertEqual('2', _mockglanceclient.call_args[0][0])
         CONF.reset()
 
-    def test_glance_version_by_arg(self):
+    @mock.patch('cinder.image.glance.glanceclient.Client')
+    def test_glance_version_by_arg(self, _mockglanceclient):
         """Test glance version set by arg to GlanceClientWrapper"""
-        client_wrapper_v1 = glance.GlanceClientWrapper('fake', 'fake_host',
-                                                       9292, version=1)
-        self.assertEqual(client_wrapper_v1.client.__module__,
-                         'glanceclient.v1.client')
-        client_wrapper_v2 = glance.GlanceClientWrapper('fake', 'fake_host',
-                                                       9292, version=2)
-        self.assertEqual(client_wrapper_v2.client.__module__,
-                         'glanceclient.v2.client')
+        glance.GlanceClientWrapper('fake', 'fake_host', 9292, version=1)
+        self.assertEqual('1', _mockglanceclient.call_args[0][0])
+        glance.GlanceClientWrapper('fake', 'fake_host', 9292, version=2)
+        self.assertEqual('2', _mockglanceclient.call_args[0][0])
 
 
 def _create_failing_glance_client(info):

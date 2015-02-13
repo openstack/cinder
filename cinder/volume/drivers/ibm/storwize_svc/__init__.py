@@ -37,17 +37,18 @@ Limitations:
 import math
 import time
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import helpers as storwize_helpers
+from cinder.volume.drivers.ibm.storwize_svc import replication as storwize_rep
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
@@ -107,6 +108,14 @@ storwize_svc_opts = [
                      'setup. If it is compatible, it will allow no wwpns '
                      'being returned on get_conn_fc_wwpns during '
                      'initialize_connection'),
+    cfg.BoolOpt('storwize_svc_allow_tenant_qos',
+                default=False,
+                help='Allow tenants to specify QOS on create'),
+    cfg.StrOpt('storwize_svc_stretched_cluster_partner',
+               default=None,
+               help='If operating in stretched cluster mode, specify the '
+                    'name of the pool in which mirrored copies are stored.'
+                    'Example: "pool2"'),
 ]
 
 CONF = cfg.CONF
@@ -128,9 +137,12 @@ class StorwizeSVCDriver(san.SanDriver):
             WWPNs by comparing lower case
     1.2.4 - Fix bug #1278035 (async migration/retype)
     1.2.5 - Added support for manage_existing (unmanage is inherited)
+    1.2.6 - Added QoS support in terms of I/O throttling rate
+    1.3.1 - Added support for volume replication
+    1.3.2 - Added support for consistency group
     """
 
-    VERSION = "1.2.5"
+    VERSION = "1.3.2"
     VDISKCOPYOPS_INTERVAL = 600
 
     def __init__(self, *args, **kwargs):
@@ -139,6 +151,7 @@ class StorwizeSVCDriver(san.SanDriver):
         self._helpers = storwize_helpers.StorwizeHelpers(self._run_ssh)
         self._vdiskcopyops = {}
         self._vdiskcopyops_loop = None
+        self.replication = None
         self._state = {'storage_nodes': {},
                        'enabled_protocols': set(),
                        'compression_enabled': False,
@@ -157,6 +170,9 @@ class StorwizeSVCDriver(san.SanDriver):
 
         # Get storage system name, id, and code level
         self._state.update(self._helpers.get_system_info())
+
+        # Get the replication helpers
+        self.replication = storwize_rep.StorwizeSVCReplication.factory(self)
 
         # Validate that the pool exists
         pool = self.configuration.storwize_svc_volpool_name
@@ -274,7 +290,7 @@ class StorwizeSVCDriver(san.SanDriver):
         """
         volume_defined = self._helpers.is_vdisk_defined(volume['name'])
         if not volume_defined:
-            LOG.error(_('ensure_export: Volume %s not found on storage')
+            LOG.error(_LE('ensure_export: Volume %s not found on storage')
                       % volume['name'])
 
     def create_export(self, ctxt, volume):
@@ -293,14 +309,17 @@ class StorwizeSVCDriver(san.SanDriver):
         if 'FC' in self._state['enabled_protocols'] and 'wwpns' in connector:
             valid = True
         if not valid:
-            msg = (_('The connector does not contain the required '
-                     'information.'))
+            msg = (_LE('The connector does not contain the required '
+                       'information.'))
             LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+            raise exception.InvalidConnectorException(
+                missing='initiator or wwpns')
 
-    def _get_vdisk_params(self, type_id, volume_type=None):
+    def _get_vdisk_params(self, type_id, volume_type=None,
+                          volume_metadata=None):
         return self._helpers.get_vdisk_params(self.configuration, self._state,
-                                              type_id, volume_type=volume_type)
+                                              type_id, volume_type=volume_type,
+                                              volume_metadata=volume_metadata)
 
     @fczm_utils.AddFCZone
     @utils.synchronized('storwize-host', external=True)
@@ -318,8 +337,8 @@ class StorwizeSVCDriver(san.SanDriver):
 
         """
 
-        LOG.debug('enter: initialize_connection: volume %(vol)s with '
-                  'connector %(conn)s' % {'vol': volume, 'conn': connector})
+        LOG.debug('enter: initialize_connection: volume %(vol)s with connector'
+                  ' %(conn)s', {'vol': volume['id'], 'conn': connector})
 
         vol_opts = self._get_vdisk_params(volume['volume_type_id'])
         volume_name = volume['name']
@@ -349,8 +368,8 @@ class StorwizeSVCDriver(san.SanDriver):
             if chap_enabled and chap_secret is None:
                 chap_secret = self._helpers.add_chap_secret_to_host(host_name)
             elif not chap_enabled and chap_secret:
-                LOG.warning(_('CHAP secret exists for host but CHAP is '
-                              'disabled'))
+                LOG.warning(_LW('CHAP secret exists for host but CHAP is '
+                                'disabled'))
 
         volume_attributes = self._helpers.get_vdisk_attributes(volume_name)
         if volume_attributes is None:
@@ -366,8 +385,8 @@ class StorwizeSVCDriver(san.SanDriver):
             preferred_node = volume_attributes['preferred_node_id']
             IO_group = volume_attributes['IO_group_id']
         except KeyError as e:
-            LOG.error(_('Did not find expected column name in '
-                        'lsvdisk: %s') % e)
+            LOG.error(_LE('Did not find expected column name in '
+                          'lsvdisk: %s') % e)
             msg = (_('initialize_connection: Missing volume '
                      'attribute for volume %s') % volume_name)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -394,8 +413,8 @@ class StorwizeSVCDriver(san.SanDriver):
             if not preferred_node_entry and not vol_opts['multipath']:
                 # Get 1st node in I/O group
                 preferred_node_entry = io_group_nodes[0]
-                LOG.warn(_('initialize_connection: Did not find a preferred '
-                           'node for volume %s') % volume_name)
+                LOG.warn(_LW('initialize_connection: Did not find a preferred '
+                             'node for volume %s') % volume_name)
 
             properties = {}
             properties['target_discovered'] = False
@@ -413,6 +432,10 @@ class StorwizeSVCDriver(san.SanDriver):
                     properties['auth_method'] = 'CHAP'
                     properties['auth_username'] = connector['initiator']
                     properties['auth_password'] = chap_secret
+                    properties['discovery_auth_method'] = 'CHAP'
+                    properties['discovery_auth_username'] = (
+                        connector['initiator'])
+                    properties['discovery_auth_password'] = chap_secret
             else:
                 type_str = 'fibre_channel'
                 conn_wwpns = self._helpers.get_conn_fc_wwpns(host_name)
@@ -445,10 +468,10 @@ class StorwizeSVCDriver(san.SanDriver):
                             properties['target_wwn'] = WWPN
                             break
                     else:
-                        LOG.warning(_('Unable to find a preferred node match '
-                                      'for node %(node)s in the list of '
-                                      'available WWPNs on %(host)s. '
-                                      'Using first available.') %
+                        LOG.warning(_LW('Unable to find a preferred node match'
+                                        ' for node %(node)s in the list of '
+                                        'available WWPNs on %(host)s. '
+                                        'Using first available.') %
                                     {'node': preferred_node,
                                      'host': host_name})
                         properties['target_wwn'] = conn_wwpns[0]
@@ -465,14 +488,16 @@ class StorwizeSVCDriver(san.SanDriver):
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.terminate_connection(volume, connector)
-                LOG.error(_('initialize_connection: Failed to collect return '
-                            'properties for volume %(vol)s and connector '
-                            '%(conn)s.\n') % {'vol': volume,
-                                              'conn': connector})
+                LOG.error(_LE('initialize_connection: Failed '
+                              'to collect return '
+                              'properties for volume %(vol)s and connector '
+                              '%(conn)s.\n'), {'vol': volume,
+                                               'conn': connector})
 
         LOG.debug('leave: initialize_connection:\n volume: %(vol)s\n '
-                  'connector %(conn)s\n properties: %(prop)s'
-                  % {'vol': volume, 'conn': connector, 'prop': properties})
+                  'connector %(conn)s\n properties: %(prop)s',
+                  {'vol': volume['id'], 'conn': connector,
+                   'prop': properties})
 
         return {'driver_volume_type': type_str, 'data': properties, }
 
@@ -498,8 +523,8 @@ class StorwizeSVCDriver(san.SanDriver):
         3. Delete the host if it has no more mappings (hosts are created
            automatically by this driver when mappings are created)
         """
-        LOG.debug('enter: terminate_connection: volume %(vol)s with '
-                  'connector %(conn)s' % {'vol': volume, 'conn': connector})
+        LOG.debug('enter: terminate_connection: volume %(vol)s with connector'
+                  ' %(conn)s', {'vol': volume['id'], 'conn': connector})
 
         vol_name = volume['name']
         if 'host' in connector:
@@ -534,15 +559,26 @@ class StorwizeSVCDriver(san.SanDriver):
         self._helpers.unmap_vol_from_host(vol_name, host_name)
 
         LOG.debug('leave: terminate_connection: volume %(vol)s with '
-                  'connector %(conn)s' % {'vol': volume, 'conn': connector})
+                  'connector %(conn)s', {'vol': volume['id'],
+                                         'conn': connector})
 
         return info
 
     def create_volume(self, volume):
-        opts = self._get_vdisk_params(volume['volume_type_id'])
+        opts = self._get_vdisk_params(volume['volume_type_id'],
+                                      volume_metadata=
+                                      volume.get('volume_metadata'))
         pool = self.configuration.storwize_svc_volpool_name
-        return self._helpers.create_vdisk(volume['name'], str(volume['size']),
-                                          'gb', pool, opts)
+        self._helpers.create_vdisk(volume['name'], str(volume['size']),
+                                   'gb', pool, opts)
+        if opts['qos']:
+            self._helpers.add_vdisk_qos(volume['name'], opts['qos'])
+
+        model_update = None
+        if 'replication' in opts and opts['replication']:
+            ctxt = context.get_admin_context()
+            model_update = self.replication.create_replica(ctxt, volume)
+        return model_update
 
     def delete_volume(self, volume):
         self._helpers.delete_vdisk(volume['name'], False)
@@ -575,24 +611,44 @@ class StorwizeSVCDriver(san.SanDriver):
             msg = (_('create_volume_from_snapshot: Source and destination '
                      'size differ.'))
             LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+            raise exception.InvalidInput(message=msg)
 
-        opts = self._get_vdisk_params(volume['volume_type_id'])
+        opts = self._get_vdisk_params(volume['volume_type_id'],
+                                      volume_metadata=
+                                      volume.get('volume_metadata'))
         self._helpers.create_copy(snapshot['name'], volume['name'],
                                   snapshot['id'], self.configuration,
                                   opts, True)
+        if opts['qos']:
+            self._helpers.add_vdisk_qos(volume['name'], opts['qos'])
+
+        if 'replication' in opts and opts['replication']:
+            ctxt = context.get_admin_context()
+            replica_status = self.replication.create_replica(ctxt, volume)
+            if replica_status:
+                return replica_status
 
     def create_cloned_volume(self, tgt_volume, src_volume):
         if src_volume['size'] != tgt_volume['size']:
             msg = (_('create_cloned_volume: Source and destination '
                      'size differ.'))
             LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+            raise exception.InvalidInput(message=msg)
 
-        opts = self._get_vdisk_params(tgt_volume['volume_type_id'])
+        opts = self._get_vdisk_params(tgt_volume['volume_type_id'],
+                                      volume_metadata=
+                                      tgt_volume.get('volume_metadata'))
         self._helpers.create_copy(src_volume['name'], tgt_volume['name'],
                                   src_volume['id'], self.configuration,
                                   opts, True)
+        if opts['qos']:
+            self._helpers.add_vdisk_qos(tgt_volume['name'], opts['qos'])
+
+        if 'replication' in opts and opts['replication']:
+            ctxt = context.get_admin_context()
+            replica_status = self.replication.create_replica(ctxt, tgt_volume)
+            if replica_status:
+                return replica_status
 
     def extend_volume(self, volume, new_size):
         LOG.debug('enter: extend_volume: volume %s' % volume['id'])
@@ -607,6 +663,11 @@ class StorwizeSVCDriver(san.SanDriver):
         extend_amt = int(new_size) - volume['size']
         self._helpers.extend_vdisk(volume['name'], extend_amt)
         LOG.debug('leave: extend_volume: volume %s' % volume['id'])
+
+    def add_vdisk_copy(self, volume, dest_pool, vol_type):
+        return self._helpers.add_vdisk_copy(volume, dest_pool,
+                                            vol_type, self._state,
+                                            self.configuration)
 
     def _add_vdisk_copy_op(self, ctxt, volume, new_op):
         metadata = self.db.volume_admin_metadata_get(ctxt.elevated(),
@@ -684,6 +745,28 @@ class StorwizeSVCDriver(san.SanDriver):
             self.db.volume_admin_metadata_delete(ctxt.elevated(), volume['id'],
                                                  'vdiskcopyops')
 
+    def promote_replica(self, ctxt, volume):
+        return self.replication.promote_replica(volume)
+
+    def reenable_replication(self, ctxt, volume):
+        return self.replication.reenable_replication(volume)
+
+    def create_replica_test_volume(self, tgt_volume, src_volume):
+        if src_volume['size'] != tgt_volume['size']:
+            msg = (_('create_cloned_volume: Source and destination '
+                     'size differ.'))
+            LOG.error(msg)
+            raise exception.InvalidInput(message=msg)
+        replica_status = self.replication.test_replica(tgt_volume,
+                                                       src_volume)
+        return replica_status
+
+    def get_replication_status(self, ctxt, volume):
+        replica_status = None
+        if self.replication:
+            replica_status = self.replication.get_replication_status(volume)
+        return replica_status
+
     def _check_volume_copy_ops(self):
         LOG.debug("enter: update volume copy status")
         ctxt = context.get_admin_context()
@@ -692,7 +775,7 @@ class StorwizeSVCDriver(san.SanDriver):
             try:
                 volume = self.db.volume_get(ctxt, vol_id)
             except Exception:
-                LOG.warn(_('Volume %s does not exist.'), vol_id)
+                LOG.warn(_LW('Volume %s does not exist.'), vol_id)
                 del self._vdiskcopyops[vol_id]
                 if not len(self._vdiskcopyops):
                     self._vdiskcopyops_loop.stop()
@@ -746,9 +829,7 @@ class StorwizeSVCDriver(san.SanDriver):
             vol_type = None
 
         self._check_volume_copy_ops()
-        new_op = self._helpers.add_vdisk_copy(volume['name'], dest_pool,
-                                              vol_type, self._state,
-                                              self.configuration)
+        new_op = self.add_vdisk_copy(volume['name'], dest_pool, vol_type)
         self._add_vdisk_copy_op(ctxt, volume, new_op)
         LOG.debug('leave: migrate_volume: id=%(id)s, host=%(host)s' %
                   {'id': volume['id'], 'host': host['host']})
@@ -782,9 +863,23 @@ class StorwizeSVCDriver(san.SanDriver):
         no_copy_keys = ['warning', 'autoexpand', 'easytier']
         copy_keys = ['rsize', 'grainsize', 'compression']
         all_keys = ignore_keys + no_copy_keys + copy_keys
-        old_opts = self._get_vdisk_params(volume['volume_type_id'])
+        old_opts = self._get_vdisk_params(volume['volume_type_id'],
+                                          volume_metadata=
+                                          volume.get('volume_matadata'))
         new_opts = self._get_vdisk_params(new_type['id'],
                                           volume_type=new_type)
+
+        # Check if retype affects volume replication
+        model_update = None
+        old_type_replication = old_opts.get('replication', False)
+        new_type_replication = new_opts.get('replication', False)
+
+        # Delete replica if needed
+        if old_type_replication and not new_type_replication:
+            self.replication.delete_replica(volume)
+            model_update = {'replication_status': 'disabled',
+                            'replication_driver_data': None,
+                            'replication_extended_status': None}
 
         vdisk_changes = []
         need_copy = False
@@ -806,12 +901,21 @@ class StorwizeSVCDriver(san.SanDriver):
             if dest_pool is None:
                 return False
 
-            retype_iogrp_property(volume, new_opts['iogrp'], old_opts['iogrp'])
+            # If volume is replicated, can't copy
+            if new_type_replication:
+                msg = (_('Unable to retype: Current action needs volume-copy,'
+                         ' it is not allowed when new type is replication.'
+                         ' Volume = %s'), volume['id'])
+                raise exception.VolumeDriverException(message=msg)
+
+            retype_iogrp_property(volume,
+                                  new_opts['iogrp'],
+                                  old_opts['iogrp'])
             try:
-                new = self._helpers.add_vdisk_copy(volume['name'], dest_pool,
-                                                   new_type, self._state,
-                                                   self.configuration)
-                self._add_vdisk_copy_op(ctxt, volume, new)
+                new_op = self.add_vdisk_copy(volume['name'],
+                                             dest_pool,
+                                             new_type)
+                self._add_vdisk_copy_op(ctxt, volume, new_op)
             except exception.VolumeDriverException:
                 # roll back changing iogrp property
                 retype_iogrp_property(volume, old_opts['iogrp'],
@@ -826,12 +930,25 @@ class StorwizeSVCDriver(san.SanDriver):
             self._helpers.change_vdisk_options(volume['name'], vdisk_changes,
                                                new_opts, self._state)
 
+        if new_opts['qos']:
+            # Add the new QoS setting to the volume. If the volume has an
+            # old QoS setting, it will be overwritten.
+            self._helpers.update_vdisk_qos(volume['name'], new_opts['qos'])
+        elif old_opts['qos']:
+            # If the old_opts contain QoS keys, disable them.
+            self._helpers.disable_vdisk_qos(volume['name'], old_opts['qos'])
+
+        # Add replica if needed
+        if not old_type_replication and new_type_replication:
+            model_update = self.replication.create_replica(ctxt, volume,
+                                                           new_type)
+
         LOG.debug('exit: retype: ild=%(id)s, new_type=%(new_type)s,'
                   'diff=%(diff)s, host=%(host)s' % {'id': volume['id'],
                                                     'new_type': new_type,
                                                     'diff': diff,
                                                     'host': host['host']})
-        return True
+        return True, model_update
 
     def manage_existing(self, volume, ref):
         """Manages an existing vdisk.
@@ -896,6 +1013,73 @@ class StorwizeSVCDriver(san.SanDriver):
 
         return self._stats
 
+    def create_consistencygroup(self, context, group):
+        """Create a consistency group.
+
+        IBM Storwize will create CG until cg-snapshot creation,
+        db will maintain the volumes and CG relationship.
+        """
+        LOG.debug("Creating consistency group")
+        model_update = {'status': 'available'}
+        return model_update
+
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group.
+
+        IBM Storwize will delete the volumes of the CG.
+        """
+        LOG.debug("deleting consistency group")
+        model_update = {}
+        model_update['status'] = 'deleted'
+        volumes = self.db.volume_get_all_by_group(context, group['id'])
+
+        for volume in volumes:
+            try:
+                self._helpers.delete_vdisk(volume['name'], True)
+                volume['status'] = 'deleted'
+            except exception.VolumeBackendAPIException as err:
+                volume['status'] = 'error_deleting'
+                if model_update['status'] != 'error_deleting':
+                    model_update['status'] = 'error_deleting'
+                LOG.error(_LE("Failed to delete the volume %(vol)s of CG. "
+                              "Exception: %(exception)s."),
+                          {'vol': volume['name'], 'exception': err})
+        return model_update, volumes
+
+    def create_cgsnapshot(self, ctxt, cgsnapshot):
+        """Creates a cgsnapshot."""
+        # Use cgsnapshot id as cg name
+        cg_name = 'cg_snap-' + cgsnapshot['id']
+        # Create new cg as cg_snapshot
+        self._helpers.create_fc_consistgrp(cg_name)
+
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+            ctxt, cgsnapshot['id'])
+        timeout = self.configuration.storwize_svc_flashcopy_timeout
+
+        model_update, snapshots_model = (
+            self._helpers.run_consistgrp_snapshots(cg_name,
+                                                   snapshots,
+                                                   self._state,
+                                                   self.configuration,
+                                                   timeout))
+
+        return model_update, snapshots_model
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+        cgsnapshot_id = cgsnapshot['id']
+        cg_name = 'cg_snap-' + cgsnapshot_id
+
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(context,
+                                                            cgsnapshot_id)
+
+        model_update, snapshots_model = (
+            self._helpers.delete_consistgrp_snapshots(cg_name,
+                                                      snapshots))
+
+        return model_update, snapshots_model
+
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
@@ -909,7 +1093,8 @@ class StorwizeSVCDriver(san.SanDriver):
         data['total_capacity_gb'] = 0  # To be overwritten
         data['free_capacity_gb'] = 0   # To be overwritten
         data['reserved_percentage'] = self.configuration.reserved_percentage
-        data['QoS_support'] = False
+        data['QoS_support'] = True
+        data['consistencygroup_support'] = True
 
         pool = self.configuration.storwize_svc_volpool_name
         backend_name = self.configuration.safe_get('volume_backend_name')
@@ -919,7 +1104,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
         attributes = self._helpers.get_pool_attrs(pool)
         if not attributes:
-            LOG.error(_('Could not get pool data from the storage'))
+            LOG.error(_LE('Could not get pool data from the storage'))
             exception_message = (_('_update_volume_stats: '
                                    'Could not get storage pool data'))
             raise exception.VolumeBackendAPIException(data=exception_message)
@@ -933,5 +1118,8 @@ class StorwizeSVCDriver(san.SanDriver):
         data['location_info'] = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %
                                  {'sys_id': self._state['system_id'],
                                   'pool': pool})
+
+        if self.replication:
+            data.update(self.replication.get_replication_info())
 
         self._stats = data

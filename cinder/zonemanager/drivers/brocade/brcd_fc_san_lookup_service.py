@@ -17,11 +17,11 @@
 #
 
 
+from oslo_utils import excutils
 import paramiko
 
 from cinder import exception
-from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
@@ -137,8 +137,8 @@ class BrcdFCSanLookupService(FCSanLookupService):
                     nsinfo = self.get_nameserver_info()
                 except exception.FCSanLookupServiceException:
                     with excutils.save_and_reraise_exception():
-                        LOG.error(_("Failed collecting name server info from "
-                                    "fabric %s") % fabric_ip)
+                        LOG.error(_LE("Failed collecting name server info from"
+                                      " fabric %s") % fabric_ip)
                 except Exception as e:
                     msg = _("SSH connection failed "
                             "for %(fabric)s with error: %(err)s"
@@ -196,14 +196,14 @@ class BrcdFCSanLookupService(FCSanLookupService):
             cli_output = self._get_switch_data(ZoneConstant.NS_SHOW)
         except exception.FCSanLookupServiceException:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Failed collecting nsshow info for fabric"))
+                LOG.error(_LE("Failed collecting nsshow info for fabric"))
         if cli_output:
             nsinfo_list = self._parse_ns_output(cli_output)
         try:
             cli_output = self._get_switch_data(ZoneConstant.NS_CAM_SHOW)
         except exception.FCSanLookupServiceException:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Failed collecting nscamshow"))
+                LOG.error(_LE("Failed collecting nscamshow"))
         if cli_output:
             nsinfo_list.extend(self._parse_ns_output(cli_output))
         LOG.debug("Connector returning nsinfo-%s", nsinfo_list)

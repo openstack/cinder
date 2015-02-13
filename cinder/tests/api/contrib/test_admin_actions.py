@@ -11,23 +11,27 @@
 # under the License.
 
 import ast
-import tempfile
-import webob
 
-from oslo.config import cfg
+import fixtures
+from oslo_concurrency import lockutils
+from oslo_config import cfg
+from oslo_config import fixture as config_fixture
+from oslo_serialization import jsonutils
+from oslo_utils import timeutils
+import webob
+from webob import exc
 
 from cinder.api.contrib import admin_actions
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import jsonutils
-from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.tests import cast_as_call
 from cinder.volume import api as volume_api
+from cinder.volume.targets import tgt
 
 CONF = cfg.CONF
 
@@ -44,15 +48,25 @@ class AdminActionsTest(test.TestCase):
     def setUp(self):
         super(AdminActionsTest, self).setUp()
 
-        self.tempdir = tempfile.mkdtemp()
+        self.tempdir = self.useFixture(fixtures.TempDir()).path
+        self.fixture = self.useFixture(config_fixture.Config(lockutils.CONF))
+        self.fixture.config(lock_path=self.tempdir,
+                            group='oslo_concurrency')
+        self.fixture.config(disable_process_locking=True,
+                            group='oslo_concurrency')
         self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
-        self.flags(lock_path=self.tempdir,
-                   disable_process_locking=True)
 
         self.volume_api = volume_api.API()
         cast_as_call.mock_cast_as_call(self.volume_api.volume_rpcapi.client)
         cast_as_call.mock_cast_as_call(self.volume_api.scheduler_rpcapi.client)
         self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
+        self.stubs.Set(tgt.TgtAdm,
+                       'create_iscsi_target',
+                       self._fake_create_iscsi_target)
+
+    def _fake_create_iscsi_target(self, name, tid, lun,
+                                  path, chap_auth=None, **kwargs):
+        return 1
 
     def _issue_volume_reset(self, ctx, volume, updated_status):
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
@@ -67,6 +81,16 @@ class AdminActionsTest(test.TestCase):
     def _issue_snapshot_reset(self, ctx, snapshot, updated_status):
         req = webob.Request.blank('/v2/fake/snapshots/%s/action' %
                                   snapshot['id'])
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = \
+            jsonutils.dumps({'os-reset_status': updated_status})
+        req.environ['cinder.context'] = ctx
+        resp = req.get_response(app())
+        return resp
+
+    def _issue_backup_reset(self, ctx, backup, updated_status):
+        req = webob.Request.blank('/v2/fake/backups/%s/action' % backup['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = \
@@ -167,6 +191,54 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_get(context.get_admin_context(), volume['id'])
         # status is still 'error'
         self.assertEqual(volume['status'], 'error')
+
+    def test_backup_reset_status_as_admin(self):
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = db.volume_create(ctx, {'status': 'available'})
+        backup = db.backup_create(ctx, {'status': 'available',
+                                        'size': 1,
+                                        'volume_id': volume['id']})
+
+        resp = self._issue_backup_reset(ctx,
+                                        backup,
+                                        {'status': 'error'})
+
+        self.assertEqual(resp.status_int, 202)
+
+    def test_backup_reset_status_as_non_admin(self):
+        ctx = context.RequestContext('fake', 'fake')
+        backup = db.backup_create(ctx, {'status': 'available',
+                                        'size': 1,
+                                        'volume_id': "fakeid"})
+        resp = self._issue_backup_reset(ctx,
+                                        backup,
+                                        {'status': 'error'})
+        # request is not authorized
+        self.assertEqual(resp.status_int, 403)
+
+    def test_backup_reset_status(self):
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1})
+        backup = db.backup_create(ctx, {'status': 'available',
+                                        'volume_id': volume['id']})
+
+        resp = self._issue_backup_reset(ctx,
+                                        backup,
+                                        {'status': 'error'})
+
+        self.assertEqual(resp.status_int, 202)
+
+    def test_invalid_status_for_backup(self):
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1})
+        backup = db.backup_create(ctx, {'status': 'available',
+                                        'volume_id': volume['id']})
+        resp = self._issue_backup_reset(ctx,
+                                        backup,
+                                        {'status': 'restoring'})
+        self.assertEqual(resp.status_int, 400)
 
     def test_malformed_reset_status_body(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -325,7 +397,8 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(admin_metadata[1]['key'], 'attached_mode')
         self.assertEqual(admin_metadata[1]['value'], 'rw')
         conn_info = self.volume_api.initialize_connection(ctx,
-                                                          volume, connector)
+                                                          volume,
+                                                          connector)
         self.assertEqual(conn_info['data']['access_mode'], 'rw')
         # build request to force detach
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
@@ -490,7 +563,7 @@ class AdminActionsTest(test.TestCase):
         connector = {}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.InvalidInput,
                           self.volume_api.initialize_connection,
                           ctx, volume, connector)
         # cleanup
@@ -588,6 +661,20 @@ class AdminActionsTest(test.TestCase):
         volume = self._migrate_volume_prep()
         volume = self._migrate_volume_exec(ctx, volume, host, expected_status)
         self.assertEqual(volume['migration_status'], 'starting')
+
+    def test_migrate_volume_fail_replication(self):
+        expected_status = 400
+        host = 'test2'
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = self._migrate_volume_prep()
+        # current status is available
+        volume = db.volume_create(ctx,
+                                  {'status': 'available',
+                                   'host': 'test',
+                                   'provider_location': '',
+                                   'attach_status': '',
+                                   'replication_status': 'active'})
+        volume = self._migrate_volume_exec(ctx, volume, host, expected_status)
 
     def test_migrate_volume_as_non_admin(self):
         expected_status = 403
@@ -747,3 +834,14 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         volume = self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
                                                 expected_status, expected_id)
+
+    def test_backup_reset_valid_updates(self):
+        vac = admin_actions.BackupAdminController()
+        vac.validate_update({'status': 'available'})
+        vac.validate_update({'status': 'error'})
+        self.assertRaises(exc.HTTPBadRequest,
+                          vac.validate_update,
+                          {'status': 'restoring'})
+        self.assertRaises(exc.HTTPBadRequest,
+                          vac.validate_update,
+                          {'status': 'creating'})

@@ -22,6 +22,7 @@ from xml.dom import minidom
 
 import webob
 
+from cinder.api.contrib import volume_transfer
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -41,6 +42,7 @@ class VolumeTransferAPITestCase(test.TestCase):
     def setUp(self):
         super(VolumeTransferAPITestCase, self).setUp()
         self.volume_transfer_api = API()
+        self.controller = volume_transfer.VolumeTransferController()
 
     def _create_transfer(self, volume_id=1,
                          display_name='test_transfer'):
@@ -53,12 +55,14 @@ class VolumeTransferAPITestCase(test.TestCase):
     def _create_volume(display_name='test_volume',
                        display_description='this is a test volume',
                        status='available',
-                       size=1):
+                       size=1,
+                       project_id='fake'):
         """Create a volume object."""
         vol = {}
+        vol['host'] = 'fake_host'
         vol['size'] = size
         vol['user_id'] = 'fake'
-        vol['project_id'] = 'fake'
+        vol['project_id'] = project_id
         vol['status'] = status
         vol['display_name'] = display_name
         vol['display_description'] = display_description
@@ -232,6 +236,28 @@ class VolumeTransferAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(), volume_id_2)
         db.volume_destroy(context.get_admin_context(), volume_id_1)
 
+    def test_list_transfers_with_all_tenants(self):
+        volume_id_1 = self._create_volume(size=5)
+        volume_id_2 = self._create_volume(size=5, project_id='fake1')
+        transfer1 = self._create_transfer(volume_id_1)
+        transfer2 = self._create_transfer(volume_id_2)
+
+        req = fakes.HTTPRequest.blank('/v2/fake/os-volume-transfer?'
+                                      'all_tenants=1',
+                                      use_admin_context=True)
+        res_dict = self.controller.index(req)
+
+        expected = [(transfer1['id'], 'test_transfer'),
+                    (transfer2['id'], 'test_transfer')]
+        ret = []
+        for item in res_dict['transfers']:
+            ret.append((item['id'], item['name']))
+        self.assertEqual(set(expected), set(ret))
+
+        db.transfer_destroy(context.get_admin_context(), transfer2['id'])
+        db.transfer_destroy(context.get_admin_context(), transfer1['id'])
+        db.volume_destroy(context.get_admin_context(), volume_id_1)
+
     def test_create_transfer_json(self):
         volume_id = self._create_volume(status='available', size=5)
         body = {"transfer": {"display_name": "transfer1",
@@ -384,6 +410,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_id = self._create_volume()
         transfer = self._create_transfer(volume_id)
 
+        svc = self.start_service('volume', host='fake_host')
         body = {"accept": {"id": transfer['id'],
                            "auth_key": transfer['auth_key']}}
         req = webob.Request.blank('/v2/fake/os-volume-transfer/%s/accept' %
@@ -397,10 +424,13 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 202)
         self.assertEqual(res_dict['transfer']['id'], transfer['id'])
         self.assertEqual(res_dict['transfer']['volume_id'], volume_id)
+        # cleanup
+        svc.stop()
 
     def test_accept_transfer_volume_id_specified_xml(self):
         volume_id = self._create_volume(size=5)
         transfer = self._create_transfer(volume_id)
+        svc = self.start_service('volume', host='fake_host')
 
         req = webob.Request.blank('/v2/fake/os-volume-transfer/%s/accept' %
                                   transfer['id'])
@@ -418,6 +448,8 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(accept.item(0).getAttribute('volume_id'), volume_id)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
+        # cleanup
+        svc.stop()
 
     def test_accept_transfer_with_no_body(self):
         volume_id = self._create_volume(size=5)
@@ -536,7 +568,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(res_dict['overLimit']['code'], 413)
         self.assertEqual(res_dict['overLimit']['message'],
                          'Requested volume or snapshot exceeds allowed '
-                         'Gigabytes quota. Requested 2G, quota is 3G and '
+                         'gigabytes quota. Requested 2G, quota is 3G and '
                          '2G has been consumed.')
 
     def test_accept_transfer_with_VolumeLimitExceeded(self):

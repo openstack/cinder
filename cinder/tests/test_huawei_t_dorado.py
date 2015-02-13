@@ -18,15 +18,15 @@
 Unit Tests for Huawei T and Dorado volume drivers.
 """
 
-import mox
 import os
 import shutil
 import socket
 import tempfile
 import time
-
 from xml.dom.minidom import Document
 from xml.etree import ElementTree as ET
+
+import mox
 
 from cinder import context
 from cinder import exception
@@ -1485,7 +1485,7 @@ class HuaweiTFCDriverTestCase(test.TestCase):
 
     def test_validate_connector_failed(self):
         invalid_connector = {'host': 'testhost'}
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector,
                           invalid_connector)
 

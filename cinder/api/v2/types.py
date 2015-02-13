@@ -15,19 +15,22 @@
 
 """The volume type & volume types extra specs extension."""
 
+from oslo_utils import strutils
 from webob import exc
 
 from cinder.api.openstack import wsgi
 from cinder.api.views import types as views_types
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _
+from cinder import utils
 from cinder.volume import volume_types
 
 
 def make_voltype(elem):
     elem.set('id')
     elem.set('name')
+    elem.set('description')
     extra_specs = xmlutil.make_flat_dict('extra_specs', selector='extra_specs')
     elem.append(extra_specs)
 
@@ -56,24 +59,65 @@ class VolumeTypesController(wsgi.Controller):
     @wsgi.serializers(xml=VolumeTypesTemplate)
     def index(self, req):
         """Returns the list of volume types."""
-        context = req.environ['cinder.context']
-        vol_types = volume_types.get_all_types(context).values()
-        return self._view_builder.index(req, vol_types)
+        limited_types = self._get_volume_types(req)
+        req.cache_resource(limited_types, name='types')
+        return self._view_builder.index(req, limited_types)
 
     @wsgi.serializers(xml=VolumeTypeTemplate)
     def show(self, req, id):
         """Return a single volume type item."""
         context = req.environ['cinder.context']
 
-        try:
-            vol_type = volume_types.get_volume_type(context, id)
-        except exception.NotFound:
-            msg = _("Volume type not found")
-            raise exc.HTTPNotFound(explanation=msg)
+        # get default volume type
+        if id is not None and id == 'default':
+            vol_type = volume_types.get_default_volume_type()
+            if not vol_type:
+                msg = _("Default volume type can not be found.")
+                raise exc.HTTPNotFound(explanation=msg)
+            req.cache_resource(vol_type, name='types')
+        else:
+            try:
+                vol_type = volume_types.get_volume_type(context, id)
+                req.cache_resource(vol_type, name='types')
+            except exception.NotFound:
+                msg = _("Volume type not found")
+                raise exc.HTTPNotFound(explanation=msg)
 
-        # TODO(bcwaldon): remove str cast once we use uuids
-        vol_type['id'] = str(vol_type['id'])
         return self._view_builder.show(req, vol_type)
+
+    def _parse_is_public(self, is_public):
+        """Parse is_public into something usable.
+
+        * True: List public volume types only
+        * False: List private volume types only
+        * None: List both public and private volume types
+        """
+
+        if is_public is None:
+            # preserve default value of showing only public types
+            return True
+        elif utils.is_none_string(is_public):
+            return None
+        else:
+            try:
+                return strutils.bool_from_string(is_public, strict=True)
+            except ValueError:
+                msg = _('Invalid is_public filter [%s]') % is_public
+                raise exc.HTTPBadRequest(explanation=msg)
+
+    def _get_volume_types(self, req):
+        """Helper function that returns a list of type dicts."""
+        filters = {}
+        context = req.environ['cinder.context']
+        if context.is_admin:
+            # Only admin has query access to all volume types
+            filters['is_public'] = self._parse_is_public(
+                req.params.get('is_public', None))
+        else:
+            filters['is_public'] = True
+        limited_types = volume_types.get_all_types(
+            context, search_opts=filters).values()
+        return limited_types
 
 
 def create_resource():
