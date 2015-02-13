@@ -146,7 +146,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             lunNumber = self._allocate_lun_number(namemap)
         if lunNumber == 0 or lunNumber == None:
             LOG.error(_('Failed to allocate new LUN number'))
-            return
+            raise nexenta.NexentaException('Failed \
+                to allocate new LUN number')
 
         try:
             rsp = self.restapi.post('iscsi', {
@@ -162,7 +163,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         except nexenta.NexentaException, e:
             LOG.error(_('Error while creating volume: %s'), str(e))
-            return
+            raise
 
         return {'provider_location': self._get_provider_location(volume)}
 
@@ -174,21 +175,20 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         lunNumber = namemap[volume['name']]
         try:
             rsp = self.restapi.delete('iscsi/' + str(lunNumber),
-                {'objectPath': self.bucketPath + '/' + str(lunNumber)})
+                {'objectPath': self.bucket_path + '/' + str(lunNumber)})
 
             namemap.pop(volume['name'])
             self._set_bucket_name_map(namemap)
 
         except nexenta.NexentaException, e:
             LOG.error(_('Error while deleting: %s'), str(e))
-            return
+            raise
 
     def extend_volume(self, volume, new_size):
         lunNumber = self._get_lun_from_name(snapshot['volume_name'])
         rsp = self.restapi.post('iscsi/' + str(lunNumber) + '/resize',
-            {'objectPath': self.bucketPath + '/' + str(lunNumber),
+            {'objectPath': self.bucket_path + '/' + str(lunNumber),
             'newSizeMB': new_size * 1024})
-        pass
 
     def create_volume_from_snapshot(self, volume, snapshot):
         newLun = 0
@@ -229,7 +229,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         except nexenta.NexentaException, e:
             LOG.error(_('Error while creating volume: %s'), str(e))
-            return
+            raise
 
     def create_snapshot(self, snapshot):
         lunNumber = self._get_lun_from_name(snapshot['volume_name'])
@@ -249,7 +249,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                  '.snapview/snapshots/' + snapshot['name'])
         except nexenta.NexentaException, e:
             LOG.error(_('Error while deleting snapshot: %s'), str(e))
-            pass
+            raise
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
@@ -263,7 +263,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             rsp = self.restapi.post(vol_url, clone_body)
         except nexenta.NexentaException, e:
             LOG.error(_('Error while cloning Volume from Volume: %s'), str(e))
-            pass
+            raise
 
 
     def ensure_export(self, context, volume):
