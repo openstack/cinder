@@ -7,6 +7,7 @@ ietadm: CommandFilter, ietadm, root
 tgtadm: CommandFilter, tgtadm, root
 tgt-admin: CommandFilter, tgt-admin, root
 cinder-rtstool: CommandFilter, cinder-rtstool, root
+scstadmin: CommandFilter, scstadmin, root
 
 # LVM related show commands
 pvs: EnvFilter, env, root, LC_ALL=C, pvs
