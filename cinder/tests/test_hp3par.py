@@ -69,6 +69,7 @@ class HP3PARBaseDriver(object):
 
     VOLUME_ID = 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'
     CLONE_ID = 'd03338a9-9115-48a3-8dfc-000000000000'
+    VOLUME_TYPE_ID_DEDUP = 'd03338a9-9115-48a3-8dfc-11111111111'
     VOLUME_NAME = 'volume-' + VOLUME_ID
     VOLUME_NAME_3PAR = 'osv-0DM4qZEVSKON-DXN-NwVpw'
     SNAPSHOT_ID = '2f823bdc-e36e-4dc8-bd15-de1c7a28ff31'
@@ -111,6 +112,14 @@ class HP3PARBaseDriver(object):
               'host': FAKE_HOST,
               'volume_type': None,
               'volume_type_id': None}
+
+    volume_dedup = {'name': VOLUME_NAME,
+                    'id': VOLUME_ID,
+                    'display_name': 'Foo Volume',
+                    'size': 2,
+                    'host': FAKE_HOST,
+                    'volume_type': 'dedup',
+                    'volume_type_id': VOLUME_TYPE_ID_DEDUP}
 
     volume_pool = {'name': VOLUME_NAME,
                    'id': VOLUME_ID,
@@ -160,6 +169,14 @@ class HP3PARBaseDriver(object):
                                    'qos:priority': 'low'},
                    'deleted_at': None,
                    'id': 'gold'}
+
+    volume_type_dedup = {'name': 'dedup',
+                         'deleted': False,
+                         'updated_at': None,
+                         'extra_specs': {'cpg': HP3PAR_CPG2,
+                                         'provisioning': 'dedup'},
+                         'deleted_at': None,
+                         'id': VOLUME_TYPE_ID_DEDUP}
 
     cpgs = [
         {'SAGrowth': {'LDLayout': {'diskPatterns': [{'diskType': 2}]},
@@ -250,6 +267,7 @@ class HP3PARBaseDriver(object):
             'vvs': RETYPE_VVS_NAME,
             'qos': RETYPE_QOS_SPECS,
             'tpvv': True,
+            'tdvv': False,
             'volume_type': volume_type
         }
     }
@@ -263,6 +281,7 @@ class HP3PARBaseDriver(object):
             'vvs': VVS_NAME,
             'qos': QOS,
             'tpvv': True,
+            'tdvv': False,
             'volume_type': volume_type
         }
     }
@@ -276,10 +295,24 @@ class HP3PARBaseDriver(object):
             'vvs': RETYPE_VVS_NAME,
             'qos': RETYPE_QOS_SPECS,
             'tpvv': True,
+            'tdvv': False,
             'volume_type': volume_type
         }
     }
 
+    RETYPE_VOLUME_TYPE_3 = {
+        'name': 'purple',
+        'id': RETYPE_VOLUME_TYPE_ID,
+        'extra_specs': {
+            'cpg': HP3PAR_CPG_QOS,
+            'snap_cpg': HP3PAR_CPG_SNAP,
+            'vvs': RETYPE_VVS_NAME,
+            'qos': RETYPE_QOS_SPECS,
+            'tpvv': False,
+            'tdvv': True,
+            'volume_type': volume_type
+        }
+    }
     RETYPE_VOLUME_TYPE_BAD_PERSONA = {
         'name': 'bad_persona',
         'id': 'any_id',
@@ -339,6 +372,19 @@ class HP3PARBaseDriver(object):
         'comment': RETYPE_TEST_COMMENT
     }
 
+    RETYPE_TEST_COMMENT_2 = "{'retype_test': 'test comment 2'}"
+
+    RETYPE_VOLUME_INFO_2 = {
+        'name': VOLUME_NAME,
+        'id': VOLUME_ID,
+        'display_name': 'Retype Vol2',
+        'size': 1,
+        'host': RETYPE_HOST,
+        'userCPG': HP3PAR_CPG,
+        'snapCPG': HP3PAR_CPG_SNAP,
+        'provisioningType': 3,
+        'comment': RETYPE_TEST_COMMENT
+    }
     # Test for when we don't get a snapCPG.
     RETYPE_VOLUME_INFO_NO_SNAP = {
         'name': VOLUME_NAME,
@@ -364,6 +410,16 @@ class HP3PARBaseDriver(object):
     # from the array work better for the most part.  Some use of the diff was
     # intentionally removed to make _retype more usable for other use cases.
     RETYPE_DIFF = None
+
+    wsapi_version = {'major': 1,
+                     'build': 30201120,
+                     'minor': 4,
+                     'revision': 1}
+
+    wsapi_version_312 = {'major': 1,
+                         'build': 30102422,
+                         'minor': 3,
+                         'revision': 1}
 
     standard_login = [
         mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
@@ -538,6 +594,7 @@ class HP3PARBaseDriver(object):
                     1907, {
                         'comment': comment,
                         'tpvv': True,
+                        'tdvv': False,
                         'snapCPG': HP3PAR_CPG_SNAP})]
 
             mock_client.assert_has_calls(
@@ -566,6 +623,7 @@ class HP3PARBaseDriver(object):
                     1907, {
                         'comment': comment,
                         'tpvv': True,
+                        'tdvv': False,
                         'snapCPG': HP3PAR_CPG_SNAP})]
 
             mock_client.assert_has_calls(
@@ -573,6 +631,30 @@ class HP3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
             self.assertEqual(return_model, None)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_unsupported_dedup_volume_type(self, _mock_volume_types):
+
+        mock_client = self.setup_driver_312()
+        _mock_volume_types.return_value = {
+            'name': 'dedup',
+            'extra_specs': {
+                'cpg': HP3PAR_CPG_QOS,
+                'snap_cpg': HP3PAR_CPG_SNAP,
+                'vvs_name': self.VVS_NAME,
+                'qos': self.QOS,
+                'provisioning': 'dedup',
+                'volume_type': self.volume_type_dedup}}
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+
+            self.assertRaises(exception.InvalidInput,
+                              common.get_volume_settings_from_type_id,
+                              self.VOLUME_TYPE_ID_DEDUP,
+                              "mock")
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_get_snap_cpg_from_volume_type(self, _mock_volume_types):
@@ -674,6 +756,7 @@ class HP3PARBaseDriver(object):
                 'vvs_name': self.VVS_NAME,
                 'qos': self.QOS,
                 'tpvv': True,
+                'tdvv': False,
                 'volume_type': self.volume_type}}
 
         with mock.patch.object(hpcommon.HP3PARCommon,
@@ -695,6 +778,55 @@ class HP3PARBaseDriver(object):
                     1907, {
                         'comment': comment,
                         'tpvv': True,
+                        'tdvv': False,
+                        'snapCPG': HP3PAR_CPG_SNAP})]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual(return_model,
+                             {'host': volume_utils.append_host(
+                                 self.FAKE_HOST,
+                                 HP3PAR_CPG_QOS)})
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_volume_dedup(self, _mock_volume_types):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+
+        _mock_volume_types.return_value = {
+            'name': 'dedup',
+            'extra_specs': {
+                'cpg': HP3PAR_CPG_QOS,
+                'snap_cpg': HP3PAR_CPG_SNAP,
+                'vvs_name': self.VVS_NAME,
+                'qos': self.QOS,
+                'provisioning': 'dedup',
+                'volume_type': self.volume_type_dedup}}
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            return_model = self.driver.create_volume(self.volume_dedup)
+            comment = (
+                '{"volume_type_name": "dedup", "display_name": "Foo Volume"'
+                ', "name": "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7'
+                '", "volume_type_id": "d03338a9-9115-48a3-8dfc-11111111111"'
+                ', "volume_id": "d03338a9-9115-48a3-8dfc-35cdfcdc15a7"'
+                ', "qos": {}, "type": "OpenStack"}')
+
+            expected = [
+                mock.call.getCPG(HP3PAR_CPG_QOS),
+                mock.call.createVolume(
+                    self.VOLUME_3PAR_NAME,
+                    HP3PAR_CPG_QOS,
+                    1907, {
+                        'comment': comment,
+                        'tpvv': False,
+                        'tdvv': True,
                         'snapCPG': HP3PAR_CPG_SNAP})]
 
             mock_client.assert_has_calls(
@@ -1026,7 +1158,7 @@ class HP3PARBaseDriver(object):
                            "old_type", "old_type_id",
                            HP3PARBaseDriver.RETYPE_HOST,
                            None, cpg, cpg, snap_cpg, snap_cpg,
-                           True, True, None, None,
+                           True, False, False, True, None, None,
                            self.QOS_SPECS, self.RETYPE_QOS_SPECS,
                            "{}")
 
@@ -1043,6 +1175,35 @@ class HP3PARBaseDriver(object):
                     'vvs-0DM4qZEVSKON-DXN-NwVpw',
                     'osv-0DM4qZEVSKON-DXN-NwVpw')]
             mock_client.assert_has_calls(expected)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_retype_dedup(self, _mock_volume_types):
+        _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_3
+        mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
+
+        cpg = "any_cpg"
+        snap_cpg = "any_cpg"
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+            common._retype(self.volume,
+                           HP3PARBaseDriver.VOLUME_3PAR_NAME,
+                           "old_type", "old_type_id",
+                           HP3PARBaseDriver.RETYPE_HOST,
+                           None, cpg, cpg, snap_cpg, snap_cpg,
+                           True, False, False, True, None, None,
+                           self.QOS_SPECS, self.RETYPE_QOS_SPECS,
+                           "{}")
+
+            expected = [
+                mock.call.modifyVolume('osv-0DM4qZEVSKON-DXN-NwVpw',
+                                       {'action': 6,
+                                        'userCPG': 'any_cpg',
+                                        'conversionOperation': 3,
+                                        'tuneOperation': 1}),
+                mock.call.getTask(1)]
+        mock_client.assert_has_calls(expected)
 
     def test_delete_volume(self):
         # setup_mock_client drive with default configuration
@@ -1086,7 +1247,7 @@ class HP3PARBaseDriver(object):
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     HP3PAR_CPG2,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
-                     'online': True})]
+                     'tdvv': False, 'online': True})]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -1122,7 +1283,7 @@ class HP3PARBaseDriver(object):
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     expected_cpg,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
-                     'online': True})]
+                     'tdvv': False, 'online': True})]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -1565,15 +1726,18 @@ class HP3PARBaseDriver(object):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
 
-        self.driver.create_snapshot(self.snapshot)
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            self.driver.create_snapshot(self.snapshot)
 
-        try:
-            ex = hpexceptions.HTTPNotFound("not found")
-            mock_client.deleteVolume = mock.Mock(side_effect=ex)
-            self.driver.delete_snapshot(self.snapshot)
-        except Exception:
-            self.fail("Deleting a snapshot that is missing should act as if "
-                      "it worked.")
+            try:
+                ex = hpexceptions.HTTPNotFound("not found")
+                mock_client.deleteVolume = mock.Mock(side_effect=ex)
+                self.driver.delete_snapshot(self.snapshot)
+            except Exception:
+                self.fail("Deleting a snapshot that is missing should act "
+                          "as if it worked.")
 
     def test_create_volume_from_snapshot(self):
         # setup_mock_client drive with default configuration
@@ -1687,6 +1851,7 @@ class HP3PARBaseDriver(object):
                 'vvs_name': self.VVS_NAME,
                 'qos': self.QOS,
                 'tpvv': True,
+                'tdvv': False,
                 'volume_type': self.volume_type}}
 
         with mock.patch.object(hpcommon.HP3PARCommon,
@@ -1745,14 +1910,17 @@ class HP3PARBaseDriver(object):
             'getVolume.return_value': {}
         }
 
-        self.setup_driver(mock_conf=conf)
+        mock_client = self.setup_driver(mock_conf=conf)
 
-        volume = self.volume.copy()
-        volume['size'] = self.volume['size'] + 10
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            volume = self.volume.copy()
+            volume['size'] = self.volume['size'] + 10
 
-        self.assertRaises(exception.CinderException,
-                          self.driver.create_volume_from_snapshot,
-                          volume, self.snapshot)
+            self.assertRaises(exception.CinderException,
+                              self.driver.create_volume_from_snapshot,
+                              volume, self.snapshot)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_from_snapshot_qos(self, _mock_volume_types):
@@ -1770,6 +1938,7 @@ class HP3PARBaseDriver(object):
                     'vvs_name': self.VVS_NAME,
                     'qos': self.QOS,
                     'tpvv': True,
+                    'tdvv': False,
                     'volume_type': self.volume_type}}
             self.driver.create_volume_from_snapshot(
                 self.volume_qos,
@@ -2504,6 +2673,7 @@ class HP3PARBaseDriver(object):
                 'vvs_name': self.VVS_NAME,
                 'qos': self.QOS,
                 'tpvv': True,
+                'tdvv': False,
                 'volume_type': self.volume_type}}
 
         volume = {'display_name': None,
@@ -2682,6 +2852,28 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             conf=config,
             m_conf=mock_conf,
             driver=hpfcdriver.HP3PARFCDriver)
+
+        mock_client.getWsApiVersion.return_value = self.wsapi_version
+
+        expected = [
+            mock.call.getCPG(HP3PAR_CPG),
+            mock.call.getCPG(HP3PAR_CPG2)]
+        mock_client.assert_has_calls(
+            self.standard_login +
+            expected +
+            self.standard_logout)
+        mock_client.reset_mock()
+        return mock_client
+
+    def setup_driver_312(self, config=None, mock_conf=None):
+
+        self.ctxt = context.get_admin_context()
+        mock_client = self.setup_mock_client(
+            conf=config,
+            m_conf=mock_conf,
+            driver=hpfcdriver.HP3PARFCDriver)
+
+        mock_client.getWsApiVersion.return_value = self.wsapi_version_312
 
         expected = [
             mock.call.getCPG(HP3PAR_CPG),
@@ -3325,6 +3517,34 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             conf=config,
             m_conf=mock_conf,
             driver=hpdriver.HP3PARISCSIDriver)
+
+        mock_client.getWsApiVersion.return_value = self.wsapi_version
+
+        expected_get_cpgs = [
+            mock.call.getCPG(HP3PAR_CPG),
+            mock.call.getCPG(HP3PAR_CPG2)]
+        expected_get_ports = [mock.call.getPorts()]
+        mock_client.assert_has_calls(
+            self.standard_login +
+            expected_get_cpgs +
+            self.standard_logout +
+            self.standard_login +
+            expected_get_ports +
+            self.standard_logout)
+        mock_client.reset_mock()
+
+        return mock_client
+
+    def setup_driver_312(self, config=None, mock_conf=None):
+
+        self.ctxt = context.get_admin_context()
+
+        mock_client = self.setup_mock_client(
+            conf=config,
+            m_conf=mock_conf,
+            driver=hpdriver.HP3PARISCSIDriver)
+
+        mock_client.getWsApiVersion.return_value = self.wsapi_version_312
 
         expected_get_cpgs = [
             mock.call.getCPG(HP3PAR_CPG),
