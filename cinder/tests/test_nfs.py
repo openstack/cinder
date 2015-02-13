@@ -16,7 +16,6 @@
 
 import errno
 import os
-import random
 
 import mock
 import mox as mox_lib
@@ -1082,10 +1081,9 @@ class NfsDriverTestCase(test.TestCase):
     def test_ensure_share_mounted(self):
         """Case where the mount works the first time."""
 
-        num_attempts = random.randint(1, 5)
         self.mock_object(self._driver._remotefsclient, 'mount')
         drv = self._driver
-        drv.configuration.nfs_mount_attempts = num_attempts
+        drv.configuration.nfs_mount_attempts = 3
         drv.shares = {self.TEST_NFS_EXPORT1: ''}
 
         drv._ensure_share_mounted(self.TEST_NFS_EXPORT1)
@@ -1095,7 +1093,8 @@ class NfsDriverTestCase(test.TestCase):
     def test_ensure_share_mounted_exception(self):
         """Make the configured number of attempts when mounts fail."""
 
-        num_attempts = random.randint(1, 5)
+        num_attempts = 3
+
         self.mock_object(self._driver._remotefsclient, 'mount',
                          mock.Mock(side_effect=Exception))
         drv = self._driver
