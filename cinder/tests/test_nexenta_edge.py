@@ -148,11 +148,10 @@ class TestNexentaEdgeResourceRPC(test.TestCase):
     USER = 'user'
     PASSWORD = 'password'
     HEADERS = {
+        'Content-Type': 'application/json',
         'Authorization':
-        'Basic %s' % base64.b64encode('%s:%s' % (USER, PASSWORD)),
-        'Content-Type': 'application/json'
+            'Basic %s' % ('%s:%s' % (USER, PASSWORD)).encode('base64')[:-1]
     }
-    REQUEST = 'the request'
 
     def setUp(self):
         super(TestNexentaEdgeResourceRPC, self).setUp()
@@ -160,15 +159,17 @@ class TestNexentaEdgeResourceRPC(test.TestCase):
             'http', self.HOST, 8080, '/', self.USER, self.PASSWORD, auto=True)
         self.mox.StubOutWithMock(urllib2, 'Request', True)
         self.mox.StubOutWithMock(urllib2, 'urlopen')
+        self.req_mock = self.mox.CreateMockAnything()
+        setattr(self.req_mock, 'get_method', self.mox.CreateMockAnything())
         self.resp_mock = self.mox.CreateMockAnything()
         self.resp_info_mock = self.mox.CreateMockAnything()
         self.resp_mock.info().AndReturn(self.resp_info_mock)
-        urllib2.urlopen(self.REQUEST).AndReturn(self.resp_mock)
+        urllib2.urlopen(self.req_mock).AndReturn(self.resp_mock)
 
     def test_get_call(self):
         urllib2.Request(
             'http://%s:8080/%s' % (self.HOST, 'resource'), None,
-            self.HEADERS).AndReturn(self.REQUEST)
+            self.HEADERS).AndReturn(self.req_mock)
         self.resp_info_mock.status = ''
         self.resp_mock.read().AndReturn('{"response": "the result"}')
         self.mox.ReplayAll()
@@ -178,7 +179,7 @@ class TestNexentaEdgeResourceRPC(test.TestCase):
     def test_post_call(self):
         urllib2.Request(
             'http://%s:8080/%s' % (self.HOST, 'resource/name'), None,
-            self.HEADERS).AndReturn(self.REQUEST)
+            self.HEADERS).AndReturn(self.req_mock)
         self.resp_info_mock.status = ''
         self.resp_mock.read().AndReturn('{"response": "the result"}')
         self.mox.ReplayAll()
@@ -188,13 +189,13 @@ class TestNexentaEdgeResourceRPC(test.TestCase):
     def test_call_auto(self):
         urllib2.Request(
             'http://%s:8080/%s' % (self.HOST, 'resource'), None,
-            self.HEADERS).AndReturn(self.REQUEST)
+            self.HEADERS).AndReturn(self.req_mock)
         urllib2.Request(
             'https://%s:8080/%s' % (self.HOST, 'resource'), None,
-            self.HEADERS).AndReturn(self.REQUEST)
+            self.HEADERS).AndReturn(self.req_mock)
         self.resp_info_mock.status = 'EOF in headers'
         self.resp_mock.read().AndReturn('{"response": "the result"}')
-        urllib2.urlopen(self.REQUEST).AndReturn(self.resp_mock)
+        urllib2.urlopen(self.req_mock).AndReturn(self.resp_mock)
         self.mox.ReplayAll()
         result = self.proxy.get('resource')
         self.assertEqual("the result", result)
@@ -202,7 +203,7 @@ class TestNexentaEdgeResourceRPC(test.TestCase):
     def test_call_error(self):
         urllib2.Request(
             'http://%s:8080/%s' % (self.HOST, 'resource'), None,
-            self.HEADERS).AndReturn(self.REQUEST)
+            self.HEADERS).AndReturn(self.req_mock)
         self.resp_info_mock.status = ''
         self.resp_mock.read().AndReturn('{"code": 200, "message": "the error"')
         self.mox.ReplayAll()
@@ -212,7 +213,7 @@ class TestNexentaEdgeResourceRPC(test.TestCase):
     def test_call_fail(self):
         urllib2.Request(
             'http://%s:8080/%s' % (self.HOST, 'resource'), None,
-            self.HEADERS).AndReturn(self.REQUEST)
+            self.HEADERS).AndReturn(self.req_mock)
         self.resp_info_mock.status = 'EOF in headers'
         self.proxy.auto = False
         self.mox.ReplayAll()
