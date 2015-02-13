@@ -33,7 +33,7 @@ from cinder import context
 from cinder.db import base
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import glance
 from cinder import keymgr
 from cinder.openstack.common import log as logging
@@ -237,9 +237,9 @@ class API(base.Base):
                                                  availability_zones,
                                                  create_what)
         except Exception:
-            LOG.exception(_LE("Failed to create api volume flow."))
-            raise exception.CinderException(
-                _("Failed to create api volume flow."))
+            msg = _('Failed to create api volume flow.')
+            LOG.exception(msg)
+            raise exception.CinderException(msg)
 
         # Attaching this listener will capture all of the notifications that
         # taskflow sends out and redirect them to a more useful log for
@@ -602,9 +602,9 @@ class API(base.Base):
 
             for over in overs:
                 if 'gigabytes' in over:
-                    msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                            "%(s_size)sG snapshot (%(d_consumed)dG of "
-                            "%(d_quota)dG already consumed).")
+                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                              "%(s_size)sG snapshot (%(d_consumed)dG of "
+                              "%(d_quota)dG already consumed).")
                     LOG.warn(msg, {'s_pid': context.project_id,
                                    's_size': volume['size'],
                                    'd_consumed': _consumed(over),
@@ -614,9 +614,9 @@ class API(base.Base):
                         consumed=_consumed('gigabytes'),
                         quota=quotas['gigabytes'])
                 elif 'snapshots' in over:
-                    msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                            "snapshot (%(d_consumed)d snapshots "
-                            "already consumed).")
+                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                              "snapshot (%(d_consumed)d snapshots "
+                              "already consumed).")
 
                     LOG.warn(msg, {'s_pid': context.project_id,
                                    'd_consumed': _consumed(over)})
@@ -732,9 +732,9 @@ class API(base.Base):
 
             for over in overs:
                 if 'gigabytes' in over:
-                    msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                            "%(s_size)sG snapshot (%(d_consumed)dG of "
-                            "%(d_quota)dG already consumed).")
+                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                              "%(s_size)sG snapshot (%(d_consumed)dG of "
+                              "%(d_quota)dG already consumed).")
                     LOG.warning(msg, {'s_pid': context.project_id,
                                       's_size': volume['size'],
                                       'd_consumed': _consumed(over),
@@ -744,9 +744,9 @@ class API(base.Base):
                         consumed=_consumed('gigabytes'),
                         quota=quotas['gigabytes'])
                 elif 'snapshots' in over:
-                    msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                            "snapshot (%(d_consumed)d snapshots "
-                            "already consumed).")
+                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                              "snapshot (%(d_consumed)d snapshots "
+                              "already consumed).")
 
                     LOG.warning(msg, {'s_pid': context.project_id,
                                       'd_consumed': _consumed(over)})
@@ -796,11 +796,8 @@ class API(base.Base):
             raise exception.InvalidSnapshot(reason=msg)
         cgsnapshot_id = snapshot.get('cgsnapshot_id', None)
         if cgsnapshot_id:
-            LOG.error(_LE('Unable to delete snapshot: %s, '
-                          'because it is part of a consistency '
-                          'group.'), snapshot['id'])
-            msg = _("Snapshot %s is part of a cgsnapshot and has to be "
-                    "deleted together with the cgsnapshot.") % snapshot['id']
+            msg = _('Unable to delete snapshot %s because it is part of a '
+                    'consistency group.') % snapshot['id']
             LOG.error(msg)
             raise exception.InvalidSnapshot(reason=msg)
         self.db.snapshot_update(context, snapshot['id'],
@@ -1050,13 +1047,13 @@ class API(base.Base):
             def _consumed(name):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
-            msg = _("Quota exceeded for %(s_pid)s, tried to extend volume by "
-                    "%(s_size)sG, (%(d_consumed)dG of %(d_quota)dG already "
-                    "consumed).")
-            LOG.error(msg % {'s_pid': context.project_id,
-                             's_size': size_increase,
-                             'd_consumed': _consumed('gigabytes'),
-                             'd_quota': quotas['gigabytes']})
+            msg = _LE("Quota exceeded for %(s_pid)s, tried to extend volume "
+                      "by %(s_size)sG, (%(d_consumed)dG of %(d_quota)dG "
+                      "already consumed).")
+            LOG.error(msg, {'s_pid': context.project_id,
+                            's_size': size_increase,
+                            'd_consumed': _consumed('gigabytes'),
+                            'd_quota': quotas['gigabytes']})
             raise exception.VolumeSizeExceedsAvailableQuota(
                 requested=size_increase,
                 consumed=_consumed('gigabytes'),
@@ -1083,6 +1080,7 @@ class API(base.Base):
         if volume['migration_status'] is not None:
             msg = _("Volume %s is already part of an active "
                     "migration.") % volume['id']
+            LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
         # We only handle volumes without snapshots for now
