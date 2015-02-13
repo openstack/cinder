@@ -30,7 +30,9 @@ from cinder.volume.drivers.nexenta import utils
 
 import os
 import base64
+from oslo_serialization import jsonutils
 
+LOG = logging.getLogger(__name__)
 
 class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Edge cluster.
@@ -90,70 +92,160 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'name': self.configuration.nexenta_target_prefix
         }
 
+    def _get_bucket_name_map(self):
+        url = self.bucket_url + '/' + self.bucket
+        try:
+            rsp = self.restapi.get(url)
+            if not (('bucketMetadata' in rsp) and \
+                ('X-Name-Map' in rsp['bucketMetadata'])):
+                LOG.error(_('Bucket metadata missing name mapping'))
+                return -1
+            namemap = jsonutils.loads(rsp['bucketMetadata']['X-Name-Map'])
+            return namemap
+        except nexenta.NexentaException, e:
+            LOG.error(_('Error processing bucket metadata %s'), str(e))
+            return None
+
+    def _set_bucket_name_map(self, namemap):
+        rsp = self.restapi.put(self.bucket_url + '/' + self.bucket,
+            {'optionsObject': { 'X-Name-Map': jsonutils.dumps(namemap)}})
+
+    def _get_lun_from_name(self, name):
+        namemap = self._get_bucket_name_map()
+        if not (volume['name'] in namemap):
+            LOG.error(_('Bucket metadata map missing volume name'))
+            return
+        return namemap[volume['name']]
+
+    def _allocate_lun_number(self, namemap):
+        lunNumber = 0
+        for i in range(1, 256):
+            exists = False
+            for k, v in namemap.iteritems():
+                if i == v:
+                    exists = True
+                    break
+            if not exists:
+                lunNumber = i
+                break
+        if lunNumber == 0:
+            LOG.error(_('All 255 lun numbers used, WOW!'))
+            return
+        return lunNumber
+
     def create_volume(self, volume):
-        lunNumber = volume['name'] #FIXME - need name <-> number mapping
+        lunNumber = 0
+        namemap = self._get_bucket_name_map()
+        if namemap == None:
+            return
+        elif namemap == -1:
+            namemap = {}
+            lunNumber = 1
+
+        if not lunNumber == 1:
+            lunNumber = self._allocate_lun_number(namemap)
+        if lunNumber == 0 or lunNumber == None:
+            LOG.error(_('Failed to allocate new LUN number'))
+            return
+
         try:
             rsp = self.restapi.post('iscsi', {
-                'objectPath' : self.bucket_path + '/' + lunNumber,
+                'objectPath' : self.bucket_path + '/' + str(lunNumber),
                 'volSizeMB' : int(volume['size']) * 1024,
                 'blockSize' : 4096,
                 'chunkSize' : 4096,
                 'number'    : lunNumber
             })
+
+            namemap[volume['name']] = lunNumber
+            self._set_bucket_name_map(namemap)
+
         except nexenta.NexentaException, e:
             LOG.error(_('Error while creating volume: %s'), str(e))
             return
+
         return {'provider_location': self._get_provider_location(volume)}
 
     def delete_volume(self, volume):
-        lunNumber = volume['name'] #FIXME - need name <-> number mapping
+        namemap = self._get_bucket_name_map()
+        if not (volume['name'] in namemap):
+            LOG.error(_('Bucket metadata map missing volume name'))
+            return
+        lunNumber = namemap[volume['name']]
         try:
-            rsp = self.restapi.delete('iscsi/' + lunNumber, None) 
+            rsp = self.restapi.delete('iscsi/' + str(lunNumber),
+                {'objectPath': self.bucketPath + '/' + str(lunNumber)})
+
+            namemap.pop(volume['name'])
+            self._set_bucket_name_map(namemap)
+
         except nexenta.NexentaException, e:
             LOG.error(_('Error while deleting: %s'), str(e))
-            pass
+            return
 
     def extend_volume(self, volume, new_size):
-        """Extend an existing volume."""
+        lunNumber = self._get_lun_from_name(snapshot['volume_name'])
+        rsp = self.restapi.post('iscsi/' + str(lunNumber) + '/resize',
+            {'objectPath': self.bucketPath + '/' + str(lunNumber),
+            'newSizeMB': new_size * 1024})
         pass
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        lunNumber = snapshot['volume_name'] #FIXME name - number mapping
-        newLunNumber = lunNumber + 1 #FIXME
-        snap_url = self.bucket_url + '/' + self.bucket + '/snapviews/' + \
-            lunNumber + '.snapview/snapshots/' + snapshot['name']
-        snap_body = { 'ss_tenant' : self.tenant,
-                      'ss_bucket' : self.bucket,
-                      'ss_object' : str(newLunNumber)
-            }
-        rsp = self.restapi.post(snap_url, snap_body)
+        newLun = 0
+        namemap = self._get_bucket_name_map()
+        if namemap == None or namemap == -1:
+            return
+
+        if not (snapshot['volume_name'] in namemap):
+            LOG.error(_('Bucket metadata map missing volume name'))
+            return
+        lunNumber = namemap[snapshot['volume_name']]
+
+        newLun = self._allocate_lun_number(namemap)
+        if newLun == 0 or newLun == None:
+            LOG.error(_('Failed to allocate new LUN number'))
+            return
+        nanmemap[volume['name']] = newLun
 
         try:
+            snap_url = self.bucket_url + '/' + self.bucket + '/snapviews/' + \
+                lunNumber + '.snapview/snapshots/' + snapshot['name']
+            snap_body = {
+                'ss_tenant' : self.tenant,
+                'ss_bucket' : self.bucket,
+                'ss_object' : str(newLun)
+            }
+            rsp = self.restapi.post(snap_url, snap_body)
+
             rsp = self.restapi.post('iscsi', {
-                'objectPath' : self.bucket_path + '/' + newLunNumber,
+                'objectPath' : self.bucket_path + '/' + str(newLun),
                 'volSizeMB' : int(snapshot['volume_size']) * 1024,
                 'blockSize' : 4096,
-                'chunkSize' : 4096
+                'chunkSize' : 4096,
+                'number' : newLun
             })
+
+            self._set_bucket_name_map(namemap)
+
         except nexenta.NexentaException, e:
             LOG.error(_('Error while creating volume: %s'), str(e))
             return
 
     def create_snapshot(self, snapshot):
-        lunNumber = snapshot['volume_name'] #FIXME name - number mapping
+        lunNumber = self._get_lun_from_name(snapshot['volume_name'])
         snap_url = self.bucket_url + '/' + self.bucket + \
             '/snapviews/' + lunNumber + '.snapview'
         snap_body = { 'ss_bucket' : self.bucket,
-                      'ss_object' : lunNumber,
+                      'ss_object' : str(lunNumber),
                       'ss_name' : snapshot['name']
             }
         rsp = self.restapi.post(snap_url, snap_body)
 
     def delete_snapshot(self, snapshot):
-        lunNumber = snapshot['volume_name'] #FIXME name - number mapping
+        lunNumber = self._get_lun_from_name(snapshot['volume_name'])
         try:
             rsp = self.restapi.delete(self.bucket_url + '/' + \
-                self.bucket + '/snapviews/' + lunNumber + \
+                self.bucket + '/snapviews/' + str(lunNumber) + \
                  '.snapview/snapshots/' + snapshot['name'])
         except nexenta.NexentaException, e:
             LOG.error(_('Error while deleting snapshot: %s'), str(e))
