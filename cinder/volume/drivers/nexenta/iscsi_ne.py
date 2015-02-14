@@ -118,6 +118,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return namemap[name]
 
     def _allocate_lun_number(self, namemap):
+        if namemap == None:
+            LOG.error(_('LUN allocation received None name_map object'))
+            return
         lunNumber = 0
         for i in range(1, 256):
             exists = False
@@ -267,13 +270,16 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
 
     def ensure_export(self, context, volume):
-        raise NotImplementedError()
+        #raise NotImplementedError()
+        pass
 
     def create_export(self, context, volume):
-        raise NotImplementedError()
+        #raise NotImplementedError()
+        pass
 
     def remove_export(self, context, volume):
-        raise NotImplementedError()
+        #raise NotImplementedError()
+        pass
 
     def initialize_connection(self, volume, connector):
         lunNumber = self._get_lun_from_name(volume['name'])
