@@ -112,10 +112,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_lun_from_name(self, name):
         namemap = self._get_bucket_name_map()
-        if not (volume['name'] in namemap):
+        if not (name in namemap):
             LOG.error(_('Bucket metadata map missing volume name'))
             return
-        return namemap[volume['name']]
+        return namemap[name]
 
     def _allocate_lun_number(self, namemap):
         lunNumber = 0
@@ -185,7 +185,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             raise
 
     def extend_volume(self, volume, new_size):
-        lunNumber = self._get_lun_from_name(snapshot['volume_name'])
+        lunNumber = self._get_lun_from_name(volume['name'])
         rsp = self.restapi.post('iscsi/' + str(lunNumber) + '/resize',
             {'objectPath': self.bucket_path + '/' + str(lunNumber),
             'newSizeMB': new_size * 1024})
@@ -205,11 +205,11 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         if newLun == 0 or newLun == None:
             LOG.error(_('Failed to allocate new LUN number'))
             return
-        nanmemap[volume['name']] = newLun
+        namemap[volume['name']] = newLun
 
         try:
             snap_url = self.bucket_url + '/' + self.bucket + '/snapviews/' + \
-                lunNumber + '.snapview/snapshots/' + snapshot['name']
+                str(lunNumber) + '.snapview/snapshots/' + snapshot['name']
             snap_body = {
                 'ss_tenant' : self.tenant,
                 'ss_bucket' : self.bucket,
@@ -234,7 +234,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def create_snapshot(self, snapshot):
         lunNumber = self._get_lun_from_name(snapshot['volume_name'])
         snap_url = self.bucket_url + '/' + self.bucket + \
-            '/snapviews/' + lunNumber + '.snapview'
+            '/snapviews/' + str(lunNumber) + '.snapview'
         snap_body = { 'ss_bucket' : self.bucket,
                       'ss_object' : str(lunNumber),
                       'ss_name' : snapshot['name']
@@ -252,7 +252,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             raise
 
     def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
+        #FIXME use name-lun mapping and add new object as lun!
         vol_url = self.bucket_url + '/objects/' + src_vref['volume_name']
         clone_body = { 'tenant_name' : self.tenant,
                       'bucket_name' : self.bucket,
@@ -267,23 +267,17 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
 
     def ensure_export(self, context, volume):
-        """Synchronously recreates an export for a logical volume."""
-        pass
+        raise NotImplementedError()
 
     def create_export(self, context, volume):
-        """Exports the volume.
-        Can optionally return a Dictionary of changes to the volume
-        object to be persisted.
-        """
-        pass
+        raise NotImplementedError()
 
     def remove_export(self, context, volume):
-        """Removes an export for a logical volume."""
-        pass
+        raise NotImplementedError()
 
     def initialize_connection(self, volume, connector):
-        """Allow connection to connector and return connection info."""
-        rsp = self.restapi.get('iscsi?number=' + lunNumber, None)
+        lunNumber = self._get_lun_from_name(volume['name'])
+        rsp = self.restapi.get('iscsi?number=' + str(lunNumber))
 
         return {
             'driver_volume_type': 'iscsi',
@@ -383,11 +377,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return None, False
 
     def backup_volume(self, context, backup, backup_service):
-        """Create a new backup from an existing volume."""
         raise NotImplementedError()
 
     def restore_backup(self, context, backup, volume, backup_service):
-        """Restore an existing backup to a new or existing volume."""
         raise NotImplementedError()
 
     def get_volume_stats(self, refresh=False):
