@@ -464,7 +464,6 @@ class EntryCreateTask(flow_utils.CinderTask):
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
         self.db = db
-        self.provides.update()
 
     def execute(self, context, optional_args, **kwargs):
         """Creates a database entry for the given inputs and returns details.
