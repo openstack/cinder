@@ -1565,6 +1565,66 @@ class VolumeApiTest(test.TestCase):
             sort_keys=['created_at'], sort_dirs=['desc'],
             filters={'display_name': 'd-'}, viewable_admin_meta=True)
 
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_status(self, get_all):
+        req = mock.MagicMock()
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        req.environ = {'cinder.context': ctxt}
+        req.params = {'status': 'available'}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            ctxt, None, None,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'status': 'available'}, viewable_admin_meta=True)
+
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_metadata(self, get_all):
+        req = mock.MagicMock()
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        req.environ = {'cinder.context': ctxt}
+        req.params = {'metadata': "{'fake_key': 'fake_value'}"}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            ctxt, None, None,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'metadata': {'fake_key': 'fake_value'}},
+            viewable_admin_meta=True)
+
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_availability_zone(self, get_all):
+        req = mock.MagicMock()
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        req.environ = {'cinder.context': ctxt}
+        req.params = {'availability_zone': 'nova'}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            ctxt, None, None,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'availability_zone': 'nova'}, viewable_admin_meta=True)
+
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_invalid_filter(self, get_all):
+        req = mock.MagicMock()
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        req.environ = {'cinder.context': ctxt}
+        req.params = {'invalid_filter': 'invalid',
+                      'availability_zone': 'nova'}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            ctxt, None, None,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'availability_zone': 'nova'}, viewable_admin_meta=True)
+
+    def test_get_volume_filter_options_using_config(self):
+        self.override_config('query_volume_filters', ['name', 'status',
+                                                      'metadata'])
+        self.assertEqual(['name', 'status', 'metadata'],
+                         self.controller._get_volume_filter_options())
+
 
 class VolumeSerializerTest(test.TestCase):
     def _verify_volume_attachment(self, attach, tree):
