@@ -27,6 +27,7 @@ import six.moves.urllib.parse as urlparse
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
+from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import units
 from cinder.volume import driver
@@ -93,6 +94,7 @@ class ScalityDriver(driver.VolumeDriver):
             if e.errno != errno.EEXIST:
                 raise
 
+    @lockutils.synchronized('mount-sofs', 'cinder-sofs', external=True)
     def _mount_sofs(self):
         config = CONF.scality_sofs_config
         mount_path = CONF.scality_sofs_mount_point
