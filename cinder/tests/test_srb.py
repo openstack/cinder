@@ -296,20 +296,20 @@ class SRBDriverTestCase(test.TestCase):
 
     def _fake_add_urls(self):
         def check(cmd_string):
-            return '> /sys/class/srb/add_urls' in cmd_string
+            return 'tee, /sys/class/srb/add_urls' in cmd_string
 
         def act(cmd):
-            self._urls.append(cmd[2].split()[1])
+            self._urls.append(cmd[2])
 
         return check, act
 
     def _fake_create(self):
         def check(cmd_string):
-            return '> /sys/class/srb/create' in cmd_string
+            return 'tee, /sys/class/srb/create' in cmd_string
 
         def act(cmd):
-            volname = cmd[2].split()[1]
-            volsize = cmd[2].split()[2]
+            volname = cmd[2].split()[0]
+            volsize = cmd[2].split()[1]
             self._volumes[volname] = {
                 "name": volname,
                 "size": self._convert_size(volsize),
@@ -321,28 +321,28 @@ class SRBDriverTestCase(test.TestCase):
 
     def _fake_destroy(self):
         def check(cmd_string):
-            return '> /sys/class/srb/destroy' in cmd_string
+            return 'tee, /sys/class/srb/destroy' in cmd_string
 
         def act(cmd):
-            volname = cmd[2].split()[1]
+            volname = cmd[2]
             del self._volumes[volname]
 
         return check, act
 
     def _fake_extend(self):
         def check(cmd_string):
-            return '> /sys/class/srb/extend' in cmd_string
+            return 'tee, /sys/class/srb/extend' in cmd_string
 
         def act(cmd):
-            volname = cmd[2].split()[1]
-            volsize = cmd[2].split()[2]
+            volname = cmd[2].split()[0]
+            volsize = cmd[2].split()[1]
             self._volumes[volname]["size"] = self._convert_size(volsize)
 
         return check, act
 
     def _fake_attach(self):
         def check(cmd_string):
-            return '> /sys/class/srb/attach' in cmd_string
+            return 'tee, /sys/class/srb/attach' in cmd_string
 
         def act(_):
             pass
@@ -351,7 +351,7 @@ class SRBDriverTestCase(test.TestCase):
 
     def _fake_detach(self):
         def check(cmd_string):
-            return '> /sys/class/srb/detach' in cmd_string
+            return 'tee, /sys/class/srb/detach' in cmd_string
 
         def act(_):
             pass
@@ -681,6 +681,14 @@ class SRBDriverTestCase(test.TestCase):
         return check, act
 
     def _fake_execute(self, *cmd, **kwargs):
+        # Initial version of this driver used to perform commands this way :
+        # sh echo $cmd > /sys/class/srb
+        # As noted in LP #1414531 this is wrong, it should be
+        # tee /sys/class/srb < $cmd
+        # To avoid having to rewrite every unit tests, we insert the STDIN
+        # as part of the original command
+        if 'process_input' in kwargs:
+            cmd = cmd + (kwargs['process_input'],)
         cmd_string = ', '.join(cmd)
         ##
         #  To test behavior, we need to stub part of the brick/local_dev/lvm
@@ -724,7 +732,7 @@ class SRBDriverTestCase(test.TestCase):
         self.fail('Unexpected command: %s' % cmd_string)
 
     def _configure_driver(self):
-        srb.CONF.srb_base_urls = "http://localhost/volumes"
+        srb.CONF.srb_base_urls = "http://127.0.0.1/volumes"
 
     def setUp(self):
         super(SRBDriverTestCase, self).setUp()
@@ -739,8 +747,14 @@ class SRBDriverTestCase(test.TestCase):
     def test_setup(self):
         """The url shall be added automatically"""
         self._driver.do_setup(None)
-        self.assertEqual('http://localhost/volumes', self._urls[0])
+        self.assertEqual('http://127.0.0.1/volumes',
+                         self._urls[0])
         self._driver.check_for_setup_error()
+
+    @mock.patch.object(srb.CONF, 'srb_base_urls', "http://; evil")
+    def test_setup_malformated_url(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self._driver.do_setup, None)
 
     def test_setup_no_config(self):
         """The driver shall not start without any url configured"""

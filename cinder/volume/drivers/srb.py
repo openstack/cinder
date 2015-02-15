@@ -21,6 +21,7 @@ This driver provisions Linux SRB volumes leveraging RESTful storage platforms
 
 import contextlib
 import functools
+import re
 import sys
 import time
 
@@ -46,11 +47,16 @@ LOG = logging.getLogger(__name__)
 srb_opts = [
     cfg.StrOpt('srb_base_urls',
                default=None,
-               help='Comma-separated list of REST servers to connect to'),
+               help='Comma-separated list of REST servers IP to connect to. '
+                    '(eg http://IP1/,http://IP2:81/path'),
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(srb_opts)
+
+ACCEPTED_REST_SERVER = re.compile(r'^http://'
+                                  '(\d{1,3}\.){3}\d{1,3}'
+                                  '(:\d+)?/[a-zA-Z0-9\-_\/]*$')
 
 
 class retry:
@@ -315,7 +321,7 @@ class SRBDriver(driver.VolumeDriver):
     CDMI).
     """
 
-    VERSION = '1.0.0'
+    VERSION = '1.1.0'
 
     # Over-allocation ratio (multiplied with requested size) for thin
     # provisioning
@@ -328,6 +334,7 @@ class SRBDriver(driver.VolumeDriver):
         self.urls_setup = False
         self.backend_name = None
         self.base_urls = None
+        self.root_helper = utils.get_root_helper()
         self._attached_devices = {}
 
     def _setup_urls(self):
@@ -339,9 +346,10 @@ class SRBDriver(driver.VolumeDriver):
                 message=_LE('Cound not setup urls on the Block Driver.'),
                 info_message=_LI('Error creating Volume'),
                 reraise=False):
-            cmd = 'echo ' + self.base_urls + ' > /sys/class/srb/add_urls'
-            putils.execute('sh', '-c', cmd,
-                           root_helper='sudo', run_as_root=True)
+            cmd = self.base_urls
+            path = '/sys/class/srb/add_urls'
+            putils.execute('tee', path, process_input=cmd,
+                           root_helper=self.root_helper, run_as_root=True)
             self.urls_setup = True
 
     def do_setup(self, context):
@@ -349,11 +357,17 @@ class SRBDriver(driver.VolumeDriver):
         self.backend_name = self.configuration.safe_get('volume_backend_name')
 
         base_urls = self.configuration.safe_get('srb_base_urls')
+        sane_urls = []
         if base_urls:
-            base_urls = ','.join(s.strip() for s in base_urls.split(','))
+            for url in base_urls.split(','):
+                stripped_url = url.strip()
+                if ACCEPTED_REST_SERVER.match(stripped_url):
+                    sane_urls.append(stripped_url)
+                else:
+                    LOG.warning(_LW("%s is not an accepted REST server "
+                                    "IP address"), stripped_url)
 
-        self.base_urls = base_urls
-
+        self.base_urls = ','.join(sane_urls)
         self._setup_urls()
 
     def check_for_setup_error(self):
@@ -482,11 +496,11 @@ class SRBDriver(driver.VolumeDriver):
                 reraise=exception.VolumeBackendAPIException(data=message)):
             size = self._size_int(volume['size']) * self.OVER_ALLOC_RATIO
 
-            cmd = 'echo ' + volume['name'] + ' '
-            cmd += '%dG' % size
-            cmd += ' > /sys/class/srb/create'
-            putils.execute('/bin/sh', '-c', cmd,
-                           root_helper='sudo', run_as_root=True)
+            cmd = volume['name']
+            cmd += ' %dG' % size
+            path = '/sys/class/srb/create'
+            putils.execute('tee', path, process_input=cmd,
+                           root_helper=self.root_helper, run_as_root=True)
 
         return self._set_device_path(volume)
 
@@ -500,11 +514,11 @@ class SRBDriver(driver.VolumeDriver):
                 reraise=exception.VolumeBackendAPIException(data=message)):
             size = self._size_int(new_size) * self.OVER_ALLOC_RATIO
 
-            cmd = 'echo ' + volume['name'] + ' '
-            cmd += '%dG' % size
-            cmd += ' > /sys/class/srb/extend'
-            putils.execute('/bin/sh', '-c', cmd,
-                           root_helper='sudo', run_as_root=True)
+            cmd = volume['name']
+            cmd += ' %dG' % size
+            path = '/sys/class/srb/extend'
+            putils.execute('tee', path, process_input=cmd,
+                           root_helper=self.root_helper, run_as_root=True)
 
     @staticmethod
     def _destroy_file(volume):
@@ -515,9 +529,11 @@ class SRBDriver(driver.VolumeDriver):
                 message=message,
                 info_message=_LI('Error destroying Volume %s.') % volname,
                 reraise=exception.VolumeBackendAPIException(data=message)):
-            cmd = 'echo ' + volume['name'] + ' > /sys/class/srb/destroy'
-            putils.execute('/bin/sh', '-c', cmd,
-                           root_helper='sudo', run_as_root=True)
+            cmd = volume['name']
+            path = '/sys/class/srb/destroy'
+            putils.execute('tee', path, process_input=cmd,
+                           root_helper=utils.get_root_helper(),
+                           run_as_root=True)
 
     # NOTE(joachim): Must only be called within a function decorated by:
     # @lockutils.synchronized('devices', 'cinder-srb-')
@@ -572,10 +588,10 @@ class SRBDriver(driver.VolumeDriver):
                     message=message,
                     info_message=_LI('Error attaching Volume'),
                     reraise=exception.VolumeBackendAPIException(data=message)):
-                cmd = 'echo ' + name + ' ' + devname
-                cmd += ' > /sys/class/srb/attach'
-                putils.execute('/bin/sh', '-c', cmd,
-                               root_helper='sudo', run_as_root=True)
+                cmd = name + ' ' + devname
+                path = '/sys/class/srb/attach'
+                putils.execute('tee', path, process_input=cmd,
+                               root_helper=self.root_helper, run_as_root=True)
         else:
             LOG.debug('Volume %s already attached', name)
 
@@ -591,10 +607,11 @@ class SRBDriver(driver.VolumeDriver):
     def _do_detach(self, volume, vg):
         devname = self._device_name(volume)
         volname = self._get_volname(volume)
-        cmd = 'echo ' + devname + ' > /sys/class/srb/detach'
+        cmd = devname
+        path = '/sys/class/srb/detach'
         try:
-            putils.execute('/bin/sh', '-c', cmd,
-                           root_helper='sudo', run_as_root=True)
+            putils.execute('tee', path, process_input=cmd,
+                           root_helper=self.root_helper, run_as_root=True)
         except putils.ProcessExecutionError:
             with excutils.save_and_reraise_exception(reraise=True):
                 try:
@@ -664,7 +681,8 @@ class SRBDriver(driver.VolumeDriver):
             raise exception.VolumeIsBusy(volume_name=volume['name'])
         vg.destroy_vg()
         # NOTE(joachim) Force lvm vg flush through a vgs command
-        vgs = vg.get_all_volume_groups(root_helper='sudo', vg_name=vg.vg_name)
+        vgs = vg.get_all_volume_groups(root_helper=self.root_helper,
+                                       vg_name=vg.vg_name)
         if len(vgs) != 0:
             LOG.warning(_LW('Removed volume group %s still appears in vgs.'),
                         vg.vg_name)
