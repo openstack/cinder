@@ -716,70 +716,30 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         self.driver.create_volume(self.volume)
         self.driver.delete_volume(self.volume)
 
-    def test_create_vol_snapshot_destroy(self):
-        self.driver.db = mock.Mock(
-            volume_get=mock.Mock(return_value=self.volume))
-        self.driver.create_volume(self.volume)
-        self.driver.create_snapshot(self.snapshot)
-        self.driver.create_volume_from_snapshot(self.volume_sec, self.snapshot)
-        self.driver.delete_snapshot(self.snapshot)
-        self.driver.delete_volume(self.volume)
-        self.assertEqual(1, self.driver.db.volume_get.call_count)
-
-    def test_cloned_volume_destroy(self):
-        self.driver.db = mock.Mock(
-            volume_get=mock.Mock(return_value=self.volume))
-        self.driver.create_volume(self.volume)
-        self.driver.create_cloned_volume(self.volume_sec, self.volume)
-        self.assertEqual(1, self.driver.db.volume_get.call_count)
-        self.driver.delete_volume(self.volume)
-
     def test_vol_stats(self):
         self.driver.get_volume_stats(refresh=False)
 
-    def test_create_vol_snapshot_diff_size_resize(self):
-        self.driver.db = mock.Mock(
-            volume_get=mock.Mock(return_value=self.volume))
-        self.driver.create_volume(self.volume)
-        self.driver.create_snapshot(self.snapshot)
-        self.driver.create_volume_from_snapshot(
-            self.volume_clone, self.snapshot)
-        self.assertEqual(1, self.driver.db.volume_get.call_count)
-        self.driver.delete_snapshot(self.snapshot)
-        self.driver.delete_volume(self.volume)
-
-    def test_create_vol_snapshot_diff_size_subclone(self):
-        self.driver.db = mock.Mock(
-            volume_get=mock.Mock(return_value=self.volume))
-        self.driver.create_volume(self.volume)
-        self.driver.create_snapshot(self.snapshot)
-        self.driver.create_volume_from_snapshot(
-            self.volume_clone_large, self.snapshot)
-        self.driver.delete_snapshot(self.snapshot)
-        self.assertEqual(1, self.driver.db.volume_get.call_count)
-        self.driver.delete_volume(self.volume)
-
-    @mock.patch.object(iscsi.NetAppEseriesISCSIDriver, '_get_volume',
-                       mock.Mock(return_value={'volumeGroupRef': 'fake_ref'}))
     def test_get_pool(self):
-        self.driver._objects['pools'] = [{'volumeGroupRef': 'fake_ref',
-                                          'label': 'ddp1'}]
+        self.mock_object(self.driver, '_get_volume',
+                         mock.Mock(return_value={
+                             'volumeGroupRef': 'fake_ref'}))
+        self.mock_object(self.driver._client, "get_storage_pool",
+                         mock.Mock(return_value={'volumeGroupRef': 'fake_ref',
+                                                 'label': 'ddp1'}))
+
         pool = self.driver.get_pool({'name_id': 'fake-uuid'})
+
         self.assertEqual(pool, 'ddp1')
 
-    @mock.patch.object(iscsi.NetAppEseriesISCSIDriver, '_get_volume',
-                       mock.Mock(return_value={'volumeGroupRef': 'fake_ref'}))
     def test_get_pool_no_pools(self):
-        self.driver._objects['pools'] = []
-        pool = self.driver.get_pool({'name_id': 'fake-uuid'})
-        self.assertEqual(pool, None)
+        self.mock_object(self.driver, '_get_volume',
+                         mock.Mock(return_value={
+                             'volumeGroupRef': 'fake_ref'}))
+        self.mock_object(self.driver._client, "get_storage_pool",
+                         mock.Mock(return_value=None))
 
-    @mock.patch.object(iscsi.NetAppEseriesISCSIDriver, '_get_volume',
-                       mock.Mock(return_value={'volumeGroupRef': 'fake_ref'}))
-    def test_get_pool_no_match(self):
-        self.driver._objects['pools'] = [{'volumeGroupRef': 'fake_ref2',
-                                          'label': 'ddp2'}]
         pool = self.driver.get_pool({'name_id': 'fake-uuid'})
+
         self.assertEqual(pool, None)
 
     @mock.patch.object(iscsi.NetAppEseriesISCSIDriver, '_create_volume',
@@ -800,6 +760,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         fake_pool = {}
         fake_pool['label'] = self.fake_eseries_pool_label
         fake_pool['volumeGroupRef'] = 'foo'
+        fake_pool['raidLevel'] = 'raidDiskPool'
         fake_pools = [fake_pool]
         fake_list_pools.return_value = fake_pools
         wrong_eseries_pool_label = 'hostname@backend'
@@ -815,6 +776,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         fake_pool = {}
         fake_pool['label'] = self.fake_eseries_pool_label
         fake_pool['volumeGroupRef'] = 'foo'
+        fake_pool['raidLevel'] = 'raidDiskPool'
         fake_pools = [fake_pool]
         storage_pools.return_value = fake_pools
         storage_vol = self.driver._create_volume(
@@ -834,6 +796,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         fake_pool = {}
         fake_pool['label'] = self.fake_eseries_pool_label
         fake_pool['volumeGroupRef'] = 'foo'
+        fake_pool['raidLevel'] = 'raidDiskPool'
         fake_pools = [fake_pool]
         fake_list_pools.return_value = fake_pools
         self.assertRaises(exception.NetAppDriverException,
@@ -991,7 +954,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
                         {'volumeRef': '2', 'volumeUse': 'standardVolume',
                          'label': 'l2', 'volumeGroupRef': 'g2',
                          'worldWideName': 'w2ghyu'}]
-        self.driver._objects['disk_pool_refs'] = ['g2', 'g3']
+        self.driver._get_storage_pools = mock.Mock(return_value=['g2', 'g3'])
         self.driver._client.list_volumes = mock.Mock(return_value=fake_vl_list)
         vol = self.driver._get_volume_with_label_wwn('l2', 'w2:gh:yu')
         self.assertEqual(1, self.driver._client.list_volumes.call_count)
@@ -1004,7 +967,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
                         {'volumeRef': '2', 'volumeUse': 'standardVolume',
                          'label': 'l2', 'volumeGroupRef': 'g2',
                          'worldWideName': 'w2ghyu'}]
-        self.driver._objects['disk_pool_refs'] = ['g2', 'g3']
+        self.driver._get_storage_pools = mock.Mock(return_value=['g2', 'g3'])
         self.driver._client.list_volumes = mock.Mock(return_value=fake_vl_list)
         self.assertRaises(KeyError, self.driver._get_volume_with_label_wwn,
                           'l2', 'abcdef')
@@ -1050,25 +1013,19 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         self.driver._get_existing_vol_with_manage_ref = mock.Mock(
             return_value=self.fake_ret_vol)
         mock_convert_es_fmt.return_value = 'label'
-        self.driver._del_volume_frm_cache = mock.Mock()
-        self.driver._cache_volume = mock.Mock()
         self.driver.manage_existing(self.volume, self.fake_ref)
         self.driver._get_existing_vol_with_manage_ref.assert_called_once_with(
             self.volume, self.fake_ref)
         mock_convert_es_fmt.assert_called_once_with(
             '114774fb-e15a-4fae-8ee2-c9723e3645ef')
-        self.assertEqual(0, self.driver._del_volume_frm_cache.call_count)
-        self.driver._cache_volume.assert_called_once_with(self.fake_ret_vol)
 
     @mock.patch.object(utils, 'convert_uuid_to_es_fmt')
     def test_manage_existing_new(self, mock_convert_es_fmt):
         self.driver._get_existing_vol_with_manage_ref = mock.Mock(
             return_value=self.fake_ret_vol)
         mock_convert_es_fmt.return_value = 'vol_label'
-        self.driver._del_volume_frm_cache = mock.Mock()
         self.driver._client.update_volume = mock.Mock(
             return_value={'id': 'update', 'worldWideName': 'wwn'})
-        self.driver._cache_volume = mock.Mock()
         self.driver.manage_existing(self.volume, self.fake_ref)
         self.driver._get_existing_vol_with_manage_ref.assert_called_once_with(
             self.volume, self.fake_ref)
@@ -1076,10 +1033,6 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
             '114774fb-e15a-4fae-8ee2-c9723e3645ef')
         self.driver._client.update_volume.assert_called_once_with(
             'vol_id', 'vol_label')
-        self.driver._del_volume_frm_cache.assert_called_once_with(
-            'label')
-        self.driver._cache_volume.assert_called_once_with(
-            {'id': 'update', 'worldWideName': 'wwn'})
 
     @mock.patch.object(iscsi.LOG, 'info')
     def test_unmanage(self, log_info):
