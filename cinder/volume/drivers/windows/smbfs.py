@@ -31,7 +31,7 @@ from cinder.volume.drivers import smbfs
 from cinder.volume.drivers.windows import remotefs
 from cinder.volume.drivers.windows import vhdutils
 
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ CONF.set_default('smbfs_default_volume_format', 'vhd')
 
 class WindowsSmbfsDriver(smbfs.SmbfsDriver):
     VERSION = VERSION
+    _MINIMUM_QEMU_IMG_VERSION = '1.6'
 
     def __init__(self, *args, **kwargs):
         super(WindowsSmbfsDriver, self).__init__(*args, **kwargs)
@@ -206,38 +207,16 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
+        volume_path = self.local_path(volume)
         volume_format = self.get_volume_format(volume, qemu_format=True)
-        image_meta = image_service.show(context, image_id)
-
-        fetch_format = volume_format
-        fetch_path = self.local_path(volume)
-        self._delete(fetch_path)
-        qemu_version = self.get_qemu_version()
-
-        needs_conversion = False
-
-        if (qemu_version < [1, 7] and (
-                volume_format == self._DISK_FORMAT_VHDX and
-                image_meta['disk_format'] != self._DISK_FORMAT_VHDX)):
-            needs_conversion = True
-            fetch_format = 'vpc'
-            temp_file_name = '%s.temp_image.%s.%s' % (
-                volume['id'],
-                image_meta['id'],
-                self._DISK_FORMAT_VHD)
-            fetch_path = os.path.join(self._local_volume_dir(volume),
-                                      temp_file_name)
+        self._delete(volume_path)
 
         image_utils.fetch_to_volume_format(
             context, image_service, image_id,
-            fetch_path, fetch_format,
+            volume_path, volume_format,
             self.configuration.volume_dd_blocksize)
 
-        if needs_conversion:
-            self.vhdutils.convert_vhd(fetch_path, self.local_path(volume))
-            self._delete(fetch_path)
-
-        self.vhdutils.resize_vhd(self.local_path(volume),
+        self.vhdutils.resize_vhd(volume_path,
                                  volume['size'] * units.Gi)
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):

@@ -14,7 +14,6 @@
 #    under the License.
 
 import os
-import re
 
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
@@ -29,7 +28,7 @@ from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
 
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -79,6 +78,8 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     volume_backend_name = 'Generic_SMBFS'
     SHARE_FORMAT_REGEX = r'//.+/.+'
     VERSION = VERSION
+
+    _MINIMUM_QEMU_IMG_VERSION = '1.7'
 
     _DISK_FORMAT_VHD = 'vhd'
     _DISK_FORMAT_VHD_LEGACY = 'vpc'
@@ -131,6 +132,8 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         }
 
     def do_setup(self, context):
+        image_utils.check_qemu_img_version(self._MINIMUM_QEMU_IMG_VERSION)
+
         config = self.configuration.smbfs_shares_config
         if not config:
             msg = (_("SMBFS config file not set (smbfs_shares_config)."))
@@ -242,26 +245,11 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         info_path = self._local_path_volume_info(volume)
         self._delete(info_path)
 
-    def get_qemu_version(self):
-        info, _ = self._execute('qemu-img', check_exit_code=False)
-        pattern = r"qemu-img version ([0-9\.]*)"
-        version = re.match(pattern, info)
-        if not version:
-            LOG.warn(_LW("qemu-img is not installed."))
-            return None
-        return [int(x) for x in version.groups()[0].split('.')]
-
     def _create_windows_image(self, volume_path, volume_size, volume_format):
         """Creates a VHD or VHDX file of a given size."""
         # vhd is regarded as vpc by qemu
         if volume_format == self._DISK_FORMAT_VHD:
             volume_format = self._DISK_FORMAT_VHD_LEGACY
-        else:
-            qemu_version = self.get_qemu_version()
-            if qemu_version < [1, 7]:
-                err_msg = _("This version of qemu-img does not support vhdx "
-                            "images. Please upgrade to 1.7 or greater.")
-                raise exception.SmbfsException(err_msg)
 
         self._execute('qemu-img', 'create', '-f', volume_format,
                       volume_path, str(volume_size * units.Gi),
@@ -501,16 +489,6 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         volume_format = self.get_volume_format(volume, qemu_format=True)
-        image_meta = image_service.show(context, image_id)
-        qemu_version = self.get_qemu_version()
-
-        if (qemu_version < [1, 7] and (
-                volume_format == self._DISK_FORMAT_VHDX and
-                image_meta['disk_format'] != volume_format)):
-            err_msg = _("Unsupported volume format: vhdx. qemu-img 1.7 or "
-                        "higher is required in order to properly support this "
-                        "format.")
-            raise exception.InvalidVolume(err_msg)
 
         image_utils.fetch_to_volume_format(
             context, image_service, image_id,

@@ -91,41 +91,46 @@ class SmbFsTestCase(test.TestCase):
                 self._FAKE_VOLUME_PATH)
             drv._delete.assert_any_call(fake_vol_info)
 
-    def _test_setup(self, config, share_config_exists=True):
-        fake_exists = mock.Mock(return_value=share_config_exists)
+    @mock.patch('os.path.exists')
+    @mock.patch.object(image_utils, 'check_qemu_img_version')
+    def _test_setup(self, mock_check_qemu_img_version,
+                    mock_exists, config, share_config_exists=True):
+        mock_exists.return_value = share_config_exists
         fake_ensure_mounted = mock.MagicMock()
         self._smbfs_driver._ensure_shares_mounted = fake_ensure_mounted
         self._smbfs_driver.configuration = config
 
-        with mock.patch('os.path.exists', fake_exists):
-            if not (config.smbfs_shares_config and share_config_exists and
-                    config.smbfs_oversub_ratio > 0 and
-                    0 <= config.smbfs_used_ratio <= 1):
-                self.assertRaises(exception.SmbfsException,
-                                  self._smbfs_driver.do_setup,
-                                  None)
-            else:
-                self._smbfs_driver.do_setup(None)
-                self.assertEqual(self._smbfs_driver.shares, {})
-                fake_ensure_mounted.assert_called_once_with()
+        if not (config.smbfs_shares_config and share_config_exists and
+                config.smbfs_oversub_ratio > 0 and
+                0 <= config.smbfs_used_ratio <= 1):
+            self.assertRaises(exception.SmbfsException,
+                              self._smbfs_driver.do_setup,
+                              None)
+        else:
+            self._smbfs_driver.do_setup(mock.sentinel.context)
+            mock_check_qemu_img_version.assert_called_once_with()
+            self.assertEqual(self._smbfs_driver.shares, {})
+            fake_ensure_mounted.assert_called_once_with()
 
     def test_setup_missing_shares_config_option(self):
         fake_config = copy.copy(self._FAKE_SMBFS_CONFIG)
         fake_config.smbfs_shares_config = None
-        self._test_setup(fake_config, None)
+        self._test_setup(config=fake_config,
+                         share_config_exists=False)
 
     def test_setup_missing_shares_config_file(self):
-        self._test_setup(self._FAKE_SMBFS_CONFIG, False)
+        self._test_setup(config=self._FAKE_SMBFS_CONFIG,
+                         share_config_exists=False)
 
     def test_setup_invlid_oversub_ratio(self):
         fake_config = copy.copy(self._FAKE_SMBFS_CONFIG)
         fake_config.smbfs_oversub_ratio = -1
-        self._test_setup(fake_config)
+        self._test_setup(config=fake_config)
 
     def test_setup_invalid_used_ratio(self):
         fake_config = copy.copy(self._FAKE_SMBFS_CONFIG)
         fake_config.smbfs_used_ratio = -1
-        self._test_setup(fake_config)
+        self._test_setup(config=fake_config)
 
     def _test_create_volume(self, volume_exists=False, volume_format=None):
         fake_method = mock.MagicMock()
@@ -528,14 +533,10 @@ class SmbFsTestCase(test.TestCase):
         self._smbfs_driver._remotefsclient.mount.assert_called_once_with(
             self._FAKE_SHARE, self._FAKE_SHARE_OPTS.split())
 
-    def _test_copy_image_to_volume(self, unsupported_qemu_version=False,
-                                   wrong_size_after_fetch=False):
+    def _test_copy_image_to_volume(self, wrong_size_after_fetch=False):
         drv = self._smbfs_driver
 
         vol_size_bytes = self._FAKE_VOLUME['size'] << 30
-        fake_image_service = mock.MagicMock()
-        fake_image_service.show.return_value = (
-            {'id': 'fake_image_id', 'disk_format': 'raw'})
 
         fake_img_info = mock.MagicMock()
 
@@ -544,47 +545,35 @@ class SmbFsTestCase(test.TestCase):
         else:
             fake_img_info.virtual_size = vol_size_bytes
 
-        if unsupported_qemu_version:
-            qemu_version = [1, 5]
-        else:
-            qemu_version = [1, 7]
-
         drv.get_volume_format = mock.Mock(
             return_value=drv._DISK_FORMAT_VHDX)
         drv.local_path = mock.Mock(
             return_value=self._FAKE_VOLUME_PATH)
-        drv.get_qemu_version = mock.Mock(
-            return_value=qemu_version)
         drv._do_extend_volume = mock.Mock()
         drv.configuration = mock.MagicMock()
         drv.configuration.volume_dd_blocksize = (
             mock.sentinel.block_size)
 
-        exc = None
         with mock.patch.object(image_utils, 'fetch_to_volume_format') as \
                 fake_fetch, mock.patch.object(image_utils, 'qemu_img_info') as \
                 fake_qemu_img_info:
 
-            if wrong_size_after_fetch:
-                exc = exception.ImageUnacceptable
-            elif unsupported_qemu_version:
-                exc = exception.InvalidVolume
-
             fake_qemu_img_info.return_value = fake_img_info
 
-            if exc:
+            if wrong_size_after_fetch:
                 self.assertRaises(
-                    exc, drv.copy_image_to_volume,
+                    exception.ImageUnacceptable,
+                    drv.copy_image_to_volume,
                     mock.sentinel.context, self._FAKE_VOLUME,
-                    fake_image_service,
+                    mock.sentinel.image_service,
                     mock.sentinel.image_id)
             else:
                 drv.copy_image_to_volume(
                     mock.sentinel.context, self._FAKE_VOLUME,
-                    fake_image_service,
+                    mock.sentinel.image_service,
                     mock.sentinel.image_id)
                 fake_fetch.assert_called_once_with(
-                    mock.sentinel.context, fake_image_service,
+                    mock.sentinel.context, mock.sentinel.image_service,
                     mock.sentinel.image_id, self._FAKE_VOLUME_PATH,
                     drv._DISK_FORMAT_VHDX,
                     mock.sentinel.block_size)
@@ -598,9 +587,6 @@ class SmbFsTestCase(test.TestCase):
 
     def test_copy_image_to_volume_wrong_size_after_fetch(self):
         self._test_copy_image_to_volume(wrong_size_after_fetch=True)
-
-    def test_copy_image_to_volume_unsupported_qemu_version(self):
-        self._test_copy_image_to_volume(unsupported_qemu_version=True)
 
     def test_get_capacity_info(self):
         fake_block_size = 4096.0
