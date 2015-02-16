@@ -92,6 +92,7 @@ class Driver(driver.ISCSIDriver):
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
+        self.context = context
         self._check_flags()
         port = self.configuration.netapp_server_port
         scheme = self.configuration.netapp_transport_type.lower()
@@ -294,7 +295,8 @@ class Driver(driver.ISCSIDriver):
             if vol.get('label') == label:
                 self._cache_volume(vol)
                 return self._get_cached_volume(label)
-        raise exception.NetAppDriverException(_("Volume %s not found."), uid)
+        raise exception.NetAppDriverException(_("Volume %(uid)s not found.")
+                                              % {'uid': uid})
 
     def _get_cached_volume(self, label):
         vol_id = self._objects['volumes']['label_ref'][label]
@@ -329,7 +331,7 @@ class Driver(driver.ISCSIDriver):
         :param volume: The volume hosted by the driver.
         :return: Name of the pool where given volume is hosted.
         """
-        eseries_volume = self._get_volume(volume['id'])
+        eseries_volume = self._get_volume(volume['name_id'])
         for pool in self._objects['pools']:
             if pool['volumeGroupRef'] == eseries_volume['volumeGroupRef']:
                 return pool['label']
@@ -348,7 +350,7 @@ class Driver(driver.ISCSIDriver):
             msg = _("Pool is not available in the volume host field.")
             raise exception.InvalidHost(reason=msg)
 
-        eseries_volume_label = utils.convert_uuid_to_es_fmt(volume['id'])
+        eseries_volume_label = utils.convert_uuid_to_es_fmt(volume['name_id'])
 
         # get size of the requested volume creation
         size_gb = int(volume['size'])
@@ -481,7 +483,7 @@ class Driver(driver.ISCSIDriver):
     def delete_volume(self, volume):
         """Deletes a volume."""
         try:
-            vol = self._get_volume(volume['id'])
+            vol = self._get_volume(volume['name_id'])
             self._delete_volume(vol['label'])
         except KeyError:
             LOG.info(_("Volume %s already deleted."), volume['id'])
@@ -498,7 +500,8 @@ class Driver(driver.ISCSIDriver):
         """Creates a snapshot."""
         snap_grp, snap_image = None, None
         snapshot_name = utils.convert_uuid_to_es_fmt(snapshot['id'])
-        vol = self._get_volume(snapshot['volume_id'])
+        os_vol = self.db.volume_get(self.context, snapshot['volume_id'])
+        vol = self._get_volume(os_vol['name_id'])
         vol_size_gb = int(vol['totalSizeInBytes']) / units.Gi
         pools = self._get_sorted_avl_storage_pools(vol_size_gb)
         try:
@@ -540,7 +543,7 @@ class Driver(driver.ISCSIDriver):
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         initiator_name = connector['initiator']
-        vol = self._get_latest_volume(volume['id'])
+        vol = self._get_latest_volume(volume['name_id'])
         iscsi_details = self._get_iscsi_service_details()
         iscsi_portal = self._get_iscsi_portal_for_vol(vol, iscsi_details)
         mapping = self._map_volume_to_host(vol, initiator_name)
@@ -688,7 +691,7 @@ class Driver(driver.ISCSIDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
-        vol = self._get_volume(volume['id'])
+        vol = self._get_volume(volume['name_id'])
         host = self._get_host_with_port(connector['initiator'])
         mapping = self._get_cached_vol_mapping_for_host(vol, host)
         self._client.delete_volume_mapping(mapping['lunMappingRef'])
@@ -759,7 +762,7 @@ class Driver(driver.ISCSIDriver):
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
         stage_1, stage_2 = 0, 0
-        src_vol = self._get_volume(volume['id'])
+        src_vol = self._get_volume(volume['name_id'])
         src_label = src_vol['label']
         stage_label = 'tmp-%s' % utils.convert_uuid_to_es_fmt(uuid.uuid4())
         extend_vol = {'id': uuid.uuid4(), 'size': new_size}
