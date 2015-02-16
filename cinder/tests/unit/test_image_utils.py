@@ -937,14 +937,15 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.temporary_file')
     @mock.patch('cinder.image.image_utils.CONF')
-    def test_format_mismatch(self, mock_conf, mock_temp, mock_info, mock_fetch,
-                             mock_is_xen, mock_repl_xen, mock_copy,
-                             mock_convert):
+    def _test_format_name_mismatch(self, mock_conf, mock_temp, mock_info,
+                                   mock_fetch, mock_is_xen, mock_repl_xen,
+                                   mock_copy, mock_convert,
+                                   legacy_format_name=False):
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
-        volume_format = mock.sentinel.volume_format
+        volume_format = 'vhd'
         blocksize = mock.sentinel.blocksize
         user_id = mock.sentinel.user_id
         project_id = mock.sentinel.project_id
@@ -952,17 +953,23 @@ class TestFetchToVolumeFormat(test.TestCase):
         run_as_root = mock.sentinel.run_as_root
 
         data = mock_info.return_value
-        data.file_format = mock.sentinel.file_format
+        data.file_format = 'vpc' if legacy_format_name else 'raw'
         data.backing_file = None
         data.virtual_size = 1234
         tmp = mock_temp.return_value.__enter__.return_value
 
-        self.assertRaises(
-            exception.ImageUnacceptable,
-            image_utils.fetch_to_volume_format,
-            ctxt, image_service, image_id, dest, volume_format, blocksize,
-            user_id=user_id, project_id=project_id, size=size,
-            run_as_root=run_as_root)
+        if legacy_format_name:
+            image_utils.fetch_to_volume_format(
+                ctxt, image_service, image_id, dest, volume_format, blocksize,
+                user_id=user_id, project_id=project_id, size=size,
+                run_as_root=run_as_root)
+        else:
+            self.assertRaises(
+                exception.ImageUnacceptable,
+                image_utils.fetch_to_volume_format,
+                ctxt, image_service, image_id, dest, volume_format, blocksize,
+                user_id=user_id, project_id=project_id, size=size,
+                run_as_root=run_as_root)
 
         image_service.show.assert_called_once_with(ctxt, image_id)
         mock_temp.assert_called_once_with()
@@ -976,6 +983,14 @@ class TestFetchToVolumeFormat(test.TestCase):
         self.assertFalse(mock_copy.called)
         mock_convert.assert_called_once_with(tmp, dest, volume_format,
                                              run_as_root=run_as_root)
+
+    def test_format_mismatch(self):
+        self._test_format_name_mismatch()
+
+    def test_format_name_mismatch_same_format(self):
+        # Make sure no exception is raised because of qemu-img still using
+        # the legacy 'vpc' format name if 'vhd' is requested.
+        self._test_format_name_mismatch(legacy_format_name=True)
 
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
