@@ -48,6 +48,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                 Initiator Auto Deregistration,
                 Force Deleting LUN in Storage Groups,
                 robust enhancement
+        5.1.0 - iSCSI multipath enhancement
     """
 
     def __init__(self, *args, **kwargs):
@@ -117,7 +118,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
 
         The iscsi driver returns a driver_volume_type of 'iscsi'.
         the format of the driver data is defined in vnx_get_iscsi_properties.
-        Example return value::
+        Example return value (multipath is not enabled)::
 
             {
                 'driver_volume_type': 'iscsi'
@@ -126,6 +127,20 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
                     'target_lun': 1,
+                    'access_mode': 'rw'
+                }
+            }
+
+        Example return value (multipath is enabled)::
+
+            {
+                'driver_volume_type': 'iscsi'
+                'data': {
+                    'target_discovered': True,
+                    'target_iqns': ['iqn.2010-10.org.openstack:volume-00001',
+                                    'iqn.2010-10.org.openstack:volume-00002'],
+                    'target_portals': ['127.0.0.1:3260', '127.0.1.1:3260'],
+                    'target_luns': [1, 1],
                     'access_mode': 'rw'
                 }
             }
