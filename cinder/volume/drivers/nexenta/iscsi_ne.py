@@ -94,34 +94,36 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_bucket_name_map(self):
         url = self.bucket_url + '/' + self.bucket
-        try:
-            rsp = self.restapi.get(url)
-            if not (('bucketMetadata' in rsp) and \
-                ('X-Name-Map' in rsp['bucketMetadata'])):
-                LOG.error(_('Bucket metadata missing name mapping'))
-                return -1
-            namemap = jsonutils.loads(rsp['bucketMetadata']['X-Name-Map'])
-            return namemap
-        except nexenta.NexentaException, e:
-            LOG.error(_('Error processing bucket metadata %s'), str(e))
-            return None
+        rsp = self.restapi.get(url)
+        if not (('bucketMetadata' in rsp) and \
+            ('X-Name-Map' in rsp['bucketMetadata'])):
+            LOG.error(_('Bucket metadata missing name mapping'))
+            raise nexenta.NexentaException('Bucket metadata ' + \
+                'missing name mapping')
+        namemap = jsonutils.loads(rsp['bucketMetadata']['X-Name-Map'])
+        return namemap
 
     def _set_bucket_name_map(self, namemap):
         rsp = self.restapi.put(self.bucket_url + '/' + self.bucket,
             {'optionsObject': { 'X-Name-Map': jsonutils.dumps(namemap)}})
 
-    def _get_lun_from_name(self, name):
-        namemap = self._get_bucket_name_map()
+    def _verify_name_in_map(self, namemap, name):
         if not (name in namemap):
             LOG.error(_('Bucket metadata map missing volume name'))
-            return
+            raise nexenta.NexentaException('Bucket metadata ' + \
+                'map missing volume name')
+
+    def _get_lun_from_name(self, name):
+        namemap = self._get_bucket_name_map()
+        self._verify_name_in_map(namemap, name)
         return namemap[name]
 
     def _allocate_lun_number(self, namemap):
         if namemap == None:
-            LOG.error(_('LUN allocation received None name_map object'))
-            return
-        lunNumber = 0
+            LOG.error(_('Failed to allocate LUN number: ' + \
+                'Received None name_map object'))
+            raise nexenta.NexentaException('None name_map object')
+        lunNumber = None
         for i in range(1, 256):
             exists = False
             for k, v in namemap.iteritems():
@@ -132,25 +134,24 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 lunNumber = i
                 break
         if lunNumber == 0:
-            LOG.error(_('All 255 lun numbers used, WOW!'))
-            return
+            LOG.error(_('Failed to allocate LUN number: ' + \
+                'All 255 lun numbers used, WOW!'))
+            raise nexenta.NexentaException('All 255 lun numbers used')
         return lunNumber
 
     def create_volume(self, volume):
         lunNumber = 0
-        namemap = self._get_bucket_name_map()
-        if namemap == None:
-            return
-        elif namemap == -1:
-            namemap = {}
-            lunNumber = 1
+        try:
+            namemap = self._get_bucket_name_map()
+        except nexenta.NexentaException, e:
+            if (str(e) == 'Bucket metadata missing name mapping'):
+                namemap = {}
+                lunNumber = 1
+            else:
+                raise
 
         if not lunNumber == 1:
             lunNumber = self._allocate_lun_number(namemap)
-        if lunNumber == 0 or lunNumber == None:
-            LOG.error(_('Failed to allocate new LUN number'))
-            raise nexenta.NexentaException('Failed \
-                to allocate new LUN number')
 
         try:
             rsp = self.restapi.post('iscsi', {
@@ -172,9 +173,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def delete_volume(self, volume):
         namemap = self._get_bucket_name_map()
-        if not (volume['name'] in namemap):
-            LOG.error(_('Bucket metadata map missing volume name'))
-            return
+        self._verify_name_in_map(namemap, volume['name'])
         lunNumber = namemap[volume['name']]
         try:
             rsp = self.restapi.delete('iscsi/' + str(lunNumber),
@@ -196,18 +195,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def create_volume_from_snapshot(self, volume, snapshot):
         newLun = 0
         namemap = self._get_bucket_name_map()
-        if namemap == None or namemap == -1:
-            return
-
-        if not (snapshot['volume_name'] in namemap):
-            LOG.error(_('Bucket metadata map missing volume name'))
-            return
+        self._verify_name_in_map(namemap, snapshot['volume_name'])
         lunNumber = namemap[snapshot['volume_name']]
 
         newLun = self._allocate_lun_number(namemap)
-        if newLun == 0 or newLun == None:
-            LOG.error(_('Failed to allocate new LUN number'))
-            return
         namemap[volume['name']] = newLun
 
         try:
@@ -255,17 +246,29 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             raise
 
     def create_cloned_volume(self, volume, src_vref):
-        #FIXME use name-lun mapping and add new object as lun!
-        vol_url = self.bucket_url + '/objects/' + src_vref['volume_name']
+        namemap = self._get_bucket_name_map()
+        self._verify_name_in_map(namemap, src_vref['volume_name'])
+
+        vol_url = self.bucket_url + '/objects/' + \
+            namemap[src_vref['volume_name']]
+        newLun = self._allocate_lun_number(namemap)
         clone_body = { 'tenant_name' : self.tenant,
                       'bucket_name' : self.bucket,
-                      'object_name' : volume['name']
+                      'object_name' : str(newLun)
             }
 
         try:
             rsp = self.restapi.post(vol_url, clone_body)
+
+            rsp = self.restapi.post('iscsi', {
+                'objectPath' : self.bucket_path + '/' + str(newLun),
+                'volSizeMB' : int(src_vref['volume_size']) * 1024,
+                'blockSize' : 4096,
+                'chunkSize' : 4096,
+                'number' : newLun
+            })
         except nexenta.NexentaException, e:
-            LOG.error(_('Error while cloning Volume from Volume: %s'), str(e))
+            LOG.error(_('Error creating cloned volume: %s'), str(e))
             raise
 
 
@@ -283,7 +286,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def initialize_connection(self, volume, connector):
         lunNumber = self._get_lun_from_name(volume['name'])
-        rsp = self.restapi.get('iscsi?number=' + str(lunNumber))
+        try:
+            rsp = self.restapi.get('iscsi?number=' + str(lunNumber))
+        except nexenta.NexentaException, e:
+            raise
 
         return {
             'driver_volume_type': 'iscsi',
@@ -299,88 +305,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
 
     def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector."""
         pass
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume. """
-        tmp_dir = '/tmp' #self.configuration.volume_tmp_dir
-        with tempfile.NamedTemporaryFile(dir=tmp_dir) as tmp:
-            image_utils.fetch_to_raw(context,
-                                 image_service,
-                                 image_id,
-                                 tmp.name,
-                                 self.configuration.volume_dd_blocksize,
-                                 size=volume['size'])
-            obj_f = open(tmp.name, "rb")
-            chunkSize = 128 * 4096 
-            for x in range (0, os.path.getsize(tmp.name) / (chunkSize)):
-                obj_data = obj_f.read(chunkSize)
-                data64 = base64.b64encode(obj_data, None)
-                payload = { 'data' : data64 }
-                url = self.bucket_url + '/' + self.bucket + '/objects/' + volume['name'] + '?offsetSize=' + str(x *chunkSize) + '?bufferSize=' + str(len(data64))
-                try:
-                    rsp = self.restapi.post(url, payload)
-                except nexenta.NexentaException, e:
-                    LOG.error(_('Error while copying Image to Volume: %s'), str(e))
-                    pass
-        
-        try:
-            rsp = self.restapi.post('iscsi/-1/resize', {
-                'objectPath' : self.bucket_path + '/' + volume['name'],
-                'newSizeMB' : int(volume['size']) * 1024,
-            })
-        except nexenta.NexentaException, e:
-            LOG.error(_('Error while creating Volume from Image: %s'), str(e))
-            pass
-        '''image_id is vol.img  && must be our predefined name, else exc
-        clone /cltest/test/bk1/vol.img -> clone_body.
-        image_meta = image_service.show(context, image_id)
-        if image_meta['name'] != 'p_linux':
-            vol_img = image_meta['name']
-        else:
-        vol_img = "vol.img"
-        vol_url = self.bucket_url + '/' + self.bucket  + '/objects/' + vol_img 
-        clone_body = { 'tenant_name' : self.tenant,
-                      'bucket_name' : self.bucket,
-                      'object_name' : volume['name']
-            }
-        try:
-            rsp = self.restapi.post(vol_url, clone_body)
-            rsp = self.restapi.post('iscsi/-1/resize', {
-                'objectPath' : self.bucket_path + '/' + volume['name'],
-                'newSizeMB' : int(volume['size']) * 1024,
-            })
-        except nexenta.NexentaException, e:
-            LOG.error(_('Error while creating Volume from Image: %s'), str(e))
-            pass
-        '''
-
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
-        image_utils.upload_volume(context,
-                                  image_service,
-                                  image_meta,
-                                  self.local_path(volume))
-
     def local_path(self, volume):
-        """Return local path to existing local volume.
-        """
-        #return self.bucket_url + "/bk1/volumes/" + volume['name']
-        return '/v1/' + self.tenant + '/' + self.bucket + '/' + volume['name'] 
-
-    def clone_image(self, volume, image_location, image_id, image_meta):
-        """Create a volume efficiently from an existing image.
-        image_location is a string whose format depends on the
-        image service backend in use. The driver should use it
-        to determine whether cloning is possible.
-        image_id is a string which represents id of the image.
-        It can be used by the driver to introspect internal
-        stores or registry to do an efficient image clone.
-        Returns a dict of volume properties eg. provider_location,
-        boolean indicating whether cloning occurred
-        """
-        return None, False
+        return self.bucket_path + '/' + self._get_lun_from_name(volume['name'])
 
     def backup_volume(self, context, backup, backup_service):
         raise NotImplementedError()
@@ -389,10 +317,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         raise NotImplementedError()
 
     def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-        If 'refresh' is True, run update the stats first.
-        """
-
         location_info = '%(driver)s:%(host)s:%(bucket)s' % {
             'driver': self.__class__.__name__,
             'host': self.restapi_host,
