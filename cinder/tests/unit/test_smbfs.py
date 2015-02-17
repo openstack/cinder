@@ -13,19 +13,37 @@
 #    under the License.
 
 import copy
+import functools
 import os
 
 import mock
+from oslo_utils import fileutils
 
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.volume.drivers import remotefs
 from cinder.volume.drivers import smbfs
+
+
+def requires_allocation_data_update(expected_size):
+    def wrapper(func):
+        @functools.wraps(func)
+        def inner(inst, *args, **kwargs):
+            with mock.patch.object(
+                    inst._smbfs_driver,
+                    'update_disk_allocation_data') as fake_update:
+                func(inst, *args, **kwargs)
+                fake_update.assert_called_once_with(inst._FAKE_VOLUME,
+                                                    expected_size)
+        return inner
+    return wrapper
 
 
 class SmbFsTestCase(test.TestCase):
 
     _FAKE_SHARE = '//1.2.3.4/share1'
+    _FAKE_SHARE_HASH = 'db0bf952c1734092b83e8990bd321131'
     _FAKE_MNT_BASE = '/mnt'
     _FAKE_VOLUME_NAME = 'volume-4f711859-4928-4cb7-801a-a50c37ceaccc'
     _FAKE_TOTAL_SIZE = '2048'
@@ -36,7 +54,7 @@ class SmbFsTestCase(test.TestCase):
                     'provider_location': _FAKE_SHARE,
                     'name': _FAKE_VOLUME_NAME,
                     'status': 'available'}
-    _FAKE_MNT_POINT = os.path.join(_FAKE_MNT_BASE, 'fake_hash')
+    _FAKE_MNT_POINT = os.path.join(_FAKE_MNT_BASE, _FAKE_SHARE_HASH)
     _FAKE_VOLUME_PATH = os.path.join(_FAKE_MNT_POINT, _FAKE_VOLUME_NAME)
     _FAKE_SNAPSHOT_ID = '5g811859-4928-4cb7-801a-a50c37ceacba'
     _FAKE_SNAPSHOT = {'id': _FAKE_SNAPSHOT_ID,
@@ -48,9 +66,9 @@ class SmbFsTestCase(test.TestCase):
     _FAKE_SHARE_OPTS = '-o username=Administrator,password=12345'
     _FAKE_OPTIONS_DICT = {'username': 'Administrator',
                           'password': '12345'}
+    _FAKE_ALLOCATION_DATA_PATH = os.path.join('fake_dir',
+                                              'fake_allocation_data')
 
-    _FAKE_LISTDIR = [_FAKE_VOLUME_NAME, _FAKE_VOLUME_NAME + '.vhd',
-                     _FAKE_VOLUME_NAME + '.vhdx', 'fake_folder']
     _FAKE_SMBFS_CONFIG = mock.MagicMock()
     _FAKE_SMBFS_CONFIG.smbfs_oversub_ratio = 2
     _FAKE_SMBFS_CONFIG.smbfs_used_ratio = 0.5
@@ -67,7 +85,88 @@ class SmbFsTestCase(test.TestCase):
             return_value=self._FAKE_MNT_POINT)
         self._smbfs_driver._execute = mock.Mock()
         self._smbfs_driver.base = self._FAKE_MNT_BASE
+        self._smbfs_driver._alloc_info_file_path = (
+            self._FAKE_ALLOCATION_DATA_PATH)
 
+    def _get_fake_allocation_data(self):
+        return {self._FAKE_SHARE_HASH: {
+                'total_allocated': self._FAKE_TOTAL_ALLOCATED}}
+
+    @mock.patch.object(smbfs, 'open', create=True)
+    @mock.patch('os.path.exists')
+    @mock.patch.object(fileutils, 'ensure_tree')
+    @mock.patch('json.load')
+    def _test_setup_allocation_data(self, mock_json_load, mock_ensure_tree,
+                                    mock_exists, mock_open,
+                                    allocation_data_exists=False):
+        mock_exists.return_value = allocation_data_exists
+        self._smbfs_driver._update_allocation_data_file = mock.Mock()
+
+        self._smbfs_driver._setup_allocation_data()
+
+        if allocation_data_exists:
+            fd = mock_open.return_value.__enter__.return_value
+            mock_json_load.assert_called_once_with(fd)
+            self.assertEqual(mock_json_load.return_value,
+                             self._smbfs_driver._allocation_data)
+        else:
+            mock_ensure_tree.assert_called_once_with(
+                os.path.dirname(self._FAKE_ALLOCATION_DATA_PATH))
+            update_func = self._smbfs_driver._update_allocation_data_file
+            update_func.assert_called_once_with()
+
+    def test_setup_allocation_data_file_unexisting(self):
+        self._test_setup_allocation_data()
+
+    def test_setup_allocation_data_file_existing(self):
+        self._test_setup_allocation_data(allocation_data_exists=True)
+
+    def _test_update_allocation_data(self, virtual_size_gb=None,
+                                     volume_exists=True):
+        self._smbfs_driver._update_allocation_data_file = mock.Mock()
+        update_func = self._smbfs_driver._update_allocation_data_file
+
+        fake_alloc_data = self._get_fake_allocation_data()
+        if volume_exists:
+            fake_alloc_data[self._FAKE_SHARE_HASH][
+                self._FAKE_VOLUME_NAME] = self._FAKE_VOLUME['size']
+
+        self._smbfs_driver._allocation_data = fake_alloc_data
+
+        self._smbfs_driver.update_disk_allocation_data(self._FAKE_VOLUME,
+                                                       virtual_size_gb)
+
+        vol_allocated_size = fake_alloc_data[self._FAKE_SHARE_HASH].get(
+            self._FAKE_VOLUME_NAME, None)
+        if not virtual_size_gb:
+            expected_total_allocated = (self._FAKE_TOTAL_ALLOCATED -
+                                        self._FAKE_VOLUME['size'])
+
+            self.assertIsNone(vol_allocated_size)
+        else:
+            expected_total_allocated = (self._FAKE_TOTAL_ALLOCATED +
+                                        virtual_size_gb -
+                                        self._FAKE_VOLUME['size'])
+            self.assertEqual(virtual_size_gb, vol_allocated_size)
+
+        update_func.assert_called_once_with()
+
+        self.assertEqual(
+            expected_total_allocated,
+            fake_alloc_data[self._FAKE_SHARE_HASH]['total_allocated'])
+
+    def test_update_allocation_data_volume_deleted(self):
+        self._test_update_allocation_data()
+
+    def test_update_allocation_data_volume_extended(self):
+        self._test_update_allocation_data(
+            virtual_size_gb=self._FAKE_VOLUME['size'] + 1)
+
+    def test_update_allocation_data_volume_created(self):
+        self._test_update_allocation_data(
+            virtual_size_gb=self._FAKE_VOLUME['size'])
+
+    @requires_allocation_data_update(expected_size=None)
     def test_delete_volume(self):
         drv = self._smbfs_driver
         fake_vol_info = self._FAKE_VOLUME_PATH + '.info'
@@ -208,9 +307,8 @@ class SmbFsTestCase(test.TestCase):
         self._smbfs_driver._mounted_shares = mounted_shares
         self._smbfs_driver._is_share_eligible = mock.Mock(
             return_value=eligible_shares)
-        fake_capacity_info = ((2, 1, 5), (2, 1, 4), (2, 1, 1))
-        self._smbfs_driver._get_capacity_info = mock.Mock(
-            side_effect=fake_capacity_info)
+        self._smbfs_driver._get_total_allocated = mock.Mock(
+            side_effect=[3, 2, 1])
 
         if not mounted_shares:
             self.assertRaises(exception.SmbfsNoSharesMounted,
@@ -425,12 +523,11 @@ class SmbFsTestCase(test.TestCase):
                 fake_convert:
             if extend_failed:
                 self.assertRaises(exception.ExtendVolumeError,
-                                  drv._extend_volume,
+                                  drv.extend_volume,
                                   self._FAKE_VOLUME, mock.sentinel.new_size)
             else:
-                drv._extend_volume(
-                    self._FAKE_VOLUME,
-                    mock.sentinel.new_size)
+                drv.extend_volume(self._FAKE_VOLUME, mock.sentinel.new_size)
+
                 if image_format in (drv._DISK_FORMAT_VHDX,
                                     drv._DISK_FORMAT_VHD_LEGACY):
                     fake_tmp_path = self._FAKE_VOLUME_PATH + '.tmp'
@@ -445,12 +542,14 @@ class SmbFsTestCase(test.TestCase):
                     fake_resize.assert_called_once_with(
                         self._FAKE_VOLUME_PATH, mock.sentinel.new_size)
 
+    @requires_allocation_data_update(expected_size=mock.sentinel.new_size)
     def test_extend_volume(self):
         self._test_extend_volume()
 
     def test_extend_volume_failed(self):
         self._test_extend_volume(extend_failed=True)
 
+    @requires_allocation_data_update(expected_size=mock.sentinel.new_size)
     def test_extend_vhd_volume(self):
         self._test_extend_volume(image_format='vpc')
 
@@ -491,6 +590,29 @@ class SmbFsTestCase(test.TestCase):
 
     def test_check_extend_volume_uneligible_share(self):
         self._test_check_extend_support(is_eligible=False)
+
+    @requires_allocation_data_update(expected_size=_FAKE_VOLUME['size'])
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, 'create_volume')
+    def test_create_volume_base(self, mock_create_volume):
+        self._smbfs_driver.create_volume(self._FAKE_VOLUME)
+        mock_create_volume.assert_called_once_with(self._FAKE_VOLUME)
+
+    @requires_allocation_data_update(expected_size=_FAKE_VOLUME['size'])
+    @mock.patch.object(smbfs.SmbfsDriver,
+                       '_create_volume_from_snapshot')
+    def test_create_volume_from_snapshot(self, mock_create_volume):
+        self._smbfs_driver.create_volume_from_snapshot(self._FAKE_VOLUME,
+                                                       self._FAKE_SNAPSHOT)
+        mock_create_volume.assert_called_once_with(self._FAKE_VOLUME,
+                                                   self._FAKE_SNAPSHOT)
+
+    @requires_allocation_data_update(expected_size=_FAKE_VOLUME['size'])
+    @mock.patch.object(smbfs.SmbfsDriver, '_create_cloned_volume')
+    def test_create_cloned_volume(self, mock_create_volume):
+        self._smbfs_driver.create_cloned_volume(self._FAKE_VOLUME,
+                                                mock.sentinel.src_vol)
+        mock_create_volume.assert_called_once_with(self._FAKE_VOLUME,
+                                                   mock.sentinel.src_vol)
 
     def test_create_volume_from_in_use_snapshot(self):
         fake_snapshot = {'status': 'in-use'}
@@ -597,19 +719,18 @@ class SmbFsTestCase(test.TestCase):
         fake_block_size = 4096.0
         fake_total_blocks = 1024
         fake_avail_blocks = 512
-        fake_total_allocated = fake_total_blocks * fake_block_size
 
         fake_df = ('%s %s %s' % (fake_block_size, fake_total_blocks,
                                  fake_avail_blocks), None)
-        fake_du = (str(fake_total_allocated), None)
 
         self._smbfs_driver._get_mount_point_for_share = mock.Mock(
             return_value=self._FAKE_MNT_POINT)
-        self._smbfs_driver._execute = mock.Mock(
-            side_effect=(fake_df, fake_du))
+        self._smbfs_driver._get_total_allocated = mock.Mock(
+            return_value=self._FAKE_TOTAL_ALLOCATED)
+        self._smbfs_driver._execute.return_value = fake_df
 
         ret_val = self._smbfs_driver._get_capacity_info(self._FAKE_SHARE)
         expected = (fake_block_size * fake_total_blocks,
                     fake_block_size * fake_avail_blocks,
-                    fake_total_allocated)
+                    self._FAKE_TOTAL_ALLOCATED)
         self.assertEqual(expected, ret_val)
