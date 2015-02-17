@@ -1396,7 +1396,7 @@ class CommandLineHelper(object):
                               "Return a random target portal %(portal)s.",
                               {'hostname': hostname,
                                'portal': target_portal})
-                    return target_portal
+                    return [target_portal]
 
         return None
 
@@ -1557,7 +1557,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.02.00'
+    VERSION = '05.02.01'
     stats = {'driver_version': VERSION,
              'storage_protocol': None,
              'vendor_name': 'EMC',

@@ -1460,7 +1460,7 @@ Time Remaining:  0 second(s)
                                                           '10.0.0.2'))]
         fake_cli.assert_has_calls(expected)
 
-        # Test for manaul registration
+        # Test for manual registration
         self.configuration.initiator_auto_registration = False
 
         commands = [('storagegroup', '-list', '-gname', 'fakehost'),
@@ -1496,6 +1496,38 @@ Time Remaining:  0 second(s)
                                                           '10.0.0.2'))]
         fake_cli.assert_has_calls(expected)
 
+        # Test No Ping
+        self.configuration.iscsi_initiators = None
+
+        commands = [('storagegroup', '-list', '-gname', 'fakehost'),
+                    self.testData.CONNECTHOST_CMD('fakehost', 'fakehost')]
+        results = [
+            [("No group", 83),
+             self.testData.STORAGE_GROUP_HAS_MAP('fakehost')],
+            ('', 0)]
+        fake_cli = self.driverSetup(commands, results)
+        test_volume_rw = self.testData.test_volume_rw.copy()
+        test_volume_rw['provider_location'] = 'system^fakesn|type^lun|id^1'
+        connection_info = self.driver.initialize_connection(
+            test_volume_rw,
+            self.testData.connector)
+
+        self.assertEqual(self.testData.iscsi_connection_info_rw,
+                         connection_info)
+
+        expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
+                              poll=False),
+                    mock.call('storagegroup', '-create', '-gname', 'fakehost'),
+                    mock.call('storagegroup', '-connecthost',
+                              '-host', 'fakehost', '-gname', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-list', '-gname', 'fakehost',
+                              poll=True),
+                    mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
+                              '-gname', 'fakehost', poll=False),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                              poll=False)]
+        fake_cli.assert_has_calls(expected)
+
     @mock.patch('random.randint',
                 mock.Mock(return_value=0))
     def test_initialize_connection_multipath(self):
@@ -1525,8 +1557,8 @@ Time Remaining:  0 second(s)
             test_volume_rw,
             connector_m)
 
-        self.assertEqual(connection_info,
-                         self.testData.iscsi_connection_info_mp)
+        self.assertEqual(self.testData.iscsi_connection_info_mp,
+                         connection_info)
 
         expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=False),
