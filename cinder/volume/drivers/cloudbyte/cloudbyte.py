@@ -18,6 +18,7 @@ import json
 import time
 import urllib
 
+from oslo_utils import units
 import six
 
 from cinder import exception
@@ -563,22 +564,17 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         for tsms in tsm_details:
             if tsms['name'] == tsmname:
                 flag = 1
-                storage_buckets = {}
-                storage_buckets = tsms['storageBuckets']
-                quota = 0
-                for bucket in storage_buckets:
-                    quota = bucket['quota']
-                    break
-
-                data['total_capacity_gb'] = quota
+                data['total_capacity_gb'] = (
+                    float(tsms['numericquota']) / units.Ki)
                 data['free_capacity_gb'] = (
-                    int(tsms['availablequota']) / 1000)
+                    float(tsms['availablequota']) / units.Ki)
+                break
 
         # TSM not found in CloudByte storage
         if flag == 0:
             LOG.error(_LE("TSM [%s] not found in CloudByte storage."), tsmname)
-            data['total_capacity_gb'] = 0
-            data['free_capacity_gb'] = 0
+            data['total_capacity_gb'] = 0.0
+            data['free_capacity_gb'] = 0.0
 
         return data
 
