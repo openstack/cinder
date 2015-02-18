@@ -1,4 +1,4 @@
-# Copyright (c) 2012 - 2014 EMC Corporation, Inc.
+# Copyright (c) 2012 - 2015 EMC Corporation, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -49,6 +49,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                 Force Deleting LUN in Storage Groups,
                 robust enhancement
         5.1.0 - iSCSI multipath enhancement
+        5.2.0 - Pool-aware scheduler support
     """
 
     def __init__(self, *args, **kwargs):
@@ -212,3 +213,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
     def delete_cgsnapshot(self, context, cgsnapshot):
         """Deletes a cgsnapshot."""
         return self.cli.delete_cgsnapshot(self, context, cgsnapshot)
+
+    def get_pool(self, volume):
+        """Returns the pool name of a volume."""
+        return self.cli.get_pool(volume)

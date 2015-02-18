@@ -1,4 +1,4 @@
-# Copyright (c) 2012 - 2014 EMC Corporation, Inc.
+# Copyright (c) 2012 - 2015 EMC Corporation, Inc.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -44,6 +44,7 @@ from cinder import utils
 from cinder.volume.configuration import Configuration
 from cinder.volume.drivers.san import san
 from cinder.volume import manager
+from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
 CONF = cfg.CONF
@@ -225,6 +226,11 @@ class CommandLineHelper(object):
         'Available Capacity *\(GBs\) *:\s*(.*)\s*',
         'free_capacity_gb',
         float)
+    POOL_FAST_CACHE = PropertyDescriptor(
+        '-fastcache',
+        'FAST Cache:\s*(.*)\s*',
+        'fast_cache_enabled',
+        lambda value: 'True' if value == 'Enabled' else 'False')
     POOL_NAME = PropertyDescriptor(
         '-name',
         'Pool Name:\s*(.*)\s*',
@@ -321,7 +327,6 @@ class CommandLineHelper(object):
             LOG.info(_LI("iscsi_initiators: %s"), self.iscsi_initiator_map)
 
         # extra spec constants
-        self.pool_spec = 'storagetype:pool'
         self.tiering_spec = 'storagetype:tiering'
         self.provisioning_spec = 'storagetype:provisioning'
         self.provisioning_values = {
@@ -1037,8 +1042,9 @@ class CommandLineHelper(object):
                                        properties, poll=poll)
         return data
 
-    def get_pool(self, name, poll=True):
+    def get_pool(self, name, properties=POOL_ALL, poll=True):
         data = self.get_pool_properties(('-name', name),
+                                        properties=properties,
                                         poll=poll)
         return data
 
@@ -1125,27 +1131,29 @@ class CommandLineHelper(object):
         else:
             return False
 
-    def get_pool_list(self, poll=True):
+    def get_pool_list(self, properties=POOL_ALL, poll=True):
         temp_cache = []
-        cmd = ('storagepool', '-list', '-availableCap', '-state')
-        out, rc = self.command_execute(*cmd, poll=poll)
+        list_cmd = ('storagepool', '-list')
+        for prop in properties:
+            list_cmd += (prop.option,)
+        output_properties = [self.POOL_NAME] + properties
+        out, rc = self.command_execute(*list_cmd, poll=poll)
         if rc != 0:
-            self._raise_cli_error(cmd, rc, out)
+            self._raise_cli_error(list_cmd, rc, out)
 
         try:
             for pool in out.split('\n\n'):
                 if len(pool.strip()) == 0:
                     continue
                 obj = {}
-                obj['name'] = self._get_property_value(pool, self.POOL_NAME)
-                obj['free_space'] = self._get_property_value(
-                    pool, self.POOL_FREE_CAPACITY)
+                for prop in output_properties:
+                    obj[prop.key] = self._get_property_value(pool, prop)
                 temp_cache.append(obj)
         except Exception as ex:
             LOG.error(_LE("Error happened during storage pool querying, %s."),
                       ex)
             # NOTE: Do not want to continue raise the exception
-            # as the pools may temporarly unavailable
+            # as the pools may be temporarily unavailable
             pass
         return temp_cache
 
@@ -1549,12 +1557,9 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.01.00'
+    VERSION = '05.02.00'
     stats = {'driver_version': VERSION,
-             'free_capacity_gb': 'unknown',
-             'reserved_percentage': 0,
              'storage_protocol': None,
-             'total_capacity_gb': 'unknown',
              'vendor_name': 'EMC',
              'volume_backend_name': None,
              'compression_support': 'False',
@@ -1601,11 +1606,8 @@ class EMCVnxCliBase(object):
         if self.force_delete_lun_in_sg:
             LOG.warning(_LW("force_delete_lun_in_storagegroup=True"))
 
-    def get_target_storagepool(self, volume, source_volume_name=None):
+    def get_target_storagepool(self, volume, source_volume=None):
         raise NotImplementedError
-
-    def dumps_provider_location(self, pl_dict):
-        return '|'.join([k + '^' + pl_dict[k] for k in pl_dict])
 
     def get_array_serial(self):
         if not self.array_serial:
@@ -1622,7 +1624,7 @@ class EMCVnxCliBase(object):
             volume_size = snapshot['volume_size']
             dest_volume_name = volume_name + '_dest'
 
-            pool_name = self.get_target_storagepool(volume, source_volume_name)
+            pool_name = self.get_target_storagepool(volume, snapshot['volume'])
             specs = self.get_volumetype_extraspecs(volume)
             provisioning, tiering = self._get_extra_spec_value(specs)
             store_spec = {
@@ -1665,24 +1667,24 @@ class EMCVnxCliBase(object):
         data = self._client.create_lun_with_advance_feature(
             pool, volume_name, volume_size,
             provisioning, tiering, volume['consistencygroup_id'], False)
-        pl_dict = {'system': self.get_array_serial(),
-                   'type': 'lun',
-                   'id': str(data['lun_id'])}
         model_update = {'provider_location':
-                        self.dumps_provider_location(pl_dict)}
-        volume['provider_location'] = model_update['provider_location']
+                        self._build_provider_location_for_lun(data['lun_id'])}
+
         return model_update
 
     def _volume_creation_check(self, volume):
-        """This function will perform the check on the
-        extra spec before the volume can be created. The
-        check is a common check between the array based
-        and pool based backend.
-        """
-
+        """Checks on extra spec before the volume can be created."""
         specs = self.get_volumetype_extraspecs(volume)
-        provisioning, tiering = self._get_extra_spec_value(specs)
+        self._get_and_validate_extra_specs(specs)
 
+    def _get_and_validate_extra_specs(self, specs):
+        """Checks on extra specs combinations."""
+        if "storagetype:pool" in specs:
+            LOG.warning(_LW("Extra spec key 'storagetype:pool' is obsoleted "
+                            "since driver version 5.1.0. This key will be "
+                            "ignored."))
+
+        provisioning, tiering = self._get_extra_spec_value(specs)
         # step 1: check extra spec value
         if provisioning:
             self._check_extra_spec_value(
@@ -1694,7 +1696,8 @@ class EMCVnxCliBase(object):
                 self._client.tiering_values.keys())
 
         # step 2: check extra spec combination
-        self._check_extra_spec_combination(specs)
+        self._check_extra_spec_combination(provisioning, tiering)
+        return provisioning, tiering
 
     def _check_extra_spec_value(self, extra_spec, valid_values):
         """Checks whether an extra spec's value is valid."""
@@ -1719,12 +1722,9 @@ class EMCVnxCliBase(object):
 
         return provisioning, tiering
 
-    def _check_extra_spec_combination(self, extra_specs):
+    def _check_extra_spec_combination(self, provisioning, tiering):
         """Checks whether extra spec combination is valid."""
-
-        provisioning, tiering = self._get_extra_spec_value(extra_specs)
         enablers = self.enablers
-
         # check provisioning and tiering
         # deduplicated and tiering can not be both enabled
         if provisioning == 'deduplicated' and tiering is not None:
@@ -1812,23 +1812,6 @@ class EMCVnxCliBase(object):
                             "target_array_serial."))
             return false_ret
 
-        if len(target_pool_name) == 0:
-            # if retype, try to get the pool of the volume
-            # when it's array-based
-            if new_type:
-                if 'storagetype:pool' in new_type['extra_specs']\
-                        and new_type['extra_specs']['storagetype:pool']\
-                        is not None:
-                    target_pool_name = \
-                        new_type['extra_specs']['storagetype:pool']
-                else:
-                    target_pool_name = self._client.get_pool_name_of_lun(
-                        volume['name'])
-
-        if len(target_pool_name) == 0:
-            LOG.debug("Skip storage-assisted migration because "
-                      "it doesn't support array backend .")
-            return false_ret
         # source and destination should be on same array
         array_serial = self.get_array_serial()
         if target_array_serial != array_serial:
@@ -1836,7 +1819,17 @@ class EMCVnxCliBase(object):
                       'target and source backend are not managing'
                       'the same array.')
             return false_ret
-        # same protocol should be used if volume is in-use
+
+        if len(target_pool_name) == 0:
+            # Destination host is using a legacy driver
+            LOG.warning(_LW("Didn't get the pool information of the "
+                            "host %(s). Storage assisted Migration is not "
+                            "supported. The host may be using a legacy "
+                            "driver."),
+                        host['name'])
+            return false_ret
+
+        # Same protocol should be used if volume is in-use
         if host['capabilities']['storage_protocol'] != self.protocol \
                 and self._get_original_status(volume) == 'in-use':
             LOG.debug('Skip storage-assisted migration because '
@@ -1889,25 +1882,15 @@ class EMCVnxCliBase(object):
 
     def retype(self, ctxt, volume, new_type, diff, host):
         new_specs = new_type['extra_specs']
-        new_provisioning, new_tiering = self._get_extra_spec_value(
-            new_specs)
 
-        # validate new_type
-        if new_provisioning:
-            self._check_extra_spec_value(
-                new_provisioning,
-                self._client.provisioning_values.keys())
-        if new_tiering:
-            self._check_extra_spec_value(
-                new_tiering,
-                self._client.tiering_values.keys())
-        self._check_extra_spec_combination(new_specs)
+        new_provisioning, new_tiering = (
+            self._get_and_validate_extra_specs(new_specs))
 
-        # check what changes are needed
+        # Check what changes are needed
         migration, tiering_change = self.determine_changes_when_retype(
             volume, new_type, host)
 
-        # reject if volume has snapshot when migration is needed
+        # Reject if volume has snapshot when migration is needed
         if migration and self._client.check_lun_has_snap(
                 self.get_lun_id(volume)):
             LOG.debug('Driver is not able to do retype because the volume '
@@ -1915,7 +1898,7 @@ class EMCVnxCliBase(object):
             return False
 
         if migration:
-            # check whether the migration is valid
+            # Check whether the migration is valid
             is_valid, target_pool_name = (
                 self._is_valid_for_storage_assisted_migration(
                     volume, host, new_type))
@@ -1928,13 +1911,13 @@ class EMCVnxCliBase(object):
                                     'retype.'))
                     return False
             else:
-                # migration is invalid
+                # Migration is invalid
                 LOG.debug('Driver is not able to do retype due to '
                           'storage-assisted migration is not valid '
                           'in this situation.')
                 return False
-        elif not migration and tiering_change:
-            # modify lun to change tiering policy
+        elif tiering_change:
+            # Modify lun to change tiering policy
             self._client.modify_lun_tiering(volume['name'], new_tiering)
             return True
         else:
@@ -1947,21 +1930,13 @@ class EMCVnxCliBase(object):
         old_specs = self.get_volumetype_extraspecs(volume)
         old_provisioning, old_tiering = self._get_extra_spec_value(
             old_specs)
-        old_pool = self.get_specific_extra_spec(
-            old_specs,
-            self._client.pool_spec)
 
         new_specs = new_type['extra_specs']
         new_provisioning, new_tiering = self._get_extra_spec_value(
             new_specs)
-        new_pool = self.get_specific_extra_spec(
-            new_specs,
-            self._client.pool_spec)
 
         if volume['host'] != host['host'] or \
                 old_provisioning != new_provisioning:
-            migration = True
-        elif new_pool and new_pool != old_pool:
             migration = True
 
         if new_tiering != old_tiering:
@@ -1982,36 +1957,73 @@ class EMCVnxCliBase(object):
                 return False
         return True
 
+    def _build_pool_stats(self, pool):
+        pool_stats = {}
+        pool_stats['pool_name'] = pool['pool_name']
+        pool_stats['total_capacity_gb'] = pool['total_capacity_gb']
+        pool_stats['reserved_percentage'] = 0
+        pool_stats['free_capacity_gb'] = pool['free_capacity_gb']
+        # Some extra capacity will be used by meta data of pool LUNs.
+        # The overhead is about LUN_Capacity * 0.02 + 3 GB
+        # reserved_percentage will be used to make sure the scheduler
+        # takes the overhead into consideration.
+        # Assume that all the remaining capacity is to be used to create
+        # a thick LUN, reserved_percentage is estimated as follows:
+        reserved = (((0.02 * pool['free_capacity_gb'] + 3) /
+                     (1.02 * pool['total_capacity_gb'])) * 100)
+        pool_stats['reserved_percentage'] = int(math.ceil(min(reserved, 100)))
+        if self.check_max_pool_luns_threshold:
+            pool_feature = self._client.get_pool_feature_properties(poll=False)
+            if (pool_feature['max_pool_luns']
+                    <= pool_feature['total_pool_luns']):
+                LOG.warning(_LW("Maximum number of Pool LUNs, %s, "
+                                "have been created. "
+                                "No more LUN creation can be done."),
+                            pool_feature['max_pool_luns'])
+                pool_stats['free_capacity_gb'] = 0
+
+        array_serial = self.get_array_serial()
+        pool_stats['location_info'] = ('%(pool_name)s|%(array_serial)s' %
+                                       {'pool_name': pool['pool_name'],
+                                        'array_serial': array_serial})
+        # Check if this pool's fast_cache is enabled
+        if 'fast_cache_enabled' not in pool:
+            pool_stats['fast_cache_enabled'] = 'False'
+        else:
+            pool_stats['fast_cache_enabled'] = pool['fast_cache_enabled']
+
+        # Copy advanced feature stats from backend stats
+        pool_stats['compression_support'] = self.stats['compression_support']
+        pool_stats['fast_support'] = self.stats['fast_support']
+        pool_stats['deduplication_support'] = (
+            self.stats['deduplication_support'])
+        pool_stats['thinprovisioning_support'] = (
+            self.stats['thinprovisioning_support'])
+        pool_stats['consistencygroup_support'] = (
+            self.stats['consistencygroup_support'])
+
+        return pool_stats
+
+    @log_enter_exit
     def update_volume_stats(self):
-        """Update the common status share with pool and
-        array backend.
-        """
+        """Gets the common stats shared by pool and array backend."""
         if not self.determine_all_enablers_exist(self.enablers):
             self.enablers = self._client.get_enablers_on_array()
-        if '-Compression' in self.enablers:
-            self.stats['compression_support'] = 'True'
-        else:
-            self.stats['compression_support'] = 'False'
-        if '-FAST' in self.enablers:
-            self.stats['fast_support'] = 'True'
-        else:
-            self.stats['fast_support'] = 'False'
-        if '-Deduplication' in self.enablers:
-            self.stats['deduplication_support'] = 'True'
-        else:
-            self.stats['deduplication_support'] = 'False'
-        if '-ThinProvisioning' in self.enablers:
-            self.stats['thinprovisioning_support'] = 'True'
-        else:
-            self.stats['thinprovisioning_support'] = 'False'
-        if '-FASTCache' in self.enablers:
-            self.stats['fast_cache_enabled'] = 'True'
-        else:
-            self.stats['fast_cache_enabled'] = 'False'
-        if '-VNXSnapshots' in self.enablers:
-            self.stats['consistencygroup_support'] = 'True'
-        else:
-            self.stats['consistencygroup_support'] = 'False'
+
+        self.stats['compression_support'] = (
+            'True' if '-Compression' in self.enablers else 'False')
+
+        self.stats['fast_support'] = (
+            'True' if '-FAST' in self.enablers else 'False')
+
+        self.stats['deduplication_support'] = (
+            'True' if '-Deduplication' in self.enablers else 'False')
+
+        self.stats['thinprovisioning_support'] = (
+            'True' if '-ThinProvisioning' in self.enablers else 'False')
+
+        self.stats['consistencygroup_support'] = (
+            'True' if '-VNXSnapshots' in self.enablers else 'False')
 
         if self.protocol == 'iSCSI':
             self.iscsi_targets = self._client.get_iscsi_targets(poll=False)
@@ -2051,7 +2063,6 @@ class EMCVnxCliBase(object):
         4. Start a migration between the SMP and the temp lun.
         """
         self._volume_creation_check(volume)
-        array_serial = self.get_array_serial()
         flow_name = 'create_volume_from_snapshot'
         work_flow = linear_flow.Flow(flow_name)
         store_spec = self._construct_store_spec(volume, snapshot)
@@ -2063,18 +2074,19 @@ class EMCVnxCliBase(object):
                                             store=store_spec)
         flow_engine.run()
         new_lun_id = flow_engine.storage.fetch('new_lun_id')
-        pl_dict = {'system': array_serial,
-                   'type': 'lun',
-                   'id': str(new_lun_id)}
         model_update = {'provider_location':
-                        self.dumps_provider_location(pl_dict)}
-        volume['provider_location'] = model_update['provider_location']
+                        self._build_provider_location_for_lun(new_lun_id)}
+        volume_host = volume['host']
+        host = vol_utils.extract_host(volume_host, 'backend')
+        host_and_pool = vol_utils.append_host(host, store_spec['pool_name'])
+        if volume_host != host_and_pool:
+            model_update['host'] = host_and_pool
+
         return model_update
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         self._volume_creation_check(volume)
-        array_serial = self.get_array_serial()
         source_volume_name = src_vref['name']
         source_lun_id = self.get_lun_id(src_vref)
         volume_size = src_vref['size']
@@ -2113,12 +2125,40 @@ class EMCVnxCliBase(object):
         else:
             self.delete_snapshot(snapshot)
 
-        pl_dict = {'system': array_serial,
-                   'type': 'lun',
-                   'id': str(new_lun_id)}
         model_update = {'provider_location':
-                        self.dumps_provider_location(pl_dict)}
+                        self._build_provider_location_for_lun(new_lun_id)}
+        volume_host = volume['host']
+        host = vol_utils.extract_host(volume_host, 'backend')
+        host_and_pool = vol_utils.append_host(host, store_spec['pool_name'])
+        if volume_host != host_and_pool:
+            model_update['host'] = host_and_pool
+
         return model_update
+
+    def dumps_provider_location(self, pl_dict):
+        return '|'.join([k + '^' + pl_dict[k] for k in pl_dict])
+
+    def _build_provider_location_for_lun(self, lun_id):
+        pl_dict = {'system': self.get_array_serial(),
+                   'type': 'lun',
+                   'id': six.text_type(lun_id),
+                   'version': self.VERSION}
+        return self.dumps_provider_location(pl_dict)
+
+    def _extract_provider_location_for_lun(self, provider_location, key='id'):
+        """Extacts value of the specified field from provider_location string.
+
+        :param provider_location: provider_location string
+        :param key: field name of the value that to be extracted
+        :return: value of the specified field if it exists, otherwise,
+                 None is returned
+        """
+
+        kvps = provider_location.split('|')
+        for kvp in kvps:
+            fields = kvp.split('^')
+            if len(fields) == 2 and fields[0] == key:
+                return fields[1]
 
     def create_consistencygroup(self, context, group):
         """Creates a consistency group."""
@@ -2217,10 +2257,14 @@ class EMCVnxCliBase(object):
     def get_lun_id(self, volume):
         lun_id = None
         try:
-            if volume.get('provider_location') is not None:
-                lun_id = int(
-                    volume['provider_location'].split('|')[2].split('^')[1])
-            if not lun_id:
+            provider_location = volume.get('provider_location')
+            if provider_location:
+                lun_id = self._extract_provider_location_for_lun(
+                    provider_location,
+                    'id')
+            if lun_id:
+                lun_id = int(lun_id)
+            else:
                 LOG.debug('Lun id is not stored in provider location, '
                           'query it.')
                 lun_id = self._client.get_lun_by_name(volume['name'])['lun_id']
@@ -2707,7 +2751,7 @@ class EMCVnxCliBase(object):
         return do_terminate_connection()
 
     def manage_existing_get_size(self, volume, ref):
-        """Return size of volume to be managed by manage_existing."""
+        """Returns size of volume to be managed by manage_existing."""
 
         # Check that the reference is valid
         if 'id' not in ref:
@@ -2717,9 +2761,21 @@ class EMCVnxCliBase(object):
                 reason=reason)
 
         # Check for existence of the lun
-        data = self._client.get_lun_by_id(ref['id'])
+        data = self._client.get_lun_by_id(
+            ref['id'],
+            properties=self._client.LUN_WITH_POOL)
         if data is None:
-            reason = _('Find no lun with the specified lun_id.')
+            reason = _('Find no lun with the specified id %s.') % ref['id']
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+
+        pool = self.get_target_storagepool(volume, None)
+        if pool and data['pool'] != pool:
+            reason = (_('The input lun %(lun_id)s is in pool %(poolname)s '
+                        'which is not managed by the host %(host)s.')
+                      % {'lun_id': ref['id'],
+                         'poolname': data['pool'],
+                         'host': volume['host']})
             raise exception.ManageExistingInvalidReference(existing_ref=ref,
                                                            reason=reason)
         return data['total_capacity_gb']
@@ -2737,6 +2793,10 @@ class EMCVnxCliBase(object):
         """
 
         self._client.lun_rename(ref['id'], volume['name'])
+        model_update = {'provider_location':
+                        self._build_provider_location_for_lun(ref['id'])}
+
+        return model_update
 
     def find_iscsi_protocol_endpoints(self, device_sp):
         """Returns the iSCSI initiators for a SP."""
@@ -2773,6 +2833,14 @@ class EMCVnxCliBase(object):
 
         return specs
 
+    def get_pool(self, volume):
+        """Returns the pool name of a volume."""
+
+        data = self._client.get_lun_by_name(volume['name'],
+                                            [self._client.LUN_POOL],
+                                            poll=False)
+        return data.get(self._client.LUN_POOL.key)
+
 
 @decorate_all_methods(log_enter_exit)
 class EMCVnxCliPool(EMCVnxCliBase):
@@ -2783,79 +2851,26 @@ class EMCVnxCliPool(EMCVnxCliBase):
         self._client.get_pool(self.storage_pool)
 
     def get_target_storagepool(self,
-                               volume=None,
-                               source_volume_name=None):
-        pool_spec_id = "storagetype:pool"
-        if volume is not None:
-            specs = self.get_volumetype_extraspecs(volume)
-            if specs and pool_spec_id in specs:
-                expect_pool = specs[pool_spec_id].strip()
-                if expect_pool != self.storage_pool:
-                    msg = _("Storage pool %s is not supported"
-                            " by this Cinder Volume") % expect_pool
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
+                               volume,
+                               source_volume=None):
         return self.storage_pool
 
     def update_volume_stats(self):
         """Retrieves stats info."""
-        self.stats = super(EMCVnxCliPool, self).update_volume_stats()
-        pool = self._client.get_pool(self.get_target_storagepool(),
+        super(EMCVnxCliPool, self).update_volume_stats()
+        if '-FASTCache' in self.enablers:
+            properties = [self._client.POOL_FREE_CAPACITY,
+                          self._client.POOL_TOTAL_CAPACITY,
+                          self._client.POOL_FAST_CACHE]
+        else:
+            properties = [self._client.POOL_FREE_CAPACITY,
+                          self._client.POOL_TOTAL_CAPACITY]
+
+        pool = self._client.get_pool(self.storage_pool,
+                                     properties=properties,
                                      poll=False)
-        self.stats['total_capacity_gb'] = pool['total_capacity_gb']
-        self.stats['free_capacity_gb'] = pool['free_capacity_gb']
-        # Some extra capacity will be used by meta data of pool LUNs.
-        # The overhead is about LUN_Capacity * 0.02 + 3 GB
-        # reserved_percentage will be used to make sure the scheduler
-        # takes the overhead into consideration
-        # Assume that all the remaining capacity is to be used to create
-        # a thick LUN, reserved_percentage is estimated as follows:
-        reserved = (((0.02 * pool['free_capacity_gb'] + 3) /
-                     (1.02 * pool['total_capacity_gb'])) * 100)
-        self.stats['reserved_percentage'] = int(math.ceil(min(reserved, 100)))
-        if self.check_max_pool_luns_threshold:
-            pool_feature = self._client.get_pool_feature_properties(poll=False)
-            if (pool_feature['max_pool_luns']
-                    <= pool_feature['total_pool_luns']):
-                LOG.warning(_LW("Maximum number of Pool LUNs, %s, "
-                                "have been created. "
-                                "No more LUN creation can be done."),
-                            pool_feature['max_pool_luns'])
-                self.stats['free_capacity_gb'] = 0
-        array_serial = self._client.get_array_serial()
-        self.stats['location_info'] = ('%(pool_name)s|%(array_serial)s' %
-                                       {'pool_name': self.storage_pool,
-                                        'array_serial':
-                                           array_serial['array_serial']})
-        # check if this pool's fast_cache is really enabled
-        if self.stats['fast_cache_enabled'] == 'True' and \
-           not self._client.is_pool_fastcache_enabled(self.storage_pool):
-            self.stats['fast_cache_enabled'] = 'False'
+        self.stats['pools'] = [self._build_pool_stats(pool)]
         return self.stats
-
-    def manage_existing_get_size(self, volume, ref):
-        """Returns size of volume to be managed by manage_existing."""
-
-        # Check that the reference is valid
-        if 'id' not in ref:
-            reason = _('Reference must contain lun_id element.')
-            raise exception.ManageExistingInvalidReference(
-                existing_ref=ref,
-                reason=reason)
-        # Check for existence of the lun
-        data = self._client.get_lun_by_id(
-            ref['id'],
-            properties=self._client.LUN_WITH_POOL)
-        if data is None:
-            reason = _('Cannot find the lun with LUN id %s.') % ref['id']
-            raise exception.ManageExistingInvalidReference(existing_ref=ref,
-                                                           reason=reason)
-        if data['pool'] != self.storage_pool:
-            reason = _('The input lun is not in a manageable pool backend '
-                       'by cinder')
-            raise exception.ManageExistingInvalidReference(existing_ref=ref,
-                                                           reason=reason)
-        return data['total_capacity_gb']
 
 
 @decorate_all_methods(log_enter_exit)
@@ -2864,51 +2879,55 @@ class EMCVnxCliArray(EMCVnxCliBase):
     def __init__(self, prtcl, configuration):
         super(EMCVnxCliArray, self).__init__(prtcl,
                                              configuration=configuration)
-        self._update_pool_cache()
 
-    def _update_pool_cache(self):
-        LOG.debug("Updating Pool Cache")
-        self.pool_cache = self._client.get_pool_list(poll=False)
+    def get_target_storagepool(self, volume, source_volume=None):
+        pool = vol_utils.extract_host(volume['host'], 'pool')
 
-    def get_target_storagepool(self, volume, source_volume_name=None):
-        """Find the storage pool for given volume."""
-        pool_spec_id = "storagetype:pool"
-        specs = self.get_volumetype_extraspecs(volume)
-        if specs and pool_spec_id in specs:
-            return specs[pool_spec_id]
-        elif source_volume_name:
-            data = self._client.get_lun_by_name(source_volume_name,
-                                                [self._client.LUN_POOL])
+        # For new created volume that is not from snapshot or cloned,
+        # just use the pool selected by scheduler
+        if not source_volume:
+            return pool
+
+        # For volume created from snapshot or cloned from volume, the pool to
+        # use depends on the source volume version. If the source volume is
+        # created by older version of driver which doesn't support pool
+        # scheduler, use the pool where the source volume locates. Otherwise,
+        # use the pool selected by scheduler
+        provider_location = source_volume.get('provider_location')
+
+        if (provider_location and
+                self._extract_provider_location_for_lun(provider_location,
+                                                        'version')):
+            return pool
+        else:
+            LOG.warning(_LW("The source volume is a legacy volume. "
+                            "Create volume in the pool where the source "
+                            "volume %s is created."),
+                        source_volume['name'])
+            data = self._client.get_lun_by_name(source_volume['name'],
+                                                [self._client.LUN_POOL],
+                                                poll=False)
             if data is None:
-                msg = _("Failed to find storage pool for source volume %s") \
-                    % source_volume_name
+                msg = (_("Failed to find storage pool for source volume %s.")
+                       % source_volume['name'])
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
             return data[self._client.LUN_POOL.key]
-        else:
-            if len(self.pool_cache) > 0:
-                pools = sorted(self.pool_cache,
-                               key=lambda po: po['free_space'],
-                               reverse=True)
-                return pools[0]['name']
-
-        msg = (_("Failed to find storage pool to create volume %s.")
-               % volume['name'])
-        LOG.error(msg)
-        raise exception.VolumeBackendAPIException(data=msg)
 
     def update_volume_stats(self):
-        """Retrieve stats info."""
-        self.stats = super(EMCVnxCliArray, self).update_volume_stats()
-        self._update_pool_cache()
-        self.stats['total_capacity_gb'] = 'unknown'
-        self.stats['free_capacity_gb'] = 'unknown'
-        array_serial = self._client.get_array_serial()
-        self.stats['location_info'] = ('%(pool_name)s|%(array_serial)s' %
-                                       {'pool_name': '',
-                                        'array_serial':
-                                        array_serial['array_serial']})
-        self.stats['fast_cache_enabled'] = 'unknown'
+        """Retrieves stats info."""
+        super(EMCVnxCliArray, self).update_volume_stats()
+        if '-FASTCache' in self.enablers:
+            properties = [self._client.POOL_FREE_CAPACITY,
+                          self._client.POOL_TOTAL_CAPACITY,
+                          self._client.POOL_FAST_CACHE]
+        else:
+            properties = [self._client.POOL_FREE_CAPACITY,
+                          self._client.POOL_TOTAL_CAPACITY]
+        pool_list = self._client.get_pool_list(properties, False)
+
+        self.stats['pools'] = map(lambda pool: self._build_pool_stats(pool),
+                                  pool_list)
         return self.stats
 
 
@@ -2963,7 +2982,7 @@ class AttachSnapTask(task.Task):
 class CreateDestLunTask(task.Task):
     """Creates a destination lun for migration.
 
-    Reversion strategy: Detach the temp lun.
+    Reversion strategy: Delete the temp destination lun.
     """
     def __init__(self):
         super(CreateDestLunTask, self).__init__(provides='lun_data')
