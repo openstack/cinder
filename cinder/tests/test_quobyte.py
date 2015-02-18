@@ -130,8 +130,7 @@ class QuobyteDriverTestCase(test.TestCase):
                 mock.patch.object(self._driver, '_execute'),
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount'),
-                mock.patch('xattr.getxattr')
-        ) as (mock_execute, mock_open, mock_getxattr):
+        ) as (mock_execute, mock_open):
             # Content of /proc/mount (not mounted yet).
             mock_open.return_value = StringIO.StringIO(
                 "/dev/sda5 / ext4 rw,relatime,data=ordered 0 0")
@@ -144,31 +143,32 @@ class QuobyteDriverTestCase(test.TestCase):
             mount_call = mock.call(
                 'mount.quobyte', self.TEST_QUOBYTE_VOLUME,
                 self.TEST_MNT_POINT, run_as_root=False)
-            mock_execute.assert_has_calls([mkdir_call, mount_call],
-                                          any_order=False)
-            mock_getxattr.assert_called_once_with(self.TEST_MNT_POINT,
-                                                  'quobyte.info')
+
+            getfattr_call = mock.call(
+                'getfattr', '-n', 'quobyte.info', self.TEST_MNT_POINT,
+                run_as_root=False)
+
+            mock_execute.assert_has_calls(
+                [mkdir_call, mount_call, getfattr_call], any_order=False)
 
     def test_mount_quobyte_already_mounted_detected_seen_in_proc_mount(self):
         with contextlib.nested(
                 mock.patch.object(self._driver, '_execute'),
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount'),
-                mock.patch('xattr.getxattr')
-        ) as (mock_execute, mock_open, mock_getxattr):
+        ) as (mock_execute, mock_open):
             # Content of /proc/mount (already mounted).
             mock_open.return_value = StringIO.StringIO(
                 "quobyte@%s %s fuse rw,nosuid,nodev,noatime,user_id=1000"
                 ",group_id=100,default_permissions,allow_other 0 0"
                 % (self.TEST_QUOBYTE_VOLUME, self.TEST_MNT_POINT))
-            mock_getxattr.return_value = "non-empty string"
 
             self._driver._mount_quobyte(self.TEST_QUOBYTE_VOLUME,
                                         self.TEST_MNT_POINT)
 
-            self.assertFalse(mock_execute.called)
-            mock_getxattr.assert_called_once_with(self.TEST_MNT_POINT,
-                                                  'quobyte.info')
+            mock_execute.assert_called_once_with(
+                'getfattr', '-n', 'quobyte.info', self.TEST_MNT_POINT,
+                run_as_root=False)
 
     def test_mount_quobyte_should_suppress_and_log_already_mounted_error(self):
         """Based on /proc/mount, the file system is not mounted yet. However,

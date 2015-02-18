@@ -19,11 +19,10 @@ import os
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
-import xattr
 
 from cinder import compute
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
@@ -418,13 +417,19 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
                     raise
 
         if mounted:
-            try:
-                xattr.getxattr(mount_path, 'quobyte.info')
-            except Exception as exc:
-                msg = _LE("The mount %(mount_path)s is not a valid"
-                          " Quobyte USP volume. Error: %(exc)s") \
-                    % {'mount_path': mount_path, 'exc': exc}
-                raise exception.VolumeDriverException(msg)
-            if not os.access(mount_path, os.W_OK | os.X_OK):
-                LOG.warn(_LW("Volume is not writable. Please broaden the file"
-                             " permissions. Mount: %s"), mount_path)
+            self._validate_volume(mount_path)
+
+    def _validate_volume(self, mount_path):
+        """Wraps execute calls for checking validity of a Quobyte volume"""
+        command = ['getfattr', "-n", "quobyte.info", mount_path]
+        try:
+            self._execute(*command, run_as_root=False)
+        except processutils.ProcessExecutionError as exc:
+            msg = (_("The mount %(mount_path)s is not a valid"
+                     " Quobyte USP volume. Error: %(exc)s")
+                   % {'mount_path': mount_path, 'exc': exc})
+            raise exception.VolumeDriverException(msg)
+
+        if not os.access(mount_path, os.W_OK | os.X_OK):
+            LOG.warn(_LW("Volume is not writable. Please broaden the file"
+                         " permissions. Mount: %s"), mount_path)
