@@ -169,14 +169,14 @@ class API(base.Base):
                                                          new_volume_id)
 
     def create_volume_snapshot(self, context, volume_id, create_info):
-        nova = novaclient(context, admin_endpoint=True)
+        nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
         nova.assisted_volume_snapshots.create(
             volume_id,
             create_info=create_info)
 
     def delete_volume_snapshot(self, context, snapshot_id, delete_info):
-        nova = novaclient(context, admin_endpoint=True)
+        nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
         nova.assisted_volume_snapshots.delete(
             snapshot_id,
