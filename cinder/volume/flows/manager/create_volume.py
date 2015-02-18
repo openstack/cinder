@@ -394,6 +394,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                           'vol_id': volume_id})
                 self._capture_volume_image_metadata(context, volume_id,
                                                     image_id, image_meta)
+        except exception.GlanceMetadataNotFound:
+            # If volume is not created from image, No glance metadata
+            # would be available for that volume in
+            # volume glance metadata table
+            pass
         except exception.CinderException as ex:
             LOG.exception(exception_template % {'src_type': src_type,
                                                 'src_id': src_id,
