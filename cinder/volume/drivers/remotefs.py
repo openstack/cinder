@@ -74,7 +74,7 @@ nas_opts = [
                      'otherwise False. Default is auto.')),
     cfg.StrOpt('nas_share_path',
                default='',
-               help=('Path to the share to use for storing Cinder volumes. ',
+               help=('Path to the share to use for storing Cinder volumes. '
                      'For example:  "/srv/export1" for an NFS server export '
                      'available at 10.0.5.10:/srv/export1 .')),
     cfg.StrOpt('nas_mount_options',
