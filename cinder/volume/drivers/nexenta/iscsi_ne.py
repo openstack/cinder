@@ -28,8 +28,6 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-import os
-import base64
 from oslo_serialization import jsonutils
 
 LOG = logging.getLogger(__name__)
