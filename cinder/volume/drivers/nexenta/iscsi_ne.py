@@ -60,7 +60,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.bucket_path = self.configuration.nexenta_volume
         self.cluster, self.tenant, self.bucket = self.bucket_path.split('/')
         self.bucket_url = 'clusters/' + self.cluster + '/tenants/' + \
-            self.tenant + '/buckets'
+            self.tenant + '/buckets/' + self.bucket
         self.iscsi_target_portal_port = \
             self.configuration.nexenta_iscsi_target_portal_port
 
@@ -83,7 +83,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.restapi_user, self.restapi_password, auto=auto)
 
     def check_for_setup_error(self):
-        self.restapi.get(self.bucket_url, {'bucketName':self.bucket})
+        self.restapi.get(self.bucket_url)
 
     def _get_provider_location(self, volume):
         return '%(host)s:%(port)s,1 %(name)s' % {
@@ -93,8 +93,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
 
     def _get_bucket_name_map(self):
-        url = self.bucket_url + '/' + self.bucket
-        rsp = self.restapi.get(url)
+        rsp = self.restapi.get(self.bucket_url)
         if not (('bucketMetadata' in rsp) and \
             ('X-Name-Map' in rsp['bucketMetadata'])):
             LOG.error(_('Bucket metadata missing name mapping'))
@@ -104,7 +103,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return namemap
 
     def _set_bucket_name_map(self, namemap):
-        rsp = self.restapi.put(self.bucket_url + '/' + self.bucket,
+        rsp = self.restapi.put(self.bucket_url,
             {'optionsObject': { 'X-Name-Map': jsonutils.dumps(namemap)}})
 
     def _verify_name_in_map(self, namemap, name):
@@ -202,7 +201,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         namemap[volume['name']] = newLun
 
         try:
-            snap_url = self.bucket_url + '/' + self.bucket + '/snapviews/' + \
+            snap_url = self.bucket_url + '/snapviews/' + \
                 str(lunNumber) + '.snapview/snapshots/' + snapshot['name']
             snap_body = {
                 'ss_tenant' : self.tenant,
@@ -227,7 +226,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def create_snapshot(self, snapshot):
         lunNumber = self._get_lun_from_name(snapshot['volume_name'])
-        snap_url = self.bucket_url + '/' + self.bucket + \
+        snap_url = self.bucket_url + \
             '/snapviews/' + str(lunNumber) + '.snapview'
         snap_body = { 'ss_bucket' : self.bucket,
                       'ss_object' : str(lunNumber),
@@ -237,20 +236,15 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def delete_snapshot(self, snapshot):
         lunNumber = self._get_lun_from_name(snapshot['volume_name'])
-        try:
-            rsp = self.restapi.delete(self.bucket_url + '/' + \
-                self.bucket + '/snapviews/' + str(lunNumber) + \
-                 '.snapview/snapshots/' + snapshot['name'])
-        except nexenta.NexentaException, e:
-            LOG.error(_('Error while deleting snapshot: %s'), str(e))
-            raise
+        rsp = self.restapi.delete(self.bucket_url + '/snapviews/' + \
+            str(lunNumber) + '.snapview/snapshots/' + snapshot['name'])
 
     def create_cloned_volume(self, volume, src_vref):
         namemap = self._get_bucket_name_map()
         self._verify_name_in_map(namemap, src_vref['volume_name'])
 
-        vol_url = self.bucket_url + '/objects/' + \
-            namemap[src_vref['volume_name']]
+        vol_url = self.bucket_path + '/objects/' + \
+            str(namemap[src_vref['volume_name']])
         newLun = self._allocate_lun_number(namemap)
         clone_body = { 'tenant_name' : self.tenant,
                       'bucket_name' : self.bucket,
@@ -270,7 +264,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except nexenta.NexentaException, e:
             LOG.error(_('Error creating cloned volume: %s'), str(e))
             raise
-
 
     def ensure_export(self, context, volume):
         #raise NotImplementedError()
@@ -308,7 +301,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         pass
 
     def local_path(self, volume):
-        return self.bucket_path + '/' + self._get_lun_from_name(volume['name'])
+        return self.bucket_path + '/' + str(self._get_lun_from_name(volume['name']))
 
     def backup_volume(self, context, backup, backup_service):
         raise NotImplementedError()
