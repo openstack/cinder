@@ -658,7 +658,7 @@ class HP3PARCommon(object):
 
         return iscsi_ports
 
-    def get_volume_stats(self, refresh):
+    def get_volume_stats(self, refresh=False):
         if refresh:
             self._update_volume_stats()
 

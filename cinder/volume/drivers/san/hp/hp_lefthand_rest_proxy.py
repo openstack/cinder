@@ -260,7 +260,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         finally:
             self._logout(client)
 
-    def get_volume_stats(self, refresh):
+    def get_volume_stats(self, refresh=False):
         """Gets volume stats."""
         client = self._login()
         try:

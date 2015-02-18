@@ -226,7 +226,7 @@ class HPMSACommon(object):
                 return
             raise exception.Invalid(ex)
 
-    def get_volume_stats(self, refresh):
+    def get_volume_stats(self, refresh=False):
         if refresh:
             self._update_volume_stats()
 
