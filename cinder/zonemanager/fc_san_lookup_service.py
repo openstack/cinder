@@ -82,8 +82,8 @@ class FCSanLookupService(fc_common.FCCommon):
                 lookup_service, configuration=self.configuration)
         else:
             msg = _("Lookup service not configured. Config option for "
-                    "fc_san_lookup_service need to specify a concrete "
-                    "implementation of lookup service")
+                    "fc_san_lookup_service needs to specify a concrete "
+                    "implementation of the lookup service.")
             LOG.error(msg)
             raise exception.FCSanLookupServiceException(msg)
         try:

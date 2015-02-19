@@ -41,10 +41,11 @@ class TestVolumeDriver(test.TestCase):
         self.driver = None
 
     def __init__(self, *args, **kwargs):
-        test.TestCase.__init__(self, *args, **kwargs)
+        super(TestVolumeDriver, self).__init__(*args, **kwargs)
 
+    @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
     @mock.patch.object(utils, 'require_driver_initialized')
-    def test_initialize_connection_with_decorator(self, utils_mock):
+    def test_initialize_connection_with_decorator(self, utils_mock, opt_mock):
         utils_mock.return_value = True
         with mock.patch.object(fc_zone_manager.ZoneManager, 'add_connection')\
                 as add_zone_mock:
@@ -66,8 +67,9 @@ class TestVolumeDriver(test.TestCase):
                 self.driver.no_zone_initialize_connection(None, None)
                 assert not add_zone_mock.called
 
+    @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
     @mock.patch.object(utils, 'require_driver_initialized')
-    def test_terminate_connection_with_decorator(self, utils_mock):
+    def test_terminate_connection_with_decorator(self, utils_mock, opt_mock):
         utils_mock.return_value = True
         with mock.patch.object(fc_zone_manager.ZoneManager,
                                'delete_connection') as remove_zone_mock:

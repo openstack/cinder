@@ -49,16 +49,17 @@ zone_manager_opts = [
                help='FC Zone Driver responsible for zone management'),
     cfg.StrOpt('zoning_policy',
                default='initiator-target',
-               help='Zoning policy configured by user'),
+               help='Zoning policy configured by user; valid values include '
+               '"initiator-target" or "initiator"'),
     cfg.StrOpt('fc_fabric_names',
                default=None,
-               help='Comma separated list of fibre channel fabric names.'
+               help='Comma separated list of Fibre Channel fabric names.'
                ' This list of names is used to retrieve other SAN credentials'
                ' for connecting to each SAN fabric'),
     cfg.StrOpt('fc_san_lookup_service',
                default='cinder.zonemanager.drivers.brocade'
                '.brcd_fc_san_lookup_service.BrcdFCSanLookupService',
-               help='FC San Lookup Service'),
+               help='FC SAN Lookup Service'),
 ]
 
 CONF = cfg.CONF
@@ -87,7 +88,7 @@ class ZoneManager(fc_common.FCCommon):
         """Load the driver from the one specified in args, or from flags."""
         super(ZoneManager, self).__init__(**kwargs)
 
-        self.configuration = kwargs.get('configuration', None)
+        self.configuration = kwargs.get('configuration')
         if self.configuration:
             self.configuration.append_config_values(zone_manager_opts)
 
@@ -129,11 +130,11 @@ class ZoneManager(fc_common.FCCommon):
         try:
             for initiator in initiator_target_map.keys():
                 target_list = initiator_target_map[initiator]
-                LOG.debug("Target List :%s", {initiator: target_list})
+                LOG.debug("Target List: %s", target_list)
 
                 # get SAN context for the target list
                 fabric_map = self.get_san_context(target_list)
-                LOG.debug("Fabric Map after context lookup:%s", fabric_map)
+                LOG.debug("Fabric Map after context lookup: %s", fabric_map)
                 # iterate over each SAN and apply connection control
                 for fabric in fabric_map.keys():
                     connected_fabric = fabric
@@ -143,7 +144,7 @@ class ZoneManager(fc_common.FCCommon):
                     valid_i_t_map = self.get_valid_initiator_target_map(
                         i_t_map, True)
                     LOG.info(_LI("Final filtered map for fabric: %s"),
-                             {fabric: valid_i_t_map})
+                             valid_i_t_map)
 
                     # Call driver to add connection control
                     self.driver.add_connection(fabric, valid_i_t_map)
@@ -152,8 +153,8 @@ class ZoneManager(fc_common.FCCommon):
                          "over all target list"))
         except Exception as e:
             msg = _("Failed adding connection for fabric=%(fabric)s: "
-                    "Error:%(err)s") % {'fabric': connected_fabric,
-                                        'err': e}
+                    "Error: %(err)s") % {'fabric': connected_fabric,
+                                         'err': e}
             LOG.error(msg)
             raise exception.ZoneManagerException(reason=msg)
 
@@ -172,8 +173,8 @@ class ZoneManager(fc_common.FCCommon):
         try:
             for initiator in initiator_target_map.keys():
                 target_list = initiator_target_map[initiator]
-                LOG.info(_LI("Delete connection Target List:%s"),
-                         {initiator: target_list})
+                LOG.info(_LI("Delete connection Target List: %s"),
+                         target_list)
 
                 # get SAN context for the target list
                 fabric_map = self.get_san_context(target_list)
@@ -199,8 +200,8 @@ class ZoneManager(fc_common.FCCommon):
                       " target list")
         except Exception as e:
             msg = _("Failed removing connection for fabric=%(fabric)s: "
-                    "Error:%(err)s") % {'fabric': connected_fabric,
-                                        'err': e}
+                    "Error: %(err)s") % {'fabric': connected_fabric,
+                                         'err': e}
             LOG.error(msg)
             raise exception.ZoneManagerException(reason=msg)
 
@@ -211,7 +212,7 @@ class ZoneManager(fc_common.FCCommon):
         to list of target WWNs visible to the fabric.
         """
         fabric_map = self.driver.get_san_context(target_wwn_list)
-        LOG.debug("Got SAN context:%s", fabric_map)
+        LOG.debug("Got SAN context: %s", fabric_map)
         return fabric_map
 
     def get_valid_initiator_target_map(self, initiator_target_map,

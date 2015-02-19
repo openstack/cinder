@@ -33,12 +33,12 @@ LOG.logger.setLevel(logging.DEBUG)
 def create_zone_manager():
     """If zoning is enabled, build the Zone Manager."""
     config = Configuration(manager.volume_manager_opts)
-    LOG.debug("zoning mode %s" % config.safe_get('zoning_mode'))
+    LOG.debug("Zoning mode: %s", config.safe_get('zoning_mode'))
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Zone Manager enabled.")
         zm = fc_zone_manager.ZoneManager(configuration=config)
         LOG.info(_LI("Using FC Zone Manager %(zm_version)s,"
-                     " Driver %(drv_name)s %(drv_version)s.") %
+                     " Driver %(drv_name)s %(drv_version)s."),
                  {'zm_version': zm.get_version(),
                   'drv_name': zm.driver.__class__.__name__,
                   'drv_version': zm.driver.get_version()})
@@ -50,11 +50,11 @@ def create_zone_manager():
 
 def create_lookup_service():
     config = Configuration(manager.volume_manager_opts)
-    LOG.debug("zoning mode %s" % config.safe_get('zoning_mode'))
+    LOG.debug("Zoning mode: %s", config.safe_get('zoning_mode'))
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Lookup Service enabled.")
         lookup = fc_san_lookup_service.FCSanLookupService(configuration=config)
-        LOG.info(_LI("Using FC lookup service %s") % lookup.lookup_service)
+        LOG.info(_LI("Using FC lookup service %s"), lookup.lookup_service)
         return lookup
     else:
         LOG.debug("FC Lookup Service not enabled in cinder.conf.")
@@ -86,7 +86,7 @@ def AddFCZone(initialize_connection):
                 init_target_map = conn_info['data']['initiator_target_map']
                 zm = create_zone_manager()
                 if zm:
-                    LOG.debug("Add FC Zone for mapping '%s'." %
+                    LOG.debug("Add FC Zone for mapping '%s'.",
                               init_target_map)
                     zm.add_connection(init_target_map)
 
@@ -111,7 +111,7 @@ def RemoveFCZone(terminate_connection):
                 init_target_map = conn_info['data']['initiator_target_map']
                 zm = create_zone_manager()
                 if zm:
-                    LOG.debug("Remove FC Zone for mapping '%s'." %
+                    LOG.debug("Remove FC Zone for mapping '%s'.",
                               init_target_map)
                     zm.delete_connection(init_target_map)
 

@@ -36,7 +36,8 @@ target_list = ['20240002ac000a50']
 
 class TestFCZoneManager(test.TestCase):
 
-    def setUp(self):
+    @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
+    def setUp(self, opt_mock):
         super(TestFCZoneManager, self).setUp()
         config = conf.Configuration(None)
         config.fc_fabric_names = fabric_name
@@ -53,9 +54,10 @@ class TestFCZoneManager(test.TestCase):
         self.driver = Mock(FCZoneDriver)
 
     def __init__(self, *args, **kwargs):
-        test.TestCase.__init__(self, *args, **kwargs)
+        super(TestFCZoneManager, self).__init__(*args, **kwargs)
 
-    def test_add_connection(self):
+    @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
+    def test_add_connection(self, opt_mock):
         with mock.patch.object(self.zm.driver, 'add_connection')\
                 as add_connection_mock:
             self.zm.driver.get_san_context.return_value = fabric_map
@@ -64,14 +66,16 @@ class TestFCZoneManager(test.TestCase):
             add_connection_mock.assert_called_once_with(fabric_name,
                                                         init_target_map)
 
-    def test_add_connection_error(self):
+    @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
+    def test_add_connection_error(self, opt_mock):
         with mock.patch.object(self.zm.driver, 'add_connection')\
                 as add_connection_mock:
             add_connection_mock.side_effect = exception.FCZoneDriverException
             self.assertRaises(exception.ZoneManagerException,
                               self.zm.add_connection, init_target_map)
 
-    def test_delete_connection(self):
+    @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
+    def test_delete_connection(self, opt_mock):
         with mock.patch.object(self.zm.driver, 'delete_connection')\
                 as delete_connection_mock:
             self.zm.driver.get_san_context.return_value = fabric_map
@@ -80,7 +84,8 @@ class TestFCZoneManager(test.TestCase):
             delete_connection_mock.assert_called_once_with(fabric_name,
                                                            init_target_map)
 
-    def test_delete_connection_error(self):
+    @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
+    def test_delete_connection_error(self, opt_mock):
         with mock.patch.object(self.zm.driver, 'delete_connection')\
                 as del_connection_mock:
             del_connection_mock.side_effect = exception.FCZoneDriverException
