@@ -17,6 +17,7 @@ import json
 import os.path
 
 import requests
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -65,8 +66,6 @@ class HttpClient(object):
         self.header = {}
         self.header['Content-Type'] = 'application/json; charset=utf-8'
         self.header['x-dell-api-version'] = '1.5'
-        # we don't verify.  If the end user has a real SSL cert rather than
-        # a self signed cert they could turn this on
         self.verify = False
 
     def __enter__(self):
@@ -170,7 +169,7 @@ class StorageCenterApi(object):
         rsp = None
         content = self._get_json(blob)
         if content is not None:
-            # we can get a list or a dict or nothing
+            # We can get a list or a dict or nothing
             if isinstance(content, list):
                 for r in content:
                     if attribute is None or r.get(attribute) == value:
@@ -246,7 +245,7 @@ class StorageCenterApi(object):
 
         return self._get_id(result)
 
-    # volume functions
+    # Volume functions
 
     def _create_folder(self, url, ssn, parent, folder):
         '''This is generic to server and volume folders.
@@ -276,12 +275,12 @@ class StorageCenterApi(object):
         path = self._path_to_array(foldername)
         folderpath = ''
         instanceId = ''
-        # technically the first folder is the root so that is already created.
+        # Technically the first folder is the root so that is already created.
         found = True
         f = None
         for folder in path:
             folderpath = folderpath + folder
-            # if the last was found see if this part of the path exists too
+            # If the last was found see if this part of the path exists too
             if found:
                 listurl = url + '/GetList'
                 f = self._find_folder(listurl,
@@ -289,18 +288,18 @@ class StorageCenterApi(object):
                                       folderpath)
                 if f is None:
                     found = False
-            # we didn't find it so create it
+            # We didn't find it so create it
             if found is False:
                 f = self._create_folder(url,
                                         ssn,
                                         instanceId,
                                         folder)
-            # if we haven't found a folder or created it then leave
+            # If we haven't found a folder or created it then leave
             if f is None:
                 LOG.error(_LE('Unable to create folder path %s'),
                           folderpath)
                 break
-            # next part of the path will need this
+            # Next part of the path will need this
             instanceId = self._get_id(f)
             folderpath = folderpath + '/'
         return f
@@ -316,7 +315,7 @@ class StorageCenterApi(object):
         pf.append('scSerialNumber', ssn)
         basename = os.path.basename(foldername)
         pf.append('Name', basename)
-        # if we have any kind of path we add '/' to match the storage
+        # If we have any kind of path we add '/' to match the storage
         # center's convention and throw it into the filters.
         folderpath = os.path.dirname(foldername)
         if folderpath != '':
@@ -373,7 +372,7 @@ class StorageCenterApi(object):
         the volume will be created in the root.
         '''
         scvolume = None
-        # find our folder
+        # Find our folder
         LOG.debug('Create Volume %(name)s %(ssn)s %(folder)s',
                   {'name': name,
                    'ssn': ssn,
@@ -381,12 +380,12 @@ class StorageCenterApi(object):
         folder = self._find_volume_folder(ssn,
                                           volfolder)
 
-        # doesn't exist?  make it
+        # Doesn't exist?  make it
         if folder is None:
             folder = self._create_volume_folder_path(ssn,
                                                      volfolder)
 
-        # if we actually have a place to put our volume create it
+        # If we actually have a place to put our volume create it
         if folder is None:
             LOG.error(_LE('Unable to create folder %s'),
                       volfolder)
@@ -421,14 +420,16 @@ class StorageCenterApi(object):
                   {'sn': ssn,
                    'name': name,
                    'id': instanceid})
-        if name is None and instanceid is None:
-            return None
         pf = PayloadFilter()
-        # we need at least a name and or an instance id.  If we have
-        # that we can find a volume.
         pf.append('scSerialNumber', ssn)
-        pf.append('Name', name)
-        pf.append('instanceId', instanceid)
+        # We need at least a name and or an instance id.  If we have
+        # that we can find a volume.
+        if instanceid is not None:
+            pf.append('instanceId', instanceid)
+        elif name is not None:
+            pf.append('Name', name)
+        else:
+            return None
         r = self.client.post('StorageCenter/ScVolume/GetList',
                              pf.payload)
         if r.status_code != 200:
@@ -491,7 +492,7 @@ class StorageCenterApi(object):
             return False
         return True
 
-    # we do not know that we are red hat linux 6.x but that works
+    # We do not know that we are red hat linux 6.x but that works
     # best for red hat and ubuntu.  So, there.
     def _find_serveros(self, ssn, osname='Red Hat Linux 6.x'):
         '''Returns the serveros instance id of the specified osname.
@@ -506,7 +507,7 @@ class StorageCenterApi(object):
             for srvos in oslist:
                 name = srvos.get('name', 'nope')
                 if name.lower() == osname.lower():
-                    # found it return the id
+                    # Found it return the id
                     return self._get_id(srvos)
 
         LOG.warning(_LW('ScServerOperatingSystem GetList return: %(c)d %(r)s'),
@@ -518,9 +519,9 @@ class StorageCenterApi(object):
         '''Same as create_server except it can take a list of hbas.  hbas
         can be wwns or iqns.
         '''
-        # add hbas
+        # Add hbas
         scserver = None
-        # our instance names
+        # Our instance names
         for wwn in wwns:
             if scserver is None:
                 # Use the fist wwn to create the server.
@@ -529,7 +530,7 @@ class StorageCenterApi(object):
                                               wwn,
                                               True)
             else:
-                # add the wwn to our server
+                # Add the wwn to our server
                 self._add_hba(scserver,
                               wwn,
                               True)
@@ -544,21 +545,21 @@ class StorageCenterApi(object):
         payload['Name'] = 'Server_' + wwnoriscsiname
         payload['StorageCenter'] = ssn
         payload['Notes'] = self.notes
-        # we pick Red Hat Linux 6.x because it supports multipath and
+        # We pick Red Hat Linux 6.x because it supports multipath and
         # will attach luns to paths as they are found.
         scserveros = self._find_serveros(ssn, 'Red Hat Linux 6.x')
         if scserveros is not None:
             payload['OperatingSystem'] = scserveros
 
-        # find our folder or make it
+        # Find our folder or make it
         folder = self._find_server_folder(ssn,
                                           foldername)
         if folder is None:
             folder = self._create_server_folder_path(ssn,
                                                      foldername)
 
-        # at this point it doesn't matter if the folder was created or not
-        # we just attempt to create the server.  let it be in the root if
+        # At this point it doesn't matter if the folder was created or not.
+        # We just attempt to create the server.  Let it be in the root if
         # the folder creation fails.
         if folder is not None:
             payload['ServerFolder'] = self._get_id(folder)
@@ -572,10 +573,10 @@ class StorageCenterApi(object):
                        'c': r.status_code,
                        'r': r.reason})
         else:
-            # server was created
+            # Server was created
             scserver = self._first_result(r)
 
-            # add hba to our server
+            # Add hba to our server
             if scserver is not None:
                 if not self._add_hba(scserver,
                                      wwnoriscsiname,
@@ -584,7 +585,7 @@ class StorageCenterApi(object):
                     # Can't have a server without an HBA
                     self._delete_server(scserver)
                     scserver = None
-        # success or failure is determined by the caller
+        # Success or failure is determined by the caller
         return scserver
 
     def find_server(self, ssn, instance_name):
@@ -594,9 +595,9 @@ class StorageCenterApi(object):
         If found, the server the HBA is attached to, if any, is returned.
         '''
         scserver = None
-        # we search for our server by first finding our HBA
+        # We search for our server by first finding our HBA
         hba = self._find_serverhba(ssn, instance_name)
-        # once created hbas stay in the system.  So it isn't enough
+        # Once created hbas stay in the system.  So it isn't enough
         # that we found one it actually has to be attached to a
         # server.
         if hba is not None and hba.get('server') is not None:
@@ -623,7 +624,7 @@ class StorageCenterApi(object):
         If found, the sc server HBA is returned.
         '''
         scserverhba = None
-        # we search for our server by first finding our HBA
+        # We search for our server by first finding our HBA
         pf = PayloadFilter()
         pf.append('scSerialNumber', ssn)
         pf.append('instanceName', instance_name)
@@ -637,25 +638,32 @@ class StorageCenterApi(object):
             scserverhba = self._first_result(r)
         return scserverhba
 
-    def _find_domain(self, cportid, domainip):
-        '''Returns the fault domain which a given controller port can
-        be seen by the server
-        '''
+    def _find_domains(self, cportid):
         r = self.client.get('StorageCenter/ScControllerPort/%s/FaultDomainList'
                             % cportid)
         if r.status_code == 200:
             domains = self._get_json(r)
-            # wiffle through the domains looking for our
-            # configured ip
-            for domain in domains:
-                # if this is us we return the port
-                if domain.get('wellKnownIpAddress') == domainip:
-                    return domain
+            return domains
         else:
             LOG.debug('FaultDomainList error: %(c)d %(r)s',
                       {'c': r.status_code,
                        'r': r.reason})
             LOG.error(_LE('Error getting FaultDomainList'))
+        return None
+
+    def _find_domain(self, cportid, domainip):
+        '''Returns the fault domain which a given controller port can
+        be seen by the server
+        '''
+        domains = self._find_domains(cportid)
+        if domains:
+            # Wiffle through the domains looking for our
+            # configured ip.
+            for domain in domains:
+                # If this is us we return the port.
+                if domain.get('targetIpv4Address',
+                              domain.get('wellKnownIpAddress')) == domainip:
+                    return domain
         return None
 
     def _find_fc_initiators(self, scserver):
@@ -670,8 +678,8 @@ class StorageCenterApi(object):
             hbas = self._get_json(r)
             for hba in hbas:
                 wwn = hba.get('instanceName')
-                if hba.get('portType') == 'FibreChannel' and\
-                   wwn is not None:
+                if (hba.get('portType') == 'FibreChannel' and
+                        wwn is not None):
                     initiators.append(wwn)
         else:
             LOG.debug('HbaList error: %(c)d %(r)s',
@@ -730,21 +738,21 @@ class StorageCenterApi(object):
 
     def find_wwns(self, scvolume, scserver):
         '''returns the lun and wwns of the mapped volume'''
-        # our returnables
+        # Our returnables
         lun = None  # our lun.  We return the first lun.
         wwns = []  # list of targets
         itmap = {}  # dict of initiators and the associated targets
 
-        # make sure we know our server's initiators.  Only return
+        # Make sure we know our server's initiators.  Only return
         # mappings that contain HBA for this server.
         initiators = self._find_fc_initiators(scserver)
-        # get our volume mappings
+        # Get our volume mappings
         mappings = self._find_mappings(scvolume)
         if len(mappings) > 0:
-            # we check each of our mappings.  We want to return
+            # We check each of our mappings.  We want to return
             # the mapping we have been configured to use.
             for mapping in mappings:
-                # find the controller port for this mapping
+                # Find the controller port for this mapping
                 cport = mapping.get('controllerPort')
                 controllerport = self._find_controller_port(
                     self._get_id(cport))
@@ -774,36 +782,54 @@ class StorageCenterApi(object):
         # pretend we succeeded.
         return lun, wwns, itmap
 
-    def find_iqn(self, scvolume, ip):
-        '''find_iqn
-
-        returns the iqn of the port pointed to by the openstack compute
-        node.  This is to make sure that the compute node looks for the
-        volume on the active controller.
-        '''
-        iqn = None
-        # get our volume mappings
+    def find_iscsi_properties(self, scvolume, ip=None, port=None):
+        luns = []
+        iqns = []
+        portals = []
+        access_mode = 'rw'
         mappings = self._find_mappings(scvolume)
         if len(mappings) > 0:
-            # we check each of our mappings.  We want to return
-            # the mapping we have been configured to use.
             for mapping in mappings:
                 # find the controller port for this mapping
                 cport = mapping.get('controllerPort')
                 cportid = self._get_id(cport)
-                domain = self._find_domain(cportid,
-                                           ip)
-                if domain is not None:
+                domains = self._find_domains(cportid)
+                if domains:
                     controllerport = self._find_controller_port(cportid)
                     if controllerport is not None:
-                        iqn = controllerport.get('iscsiName')
-                        break
-        else:
-            LOG.error(_LE('Find_iqn: Volume appears unmapped'))
-        # TODO(tom_swanson): if we have nothing to return raise an exception
-        # here.  We can't do anything with an unmapped volume.  We shouldn't
-        # pretend we succeeded.
-        return iqn
+                        appendproperties = False
+                        for d in domains:
+                            ipaddress = d.get('targetIpv4Address',
+                                              d.get('wellKnownIpAddress'))
+                            portnumber = d.get('portNumber')
+                            if ((ip is None or ip == ipaddress) and
+                                    (port is None or port == portnumber)):
+                                portal = (ipaddress + ':' +
+                                          six.text_type(portnumber))
+                                # I'm not sure when we can have more than
+                                # one portal for a domain but since it is an
+                                # array being returned it is best to check.
+                                if portals.count(portal) == 0:
+                                    appendproperties = True
+                                    portals.append(portal)
+                        # We do not report lun and iqn info unless it is for
+                        # the configured port OR the user has not enabled
+                        # multipath.  (In which case ip and port sent in
+                        # will be None).
+                        if appendproperties is True:
+                            iqns.append(controllerport.get('iscsiName'))
+                            luns.append(mapping.get('lun'))
+                        if mapping['readOnly'] is True:
+                            access_mode = 'ro'
+
+        data = {'target_discovered': False,
+                'target_iqns': iqns,
+                'target_portals': portals,
+                'target_luns': luns,
+                'access_mode': access_mode
+                }
+
+        return data
 
     def map_volume(self, scvolume, scserver):
         '''map_volume
@@ -811,7 +837,7 @@ class StorageCenterApi(object):
         The check for server existence is elsewhere;  does not create the
         server.
         '''
-        # make sure we have what we think we have
+        # Make sure we have what we think we have
         serverid = self._get_id(scserver)
         volumeid = self._get_id(scvolume)
         if serverid is not None and volumeid is not None:
@@ -824,13 +850,13 @@ class StorageCenterApi(object):
                                  % volumeid,
                                  payload)
             if r.status_code == 200:
-                # we just return our mapping
+                # We just return our mapping
                 return self._first_result(r)
             # Should not be here.
             LOG.debug('MapToServer error: %(c)d %(r)s',
                       {'c': r.status_code,
                        'r': r.reason})
-        # error out
+        # Error out
         LOG.error(_LE('Unable to map %(vol)s to %(srv)s'),
                   {'vol': scvolume['name'],
                    'srv': scserver['name']})
@@ -932,7 +958,7 @@ class StorageCenterApi(object):
                             % self._get_id(scvolume))
         try:
             content = self._get_json(r)
-            # this will be a list.  If it isn't bail
+            # This will be a list.  If it isn't bail
             if isinstance(content, list):
                 for r in content:
                     # The only place to save our information with the public
@@ -941,9 +967,9 @@ class StorageCenterApi(object):
                     # the max length and we compare that to the start of
                     # the snapshot id.
                     description = r.get('description')
-                    if len(description) >= 30 and \
-                       replayid.startswith(description) is True and \
-                       r.get('markedForExpiration') is not True:
+                    if (len(description) >= 30 and
+                            replayid.startswith(description) is True and
+                            r.get('markedForExpiration') is not True):
                         replay = r
                         break
         except Exception:
@@ -990,7 +1016,7 @@ class StorageCenterApi(object):
         folder = self._find_volume_folder(ssn,
                                           volfolder)
 
-        # doesn't exist?  make it
+        # Doesn't exist?  make it
         if folder is None:
             folder = self._create_volume_folder_path(ssn,
                                                      volfolder)

@@ -38,14 +38,16 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterISCSIDriver, self).__init__(*args, **kwargs)
-        self.backend_name =\
-            self.configuration.safe_get('volume_backend_name') or 'Dell-iSCSI'
+        self.backend_name = (
+            self.configuration.safe_get('volume_backend_name')
+            or 'Dell-iSCSI')
 
     def initialize_connection(self, volume, connector):
         # We use id to name the volume name as it is a
         # known unique name.
         volume_name = volume.get('id')
         initiator_name = connector.get('initiator')
+        multipath = connector.get('multipath', False)
         LOG.debug('initialize_ connection: %(n)s:%(i)s',
                   {'n': volume_name,
                    'i': initiator_name})
@@ -75,27 +77,44 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
                         # our sc volume object.
                         scvolume = api.find_volume(ssn,
                                                    volume_name)
-                        ip = self.configuration.iscsi_ip_address
-                        port = self.configuration.iscsi_port
-                        iqn = api.find_iqn(scvolume,
-                                           ip)
-                        if iqn is None:
-                            LOG.error(_LE('Volume mapped to invalid path.'))
+
+                        if multipath:
+                            # Just return our properties with all the mappings
+                            iscsiproperties = (
+                                api.find_iscsi_properties(scvolume,
+                                                          None,
+                                                          None))
+                            return {'driver_volume_type': 'iscsi',
+                                    'data': iscsiproperties}
                         else:
+                            # Only return the iqn for the user specified port.
+                            ip = self.configuration.iscsi_ip_address
+                            port = self.configuration.iscsi_port
+                            iscsiproperties = (
+                                api.find_iscsi_properties(scvolume,
+                                                          ip,
+                                                          port))
                             properties = {}
                             properties['target_discovered'] = False
-                            properties['target_lun'] = mapping['lunUsed'][0]
-                            if mapping['readOnly'] is True:
-                                properties['access_mode'] = 'ro'
+                            portals = iscsiproperties['target_portals']
+                            # We'll key off of target_portals.  If we have
+                            # one listed we can assume that we found what
+                            # we are looking for.  Otherwise error.
+                            if len(portals) > 0:
+                                properties['target_portal'] = portals[0]
+                                properties['target_iqn'] = (
+                                    iscsiproperties['target_iqns'][0])
+                                properties['target_lun'] = (
+                                    iscsiproperties['target_luns'][0])
+                                properties['access_mode'] = (
+                                    iscsiproperties['access_mode'])
+                                LOG.debug(properties)
+                                return {'driver_volume_type': 'iscsi',
+                                        'data': properties
+                                        }
                             else:
-                                properties['access_mode'] = 'rw'
-                            properties['target_portal'] = ip + ':' + str(port)
-                            properties['target_iqn'] = iqn
-
-                            LOG.debug(properties)
-                            return {'driver_volume_type': 'iscsi',
-                                    'data': properties
-                                    }
+                                LOG.error(
+                                    _LE('Volume mapped to invalid path.'))
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to initialize connection '
