@@ -85,10 +85,11 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.restapi.get(self.bucket_url)
 
     def _get_provider_location(self, volume):
-        return '%(host)s:%(port)s,1 %(name)s' % {
+        return '%(host)s:%(port)s,1 %(name)s %(number)s' % {
             'host': self.restapi_host,
             'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': self.configuration.nexenta_target_prefix
+            'name': self.configuration.nexenta_target_prefix,
+            'number': self._get_lun_from_name(volume['name'])
         }
 
     def _get_bucket_name_map(self):
@@ -271,7 +272,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             raise
 
     def create_export(self, context, volume):
-        pass
+        return {'provider_location': self._get_provider_location(volume)}
 
     def ensure_export(self, context, volume):
         pass
