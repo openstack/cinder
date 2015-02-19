@@ -24,10 +24,10 @@ import urllib
 
 from eventlet import patcher
 import OpenSSL
+from oslo_log import log as logging
 import six
 
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 
 # Handle case where we are running in a monkey patched environment
 if patcher.is_monkey_patched('socket'):

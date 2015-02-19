@@ -19,13 +19,13 @@ import math
 import mock
 import mox
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import units
 
 from cinder.brick.initiator import connector
 from cinder import exception
 from cinder.image import image_utils
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf

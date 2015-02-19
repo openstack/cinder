@@ -16,10 +16,10 @@
 
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import paste.urlmap
 
 from cinder.i18n import _LW
-from cinder.openstack.common import log as logging
 
 
 CONF = cfg.CONF

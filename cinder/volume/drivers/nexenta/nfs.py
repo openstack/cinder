@@ -25,13 +25,13 @@ import hashlib
 import os
 import re
 
+from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options

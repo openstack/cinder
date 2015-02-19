@@ -16,13 +16,13 @@
 import json
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 import requests
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import versionutils
 from cinder.volume.drivers.san import san
 

@@ -25,12 +25,12 @@ import string
 import urllib2
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import units
 from suds import client
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san import san
 
 

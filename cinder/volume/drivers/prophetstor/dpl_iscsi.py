@@ -15,9 +15,10 @@
 
 import errno
 
+from oslo_log import log as logging
+
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
-from cinder.openstack.common import log as logging
 import cinder.volume.driver
 from cinder.volume.drivers.prophetstor import dplcommon
 

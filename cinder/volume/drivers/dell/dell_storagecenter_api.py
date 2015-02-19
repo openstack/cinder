@@ -16,12 +16,12 @@
 import json
 import os.path
 
+from oslo_log import log as logging
 import requests
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 

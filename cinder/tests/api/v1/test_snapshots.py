@@ -17,13 +17,13 @@ import datetime
 
 from lxml import etree
 import mock
+from oslo_log import log as logging
 import webob
 
 from cinder.api.v1 import snapshots
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v1 import stubs

@@ -18,11 +18,11 @@ Request Body limiting middleware.
 
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import webob.dec
 import webob.exc
 
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import wsgi
 
 

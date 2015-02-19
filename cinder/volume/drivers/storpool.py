@@ -18,13 +18,13 @@
 from __future__ import absolute_import
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume import volume_types
 

@@ -14,11 +14,11 @@
 
 '''Volume driver for Dell Storage Center.'''
 
+from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_common
 from cinder.zonemanager import utils as fczm_utils

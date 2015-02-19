@@ -31,6 +31,7 @@ import mock
 import mox
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
@@ -47,7 +48,6 @@ from cinder.image import image_utils
 from cinder import keymgr
 from cinder import objects
 from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 import cinder.policy
 from cinder import quota
 from cinder import test

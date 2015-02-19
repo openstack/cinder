@@ -22,6 +22,7 @@ import urllib2
 import uuid
 from xml.etree import ElementTree as ET
 
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 import six
@@ -29,7 +30,6 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume import qos_specs

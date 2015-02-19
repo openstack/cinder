@@ -24,10 +24,10 @@ import httplib
 
 from lxml import etree
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
 LOG = logging.getLogger(__name__)

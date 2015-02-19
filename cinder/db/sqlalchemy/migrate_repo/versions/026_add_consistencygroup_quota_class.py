@@ -15,10 +15,10 @@
 import datetime
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from sqlalchemy import MetaData, Table
 
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 
 # Get default values via config.  The defaults will either
 # come from the default values set in the quota option

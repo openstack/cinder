@@ -18,11 +18,11 @@ import ast
 import base64
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
-from cinder.openstack.common import log
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest

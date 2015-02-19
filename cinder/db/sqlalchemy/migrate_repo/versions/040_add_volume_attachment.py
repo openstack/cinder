@@ -16,12 +16,12 @@
 import datetime
 import uuid
 
+from oslo_log import log as logging
 import six
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import ForeignKey, MetaData, String, Table
 
 from cinder.i18n import _LE
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

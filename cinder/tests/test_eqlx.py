@@ -19,11 +19,11 @@ from eventlet import greenthread
 import mock
 import mox
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 import paramiko
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import ssh_utils
 from cinder import test
 from cinder import utils

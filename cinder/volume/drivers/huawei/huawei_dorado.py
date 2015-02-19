@@ -19,7 +19,8 @@ Volume Drivers for Huawei OceanStor Dorado series storage arrays.
 
 import re
 
-from cinder.openstack.common import log as logging
+from oslo_log import log as logging
+
 from cinder.volume.drivers.huawei import huawei_t
 from cinder.volume.drivers.huawei import ssh_common
 

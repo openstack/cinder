@@ -14,10 +14,10 @@
 #    under the License.
 
 import mock
+from oslo_log import log as logging
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume.drivers import xio
 from cinder.volume import qos_specs

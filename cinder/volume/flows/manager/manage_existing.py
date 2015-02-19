@@ -12,13 +12,13 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from oslo_log import log as logging
 import taskflow.engines
 from taskflow.patterns import linear_flow
 
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder.volume.flows.api import create_volume as create_api
 from cinder.volume.flows import common as flow_common
 from cinder.volume.flows.manager import create_volume as create_mgr

@@ -21,12 +21,12 @@
 
 import mock
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 import paramiko
 
 from cinder import exception
 from cinder.i18n import _LI
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.zonemanager.drivers.brocade import brcd_fc_zone_driver as driver

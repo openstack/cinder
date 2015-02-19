@@ -21,6 +21,7 @@ import tempfile
 
 import mock
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
@@ -28,7 +29,6 @@ from cinder.backup import manager
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.backup import fake_service_with_verify as fake_service
 

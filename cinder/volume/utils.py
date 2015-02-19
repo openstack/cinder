@@ -20,6 +20,7 @@ import math
 from Crypto.Random import random
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
@@ -27,7 +28,6 @@ from oslo_utils import units
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import utils
 from cinder.volume import throttling

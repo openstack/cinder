@@ -21,6 +21,7 @@ import socket
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import units
 
@@ -30,7 +31,6 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume import utils as volutils

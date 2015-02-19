@@ -24,6 +24,7 @@ warnings.simplefilter('once', DeprecationWarning)
 
 import eventlet
 from oslo_config import cfg
+from oslo_log import log as logging
 
 eventlet.monkey_patch()
 
@@ -32,7 +33,6 @@ i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
-from cinder.openstack.common import log as logging
 from cinder import service
 from cinder import utils
 from cinder import version
@@ -44,7 +44,7 @@ CONF = cfg.CONF
 def main():
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
-    logging.setup("cinder")
+    logging.setup(CONF, "cinder")
     utils.monkey_patch()
     server = service.Service.create(binary='cinder-backup')
     service.serve(server)

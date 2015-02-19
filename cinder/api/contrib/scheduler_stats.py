@@ -14,10 +14,11 @@
 
 """The Scheduler Stats extension"""
 
+from oslo_log import log as logging
+
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import scheduler_stats as scheduler_stats_view
-from cinder.openstack.common import log as logging
 from cinder.scheduler import rpcapi
 
 

@@ -20,11 +20,11 @@
 import copy
 
 from oslo_context import context
+from oslo_log import log as logging
 from oslo_utils import timeutils
 
 from cinder.i18n import _
 from cinder.openstack.common import local
-from cinder.openstack.common import log as logging
 from cinder import policy
 
 

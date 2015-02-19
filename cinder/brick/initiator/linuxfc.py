@@ -17,10 +17,10 @@
 import errno
 
 from oslo_concurrency import processutils as putils
+from oslo_log import log as logging
 
 from cinder.brick.initiator import linuxscsi
 from cinder.i18n import _LW
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

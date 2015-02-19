@@ -14,11 +14,11 @@
 #    under the License.
 import time
 
+from oslo_log import log as logging
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.emc import emc_vmax_utils
 
 

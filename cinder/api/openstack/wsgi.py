@@ -21,6 +21,7 @@ from xml.dom import minidom
 from xml.parsers import expat
 
 from lxml import etree
+from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
 import six
@@ -29,7 +30,6 @@ import webob
 from cinder import exception
 from cinder import i18n
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import wsgi
 

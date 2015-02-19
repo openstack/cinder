@@ -20,6 +20,7 @@ Scheduler Service
 """
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -30,7 +31,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE
 from cinder import manager
-from cinder.openstack.common import log as logging
+from cinder.openstack.common import versionutils
 from cinder import quota
 from cinder import rpc
 from cinder.scheduler.flows import create_volume
@@ -65,12 +66,13 @@ class SchedulerManager(manager.Manager):
                                 'cinder.scheduler.simple.SimpleScheduler']:
             scheduler_driver = ('cinder.scheduler.filter_scheduler.'
                                 'FilterScheduler')
-            LOG.deprecated(_('ChanceScheduler and SimpleScheduler have been '
-                             'deprecated due to lack of support for advanced '
-                             'features like: volume types, volume encryption,'
-                             ' QoS etc. These two schedulers can be fully '
-                             'replaced by FilterScheduler with certain '
-                             'combination of filters and weighers.'))
+            versionutils.report_deprecated_feature(LOG, _(
+                'ChanceScheduler and SimpleScheduler have been '
+                'deprecated due to lack of support for advanced '
+                'features like: volume types, volume encryption,'
+                ' QoS etc. These two schedulers can be fully '
+                'replaced by FilterScheduler with certain '
+                'combination of filters and weighers.'))
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
 

@@ -18,11 +18,12 @@
 import datetime
 import uuid
 
+from oslo_log import log as logging
+
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as db_api
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 
 from oslo_db.sqlalchemy import utils as sqlalchemyutils

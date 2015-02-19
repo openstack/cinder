@@ -21,9 +21,9 @@ import time
 from xml.dom import minidom
 
 import mock
+from oslo_log import log as logging
 
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.huawei import huawei_18000

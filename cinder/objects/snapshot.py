@@ -13,6 +13,7 @@
 #    under the License.
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import db
 from cinder import exception
@@ -20,7 +21,6 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder.objects import fields
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 CONF = cfg.CONF

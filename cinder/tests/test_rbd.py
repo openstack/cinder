@@ -21,6 +21,7 @@ import os
 import tempfile
 
 import mock
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 
@@ -28,7 +29,6 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.image import fake as fake_image
 from cinder.tests import test_volume

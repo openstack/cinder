@@ -12,13 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import netutils
 import requests
 import six.moves.urllib.parse as urlparse
 
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)

@@ -23,6 +23,7 @@ import traceback
 
 import netaddr
 from oslo import messaging
+from oslo_log import log as logging
 from oslo_utils import timeutils
 import six
 
@@ -31,7 +32,6 @@ from cinder import exception
 from cinder.i18n import _, _LE
 from cinder import objects
 from cinder.objects import fields
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import versionutils
 from cinder import utils
 

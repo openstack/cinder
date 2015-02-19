@@ -15,8 +15,9 @@
 import os.path
 import string
 
+from oslo_log import log as logging
+
 from cinder.brick.initiator import linuxscsi
-from cinder.openstack.common import log as logging
 from cinder import test
 
 LOG = logging.getLogger(__name__)

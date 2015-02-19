@@ -63,6 +63,7 @@ warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
 from oslo_db.sqlalchemy import migration
+from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import uuidutils
 
@@ -77,7 +78,6 @@ from cinder.db import migration as db_migration
 from cinder.db.sqlalchemy import api as db_api
 from cinder.i18n import _
 from cinder.objects import base as objects_base
-from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import utils
 from cinder import version
@@ -546,7 +546,7 @@ def main():
     try:
         CONF(sys.argv[1:], project='cinder',
              version=version.version_string())
-        logging.setup("cinder")
+        logging.setup(CONF, "cinder")
     except cfg.ConfigFilesNotFoundError:
         cfgfile = CONF.config_file[-1] if CONF.config_file else None
         if cfgfile and not os.access(cfgfile, os.R_OK):

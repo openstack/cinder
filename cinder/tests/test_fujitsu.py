@@ -18,10 +18,10 @@ import os
 import tempfile
 
 import mock
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _LW
-from cinder.openstack.common import log as logging
 from cinder import test
 import cinder.volume.drivers.fujitsu.eternus_dx_common as eternus_dx_common
 import cinder.volume.drivers.fujitsu.eternus_dx_fc as eternus_dx_fc

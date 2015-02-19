@@ -34,9 +34,10 @@ try:
 except ImportError:
     hpexceptions = None
 
+from oslo_log import log as logging
+
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san import san

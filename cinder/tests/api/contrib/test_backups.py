@@ -21,6 +21,7 @@ import json
 from xml.dom import minidom
 
 import mock
+from oslo_log import log as logging
 from oslo_utils import timeutils
 import webob
 
@@ -30,7 +31,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests import utils

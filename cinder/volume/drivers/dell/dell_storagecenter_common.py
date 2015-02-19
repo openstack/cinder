@@ -13,11 +13,11 @@
 #    under the License.
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.san import san
 

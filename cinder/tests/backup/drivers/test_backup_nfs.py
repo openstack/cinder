@@ -28,6 +28,7 @@ import zlib
 
 import mock
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder.backup.drivers import nfs
 from cinder.brick.remotefs import remotefs as remotefs_brick
@@ -35,7 +36,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder import utils
 

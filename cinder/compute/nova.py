@@ -24,12 +24,12 @@ from novaclient.v1_1 import client as nova_client
 from novaclient.v1_1.contrib import assisted_volume_snapshots
 from novaclient.v1_1.contrib import list_extensions
 from oslo_config import cfg
+from oslo_log import log as logging
 from requests import exceptions as request_exceptions
 
 from cinder import context as ctx
 from cinder.db import base
 from cinder import exception
-from cinder.openstack.common import log as logging
 
 nova_opts = [
     cfg.StrOpt('nova_catalog_info',

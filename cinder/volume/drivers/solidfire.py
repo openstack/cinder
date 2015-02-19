@@ -21,6 +21,7 @@ import string
 import time
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
@@ -30,7 +31,6 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume import volume_types

@@ -16,8 +16,9 @@
 
 from xml.etree import ElementTree as ET
 
+from oslo_log import log as logging
+
 from cinder.i18n import _LE
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

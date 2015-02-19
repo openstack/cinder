@@ -33,9 +33,10 @@ if os.name == 'nt':
     kernel32 = ctypes.windll.kernel32
     virtdisk = ctypes.windll.virtdisk
 
+from oslo_log import log as logging
+
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.windows import constants
 
 LOG = logging.getLogger(__name__)

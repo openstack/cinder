@@ -18,12 +18,12 @@ import shlex
 
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils as putils
+from oslo_log import log as logging
 from oslo_utils import excutils
 import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 SMPL = 1

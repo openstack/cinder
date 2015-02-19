@@ -12,10 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log as logging
 from sqlalchemy import Index, MetaData, Table
 
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

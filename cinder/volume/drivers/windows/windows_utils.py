@@ -20,10 +20,10 @@ import ctypes
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.windows import constants
 
 # Check needed for unit testing on Unix

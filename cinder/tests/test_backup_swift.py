@@ -27,6 +27,7 @@ import zlib
 
 import mock
 from oslo_config import cfg
+from oslo_log import log as logging
 from swiftclient import client as swift
 
 from cinder.backup.drivers import swift as swift_dr
@@ -34,7 +35,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.backup import fake_swift_client
 from cinder.tests.backup import fake_swift_client2

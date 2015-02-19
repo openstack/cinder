@@ -15,9 +15,10 @@
 
 import os
 
+from oslo_log import log as logging
+
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers import nfs
 
 LOG = logging.getLogger(__name__)

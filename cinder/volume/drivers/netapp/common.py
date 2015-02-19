@@ -18,11 +18,11 @@ Unified driver for NetApp storage systems.
 Supports multiple storage systems of different families and protocols.
 """
 
+from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils as na_utils

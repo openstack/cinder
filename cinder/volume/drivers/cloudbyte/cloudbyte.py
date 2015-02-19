@@ -18,12 +18,12 @@ import json
 import time
 import urllib
 
+from oslo_log import log as logging
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.cloudbyte import options
 from cinder.volume.drivers.san import san

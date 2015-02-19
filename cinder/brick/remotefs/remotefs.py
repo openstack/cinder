@@ -20,11 +20,11 @@ import os
 import re
 
 from oslo_concurrency import processutils as putils
+from oslo_log import log as logging
 import six
 
 from cinder.brick import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

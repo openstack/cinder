@@ -25,6 +25,7 @@ import random
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_db import exception as db_exc
+from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import importutils
 import osprofiler.notifier
@@ -36,7 +37,6 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import base as objects_base
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import service
 from cinder import rpc

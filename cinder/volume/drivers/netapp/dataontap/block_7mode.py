@@ -21,13 +21,13 @@
 Volume driver library for NetApp 7-mode block storage systems.
 """
 
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume import configuration
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode

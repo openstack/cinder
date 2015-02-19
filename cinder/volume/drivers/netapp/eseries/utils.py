@@ -20,9 +20,8 @@ import base64
 import binascii
 import uuid
 
+from oslo_log import log as logging
 import six
-
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)

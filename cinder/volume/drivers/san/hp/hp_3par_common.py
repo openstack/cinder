@@ -50,6 +50,7 @@ if hp3parclient:
     from hp3parclient import exceptions as hpexceptions
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 
@@ -57,7 +58,6 @@ from cinder import context
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils

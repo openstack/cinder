@@ -28,13 +28,13 @@ import urllib2
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import units
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume import volume_types
 

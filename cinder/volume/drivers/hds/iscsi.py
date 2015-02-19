@@ -21,12 +21,12 @@ import os
 from xml.etree import ElementTree as ETree
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.hds import hnas_backend
 from cinder.volume import utils

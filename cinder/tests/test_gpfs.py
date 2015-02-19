@@ -19,11 +19,11 @@ import tempfile
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf

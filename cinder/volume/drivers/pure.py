@@ -24,12 +24,12 @@ import uuid
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils

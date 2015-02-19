@@ -22,8 +22,8 @@ import string
 import uuid
 
 import fixtures
+from oslo_log import log as logging
 
-from cinder.openstack.common import log as logging
 from cinder import service
 from cinder import test  # For the flags
 from cinder.tests.integrated.api import client

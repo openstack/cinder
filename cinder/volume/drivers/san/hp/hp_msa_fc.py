@@ -13,7 +13,8 @@
 #    under the License.
 #
 
-from cinder.openstack.common import log as logging
+from oslo_log import log as logging
+
 from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_msa_common as hpcommon

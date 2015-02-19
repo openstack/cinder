@@ -15,7 +15,7 @@
 
 """The consistencygroups api."""
 
-
+from oslo_log import log as logging
 import webob
 from webob import exc
 
@@ -27,7 +27,6 @@ from cinder.api import xmlutil
 from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 LOG = logging.getLogger(__name__)

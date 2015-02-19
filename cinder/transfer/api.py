@@ -23,12 +23,12 @@ import hmac
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder import quota
 from cinder.volume import api as volume_api
 

@@ -19,10 +19,10 @@
 import contextlib
 
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _LW, _LE
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 

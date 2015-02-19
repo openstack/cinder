@@ -13,13 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log as logging
 
 from cinder.api.openstack import wsgi
 from cinder.api.v1 import router
 from cinder.api.v1 import snapshots
 from cinder.api.v1 import volumes
 from cinder.api import versions
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.api import fakes
 

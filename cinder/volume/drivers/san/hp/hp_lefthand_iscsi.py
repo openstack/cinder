@@ -31,9 +31,11 @@ It also requires the setting of hplefthand_api_url, hplefthand_username,
 hplefthand_password for credentials to talk to the REST service on the
 LeftHand array.
 """
+
+from oslo_log import log as logging
+
 from cinder import exception
 from cinder.i18n import _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.san.hp import hp_lefthand_cliq_proxy as cliq_proxy
 from cinder.volume.drivers.san.hp import hp_lefthand_rest_proxy as rest_proxy

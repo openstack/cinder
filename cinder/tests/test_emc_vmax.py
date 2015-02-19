@@ -20,10 +20,10 @@ import time
 from xml.dom import minidom
 
 import mock
+from oslo_log import log as logging
 import six
 
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import test
 from cinder.volume.drivers.emc import emc_vmax_common

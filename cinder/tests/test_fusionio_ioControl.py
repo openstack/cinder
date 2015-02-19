@@ -17,6 +17,7 @@ import copy
 import json
 
 import mock
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
@@ -24,7 +25,6 @@ import requests
 from cinder import context
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.fusionio import ioControl

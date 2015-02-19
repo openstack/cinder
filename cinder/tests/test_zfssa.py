@@ -18,9 +18,9 @@ Unit tests for Oracle's ZFSSA Cinder volume driver
 import json
 
 import mock
+from oslo_log import log as logging
 from oslo_utils import units
 
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests import fake_utils
 from cinder.volume import configuration as conf

@@ -17,6 +17,7 @@
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 import webob.dec
 import webob.exc
@@ -26,7 +27,6 @@ from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 import cinder.policy
 
 

@@ -21,9 +21,9 @@
 
 import mock
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.zonemanager.drivers.brocade \
     import brcd_fc_zone_client_cli as client_cli

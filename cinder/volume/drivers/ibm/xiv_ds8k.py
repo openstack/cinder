@@ -23,10 +23,10 @@ Unified Volume driver for IBM XIV and DS8K Storage Systems.
 """
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san import san
 
 xiv_ds8k_opts = [

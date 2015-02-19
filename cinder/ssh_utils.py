@@ -23,11 +23,11 @@ import string
 
 from eventlet import pools
 from oslo_config import cfg
+from oslo_log import log as logging
 import paramiko
 
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

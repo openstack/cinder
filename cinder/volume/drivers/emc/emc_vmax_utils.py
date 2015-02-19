@@ -18,12 +18,12 @@ import random
 import re
 from xml.dom import minidom
 
+from oslo_log import log as logging
 import six
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume import volume_types
 

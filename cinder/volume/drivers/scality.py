@@ -23,6 +23,7 @@ import urllib2
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import units
 import six.moves.urllib.parse as urlparse
 
@@ -30,7 +31,6 @@ from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
 

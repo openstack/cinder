@@ -20,9 +20,10 @@ Volume Drivers for Huawei OceanStor T series storage arrays.
 import re
 import time
 
+from oslo_log import log as logging
+
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume.drivers.huawei import ssh_common

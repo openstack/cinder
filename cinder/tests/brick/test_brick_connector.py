@@ -21,13 +21,13 @@ import time
 import mock
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder.brick import exception
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
 from cinder.brick.initiator import linuxfc
 from cinder.i18n import _LE
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import test
 

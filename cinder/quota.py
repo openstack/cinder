@@ -20,6 +20,7 @@
 import datetime
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
@@ -27,7 +28,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
+from cinder.openstack.common import versionutils
 
 
 LOG = logging.getLogger(__name__)
@@ -115,11 +116,12 @@ class DbQuotaDriver(object):
 
         for resource in resources.values():
             if resource.name not in default_quotas:
-                LOG.deprecated(_("Default quota for resource: %(res)s is set "
-                                 "by the default quota flag: quota_%(res)s, "
-                                 "it is now deprecated. Please use the "
-                                 "default quota class for default "
-                                 "quota.") % {'res': resource.name})
+                versionutils.report_deprecated_feature(LOG, _(
+                    "Default quota for resource: %(res)s is set "
+                    "by the default quota flag: quota_%(res)s, "
+                    "it is now deprecated. Please use the "
+                    "default quota class for default "
+                    "quota.") % {'res': resource.name})
             quotas[resource.name] = default_quotas.get(resource.name,
                                                        resource.default)
 

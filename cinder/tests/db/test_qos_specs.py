@@ -19,10 +19,11 @@
 
 import time
 
+from oslo_log import log as logging
+
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import volume_types
 

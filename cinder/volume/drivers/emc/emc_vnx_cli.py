@@ -26,6 +26,7 @@ import eventlet
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_serialization import jsonutils as json
 from oslo_utils import excutils
 from oslo_utils import timeutils
@@ -37,7 +38,6 @@ from taskflow.types import failure
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume import configuration as config
@@ -47,7 +47,10 @@ from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
 CONF = cfg.CONF
+
+logging.register_options(CONF)
 LOG = logging.getLogger(__name__)
+
 
 INTERVAL_5_SEC = 5
 INTERVAL_20_SEC = 20

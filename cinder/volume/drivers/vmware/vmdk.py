@@ -28,6 +28,7 @@ import os
 import tempfile
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 from oslo_utils import uuidutils
@@ -41,7 +42,6 @@ import six
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import volumeops

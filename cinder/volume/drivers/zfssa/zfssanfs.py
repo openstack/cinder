@@ -19,12 +19,12 @@ import datetime as dt
 import errno
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest

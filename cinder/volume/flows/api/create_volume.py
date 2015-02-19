@@ -12,6 +12,7 @@
 
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 import taskflow.engines
@@ -21,7 +22,6 @@ from taskflow.types import failure as ft
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder import policy
 from cinder import quota
 from cinder import utils

@@ -21,12 +21,12 @@ Client classes for web services.
 import copy
 import json
 
+from oslo_log import log as logging
 import requests
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)

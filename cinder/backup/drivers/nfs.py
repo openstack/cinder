@@ -19,12 +19,12 @@ import os
 import os.path
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder.backup import chunkeddriver
 from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 LOG = logging.getLogger(__name__)

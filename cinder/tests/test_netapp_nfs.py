@@ -22,12 +22,12 @@ import unittest
 from lxml import etree
 import mock
 import mox as mox_lib
+from oslo_log import log as logging
 import six
 
 from cinder import exception
 from cinder.i18n import _LW
 from cinder.image import image_utils
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder import utils as cinder_utils
 from cinder.volume import configuration as conf

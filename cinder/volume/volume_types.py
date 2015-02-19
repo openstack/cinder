@@ -22,13 +22,13 @@
 
 from oslo_config import cfg
 from oslo_db import exception as db_exc
+from oslo_log import log as logging
 import six
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 
 
 CONF = cfg.CONF

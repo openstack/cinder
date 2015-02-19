@@ -16,9 +16,10 @@ ZFS Storage Appliance Proxy
 """
 import json
 
+from oslo_log import log
+
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log
 from cinder.volume.drivers.zfssa import restclient
 from cinder.volume.drivers.zfssa import webdavclient
 

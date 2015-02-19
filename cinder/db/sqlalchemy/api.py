@@ -31,6 +31,7 @@ from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_db import options
 from oslo_db.sqlalchemy import session as db_session
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import osprofiler.sqlalchemy
@@ -49,7 +50,6 @@ from cinder.common import sqlalchemyutils
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _, _LW, _LE, _LI
-from cinder.openstack.common import log as logging
 
 
 CONF = cfg.CONF

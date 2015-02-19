@@ -16,8 +16,8 @@
 #    under the License.
 #
 from oslo_config import cfg
+from oslo_log import log as logging
 
-from cinder.openstack.common import log as logging
 from cinder.volume import configuration
 
 brcd_zone_opts = [

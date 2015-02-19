@@ -17,12 +17,12 @@
 Classes and utility methods for datastore selection.
 """
 
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_vmware import exceptions
 from oslo_vmware import pbm
 
 from cinder.i18n import _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 
 

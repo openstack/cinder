@@ -26,12 +26,12 @@ import platform
 import socket
 
 from oslo_concurrency import processutils as putils
+from oslo_log import log as logging
 import six
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LW, _LI
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import version
 from cinder.volume import volume_types

@@ -34,6 +34,7 @@ Volume backups can be created, restored, deleted and listed.
 """
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -44,7 +45,6 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import manager
-from cinder.openstack.common import log as logging
 from cinder import quota
 from cinder import rpc
 from cinder import utils

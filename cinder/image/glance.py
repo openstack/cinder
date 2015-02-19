@@ -28,13 +28,13 @@ import time
 
 import glanceclient.exc
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.openstack.common import log as logging
 
 
 glance_opts = [

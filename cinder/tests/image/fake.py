@@ -20,9 +20,10 @@ import copy
 import datetime
 import uuid
 
+from oslo_log import log as logging
+
 from cinder import exception
 import cinder.image.glance
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)

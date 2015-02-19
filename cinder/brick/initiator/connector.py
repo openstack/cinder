@@ -21,6 +21,7 @@ import time
 
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils as putils
+from oslo_log import log as logging
 import six
 
 from cinder.brick import exception
@@ -30,7 +31,6 @@ from cinder.brick.initiator import linuxfc
 from cinder.brick.initiator import linuxscsi
 from cinder.brick.remotefs import remotefs
 from cinder.i18n import _, _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 
 S390X = "s390x"

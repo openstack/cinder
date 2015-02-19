@@ -19,13 +19,13 @@ import re
 import urllib
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import six.moves.urllib.parse as urlparse
 import webob
 
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 

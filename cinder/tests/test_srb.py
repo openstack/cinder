@@ -18,11 +18,11 @@ Unit tests for the Scality Rest Block Volume Driver.
 
 import mock
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.brick import test_brick_lvm
 from cinder.volume import configuration as conf

@@ -16,11 +16,11 @@
 import collections
 
 import mock
+from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
 from cinder import context
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 

@@ -23,12 +23,12 @@ import os
 import re
 
 from oslo_concurrency import processutils as putils
+from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder.brick import exception
 from cinder.brick import executor
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 

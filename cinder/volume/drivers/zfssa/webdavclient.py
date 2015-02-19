@@ -19,9 +19,10 @@ import httplib
 import time
 import urllib2
 
+from oslo_log import log
+
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log
 
 LOG = log.getLogger(__name__)
 

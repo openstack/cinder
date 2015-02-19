@@ -17,11 +17,11 @@ import inspect
 import os.path
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.emc import emc_vmax_fast
 from cinder.volume.drivers.emc import emc_vmax_https
 from cinder.volume.drivers.emc import emc_vmax_masking

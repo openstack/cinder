@@ -14,11 +14,11 @@
 
 """The Extended Snapshot Attributes API extension."""
 
+from oslo_log import log as logging
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)

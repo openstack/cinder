@@ -21,8 +21,9 @@ import StringIO
 import time
 import urllib2
 
+from oslo_log import log
+
 from cinder.i18n import _LE, _LI
-from cinder.openstack.common import log
 
 LOG = log.getLogger(__name__)
 

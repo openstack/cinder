@@ -25,10 +25,10 @@ import json
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 
 from cinder.i18n import _LE
-from cinder.openstack.common import log as logging
 
 
 scheduler_json_config_location_opt = cfg.StrOpt(

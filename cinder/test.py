@@ -32,6 +32,7 @@ import mox
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
+from oslo_log import log
 from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import strutils
 from oslo_utils import timeutils
@@ -43,7 +44,6 @@ from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder import i18n
 from cinder import objects
-from cinder.openstack.common import log as oslo_logging
 from cinder import rpc
 from cinder import service
 from cinder.tests import conf_fixture
@@ -57,7 +57,7 @@ test_opts = [
 CONF = cfg.CONF
 CONF.register_opts(test_opts)
 
-LOG = oslo_logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 _DB_CACHE = None
 

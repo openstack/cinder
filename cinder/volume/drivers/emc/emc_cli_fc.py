@@ -17,7 +17,8 @@ Fibre Channel Driver for EMC VNX array based on CLI.
 
 """
 
-from cinder.openstack.common import log as logging
+from oslo_log import log as logging
+
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vnx_cli
 from cinder.zonemanager import utils as zm_utils

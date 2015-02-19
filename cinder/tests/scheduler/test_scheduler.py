@@ -20,12 +20,12 @@ Tests For Scheduler
 
 import mock
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder.scheduler import driver
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager

@@ -21,11 +21,11 @@ Hitachi Unified Storage (HUS-HNAS) platform. Backend operations.
 import re
 
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 from oslo_utils import units
 import six
 
 from cinder.i18n import _LE, _LW, _LI
-from cinder.openstack.common import log as logging
 from cinder import ssh_utils
 from cinder import utils
 

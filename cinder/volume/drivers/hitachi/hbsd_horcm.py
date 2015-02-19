@@ -21,13 +21,13 @@ import time
 
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib

@@ -25,11 +25,11 @@ SHOULD include dedicated exception logging.
 import sys
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import six
 import webob.exc
 
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)

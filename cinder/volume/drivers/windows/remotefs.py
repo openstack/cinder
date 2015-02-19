@@ -19,10 +19,11 @@ import sys
 if sys.platform == 'win32':
     import wmi
 
+from oslo_log import log as logging
+
 from cinder.brick.remotefs import remotefs
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

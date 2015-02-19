@@ -34,12 +34,12 @@ encryption key so *any* volume can be decrypted once the fixed key is known.
 import array
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LW
 from cinder.keymgr import key
 from cinder.keymgr import key_mgr
-from cinder.openstack.common import log as logging
 
 
 key_mgr_opts = [

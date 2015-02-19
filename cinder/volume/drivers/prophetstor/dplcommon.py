@@ -25,12 +25,12 @@ import json
 import random
 import time
 
+from oslo_log import log as logging
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import options

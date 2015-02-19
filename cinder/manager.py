@@ -53,10 +53,10 @@ This module provides Manager, a base class for managers.
 
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import oslo_messaging as messaging
 
 from cinder.db import base
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import periodic_task
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version

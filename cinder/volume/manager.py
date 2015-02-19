@@ -40,6 +40,7 @@ intact.
 import time
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
@@ -55,7 +56,6 @@ from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import glance
 from cinder import manager
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import periodic_task
 from cinder import quota
 from cinder import utils

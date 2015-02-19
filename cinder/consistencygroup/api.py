@@ -21,13 +21,13 @@ Handles all requests relating to consistency groups.
 import functools
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import timeutils
 
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 import cinder.policy
 from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi

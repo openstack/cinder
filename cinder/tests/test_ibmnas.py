@@ -23,11 +23,11 @@ NAS based IBM GPFS Storage Systems).
 
 import mock
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import ibmnas
