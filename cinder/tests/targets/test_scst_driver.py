@@ -188,6 +188,9 @@ class TestSCSTAdmDriver(test.TestCase):
             return '10.9.8.7:3260,1 iqn.2010-10.org.openstack:' \
                    'volume-ed2c2222-5fc0-11e4-aa15-123b93f75cba 1'
 
+        def _fake_get_target_chap_auth(*args, **kwargs):
+            return ('QZJbisGmn9AL954FNF4D', 'P68eE7u9eFqDGexd28DQ')
+
         self.stubs.Set(self.target,
                        '_get_target_and_lun',
                        _fake_get_target_and_lun)
@@ -200,7 +203,7 @@ class TestSCSTAdmDriver(test.TestCase):
                        _fake_iscsi_location)
         self.stubs.Set(self.target,
                        '_get_target_chap_auth',
-                       lambda x: None)
+                       _fake_get_target_chap_auth)
         self.stubs.Set(self.target,
                        'target_driver',
                        'iscsi')
@@ -225,13 +228,68 @@ class TestSCSTAdmDriver(test.TestCase):
                                                    self.testvol_1,
                                                    self.fake_volumes_dir))
 
-    def test_ensure_export(self):
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(scst.SCSTAdm, '_get_target')
+    @mock.patch.object(scst.SCSTAdm, 'scst_execute')
+    def test_ensure_export(self, mock_execute,
+                           mock_get_target,
+                           mock_scst_execute):
+        mock_execute.return_value = (None, None)
+        mock_scst_execute.return_value = (None, None)
+        mock_get_target.return_value = 1
         ctxt = context.get_admin_context()
+
+        def _fake_get_target_and_lun(*args, **kwargs):
+            return 0, 1
+
+        def _fake_get_target_chap_auth(*args, **kwargs):
+            return ('QZJbisGmn9AL954FNF4D', 'P68eE7u9eFqDGexd28DQ')
+
+        self.stubs.Set(self.target,
+                       '_get_target_chap_auth',
+                       _fake_get_target_chap_auth)
+        self.stubs.Set(self.target,
+                       '_get_target_and_lun',
+                       _fake_get_target_and_lun)
+
         with mock.patch.object(self.target, 'create_iscsi_target'):
             self.target.ensure_export(ctxt,
                                       self.testvol_1,
                                       self.fake_volumes_dir)
-
             self.target.create_iscsi_target.assert_called_once_with(
-                'iqn.2010-10.org.openstack:testvol', 'testvol',
-                1, 0, self.fake_volumes_dir)
+                'iqn.2010-10.org.openstack:testvol',
+                'ed2c2222-5fc0-11e4-aa15-123b93f75cba',
+                0, 1, self.fake_volumes_dir, _fake_get_target_chap_auth())
+
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(scst.SCSTAdm, '_get_target')
+    @mock.patch.object(scst.SCSTAdm, 'scst_execute')
+    def test_ensure_export_chap(self, mock_execute,
+                                mock_get_target,
+                                mock_scst_execute):
+        mock_execute.return_value = (None, None)
+        mock_scst_execute.return_value = (None, None)
+        mock_get_target.return_value = 1
+        ctxt = context.get_admin_context()
+
+        def _fake_get_target_and_lun(*args, **kwargs):
+            return 0, 1
+
+        def _fake_get_target_chap_auth(*args, **kwargs):
+            return None
+
+        self.stubs.Set(self.target,
+                       '_get_target_chap_auth',
+                       _fake_get_target_chap_auth)
+        self.stubs.Set(self.target,
+                       '_get_target_and_lun',
+                       _fake_get_target_and_lun)
+
+        with mock.patch.object(self.target, 'create_iscsi_target'):
+            self.target.ensure_export(ctxt,
+                                      self.testvol_1,
+                                      self.fake_volumes_dir)
+            self.target.create_iscsi_target.assert_called_once_with(
+                'iqn.2010-10.org.openstack:testvol',
+                'ed2c2222-5fc0-11e4-aa15-123b93f75cba',
+                0, 1, self.fake_volumes_dir, None)

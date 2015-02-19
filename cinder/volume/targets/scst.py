@@ -141,6 +141,24 @@ class SCSTAdm(iscsi.ISCSITarget):
                               "SCST target %s"), e)
                 raise exception.ISCSITargetHelperCommandFailed(
                     error_mesage="Failed to enable SCST Target.")
+            if chap_auth and self.target_name:
+                try:
+                    chap_string = self._iscsi_authentication('IncomingUser=',
+                                                             *chap_auth)
+                    (out, _err) = self.scst_execute('-noprompt',
+                                                    '-set_tgt_attr', name,
+                                                    '-driver',
+                                                    self.target_driver,
+                                                    '-attributes',
+                                                    chap_string)
+                    LOG.debug("StdOut from scstadmin set target attribute:"
+                              " %s.", out)
+                except putils.ProcessExecutionError:
+                    msg = _("Failed to set attribute 'Incoming user' for "
+                            "SCST target.")
+                    LOG.exception(msg)
+                    raise exception.ISCSITargetHelperCommandFailed(
+                        error_mesage=msg)
 
         if self.target_name:
             if self._get_group() is None:
@@ -224,12 +242,39 @@ class SCSTAdm(iscsi.ISCSITarget):
 
     def _get_target_chap_auth(self, context, iscsi_name):
         # FIXME(jdg): Need to implement abc method
-        pass
+
+        if self._get_target(iscsi_name) is None:
+            return None
+        (out, _err) = self.scst_execute('-list_tgt_attr', iscsi_name,
+                                        '-driver', self.target_driver)
+        first = "KEY"
+        last = "Dynamic attributes"
+        start = out.index(first) + len(first)
+        end = out.index(last, start)
+        out = out[start:end]
+        out = out.split("\n")[2]
+        if "IncomingUser" in out:
+            out = out.split(" ")
+            out = filter(lambda a: a != "", out)
+            return (out[1], out[2])
+        else:
+            return None
 
     def ensure_export(self, context, volume, volume_path):
-        iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
-                               volume['name'])
-        self.create_iscsi_target(iscsi_name, volume['name'], 1, 0, volume_path)
+        iscsi_target, lun = self._get_target_and_lun(context, volume)
+        if self.target_name is None:
+            iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
+                                   volume['name'])
+        else:
+            iscsi_name = self.target_name
+
+        if self.chap_username and self.chap_password:
+            chap_auth = (self.chap_username, self.chap_password)
+        else:
+            chap_auth = self._get_target_chap_auth(context, iscsi_name)
+
+        self.create_iscsi_target(iscsi_name, volume['id'], iscsi_target,
+                                 lun, volume_path, chap_auth)
 
     def create_export(self, context, volume, volume_path):
         """Creates an export for a logical volume."""
@@ -241,14 +286,12 @@ class SCSTAdm(iscsi.ISCSITarget):
             iscsi_name = self.target_name
 
         if self.chap_username and self.chap_password:
-            chap_username = self.chap_username
-            chap_password = self.chap_password
+            chap_auth = (self.chap_username, self.chap_password)
         else:
-            chap_username = vutils.generate_username()
-            chap_password = vutils.generate_password()
-
-        chap_auth = self._iscsi_authentication('IncomingUser', chap_username,
-                                               chap_password)
+            chap_auth = self._get_target_chap_auth(context, iscsi_name)
+            if not chap_auth:
+                chap_auth = (vutils.generate_username(),
+                             vutils.generate_password())
         tid = self.create_iscsi_target(iscsi_name, volume['id'], iscsi_target,
                                        lun, volume_path, chap_auth)
 
@@ -257,7 +300,7 @@ class SCSTAdm(iscsi.ISCSITarget):
             self.configuration.iscsi_ip_address, tid, iscsi_name, lun)
         LOG.debug('Set provider_location to: %s', data['location'])
         data['auth'] = self._iscsi_authentication(
-            'CHAP', chap_username, chap_password)
+            'CHAP', *chap_auth)
         return data
 
     def remove_export(self, context, volume):
