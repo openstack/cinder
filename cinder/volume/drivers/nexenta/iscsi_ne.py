@@ -84,12 +84,17 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def check_for_setup_error(self):
         self.restapi.get(self.bucket_url)
 
-    def _get_provider_location(self, volume):
+    def _get_provider_location(self, volume, namemap):
+        number = 0
+        if namemap is None:
+            number = self._get_lun_from_name(volume['name'])
+        else:
+            number = namemap[volume['name']]
         return '%(host)s:%(port)s,1 %(name)s %(number)s' % {
             'host': self.restapi_host,
             'port': self.configuration.nexenta_iscsi_target_portal_port,
             'name': self.configuration.nexenta_target_prefix,
-            'number': self._get_lun_from_name(volume['name'])
+            'number': number
         }
 
     def _get_bucket_name_map(self):
@@ -169,7 +174,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             LOG.error(_('Error while creating volume: %s'), str(e))
             raise
 
-        return {'provider_location': self._get_provider_location(volume)}
+        return {'provider_location': self._get_provider_location(volume,
+                namemap)}
 
     def delete_volume(self, volume):
         namemap = self._get_bucket_name_map()
@@ -272,7 +278,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             raise
 
     def create_export(self, context, volume):
-        return {'provider_location': self._get_provider_location(volume)}
+        return {'provider_location': self._get_provider_location(volume, None)}
 
     def ensure_export(self, context, volume):
         pass
