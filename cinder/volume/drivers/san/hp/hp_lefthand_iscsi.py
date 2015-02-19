@@ -128,7 +128,7 @@ class HPLeftHandISCSIDriver(VolumeDriver):
         """Unassign the volume from the host."""
         self.proxy.terminate_connection(volume, connector)
 
-    def get_volume_stats(self, refresh):
+    def get_volume_stats(self, refresh=False):
         data = self.proxy.get_volume_stats(refresh)
         data['driver_version'] = self.VERSION
         return data

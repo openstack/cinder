@@ -415,7 +415,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         cliq_args['serverName'] = connector['host']
         self._cliq_run_xml("unassignVolumeToServer", cliq_args)
 
-    def get_volume_stats(self, refresh):
+    def get_volume_stats(self, refresh=False):
         if refresh:
             self._update_backend_status()
 

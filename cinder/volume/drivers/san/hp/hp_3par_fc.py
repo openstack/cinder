@@ -105,7 +105,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                           'san_ip', 'san_login', 'san_password']
         common.check_flags(self.configuration, required_flags)
 
-    def get_volume_stats(self, refresh):
+    def get_volume_stats(self, refresh=False):
         common = self._login()
         try:
             stats = common.get_volume_stats(refresh)

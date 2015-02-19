@@ -109,7 +109,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                           'san_password']
         common.check_flags(self.configuration, required_flags)
 
-    def get_volume_stats(self, refresh):
+    def get_volume_stats(self, refresh=False):
         common = self._login()
         try:
             stats = common.get_volume_stats(refresh)
