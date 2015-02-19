@@ -80,6 +80,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.restapi = jsonrpc.NexentaEdgeResourceProxy(
             protocol, self.restapi_host, self.restapi_port, '/',
             self.restapi_user, self.restapi_password, auto=auto)
+        rsp = self.restapi.get('sysconfig/iscsi/status')
+        self.target_name = rsp['value'].split('\n', 1)[0].split(' ')[2]
 
     def check_for_setup_error(self):
         self.restapi.get(self.bucket_url)
@@ -93,7 +95,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return '%(host)s:%(port)s,1 %(name)s %(number)s' % {
             'host': self.restapi_host,
             'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': self.configuration.nexenta_target_prefix,
+            'name': self.target_name,
             'number': number
         }
 
@@ -301,7 +303,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 'bucket_path': self.bucket_path,
                 'target_discovered': True,
                 'target_lun': rsp['luns'][0]['number'],
-                'target_iqn': self.configuration.nexenta_target_prefix,
+                'target_iqn': self.target_name,
                 'target_portal': target_portal,
                 'volume_id': volume['id'],
                 'access_mode': 'rw'

@@ -91,7 +91,13 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
                        lambda *_, **__: self.restapi_mock)
         self.drv = iscsi_ne.NexentaEdgeISCSIDriver(
             configuration=self.configuration)
+        mockResponse = self.mox.CreateMockAnything()
+        setattr(mockResponse, '__getitem__', lambda s: 'Target 1: iqn...')
+        self.restapi_mock.get('sysconfig/iscsi/status'
+                              ).AndReturn(mockResponse)
+        self.mox.ReplayAll()
         self.drv.do_setup({})
+        self.mox.ResetAll()
 
     def test_setup_error(self):
         self.restapi_mock.get(self.BUCKET_URL).AndReturn({'response': 'OK'})
