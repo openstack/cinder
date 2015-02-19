@@ -21,14 +21,13 @@ import itertools
 import math
 import os
 import re
-import time
 
 from oslo_concurrency import processutils as putils
 from oslo_utils import excutils
 
 from cinder.brick import exception
 from cinder.brick import executor
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder import utils
 
@@ -266,7 +265,6 @@ class LVM(executor.Executor):
         elif vg_name is not None:
             cmd.append(vg_name)
 
-        lvs_start = time.time()
         try:
             (out, _err) = putils.execute(*cmd,
                                          root_helper=root_helper,
@@ -279,11 +277,6 @@ class LVM(executor.Executor):
                               "(vg_name=%(vg)s, lv_name=%(lv)s")
                     LOG.info(msg, {'vg': vg_name, 'lv': lv_name})
                     out = None
-
-        total_time = time.time() - lvs_start
-        if total_time > 60:
-            LOG.warning(_LW('Took %s seconds to get logical volume info.'),
-                        total_time)
 
         lv_list = []
         if out is not None:
@@ -374,15 +367,9 @@ class LVM(executor.Executor):
         if vg_name is not None:
             cmd.append(vg_name)
 
-        start_vgs = time.time()
         (out, _err) = putils.execute(*cmd,
                                      root_helper=root_helper,
                                      run_as_root=True)
-        total_time = time.time() - start_vgs
-        if total_time > 60:
-            LOG.warning(_LW('Took %s seconds to get '
-                            'volume groups.'), total_time)
-
         vg_list = []
         if out is not None:
             vgs = out.split()
