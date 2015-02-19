@@ -30,6 +30,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 
 from oslo_serialization import jsonutils
 
+
 class TestNexentaEdgeISCSIDriver(test.TestCase):
     CLUSTER = 'cluster1'
     TENANT = 'tenant1'
@@ -40,17 +41,15 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
     TEST_VOLUME1 = {
         'name': 'volume1',
         'size': 1,
-        'volume_name': 'volume1', #needed for cloning
-        'volume_size': 1, #needed for cloning
         'id': '1',
         'status': 'available'
     }
     TEST_VOLUME1_NEDGE = {
-        'objectPath' : BUCKET_PATH + '/1',
-        'volSizeMB' : TEST_VOLUME1['size'] * 1024,
-        'blockSize' : 4096,
-        'chunkSize' : 4096,
-        'number'    : 1
+        'objectPath': BUCKET_PATH + '/1',
+        'volSizeMB': TEST_VOLUME1['size'] * 1024,
+        'blockSize': 4096,
+        'chunkSize': 4096,
+        'number': 1
     }
     TEST_VOLUME2 = {
         'name': 'volume2',
@@ -59,11 +58,11 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         'status': 'in-use',
     }
     TEST_VOLUME2_NEDGE = {
-        'objectPath' : BUCKET_PATH + '/2',
-        'volSizeMB' : TEST_VOLUME2['size'] * 1024,
-        'blockSize' : 4096,
-        'chunkSize' : 4096,
-        'number'    : 2
+        'objectPath': BUCKET_PATH + '/2',
+        'volSizeMB': TEST_VOLUME2['size'] * 1024,
+        'blockSize': 4096,
+        'chunkSize': 4096,
+        'number': 2
     }
     TEST_SNAPSHOT = {
         'name': 'snapshot1',
@@ -90,11 +89,12 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
             setattr(self.restapi_mock, mod, self.mox.CreateMockAnything())
         self.stubs.Set(jsonrpc, 'NexentaEdgeResourceProxy',
                        lambda *_, **__: self.restapi_mock)
-        self.drv = iscsi_ne.NexentaEdgeISCSIDriver(configuration=self.configuration)
+        self.drv = iscsi_ne.NexentaEdgeISCSIDriver(
+            configuration=self.configuration)
         self.drv.do_setup({})
 
     def test_setup_error(self):
-        self.restapi_mock.get(self.BUCKET_URL).AndReturn({'response':'OK'})
+        self.restapi_mock.get(self.BUCKET_URL).AndReturn({'response': 'OK'})
         self.mox.ReplayAll()
         self.drv.check_for_setup_error()
 
@@ -102,19 +102,20 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.restapi_mock.get(self.BUCKET_URL).AndRaise(
             nexenta.NexentaException('MOCK SETUP FAILURE'))
         self.mox.ReplayAll()
-        self.assertRaises(nexenta.NexentaException, self.drv.check_for_setup_error)
+        self.assertRaises(nexenta.NexentaException,
+                          self.drv.check_for_setup_error)
 
     def test_create_volume(self):
         self.restapi_mock.get(self.BUCKET_URL).AndReturn({
             'bucketMetadata': {}
         })
         self.restapi_mock.post('iscsi', self.TEST_VOLUME1_NEDGE).AndReturn(
-           { 'response': 'MOCK VOLUME CREATE SUCCESS' })
+           {'response': 'CREATED'})
         namemap = {}
         namemap[self.TEST_VOLUME1['name']] = self.TEST_VOLUME1_NEDGE['number']
         self.restapi_mock.put(self.BUCKET_URL, {
-            'optionsObject': { 'X-Name-Map': jsonutils.dumps(namemap) }
-        }).AndReturn({'response':'OK'})
+            'optionsObject': {'X-Name-Map': jsonutils.dumps(namemap)}
+        }).AndReturn({'response': 'OK'})
         self.mox.ReplayAll()
         self.drv.create_volume(self.TEST_VOLUME1)
 
@@ -131,72 +132,88 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
     def test_create_volume_2(self):
         namemap = self._mock_name_map()
         self.restapi_mock.post('iscsi', self.TEST_VOLUME2_NEDGE).AndReturn(
-           { 'response': 'MOCK VOLUME CREATE SUCCESS' })
+           {'response': 'CREATED'})
         namemap[self.TEST_VOLUME2['name']] = self.TEST_VOLUME2_NEDGE['number']
         self.restapi_mock.put(self.BUCKET_URL, {
-            'optionsObject': { 'X-Name-Map': jsonutils.dumps(namemap) }
-        }).AndReturn({'response':'OK'})
+            'optionsObject': {'X-Name-Map': jsonutils.dumps(namemap)}
+        }).AndReturn({'response': 'OK'})
         self.mox.ReplayAll()
         self.drv.create_volume(self.TEST_VOLUME2)
 
     def test_delete_volume(self):
         namemap = self._mock_name_map()
-        self.restapi_mock.delete('iscsi/' + str(namemap[self.TEST_VOLUME1['name']]),
-            {'objectPath': self.TEST_VOLUME1_NEDGE['objectPath']}).AndReturn(
-            {'response': 'MOCK VOLUME DELETE SUCCESS'})
-        self.restapi_mock.put(self.BUCKET_URL, {'optionsObject':
-            {'X-Name-Map': jsonutils.dumps({})}}).AndReturn({'response':'OK'})
+        self.restapi_mock.delete(
+            'iscsi/' + str(namemap[self.TEST_VOLUME1['name']]),
+            {'objectPath': self.TEST_VOLUME1_NEDGE['objectPath']}
+        ).AndReturn({'response': 'DELETED'})
+        self.restapi_mock.put(
+            self.BUCKET_URL,
+            {'optionsObject': {'X-Name-Map': jsonutils.dumps({})}}
+        ).AndReturn({'response': 'OK'})
         self.mox.ReplayAll()
         self.drv.delete_volume(self.TEST_VOLUME1)
 
     def test_extend_volume(self):
         namemap = self._mock_name_map()
-        self.restapi_mock.post('iscsi/' + str(namemap[self.TEST_VOLUME1['name']]) + \
+        self.restapi_mock.post(
+            'iscsi/' + str(namemap[self.TEST_VOLUME1['name']]) +
             '/resize', {'objectPath': self.TEST_VOLUME1_NEDGE['objectPath'],
-            'newSizeMB': 2048}).AndReturn({'response':'OK'})
+                        'newSizeMB': 2048}
+        ).AndReturn({'response': 'OK'})
         self.mox.ReplayAll()
         self.drv.extend_volume(self.TEST_VOLUME1, 2)
 
     def test_create_snapshot(self):
         namemap = self._mock_name_map()
-        self.restapi_mock.post(self.BUCKET_URL + '/snapviews/' + \
+        self.restapi_mock.post(
+            self.BUCKET_URL + '/snapviews/' +
             str(namemap[self.TEST_VOLUME1['name']]) + '.snapview', {
-            'ss_bucket': self.BUCKET, 'ss_object': str(namemap[self.TEST_VOLUME1['name']]),
-            'ss_name': self.TEST_SNAPSHOT['name']}).AndReturn({'response':'OK'})
+                'ss_bucket': self.BUCKET,
+                'ss_object': str(namemap[self.TEST_VOLUME1['name']]),
+                'ss_name': self.TEST_SNAPSHOT['name']}
+        ).AndReturn({'response': 'OK'})
         self.mox.ReplayAll()
         self.drv.create_snapshot(self.TEST_SNAPSHOT)
 
     def test_delete_snapshot(self):
         namemap = self._mock_name_map()
-        self.restapi_mock.delete(self.BUCKET_URL + '/snapviews/' + \
-            str(namemap[self.TEST_VOLUME1['name']]) + '.snapview/snapshots/' + \
-            self.TEST_SNAPSHOT['name']).AndReturn({'response':'OK'})
+        self.restapi_mock.delete(
+            self.BUCKET_URL + '/snapviews/' +
+            str(namemap[self.TEST_VOLUME1['name']]) + '.snapview/snapshots/' +
+            self.TEST_SNAPSHOT['name']
+        ).AndReturn({'response': 'OK'})
         self.mox.ReplayAll()
         self.drv.delete_snapshot(self.TEST_SNAPSHOT)
 
     def test_create_volume_from_snapshot(self):
         namemap = self._mock_name_map()
-        self.restapi_mock.post(self.BUCKET_URL + '/snapviews/' + \
-            str(namemap[self.TEST_VOLUME1['name']]) + '.snapview/snapshots/' + \
-            self.TEST_SNAPSHOT['name'], { 'ss_tenant': self.TENANT,
-            'ss_bucket': self.BUCKET, 'ss_object': '2' #should be allocated to 2
-            }).AndReturn({'response':'OK'})
-        self.restapi_mock.post('iscsi', self.TEST_VOLUME2_NEDGE).AndReturn(
-           { 'response': 'MOCK VOLUME CLONE SUCCESS' })
+        self.restapi_mock.post(
+            self.BUCKET_URL + '/snapviews/' +
+            str(namemap[self.TEST_VOLUME1['name']]) + '.snapview/snapshots/' +
+            self.TEST_SNAPSHOT['name'], {
+                'ss_tenant': self.TENANT,
+                'ss_bucket': self.BUCKET,
+                'ss_object': '2'  # should be allocated to 2
+            }).AndReturn({'response': 'OK'})
+        self.restapi_mock.post('iscsi', self.TEST_VOLUME2_NEDGE
+                               ).AndReturn({'response': 'CLONED'})
         namemap[self.TEST_VOLUME2['name']] = 2
         self.restapi_mock.put(self.BUCKET_URL, {
-            'optionsObject': { 'X-Name-Map': jsonutils.dumps(namemap) }
-        }).AndReturn({'response':'OK'})
+            'optionsObject': {'X-Name-Map': jsonutils.dumps(namemap)}
+        }).AndReturn({'response': 'OK'})
         self.mox.ReplayAll()
-        self.drv.create_volume_from_snapshot(self.TEST_VOLUME2, self.TEST_SNAPSHOT)
+        self.drv.create_volume_from_snapshot(self.TEST_VOLUME2,
+                                             self.TEST_SNAPSHOT)
 
     def test_create_cloned_volume(self):
         namemap = self._mock_name_map()
-        self.restapi_mock.post(self.BUCKET_PATH + '/objects/' + \
+        self.restapi_mock.post(
+            self.BUCKET_PATH + '/objects/' +
             str(namemap[self.TEST_VOLUME1['name']]), {
-            'tenant_name': self.TENANT, 'bucket_name': self.BUCKET,
-            'object_name': str(self.TEST_VOLUME2_NEDGE['number'])}).AndReturn(
-            {'response': 'OK'})
+                'tenant_name': self.TENANT,
+                'bucket_name': self.BUCKET,
+                'object_name': str(self.TEST_VOLUME2_NEDGE['number'])}
+        ).AndReturn({'response': 'OK'})
         self.restapi_mock.post('iscsi', self.TEST_VOLUME2_NEDGE).AndReturn(
             {'response': 'OK'})
         self.mox.ReplayAll()
@@ -206,11 +223,12 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         namemap = self._mock_name_map()
         self.mox.ReplayAll()
         result = self.drv.local_path(self.TEST_VOLUME1)
-        self.assertEqual(self.BUCKET_PATH + '/' + \
-            str(self.TEST_VOLUME1_NEDGE['number']), result)
+        self.assertEqual(self.BUCKET_PATH + '/' +
+                         str(self.TEST_VOLUME1_NEDGE['number']), result)
 
     def test_get_volume_stats(self):
         pass
+
 
 class TestNexentaEdgeResourceRPC(test.TestCase):
     HOST = 'example.com'
@@ -279,7 +297,7 @@ class TestNexentaEdgeResourceRPC(test.TestCase):
         self.resp_mock.read().AndReturn('{"code": 200, "message": "the error"')
         self.mox.ReplayAll()
         self.assertRaises(jsonrpc.NexentaJSONException,
-            self.proxy.get, 'resource')
+                          self.proxy.get, 'resource')
 
     def test_call_fail(self):
         urllib2.Request(
@@ -289,4 +307,4 @@ class TestNexentaEdgeResourceRPC(test.TestCase):
         self.proxy.auto = False
         self.mox.ReplayAll()
         self.assertRaises(jsonrpc.NexentaJSONException,
-            self.proxy.get, 'resource')
+                          self.proxy.get, 'resource')

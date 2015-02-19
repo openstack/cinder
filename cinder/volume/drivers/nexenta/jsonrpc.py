@@ -101,6 +101,7 @@ class NexentaJSONProxy(object):
             raise NexentaJSONException(response['error'].get('message', ''))
         return response.get('result')
 
+
 class NexentaEdgeResourceProxy(object):
 
     def __init__(self, protocol, host, port, path, user, password, auto=False,
@@ -116,15 +117,17 @@ class NexentaEdgeResourceProxy(object):
 
     @property
     def url(self):
-        return '%s://%s:%s%s' % (self.protocol, self.host, self.port, self.path)
+        return '%s://%s:%s%s' % (self.protocol,
+                                 self.host, self.port, self.path)
 
     def __getattr__(self, name):
         if not self.method:
             method = name
         else:
             raise Exception("Wrong resource call syntax")
-        return NexentaEdgeResourceProxy(self.protocol, self.host, self.port, self.path,
-                                self.user, self.password, self.auto, method)
+        return NexentaEdgeResourceProxy(
+            self.protocol, self.host, self.port, self.path,
+            self.user, self.password, self.auto, method)
 
     def __hash__(self):
         return self.url.__hash__()
@@ -164,7 +167,8 @@ class NexentaEdgeResourceProxy(object):
                 if not self.auto or self.protocol != 'http':
                     LOG.error(_('No headers in server response'))
                     raise NexentaJSONException(_('Bad response from server'))
-                LOG.info(_('Auto switching to HTTPS connection to %s'), self.url)
+                LOG.info(
+                    _('Auto switching to HTTPS connection to %s'), self.url)
                 self.protocol = 'https'
                 request = urllib2.Request(self.url, data, headers)
                 if self.method == 'get':
@@ -183,13 +187,13 @@ class NexentaEdgeResourceProxy(object):
             response_data = e.read()
             rsp = jsonutils.loads(response_data)
         except urllib2.URLError, e:
-            rsp = { 'code' : str(e.reason), 'message' : str(e) }
+            rsp = {'code': str(e.reason), 'message': str(e)}
         except Exception, e:
-            rsp = { 'code' : 'UNKNOWN_ERROR',
-                "message" : (_("Received Unknown Error: %s"), str(e)) }
+            rsp = {'code': 'UNKNOWN_ERROR',
+                   "message": (_("Received Unknown Error: %s"), str(e))}
 
         LOG.debug('Got response: %s', rsp)
 
-        if rsp.has_key('code'):
+        if 'code' in rsp:
             raise NexentaJSONException(rsp['message'])
         return rsp['response']
