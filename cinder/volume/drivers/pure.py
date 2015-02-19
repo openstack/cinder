@@ -99,7 +99,7 @@ def _generate_purity_host_name(name):
 class PureISCSIDriver(san.SanISCSIDriver):
     """Performs volume management on Pure Storage FlashArray."""
 
-    VERSION = "2.0.3"
+    VERSION = "2.0.4"
 
     SUPPORTED_REST_API_VERSIONS = ['1.2', '1.3', '1.4']
 
@@ -382,18 +382,37 @@ class PureISCSIDriver(san.SanISCSIDriver):
     def _update_stats(self):
         """Set self._stats with relevant information."""
         info = self._array.get(space=True)
-        total = float(info["capacity"]) / units.Gi
-        free = float(info["capacity"] - info["total"]) / units.Gi
+        total_capacity = float(info["capacity"]) / units.Gi
+        used_space = float(info["total"]) / units.Gi
+        free_space = float(total_capacity - used_space)
+        provisioned_space = float(self._get_provisioned_space()) / units.Gi
+        # If array is empty we can not calculate a max oversubscription ratio.
+        # In this case we choose 20 as a default value for the ratio.  Once
+        # some volumes are actually created and some data is stored on the
+        # array a much more accurate number will be presented based on current
+        # usage.
+        if used_space == 0 or provisioned_space == 0:
+            thin_provisioning = 20
+        else:
+            thin_provisioning = provisioned_space / used_space
         data = {"volume_backend_name": self._backend_name,
                 "vendor_name": "Pure Storage",
                 "driver_version": self.VERSION,
                 "storage_protocol": "iSCSI",
-                "total_capacity_gb": total,
-                "free_capacity_gb": free,
+                "total_capacity_gb": total_capacity,
+                "free_capacity_gb": free_space,
                 "reserved_percentage": 0,
-                "consistencygroup_support": True
+                "consistencygroup_support": True,
+                "thin_provisioning_support": True,
+                "provisioned_capacity": provisioned_space,
+                "max_over_subscription_ratio": thin_provisioning
                 }
         self._stats = data
+
+    def _get_provisioned_space(self):
+        """Sum up provisioned size of all volumes on array"""
+        volumes = self._array.list_volumes(pending=True)
+        return sum(item["size"] for item in volumes)
 
     def extend_volume(self, volume, new_size):
         """Extend volume to new_size."""
