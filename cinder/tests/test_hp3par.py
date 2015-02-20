@@ -3579,6 +3579,9 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             {'active': True,
              'volumeName': self.VOLUME_3PAR_NAME,
              'lun': self.TARGET_LUN, 'type': 0}]
+        mock_client.getVLUN.return_value = {
+            'lun': self.TARGET_LUN,
+            'portPos': {'node': 8, 'slot': 1, 'cardPort': 1}}
         location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
                     {'volume_name': self.VOLUME_3PAR_NAME,
                      'lun_id': self.TARGET_LUN,
@@ -3599,6 +3602,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.getHost(self.FAKE_HOST),
+                mock.call.getVLUN(self.VOLUME_3PAR_NAME),
                 mock.call.createVLUN(
                     self.VOLUME_3PAR_NAME,
                     auto=True,

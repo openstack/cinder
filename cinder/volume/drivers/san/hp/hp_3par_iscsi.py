@@ -80,10 +80,12 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.11 - Added missing host name during attach fix #1398206
         2.0.12 - Removed usage of host name cache #1398914
         2.0.13 - Update LOG usage to fix translations.  bug #1384312
+        2.0.14 - Do not allow a different iSCSI IP (hp3par_iscsi_ips) to be
+                 used during live-migration.  bug #1423958
 
     """
 
-    VERSION = "2.0.13"
+    VERSION = "2.0.14"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -278,9 +280,26 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 common,
                 volume,
                 connector)
-            least_used_nsp = self._get_least_used_nsp_for_host(
-                common,
-                host['name'])
+
+            least_used_nsp = None
+            try:
+                vol_name = common._get_3par_vol_name(volume['id'])
+                existing_vlun = common.client.getVLUN(vol_name)
+
+                # We override the nsp here on purpose to force the
+                # volume to be exported out the same IP as it already is.
+                # This happens during nova live-migration, we want to
+                # disable the picking of a different IP that we export
+                # the volume to, or nova complains.
+                least_used_nsp = common.build_nsp(existing_vlun['portPos'])
+            except hpexceptions.HTTPNotFound:
+                # ignore this error, as we will create the vlun later
+                pass
+
+            if not least_used_nsp:
+                least_used_nsp = self._get_least_used_nsp_for_host(
+                    common,
+                    host['name'])
 
             # now that we have a host, create the VLUN
             vlun = common.create_vlun(volume, host, least_used_nsp)
