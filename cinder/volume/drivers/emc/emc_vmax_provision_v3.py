@@ -41,13 +41,15 @@ class EMCVMAXProvisionV3(object):
         self.utils = emc_vmax_utils.EMCVMAXUtils(prtcl)
 
     def delete_volume_from_pool(
-            self, conn, storageConfigservice, volumeInstanceName, volumeName):
+            self, conn, storageConfigservice, volumeInstanceName, volumeName,
+            extraSpecs):
         """Given the volume instance remove it from the pool.
 
         :param conn: connection the the ecom server
         :param storageConfigservice: volume created from job
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name (String)
+        :param extraSpecs: additional info
         :returns: rc -- return code
         """
         startTime = time.time()
@@ -63,7 +65,8 @@ class EMCVMAXProvisionV3(object):
             TheElements=theElements)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Delete Volume: %(volumeName)s. "
@@ -84,7 +87,7 @@ class EMCVMAXProvisionV3(object):
 
     def create_volume_from_sg(
             self, conn, storageConfigService, volumeName,
-            sgInstanceName, volumeSize):
+            sgInstanceName, volumeSize, extraSpecs):
         """Create the volume and associate it with a storage group.
 
         We use EMCCollections parameter to supply a Device Masking Group
@@ -96,6 +99,7 @@ class EMCVMAXProvisionV3(object):
         :param sgInstanceName: the storage group instance name
                                 associated with an SLO
         :param volumeSize: volume size (String)
+        :param extraSpecs: additional info
         :returns: volumeDict - the volume dict
         :returns: rc - return code
         """
@@ -113,7 +117,8 @@ class EMCVMAXProvisionV3(object):
                    'rc': rc})
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Create Volume: %(volumeName)s. "
@@ -173,7 +178,8 @@ class EMCVMAXProvisionV3(object):
 
     def create_element_replica(
             self, conn, repServiceInstanceName,
-            cloneName, syncType, sourceInstance, targetInstance=None):
+            cloneName, syncType, sourceInstance, extraSpecs,
+            targetInstance=None):
         """Make SMI-S call to create replica for source element.
 
         :param conn - the connection to the ecom server
@@ -181,6 +187,7 @@ class EMCVMAXProvisionV3(object):
         :param cloneName - clone volume name
         :param syncType - 7: snapshot, 8: clone
         :param sourceInstance - source volume instance
+        :param extraSpecs: additional info
         :param targetInstance - target volume instance
         :returns: rc - return code
         :returns: job - job object of the replica creation operation
@@ -212,7 +219,8 @@ class EMCVMAXProvisionV3(object):
                 TargetElement=targetInstance.path)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Create Cloned Volume: %(cloneName)s "
@@ -232,7 +240,7 @@ class EMCVMAXProvisionV3(object):
 
     def break_replication_relationship(
             self, conn, repServiceInstanceName, syncInstanceName,
-            operation, force=False):
+            operation, extraSpecs, force=False):
         """Deletes the relationship between the clone/snap and source volume.
 
         Makes an SMI-S call to break clone relationship between the clone
@@ -243,6 +251,7 @@ class EMCVMAXProvisionV3(object):
         :param syncInstanceName: instance name of the
                                  SE_StorageSynchronized_SV_SV object
         :param operation: operation code
+        :param extraSpecs: additional info
         :param force: force to break replication relationship if True
         :returns: rc - return code
         :returns: job - job object of the replica creation operation
@@ -252,10 +261,11 @@ class EMCVMAXProvisionV3(object):
                   {'sv': syncInstanceName, 'operation': operation})
 
         return self._modify_replica_synchronization(
-            conn, repServiceInstanceName, syncInstanceName, operation, force)
+            conn, repServiceInstanceName, syncInstanceName, operation,
+            extraSpecs, force)
 
     def create_storage_group_v3(self, conn, controllerConfigService,
-                                groupName, srp, slo, workload):
+                                groupName, srp, slo, workload, extraSpecs):
         """Create the volume in the specified pool.
 
         :param conn: the connection information to the ecom server
@@ -264,6 +274,7 @@ class EMCVMAXProvisionV3(object):
         :param srp: the SRP (String)
         :param slo: the SLO (String)
         :param workload: the workload (String)
+        :param extraSpecs: additional info
         :returns: storageGroupInstanceName - storage group instance name
 
         """
@@ -279,8 +290,8 @@ class EMCVMAXProvisionV3(object):
             EMCWorkload=workload)
 
         if rc != 0L:
-            rc, errordesc = rc, errordesc = self.utils.wait_for_job_complete(
-                conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 LOG.error(_LE(
                     "Error Create Group: %(groupName)s. "
@@ -345,7 +356,7 @@ class EMCVMAXProvisionV3(object):
 
     def _get_supported_size_range_for_SLO(
             self, conn, storageConfigService,
-            srpPoolInstanceName, storagePoolSettingInstanceName):
+            srpPoolInstanceName, storagePoolSettingInstanceName, extraSpecs):
         """Gets available performance capacity per SLO.
 
         :param conn: the connection information to the ecom server
@@ -353,6 +364,7 @@ class EMCVMAXProvisionV3(object):
         :param srpPoolInstanceName: the SRP storage pool instance
         :param storagePoolSettingInstanceName: the SLO type
                                 e.g Bronze
+        :param extraSpecs: additional info
         :returns: supportedSizeDict - the supported size dict
         """
         startTime = time.time()
@@ -365,7 +377,7 @@ class EMCVMAXProvisionV3(object):
 
         if rc != 0L:
             rc, errordesc = self.utils.wait_for_job_complete(
-                conn, supportedSizeDict)
+                conn, supportedSizeDict, extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Cannot get supported size range for %(sps)s "
@@ -385,7 +397,8 @@ class EMCVMAXProvisionV3(object):
         return supportedSizeDict
 
     def get_volume_range(
-            self, conn, storageConfigService, poolInstanceName, slo, workload):
+            self, conn, storageConfigService, poolInstanceName, slo, workload,
+            extraSpecs):
         """Get upper and lower range for volume for slo/workload combination.
 
         :param conn: the connection information to the ecom server
@@ -393,6 +406,7 @@ class EMCVMAXProvisionV3(object):
         :param poolInstanceName: the pool instance
         :param slo: slo string e.g Bronze
         :param workload: workload string e.g DSS
+        :param extraSpecs: additional info
         :returns: maximumVolumeSize - the maximum volume size supported
         :returns: minimumVolumeSize - the minimum volume size supported
         """
@@ -407,7 +421,7 @@ class EMCVMAXProvisionV3(object):
             if storagePoolCapabilityInstanceName:
                 supportedSizeDict = self._get_supported_size_range_for_SLO(
                     conn, storageConfigService, poolInstanceName,
-                    storagePoolSettingInstanceName)
+                    storagePoolSettingInstanceName, extraSpecs)
 
                 maximumVolumeSize = supportedSizeDict['MaximumVolumeSize']
                 minimumVolumeSize = supportedSizeDict['MinimumVolumeSize']
@@ -415,13 +429,14 @@ class EMCVMAXProvisionV3(object):
         return maximumVolumeSize, minimumVolumeSize
 
     def activate_snap_relationship(
-            self, conn, repServiceInstanceName, syncInstanceName):
+            self, conn, repServiceInstanceName, syncInstanceName, extraSpecs):
         """Activate snap relationship and start copy operation.
 
         :param conn: the connection to the ecom server
         :param repServiceInstanceName: instance name of the replication service
         :param syncInstanceName: instance name of the
                                  SE_StorageSynchronized_SV_SV object
+        :param extraSpecs: additional info
         :returns: rc - return code
         :returns: job - job object of the replica creation operation
         """
@@ -432,15 +447,17 @@ class EMCVMAXProvisionV3(object):
                   {'sv': syncInstanceName, 'operation': operation})
 
         return self._modify_replica_synchronization(
-            conn, repServiceInstanceName, syncInstanceName, operation)
+            conn, repServiceInstanceName, syncInstanceName, operation,
+            extraSpecs)
 
     def return_to_resource_pool(self, conn, repServiceInstanceName,
-                                syncInstanceName):
+                                syncInstanceName, extraSpecs):
         """Return the snap target resources back to the pool.
 
         :param conn: the connection to the ecom server
         :param repServiceInstanceName: instance name of the replication service
         :param syncInstanceName: instance name of the
+        :param extraSpecs: additional info
         :returns: rc - return code
         :returns: job - job object of the replica creation operation
         """
@@ -452,11 +469,12 @@ class EMCVMAXProvisionV3(object):
                   {'sv': syncInstanceName, 'operation': operation})
 
         return self._modify_replica_synchronization(
-            conn, repServiceInstanceName, syncInstanceName, operation)
+            conn, repServiceInstanceName, syncInstanceName, operation,
+            extraSpecs)
 
     def _modify_replica_synchronization(
             self, conn, repServiceInstanceName, syncInstanceName,
-            operation, force=False):
+            operation, extraSpecs, force=False):
         """Modify the relationship between the clone/snap and source volume.
 
         Helper function that makes an SMI-S call to break clone relationship
@@ -466,7 +484,8 @@ class EMCVMAXProvisionV3(object):
         :param repServiceInstanceName: instance name of the replication service
         :param syncInstanceName: instance name of the
                                  SE_StorageSynchronized_SV_SV object
-        :param operatoin: opeation code
+        :param operation: opeation code
+        :param extraSpecs: additional info
         :param force: force to modify replication synchronization if True
         :returns: rc - return code
         :returns: job - job object of the replica creation operation
@@ -484,7 +503,8 @@ class EMCVMAXProvisionV3(object):
                   {'sv': syncInstanceName, 'operation': operation, 'rc': rc})
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error modify replica synchronization: %(sv)s "
@@ -505,7 +525,8 @@ class EMCVMAXProvisionV3(object):
 
     def create_group_replica(
             self, conn, replicationService,
-            srcGroupInstanceName, tgtGroupInstanceName, relationName):
+            srcGroupInstanceName, tgtGroupInstanceName, relationName,
+            extraSpecs):
         """Make SMI-S call to create replica for source group.
 
         :param conn - the connection to the ecom server
@@ -513,6 +534,7 @@ class EMCVMAXProvisionV3(object):
         :param srcGroupInstanceName - source group instance name
         :param tgtGroupInstanceName - target group instance name
         :param relationName - replica relationship name
+        :param extraSpecs: additional info
         :returns: rc - return code
         :returns: job - job object of the replica creation operation
         """
@@ -537,7 +559,8 @@ class EMCVMAXProvisionV3(object):
             SyncType=self.utils.get_num(syncType, '16'))
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMsg = (_("Error CreateGroupReplica: "
                                   "source: %(source)s target: %(target)s. "

@@ -33,6 +33,8 @@ ISCSI = 'iscsi'
 FC = 'fc'
 
 EMC_ROOT = 'root/emc'
+FASTPOLICY = 'storagetype:fastpolicy'
+ISV3 = 'isV3'
 
 
 class EMCVMAXMasking(object):
@@ -49,7 +51,8 @@ class EMCVMAXMasking(object):
         self.provision = emc_vmax_provision.EMCVMAXProvision(prtcl)
         self.provisionv3 = emc_vmax_provision_v3.EMCVMAXProvisionV3(prtcl)
 
-    def get_or_create_masking_view_and_map_lun(self, conn, maskingViewDict):
+    def get_or_create_masking_view_and_map_lun(self, conn, maskingViewDict,
+                                               extraSpecs):
         """Get or Create a masking view and add a volume to the storage group.
 
         Given a masking view tuple either get or create a masking view and add
@@ -59,6 +62,7 @@ class EMCVMAXMasking(object):
 
         :param conn: the connection to  ecom
         :para maskingViewDict: the masking view tuple
+        :param extraSpecs: additional info
         :returns: dict rollbackDict
         """
         rollbackDict = {}
@@ -69,6 +73,7 @@ class EMCVMAXMasking(object):
         volumeName = maskingViewDict['volumeName']
         isV3 = maskingViewDict['isV3']
         isLiveMigration = maskingViewDict['isLiveMigration']
+        maskingViewDict['extraSpecs'] = extraSpecs
         defaultStorageGroupInstanceName = None
         fastPolicyName = None
         assocStorageGroupName = None
@@ -105,7 +110,8 @@ class EMCVMAXMasking(object):
                         self._get_and_remove_from_storage_group_v2(
                             conn, controllerConfigService,
                             volumeInstance.path,
-                            volumeName, fastPolicyName))
+                            volumeName, fastPolicyName,
+                            extraSpecs))
 
         # Validate new or existing masking view.
         # Return the storage group so we can add the volume to it.
@@ -132,6 +138,7 @@ class EMCVMAXMasking(object):
         rollbackDict['volumeName'] = volumeName
         rollbackDict['fastPolicyName'] = fastPolicyName
         rollbackDict['isV3'] = isV3
+        rollbackDict['extraSpecs'] = extraSpecs
 
         if errorMessage:
             # Rollback code if we cannot complete any of the steps above
@@ -440,7 +447,6 @@ class EMCVMAXMasking(object):
         controllerConfigService = maskingViewDict['controllerConfigService']
         sgGroupName = maskingViewDict['sgGroupName']
         volumeInstance = maskingViewDict['volumeInstance']
-        storageSystemName = maskingViewDict['storageSystemName']
         volumeName = maskingViewDict['volumeName']
         msg = None
         if self._is_volume_in_storage_group(
@@ -455,7 +461,7 @@ class EMCVMAXMasking(object):
             self.add_volume_to_storage_group(
                 conn, controllerConfigService,
                 storageGroupInstanceName, volumeInstance, volumeName,
-                sgGroupName, storageSystemName)
+                sgGroupName, maskingViewDict['extraSpecs'])
             if not self._is_volume_in_storage_group(
                     conn, storageGroupInstanceName,
                     volumeInstance):
@@ -476,13 +482,14 @@ class EMCVMAXMasking(object):
 
     def _get_and_remove_from_storage_group_v2(
             self, conn, controllerConfigService, volumeInstanceName,
-            volumeName, fastPolicyName):
+            volumeName, fastPolicyName, extraSpecs):
         """Get the storage group and remove volume from it.
 
         :param controllerConfigService - controller configuration service
         :param volumeInstanceName - volume instance name
         :param volumeName - volume name
         :param fastPolicyName - fast name
+        :param extraSpecs: additional info
         """
         defaultStorageGroupInstanceName = (
             self.fast.get_and_verify_default_storage_group(
@@ -500,7 +507,7 @@ class EMCVMAXMasking(object):
         retStorageGroupInstanceName = (
             self.remove_device_from_default_storage_group(
                 conn, controllerConfigService, volumeInstanceName,
-                volumeName, fastPolicyName))
+                volumeName, fastPolicyName, extraSpecs))
         if retStorageGroupInstanceName is None:
             exceptionMessage = (_(
                 "Failed to remove volume %(volumeName)s from default SG: "
@@ -532,7 +539,7 @@ class EMCVMAXMasking(object):
 
         self.provision.remove_device_from_storage_group(
             conn, controllerConfigService, storageGroupInstanceName,
-            volumeInstanceName, volumeName)
+            volumeInstanceName, volumeName, maskingViewDict['extraSpecs'])
 
         assocVolumeInstanceNames = self.get_devices_from_storage_group(
             conn, storageGroupInstanceName)
@@ -661,21 +668,22 @@ class EMCVMAXMasking(object):
             foundStorageGroupInstanceName = (
                 self.provisionv3.create_storage_group_v3(
                     conn, controllerConfigService, storageGroupName,
-                    pool, slo, workload))
+                    pool, slo, workload, maskingViewDict['extraSpecs']))
         else:
             fastPolicyName = maskingViewDict['fastPolicy']
             volumeInstance = maskingViewDict['volumeInstance']
             foundStorageGroupInstanceName = (
                 self.provision.create_and_get_storage_group(
                     conn, controllerConfigService, storageGroupName,
-                    volumeInstance.path))
+                    volumeInstance.path, maskingViewDict['extraSpecs']))
             if (fastPolicyName is not None and
                     defaultStorageGroupInstanceName is not None):
                 assocTierPolicyInstanceName = (
                     self.fast.add_storage_group_and_verify_tier_policy_assoc(
                         conn, controllerConfigService,
                         foundStorageGroupInstanceName,
-                        storageGroupName, fastPolicyName))
+                        storageGroupName, fastPolicyName,
+                        maskingViewDict['extraSpecs']))
                 if assocTierPolicyInstanceName is None:
                     LOG.error(_LE(
                         "Cannot add and verify tier policy association for "
@@ -1190,7 +1198,8 @@ class EMCVMAXMasking(object):
                             rollbackDict['controllerConfigService'],
                             rollbackDict['volumeInstance'],
                             rollbackDict['volumeName'],
-                            rollbackDict['fastPolicyName']))
+                            rollbackDict['fastPolicyName'],
+                            rollbackDict['extraSpecs']))
                     if assocDefaultStorageGroupName is None:
                         LOG.error(_LE(
                             "Failed to Roll back to re-add volume "
@@ -1218,7 +1227,8 @@ class EMCVMAXMasking(object):
                         rollbackDict['controllerConfigService'],
                         rollbackDict['volumeInstance'],
                         rollbackDict['fastPolicyName'],
-                        rollbackDict['volumeName'], False)
+                        rollbackDict['volumeName'], rollbackDict['extraSpecs'],
+                        False)
         except Exception as e:
             LOG.error(_LE("Exception: %s."), e)
             errorMessage = (_(
@@ -1487,7 +1497,7 @@ class EMCVMAXMasking(object):
 
     def add_volume_to_storage_group(
             self, conn, controllerConfigService, storageGroupInstanceName,
-            volumeInstance, volumeName, sgGroupName, storageSystemName=None):
+            volumeInstance, volumeName, sgGroupName, extraSpecs):
         """Add a volume to an existing storage group.
 
         :param conn: connection to ecom server
@@ -1496,14 +1506,13 @@ class EMCVMAXMasking(object):
         :param volumeInstance: the volume instance
         :param volumeName: the name of the volume (String)
         :param sgGroupName: the name of the storage group (String)
-        :param storageSystemName: the storage system name (Optional Parameter),
-                            if None plain operation assumed
+        :param extraSpecs: additional info
         :returns: int rc the return code of the job
         :returns: dict the job dict
         """
         self.provision.add_members_to_masking_group(
             conn, controllerConfigService, storageGroupInstanceName,
-            volumeInstance.path, volumeName)
+            volumeInstance.path, volumeName, extraSpecs)
 
         LOG.info(_LI(
             "Added volume: %(volumeName)s to existing storage group "
@@ -1513,7 +1522,7 @@ class EMCVMAXMasking(object):
 
     def remove_device_from_default_storage_group(
             self, conn, controllerConfigService, volumeInstanceName,
-            volumeName, fastPolicyName):
+            volumeName, fastPolicyName, extraSpecs):
         """Remove the volume from the default storage group.
 
         Remove the volume from the default storage group for the FAST
@@ -1524,6 +1533,7 @@ class EMCVMAXMasking(object):
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name (String)
         :param fastPolicyName: the fast policy name (String)
+        :param extraSpecs: additional info
         :returns: instance name defaultStorageGroupInstanceName
         """
         failedRet = None
@@ -1550,7 +1560,7 @@ class EMCVMAXMasking(object):
 
         self.provision.remove_device_from_storage_group(
             conn, controllerConfigService, defaultStorageGroupInstanceName,
-            volumeInstanceName, volumeName)
+            volumeInstanceName, volumeName, extraSpecs)
 
         assocVolumeInstanceNames = self.get_devices_from_storage_group(
             conn, defaultStorageGroupInstanceName)
@@ -1627,7 +1637,7 @@ class EMCVMAXMasking(object):
 
     def remove_and_reset_members(
             self, conn, controllerConfigService, volumeInstance,
-            fastPolicyName, volumeName, isV3, connector=None, noReset=None):
+            volumeName, extraSpecs, connector=None, noReset=None):
         """Part of unmap device or rollback.
 
         Removes volume from the Device Masking Group that belongs to a
@@ -1639,13 +1649,14 @@ class EMCVMAXMasking(object):
         :param conn: connection the the ecom server
         :param controllerConfigService: the controller configuration service
         :param volumeInstance: the volume Instance
-        :param fastPolicyName: the fast policy name (if it exists)
         :param volumeName: the volume name
-        :param isV3: is array v2 or v3
         :param connector: optional
         :param noReset: optional, if none, then reset
         :returns: maskingGroupInstanceName
         """
+        isV3 = extraSpecs[ISV3]
+        fastPolicyName = extraSpecs.get(FASTPOLICY, None)
+
         storageGroupInstanceName = None
         if connector is not None:
             storageGroupInstanceName = self._get_sg_associated_with_connector(
@@ -1691,11 +1702,11 @@ class EMCVMAXMasking(object):
                     isTieringPolicySupported,
                     tierPolicyServiceInstanceName,
                     storageSystemInstanceName['Name'],
-                    storageGroupInstanceName)
+                    storageGroupInstanceName, extraSpecs)
 
             self.provision.remove_device_from_storage_group(
                 conn, controllerConfigService, storageGroupInstanceName,
-                volumeInstance.path, volumeName)
+                volumeInstance.path, volumeName, extraSpecs)
 
             LOG.debug(
                 "Remove the last volume %(volumeName)s completed "
@@ -1708,12 +1719,13 @@ class EMCVMAXMasking(object):
                 if noReset is None:
                     self._return_volume_to_default_storage_group_v3(
                         conn, controllerConfigService, storageGroupName,
-                        volumeInstance, volumeName, storageSystemInstanceName)
+                        volumeInstance, volumeName, storageSystemInstanceName,
+                        extraSpecs)
             else:
                 if isTieringPolicySupported:
                     self._cleanup_tiering(
                         conn, controllerConfigService, fastPolicyName,
-                        volumeInstance, volumeName)
+                        volumeInstance, volumeName, extraSpecs)
         else:
             # Not the last volume so remove it from storage group in
             # the masking view.
@@ -1721,7 +1733,7 @@ class EMCVMAXMasking(object):
                       "%(numVol)d.", {'numVol': len(volumeInstanceNames)})
             self.provision.remove_device_from_storage_group(
                 conn, controllerConfigService, storageGroupInstanceName,
-                volumeInstance.path, volumeName)
+                volumeInstance.path, volumeName, extraSpecs)
 
             LOG.debug(
                 "RemoveMembers for volume %(volumeName)s completed "
@@ -1731,14 +1743,15 @@ class EMCVMAXMasking(object):
             if isV3:
                 self._return_volume_to_default_storage_group_v3(
                     conn, controllerConfigService, storageGroupName,
-                    volumeInstance, volumeName, storageSystemInstanceName)
+                    volumeInstance, volumeName, storageSystemInstanceName,
+                    extraSpecs)
             else:
                 # V2 if FAST POLICY enabled, move the volume to the default
                 # SG.
                 if fastPolicyName is not None and isTieringPolicySupported:
                     self._cleanup_tiering(
                         conn, controllerConfigService, fastPolicyName,
-                        volumeInstance, volumeName)
+                        volumeInstance, volumeName, extraSpecs)
 
             volumeInstanceNames = self.get_devices_from_storage_group(
                 conn, storageGroupInstanceName)
@@ -1816,7 +1829,7 @@ class EMCVMAXMasking(object):
     def _get_and_remove_rule_association(
             self, conn, fastPolicyName, isTieringPolicySupported,
             tierPolicyServiceInstanceName, storageSystemName,
-            storageGroupInstanceName):
+            storageGroupInstanceName, extraSpecs):
         """Remove the storage group from the policy rule.
 
         :param conn: the ecom connection
@@ -1824,6 +1837,7 @@ class EMCVMAXMasking(object):
         :param tierPolicyServiceInstanceName: the tier policy instance name
         :param storageSystemName: storage system name
         :param storageGroupInstanceName: the storage group instance name
+        :param extraSpecs: additional info
         """
         # Disassociate storage group from FAST policy.
         if fastPolicyName is not None and isTieringPolicySupported is True:
@@ -1839,11 +1853,12 @@ class EMCVMAXMasking(object):
 
             self.fast.delete_storage_group_from_tier_policy_rule(
                 conn, tierPolicyServiceInstanceName,
-                storageGroupInstanceName, tierPolicyInstanceName)
+                storageGroupInstanceName, tierPolicyInstanceName, extraSpecs)
 
     def _return_volume_to_default_storage_group_v3(
             self, conn, controllerConfigService, storageGroupName,
-            volumeInstance, volumeName, storageSystemInstanceName):
+            volumeInstance, volumeName, storageSystemInstanceName,
+            extraSpecs):
         """Return volume to the default storage group in v3.
 
         :param conn: the ecom connection
@@ -1852,6 +1867,7 @@ class EMCVMAXMasking(object):
         :param volumeInstance: volumeInstance
         :param volumeName: the volume name
         :param storageSystemInstanceName: the storage system instance name
+        :param extraSpecs: additional info
         """
         # First strip the shortHostname from the storage group name.
         defaultStorageGroupName, shorthostName = (
@@ -1886,7 +1902,7 @@ class EMCVMAXMasking(object):
 
     def _cleanup_tiering(
             self, conn, controllerConfigService, fastPolicyName,
-            volumeInstance, volumeName):
+            volumeInstance, volumeName, extraSpecs):
         """Clea nup tiering.
 
         :param conn: the ecom connection
@@ -1894,6 +1910,7 @@ class EMCVMAXMasking(object):
         :param fastPolicyName: the fast policy name
         :param volumeInstance: volume instance
         :param volumeName: the volume name
+        :param extraSpecs: additional info
         """
         defaultStorageGroupInstanceName = (
             self.fast.get_policy_default_storage_group(
@@ -1906,7 +1923,7 @@ class EMCVMAXMasking(object):
         defaultStorageGroupInstanceName = (
             self.fast.add_volume_to_default_storage_group_for_fast_policy(
                 conn, controllerConfigService, volumeInstance, volumeName,
-                fastPolicyName))
+                fastPolicyName, extraSpecs))
         # Check default storage group number of volumes.
         volumeInstanceNames = self.get_devices_from_storage_group(
             conn, defaultStorageGroupInstanceName)

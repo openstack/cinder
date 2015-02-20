@@ -142,7 +142,7 @@ class EMCVMAXFast(object):
 
     def add_volume_to_default_storage_group_for_fast_policy(
             self, conn, controllerConfigService, volumeInstance,
-            volumeName, fastPolicyName):
+            volumeName, fastPolicyName, extraSpecs):
         """Add a volume to the default storage group for FAST policy.
 
         The storage group must pre-exist.  Once added to the storage group,
@@ -153,6 +153,7 @@ class EMCVMAXFast(object):
         :param volumeInstance: the volume instance
         :param volumeName: the volume name (String)
         :param fastPolicyName: the fast policy name (String)
+        :param extraSpecs: additional info
         :returns: assocStorageGroupInstanceName - the storage group
                                                   associated with the volume
         """
@@ -170,7 +171,7 @@ class EMCVMAXFast(object):
 
         self.provision.add_members_to_masking_group(
             conn, controllerConfigService, storageGroupInstanceName,
-            volumeInstance.path, volumeName)
+            volumeInstance.path, volumeName, extraSpecs)
         # Check to see if the volume is in the storage group.
         assocStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(conn,
@@ -179,7 +180,7 @@ class EMCVMAXFast(object):
 
     def _create_default_storage_group(self, conn, controllerConfigService,
                                       fastPolicyName, storageGroupName,
-                                      volumeInstance):
+                                      volumeInstance, extraSpecs):
         """Create a first volume for the storage group.
 
         This is necessary because you cannot remove a volume if it is the
@@ -191,12 +192,13 @@ class EMCVMAXFast(object):
         :param fastPolicyName: the fast policy name (String)
         :param storageGroupName: the storage group name (String)
         :param volumeInstance: the volume instance
+        :param extraSpecs: additional info
         :returns: defaultstorageGroupInstanceName - instance name of the
                                                     default storage group
         """
         failedRet = None
         firstVolumeInstance = self._create_volume_for_default_volume_group(
-            conn, controllerConfigService, volumeInstance.path)
+            conn, controllerConfigService, volumeInstance.path, extraSpecs)
         if firstVolumeInstance is None:
             LOG.error(_LE(
                 "Failed to create a first volume for storage "
@@ -207,7 +209,7 @@ class EMCVMAXFast(object):
         defaultStorageGroupInstanceName = (
             self.provision.create_and_get_storage_group(
                 conn, controllerConfigService, storageGroupName,
-                firstVolumeInstance.path))
+                firstVolumeInstance.path, extraSpecs))
         if defaultStorageGroupInstanceName is None:
             LOG.error(_LE(
                 "Failed to create default storage group for "
@@ -234,12 +236,13 @@ class EMCVMAXFast(object):
         self.add_storage_group_to_tier_policy_rule(
             conn, tierPolicyServiceInstanceName,
             defaultStorageGroupInstanceName, tierPolicyRuleInstanceName,
-            storageGroupName, fastPolicyName)
+            storageGroupName, fastPolicyName, extraSpecs)
 
         return defaultStorageGroupInstanceName
 
     def _create_volume_for_default_volume_group(
-            self, conn, controllerConfigService, volumeInstanceName):
+            self, conn, controllerConfigService, volumeInstanceName,
+            extraSpecs):
         """Creates a volume for the default storage group for a fast policy.
 
         Creates a small first volume for the default storage group for a
@@ -249,6 +252,7 @@ class EMCVMAXFast(object):
         :param conn: the connection information to the ecom server
         :param controllerConfigService: the controller configuration service
         :param volumeInstanceName: the volume instance name
+        :param extraSpecs: additional info
         :returns: firstVolumeInstanceName - instance name of the first volume
                                             in the storage group
         """
@@ -270,7 +274,7 @@ class EMCVMAXFast(object):
         volumeDict, _ = (
             self.provision.create_volume_from_pool(
                 conn, storageConfigurationInstanceName, volumeName,
-                poolInstanceName, volumeSize))
+                poolInstanceName, volumeSize, extraSpecs))
         firstVolumeInstanceName = self.utils.find_volume_instance(
             conn, volumeDict, volumeName)
         return firstVolumeInstanceName
@@ -278,7 +282,7 @@ class EMCVMAXFast(object):
     def add_storage_group_to_tier_policy_rule(
             self, conn, tierPolicyServiceInstanceName,
             storageGroupInstanceName, tierPolicyRuleInstanceName,
-            storageGroupName, fastPolicyName):
+            storageGroupName, fastPolicyName, extraSpecs):
         """Add the storage group to the tier policy rule.
 
         :param conn: the connection information to the ecom server
@@ -287,6 +291,7 @@ class EMCVMAXFast(object):
         :param tierPolicyRuleInstanceName: tier policy instance name
         :param storageGroupName: the storage group name (String)
         :param fastPolicyName: the fast policy name (String)
+        :param extraSpecs: additional info
         """
         # 5 is ("Add InElements to Policy").
         modificationType = '5'
@@ -297,7 +302,8 @@ class EMCVMAXFast(object):
             Operation=self.utils.get_num(modificationType, '16'),
             InElements=[storageGroupInstanceName])
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error associating storage group : %(storageGroupName)s. "
@@ -463,7 +469,7 @@ class EMCVMAXFast(object):
 
     def add_storage_group_and_verify_tier_policy_assoc(
             self, conn, controllerConfigService, storageGroupInstanceName,
-            storageGroupName, fastPolicyName):
+            storageGroupName, fastPolicyName, extraSpecs):
         """Adds a storage group to a tier policy and verifies success.
 
         Add a storage group to a tier policy rule and verify that it was
@@ -474,6 +480,7 @@ class EMCVMAXFast(object):
         :param storageGroupInstanceName: the storage group instance name
         :param storageGroupName: the storage group name (String)
         :param fastPolicyName: the fast policy name (String)
+        :param extraSpecs: additional info
         :returns: assocTierPolicyInstanceName
         """
         failedRet = None
@@ -502,7 +509,7 @@ class EMCVMAXFast(object):
                 self.add_storage_group_to_tier_policy_rule(
                     conn, tierPolicyServiceInstanceName,
                     storageGroupInstanceName, tierPolicyRuleInstanceName,
-                    storageGroupName, fastPolicyName)
+                    storageGroupName, fastPolicyName, extraSpecs)
             except Exception as ex:
                 LOG.error(_LE("Exception: %s"), ex)
                 LOG.error(_LE(
@@ -547,7 +554,8 @@ class EMCVMAXFast(object):
 
     def delete_storage_group_from_tier_policy_rule(
             self, conn, tierPolicyServiceInstanceName,
-            storageGroupInstanceName, tierPolicyRuleInstanceName):
+            storageGroupInstanceName, tierPolicyRuleInstanceName,
+            extraSpecs):
         """Disassociate the storage group from its tier policy rule.
 
         :param conn: connection the ecom server
@@ -556,6 +564,7 @@ class EMCVMAXFast(object):
         :param storageGroupInstanceName: instance name of the storage group
         :param tierPolicyRuleInstanceName: instance name of the tier policy
                                            associated with the storage group
+        :param extraSpecs: additional information
         """
         modificationType = '6'
         LOG.debug("Invoking ModifyStorageTierPolicyRule %s.",
@@ -567,7 +576,8 @@ class EMCVMAXFast(object):
                 Operation=self.utils.get_num(modificationType, '16'),
                 InElements=[storageGroupInstanceName])
             if rc != 0L:
-                rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+                rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                                 extraSpecs)
                 if rc != 0L:
                     LOG.error(_LE("Error disassociating storage group from "
                               "policy: %s."), errordesc)
@@ -717,13 +727,14 @@ class EMCVMAXFast(object):
 
     def get_or_create_default_storage_group(
             self, conn, controllerConfigService, fastPolicyName,
-            volumeInstance):
+            volumeInstance, extraSpecs):
         """Create or get a default storage group for FAST policy.
 
         :param conn: the ecom connection
         :param controllerConfigService: the controller configuration service
         :param fastPolicyName: the fast policy name (String)
         :param volumeInstance: the volume instance
+        :param extraSpecs: additional info
         :returns: defaultStorageGroupInstanceName - the default storage group
                                                     instance name
         """
@@ -740,7 +751,8 @@ class EMCVMAXFast(object):
                                                    controllerConfigService,
                                                    fastPolicyName,
                                                    defaultSgGroupName,
-                                                   volumeInstance))
+                                                   volumeInstance,
+                                                   extraSpecs))
 
         return defaultStorageGroupInstanceName
 

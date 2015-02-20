@@ -1424,7 +1424,29 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         doc = Document()
         emc = doc.createElement("EMC")
         doc.appendChild(emc)
+        doc = self.add_array_info(doc, emc)
+        filename = 'cinder_emc_config_ISCSINoFAST.xml'
+        self.config_file_path = self.tempdir + '/' + filename
 
+        f = open(self.config_file_path, 'w')
+        doc.writexml(f)
+        f.close()
+
+    def create_fake_config_file_no_fast_with_add_ons(self):
+
+        doc = Document()
+        emc = doc.createElement("EMC")
+        doc.appendChild(emc)
+        doc = self.add_array_info(doc, emc)
+        doc = self.add_interval_and_retries(doc, emc)
+        filename = 'cinder_emc_config_ISCSINoFAST.xml'
+        self.config_file_path = self.tempdir + '/' + filename
+
+        f = open(self.config_file_path, 'w')
+        doc.writexml(f)
+        f.close()
+
+    def add_array_info(self, doc, emc):
         array = doc.createElement("Array")
         arraytext = doc.createTextNode("1234567891011")
         emc.appendChild(array)
@@ -1472,14 +1494,19 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         timeouttext = doc.createTextNode("0")
         emc.appendChild(timeout)
         timeout.appendChild(timeouttext)
+        return doc
 
-        filename = 'cinder_emc_config_ISCSINoFAST.xml'
+    def add_interval_and_retries(self, doc, emc):
+        interval = doc.createElement("Interval")
+        intervaltext = doc.createTextNode("5")
+        emc.appendChild(interval)
+        interval.appendChild(intervaltext)
 
-        self.config_file_path = self.tempdir + '/' + filename
-
-        f = open(self.config_file_path, 'w')
-        doc.writexml(f)
-        f.close()
+        retries = doc.createElement("Retries")
+        retriestext = doc.createTextNode("40")
+        emc.appendChild(retries)
+        retries.appendChild(retriestext)
+        return doc
 
     # fix for https://bugs.launchpad.net/cinder/+bug/1364232
     def create_fake_config_file_1364232(self):
@@ -1633,8 +1660,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     # Tests removal of last volume in a storage group V2
     def test_remove_and_reset_members(self):
-        fastPolicyName = 'gold'
-        isV3 = False
+        extraSpecs = {'volume_backend_name': 'GOLD_BE',
+                      'isV3': False}
         conn = self.fake_ecom_connection()
         controllerConfigService = (
             self.driver.utils.find_controller_configuration_service(
@@ -1642,7 +1669,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         volumeInstanceName = (
             conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
         volumeInstance = conn.GetInstance(volumeInstanceName)
-        volumeName = "last-Vol"
+        volumeName = "1416035-Vol"
         self.driver.common.masking.get_devices_from_storage_group = mock.Mock(
             return_value=['one_value'])
         self.driver.common.masking.utils.get_existing_instance = mock.Mock(
@@ -1650,7 +1677,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
         self.driver.common.masking.remove_and_reset_members(
             conn, controllerConfigService, volumeInstance,
-            fastPolicyName, volumeName, isV3)
+            volumeName, extraSpecs)
 
     # Bug 1393555 - masking view has been deleted by another process.
     def test_find_maskingview(self):
@@ -1930,6 +1957,31 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         bExists = os.path.exists(self.config_file_1364232)
         if bExists:
             os.remove(self.config_file_1364232)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSINoFAST'})
+    def test_intervals_and_retries(
+            self, _mock_volume_type, mock_storage_system):
+        save_config_path = self.config_file_path
+        self.create_fake_config_file_no_fast_with_add_ons()
+        self.driver.create_volume(self.data.test_volume_v2)
+        extraSpecs = self.driver.common.extraSpecs
+        self.assertEqual(40,
+                         self.driver.utils._get_max_job_retries(extraSpecs))
+        self.assertEqual(5,
+                         self.driver.utils._get_interval_in_secs(extraSpecs))
+
+        bExists = os.path.exists(self.config_file_path)
+        if bExists:
+            os.remove(self.config_file_path)
+
+        self.config_file_path = save_config_path
 
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
@@ -4587,7 +4639,8 @@ class EMCV3DriverTestCase(test.TestCase):
         provisionv3.create_group_replica.assert_called_once_with(
             self.conn, repServ,
             (None, EMCVMAXCommonData.test_CG),
-            (None, EMCVMAXCommonData.test_CG), '12de')
+            (None, EMCVMAXCommonData.test_CG), '12de',
+            EMCVMAXCommonData.extra_specs)
 
     @mock.patch.object(
         volume_types,
