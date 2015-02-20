@@ -53,7 +53,9 @@ def to_bytes(s):
 
 
 def get_default_ca_certs():
-    """Try to find out system path with ca certificates. This path is cached and
+    """Gets the default CA certificates if found, otherwise None.
+
+    Try to find out system path with ca certificates. This path is cached and
     returned. If no path is found out, None is returned.
     """
     if not hasattr(get_default_ca_certs, '_path'):

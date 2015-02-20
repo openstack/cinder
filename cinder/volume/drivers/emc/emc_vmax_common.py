@@ -174,8 +174,7 @@ class EMCVMAXCommon(object):
         EMCNumberOfMembers is what the user specifies.
 
         :param volume: volume Object
-        :returns: volumeInstance, the volume instance
-        :raises: VolumeBackendAPIException
+        :returns: dict -- volumeDict - the volume dictionary
         """
         volumeSize = int(self.utils.convert_gb_to_bits(volume['size']))
         volumeName = volume['id']
@@ -222,9 +221,10 @@ class EMCVMAXCommon(object):
 
         For VMAX, replace snapshot with clone.
 
-        :param volume - volume Object
-        :param snapshot - snapshot object
-        :returns: cloneVolumeDict - the cloned volume dictionary
+        :param volume: volume Object
+        :param snapshot: snapshot object
+        :returns: dict -- the cloned volume dictionary
+        :raises: VolumeBackendAPIException
         """
         LOG.debug("Entering create_volume_from_snapshot.")
         self.extraSpecs = self._initial_setup(volume)
@@ -252,9 +252,9 @@ class EMCVMAXCommon(object):
     def create_cloned_volume(self, cloneVolume, sourceVolume):
         """Creates a clone of the specified volume.
 
-        :param CloneVolume - clone volume Object
-        :param sourceVolume - volume object
-        :returns: cloneVolumeDict - the cloned volume dictionary
+        :param cloneVolume: clone volume Object
+        :param sourceVolume: volume object
+        :returns: cloneVolumeDict -- the cloned volume dictionary
         """
         return self._create_cloned_volume(cloneVolume, sourceVolume, False)
 
@@ -279,7 +279,7 @@ class EMCVMAXCommon(object):
 
         :param snapshot: snapshot object
         :param volume: volume Object to create snapshot from
-        :returns: cloneVolumeDict,the cloned volume dictionary
+        :returns: dict -- the cloned volume dictionary
         """
         return self._create_cloned_volume(snapshot, volume, True)
 
@@ -305,10 +305,10 @@ class EMCVMAXCommon(object):
         policy is in the extra specs and tiering is enabled on the array.
 
         :param controllerConfigService: instance name of
-                                  ControllerConfigurationService
-        :param volume: volume Object
-        :param extraSpecs: the volume extra specs
+            ControllerConfigurationService
+        :param volumeInstance: volume Object
         :param connector: the connector object
+        :returns: storageGroupInstanceName
         """
         volumeName = volumeInstance['ElementName']
         LOG.debug("Detaching volume %s.", volumeName)
@@ -372,7 +372,7 @@ class EMCVMAXCommon(object):
 
         :param volume: volume Object
         :param connector: the connector Object
-        :returns: deviceInfoDict, device information tuple
+        :returns: dict -- deviceInfoDict - device information dict
         :raises: VolumeBackendAPIException
         """
         self.extraSpecs = self._initial_setup(volume)
@@ -411,9 +411,9 @@ class EMCVMAXCommon(object):
 
         :params volume: the volume object
         :params connector: the connector object
-        :params extraSpecs: the volume extra specs
         :param isLiveMigration: boolean, can be None
-        :returns: deviceInfoDict
+        :returns: dict -- deviceInfoDict
+        :raises: VolumeBackendAPIException
         """
         volumeName = volume['name']
         maskingViewDict = self._populate_masking_dict(
@@ -453,8 +453,8 @@ class EMCVMAXCommon(object):
         live migration.
 
         :params connector: the connector object
-        :params deviceInfoDict: the device information
-        :returns: boolean True/False
+        :params deviceInfoDict: the device information dictionary
+        :returns: boolean -- True if the host is the same, False otherwise.
         """
         if 'host' in connector:
             currentHost = connector['host']
@@ -468,7 +468,7 @@ class EMCVMAXCommon(object):
         """Disallow connection from connector.
 
         :params volume: the volume Object
-        :params connectorL the connector Object
+        :params connector: the connector Object
         """
         self.extraSpecs = self._initial_setup(volume)
 
@@ -489,6 +489,7 @@ class EMCVMAXCommon(object):
 
         :params volume: the volume Object
         :params newSize: the new size to increase the volume to
+        :returns: dict -- modifiedVolumeDict - the extended volume Object
         :raises: VolumeBackendAPIException
         """
         originalVolumeSize = volume['size']
@@ -593,7 +594,9 @@ class EMCVMAXCommon(object):
         :param emcConfigFileName: the EMC configuration file
         :param arrayName: the array
         :param poolName: the pool
-        :returns: location_info, total_capacity_gb, free_capacity_gb
+        :returns: location_info
+        :returns: totalManagedSpaceGbs
+        :returns: remainingManagedSpaceGbs
         """
 
         totalManagedSpaceGbs, remainingManagedSpaceGbs = (
@@ -624,10 +627,10 @@ class EMCVMAXCommon(object):
         :param ctxt: context
         :param volume: the volume object including the volume_type_id
         :param new_type: the new volume type.
+        :param diff: Unused parameter.
         :param host: The host dict holding the relevant target(destination)
-               information
-        :returns: boolean True/False
-        :returns: list
+            information
+        :returns: boolean -- True if retype succeeded, Fasle if error
         """
 
         volumeName = volume['name']
@@ -660,10 +663,10 @@ class EMCVMAXCommon(object):
         :param ctxt: context
         :param volume: the volume object including the volume_type_id
         :param host: the host dict holding the relevant target(destination)
-               information
+            information
         :param new_type: None
-        :returns: boolean True/False
-        :returns: list
+        :returns: boolean -- Always returns True
+        :returns: dict -- Empty dict {}
         """
         LOG.warn(_LW("The VMAX plugin only supports Retype. "
                      "If a pool based migration is necessary "
@@ -684,8 +687,8 @@ class EMCVMAXCommon(object):
         :param targetFastPolicyName: the target FAST policy name, can be None
         :param sourceFastPolicyName: the source FAST policy name, can be None
         :param new_type: None
-        :returns:  boolean True/False
-        :returns:  empty list
+        :returns: boolean -- True/False
+        :returns: list -- empty list
         """
         volumeName = volume['name']
         storageSystemName = volumeInstance['SystemName']
@@ -753,9 +756,7 @@ class EMCVMAXCommon(object):
         :param storageSystemName: the storage system name
         :param sourceFastPolicyName: the source FAST policy name
         :param volumeName: the volume Name
-
-        :returns: boolean True/False
-        :returns: int, the return code from migrate operation
+        :param sourcePoolInstanceName: the instance name of the source pool
         """
 
         LOG.warn(_LW("_migrate_rollback on : %(volumeName)s."),
@@ -790,9 +791,6 @@ class EMCVMAXCommon(object):
         :param storageSystemName: the storage system name
         :param sourceFastPolicyName: the source FAST policy name
         :param volumeName: the volume Name
-
-        :returns: boolean True/False
-        :returns: int, the return code from migrate operation
         """
 
         LOG.warn(_LW("_migrate_cleanup on : %(volumeName)s."),
@@ -842,7 +840,7 @@ class EMCVMAXCommon(object):
         :param storageSystemName: the storage system name
         :param targetFastPolicyName: the target fast policy name
         :param volumeName: the volume name
-        :returns: boolean True/False
+        :returns: boolean -- True/False
         """
         falseRet = False
         LOG.info(_LI(
@@ -888,8 +886,8 @@ class EMCVMAXCommon(object):
         :param volumeInstance: the volume instance
         :param targetPoolName: the target poolName
         :param sourceFastPolicyName: the source FAST policy name, can be None
-        :returns: boolean True/False
-        :returns: int, the return code from migrate operation
+        :returns: boolean -- True/False
+        :returns: int -- the return code from migrate operation
         """
         falseRet = (False, -1)
         volumeName = volume['name']
@@ -968,9 +966,7 @@ class EMCVMAXCommon(object):
         :param storageSystemName: the storage system name
         :param sourceFastPolicyName: the source FAST policy name
         :param volumeName: the volume Name
-
-        :returns: boolean True/False
-        :returns: int, the return code from migrate operation
+        :raises: VolumeBackendAPIException
         """
         controllerConfigurationService = (
             self.utils.find_controller_configuration_service(
@@ -1011,9 +1007,6 @@ class EMCVMAXCommon(object):
         :param storageSystemName: the storage system name
         :param targetFastPolicyName: the target FAST policy name
         :param volumeName: the volume Name
-
-        :returns: boolean True/False
-        :returns: int, the return code from migrate operation
         """
         controllerConfigurationService = (
             self.utils.find_controller_configuration_service(
@@ -1039,14 +1032,13 @@ class EMCVMAXCommon(object):
         :param volumeInstanceName: the volume instance id
         :param host: the host object
         :param sourceArraySerialNumber: the array serial number of
-                                  the original volume
-        :param sourcePoolName: the pool name
-                                  the original volume
+            the original volume
+        :param sourcePoolName: the pool name of the original volume
         :param volumeName: the name of the volume to be migrated
         :param volumeStatus: the status of the volume e.g
-        :returns: boolean, True/False
-        :returns: string, targetSlo
-        :returns: string, targetWorkload
+        :returns: boolean -- True/False
+        :returns: string -- targetSlo
+        :returns: string -- targetWorkload
         """
         falseRet = (False, None, None)
         if 'location_info' not in host['capabilities']:
@@ -1119,12 +1111,12 @@ class EMCVMAXCommon(object):
         :param volumeInstanceName: the volume instance id
         :param host: the host object
         :param sourceArraySerialNumber: the array serial number of
-                                  the original volume
+            the original volume
         :param volumeName: the name of the volume to be migrated
         :param volumeStatus: the status of the volume e.g
-        :returns: boolean, True/False
-        :returns: string, targetPool
-        :returns: string, targetFastPolicy
+        :returns: boolean -- True/False
+        :returns: string -- targetPool
+        :returns: string -- targetFastPolicy
         """
         falseRet = (False, None, None)
         if 'location_info' not in host['capabilities']:
@@ -1184,8 +1176,9 @@ class EMCVMAXCommon(object):
         Based on the name of the config group, register the config file
 
         :param volume: the volume object including the volume_type_id
-        :returns: tuple the extra specs tuple
-        :returns: string configuration file
+        :param volumeTypeId: Optional override of volume['volume_type_id']
+        :returns: dict -- the extra specs dict
+        :returns: string -- configuration file
         """
         extraSpecs = self.utils.get_volumetype_extraspecs(volume, volumeTypeId)
         configGroup = None
@@ -1202,7 +1195,8 @@ class EMCVMAXCommon(object):
     def _get_ecom_connection(self):
         """Get the ecom connection.
 
-        :returns: conn,the ecom connection
+        :returns: pywbem.WBEMConnection -- conn, the ecom connection
+        :raises: VolumeBackendAPIException
         """
 
         if self.ecomUseSSL:
@@ -1254,7 +1248,9 @@ class EMCVMAXCommon(object):
         :param arrayStr: the array Serial number (String)
         :param poolNameInStr: the name of the poolname (String)
         :param isv3: True/False
-        :returns: foundPoolInstanceName, the CIM Instance Name of the Pool
+        :returns: foundPoolInstanceName - the CIM Instance Name of the Pool
+        :returns: string -- systemNameStr
+        :raises: VolumeBackendAPIException
         """
         foundPoolInstanceName = None
         systemNameStr = None
@@ -1292,7 +1288,6 @@ class EMCVMAXCommon(object):
     def _find_lun(self, volume):
         """Given the volume get the instance from it.
 
-        :param conn: connection the the ecom server
         :param volume: volume object
         :returns: foundVolumeinstance
         """
@@ -1330,8 +1325,9 @@ class EMCVMAXCommon(object):
 
         :param snapshot: snapshot object
         :param volume: volume object
-        :returns: foundsyncname (String)
-        :returns: storage_system (String)
+        :param waitforsync: boolean -- Wait for Solutions Enabler sync.
+        :returns: string -- foundsyncname
+        :returns: string -- storage_system
         """
         snapshotname = snapshot['name']
         volumename = volume['name']
@@ -1392,8 +1388,7 @@ class EMCVMAXCommon(object):
         for a volume.
 
         :param volume: the volume dict
-        :returns: data, the data dict
-
+        :returns: dict -- the data dict
         """
         foundNumDeviceNumber = None
         foundMaskingViewName = None
@@ -1446,7 +1441,8 @@ class EMCVMAXCommon(object):
 
         :param storageSystem: the storage system name
         :param connector: the connector dict
-        :returns: targetWwns, the target WWN list
+        :returns: list -- targetWwns, the target WWN list
+        :raises: VolumeBackendAPIException
         """
         targetWwns = []
 
@@ -1505,8 +1501,8 @@ class EMCVMAXCommon(object):
 
         :param connector: the connector dict
         :param hardwareIdManagementService: the storage Hardware
-                                            management service
-        :returns: foundInstances, the list of storage hardware ID instances
+            management service
+        :returns: list -- the list of storage hardware ID instances
         """
         foundHardwareIdList = []
         wwpns = self._find_initiator_names(connector)
@@ -1539,7 +1535,7 @@ class EMCVMAXCommon(object):
         """Given the config group name register the file.
 
         :param configGroupName: the config group name
-        :returns: string configurationFile
+        :returns: string -- configurationFile - name of the configuration file
         """
         if configGroupName is None:
             self._set_ecom_credentials(CINDER_EMC_CONFIG_FILE)
@@ -1599,8 +1595,9 @@ class EMCVMAXCommon(object):
         the composite volume should be concatenated or striped.
 
         :param volume: the volume Object
-        :returns: tuple extra spec tuple
-        :returns: string the configuration file
+        :param volumeTypeId: Optional override of volume['volume_type_id']
+        :returns: dict -- extra spec dict
+        :raises: VolumeBackendAPIException
         """
         try:
             self.extraSpecs, configurationFile = (
@@ -1642,7 +1639,8 @@ class EMCVMAXCommon(object):
         """Given the extra specs get the pool and storage system name.
 
         :returns: poolInstanceName The pool instance name
-        :returns: String  the storage system name
+        :returns: string -- the storage system name
+        :raises: VolumeBackendAPIException
         """
 
         try:
@@ -1668,8 +1666,7 @@ class EMCVMAXCommon(object):
 
         :param volume: the volume object
         :param connector: the connector object
-        :param extraSpecs: the extra spec tuple
-        :returns: tuple maskingViewDict a tuple with masking view information
+        :returns: dict -- a dictionary with masking view information
         """
         maskingViewDict = {}
         hostName = connector['host']
@@ -1735,7 +1732,8 @@ class EMCVMAXCommon(object):
         :param storageConfigService: the storage configuration service
         :param storageSystemName: the storage system name (String)
         :param fastPolicyName: the fast policy name (String)
-        :returns: tuple maskingViewDict with masking view information
+        :returns: dict -- maskingViewDict with masking view information
+        :raises: VolumeBackendAPIException
         """
         try:
             volumeInstance = self.utils.find_volume_instance(
@@ -1813,7 +1811,7 @@ class EMCVMAXCommon(object):
         :params poolInstanceName: the pool instance name
         :params volumeName: the volume name
         :params volumeSize: the size to create the volume
-        :returns: volumeInstance the volume instance
+        :returns: volumeInstance -- the volume instance
         """
         volumeDict, _ = (
             self.provision.create_volume_from_pool(
@@ -1833,7 +1831,7 @@ class EMCVMAXCommon(object):
         :param poolInstanceName: the pool instance name
         :param volumeInstanceName: the volume instance name
         :param volumeName: string the volumeName
-        :returns: unboundVolumeInstance the unbound volume instance
+        :returns: unboundVolumeInstance -- the unbound volume instance
         """
 
         _, job = (
@@ -1853,14 +1851,13 @@ class EMCVMAXCommon(object):
 
         :param conn: the connection information to the ecom server
         :param elementCompositionServiceInstanceName: the storage element
-                                                      composition service
-                                                      instance name
-        :param volumeInstanceName: the volume instance name
+            composition service instance name
+        :param volumeInstance: the volume instance
         :param appendVolumeInstanceName: the appended volume instance name
         :param volumeName: the volume name
         :param compositeType: concatenated
-        :returns: int rc the return code
-        :returns: modifiedVolumeDict the modified volume Dict
+        :returns: int -- the return code
+        :returns: dict -- modifiedVolumeDict - the modified volume dict
         """
         isComposite = self.utils.check_if_volume_is_composite(
             self.conn, volumeInstance)
@@ -1915,7 +1912,8 @@ class EMCVMAXCommon(object):
 
         :param cloneVolume: clone volume
         :param sourceVolume: source of the clone volume
-        :returns: cloneDict the cloned volume dictionary
+        :param isSnapshot: boolean -- Defaults to False
+        :returns: dict -- cloneDict the cloned volume dictionary
         """
         self.extraSpecs = self._initial_setup(cloneVolume)
 
@@ -1977,6 +1975,7 @@ class EMCVMAXCommon(object):
         :param storageSystemName: the storage system name
         :param cloneDict: clone dictionary
         :param cloneName: clone name
+        :raises: VolumeBackendAPIException
         """
         # Check if the clone/snapshot volume already part of the default sg.
         cloneInstance = self.utils.find_volume_instance(
@@ -1984,7 +1983,7 @@ class EMCVMAXCommon(object):
         if self.fast.is_volume_in_default_SG(self.conn, cloneInstance.path):
             return
 
-        # FAST enabled place clone volume or volume from snapshot to
+        # If FAST enabled place clone volume or volume from snapshot to
         # default storage group.
         LOG.debug("Adding volume: %(cloneName)s to default storage group "
                   "for FAST policy: %(fastPolicyName)s.",
@@ -2016,7 +2015,7 @@ class EMCVMAXCommon(object):
         """Helper function to delete the specified volume.
 
         :param volume: volume object to be deleted
-        :returns: cloneDict the cloned volume dictionary
+        :returns: tuple -- rc (int return code), volumeName (string vol name)
         """
 
         volumeName = volume['name']
@@ -2155,7 +2154,8 @@ class EMCVMAXCommon(object):
 
         :param volume: volume object to be deleted
         :param connector: volume object to be deleted
-        :returns: int numVolumesMapped
+        :returns: int -- numVolumesMapped
+        :raises: VolumeBackendAPIException
         """
 
         volumename = volume['name']
@@ -2201,7 +2201,7 @@ class EMCVMAXCommon(object):
         """Helper function to delete the specified snapshot.
 
         :param snapshot: snapshot object to be deleted
-        :returns: None
+        :raises: VolumeBackendAPIException
         """
         LOG.debug("Entering delete_snapshot.")
 
@@ -2251,11 +2251,12 @@ class EMCVMAXCommon(object):
         self._delete_volume(snapshot)
 
     def create_consistencygroup(self, context, group):
-        """Creates a consistencygroup.
+        """Creates a consistency group.
 
-        :param context:
+        :param context: the context
         :param group: the group object to be created
-        :returns:
+        :returns: dict -- modelUpdate = {'status': 'available'}
+        :raises: VolumeBackendAPIException
         """
         LOG.info(_LI("Create Consistency Group: %(group)s."),
                  {'group': group['id']})
@@ -2291,9 +2292,12 @@ class EMCVMAXCommon(object):
     def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group.
 
-        :param context:
+        :param context: the context
         :param group: the group object to be deleted
-        :returns:
+        :param volumes: the list of volumes in the consisgroup to be deleted
+        :returns: dict -- modelUpdate
+        :returns: list -- list of volume objects
+        :raises: VolumeBackendAPIException
         """
         LOG.info(_LI("Delete Consistency Group: %(group)s."),
                  {'group': group['id']})
@@ -2356,9 +2360,10 @@ class EMCVMAXCommon(object):
         :param memberInstanceNames: volume Instance names
         :param storageConfigservice: storage config service
         :param volumes: volume objects
-        :param modelUpdate:
-        :param isV3: true/false
-        :returns: volumes, modelUpdate
+        :param modelUpdate: dict
+        :param isV3: boolean
+        :returns: list -- list of volume objects
+        :returns: dict -- modelUpdate
         """
         try:
             controllerConfigurationService = (
@@ -2387,10 +2392,12 @@ class EMCVMAXCommon(object):
     def create_cgsnapshot(self, context, cgsnapshot, db):
         """Creates a cgsnapshot.
 
-        :param context:
+        :param context: the context
         :param cgsnapshot: the consistency group snapshot to be created
         :param db: cinder database
-        :returns: modelUpdate, list of snapshots
+        :returns: dict -- modelUpdate
+        :returns: list -- list of snapshots
+        :raises: VolumeBackendAPIException
         """
         consistencyGroup = db.consistencygroup_get(
             context, cgsnapshot['consistencygroup_id'])
@@ -2521,10 +2528,12 @@ class EMCVMAXCommon(object):
     def delete_cgsnapshot(self, context, cgsnapshot, db):
         """Delete a cgsnapshot.
 
-        :param context:
+        :param context: the context
         :param cgsnapshot: the consistency group snapshot to be created
         :param db: cinder database
-        :returns: modelUpdate, list of snapshots
+        :returns: dict -- modelUpdate
+        :returns: list -- list of snapshots
+        :raises: VolumeBackendAPIException
         """
         consistencyGroup = db.consistencygroup_get(
             context, cgsnapshot['consistencygroup_id'])
@@ -2570,7 +2579,7 @@ class EMCVMAXCommon(object):
 
         :param replicationService: the replication service
         :param cgName: the consistency group name
-        :returns:
+        :returns: foundCgInstanceName
         """
         foundCgInstanceName = None
         cgInstanceNames = (
@@ -2589,7 +2598,7 @@ class EMCVMAXCommon(object):
         """Get the members of consistency group.
 
         :param cgInstanceName: the CG instance name
-        :returns:
+        :returns: list -- memberInstanceNames
         """
         memberInstanceNames = self.conn.AssociatorNames(
             cgInstanceName,
@@ -2602,10 +2611,12 @@ class EMCVMAXCommon(object):
         """Create a composite volume (V2).
 
         :param volume: the volume object
-        :param extraSpecs:
-        :param volumeName:
-        :param volumeSize:
-        :returns:
+        :param volumeName: the name of the volume
+        :param volumeSize: the size of the volume
+        :returns: int -- return code
+        :returns: dict -- volumeDict
+        :returns: string -- storageSystemName
+        :raises: VolumeBackendAPIException
         """
         memberCount, errorDesc = self.utils.determine_member_count(
             volume['size'], self.extraSpecs[MEMBERCOUNT],
@@ -2697,7 +2708,10 @@ class EMCVMAXCommon(object):
         :param volume: the volume object
         :param volumeName: the volume name
         :param volumeSize: the volume size
-        :returns:
+        :returns: int -- return code
+        :returns: dict -- volumeDict
+        :returns: string -- storageSystemName
+        :raises: VolumeBackendAPIException
         """
         isValidSLO, isValidWorkload = self.utils.verify_slo_workload(
             self.extraSpecs[SLO], self.extraSpecs[WORKLOAD])
@@ -2767,7 +2781,7 @@ class EMCVMAXCommon(object):
         :param slo: the SLO
         :param workload: the workload
         :param storageSystemName: storage system name
-        :returns:
+        :returns: sgInstanceName
         """
         storageGroupName = self.utils.get_v3_storage_group_name(
             poolName, slo, workload)
@@ -2790,8 +2804,10 @@ class EMCVMAXCommon(object):
         :param volumeInstance: the volume instance
         :param volumeName: the name of the volume
         :param newSize: in GBs
-        :param additionalVolumeSize:
-        :returns:
+        :param additionalVolumeSize: additional volume size
+        :returns: int -- return code
+        :returns: dict -- modifiedVolumeDict
+        :raises: VolumeBackendAPIException
         """
         # Is the volume extendable.
         isConcatenated = self.utils.check_if_volume_is_extendable(
@@ -2861,8 +2877,8 @@ class EMCVMAXCommon(object):
         :param host: the host object
         :param volumeName: the name of the volume
         :param volumeStatus: the volume status
-        :param newType:
-        :returns: boolean
+        :param newType: the type to migrate to
+        :returns: boolean -- True if migration succeeded, False if error.
         """
         volumeInstanceName = volumeInstance.path
         isValid, targetSlo, targetWorkload = (
@@ -2905,8 +2921,8 @@ class EMCVMAXCommon(object):
         :param targetSlo: the target SLO
         :param targetWorkload: the target workload
         :param storageSystemName: the storage system name
-        :param newType:
-        :returns: boolean
+        :param newType: the type to migrate to
+        :returns: boolean -- True if migration succeeded, False if error.
         """
         volumeName = volume['name']
 
@@ -2980,8 +2996,8 @@ class EMCVMAXCommon(object):
         :param volumeName: the name of the volume
         :param volumeStatus: the volume status
         :param fastPolicyName: the FAST policy Name
-        :param newType:
-        :returns: boolean
+        :param newType: the type to migrate to
+        :returns: boolean -- True if migration succeeded, False if error.
         """
         storageSystemName = volumeInstance['SystemName']
         isValid, targetPoolName, targetFastPolicyName = (
@@ -3014,7 +3030,8 @@ class EMCVMAXCommon(object):
 
         :param emcConfigFileName: the EMC configuration file
         :param backendName: the backend name
-        :param arrayName: the array Name
+        :param arrayName: the array name
+        :param poolName: the pool name
         :returns: location_info, total_capacity_gb, free_capacity_gb
         """
         # This value can be None.
@@ -3084,7 +3101,8 @@ class EMCVMAXCommon(object):
 
         :param configurationFile: the EMC configuration file
         :param arrayName: the array serial number
-        :returns: extraSpecs (out)
+        :returns: dict -- the extraSpecs
+        :raises: VolumeBackendAPIException
         """
         try:
             stripedMetaCount = self.extraSpecs[STRIPECOUNT]
@@ -3144,10 +3162,9 @@ class EMCVMAXCommon(object):
         values are NONE and the Optimized SLO will be assigned to the
         volume.
 
-        :param extraSpecs: the extraSpecs (input)
         :param configurationFile: the EMC configuration file
         :param arrayName: the array serial number
-        :returns: extraSpecs (out)
+        :returns: dict -- the extraSpecs
         """
         self.extraSpecs[SLO] = self.utils.parse_slo_from_file(
             configurationFile)
@@ -3173,8 +3190,7 @@ class EMCVMAXCommon(object):
         """Get user defined extra specs around job intervals and retries.
 
         :param configurationFile: the EMC configuration file
-        :param arrayName: the array serial number
-        :returns: extraSpecs (out)
+        :returns: dict -- extraSpecs
         """
         intervalInSecs = self.utils.parse_interval_from_file(
             configurationFile)
@@ -3201,7 +3217,8 @@ class EMCVMAXCommon(object):
         :param volumeName: the volume Name
         :param deviceId: the device ID of the volume
         :param fastPolicyName: the FAST policy name(if it exists)
-        :returns: rc
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
         """
         storageSystemName = volumeInstance['SystemName']
         controllerConfigurationService = (
@@ -3282,7 +3299,8 @@ class EMCVMAXCommon(object):
         :param volumeName: the volume Name
         :param deviceId: the device ID of the volume
         :param storageGroupName: the name of the default SG
-        :returns: rc
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
         """
         storageSystemName = volumeInstance['SystemName']
         controllerConfigurationService = (
@@ -3346,7 +3364,8 @@ class EMCVMAXCommon(object):
         :param sourceVolume: the source volume object
         :param sourceInstance: the device ID of the volume
         :param isSnapshot: check to see if it is a snapshot
-        :returns: rc
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
         """
         # Check if the source volume contains any meta devices.
         metaHeadInstanceName = self.utils.get_volume_meta_head(
@@ -3441,7 +3460,7 @@ class EMCVMAXCommon(object):
     def _create_v2_replica_and_delete_clone_relationship(
             self, repServiceInstanceName, cloneVolume, sourceVolume,
             sourceInstance, targetInstance, isSnapshot=False):
-        """Create clone and delete relationship (v2).
+        """Create a replica and delete the clone relationship.
 
         :param repServiceInstanceName: the replication service
         :param cloneVolume: the clone volume object
@@ -3449,7 +3468,8 @@ class EMCVMAXCommon(object):
         :param sourceInstance: the source volume instance
         :param targetInstance: the target volume instance
         :param isSnapshot: check to see if it is a snapshot
-        :returns: rc
+        :returns: int -- return code
+        :returns: dict -- cloneDict
         """
         sourceName = sourceVolume['name']
         cloneName = cloneVolume['name']
@@ -3494,7 +3514,7 @@ class EMCVMAXCommon(object):
         :param storageSystem: the storage system name
         :param volume: volume to be attached
         :param connector: the connector dict
-        :returns: targetWwns, the target WWN list
+        :returns: list -- the target WWN list
         """
         targetWwns = []
         mvInstanceName = self.get_masking_view_by_volume(volume, connector)
@@ -3508,6 +3528,11 @@ class EMCVMAXCommon(object):
         return targetWwns
 
     def get_port_group_from_masking_view(self, maskingViewInstanceName):
+        """Get the port groups in a masking view.
+
+        :param maskingViewInstanceName: masking view instance name
+        :returns: portGroupInstanceName
+        """
         return self.masking.get_port_group_from_masking_view(
             self.conn, maskingViewInstanceName)
 
@@ -3516,7 +3541,7 @@ class EMCVMAXCommon(object):
 
         :param volume: the volume
         :param connector: the connector object
-        :returns maskingviewInstanceName
+        :returns: maskingviewInstanceName
         """
         LOG.debug("Finding Masking View for volume %(volume)s.",
                   {'volume': volume})
@@ -3527,9 +3552,8 @@ class EMCVMAXCommon(object):
     def get_masking_views_by_port_group(self, portGroupInstanceName):
         """Given port group, retrieve the masking view instance name.
 
-        :param : the volume
-        :param mvInstanceName: masking view instance name
-        :returns: maksingViewInstanceNames
+        :param portGroupInstanceName: port group instance name
+        :returns: list -- maskingViewInstanceNames
         """
         LOG.debug("Finding Masking Views for port group %(pg)s.",
                   {'pg': portGroupInstanceName})
@@ -3539,15 +3563,18 @@ class EMCVMAXCommon(object):
     def _create_replica_v3(
             self, repServiceInstanceName, cloneVolume,
             sourceVolume, sourceInstance, isSnapshot):
-        """V3 specific function, create replica for source volume.
+        """Create a replica.
 
-        This includes clone and snapshot.
+        V3 specific function, create replica for source volume,
+        including clone and snapshot.
 
         :param repServiceInstanceName: the replication service
         :param cloneVolume: the clone volume object
+        :param sourceVolume: the source volume object
         :param sourceInstance: the device ID of the volume
-        :param isSnapshot: check to see if it is a snapshot
-        :returns: rc
+        :param isSnapshot: boolean -- check to see if it is a snapshot
+        :returns: int -- return code
+        :returns: dict -- cloneDict
         """
         cloneName = cloneVolume['name']
         syncType = self.utils.get_num(8, '16')  # Default syncType 8: clone.
@@ -3604,11 +3631,15 @@ class EMCVMAXCommon(object):
 
     def _delete_cg_and_members(
             self, storageSystem, cgName, modelUpdate, volumes):
-        """Helper function to delete a consistency group and its member volumes.
+        """Helper function to delete a consistencygroup and its member volumes.
 
         :param storageSystem: storage system
-        :param repServiceInstanceName: the replication service
-        :param cgInstanceName: consistency group instance name
+        :param cgName: consistency group name
+        :param modelUpdate: dict -- the model update dict
+        :param volumes: the list of member volumes
+        :returns: dict -- modelUpdate
+        :returns: list -- the updated list of member volumes
+        :raises: VolumeBackendAPIException
         """
         replicationService = self.utils.find_replication_service(
             self.conn, storageSystem)

@@ -61,9 +61,10 @@ class EMCVMAXMasking(object):
         the volume from any storage group (default or otherwise).
 
         :param conn: the connection to  ecom
-        :para maskingViewDict: the masking view tuple
+        :param maskingViewDict: the masking view dict
         :param extraSpecs: additional info
-        :returns: dict rollbackDict
+        :returns: dict -- rollbackDict
+        :raises: VolumeBackendAPIException
         """
         rollbackDict = {}
 
@@ -172,11 +173,12 @@ class EMCVMAXMasking(object):
                                defaultStorageGroupInstanceName):
         """Validate all the individual pieces of the masking view.
 
-        :param conn - the ecom connection
-        :param maskingViewDict - the masking view dictionary
-        :param defaultStorageGroupInstanceName - the default SG
-        :returns: maskingViewInstanceName, storageGroupInstanceName,
-                  errorMessage
+        :param conn: the ecom connection
+        :param maskingViewDict: the masking view dictionary
+        :param defaultStorageGroupInstanceName: the default SG
+        :returns: maskingViewInstanceName
+        :returns: storageGroupInstanceName,
+        :returns: string -- errorMessage
         """
         storageSystemName = maskingViewDict['storageSystemName']
         maskingViewName = maskingViewDict['maskingViewName']
@@ -199,11 +201,12 @@ class EMCVMAXMasking(object):
                                    defaultStorageGroupInstanceName):
         """Validate the creation of a new masking view.
 
-        :param conn - the ecom connection
-        :param maskingViewDict - the masking view dictionary
-        :param defaultStorageGroupInstanceName - the default SG
-        :returns: maskingViewInstanceName, storageGroupInstanceName,
-                  errorMessage
+        :param conn: the ecom connection
+        :param maskingViewDict: the masking view dictionary
+        :param defaultStorageGroupInstanceName: the default SG
+        :returns: maskingViewInstanceName
+        :returns: storageGroupInstanceName,
+        :returns: string -- errorMessage
         """
         controllerConfigService = maskingViewDict['controllerConfigService']
         igGroupName = maskingViewDict['igGroupName']
@@ -253,10 +256,11 @@ class EMCVMAXMasking(object):
                                         maskingViewInstanceName):
         """Validate the components of an existing masking view.
 
-        :param conn - the ecom connection
-        :param maskingViewDict - the masking view dictionary
-        :param maskingViewInstanceName - the masking view instance name
-        :returns: storageGroupInstanceName, errorMessage
+        :param conn: the ecom connection
+        :param maskingViewDict: the masking view dictionary
+        :param maskingViewInstanceName: the masking view instance name
+        :returns: storageGroupInstanceName
+        :returns: string -- errorMessage
         """
         storageGroupInstanceName = None
         controllerConfigService = maskingViewDict['controllerConfigService']
@@ -285,10 +289,11 @@ class EMCVMAXMasking(object):
                              maskingViewDict, storageGroupInstanceName):
         """Get the storage group and return it.
 
-        :param conn - the ecom connection
-        :param maskingViewDict - the masking view dictionary
-        :param defaultStorageGroupInstanceName - the default SG
-        :returns: storageGroupInstanceName, msg
+        :param conn: the ecom connection
+        :param maskingViewDict: the masking view dictionary
+        :param storageGroupInstanceName: default storage group instance name
+        :returns: storageGroupInstanceName
+        :returns: string -- msg, the error message
         """
         msg = None
         storageGroupInstanceName = (
@@ -309,12 +314,12 @@ class EMCVMAXMasking(object):
             sgGroupName, maskingViewInstanceName):
         """Check that we can get the existing storage group.
 
-        :param conn - the ecom connection
-        :param controllerConfigService - controller configuration service
-        :param sgGroupName - the storage group name
-        :param maskingViewInstanceName - the masking view instance name
-
-        :returns: storageGroupInstanceName, msg
+        :param conn: the ecom connection
+        :param controllerConfigService: controller configuration service
+        :param sgGroupName: the storage group name
+        :param maskingViewInstanceName: the masking view instance name
+        :returns: storageGroupInstanceName
+        :returns: string -- msg, the error message
         """
         msg = None
 
@@ -336,10 +341,11 @@ class EMCVMAXMasking(object):
                           controllerConfigService, pgGroupName):
         """Check that you can either get or create a port group.
 
-        :param conn - the ecom connection
-        :param controllerConfigService - controller configuration service
-        :param pgGroupName - the port group Name
-        :returns: portGroupInstanceName, msg
+        :param conn: the ecom connection
+        :param controllerConfigService: controller configuration service
+        :param pgGroupName: the port group Name
+        :returns: portGroupInstanceName
+        :returns: string -- msg, the error message
         """
         msg = None
         portGroupInstanceName = self._get_port_group_instance_name(
@@ -358,12 +364,13 @@ class EMCVMAXMasking(object):
             connector, storageSystemName):
         """Check that initiator group can be either retrieved or created.
 
-        :param conn - the ecom connection
-        :param controllerConfigService - controller configuration service
-        :param igGroupName - the initiator group Name
-        :param connector
-        :param storageSystemName - the storage system name
-        :returns: initiatorGroupInstanceName, msg
+        :param conn: the ecom connection
+        :param controllerConfigService: controller configuration service
+        :param igGroupName: the initiator group Name
+        :param connector: the connector object
+        :param storageSystemName: the storage system name
+        :returns: initiatorGroupInstanceName
+        :returns: string -- the error message
         """
         msg = None
         initiatorGroupInstanceName = (
@@ -388,12 +395,13 @@ class EMCVMAXMasking(object):
         Check if the initiators in the initiator group match those in the
         system.
 
-        :param controllerConfigService - controller configuration service
-        :param maskingViewName - the masking view name
-        :param connector - the connector object
-        :param storageSystemName - the storage system name
-        :param igGroupName - the initiator group name
-        :returns: maskingViewInstanceName, msg
+        :param conn: the ecom connection
+        :param controllerConfigService: controller configuration service
+        :param maskingViewName: the masking view name
+        :param connector: the connector object
+        :param storageSystemName: the storage system name
+        :param igGroupName: the initiator group name
+        :returns: string -- msg, the error message
         """
         msg = None
         if not self._verify_initiator_group_from_masking_view(
@@ -414,12 +422,14 @@ class EMCVMAXMasking(object):
             portGroupInstanceName, initiatorGroupInstanceName):
         """Check that masking view can be either got or created.
 
-        :param controllerConfigService - controller configuration service
-        :param maskingViewName - the masking view name
-        :param storageGroupInstanceName - storage group instance name
-        :param portGroupInstanceName - port group instance name
-        :param initiatorGroupInstanceName - the initiator group instance name
-        :returns: maskingViewInstanceName, msg
+        :param conn: the ecom connection
+        :param controllerConfigService: controller configuration service
+        :param maskingViewName: the masking view name
+        :param storageGroupInstanceName: storage group instance name
+        :param portGroupInstanceName: port group instance name
+        :param initiatorGroupInstanceName: the initiator group instance name
+        :returns: maskingViewInstanceName
+        :returns: string -- msg, the error message
         """
         msg = None
         maskingViewInstanceName = (
@@ -440,9 +450,10 @@ class EMCVMAXMasking(object):
             self, conn, maskingViewDict, storageGroupInstanceName):
         """Add the volume to the storage group and double check it is there.
 
-        :param conn - the ecom connection
-        :param maskingViewDict - the masking view dictionary
-        :returns: msg
+        :param conn: the ecom connection
+        :param maskingViewDict: the masking view dictionary
+        :param storageGroupInstanceName: storage group instance name
+        :returns: string -- the error message
         """
         controllerConfigService = maskingViewDict['controllerConfigService']
         sgGroupName = maskingViewDict['sgGroupName']
@@ -485,11 +496,14 @@ class EMCVMAXMasking(object):
             volumeName, fastPolicyName, extraSpecs):
         """Get the storage group and remove volume from it.
 
-        :param controllerConfigService - controller configuration service
-        :param volumeInstanceName - volume instance name
-        :param volumeName - volume name
-        :param fastPolicyName - fast name
+        :param conn: the ecom connection
+        :param controllerConfigService: controller configuration service
+        :param volumeInstanceName: volume instance name
+        :param volumeName: volume name
+        :param fastPolicyName: fast name
         :param extraSpecs: additional info
+        :returns: defaultStorageGroupInstanceName
+        :raises: VolumeBackendAPIException
         """
         defaultStorageGroupInstanceName = (
             self.fast.get_and_verify_default_storage_group(
@@ -523,10 +537,13 @@ class EMCVMAXMasking(object):
             volumeName, maskingViewDict, storageGroupInstanceName):
         """Get the storage group and remove volume from it.
 
-        :param controllerConfigService - controller configuration service
-        :param volumeInstanceName - volume instance name
-        :param volumeName - volume name
-        :param fastPolicyName - fast name
+        :param conn: the ecom connection
+        :param controllerConfigService: controller configuration service
+        :param volumeInstanceName: volume instance name
+        :param volumeName: volume name
+        :param maskingViewDict: the masking view dictionary
+        :param storageGroupInstanceName: storage group instance name
+        :raises: VolumeBackendAPIException
         """
 
         assocVolumeInstanceNames = self.get_devices_from_storage_group(
@@ -572,7 +589,7 @@ class EMCVMAXMasking(object):
         :param conn: the connection to  ecom
         :param storageGroupInstanceName: the storage group instance name
         :param volumeInstance: the volume instance
-        :returns: boolean True/False
+        :returns: boolean
         """
         foundStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(
@@ -603,7 +620,7 @@ class EMCVMAXMasking(object):
         :param conn: connection to the ecom server
         :param maskingViewName: the masking view name
         :param storageSystemName: the storage system name(String)
-        :returns: foundMaskingViewInstanceName masking view instance name
+        :returns: dict -- foundMaskingViewInstanceName
         """
         foundMaskingViewInstanceName = None
 
@@ -636,25 +653,21 @@ class EMCVMAXMasking(object):
         return foundMaskingViewInstanceName
 
     def _create_storage_group(
-            self, conn, maskingViewDict,
-            defaultStorageGroupInstanceName):
+            self, conn, maskingViewDict, defaultStorageGroupInstanceName):
         """Create a new storage group that doesn't already exist.
 
         If fastPolicyName is not none we attempt to remove it from the
         default storage group of that policy and associate to the new storage
         group that will be part of the masking view.
+        Will not handle any exception in this method it will be handled
+        up the stack.
 
         :param conn: connection the ecom server
-        :param controllerConfigService: the controller configuration service
-        :param storageGroupName: the proposed group name (String)
-        :param volumeInstance: useful information on the volume
-        :param fastPolicyName: the fast policy name (String) can be None
-        :param volumeName: the volume name (String)
-        :param storageSystemName: the storage system name (String)
+        :param maskingViewDict: the masking view dictionary
         :param defaultStorageGroupInstanceName: the default storage group
-                                          instance name (Can be None)
+            instance name (Can be None)
         :returns: foundStorageGroupInstanceName the instance Name of the
-                                                storage group
+            storage group
         """
         failedRet = None
         controllerConfigService = maskingViewDict['controllerConfigService']
@@ -710,7 +723,7 @@ class EMCVMAXMasking(object):
         :param conn: connection to the ecom server
         :param controllerConfigService: the controller configuration service
         :param portGroupName: the name of the port group you are getting
-        :returns: foundPortGroup storage group instance name
+        :returns: foundPortGroupInstanceName
         """
         foundPortGroupInstanceName = None
         portMaskingGroupInstances = conn.Associators(
@@ -797,7 +810,8 @@ class EMCVMAXMasking(object):
 
         :param conn: the connection to the ecom
         :param connector: the connector object
-        :returns list foundinitiatornames list of string initiator names
+        :returns: list -- list of found initiator names
+        :raises: VolumeBackendAPIException
         """
         foundinitiatornames = []
         name = 'initiator name'
@@ -836,7 +850,7 @@ class EMCVMAXMasking(object):
 
         :param conn: the connection to the ecom server
         :param controllerConfigService: the controller configuration service
-        :param initiatorName: the list of initiator names
+        :param initiatorNames: the list of initiator names
         :returns: foundInitiatorMaskingGroup
         """
         foundInitiatorMaskingGroupInstanceName = None
@@ -881,9 +895,9 @@ class EMCVMAXMasking(object):
         """Given a list of initiator names find CIM_StorageHardwareID instance.
 
         :param conn: the connection to the ecom server
-        :param initiatorName: the list of initiator names
+        :param initiatorNames: the list of initiator names
         :param storageSystemName: the storage system name
-        :returns: foundHardwardIDsInstanceNames
+        :returns: list -- foundHardwardIDsInstanceNames
         """
         foundHardwardIDsInstanceNames = []
 
@@ -899,7 +913,7 @@ class EMCVMAXMasking(object):
             storageId = hardwareIdInstance['StorageID']
             for initiatorName in initiatorNames:
                 if storageId.lower() == initiatorName.lower():
-                    # Check that the found hardwareId has been delete.
+                    # Check that the found hardwareId has been deleted.
                     # If it has, we don't want to add it to the list.
                     instance = self.utils.get_existing_instance(
                         conn, hardwareIdInstance.path)
@@ -922,7 +936,7 @@ class EMCVMAXMasking(object):
 
         :param conn: the connection to the ecom server
         :param job: the create initiator group job
-        :returns: dict initiatorDict
+        :returns: dict -- initiatorDict
         """
         associators = conn.Associators(
             job['Job'],
@@ -949,8 +963,9 @@ class EMCVMAXMasking(object):
         :param deviceMaskingGroup: device(storage) masking group (instanceName)
         :param targetMaskingGroup: target(port) masking group (instanceName)
         :param initiatorMaskingGroup: initiator masking group (instanceName)
-        :returns: int rc return code
-        :returns: dict job
+        :returns: int -- return code
+        :returns: dict -- job
+        :raises: VolumeBackendAPIException
         """
         rc, job = conn.InvokeMethod(
             'CreateMaskingView', configService, ElementName=maskingViewName,
@@ -979,8 +994,8 @@ class EMCVMAXMasking(object):
         """Find the newly created volume.
 
         :param conn: the connection to the ecom server
-        :param jobDict: the job tuple
-        :returns: instance maskingViewInstance
+        :param jobDict: the job dictionary
+        :returns: dict -- maskingViewInstance
         """
         associators = conn.Associators(
             jobDict['Job'],
@@ -1028,7 +1043,7 @@ class EMCVMAXMasking(object):
         """Gets the Device Masking Group from masking view instance.
 
         :param conn: the connection to the ecom server
-        :param maskingViewInstance
+        :param maskingViewInstance: the masking view instance
         :returns: instance name foundStorageGroupInstanceName
         """
         foundStorageGroupInstanceName = None
@@ -1045,17 +1060,18 @@ class EMCVMAXMasking(object):
             defaultStorageGroupInstanceName):
         """Gets the storage group instance name.
 
-        If fastPolicy name is None
-        then NON FAST is assumed.  If it is a valid fastPolicy name
-        then associate the new storage group with the fast policy.
+        If fastPolicy name is None then NON FAST is assumed.
+        If it is a valid fastPolicy name then associate the new storage
+        group with the fast policy.
         If we are using an existing storage group then we must check that
         it is associated with the correct fast policy.
 
         :param conn: the connection to the ecom server
-        :param maskingViewDict - the masking view dictionary
+        :param maskingViewDict: the masking view dictionary
         :param defaultStorageGroupInstanceName: default storage group instance
-                                                name (can be None for Non FAST)
+            name (can be None for Non FAST)
         :returns: instance name storageGroupInstanceName
+        :raises: VolumeBackendAPIException
         """
         storageGroupInstanceName = self.utils.find_storage_masking_group(
             conn, maskingViewDict['controllerConfigService'],
@@ -1111,8 +1127,8 @@ class EMCVMAXMasking(object):
         :param controllerConfigService: the controller configuration server
         :param igGroupName: the port group name
         :param connector: the connector object
-        :param storageSystemName = the storage system name
-        :returns: instance name foundInitiatorGroupInstanceName
+        :param storageSystemName: the storage system name
+        :returns: foundInitiatorGroupInstanceName
         """
         foundInitiatorGroupInstanceName = (self._create_or_get_initiator_group(
             conn, controllerConfigService, igGroupName, connector,
@@ -1162,12 +1178,8 @@ class EMCVMAXMasking(object):
         the exception occurred.
 
         :param conn: the connection to the ecom server
-        :param controllerConfigService: the controller config service
-        :param volumeInstanceName: the volume instance name
-        :param volumeName: the volume name (String)
-        :param fastPolicyName: the fast policy name (String)
-        :param defaultStorageGroupInstanceName: the default storage group
-                                          instance name
+        :param rollbackDict: the rollback dictionary
+        :raises: VolumeBackendAPIException
         """
         try:
             if rollbackDict['isV3']:
@@ -1246,7 +1258,6 @@ class EMCVMAXMasking(object):
 
         :param conn: connection the ecom server
         :param maskingGroupDict: the maskingGroupDict dict
-        :param storageGroupName: storage group name (String)
         :returns: instance name foundInitiatorGroupInstanceName
         """
         foundInitiatorGroupInstanceName = None
@@ -1303,6 +1314,7 @@ class EMCVMAXMasking(object):
         :param connector: the connector dict
         :param storageSystemName: the storage System Name (string)
         :param igGroupName: the initiator group name (String)
+        :returns: boolean
         """
         initiatorNames = self._find_initiator_names(conn, connector)
         foundInitiatorGroupFromConnector = self._find_initiator_masking_group(
@@ -1376,6 +1388,8 @@ class EMCVMAXMasking(object):
         :param controllerConfigService: the controller configuration service
         :param igGroupName: the initiator group name (String)
         :param hardwareIdinstanceNames: one or more hardware id instance names
+        :returns: foundInitiatorGroupInstanceName
+        :raises: VolumeBackendAPIException
         """
         rc, job = conn.InvokeMethod(
             'CreateGroup', controllerConfigService, GroupName=igGroupName,
@@ -1457,6 +1471,7 @@ class EMCVMAXMasking(object):
         :param controllerConfigService: the controller configuration service
         :param maskingViewName: maskingview name (String)
         :param maskingViewInstanceName: the masking view instance name
+        :raises: VolumeBackendAPIException
         """
         rc, job = conn.InvokeMethod('DeleteMaskingView',
                                     controllerConfigService,
@@ -1502,13 +1517,13 @@ class EMCVMAXMasking(object):
 
         :param conn: connection to ecom server
         :param controllerConfigService: the controller configuration service
-        :param storageGroup: storage group instance
+        :param storageGroupInstanceName: storage group instance name
         :param volumeInstance: the volume instance
         :param volumeName: the name of the volume (String)
         :param sgGroupName: the name of the storage group (String)
         :param extraSpecs: additional info
-        :returns: int rc the return code of the job
-        :returns: dict the job dict
+        :returns: int -- rc the return code of the job
+        :returns: dict -- the job dict
         """
         self.provision.add_members_to_masking_group(
             conn, controllerConfigService, storageGroupInstanceName,
@@ -1584,7 +1599,6 @@ class EMCVMAXMasking(object):
         return defaultStorageGroupInstanceName
 
     def _wrap_get_storage_group_from_volume(self, conn, volumeInstanceName):
-
         """Wrapper for get_storage_group_from_volume.
 
         Needed for override in tests.
@@ -1593,6 +1607,7 @@ class EMCVMAXMasking(object):
         :param volumeInstanceName: the volume instance name
         :returns: emptyStorageGroupInstanceName
         """
+
         return self.utils.get_storage_group_from_volume(
             conn, volumeInstanceName)
 
@@ -1605,7 +1620,7 @@ class EMCVMAXMasking(object):
 
         :param conn: connection the the ecom server
         :param storageGroupInstanceName: the storage group instance name
-        :returns: list volumeInstanceNames list of volume instance names
+        :returns: list -- volumeInstanceNames list of volume instance names
         """
         volumeInstanceNames = conn.AssociatorNames(
             storageGroupInstanceName,
@@ -1622,7 +1637,7 @@ class EMCVMAXMasking(object):
 
         :param conn: connection the the ecom server
         :param volumeInstanceName: the volume instance name
-        :returns: list of storage group instance names
+        :returns: list -- list of storage group instance names
         """
         maskingGroupInstanceNames = conn.AssociatorNames(
             volumeInstanceName,
@@ -1650,9 +1665,10 @@ class EMCVMAXMasking(object):
         :param controllerConfigService: the controller configuration service
         :param volumeInstance: the volume Instance
         :param volumeName: the volume name
+        :param extraSpecs: additional info
         :param connector: optional
         :param noReset: optional, if none, then reset
-        :returns: maskingGroupInstanceName
+        :returns: storageGroupInstanceName
         """
         isV3 = extraSpecs[ISV3]
         fastPolicyName = extraSpecs.get(FASTPOLICY, None)
@@ -1771,9 +1787,9 @@ class EMCVMAXMasking(object):
 
         :param conn: the ecom connection
         :param controllerConfigService: storage system instance name
-        :param volumeInstanceName
-        :param volumeName
-        :param connector
+        :param volumeInstanceName: the volume instance name
+        :param volumeName: the volume name (String)
+        :param connector: the connector object
         :returns: storageGroupInstanceName(can be None)
         """
         return self._get_sg_or_mv_associated_with_initiator(
@@ -1786,10 +1802,9 @@ class EMCVMAXMasking(object):
 
         :param conn: the ecom connection
         :param storageSystemInstanceName: storage system instance name
-        :param fastPolicyName
-
-        :returns: isTieringPolicySupported, tierPolicyServiceInstanceName
-
+        :param fastPolicyName:
+        :returns: boolean -- isTieringPolicySupported
+        :returns: tierPolicyServiceInstanceName
         """
         isTieringPolicySupported = False
         tierPolicyServiceInstanceName = None
@@ -1833,6 +1848,7 @@ class EMCVMAXMasking(object):
         """Remove the storage group from the policy rule.
 
         :param conn: the ecom connection
+        :param fastPolicyName: the fast policy name
         :param isTieringPolicySupported: boolean
         :param tierPolicyServiceInstanceName: the tier policy instance name
         :param storageSystemName: storage system name
@@ -1863,11 +1879,12 @@ class EMCVMAXMasking(object):
 
         :param conn: the ecom connection
         :param controllerConfigService: controller config service
-        :param storageGroupInstanceName: storage group instance name
+        :param storageGroupName: storage group name
         :param volumeInstance: volumeInstance
         :param volumeName: the volume name
         :param storageSystemInstanceName: the storage system instance name
         :param extraSpecs: additional info
+        :raises: VolumeBackendAPIException
         """
         # First strip the shortHostname from the storage group name.
         defaultStorageGroupName, shorthostName = (
@@ -1903,7 +1920,7 @@ class EMCVMAXMasking(object):
     def _cleanup_tiering(
             self, conn, controllerConfigService, fastPolicyName,
             volumeInstance, volumeName, extraSpecs):
-        """Clea nup tiering.
+        """Clean up tiering.
 
         :param conn: the ecom connection
         :param controllerConfigService: the controller configuration service
@@ -1936,6 +1953,7 @@ class EMCVMAXMasking(object):
 
         :param conn: the ecom connection
         :param mvInstanceName: masking view instance name
+        :returns: list -- the list of target wwns for the masking view
         """
         targetWwns = []
         targetPortInstanceNames = conn.AssociatorNames(
@@ -1954,9 +1972,10 @@ class EMCVMAXMasking(object):
     def get_masking_view_by_volume(self, conn, volumeInstance, connector):
         """Given volume, retrieve the masking view instance name.
 
+        :param conn: the ecom connection
         :param volumeInstance: the volume instance
         :param connector: the connector object
-        :returns mvInstanceName: masking view instance name
+        :returns: masking view instance name
         """
 
         storageSystemName = volumeInstance['SystemName']
@@ -1973,9 +1992,9 @@ class EMCVMAXMasking(object):
     def get_masking_views_by_port_group(self, conn, portGroupInstanceName):
         """Given port group, retrieve the masking view instance name.
 
-        :param : the volume
-        :param mvInstanceName: masking view instance name
-        :returns: maksingViewInstanceNames
+        :param conn: the ecom connection
+        :param portGroupInstanceName: the instance name of the port group
+        :returns: masking view instance names
         """
         mvInstanceNames = conn.AssociatorNames(
             portGroupInstanceName, ResultClass='Symm_LunMaskingView')
@@ -1984,6 +2003,7 @@ class EMCVMAXMasking(object):
     def get_port_group_from_masking_view(self, conn, maskingViewInstanceName):
         """Get the port group in a masking view.
 
+        :param conn: the ecom connection
         :param maskingViewInstanceName: masking view instance name
         :returns: portGroupInstanceName
         """
@@ -2002,6 +2022,7 @@ class EMCVMAXMasking(object):
             self, conn, maskingViewInstanceName):
         """Get initiator group in a masking view.
 
+        :param conn: the ecom connection
         :param maskingViewInstanceName: masking view instance name
         :returns: initiatorGroupInstanceName or None if it is not found
         """
@@ -2026,10 +2047,10 @@ class EMCVMAXMasking(object):
 
         :param conn: the ecom connection
         :param controllerConfigService: storage system instance name
-        :param volumeInstanceName - volume instance name
-        :param volumeName - volume element name
-        :param connector - the connector object
-        :param getSG - True if to get storage group; otherwise get masking
+        :param volumeInstanceName: volume instance name
+        :param volumeName: volume element name
+        :param connector: the connector object
+        :param getSG: True if to get storage group; otherwise get masking
         :returns: foundInstanceName(can be None)
         """
         foundInstanceName = None
