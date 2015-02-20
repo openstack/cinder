@@ -1091,7 +1091,9 @@ class EMCVMAXCommon(object):
                 foundStorageGroupInstanceName)
             emcFastSetting = self.utils._get_fast_settings_from_storage_group(
                 storageGroupInstance)
-            targetCombination = targetSlo + '+' + targetWorkload
+            targetCombination = ("%(targetSlo)s+%(targetWorkload)s"
+                                 % {'targetSlo': targetSlo,
+                                    'targetWorkload': targetWorkload})
             if targetCombination in emcFastSetting:
                 LOG.error(_LE(
                     "No action required. Volume: %(volumeName)s is "
@@ -1544,15 +1546,19 @@ class EMCVMAXCommon(object):
             configurationFile = self.configuration.cinder_emc_config_file
         else:
             configurationFile = (
-                CINDER_EMC_CONFIG_FILE_PREFIX + configGroupName +
-                CINDER_EMC_CONFIG_FILE_POSTFIX)
+                ("%(prefix)s%(configGroupName)s%(postfix)s"
+                 % {'prefix': CINDER_EMC_CONFIG_FILE_PREFIX,
+                    'configGroupName': configGroupName,
+                    'postfix': CINDER_EMC_CONFIG_FILE_POSTFIX}))
 
         # The file saved in self.configuration may not be the correct one,
         # double check.
         if configGroupName not in configurationFile:
             configurationFile = (
-                CINDER_EMC_CONFIG_FILE_PREFIX + configGroupName +
-                CINDER_EMC_CONFIG_FILE_POSTFIX)
+                ("%(prefix)s%(configGroupName)s%(postfix)s"
+                 % {'prefix': CINDER_EMC_CONFIG_FILE_PREFIX,
+                    'configGroupName': configGroupName,
+                    'postfix': CINDER_EMC_CONFIG_FILE_POSTFIX}))
 
         self._set_ecom_credentials(configurationFile)
         return configurationFile
@@ -1577,10 +1583,15 @@ class EMCVMAXCommon(object):
         self.user, self.passwd = self.utils.get_ecom_cred(configurationFile)
         self.ecomUseSSL, self.ecomCACert, self.ecomNoVerification = (
             self.utils.get_ecom_cred_SSL(configurationFile))
+        ip_port = ("%(ip)s:%(port)s"
+                   % {'ip': ip,
+                      'port': port})
         if self.ecomUseSSL:
-            self.url = 'https://' + ip + ':' + port
+            self.url = ("https://%(ip_port)s"
+                        % {'ip_port': ip_port})
         else:
-            self.url = 'http://' + ip + ':' + port
+            self.url = ("http://%(ip_port)s"
+                        % {'ip_port': ip_port})
         self.conn = self._get_ecom_connection()
 
     def _initial_setup(self, volume, volumeTypeId=None):
@@ -1681,23 +1692,27 @@ class EMCVMAXCommon(object):
             maskingViewDict['slo'] = slo
             maskingViewDict['workload'] = workload
             maskingViewDict['pool'] = poolName
-            maskingViewDict['sgGroupName'] = (
-                'OS-' + shortHostName + '-' + poolName + '-' + slo + '-' +
-                workload + '-SG')
-            maskingViewDict['maskingViewName'] = (
-                'OS-' + shortHostName + '-' + poolName + '-' + slo + '-' +
-                workload + '-MV')
+            prefix = (
+                ("OS-%(shortHostName)s-%(poolName)s-%(slo)s-%(workload)s"
+                 % {'shortHostName': shortHostName,
+                    'poolName': poolName,
+                    'slo': slo,
+                    'workload': workload}))
         else:
-            maskingViewDict['sgGroupName'] = (
-                'OS-' + shortHostName + '-' + poolName + '-' +
-                protocol + '-SG')
-            maskingViewDict['maskingViewName'] = (
-                'OS-' + shortHostName + '-' + poolName + '-' +
-                protocol + '-MV')
+            prefix = (
+                ("OS-%(shortHostName)s-%(poolName)s-%(protocol)s"
+                 % {'shortHostName': shortHostName,
+                    'poolName': poolName,
+                    'protocol': protocol}))
             maskingViewDict['fastPolicy'] = (
                 self.utils.parse_fast_policy_name_from_file(
                     self.configuration.cinder_emc_config_file))
 
+        maskingViewDict['sgGroupName'] = ("%(prefix)s-SG"
+                                          % {'prefix': prefix})
+
+        maskingViewDict['maskingViewName'] = ("%(prefix)s-MV"
+                                              % {'prefix': prefix})
         volumeName = volume['name']
         volumeInstance = self._find_lun(volume)
         storageSystemName = volumeInstance['SystemName']
@@ -1711,7 +1726,9 @@ class EMCVMAXCommon(object):
                 self.configuration.cinder_emc_config_file))
 
         maskingViewDict['igGroupName'] = (
-            'OS-' + shortHostName + '-' + protocol + '-IG')
+            ("OS-%(shortHostName)s-%(protocol)s-IG"
+             % {'shortHostName': shortHostName,
+                'protocol': protocol}))
         maskingViewDict['connector'] = connector
         maskingViewDict['volumeInstance'] = volumeInstance
         maskingViewDict['volumeName'] = volumeName
@@ -2241,8 +2258,8 @@ class EMCVMAXCommon(object):
                           "Replication Service: %(service)s  Operation: 8  "
                           "Synchronization: %(syncName)s.",
                           {'snapshot': snapshotname,
-                           'service': str(repservice),
-                           'syncName': str(syncName)})
+                           'service': repservice,
+                           'syncName': syncName})
 
                 self.provision.delete_clone_relationship(
                     self.conn, repservice, syncName, self.extraSpecs, True)
@@ -3524,7 +3541,7 @@ class EMCVMAXCommon(object):
             LOG.info(_LI("Target wwns in masking view %(maskingView)s: "
                      "%(targetWwns)s."),
                      {'maskingView': mvInstanceName,
-                      'targetWwns': str(targetWwns)})
+                      'targetWwns': six.text_type(targetWwns)})
         return targetWwns
 
     def get_port_group_from_masking_view(self, maskingViewInstanceName):

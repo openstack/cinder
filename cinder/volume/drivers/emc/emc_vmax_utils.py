@@ -868,11 +868,22 @@ class EMCVMAXUtils(object):
 
         idarray = poolInstanceId.split('+')
         if len(idarray) > 2:
-            systemName = idarray[0] + '+' + idarray[1]
+            systemName = self._format_system_name(idarray[0], idarray[1])
 
         LOG.debug("Pool name: %(poolName)s  System name: %(systemName)s.",
                   {'poolName': poolName, 'systemName': systemName})
         return poolName, systemName
+
+    def _format_system_name(self, part1, part2):
+        """Join to make up system name
+
+        :param part1: the prefix
+        :param part2: the postfix
+        :returns: systemName
+        """
+        return ("%(part1)s+%(part2)s"
+                % {'part1': part1,
+                   'part2': part2})
 
     def parse_pool_instance_id_v3(self, poolInstanceId):
         """Given the instance Id parse the pool name and system name from it.
@@ -891,7 +902,7 @@ class EMCVMAXUtils(object):
 
         idarray = poolInstanceId.split('-+-')
         if len(idarray) > 2:
-            systemName = idarray[0] + '-+-' + idarray[1]
+            systemName = self._format_system_name(idarray[0], idarray[1])
 
         LOG.debug("Pool name: %(poolName)s  System name: %(systemName)s.",
                   {'poolName': poolName, 'systemName': systemName})
@@ -1366,7 +1377,7 @@ class EMCVMAXUtils(object):
         :returns: string -- delta in string H:MM:SS
         """
         delta = endTime - startTime
-        return str(datetime.timedelta(seconds=int(delta)))
+        return six.text_type(datetime.timedelta(seconds=int(delta)))
 
     def find_sync_sv_by_target(
             self, conn, storageSystem, target, waitforsync=True):
@@ -1706,7 +1717,11 @@ class EMCVMAXUtils(object):
         :param workload: the workload string e.g DSS
         :returns: storageGroupName
         """
-        return 'OS-' + poolName + '-' + slo + '-' + workload + '-SG'
+        storageGroupName = ("OS-%(poolName)s-%(slo)s-%(workload)s-SG"
+                            % {'poolName': poolName,
+                               'slo': slo,
+                               'workload': workload})
+        return storageGroupName
 
     def strip_short_host_name(self, storageGroupName):
         tempList = storageGroupName.split("-")
