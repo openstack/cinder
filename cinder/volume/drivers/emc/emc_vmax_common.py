@@ -423,7 +423,7 @@ class EMCVMAXCommon(object):
         else:
             maskingViewDict['isLiveMigration'] = False
 
-        rollbackDict = self.masking.get_or_create_masking_view_and_map_lun(
+        rollbackDict = self.masking.setup_masking_view(
             self.conn, maskingViewDict, self.extraSpecs)
 
         # Find host lun id again after the volume is exported to the host.
@@ -578,8 +578,8 @@ class EMCVMAXCommon(object):
                 'free_capacity_gb': free_capacity_gb,
                 'reserved_percentage': 0,
                 'QoS_support': False,
-                'volume_backend_name': self.pool_info['backend_name']
-                or self.__class__.__name__,
+                'volume_backend_name': self.pool_info['backend_name'] or
+                self.__class__.__name__,
                 'vendor_name': "EMC",
                 'driver_version': self.VERSION,
                 'storage_protocol': 'unknown',

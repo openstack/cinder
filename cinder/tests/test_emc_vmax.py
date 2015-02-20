@@ -456,7 +456,8 @@ class FakeEcomConnection():
                      SourceGroup=None, TargetGroup=None, Goal=None,
                      Type=None, EMCSRP=None, EMCSLO=None, EMCWorkload=None,
                      EMCCollections=None, InitiatorMaskingGroup=None,
-                     DeviceMaskingGroup=None, TargetMaskingGroup=None):
+                     DeviceMaskingGroup=None, TargetMaskingGroup=None,
+                     ProtocolController=None):
 
         rc = 0L
         myjob = SE_ConcreteJob()
@@ -1658,6 +1659,64 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                           self.driver.common.utils.process_exception_args,
                           arg, instancename3)
 
+    # Bug 1403160 - make sure the masking view is cleanly deleted
+    def test_last_volume_delete_masking_view(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+
+        maskingViewInstanceName = (
+            self.driver.common.masking._find_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+
+        maskingViewName = conn.GetInstance(
+            maskingViewInstanceName)['ElementName']
+
+        # Deleting Masking View failed
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.common.masking._last_volume_delete_masking_view,
+            conn, controllerConfigService, maskingViewInstanceName,
+            maskingViewName)
+
+        # Deleting Masking view successful
+        self.driver.common.masking.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        self.driver.common.masking._last_volume_delete_masking_view(
+            conn, controllerConfigService, maskingViewInstanceName,
+            maskingViewName)
+
+    # Bug 1403160 - make sure the storage group is cleanly deleted
+    def test_remove_last_vol_and_delete_sg(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        storageGroupName = self.data.storagegroupname
+        storageGroupInstanceName = (
+            self.driver.utils.find_storage_masking_group(
+                conn, controllerConfigService, storageGroupName))
+
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeName = "1403160-Vol"
+        extraSpecs = self.driver.common.extraSpecs
+
+        # Deleting Storage Group failed
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.common.masking._remove_last_vol_and_delete_sg,
+            conn, controllerConfigService, storageGroupInstanceName,
+            storageGroupName, volumeInstanceName, volumeName, extraSpecs)
+
+        # Deleting Storage group successful
+        self.driver.common.masking.utils.get_existing_instance = mock.Mock(
+            return_value=None)
+        self.driver.common.masking._remove_last_vol_and_delete_sg(
+            conn, controllerConfigService, storageGroupInstanceName,
+            storageGroupName, volumeInstanceName, volumeName, extraSpecs)
+
     # Tests removal of last volume in a storage group V2
     def test_remove_and_reset_members(self):
         extraSpecs = {'volume_backend_name': 'GOLD_BE',
@@ -1669,7 +1728,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         volumeInstanceName = (
             conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
         volumeInstance = conn.GetInstance(volumeInstanceName)
-        volumeName = "1416035-Vol"
+        volumeName = "Last-Vol"
         self.driver.common.masking.get_devices_from_storage_group = mock.Mock(
             return_value=['one_value'])
         self.driver.common.masking.utils.get_existing_instance = mock.Mock(
