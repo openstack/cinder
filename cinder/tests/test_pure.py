@@ -114,6 +114,15 @@ SPACE_INFO_EMPTY = {"capacity": TOTAL_CAPACITY * units.Gi,
                     "total": 0
                     }
 
+CONNECTION_INFO = {"driver_volume_type": "iscsi",
+                   "data": {"target_iqn": TARGET_IQN,
+                            "target_portal": ISCSI_IPS[0] + ":" + TARGET_PORT,
+                            "target_lun": 1,
+                            "target_discovered": True,
+                            "access_mode": "rw",
+                            },
+                   }
+
 
 class FakePureStorageHTTPError(Exception):
     def __init__(self, target=None, rest_version=None, code=None,
@@ -129,11 +138,12 @@ class PureISCSIDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(PureISCSIDriverTestCase, self).setUp()
-        self.config = mock.Mock()
-        self.config.san_ip = TARGET
-        self.config.pure_api_token = API_TOKEN
-        self.config.volume_backend_name = VOLUME_BACKEND_NAME
-        self.driver = pure.PureISCSIDriver(configuration=self.config)
+        self.mock_config = mock.Mock()
+        self.mock_config.san_ip = TARGET
+        self.mock_config.pure_api_token = API_TOKEN
+        self.mock_config.volume_backend_name = VOLUME_BACKEND_NAME
+        self.mock_config.use_chap_auth = False
+        self.driver = pure.PureISCSIDriver(configuration=self.mock_config)
         self.array = mock.Mock()
         self.driver._array = self.array
         self.purestorage_module = pure.purestorage
@@ -384,18 +394,52 @@ class PureISCSIDriverTestCase(test.TestCase):
         mock_connection.return_value = {"vol": VOLUME["name"] + "-cinder",
                                         "lun": 1,
                                         }
-        result = {"driver_volume_type": "iscsi",
-                  "data": {"target_iqn": TARGET_IQN,
-                           "target_portal": ISCSI_IPS[0] + ":" + TARGET_PORT,
-                           "target_lun": 1,
-                           "target_discovered": True,
-                           "access_mode": "rw",
-                           },
-                  }
+        result = CONNECTION_INFO
         real_result = self.driver.initialize_connection(VOLUME, CONNECTOR)
         self.assertDictMatch(result, real_result)
         mock_get_iscsi_port.assert_called_with()
-        mock_connection.assert_called_with(VOLUME, CONNECTOR)
+        mock_connection.assert_called_with(VOLUME, CONNECTOR, None)
+        self.assert_error_propagates([mock_get_iscsi_port, mock_connection],
+                                     self.driver.initialize_connection,
+                                     VOLUME, CONNECTOR)
+
+    @mock.patch(DRIVER_OBJ + "._connect")
+    @mock.patch(DRIVER_OBJ + "._get_target_iscsi_port")
+    def test_initialize_connection_with_auth(self, mock_get_iscsi_port,
+                                             mock_connection):
+        auth_type = "CHAP"
+        chap_username = CONNECTOR["host"]
+        chap_password = "password"
+        mock_get_iscsi_port.return_value = ISCSI_PORTS[0]
+        initiator_update = [{"key": pure.CHAP_SECRET_KEY,
+                            "value": chap_password}]
+        mock_connection.return_value = {
+            "vol": VOLUME["name"] + "-cinder",
+            "lun": 1,
+            "auth_username": chap_username,
+            "auth_password": chap_password,
+        }
+        result = CONNECTION_INFO.copy()
+        result["data"]["auth_method"] = auth_type
+        result["data"]["auth_username"] = chap_username
+        result["data"]["auth_password"] = chap_password
+
+        self.mock_config.use_chap_auth = True
+
+        # Branch where no credentials were generated
+        real_result = self.driver.initialize_connection(VOLUME,
+                                                        CONNECTOR)
+        mock_connection.assert_called_with(VOLUME, CONNECTOR, None)
+        self.assertDictMatch(result, real_result)
+
+        # Branch where new credentials were generated
+        mock_connection.return_value["initiator_update"] = initiator_update
+        result["initiator_update"] = initiator_update
+        real_result = self.driver.initialize_connection(VOLUME,
+                                                        CONNECTOR)
+        mock_connection.assert_called_with(VOLUME, CONNECTOR, None)
+        self.assertDictMatch(result, real_result)
+
         self.assert_error_propagates([mock_get_iscsi_port, mock_connection],
                                      self.driver.initialize_connection,
                                      VOLUME, CONNECTOR)
@@ -428,36 +472,69 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.assert_error_propagates([mock_iscsiadm, self.array.list_ports],
                                      self.driver._choose_target_iscsi_port)
 
+    @mock.patch(DRIVER_PATH + "._generate_chap_secret", autospec=True)
     @mock.patch(DRIVER_OBJ + "._get_host", autospec=True)
     @mock.patch(DRIVER_PATH + "._generate_purity_host_name", autospec=True)
-    def test_connect(self, mock_generate, mock_host):
+    def test_connect(self, mock_generate, mock_host, mock_gen_secret):
         vol_name = VOLUME["name"] + "-cinder"
         result = {"vol": vol_name, "lun": 1}
+
         # Branch where host already exists
         mock_host.return_value = PURE_HOST
         self.array.connect_host.return_value = {"vol": vol_name, "lun": 1}
-        real_result = self.driver._connect(VOLUME, CONNECTOR)
+        real_result = self.driver._connect(VOLUME, CONNECTOR, None)
         self.assertEqual(result, real_result)
         mock_host.assert_called_with(self.driver, CONNECTOR)
         self.assertFalse(mock_generate.called)
         self.assertFalse(self.array.create_host.called)
         self.array.connect_host.assert_called_with(PURE_HOST_NAME, vol_name)
+
         # Branch where new host is created
         mock_host.return_value = None
         mock_generate.return_value = PURE_HOST_NAME
-        real_result = self.driver._connect(VOLUME, CONNECTOR)
+        real_result = self.driver._connect(VOLUME, CONNECTOR, None)
         mock_host.assert_called_with(self.driver, CONNECTOR)
         mock_generate.assert_called_with(HOSTNAME)
         self.array.create_host.assert_called_with(PURE_HOST_NAME,
                                                   iqnlist=[INITIATOR_IQN])
         self.assertEqual(result, real_result)
-        # Branch where host is needed
+
         mock_generate.reset_mock()
         self.array.reset_mock()
         self.assert_error_propagates(
             [mock_host, mock_generate, self.array.connect_host,
              self.array.create_host],
-            self.driver._connect, VOLUME, CONNECTOR)
+            self.driver._connect, VOLUME, CONNECTOR, None)
+
+        self.mock_config.use_chap_auth = True
+        chap_user = CONNECTOR["host"]
+        chap_password = "sOmEseCr3t"
+
+        # Branch where chap is used and credentials already exist
+        initiator_data = [{"key": pure.CHAP_SECRET_KEY,
+                           "value": chap_password}]
+        self.driver._connect(VOLUME, CONNECTOR, initiator_data)
+        result["auth_username"] = chap_user
+        result["auth_password"] = chap_password
+        self.assertDictMatch(result, real_result)
+        self.array.set_host.assert_called_with(PURE_HOST_NAME,
+                                               host_user=chap_user,
+                                               host_password=chap_password)
+
+        # Branch where chap is used and credentials are generated
+        mock_gen_secret.return_value = chap_password
+        self.driver._connect(VOLUME, CONNECTOR, None)
+        result["auth_username"] = chap_user
+        result["auth_password"] = chap_password
+        result["initiator_update"] = {
+            "set_values": {
+                pure.CHAP_SECRET_KEY: chap_password
+            }
+        }
+        self.assertDictMatch(result, real_result)
+        self.array.set_host.assert_called_with(PURE_HOST_NAME,
+                                               host_user=chap_user,
+                                               host_password=chap_password)
 
     @mock.patch(DRIVER_OBJ + "._get_host", autospec=True)
     def test_connect_already_connected(self, mock_host):
@@ -470,7 +547,7 @@ class PureISCSIDriverTestCase(test.TestCase):
                 code=400,
                 text="Connection already exists"
             )
-        actual = self.driver._connect(VOLUME, CONNECTOR)
+        actual = self.driver._connect(VOLUME, CONNECTOR, None)
         self.assertEqual(expected, actual)
         self.assertTrue(self.array.connect_host.called)
         self.assertTrue(self.array.list_volume_private_connections)
@@ -485,7 +562,7 @@ class PureISCSIDriverTestCase(test.TestCase):
                 text="Connection already exists"
             )
         self.assertRaises(exception.PureDriverException, self.driver._connect,
-                          VOLUME, CONNECTOR)
+                          VOLUME, CONNECTOR, None)
         self.assertTrue(self.array.connect_host.called)
         self.assertTrue(self.array.list_volume_private_connections)
 
@@ -500,7 +577,7 @@ class PureISCSIDriverTestCase(test.TestCase):
                 text="Connection already exists"
             )
         self.assertRaises(self.purestorage_module.PureHTTPError,
-                          self.driver._connect, VOLUME, CONNECTOR)
+                          self.driver._connect, VOLUME, CONNECTOR, None)
         self.assertTrue(self.array.connect_host.called)
         self.assertTrue(self.array.list_volume_private_connections)
 
