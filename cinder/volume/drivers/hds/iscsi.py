@@ -25,7 +25,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _LE, _LI, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.hds.hnas_backend import HnasBackend
@@ -89,14 +89,14 @@ def _read_config(xml_config_file):
     """Read hds driver specific xml config file."""
 
     if not os.access(xml_config_file, os.R_OK):
-        raise exception.NotFound(_LE("Can't open config file: %s"),
-                                 xml_config_file)
+        msg = (_("Can't open config file: %s") % xml_config_file)
+        raise exception.NotFound(message=msg)
 
     try:
         root = ETree.parse(xml_config_file).getroot()
     except Exception:
-        raise exception.ConfigNotFound(_LE("Error parsing config file: %s"),
-                                       xml_config_file)
+        msg = (_("Error parsing config file: %s") % xml_config_file)
+        raise exception.ConfigNotFound(message=msg)
 
     # mandatory parameters
     config = {}
