@@ -144,7 +144,7 @@ class API(base.Base):
                 self.availability_zones = azs
                 self.availability_zones_last_fetched = now
                 LOG.debug("Availability zone cache updated, next update will"
-                          " occur around %s", now + datetime.timedelta(
+                          " occur around %s.", now + datetime.timedelta(
                               seconds=CONF.az_cache_duration))
         else:
             azs = self.availability_zones
@@ -162,14 +162,14 @@ class API(base.Base):
         # size from the source.
 
         # NOTE(jdg): cinderclient sends in a string representation
-        # of the size value.  BUT there is a possbility that somebody
+        # of the size value.  BUT there is a possibility that somebody
         # could call the API directly so the is_int_like check
-        # handles both cases (string representation or true float or int).
+        # handles both cases (string representation of true float or int).
         if size and (not utils.is_int_like(size) or int(size) <= 0):
-            msg = _('Invalid volume size provided for create request '
+            msg = _('Invalid volume size provided for create request: %s '
                     '(size argument must be an integer (or string '
-                    'represenation or an integer) and greater '
-                    'than zero).')
+                    'representation of an integer) and greater '
+                    'than zero).') % size
             raise exception.InvalidInput(reason=msg)
 
         if consistencygroup:
@@ -179,28 +179,29 @@ class API(base.Base):
                 raise exception.InvalidInput(reason=msg)
             cg_voltypeids = consistencygroup.get('volume_type_id')
             if volume_type.get('id') not in cg_voltypeids:
-                msg = _("Invalid volume_type provided (requested type "
-                        "must be supported by this consistency group).")
+                msg = _("Invalid volume_type provided: %s (requested "
+                        "type must be supported by this consistency "
+                        "group).") % volume_type
                 raise exception.InvalidInput(reason=msg)
 
         if source_volume and volume_type:
             if volume_type['id'] != source_volume['volume_type_id']:
-                msg = _("Invalid volume_type provided (requested type "
-                        "must match source volume, or be omitted). "
-                        "You should omit the argument.")
+                msg = _("Invalid volume_type provided: %s (requested type "
+                        "must match source volume, "
+                        "or be omitted).") % volume_type
                 raise exception.InvalidInput(reason=msg)
 
         # When cloning replica (for testing), volume type must be omitted
         if source_replica and volume_type:
             msg = _("No volume_type should be provided when creating test "
-                    "replica, type must be omitted.")
+                    "replica.")
             raise exception.InvalidInput(reason=msg)
 
         if snapshot and volume_type:
             if volume_type['id'] != snapshot['volume_type_id']:
-                msg = _("Invalid volume_type provided (requested type "
-                        "must match source snapshot, or be omitted). "
-                        "You should omit the argument.")
+                msg = _("Invalid volume_type provided: %s (requested "
+                        "type must match source snapshot, or be "
+                        "omitted).") % volume_type
                 raise exception.InvalidInput(reason=msg)
 
         # Determine the valid availability zones that the volume could be
@@ -236,9 +237,9 @@ class API(base.Base):
                                                  availability_zones,
                                                  create_what)
         except Exception:
-            LOG.exception(_LE("Failed to create api volume flow"))
+            LOG.exception(_LE("Failed to create api volume flow."))
             raise exception.CinderException(
-                _("Failed to create api volume flow"))
+                _("Failed to create api volume flow."))
 
         # Attaching this listener will capture all of the notifications that
         # taskflow sends out and redirect them to a more useful log for
@@ -270,8 +271,8 @@ class API(base.Base):
                                               **reserve_opts)
             except Exception:
                 reservations = None
-                LOG.exception(_LE("Failed to update quota for "
-                                  "deleting volume"))
+                LOG.exception(_LE("Failed to update quota while "
+                                  "deleting volume."))
             self.db.volume_destroy(context.elevated(), volume_id)
 
             if reservations:
@@ -290,7 +291,7 @@ class API(base.Base):
                                                   "error_restoring",
                                                   "error_extending"]:
             msg = _("Volume status must be available or error, "
-                    "but current status is: %s") % volume['status']
+                    "but current status is: %s.") % volume['status']
             LOG.info(_LI('Unable to delete volume: %(vol_id)s, '
                          'volume must be available or '
                          'error, but is %(vol_status)s.'),
@@ -316,7 +317,8 @@ class API(base.Base):
         if len(snapshots):
             LOG.info(_LI('Unable to delete volume: %s, '
                          'volume currently has snapshots.'), volume['id'])
-            msg = _("Volume still has %d dependent snapshots") % len(snapshots)
+            msg = _("Volume still has %d dependent "
+                    "snapshots.") % len(snapshots)
             raise exception.InvalidVolume(reason=msg)
 
         # If the volume is encrypted, delete its encryption key from the key
@@ -332,7 +334,7 @@ class API(base.Base):
 
         self.volume_rpcapi.delete_volume(context, volume, unmanage_only)
         LOG.info(_LI('Succesfully issued request to '
-                     'delete volume: %s'), volume['id'])
+                     'delete volume: %s.'), volume['id'])
 
     @wrap_check_policy
     def update(self, context, volume, fields):
@@ -400,7 +402,7 @@ class API(base.Base):
             filters['no_migration_targets'] = True
 
         if filters:
-            LOG.debug("Searching by: %s" % six.text_type(filters))
+            LOG.debug("Searching by: %s.", six.text_type(filters))
 
         if context.is_admin and allTenants:
             # Need to remove all_tenants to pass the filtering below.
@@ -442,7 +444,7 @@ class API(base.Base):
                 context, context.project_id)
 
         if search_opts:
-            LOG.debug("Searching by: %s" % search_opts)
+            LOG.debug("Searching by: %s", search_opts)
 
             results = []
             not_found = object()
@@ -463,7 +465,7 @@ class API(base.Base):
         if volume['status'] == 'available':
             self.update(context, volume, {"status": "attaching"})
         else:
-            msg = _("Volume status must be available to reserve")
+            msg = _("Volume status must be available to reserve.")
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
@@ -485,7 +487,7 @@ class API(base.Base):
             msg = (_("Unable to detach volume. Volume status must be 'in-use' "
                      "and attach_status must be 'attached' to detach. "
                      "Currently: status: '%(status)s', "
-                     "attach_status: '%(attach_status)s'") %
+                     "attach_status: '%(attach_status)s.'") %
                    {'status': volume['status'],
                     'attach_status': volume['attach_status']})
             LOG.error(msg)
@@ -526,8 +528,8 @@ class API(base.Base):
     @wrap_check_policy
     def initialize_connection(self, context, volume, connector):
         LOG.debug('initialize connection for volume-id: %(volid)s, and '
-                  'connector: %(connector)s', {'volid': volume['id'],
-                                               'connector': connector})
+                  'connector: %(connector)s.', {'volid': volume['id'],
+                                                'connector': connector})
         return self.volume_rpcapi.initialize_connection(context,
                                                         volume,
                                                         connector)
@@ -566,7 +568,7 @@ class API(base.Base):
 
         if volume['migration_status'] is not None:
             # Volume is migrating, wait until done
-            msg = _("Snapshot cannot be created while volume is migrating")
+            msg = _("Snapshot cannot be created while volume is migrating.")
             raise exception.InvalidVolume(reason=msg)
 
         if volume['status'].startswith('replica_'):
@@ -575,7 +577,10 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
         if ((not force) and (volume['status'] != "available")):
-            msg = _("must be available")
+            msg = _("Volume %(vol_id)s status must be available, "
+                    "but current status is: "
+                    "%(vol_status)s.") % {'vol_id': volume['id'],
+                                          'vol_status': volume['status']}
             raise exception.InvalidVolume(reason=msg)
 
         try:
@@ -599,11 +604,11 @@ class API(base.Base):
                 if 'gigabytes' in over:
                     msg = _("Quota exceeded for %(s_pid)s, tried to create "
                             "%(s_size)sG snapshot (%(d_consumed)dG of "
-                            "%(d_quota)dG already consumed)")
-                    LOG.warn(msg % {'s_pid': context.project_id,
-                                    's_size': volume['size'],
-                                    'd_consumed': _consumed(over),
-                                    'd_quota': quotas[over]})
+                            "%(d_quota)dG already consumed).")
+                    LOG.warn(msg, {'s_pid': context.project_id,
+                                   's_size': volume['size'],
+                                   'd_consumed': _consumed(over),
+                                   'd_quota': quotas[over]})
                     raise exception.VolumeSizeExceedsAvailableQuota(
                         requested=volume['size'],
                         consumed=_consumed('gigabytes'),
@@ -611,10 +616,10 @@ class API(base.Base):
                 elif 'snapshots' in over:
                     msg = _("Quota exceeded for %(s_pid)s, tried to create "
                             "snapshot (%(d_consumed)d snapshots "
-                            "already consumed)")
+                            "already consumed).")
 
-                    LOG.warn(msg % {'s_pid': context.project_id,
-                                    'd_consumed': _consumed(over)})
+                    LOG.warn(msg, {'s_pid': context.project_id,
+                                   'd_consumed': _consumed(over)})
                     raise exception.SnapshotLimitExceeded(
                         allowed=quotas[over])
 
@@ -684,12 +689,14 @@ class API(base.Base):
 
         if volume['migration_status'] is not None:
             # Volume is migrating, wait until done
-            msg = _("Snapshot cannot be created while volume is migrating")
+            msg = _("Snapshot cannot be created while volume is migrating.")
             raise exception.InvalidVolume(reason=msg)
 
         if ((not force) and (volume['status'] != "available")):
-            msg = _("Snapshot cannot be created because volume '%s' is not "
-                    "available.") % volume['id']
+            msg = _("Snapshot cannot be created because volume %(vol_id)s "
+                    "is not available, current volume status: "
+                    "%(vol_status)s.") % {'vol_id': volume['id'],
+                                          'vol_status': volume['status']}
             raise exception.InvalidVolume(reason=msg)
 
     def _create_snapshots_in_db_reserve(self, context, volume_list):
@@ -727,11 +734,11 @@ class API(base.Base):
                 if 'gigabytes' in over:
                     msg = _("Quota exceeded for %(s_pid)s, tried to create "
                             "%(s_size)sG snapshot (%(d_consumed)dG of "
-                            "%(d_quota)dG already consumed)")
-                    LOG.warning(msg % {'s_pid': context.project_id,
-                                       's_size': volume['size'],
-                                       'd_consumed': _consumed(over),
-                                       'd_quota': quotas[over]})
+                            "%(d_quota)dG already consumed).")
+                    LOG.warning(msg, {'s_pid': context.project_id,
+                                      's_size': volume['size'],
+                                      'd_consumed': _consumed(over),
+                                      'd_quota': quotas[over]})
                     raise exception.VolumeSizeExceedsAvailableQuota(
                         requested=volume['size'],
                         consumed=_consumed('gigabytes'),
@@ -739,10 +746,10 @@ class API(base.Base):
                 elif 'snapshots' in over:
                     msg = _("Quota exceeded for %(s_pid)s, tried to create "
                             "snapshot (%(d_consumed)d snapshots "
-                            "already consumed)")
+                            "already consumed).")
 
-                    LOG.warning(msg % {'s_pid': context.project_id,
-                                       'd_consumed': _consumed(over)})
+                    LOG.warning(msg, {'s_pid': context.project_id,
+                                      'd_consumed': _consumed(over)})
                     raise exception.SnapshotLimitExceeded(
                         allowed=quotas[over])
 
@@ -785,7 +792,7 @@ class API(base.Base):
                           'error, not %(snap_status)s.'),
                       {'snap_id': snapshot['id'],
                        'snap_status': snapshot['status']})
-            msg = _("Volume Snapshot status must be available or error")
+            msg = _("Volume Snapshot status must be available or error.")
             raise exception.InvalidSnapshot(reason=msg)
         cgsnapshot_id = snapshot.get('cgsnapshot_id', None)
         if cgsnapshot_id:
@@ -801,7 +808,7 @@ class API(base.Base):
         volume = self.db.volume_get(context, snapshot['volume_id'])
         self.volume_rpcapi.delete_snapshot(context, snapshot, volume['host'])
         LOG.info(_LI('Succesfully issued request to '
-                     'delete snapshot: %s'), snapshot['id'])
+                     'delete snapshot: %s.'), snapshot['id'])
 
     @wrap_check_policy
     def update_snapshot(self, context, snapshot, fields):
@@ -824,15 +831,15 @@ class API(base.Base):
 
         for k, v in metadata.iteritems():
             if len(k) == 0:
-                msg = _("Metadata property key blank")
+                msg = _("Metadata property key blank.")
                 LOG.warn(msg)
                 raise exception.InvalidVolumeMetadata(reason=msg)
             if len(k) > 255:
-                msg = _("Metadata property key greater than 255 characters")
+                msg = _("Metadata property key greater than 255 characters.")
                 LOG.warn(msg)
                 raise exception.InvalidVolumeMetadataSize(reason=msg)
             if len(v) > 255:
-                msg = _("Metadata property value greater than 255 characters")
+                msg = _("Metadata property value greater than 255 characters.")
                 LOG.warn(msg)
                 raise exception.InvalidVolumeMetadataSize(reason=msg)
 
@@ -963,7 +970,10 @@ class API(base.Base):
     def _check_volume_availability(self, volume, force):
         """Check if the volume can be used."""
         if volume['status'] not in ['available', 'in-use']:
-            msg = _('Volume status must be available/in-use.')
+            msg = _('Volume %(vol_id)s status must be '
+                    'available or in-use, but current status is: '
+                    '%(vol_status)s.') % {'vol_id': volume['id'],
+                                          'vol_status': volume['status']}
             raise exception.InvalidVolume(reason=msg)
         if not force and 'in-use' == volume['status']:
             msg = _('Volume status is in-use.')
@@ -1014,15 +1024,18 @@ class API(base.Base):
     @wrap_check_policy
     def extend(self, context, volume, new_size):
         if volume['status'] != 'available':
-            msg = _('Volume status must be available to extend.')
+            msg = _('Volume %(vol_id)s status must be available '
+                    'to extend, but current status is: '
+                    '%(vol_status)s.') % {'vol_id': volume['id'],
+                                          'vol_status': volume['status']}
             raise exception.InvalidVolume(reason=msg)
 
         size_increase = (int(new_size)) - volume['size']
         if size_increase <= 0:
             msg = (_("New size for extend must be greater "
                      "than current size. (current: %(size)s, "
-                     "extended: %(new_size)s)") % {'new_size': new_size,
-                                                   'size': volume['size']})
+                     "extended: %(new_size)s).") % {'new_size': new_size,
+                                                    'size': volume['size']})
             raise exception.InvalidInput(reason=msg)
 
         try:
@@ -1059,32 +1072,37 @@ class API(base.Base):
 
         # We only handle "available" volumes for now
         if volume['status'] not in ['available', 'in-use']:
-            msg = _('Volume status must be available/in-use.')
+            msg = _('Volume %(vol_id)s status must be available or in-use, '
+                    'but current status is: '
+                    '%(vol_status)s.') % {'vol_id': volume['id'],
+                                          'vol_status': volume['status']}
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
         # Make sure volume is not part of a migration
         if volume['migration_status'] is not None:
-            msg = _("Volume is already part of an active migration")
+            msg = _("Volume %s is already part of an active "
+                    "migration.") % volume['id']
             raise exception.InvalidVolume(reason=msg)
 
         # We only handle volumes without snapshots for now
         snaps = self.db.snapshot_get_all_for_volume(context, volume['id'])
         if snaps:
-            msg = _("volume must not have snapshots")
+            msg = _("Volume %s must not have snapshots.") % volume['id']
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
         # We only handle non-replicated volumes for now
         rep_status = volume['replication_status']
         if rep_status is not None and rep_status != 'disabled':
-            msg = _("Volume must not be replicated.")
+            msg = _("Volume %s must not be replicated.") % volume['id']
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
         cg_id = volume.get('consistencygroup_id', None)
         if cg_id:
-            msg = _("Volume must not be part of a consistency group.")
+            msg = _("Volume %s must not be part of a consistency "
+                    "group.") % volume['id']
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
@@ -1100,13 +1118,14 @@ class API(base.Base):
             if utils.service_is_up(service) and service['host'] == svc_host:
                 found = True
         if not found:
-            msg = (_('No available service named %s') % host)
+            msg = _('No available service named %s') % host
             LOG.error(msg)
             raise exception.InvalidHost(reason=msg)
 
         # Make sure the destination host is different than the current one
         if host == volume['host']:
-            msg = _('Destination host must be different than current host')
+            msg = _('Destination host must be different '
+                    'than the current host.')
             LOG.error(msg)
             raise exception.InvalidHost(reason=msg)
 
@@ -1156,7 +1175,10 @@ class API(base.Base):
     @wrap_check_policy
     def update_readonly_flag(self, context, volume, flag):
         if volume['status'] != 'available':
-            msg = _('Volume status must be available to update readonly flag.')
+            msg = _('Volume %(vol_id)s status must be available '
+                    'to update readonly flag, but current status is: '
+                    '%(vol_status)s.') % {'vol_id': volume['id'],
+                                          'vol_status': volume['status']}
             raise exception.InvalidVolume(reason=msg)
         self.update_volume_admin_metadata(context.elevated(), volume,
                                           {'readonly': six.text_type(flag)})
@@ -1165,8 +1187,11 @@ class API(base.Base):
     def retype(self, context, volume, new_type, migration_policy=None):
         """Attempt to modify the type associated with an existing volume."""
         if volume['status'] not in ['available', 'in-use']:
-            msg = _('Unable to update type due to incorrect status '
-                    'on volume: %s') % volume['id']
+            msg = _('Unable to update type due to incorrect status: '
+                    '%(vol_status)s on volume: %(vol_id)s. Volume status '
+                    'must be available or '
+                    'in-use.') % {'vol_status': volume['status'],
+                                  'vol_id': volume['id']}
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
@@ -1196,7 +1221,7 @@ class API(base.Base):
                 vol_type = volume_types.get_volume_type_by_name(context,
                                                                 new_type)
         except exception.InvalidVolumeType:
-            msg = _('Invalid volume_type passed: %s') % new_type
+            msg = _('Invalid volume_type passed: %s.') % new_type
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
@@ -1209,7 +1234,7 @@ class API(base.Base):
 
         # Error if the original and new type are the same
         if volume['volume_type_id'] == vol_type_id:
-            msg = (_('New volume_type same as original: %s') % new_type)
+            msg = _('New volume_type same as original: %s.') % new_type
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
@@ -1224,7 +1249,7 @@ class API(base.Base):
         new_enc = volume_types.get_volume_type_encryption(context,
                                                           vol_type_id)
         if old_enc != new_enc:
-            msg = _('Retype cannot change encryption requirements')
+            msg = _('Retype cannot change encryption requirements.')
             raise exception.InvalidInput(reason=msg)
 
         # We don't support changing QoS at the front-end yet for in-use volumes
@@ -1237,7 +1262,7 @@ class API(base.Base):
                     specs = qos_specs.get_qos_specs(context.elevated(), qos_id)
                     if specs['consumer'] != 'back-end':
                         msg = _('Retype cannot change front-end qos specs for '
-                                'in-use volumes')
+                                'in-use volume: %s.') % volume['id']
                         raise exception.InvalidInput(reason=msg)
 
         # We're checking here in so that we can report any quota issues as
