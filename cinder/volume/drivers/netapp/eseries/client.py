@@ -1,5 +1,7 @@
 # Copyright (c) 2014 NetApp, Inc.  All rights reserved.
 # Copyright (c) 2014 Navneet Singh.  All rights reserved.
+# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
+# Copyright (c) 2015 Rushil Chugh.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -296,6 +298,11 @@ class RestClient(WebserviceClient):
     def list_storage_pools(self):
         """Lists storage pools in the array."""
         path = "/storage-systems/{system-id}/storage-pools"
+        return self._invoke('GET', path)
+
+    def list_drives(self):
+        """Lists drives in the array."""
+        path = "/storage-systems/{system-id}/drives"
         return self._invoke('GET', path)
 
     def list_storage_systems(self):

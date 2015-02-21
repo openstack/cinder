@@ -1,4 +1,6 @@
 # Copyright (c) 2014 NetApp, Inc.  All Rights Reserved.
+# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
+# Copyright (c) 2015 Rushil Chugh.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -15,6 +17,7 @@
 iSCSI driver for NetApp E-series storage systems.
 """
 
+import copy
 import socket
 import time
 import uuid
@@ -27,6 +30,7 @@ import six
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
+from cinder.openstack.common import loopingcall
 from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import client
@@ -78,6 +82,16 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                   'windows_clustered':
                   'Windows 2000/Server 2003/Server 2008 Clustered'
                   }
+    # NOTE(ameade): This maps what is reported by the e-series api to a
+    # consistent set of values that are reported by all NetApp drivers
+    # to the cinder scheduler.
+    SSC_DISK_TYPE_MAPPING = {
+        'scsi': 'SCSI',
+        'fibre': 'FCAL',
+        'sas': 'SAS',
+        'sata': 'SATA',
+    }
+    SSC_UPDATE_INTERVAL = 60  # seconds
 
     def __init__(self, *args, **kwargs):
         super(NetAppEseriesISCSIDriver, self).__init__(*args, **kwargs)
@@ -91,6 +105,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         self._objects = {'disk_pool_refs': [], 'pools': [],
                          'volumes': {'label_ref': {}, 'ref_vol': {}},
                          'snapshots': {'label_ref': {}, 'ref_snap': {}}}
+        self._ssc_stats = {}
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
@@ -114,11 +129,17 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
             password=self.configuration.netapp_password)
         self._check_mode_get_or_register_storage_system()
 
+    def _start_periodic_tasks(self):
+        ssc_periodic_task = loopingcall.FixedIntervalLoopingCall(
+            self._update_ssc_info)
+        ssc_periodic_task.start(interval=self.SSC_UPDATE_INTERVAL)
+
     def check_for_setup_error(self):
         self._check_host_type()
         self._check_multipath()
         self._check_storage_system()
         self._populate_system_objects()
+        self._start_periodic_tasks()
 
     def _check_host_type(self):
         self.host_type =\
@@ -170,8 +191,8 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
             system = self._client.list_storage_system()
         except exception.NetAppDriverException:
             with excutils.save_and_reraise_exception():
-                msg = _("System with controller addresses [%s] is not"
-                        " registered with web service.")
+                msg = _LI("System with controller addresses [%s] is not"
+                          " registered with web service.")
                 LOG.info(msg % self.configuration.netapp_controller_ips)
         password_not_in_sync = False
         if system.get('status', '').lower() == 'passwordoutofsync':
@@ -723,7 +744,10 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
     def get_volume_stats(self, refresh=False):
         """Return the current state of the volume service."""
         if refresh:
+            if not self._ssc_stats:
+                self._update_ssc_info()
             self._update_volume_stats()
+
         return self._stats
 
     def _update_volume_stats(self):
@@ -748,10 +772,71 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                 cinder_pool["free_capacity_gb"] = ((tot_bytes - used_bytes) /
                                                    units.Gi)
                 cinder_pool["total_capacity_gb"] = tot_bytes / units.Gi
+
+                pool_ssc_stats = self._ssc_stats.get(pool["volumeGroupRef"])
+
+                if pool_ssc_stats:
+                    cinder_pool.update(pool_ssc_stats)
                 data["pools"].append(cinder_pool)
 
         self._stats = data
         self._garbage_collect_tmp_vols()
+
+    @cinder_utils.synchronized("netapp_update_ssc_info", external=False)
+    def _update_ssc_info(self):
+        """Periodically runs to update ssc information from the backend.
+
+        The self._ssc_stats attribute is updated with the following format.
+        {<volume_group_ref> : {<ssc_key>: <ssc_value>}}
+        """
+        LOG.info(_LI("Updating storage service catalog information for "
+                     "backend '%s'") % self._backend_name)
+        self._ssc_stats = \
+            self._update_ssc_disk_encryption(self._objects["disk_pool_refs"])
+        self._ssc_stats = \
+            self._update_ssc_disk_types(self._objects["disk_pool_refs"])
+
+    def _update_ssc_disk_types(self, volume_groups):
+        """Updates the given ssc dictionary with new disk type information.
+
+        :param volume_groups: The volume groups this driver cares about
+        """
+        ssc_stats = copy.deepcopy(self._ssc_stats)
+        all_disks = self._client.list_drives()
+        relevant_disks = filter(lambda x: x.get('currentVolumeGroupRef') in
+                                volume_groups, all_disks)
+        for drive in relevant_disks:
+            current_vol_group = drive.get('currentVolumeGroupRef')
+            if current_vol_group not in ssc_stats:
+                ssc_stats[current_vol_group] = {}
+
+            if drive.get("driveMediaType") == 'ssd':
+                ssc_stats[current_vol_group]['netapp_disk_type'] = 'SSD'
+            else:
+                disk_type = drive.get('interfaceType').get('driveType')
+                ssc_stats[current_vol_group]['netapp_disk_type'] = \
+                    self.SSC_DISK_TYPE_MAPPING.get(disk_type, 'unknown')
+
+        return ssc_stats
+
+    def _update_ssc_disk_encryption(self, volume_groups):
+        """Updates the given ssc dictionary with new disk encryption information.
+
+        :param volume_groups: The volume groups this driver cares about
+        """
+        ssc_stats = copy.deepcopy(self._ssc_stats)
+        all_pools = self._client.list_storage_pools()
+        relevant_pools = filter(lambda x: x.get('volumeGroupRef') in
+                                volume_groups, all_pools)
+        for pool in relevant_pools:
+            current_vol_group = pool.get('volumeGroupRef')
+            if current_vol_group not in ssc_stats:
+                ssc_stats[current_vol_group] = {}
+
+            ssc_stats[current_vol_group]['netapp_disk_encryption'] = 'true' \
+                if pool['securityType'] == 'enabled' else 'false'
+
+        return ssc_stats
 
     def _get_sorted_avl_storage_pools(self, size_gb):
         """Returns storage pools sorted on available capacity."""
