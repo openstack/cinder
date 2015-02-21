@@ -207,6 +207,7 @@ class NetAppBlockStorage7modeLibrary(block_base.
         meta_dict['OsType'] = lun.get_child_content('multiprotocol-type')
         meta_dict['SpaceReserved'] = lun.get_child_content(
             'is-space-reservation-enabled')
+        meta_dict['UUID'] = lun.get_child_content('uuid')
         return meta_dict
 
     def _get_fc_target_wwpns(self, include_partner=True):
@@ -320,3 +321,19 @@ class NetAppBlockStorage7modeLibrary(block_base.
         """Driver entry point for destroying existing volumes."""
         super(NetAppBlockStorage7modeLibrary, self).delete_volume(volume)
         self.vol_refresh_voluntary = True
+
+    def _is_lun_valid_on_storage(self, lun):
+        """Validate LUN specific to storage system."""
+        if self.volume_list:
+            lun_vol = lun.get_metadata_property('Volume')
+            if lun_vol not in self.volume_list:
+                return False
+        return True
+
+    def _check_volume_type_for_lun(self, volume, lun, existing_ref):
+        """Check if lun satisfies volume type."""
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+        if extra_specs and extra_specs.pop('netapp:qos_policy_group', None):
+            raise exception.ManageExistingVolumeTypeMismatch(
+                reason=_("Setting LUN QoS policy group is not supported"
+                         " on this storage family and ONTAP version."))

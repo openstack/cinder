@@ -27,10 +27,11 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import block_base
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import options as na_opts
@@ -138,6 +139,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.
         meta_dict['OsType'] = lun.get_child_content('multiprotocol-type')
         meta_dict['SpaceReserved'] = \
             lun.get_child_content('is-space-reservation-enabled')
+        meta_dict['UUID'] = lun.get_child_content('uuid')
         return meta_dict
 
     def _get_fc_target_wwpns(self, include_partner=True):
@@ -242,3 +244,42 @@ class NetAppBlockStorageCmodeLibrary(block_base.
         if netapp_vol:
             self._update_stale_vols(
                 volume=ssc_cmode.NetAppVolume(netapp_vol, self.vserver))
+
+    def _check_volume_type_for_lun(self, volume, lun, existing_ref):
+        """Check if LUN satisfies volume type."""
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+        match_write = False
+
+        def scan_ssc_data():
+            volumes = ssc_cmode.get_volumes_for_specs(self.ssc_vols,
+                                                      extra_specs)
+            for vol in volumes:
+                if lun.get_metadata_property('Volume') == vol.id['name']:
+                    return True
+            return False
+
+        match_read = scan_ssc_data()
+        if not match_read:
+            ssc_cmode.get_cluster_latest_ssc(
+                self, self.zapi_client.get_connection(), self.vserver)
+            match_read = scan_ssc_data()
+
+        qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
+            if extra_specs else None
+        if qos_policy_group:
+            if match_read:
+                try:
+                    path = lun.get_metadata_property('Path')
+                    self.zapi_client.set_lun_qos_policy_group(path,
+                                                              qos_policy_group)
+                    match_write = True
+                except netapp_api.NaApiError as nae:
+                    LOG.error(_LE("Failure setting QoS policy group. %s"), nae)
+        else:
+            match_write = True
+        if not (match_read and match_write):
+            raise exception.ManageExistingVolumeTypeMismatch(
+                reason=(_("LUN with given ref %(ref)s does not satisfy volume"
+                          " type. Ensure LUN volume with ssc features is"
+                          " present on vserver %(vs)s.")
+                        % {'ref': existing_ref, 'vs': self.vserver}))

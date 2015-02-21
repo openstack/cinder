@@ -291,6 +291,8 @@ class Client(client_base.Client):
         query.add_node_with_children('lun-info', **args)
         luns = self.connection.invoke_successfully(lun_iter, True)
         attr_list = luns.get_child_by_name('attributes-list')
+        if not attr_list:
+            return []
         return attr_list.get_children()
 
     def file_assign_qos(self, flex_vol, qos_policy_group, file_path):
@@ -302,6 +304,13 @@ class Client(client_base.Client):
                'file': file_path,
                'vserver': self.vserver})
         self.connection.invoke_successfully(file_assign_qos, True)
+
+    def set_lun_qos_policy_group(self, path, qos_policy_group):
+        """Sets qos_policy_group on a LUN."""
+        set_qos_group = netapp_api.NaElement.create_node_with_children(
+            'lun-set-qos-policy-group',
+            **{'path': path, 'qos-policy-group': qos_policy_group})
+        self.connection.invoke_successfully(set_qos_group, True)
 
     def get_if_info_by_ip(self, ip):
         """Gets the network interface info by ip."""

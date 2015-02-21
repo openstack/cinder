@@ -21,6 +21,7 @@
 Volume driver library for NetApp 7/C-mode block storage systems.
 """
 
+import math
 import sys
 import uuid
 
@@ -84,6 +85,7 @@ class NetAppBlockStorageLibrary(object):
         self.lun_table = {}
         self.lookup_service = fczm_utils.create_lookup_service()
         self.app_version = kwargs.get("app_version", "unknown")
+        self.db = kwargs.get('db')
 
         self.configuration = kwargs['configuration']
         self.configuration.append_config_values(na_opts.netapp_connection_opts)
@@ -135,7 +137,9 @@ class NetAppBlockStorageLibrary(object):
         size = default_size if not int(volume['size'])\
             else int(volume['size']) * units.Gi
 
-        metadata = {'OsType': 'linux', 'SpaceReserved': 'true'}
+        metadata = {'OsType': 'linux',
+                    'SpaceReserved': 'true',
+                    'Path': '/vol/%s/%s' % (ontap_volume_name, lun_name)}
 
         extra_specs = na_utils.get_volume_extra_specs(volume)
         qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
@@ -233,16 +237,21 @@ class NetAppBlockStorageLibrary(object):
         """Returns LUN handle based on filer type."""
         raise NotImplementedError()
 
+    def _extract_lun_info(self, lun):
+        """Extracts the LUNs from API and populates the LUN table."""
+
+        meta_dict = self._create_lun_meta(lun)
+        path = lun.get_child_content('path')
+        (_rest, _splitter, name) = path.rpartition('/')
+        handle = self._create_lun_handle(meta_dict)
+        size = lun.get_child_content('size')
+        return NetAppLun(handle, name, size, meta_dict)
+
     def _extract_and_populate_luns(self, api_luns):
         """Extracts the LUNs from API and populates the LUN table."""
 
         for lun in api_luns:
-            meta_dict = self._create_lun_meta(lun)
-            path = lun.get_child_content('path')
-            (_rest, _splitter, name) = path.rpartition('/')
-            handle = self._create_lun_handle(meta_dict)
-            size = lun.get_child_content('size')
-            discovered_lun = NetAppLun(handle, name, size, meta_dict)
+            discovered_lun = self._extract_lun_info(lun)
             self._add_lun_to_table(discovered_lun)
 
     def _map_lun(self, name, initiator_list, initiator_type, lun_id=None):
@@ -500,6 +509,89 @@ class NetAppBlockStorageLibrary(object):
         ls = int(lun_info.get_child_content('size'))
         block_count = ls / bs
         return block_count
+
+    def _check_volume_type_for_lun(self, volume, lun, existing_ref):
+        """Checks if lun satifies the volume type."""
+        raise NotImplementedError()
+
+    def manage_existing(self, volume, existing_ref):
+        """Brings an existing storage object under Cinder management.
+
+        existing_ref can contain source-id or source-name or both.
+        source-id: lun uuid.
+        source-name: complete lun path eg. /vol/vol0/lun.
+        """
+        lun = self._get_existing_vol_with_manage_ref(existing_ref)
+        self._check_volume_type_for_lun(volume, lun, existing_ref)
+        path = lun.get_metadata_property('Path')
+        if lun.name == volume['name']:
+            LOG.info(_LI("LUN with given ref %s need not be renamed "
+                         "during manage operation."), existing_ref)
+        else:
+            (rest, splitter, name) = path.rpartition('/')
+            new_path = '%s/%s' % (rest, volume['name'])
+            self.zapi_client.move_lun(path, new_path)
+            lun = self._get_existing_vol_with_manage_ref(
+                {'source-name': new_path})
+        self._add_lun_to_table(lun)
+        LOG.info(_LI("Manage operation completed for LUN with new path"
+                     " %(path)s and uuid %(uuid)s."),
+                 {'path': lun.get_metadata_property('Path'),
+                  'uuid': lun.get_metadata_property('UUID')})
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume to be managed by manage_existing.
+
+        When calculating the size, round up to the next GB.
+        """
+        lun = self._get_existing_vol_with_manage_ref(existing_ref)
+        return int(math.ceil(float(lun.size) / units.Gi))
+
+    def _get_existing_vol_with_manage_ref(self, existing_ref):
+        """Get the corresponding LUN from the storage server."""
+        uuid = existing_ref.get('source-id')
+        path = existing_ref.get('source-name')
+        if not (uuid or path):
+            reason = _('Reference must contain either source-id'
+                       ' or source-name element.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+        lun_info = {}
+        lun_info.setdefault('path', path) if path else None
+        if hasattr(self, 'vserver') and uuid:
+            lun_info['uuid'] = uuid
+        luns = self.zapi_client.get_lun_by_args(**lun_info)
+        if luns:
+            for lun in luns:
+                netapp_lun = self._extract_lun_info(lun)
+                storage_valid = self._is_lun_valid_on_storage(netapp_lun)
+                uuid_valid = True
+                if uuid:
+                    if netapp_lun.get_metadata_property('UUID') == uuid:
+                        uuid_valid = True
+                    else:
+                        uuid_valid = False
+                if storage_valid and uuid_valid:
+                    return netapp_lun
+        raise exception.ManageExistingInvalidReference(
+            existing_ref=existing_ref,
+            reason=(_('LUN not found with given ref %s.') % existing_ref))
+
+    def _is_lun_valid_on_storage(self, lun):
+        """Validate lun specific to storage system."""
+        return True
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management.
+
+           Does not delete the underlying backend storage object.
+        """
+        managed_lun = self._get_lun_from_table(volume['name'])
+        LOG.info(_LI("Unmanaged LUN with current path %(path)s and uuid "
+                     "%(uuid)s."),
+                 {'path': managed_lun.get_metadata_property('Path'),
+                  'uuid': managed_lun.get_metadata_property('UUID')
+                  or 'unknown'})
 
     def initialize_connection_iscsi(self, volume, connector):
         """Driver entry point to attach a volume to an instance.

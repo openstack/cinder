@@ -72,6 +72,15 @@ class NetApp7modeISCSIDriver(driver.ISCSIDriver):
     def remove_export(self, context, volume):
         self.library.remove_export(context, volume)
 
+    def manage_existing(self, volume, existing_ref):
+        return self.library.manage_existing(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        return self.library.manage_existing_get_size(volume, existing_ref)
+
+    def unmanage(self, volume):
+        return self.library.unmanage(volume)
+
     def initialize_connection(self, volume, connector):
         return self.library.initialize_connection_iscsi(volume, connector)
 

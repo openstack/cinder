@@ -72,6 +72,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                        mock.Mock(return_value=None))
     @mock.patch.object(block_base, 'LOG', mock.Mock())
     def test_create_volume(self):
+        self.library.zapi_client.get_lun_by_args.return_value = ['lun']
         self.library.create_volume({'name': 'lun1', 'size': 100,
                                     'id': uuid.uuid4(),
                                     'host': 'hostname@backend#vol1'})
@@ -289,6 +290,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     @mock.patch.object(na_utils, 'get_volume_extra_specs',
                        mock.Mock(return_value={'netapp:raid_type': 'raid4'}))
     def test_create_volume_obsolete_extra_spec(self):
+        self.library.zapi_client.get_lun_by_args.return_value = ['lun']
 
         self.library.create_volume({'name': 'lun1', 'size': 100,
                                     'id': uuid.uuid4(),
@@ -306,6 +308,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                        mock.Mock(return_value={'netapp_thick_provisioned':
                                                'true'}))
     def test_create_volume_deprecated_extra_spec(self):
+        self.library.zapi_client.get_lun_by_args.return_value = ['lun']
 
         self.library.create_volume({'name': 'lun1', 'size': 100,
                                     'id': uuid.uuid4(),
@@ -320,3 +323,85 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.do_setup(mock.Mock())
 
         self.assertTrue(mock_check_flags.called)
+
+    def test_get_existing_vol_manage_missing_id_path(self):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.library._get_existing_vol_with_manage_ref,
+                          {})
+
+    def test_get_existing_vol_manage_not_found(self):
+        self.zapi_client.get_lun_by_args.return_value = []
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.library._get_existing_vol_with_manage_ref,
+                          {'source-id': 'src_id',
+                           'source-name': 'lun_path'})
+        self.assertEqual(1, self.zapi_client.get_lun_by_args.call_count)
+
+    @mock.patch.object(block_lib, '_extract_lun_info',
+                       mock.Mock(return_value=block_base.NetAppLun(
+                                 'lun0', 'lun0', '3', {'UUID': 'src_id'})))
+    def test_get_existing_vol_manage_lun(self):
+        self.zapi_client.get_lun_by_args.return_value = ['lun0', 'lun1']
+        lun = self.library._get_existing_vol_with_manage_ref(
+            {'source-id': 'src_id', 'path': 'lun_path'})
+        self.assertEqual(1, self.zapi_client.get_lun_by_args.call_count)
+        self.library._extract_lun_info.assert_called_once_with('lun0')
+        self.assertEqual('lun0', lun.name)
+
+    @mock.patch.object(block_lib, '_get_existing_vol_with_manage_ref',
+                       mock.Mock(return_value=block_base.NetAppLun(
+                                 'handle', 'name', '1073742824', {})))
+    def test_manage_existing_get_size(self):
+        size = self.library.manage_existing_get_size(
+            {'id': 'vol_id'}, {'ref': 'ref'})
+        self.assertEqual(2, size)
+        self.library._get_existing_vol_with_manage_ref.assert_called_once_with(
+            {'ref': 'ref'})
+
+    @mock.patch.object(block_base.LOG, 'info')
+    def test_unmanage(self, log):
+        mock_lun = block_base.NetAppLun('handle', 'name', '1',
+                                        {'Path': 'p', 'UUID': 'uuid'})
+        self.library._get_lun_from_table = mock.Mock(return_value=mock_lun)
+        self.library.unmanage({'name': 'vol'})
+        self.library._get_lun_from_table.assert_called_once_with('vol')
+        self.assertEqual(1, log.call_count)
+
+    def test_manage_existing_lun_same_name(self):
+        mock_lun = block_base.NetAppLun('handle', 'name', '1',
+                                        {'Path': '/vol/vol1/name'})
+        self.library._get_existing_vol_with_manage_ref = mock.Mock(
+            return_value=mock_lun)
+        self.library._check_volume_type_for_lun = mock.Mock()
+        self.library._add_lun_to_table = mock.Mock()
+        self.zapi_client.move_lun = mock.Mock()
+        self.library.manage_existing({'name': 'name'}, {'ref': 'ref'})
+        self.library._get_existing_vol_with_manage_ref.assert_called_once_with(
+            {'ref': 'ref'})
+        self.assertEqual(1, self.library._check_volume_type_for_lun.call_count)
+        self.assertEqual(1, self.library._add_lun_to_table.call_count)
+        self.assertEqual(0, self.zapi_client.move_lun.call_count)
+
+    def test_manage_existing_lun_new_path(self):
+        mock_lun = block_base.NetAppLun(
+            'handle', 'name', '1', {'Path': '/vol/vol1/name'})
+        self.library._get_existing_vol_with_manage_ref = mock.Mock(
+            return_value=mock_lun)
+        self.library._check_volume_type_for_lun = mock.Mock()
+        self.library._add_lun_to_table = mock.Mock()
+        self.zapi_client.move_lun = mock.Mock()
+        self.library.manage_existing({'name': 'volume'}, {'ref': 'ref'})
+        self.assertEqual(
+            2, self.library._get_existing_vol_with_manage_ref.call_count)
+        self.assertEqual(1, self.library._check_volume_type_for_lun.call_count)
+        self.assertEqual(1, self.library._add_lun_to_table.call_count)
+        self.zapi_client.move_lun.assert_called_once_with(
+            '/vol/vol1/name', '/vol/vol1/volume')
+
+    def test_check_vol_type_for_lun(self):
+        self.assertRaises(NotImplementedError,
+                          self.library._check_volume_type_for_lun,
+                          'vol', 'lun', 'existing_ref')
+
+    def test_is_lun_valid_on_storage(self):
+        self.assertTrue(self.library._is_lun_valid_on_storage('lun'))
