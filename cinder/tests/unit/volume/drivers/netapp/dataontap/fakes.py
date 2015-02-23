@@ -1,4 +1,5 @@
 # Copyright (c) - 2014, Clinton Knight.  All rights reserved.
+# Copyright (c) - 2015, Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,15 +13,49 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+VOLUME_ID = 'f10d1a84-9b7b-427e-8fec-63c48b509a56'
+LUN_ID = 'ee6b4cc7-477b-4016-aa0c-7127b4e3af86'
+LUN_HANDLE = 'fake_lun_handle'
+LUN_NAME = 'lun1'
+LUN_SIZE = 3
+LUN_TABLE = {LUN_NAME: None}
+SIZE = 1024
+HOST_NAME = 'fake.host.name'
+BACKEND_NAME = 'fake_backend_name'
+POOL_NAME = 'aggr1'
+EXPORT_PATH = '/fake/export/path'
+NFS_SHARE = '192.168.99.24:%s' % EXPORT_PATH
+HOST_STRING = '%s@%s#%s' % (HOST_NAME, BACKEND_NAME, POOL_NAME)
+NFS_HOST_STRING = '%s@%s#%s' % (HOST_NAME, BACKEND_NAME, NFS_SHARE)
+FLEXVOL = 'openstack-flexvol'
+NFS_FILE_PATH = 'nfsvol'
+PATH = '/vol/%s/%s' % (POOL_NAME, LUN_NAME)
+LUN_METADATA = {
+    'OsType': None,
+    'SpaceReserved': 'true',
+    'Path': PATH,
+    'Qtree': None,
+    'Volume': POOL_NAME,
+}
+VOLUME = {
+    'name': LUN_NAME,
+    'size': SIZE,
+    'id': VOLUME_ID,
+    'host': HOST_STRING,
+}
+NFS_VOLUME = {
+    'name': NFS_FILE_PATH,
+    'size': SIZE,
+    'id': VOLUME_ID,
+    'host': NFS_HOST_STRING,
+}
 
-VOLUME = 'f10d1a84-9b7b-427e-8fec-63c48b509a56'
-LUN = 'ee6b4cc7-477b-4016-aa0c-7127b4e3af86'
-SIZE = '1024'
-METADATA = {'OsType': 'linux', 'SpaceReserved': 'true'}
+NETAPP_VOLUME = 'fake_netapp_volume'
 
 UUID1 = '12345678-1234-5678-1234-567812345678'
-LUN1 = '/vol/vol0/lun1'
-VSERVER1_NAME = 'openstack-vserver'
+LUN_PATH = '/vol/vol0/%s' % LUN_NAME
+
+VSERVER_NAME = 'openstack-vserver'
 
 FC_VOLUME = {'name': 'fake_volume'}
 
@@ -78,7 +113,8 @@ IGROUP1 = {
 }
 
 ISCSI_VOLUME = {
-    'name': 'fake_volume', 'id': 'fake_id',
+    'name': 'fake_volume',
+    'id': 'fake_id',
     'provider_auth': 'fake provider auth',
 }
 
@@ -112,11 +148,8 @@ ISCSI_TARGET_DETAILS_LIST = [
     {'address': '99.98.97.96', 'port': '3260'},
 ]
 
-HOSTNAME = 'fake.host.com'
 IPV4_ADDRESS = '192.168.14.2'
 IPV6_ADDRESS = 'fe80::6e40:8ff:fe8a:130'
-EXPORT_PATH = '/fake/export/path'
-NFS_SHARE = HOSTNAME + ':' + EXPORT_PATH
 NFS_SHARE_IPV4 = IPV4_ADDRESS + ':' + EXPORT_PATH
 NFS_SHARE_IPV6 = IPV6_ADDRESS + ':' + EXPORT_PATH
 
@@ -124,3 +157,52 @@ RESERVED_PERCENTAGE = 7
 TOTAL_BYTES = 4797892092432
 AVAILABLE_BYTES = 13479932478
 CAPACITY_VALUES = (TOTAL_BYTES, AVAILABLE_BYTES)
+
+IGROUP1 = {'initiator-group-os-type': 'linux',
+           'initiator-group-type': 'fcp',
+           'initiator-group-name': IGROUP1_NAME}
+
+QOS_SPECS = {}
+EXTRA_SPECS = {}
+MAX_THROUGHPUT = '21734278B/s'
+QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
+
+QOS_POLICY_GROUP_INFO_LEGACY = {
+    'legacy': 'legacy-' + QOS_POLICY_GROUP_NAME,
+    'spec': None,
+}
+
+QOS_POLICY_GROUP_SPEC = {
+    'max_throughput': MAX_THROUGHPUT,
+    'policy_name': QOS_POLICY_GROUP_NAME,
+}
+
+QOS_POLICY_GROUP_INFO = {'legacy': None, 'spec': QOS_POLICY_GROUP_SPEC}
+
+CLONE_SOURCE_NAME = 'fake_clone_source_name'
+CLONE_SOURCE_ID = 'fake_clone_source_id'
+CLONE_SOURCE_SIZE = 1024
+
+CLONE_SOURCE = {
+    'size': CLONE_SOURCE_SIZE,
+    'name': CLONE_SOURCE_NAME,
+    'id': CLONE_SOURCE_ID,
+}
+
+CLONE_DESTINATION_NAME = 'fake_clone_destination_name'
+CLONE_DESTINATION_SIZE = 1041
+CLONE_DESTINATION_ID = 'fake_clone_destination_id'
+
+CLONE_DESTINATION = {
+    'size': CLONE_DESTINATION_SIZE,
+    'name': CLONE_DESTINATION_NAME,
+    'id': CLONE_DESTINATION_ID,
+}
+
+SNAPSHOT = {
+    'name': 'fake_snapshot_name',
+    'volume_size': SIZE,
+    'volume_id': 'fake_volume_id',
+}
+
+VOLUME_REF = {'name': 'fake_vref_name', 'size': 42}

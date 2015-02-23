@@ -1,6 +1,7 @@
 # Copyright (c) - 2014, Clinton Knight  All rights reserved.
 # Copyright (c) - 2015, Alex Meade.  All Rights Reserved.
 # Copyright (c) - 2015, Rushil Chugh.  All Rights Reserved.
+# Copyright (c) - 2015, Tom Barron.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -42,6 +43,69 @@ FC_ISCSI_TARGET_INFO_DICT = {'target_discovered': False,
                              'volume_id': ISCSI_FAKE_VOLUME['id'],
                              'auth_method': 'None', 'auth_username': 'stack',
                              'auth_password': 'password'}
+
+VOLUME_NAME = 'fake_volume_name'
+VOLUME_ID = 'fake_volume_id'
+VOLUME_TYPE_ID = 'fake_volume_type_id'
+
+VOLUME = {
+    'name': VOLUME_NAME,
+    'size': 42,
+    'id': VOLUME_ID,
+    'host': 'fake_host@fake_backend#fake_pool',
+    'volume_type_id': VOLUME_TYPE_ID,
+}
+
+
+QOS_SPECS = {}
+
+EXTRA_SPECS = {}
+
+MAX_THROUGHPUT = '21734278B/s'
+QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
+LEGACY_EXTRA_SPECS = {'netapp:qos_policy_group': QOS_POLICY_GROUP_NAME}
+
+LEGACY_QOS = {
+    'policy_name': QOS_POLICY_GROUP_NAME,
+}
+
+QOS_POLICY_GROUP_SPEC = {
+    'max_throughput': MAX_THROUGHPUT,
+    'policy_name': 'openstack-%s' % VOLUME_ID,
+}
+
+QOS_POLICY_GROUP_INFO_NONE = {'legacy': None, 'spec': None}
+
+QOS_POLICY_GROUP_INFO = {'legacy': None, 'spec': QOS_POLICY_GROUP_SPEC}
+
+LEGACY_QOS_POLICY_GROUP_INFO = {
+    'legacy': LEGACY_QOS,
+    'spec': None,
+}
+
+INVALID_QOS_POLICY_GROUP_INFO = {
+    'legacy': LEGACY_QOS,
+    'spec': QOS_POLICY_GROUP_SPEC,
+}
+
+QOS_SPECS_ID = 'fake_qos_specs_id'
+QOS_SPEC = {'maxBPS': 21734278}
+OUTER_BACKEND_QOS_SPEC = {
+    'id': QOS_SPECS_ID,
+    'specs': QOS_SPEC,
+    'consumer': 'back-end',
+}
+OUTER_FRONTEND_QOS_SPEC = {
+    'id': QOS_SPECS_ID,
+    'specs': QOS_SPEC,
+    'consumer': 'front-end',
+}
+OUTER_BOTH_QOS_SPEC = {
+    'id': QOS_SPECS_ID,
+    'specs': QOS_SPEC,
+    'consumer': 'both',
+}
+VOLUME_TYPE = {'id': VOLUME_TYPE_ID, 'qos_specs_id': QOS_SPECS_ID}
 
 
 def create_configuration():

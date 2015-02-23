@@ -2,6 +2,7 @@
 # Copyright (c) 2014 Ben Swartzlander.  All rights reserved.
 # Copyright (c) 2014 Navneet Singh.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -529,7 +530,7 @@ def refresh_cluster_ssc(backend, na_server, vserver, synchronous=False):
 
 def get_volumes_for_specs(ssc_vols, specs):
     """Shortlists volumes for extra specs provided."""
-    if specs is None or not isinstance(specs, dict):
+    if specs is None or specs == {} or not isinstance(specs, dict):
         return ssc_vols['all']
     result = copy.deepcopy(ssc_vols['all'])
     raid_type = specs.get('netapp:raid_type')

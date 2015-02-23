@@ -5,6 +5,7 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Andrew Kerr.  All rights reserved.
 # Copyright (c) 2014 Jeff Applewhite.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -108,11 +109,14 @@ class NetAppBlockStorage7modeLibrary(block_base.
         super(NetAppBlockStorage7modeLibrary, self).check_for_setup_error()
 
     def _create_lun(self, volume_name, lun_name, size,
-                    metadata, qos_policy_group=None):
+                    metadata, qos_policy_group_name=None):
         """Creates a LUN, handling Data ONTAP differences as needed."""
-
+        if qos_policy_group_name is not None:
+            msg = _('Data ONTAP operating in 7-Mode does not support QoS '
+                    'policy groups.')
+            raise exception.VolumeDriverException(msg)
         self.zapi_client.create_lun(
-            volume_name, lun_name, size, metadata, qos_policy_group)
+            volume_name, lun_name, size, metadata, qos_policy_group_name)
 
         self.vol_refresh_voluntary = True
 
@@ -176,8 +180,14 @@ class NetAppBlockStorage7modeLibrary(block_base.
         return False
 
     def _clone_lun(self, name, new_name, space_reserved='true',
-                   src_block=0, dest_block=0, block_count=0):
+                   qos_policy_group_name=None, src_block=0, dest_block=0,
+                   block_count=0):
         """Clone LUN with the given handle to the new name."""
+        if qos_policy_group_name is not None:
+            msg = _('Data ONTAP operating in 7-Mode does not support QoS '
+                    'policy groups.')
+            raise exception.VolumeDriverException(msg)
+
         metadata = self._get_lun_attr(name, 'metadata')
         path = metadata['Path']
         (parent, _splitter, name) = path.rpartition('/')
@@ -321,6 +331,7 @@ class NetAppBlockStorage7modeLibrary(block_base.
         """Driver entry point for destroying existing volumes."""
         super(NetAppBlockStorage7modeLibrary, self).delete_volume(volume)
         self.vol_refresh_voluntary = True
+        LOG.debug('Deleted LUN with name %s', volume['name'])
 
     def _is_lun_valid_on_storage(self, lun):
         """Validate LUN specific to storage system."""
@@ -330,19 +341,29 @@ class NetAppBlockStorage7modeLibrary(block_base.
                 return False
         return True
 
-    def _check_volume_type_for_lun(self, volume, lun, existing_ref):
-        """Check if lun satisfies volume type."""
-        extra_specs = na_utils.get_volume_extra_specs(volume)
-        if extra_specs and extra_specs.pop('netapp:qos_policy_group', None):
+    def _check_volume_type_for_lun(self, volume, lun, existing_ref,
+                                   extra_specs):
+        """Check if LUN satisfies volume type."""
+        if extra_specs:
+            legacy_policy = extra_specs.get('netapp:qos_policy_group')
+            if legacy_policy is not None:
+                raise exception.ManageExistingVolumeTypeMismatch(
+                    reason=_("Setting LUN QoS policy group is not supported "
+                             "on this storage family and ONTAP version."))
+        volume_type = na_utils.get_volume_type_from_volume(volume)
+        if volume_type is None:
+            return
+        spec = na_utils.get_backend_qos_spec_from_volume_type(volume_type)
+        if spec is not None:
             raise exception.ManageExistingVolumeTypeMismatch(
-                reason=_("Setting LUN QoS policy group is not supported"
-                         " on this storage family and ONTAP version."))
+                reason=_("Back-end QoS specs are not supported on this "
+                         "storage family and ONTAP version."))
 
-    def _get_preferred_target_from_list(self, target_details_list):
+    def _get_preferred_target_from_list(self, target_details_list,
+                                        filter=None):
         # 7-mode iSCSI LIFs migrate from controller to controller
         # in failover and flap operational state in transit, so
         # we  don't filter these on operational state.
 
         return (super(NetAppBlockStorage7modeLibrary, self)
-                ._get_preferred_target_from_list(target_details_list,
-                                                 filter=None))
+                ._get_preferred_target_from_list(target_details_list))

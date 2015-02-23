@@ -25,13 +25,14 @@ import os
 import uuid
 
 from oslo_log import log as logging
+from oslo_utils import excutils
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder.openstack.common import loopingcall
 from cinder import utils
-from cinder.volume.drivers.netapp.dataontap.client import api as na_api
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
@@ -41,6 +42,7 @@ from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
+QOS_CLEANUP_INTERVAL_SECONDS = 60
 
 
 class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
@@ -75,85 +77,55 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         """Check that the driver is working and can communicate."""
         super(NetAppCmodeNfsDriver, self).check_for_setup_error()
         ssc_cmode.check_ssc_api_permissions(self.zapi_client)
+        self._start_periodic_tasks()
 
-    def create_volume(self, volume):
-        """Creates a volume.
-
-        :param volume: volume reference
-        """
-        LOG.debug('create_volume on %s', volume['host'])
-        self._ensure_shares_mounted()
-
-        # get share as pool name
-        share = volume_utils.extract_host(volume['host'], level='pool')
-
-        if share is None:
-            msg = _("Pool is not available in the volume host field.")
-            raise exception.InvalidHost(reason=msg)
-
-        extra_specs = na_utils.get_volume_extra_specs(volume)
-        qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
-            if extra_specs else None
-
-        # warn on obsolete extra specs
-        na_utils.log_extra_spec_warnings(extra_specs)
-
+    def _do_qos_for_volume(self, volume, extra_specs, cleanup=True):
         try:
-            volume['provider_location'] = share
-            LOG.info(_LI('casted to %s'), volume['provider_location'])
-            self._do_create_volume(volume)
-            if qos_policy_group:
-                self._set_qos_policy_group_on_volume(volume, share,
-                                                     qos_policy_group)
-            return {'provider_location': volume['provider_location']}
-        except Exception as ex:
-            LOG.error(_LE("Exception creating vol %(name)s on "
-                          "share %(share)s. Details: %(ex)s"),
-                      {'name': volume['name'],
-                       'share': volume['provider_location'],
-                       'ex': ex})
-            volume['provider_location'] = None
-        finally:
-            if self.ssc_enabled:
-                self._update_stale_vols(self._get_vol_for_share(share))
+            qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
+                volume, extra_specs)
+            self.zapi_client.provision_qos_policy_group(qos_policy_group_info)
+            self._set_qos_policy_group_on_volume(volume, qos_policy_group_info)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Setting QoS for %s failed"), volume['id'])
+                if cleanup:
+                    LOG.debug("Cleaning volume %s", volume['id'])
+                    self._cleanup_volume_on_failure(volume)
 
-        msg = _("Volume %s could not be created on shares.")
-        raise exception.VolumeBackendAPIException(data=msg % (volume['name']))
+    def _start_periodic_tasks(self):
+        # Start the task that harvests soft-deleted QoS policy groups.
+        harvest_qos_periodic_task = loopingcall.FixedIntervalLoopingCall(
+            self.zapi_client.remove_unused_qos_policy_groups)
+        harvest_qos_periodic_task.start(
+            interval=QOS_CLEANUP_INTERVAL_SECONDS,
+            initial_delay=QOS_CLEANUP_INTERVAL_SECONDS)
 
-    def _set_qos_policy_group_on_volume(self, volume, share, qos_policy_group):
+    def _set_qos_policy_group_on_volume(self, volume, qos_policy_group_info):
+        if qos_policy_group_info is None:
+            return
+        qos_policy_group_name = na_utils.get_qos_policy_group_name_from_info(
+            qos_policy_group_info)
+        if qos_policy_group_name is None:
+            return
         target_path = '%s' % (volume['name'])
+        share = volume_utils.extract_host(volume['host'], level='pool')
         export_path = share.split(':')[1]
         flex_vol_name = self.zapi_client.get_vol_by_junc_vserver(self.vserver,
                                                                  export_path)
         self.zapi_client.file_assign_qos(flex_vol_name,
-                                         qos_policy_group,
+                                         qos_policy_group_name,
                                          target_path)
 
-    def _check_volume_type(self, volume, share, file_name):
+    def _check_volume_type(self, volume, share, file_name, extra_specs):
         """Match volume type for share file."""
-        extra_specs = na_utils.get_volume_extra_specs(volume)
-        qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
-            if extra_specs else None
         if not self._is_share_vol_type_match(volume, share):
             raise exception.ManageExistingVolumeTypeMismatch(
                 reason=(_("Volume type does not match for share %s."),
                         share))
-        if qos_policy_group:
-            try:
-                vserver, flex_vol_name = self._get_vserver_and_exp_vol(
-                    share=share)
-                self.zapi_client.file_assign_qos(flex_vol_name,
-                                                 qos_policy_group,
-                                                 file_name)
-            except na_api.NaApiError as ex:
-                LOG.exception(_LE('Setting file QoS policy group failed. %s'),
-                              ex)
-                raise exception.NetAppDriverException(
-                    reason=(_('Setting file QoS policy group failed. %s'), ex))
 
-    def _clone_volume(self, volume_name, clone_name,
-                      volume_id, share=None):
-        """Clones mounted volume on NetApp Cluster."""
+    def _clone_backing_file_for_volume(self, volume_name, clone_name,
+                                       volume_id, share=None):
+        """Clone backing file for Cinder volume."""
         (vserver, exp_volume) = self._get_vserver_and_exp_vol(volume_id, share)
         self.zapi_client.clone_file(exp_volume, volume_name, clone_name,
                                     vserver)
@@ -202,7 +174,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
 
             pool = dict()
             pool['pool_name'] = nfs_share
-            pool['QoS_support'] = False
+            pool['QoS_support'] = True
             pool.update(capacity)
 
             # add SSC content if available
@@ -280,10 +252,10 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         file_list = []
         (vserver, exp_volume) = self._get_vserver_and_exp_vol(
             volume_id=None, share=share)
-        for file in old_files:
-            path = '/vol/%s/%s' % (exp_volume, file)
+        for old_file in old_files:
+            path = '/vol/%s/%s' % (exp_volume, old_file)
             u_bytes = self.zapi_client.get_file_usage(path, vserver)
-            file_list.append((file, u_bytes))
+            file_list.append((old_file, u_bytes))
         LOG.debug('Shortlisted files eligible for deletion: %s', file_list)
         return file_list
 
@@ -343,6 +315,15 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         """Deletes a logical volume."""
         share = volume['provider_location']
         super(NetAppCmodeNfsDriver, self).delete_volume(volume)
+        try:
+            qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
+                volume)
+            self.zapi_client.mark_qos_policy_group_for_deletion(
+                qos_policy_group_info)
+        except Exception:
+            # Don't blow up here if something went wrong de-provisioning the
+            # QoS policy for the volume.
+            pass
         self._post_prov_deprov_in_ssc(share)
 
     def delete_snapshot(self, snapshot):
@@ -521,8 +502,29 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                                   {'img': image_id, 'vol': volume['id']})
                 finally:
                     if os.path.exists(dst_img_conv_local):
-                        self._delete_file(dst_img_conv_local)
+                        self._delete_file_at_path(dst_img_conv_local)
             self._post_clone_image(volume)
         finally:
             if os.path.exists(dst_img_local):
-                self._delete_file(dst_img_local)
+                self._delete_file_at_path(dst_img_local)
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management.
+
+           Does not delete the underlying backend storage object. A log entry
+           will be made to notify the Admin that the volume is no longer being
+           managed.
+
+           :param volume: Cinder volume to unmanage
+        """
+        try:
+            qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
+                volume)
+            self.zapi_client.mark_qos_policy_group_for_deletion(
+                qos_policy_group_info)
+        except Exception:
+            # Unmanage even if there was a problem deprovisioning the
+            # associated qos policy group.
+            pass
+
+        super(NetAppCmodeNfsDriver, self).unmanage(volume)

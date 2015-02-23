@@ -1,6 +1,6 @@
-# Copyright (c) 2014 Alex Meade.
-# Copyright (c) 2015 Dustin Schoenbrun.
-# All rights reserved.
+# Copyright (c) 2014 Alex Meade.  All rights reserved.
+# Copyright (c) 2015 Dustin Schoenbrun. All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -22,8 +22,10 @@ import six
 
 from cinder import exception
 from cinder import test
+
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
-    fakes as fake)
+    fakes as fake_client)
+from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.volume.drivers.netapp.dataontap.client import (
     api as netapp_api)
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
@@ -53,6 +55,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.vserver = CONNECTION_INFO['vserver']
         self.fake_volume = six.text_type(uuid.uuid4())
         self.fake_lun = six.text_type(uuid.uuid4())
+        self.mock_send_request = self.mock_object(self.client, 'send_request')
 
     def tearDown(self):
         super(NetAppCmodeClientTestCase, self).tearDown()
@@ -414,7 +417,10 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertSetEqual(igroups, expected)
 
     def test_clone_lun(self):
-        self.client.clone_lun('volume', 'fakeLUN', 'newFakeLUN')
+        self.client.clone_lun(
+            'volume', 'fakeLUN', 'newFakeLUN',
+            qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME)
+
         self.assertEqual(1, self.connection.invoke_successfully.call_count)
 
     def test_clone_lun_multiple_zapi_calls(self):
@@ -481,28 +487,196 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertEqual(1, len(lun))
 
     def test_file_assign_qos(self):
-        expected_flex_vol = "fake_flex_vol"
-        expected_policy_group = "fake_policy_group"
-        expected_file_path = "fake_file_path"
 
-        self.client.file_assign_qos(expected_flex_vol, expected_policy_group,
-                                    expected_file_path)
+        api_args = {
+            'volume': fake.FLEXVOL,
+            'qos-policy-group-name': fake.QOS_POLICY_GROUP_NAME,
+            'file': fake.NFS_FILE_PATH,
+            'vserver': self.vserver
+        }
 
-        __, _args, __ = self.connection.invoke_successfully.mock_calls[0]
-        actual_request = _args[0]
-        actual_flex_vol = actual_request.get_child_by_name('volume') \
-            .get_content()
-        actual_policy_group = actual_request \
-            .get_child_by_name('qos-policy-group-name').get_content()
-        actual_file_path = actual_request.get_child_by_name('file') \
-            .get_content()
-        actual_vserver = actual_request.get_child_by_name('vserver') \
-            .get_content()
+        self.client.file_assign_qos(
+            fake.FLEXVOL, fake.QOS_POLICY_GROUP_NAME, fake.NFS_FILE_PATH)
 
-        self.assertEqual(expected_flex_vol, actual_flex_vol)
-        self.assertEqual(expected_policy_group, actual_policy_group)
-        self.assertEqual(expected_file_path, actual_file_path)
-        self.assertEqual(self.vserver, actual_vserver)
+        self.mock_send_request.assert_has_calls([
+            mock.call('file-assign-qos', api_args, False)])
+
+    def test_set_lun_qos_policy_group(self):
+
+        api_args = {
+            'path': fake.LUN_PATH,
+            'qos-policy-group': fake.QOS_POLICY_GROUP_NAME,
+        }
+
+        self.client.set_lun_qos_policy_group(
+            fake.LUN_PATH, fake.QOS_POLICY_GROUP_NAME)
+
+        self.mock_send_request.assert_has_calls([
+            mock.call('lun-set-qos-policy-group', api_args)])
+
+    def test_provision_qos_policy_group_no_qos_policy_group_info(self):
+
+        self.client.provision_qos_policy_group(qos_policy_group_info=None)
+
+        self.assertEqual(0, self.connection.qos_policy_group_create.call_count)
+
+    def test_provision_qos_policy_group_legacy_qos_policy_group_info(self):
+
+        self.client.provision_qos_policy_group(
+            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_LEGACY)
+
+        self.assertEqual(0, self.connection.qos_policy_group_create.call_count)
+
+    def test_provision_qos_policy_group_with_qos_spec(self):
+
+        self.mock_object(self.client, 'qos_policy_group_create')
+
+        self.client.provision_qos_policy_group(fake.QOS_POLICY_GROUP_INFO)
+
+        self.client.qos_policy_group_create.assert_has_calls([
+            mock.call(fake.QOS_POLICY_GROUP_NAME, fake.MAX_THROUGHPUT)])
+
+    def test_qos_policy_group_create(self):
+
+        api_args = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'max-throughput': fake.MAX_THROUGHPUT,
+            'vserver': self.vserver,
+        }
+
+        self.client.qos_policy_group_create(
+            fake.QOS_POLICY_GROUP_NAME, fake.MAX_THROUGHPUT)
+
+        self.mock_send_request.assert_has_calls([
+            mock.call('qos-policy-group-create', api_args, False)])
+
+    def test_qos_policy_group_delete(self):
+
+        api_args = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME
+        }
+
+        self.client.qos_policy_group_delete(
+            fake.QOS_POLICY_GROUP_NAME)
+
+        self.mock_send_request.assert_has_calls([
+            mock.call('qos-policy-group-delete', api_args, False)])
+
+    def test_qos_policy_group_rename(self):
+
+        new_name = 'new-' + fake.QOS_POLICY_GROUP_NAME
+        api_args = {
+            'policy-group-name': fake.QOS_POLICY_GROUP_NAME,
+            'new-name': new_name,
+        }
+
+        self.client.qos_policy_group_rename(
+            fake.QOS_POLICY_GROUP_NAME, new_name)
+
+        self.mock_send_request.assert_has_calls([
+            mock.call('qos-policy-group-rename', api_args, False)])
+
+    def test_mark_qos_policy_group_for_deletion_no_qos_policy_group_info(self):
+
+        mock_rename = self.mock_object(self.client, 'qos_policy_group_rename')
+        mock_remove = self.mock_object(self.client,
+                                       'remove_unused_qos_policy_groups')
+
+        self.client.mark_qos_policy_group_for_deletion(
+            qos_policy_group_info=None)
+
+        self.assertEqual(0, mock_rename.call_count)
+        self.assertEqual(0, mock_remove.call_count)
+
+    def test_mark_qos_policy_group_for_deletion_legacy_qos_policy(self):
+
+        mock_rename = self.mock_object(self.client, 'qos_policy_group_rename')
+        mock_remove = self.mock_object(self.client,
+                                       'remove_unused_qos_policy_groups')
+
+        self.client.mark_qos_policy_group_for_deletion(
+            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_LEGACY)
+
+        self.assertEqual(0, mock_rename.call_count)
+        self.assertEqual(1, mock_remove.call_count)
+
+    def test_mark_qos_policy_group_for_deletion_w_qos_spec(self):
+
+        mock_rename = self.mock_object(self.client, 'qos_policy_group_rename')
+        mock_remove = self.mock_object(self.client,
+                                       'remove_unused_qos_policy_groups')
+        mock_log = self.mock_object(client_cmode.LOG, 'warning')
+        new_name = 'deleted_cinder_%s' % fake.QOS_POLICY_GROUP_NAME
+
+        self.client.mark_qos_policy_group_for_deletion(
+            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO)
+
+        mock_rename.assert_has_calls([
+            mock.call(fake.QOS_POLICY_GROUP_NAME, new_name)])
+        self.assertEqual(0, mock_log.call_count)
+        self.assertEqual(1, mock_remove.call_count)
+
+    def test_mark_qos_policy_group_for_deletion_exception_path(self):
+
+        mock_rename = self.mock_object(self.client, 'qos_policy_group_rename')
+        mock_rename.side_effect = netapp_api.NaApiError
+        mock_remove = self.mock_object(self.client,
+                                       'remove_unused_qos_policy_groups')
+        mock_log = self.mock_object(client_cmode.LOG, 'warning')
+        new_name = 'deleted_cinder_%s' % fake.QOS_POLICY_GROUP_NAME
+
+        self.client.mark_qos_policy_group_for_deletion(
+            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO)
+
+        mock_rename.assert_has_calls([
+            mock.call(fake.QOS_POLICY_GROUP_NAME, new_name)])
+        self.assertEqual(1, mock_log.call_count)
+        self.assertEqual(1, mock_remove.call_count)
+
+    def test_remove_unused_qos_policy_groups(self):
+
+        mock_log = self.mock_object(client_cmode.LOG, 'debug')
+        api_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': 'deleted_cinder_*',
+                    'vserver': self.vserver,
+                }
+            },
+            'max-records': 3500,
+            'continue-on-failure': 'true',
+            'return-success-list': 'false',
+            'return-failure-list': 'false',
+        }
+
+        self.client.remove_unused_qos_policy_groups()
+
+        self.mock_send_request.assert_has_calls([
+            mock.call('qos-policy-group-delete-iter', api_args, False)])
+        self.assertEqual(0, mock_log.call_count)
+
+    def test_remove_unused_qos_policy_groups_api_error(self):
+
+        mock_log = self.mock_object(client_cmode.LOG, 'debug')
+        api_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': 'deleted_cinder_*',
+                    'vserver': self.vserver,
+                }
+            },
+            'max-records': 3500,
+            'continue-on-failure': 'true',
+            'return-success-list': 'false',
+            'return-failure-list': 'false',
+        }
+        self.mock_send_request.side_effect = netapp_api.NaApiError
+
+        self.client.remove_unused_qos_policy_groups()
+
+        self.mock_send_request.assert_has_calls([
+            mock.call('qos-policy-group-delete-iter', api_args, False)])
+        self.assertEqual(1, mock_log.call_count)
 
     @mock.patch('cinder.volume.drivers.netapp.utils.resolve_hostname',
                 return_value='192.168.1.101')
@@ -666,8 +840,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def test_get_operational_network_interface_addresses(self):
         expected_result = ['1.2.3.4', '99.98.97.96']
         api_response = netapp_api.NaElement(
-            fake.GET_OPERATIONAL_NETWORK_INTERFACE_ADDRESSES_RESPONSE)
-        self.connection.invoke_successfully.return_value = api_response
+            fake_client.GET_OPERATIONAL_NETWORK_INTERFACE_ADDRESSES_RESPONSE)
+        self.mock_send_request.return_value = api_response
 
         address_list = (
             self.client.get_operational_network_interface_addresses())
@@ -678,7 +852,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
         expected_total_size = 1000
         expected_available_size = 750
         fake_flexvol_path = '/fake/vol'
-        response = netapp_api.NaElement(
+        api_response = netapp_api.NaElement(
             etree.XML("""
             <results status="passed">
                 <attributes-list>
@@ -691,7 +865,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
                 </attributes-list>
             </results>""" % {'available_size': expected_available_size,
                              'total_size': expected_total_size}))
-        self.connection.invoke_successfully.return_value = response
+
+        self.mock_send_request.return_value = api_response
 
         total_size, available_size = (
             self.client.get_flexvol_capacity(fake_flexvol_path))

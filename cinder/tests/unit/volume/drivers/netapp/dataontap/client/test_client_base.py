@@ -1,4 +1,5 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -97,20 +98,21 @@ class NetAppBaseClientTestCase(test.TestCase):
             self.connection.invoke_successfully.assert_called_once_with(
                 mock.ANY, True)
 
-    def test_create_lun_with_qos_policy_group(self):
+    def test_create_lun_with_qos_policy_group_name(self):
         expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
-        expected_qos_group = 'qos_1'
+        expected_qos_group_name = 'qos_1'
         mock_request = mock.Mock()
 
         with mock.patch.object(netapp_api.NaElement,
                                'create_node_with_children',
                                return_value=mock_request
                                ) as mock_create_node:
-            self.client.create_lun(self.fake_volume,
-                                   self.fake_lun,
-                                   self.fake_size,
-                                   self.fake_metadata,
-                                   qos_policy_group=expected_qos_group)
+            self.client.create_lun(
+                self.fake_volume,
+                self.fake_lun,
+                self.fake_size,
+                self.fake_metadata,
+                qos_policy_group_name=expected_qos_group_name)
 
             mock_create_node.assert_called_once_with(
                 'lun-create-by-size',
@@ -119,7 +121,7 @@ class NetAppBaseClientTestCase(test.TestCase):
                     'space-reservation-enabled':
                     self.fake_metadata['SpaceReserved']})
             mock_request.add_new_child.assert_called_once_with(
-                'qos-policy-group', expected_qos_group)
+                'qos-policy-group', expected_qos_group_name)
             self.connection.invoke_successfully.assert_called_once_with(
                 mock.ANY, True)
 
