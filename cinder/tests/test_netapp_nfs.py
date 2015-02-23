@@ -16,6 +16,8 @@
 
 import itertools
 import os
+import shutil
+import unittest
 
 from lxml import etree
 import mock
@@ -27,6 +29,7 @@ from cinder.i18n import _LW
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import test
+from cinder import utils as cinder_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
 from cinder.volume.drivers.netapp.dataontap.client import api
@@ -115,6 +118,13 @@ class FakeResponse(object):
 
 class NetAppCmodeNfsDriverTestCase(test.TestCase):
     """Test direct NetApp C Mode driver."""
+
+    TEST_NFS_HOST = 'nfs-host1'
+    TEST_NFS_SHARE_PATH = '/export'
+    TEST_NFS_EXPORT1 = '%s:%s' % (TEST_NFS_HOST, TEST_NFS_SHARE_PATH)
+    TEST_NFS_EXPORT2 = 'nfs-host2:/export'
+    TEST_MNT_POINT = '/mnt/nfs'
+
     def setUp(self):
         super(NetAppCmodeNfsDriverTestCase, self).setUp()
         self._custom_setup()
@@ -859,6 +869,19 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         configuration.nfs_shares_config = '/nfs'
         return configuration
 
+    @mock.patch.object(utils, 'get_volume_extra_specs')
+    def test_check_volume_type_mismatch(self, get_specs):
+        if not hasattr(self._driver, 'vserver'):
+            return unittest.skip("Test only applies to cmode driver")
+        get_specs.return_value = {'thin_volume': 'true'}
+        self._driver._is_share_vol_type_match = mock.Mock(return_value=False)
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self._driver._check_volume_type, 'vol',
+                          'share', 'file')
+        get_specs.assert_called_once_with('vol')
+        self._driver._is_share_vol_type_match.assert_called_once_with(
+            'vol', 'share', 'file')
+
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.Mock(return_value=(1, 20)))
     @mock.patch.object(nfs_base.NetAppNfsDriver, 'do_setup', mock.Mock())
@@ -918,6 +941,216 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         na_server = driver.zapi_client.get_connection()
         self.assertEqual('446', na_server.get_port())
         self.assertEqual('https', na_server.get_transport_type())
+
+    @mock.patch.object(utils, 'get_volume_extra_specs')
+    def test_check_volume_type_qos(self, get_specs):
+        get_specs.return_value = {'netapp:qos_policy_group': 'qos'}
+        self._driver._get_vserver_and_exp_vol = mock.Mock(
+            return_value=('vs', 'vol'))
+        self._driver.zapi_client.file_assign_qos = mock.Mock(
+            side_effect=api.NaApiError)
+        self._driver._is_share_vol_type_match = mock.Mock(return_value=True)
+        self.assertRaises(exception.NetAppDriverException,
+                          self._driver._check_volume_type, 'vol',
+                          'share', 'file')
+        get_specs.assert_called_once_with('vol')
+        self.assertEqual(1,
+                         self._driver.zapi_client.file_assign_qos.call_count)
+        self.assertEqual(1, self._driver._get_vserver_and_exp_vol.call_count)
+        self._driver._is_share_vol_type_match.assert_called_once_with(
+            'vol', 'share')
+
+    @mock.patch.object(utils, 'resolve_hostname', return_value='10.12.142.11')
+    def test_convert_vol_ref_share_name_to_share_ip(self, mock_hostname):
+        drv = self._driver
+        share = "%s/%s" % (self.TEST_NFS_EXPORT1, 'test_file_name')
+        modified_share = '10.12.142.11:/export/test_file_name'
+
+        modified_vol_ref = drv._convert_vol_ref_share_name_to_share_ip(share)
+
+        self.assertEqual(modified_share, modified_vol_ref)
+
+    @mock.patch.object(utils, 'resolve_hostname', return_value='10.12.142.11')
+    @mock.patch.object(os.path, 'isfile', return_value=True)
+    def test_get_share_mount_and_vol_from_vol_ref(self, mock_isfile,
+                                                  mock_hostname):
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        vol_path = "%s/%s" % (self.TEST_NFS_EXPORT1, 'test_file_name')
+        vol_ref = {'source-name': vol_path}
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+
+        (share, mount, file_path) = \
+            drv._get_share_mount_and_vol_from_vol_ref(vol_ref)
+
+        self.assertEqual(self.TEST_NFS_EXPORT1, share)
+        self.assertEqual(self.TEST_MNT_POINT, mount)
+        self.assertEqual('test_file_name', file_path)
+
+    @mock.patch.object(utils, 'resolve_hostname', return_value='10.12.142.11')
+    def test_get_share_mount_and_vol_from_vol_ref_with_bad_ref(self,
+                                                               mock_hostname):
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        vol_ref = {'source-id': '1234546'}
+
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          drv._get_share_mount_and_vol_from_vol_ref, vol_ref)
+
+    @mock.patch.object(utils, 'resolve_hostname', return_value='10.12.142.11')
+    def test_get_share_mount_and_vol_from_vol_ref_where_not_found(self,
+                                                                  mock_host):
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        vol_path = "%s/%s" % (self.TEST_NFS_EXPORT2, 'test_file_name')
+        vol_ref = {'source-name': vol_path}
+
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          drv._get_share_mount_and_vol_from_vol_ref, vol_ref)
+
+    @mock.patch.object(utils, 'resolve_hostname', return_value='10.12.142.11')
+    def test_get_share_mount_and_vol_from_vol_ref_where_is_dir(self,
+                                                               mock_host):
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        vol_ref = {'source-name': self.TEST_NFS_EXPORT2}
+
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          drv._get_share_mount_and_vol_from_vol_ref, vol_ref)
+
+    @mock.patch.object(cinder_utils, 'get_file_size', return_value=1073741824)
+    def test_manage_existing_get_size(self, get_file_size):
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        test_file = 'test_file_name'
+        volume = FakeVolume()
+        volume['name'] = 'file-new-managed-123'
+        volume['id'] = 'volume-new-managed-123'
+        vol_path = "%s/%s" % (self.TEST_NFS_EXPORT1, test_file)
+        vol_ref = {'source-name': vol_path}
+
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+        drv._get_share_mount_and_vol_from_vol_ref = mock.Mock(
+            return_value=(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT,
+                          test_file))
+
+        vol_size = drv.manage_existing_get_size(volume, vol_ref)
+        self.assertEqual(1, vol_size)
+
+    @mock.patch.object(cinder_utils, 'get_file_size', return_value=1074253824)
+    def test_manage_existing_get_size_round_up(self, get_file_size):
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        test_file = 'test_file_name'
+        volume = FakeVolume()
+        volume['name'] = 'file-new-managed-123'
+        volume['id'] = 'volume-new-managed-123'
+        vol_path = "%s/%s" % (self.TEST_NFS_EXPORT1, test_file)
+        vol_ref = {'source-name': vol_path}
+
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+        drv._get_share_mount_and_vol_from_vol_ref = mock.Mock(
+            return_value=(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT,
+                          test_file))
+
+        vol_size = drv.manage_existing_get_size(volume, vol_ref)
+        self.assertEqual(2, vol_size)
+
+    @mock.patch.object(cinder_utils, 'get_file_size', return_value='badfloat')
+    def test_manage_existing_get_size_error(self, get_size):
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        test_file = 'test_file_name'
+        volume = FakeVolume()
+        volume['name'] = 'file-new-managed-123'
+        volume['id'] = 'volume-new-managed-123'
+        vol_path = "%s/%s" % (self.TEST_NFS_EXPORT1, test_file)
+        vol_ref = {'source-name': vol_path}
+
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+        drv._get_share_mount_and_vol_from_vol_ref = mock.Mock(
+            return_value=(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT,
+                          test_file))
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          drv.manage_existing_get_size, volume, vol_ref)
+
+    @mock.patch.object(cinder_utils, 'get_file_size', return_value=1074253824)
+    def test_manage_existing(self, get_file_size):
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        test_file = 'test_file_name'
+        volume = FakeVolume()
+        volume['name'] = 'file-new-managed-123'
+        volume['id'] = 'volume-new-managed-123'
+        vol_path = "%s/%s" % (self.TEST_NFS_EXPORT1, test_file)
+        vol_ref = {'source-name': vol_path}
+        drv._check_volume_type = mock.Mock()
+        self.stubs.Set(drv, '_execute', mock.Mock())
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+        drv._get_share_mount_and_vol_from_vol_ref = mock.Mock(
+            return_value=(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT,
+                          test_file))
+        shutil.move = mock.Mock()
+
+        location = drv.manage_existing(volume, vol_ref)
+        self.assertEqual(self.TEST_NFS_EXPORT1, location['provider_location'])
+        drv._check_volume_type.assert_called_once_with(
+            volume, self.TEST_NFS_EXPORT1, test_file)
+
+    @mock.patch.object(cinder_utils, 'get_file_size', return_value=1074253824)
+    def test_manage_existing_move_fails(self, get_file_size):
+        drv = self._driver
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1]
+        test_file = 'test_file_name'
+        volume = FakeVolume()
+        volume['name'] = 'volume-new-managed-123'
+        volume['id'] = 'volume-new-managed-123'
+        vol_path = "%s/%s" % (self.TEST_NFS_EXPORT1, test_file)
+        vol_ref = {'source-name': vol_path}
+        drv._check_volume_type = mock.Mock()
+        drv._ensure_shares_mounted = mock.Mock()
+        drv._get_mount_point_for_share = mock.Mock(
+            return_value=self.TEST_MNT_POINT)
+        drv._get_share_mount_and_vol_from_vol_ref = mock.Mock(
+            return_value=(self.TEST_NFS_EXPORT1, self.TEST_MNT_POINT,
+                          test_file))
+        drv._execute = mock.Mock(side_effect=OSError)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          drv.manage_existing, volume, vol_ref)
+        drv._check_volume_type.assert_called_once_with(
+            volume, self.TEST_NFS_EXPORT1, test_file)
+
+    @mock.patch.object(nfs_base, 'LOG')
+    def test_unmanage(self, mock_log):
+        drv = self._driver
+        volume = FakeVolume()
+        volume['id'] = '123'
+        volume['provider_location'] = '/share'
+        drv.unmanage(volume)
+        self.assertEqual(1, mock_log.info.call_count)
 
 
 class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
@@ -1332,6 +1565,14 @@ class NetApp7modeNfsDriverTestCase(NetAppCmodeNfsDriverTestCase):
     def test_get_pool(self):
         pool = self._driver.get_pool({'provider_location': 'fake-share'})
         self.assertEqual(pool, 'fake-share')
+
+    @mock.patch.object(utils, 'get_volume_extra_specs')
+    def test_check_volume_type_qos(self, get_specs):
+        get_specs.return_value = {'netapp:qos_policy_group': 'qos'}
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self._driver._check_volume_type,
+                          'vol', 'share', 'file')
+        get_specs.assert_called_once_with('vol')
 
     def _set_config(self, configuration):
         super(NetApp7modeNfsDriverTestCase, self)._set_config(

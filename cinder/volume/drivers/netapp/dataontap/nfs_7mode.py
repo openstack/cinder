@@ -216,3 +216,13 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
     def _is_share_vol_compatible(self, volume, share):
         """Checks if share is compatible with volume to host it."""
         return self._is_share_eligible(share, volume['size'])
+
+    def _check_volume_type(self, volume, share, file_name):
+        """Matches a volume type for share file."""
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+        qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
+            if extra_specs else None
+        if qos_policy_group:
+            raise exception.ManageExistingVolumeTypeMismatch(
+                reason=(_("Setting file qos policy group is not supported"
+                          " on this storage family and ontap version.")))

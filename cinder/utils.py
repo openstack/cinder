@@ -607,6 +607,11 @@ def get_file_gid(path):
     return os.stat(path).st_gid
 
 
+def get_file_size(path):
+    """Returns the file size."""
+    return os.stat(path).st_size
+
+
 def _get_disk_of_partition(devpath, st=None):
     """Returns a disk device path from a partition device path, and stat for
     the device. If devpath is not a partition, devpath is returned as it is.
