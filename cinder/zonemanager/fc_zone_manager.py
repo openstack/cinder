@@ -88,9 +88,8 @@ class ZoneManager(fc_common.FCCommon):
         """Load the driver from the one specified in args, or from flags."""
         super(ZoneManager, self).__init__(**kwargs)
 
-        self.configuration = kwargs.get('configuration')
-        if self.configuration:
-            self.configuration.append_config_values(zone_manager_opts)
+        self.configuration = config.Configuration(zone_manager_opts,
+                                                  'fc-zone-manager')
 
         self._build_driver()
 
@@ -98,11 +97,10 @@ class ZoneManager(fc_common.FCCommon):
         zone_driver = self.configuration.zone_driver
         LOG.debug("Zone Driver from config: {%s}", zone_driver)
 
-        zm_config = config.Configuration(zone_manager_opts, 'fc-zone-manager')
         # Initialize vendor specific implementation of  FCZoneDriver
         self.driver = importutils.import_object(
             zone_driver,
-            configuration=zm_config)
+            configuration=self.configuration)
 
     def get_zoning_state_ref_count(self, initiator_wwn, target_wwn):
         """Zone management state check.

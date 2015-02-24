@@ -36,7 +36,7 @@ def create_zone_manager():
     LOG.debug("Zoning mode: %s", config.safe_get('zoning_mode'))
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Zone Manager enabled.")
-        zm = fc_zone_manager.ZoneManager(configuration=config)
+        zm = fc_zone_manager.ZoneManager()
         LOG.info(_LI("Using FC Zone Manager %(zm_version)s,"
                      " Driver %(drv_name)s %(drv_version)s."),
                  {'zm_version': zm.get_version(),
@@ -53,7 +53,7 @@ def create_lookup_service():
     LOG.debug("Zoning mode: %s", config.safe_get('zoning_mode'))
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Lookup Service enabled.")
-        lookup = fc_san_lookup_service.FCSanLookupService(configuration=config)
+        lookup = fc_san_lookup_service.FCSanLookupService()
         LOG.info(_LI("Using FC lookup service %s"), lookup.lookup_service)
         return lookup
     else:

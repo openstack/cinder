@@ -49,8 +49,6 @@ class FCSanLookupService(fc_common.FCCommon):
     def __init__(self, **kwargs):
         super(FCSanLookupService, self).__init__(**kwargs)
 
-        self.configuration = kwargs.get('configuration', None)
-
         opts = fc_zone_manager.zone_manager_opts
         self.configuration = config.Configuration(opts, 'fc-zone-manager')
 
