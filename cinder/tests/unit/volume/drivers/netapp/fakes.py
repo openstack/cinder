@@ -63,9 +63,3 @@ def create_configuration_cmode():
     config = create_configuration()
     config.append_config_values(na_opts.netapp_cluster_opts)
     return config
-
-
-def create_configuration_eseries():
-    config = create_configuration()
-    config.append_config_values(na_opts.netapp_eseries_opts)
-    return config

@@ -126,7 +126,15 @@ class FakeEseriesServerHandler(object):
                     "dssMaxSegmentSize": 131072,
                     "totalSizeInBytes": "1073741824", "raidLevel": "raid6",
                     "volumeRef": "0200000060080E500023BB34000003FB515C2293",
-                    "listOfMappings": [], "sectorOffset": "15",
+                    "listOfMappings": [{
+                    "lunMappingRef":"8800000000000000000000000000000000000000",
+                    "lun": 0,
+                    "ssid": 16384,
+                    "perms": 15,
+                    "volumeRef": "0200000060080E500023BB34000003FB515C2293",
+                    "type": "all",
+                    "mapRef": "8400000060080E500023C73400300381515BFBA3"
+                    }], "sectorOffset": "15",
                     "id": "0200000060080E500023BB34000003FB515C2293",
                     "wwn": "60080E500023BB3400001FC352D14CB2",
                     "capacity": "2147483648", "mgmtClientAttribute": 0,
@@ -351,7 +359,15 @@ class FakeEseriesServerHandler(object):
                     "dssMaxSegmentSize": 131072,
                     "totalSizeInBytes": "1073741824", "raidLevel": "raid6",
                     "volumeRef": "0200000060080E500023BB34000003FB515C2293",
-                    "listOfMappings": [], "sectorOffset": "15",
+                    "listOfMappings": [{
+                    "lunMappingRef":"8800000000000000000000000000000000000000",
+                    "lun": 0,
+                    "ssid": 16384,
+                    "perms": 15,
+                    "volumeRef": "0200000060080E500023BB34000003FB515C2293",
+                    "type": "all",
+                    "mapRef": "8400000060080E500023C73400300381515BFBA3"
+                    }], "sectorOffset": "15",
                     "id": "0200000060080E500023BB34000003FB515C2293",
                     "wwn": "60080E500023BB3400001FC352D14CB2",
                     "capacity": "2147483648", "mgmtClientAttribute": 0,
@@ -512,7 +528,15 @@ class FakeEseriesServerHandler(object):
                     "dssMaxSegmentSize": 131072,
                     "totalSizeInBytes": "1073741824", "raidLevel": "raid6",
                     "volumeRef": "0200000060080E500023BB34000003FB515C2293",
-                    "listOfMappings": [], "sectorOffset": "15",
+                    "listOfMappings": [{
+                    "lunMappingRef":"8800000000000000000000000000000000000000",
+                    "lun": 0,
+                    "ssid": 16384,
+                    "perms": 15,
+                    "volumeRef": "0200000060080E500023BB34000003FB515C2293",
+                    "type": "all",
+                    "mapRef": "8400000060080E500023C73400300381515BFBA3"
+                    }], "sectorOffset": "15",
                     "id": "0200000060080E500023BB34000003FB515C2293",
                     "wwn": "60080E500023BB3400001FC352D14CB2",
                     "capacity": "2147483648", "mgmtClientAttribute": 0,
@@ -663,6 +687,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         configuration.netapp_login = 'rw'
         configuration.netapp_password = 'rw'
         configuration.netapp_storage_pools = 'DDP'
+        configuration.netapp_enable_multiattach = False
         return configuration
 
     def test_embedded_mode(self):
@@ -701,61 +726,6 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         self.driver.delete_volume(self.volume)
         self.assertEqual(1, self.driver.db.volume_get.call_count)
 
-    def test_map_unmap(self):
-        self.driver.create_volume(self.volume)
-        connection_info = self.driver.initialize_connection(self.volume,
-                                                            self.connector)
-        self.assertEqual(connection_info['driver_volume_type'], 'iscsi')
-        properties = connection_info.get('data')
-        self.assertIsNotNone(properties, 'Target portal is none')
-        self.driver.terminate_connection(self.volume, self.connector)
-        self.driver.delete_volume(self.volume)
-
-    def test_map_already_mapped_same_host(self):
-        self.driver.create_volume(self.volume)
-
-        maps = [{'lunMappingRef': 'hdkjsdhjsdh',
-                 'mapRef': '8400000060080E500023C73400300381515BFBA3',
-                 'volumeRef': '0200000060080E500023BB34000003FB515C2293',
-                 'lun': 2}]
-        self.driver._get_host_mapping_for_vol_frm_array = mock.Mock(
-            return_value=maps)
-        self.driver._get_free_lun = mock.Mock()
-        info = self.driver.initialize_connection(self.volume, self.connector)
-        self.assertEqual(
-            self.driver._get_host_mapping_for_vol_frm_array.call_count, 1)
-        self.assertEqual(self.driver._get_free_lun.call_count, 0)
-        self.assertEqual(info['driver_volume_type'], 'iscsi')
-        properties = info.get('data')
-        self.assertIsNotNone(properties, 'Target portal is none')
-        self.driver.delete_volume(self.volume)
-
-    def test_map_already_mapped_diff_host(self):
-        self.driver.create_volume(self.volume)
-
-        maps = [{'lunMappingRef': 'hdkjsdhjsdh',
-                 'mapRef': '7400000060080E500023C73400300381515BFBA3',
-                 'volumeRef': 'CFDXJ67BLJH25DXCZFZD4NSF54',
-                 'lun': 2}]
-        self.driver._get_host_mapping_for_vol_frm_array = mock.Mock(
-            return_value=maps)
-        self.driver._get_vol_mapping_for_host_frm_array = mock.Mock(
-            return_value=[])
-        self.driver._get_free_lun = mock.Mock(return_value=0)
-        self.driver._del_vol_mapping_frm_cache = mock.Mock()
-        info = self.driver.initialize_connection(self.volume, self.connector)
-        self.assertEqual(
-            self.driver._get_vol_mapping_for_host_frm_array.call_count, 1)
-        self.assertEqual(
-            self.driver._get_host_mapping_for_vol_frm_array.call_count, 1)
-        self.assertEqual(self.driver._get_free_lun.call_count, 1)
-        self.assertEqual(self.driver._del_vol_mapping_frm_cache.call_count, 1)
-        self.assertEqual(info['driver_volume_type'], 'iscsi')
-        properties = info.get('data')
-        self.assertIsNotNone(properties, 'Target portal is none')
-        self.driver.terminate_connection(self.volume, self.connector)
-        self.driver.delete_volume(self.volume)
-
     def test_cloned_volume_destroy(self):
         self.driver.db = mock.Mock(
             volume_get=mock.Mock(return_value=self.volume))
@@ -763,15 +733,6 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         self.driver.create_cloned_volume(self.volume_sec, self.volume)
         self.assertEqual(1, self.driver.db.volume_get.call_count)
         self.driver.delete_volume(self.volume)
-
-    def test_map_by_creating_host(self):
-        self.driver.create_volume(self.volume)
-        connector_new = {'initiator': 'iqn.1993-08.org.debian:01:1001'}
-        connection_info = self.driver.initialize_connection(self.volume,
-                                                            connector_new)
-        self.assertEqual(connection_info['driver_volume_type'], 'iscsi')
-        properties = connection_info.get('data')
-        self.assertIsNotNone(properties, 'Target portal is none')
 
     def test_vol_stats(self):
         self.driver.get_volume_stats(refresh=False)
@@ -897,55 +858,6 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.NetAppDriverException,
                           self.driver._get_iscsi_portal_for_vol,
                           vol_nomatch, portals, False)
-
-    def test_get_host_right_type(self):
-        self.driver._get_host_with_port = mock.Mock(
-            return_value={'hostTypeIndex': 2, 'name': 'test'})
-        self.driver._get_host_type_definition = mock.Mock(
-            return_value={'index': 2, 'name': 'LnxALUA'})
-        host = self.driver._get_or_create_host('port', 'LinuxALUA')
-        self.assertEqual(host, {'hostTypeIndex': 2, 'name': 'test'})
-        self.driver._get_host_with_port.assert_called_once_with('port')
-        self.driver._get_host_type_definition.assert_called_once_with(
-            'LinuxALUA')
-
-    def test_get_host_update_type(self):
-        self.driver._get_host_with_port = mock.Mock(
-            return_value={'hostTypeIndex': 2, 'hostRef': 'test'})
-        self.driver._get_host_type_definition = mock.Mock(
-            return_value={'index': 3, 'name': 'LnxALUA'})
-        self.driver._client.update_host_type = mock.Mock(
-            return_value={'hostTypeIndex': 3, 'hostRef': 'test'})
-        host = self.driver._get_or_create_host('port', 'LinuxALUA')
-        self.assertEqual(host, {'hostTypeIndex': 3, 'hostRef': 'test'})
-        self.driver._get_host_with_port.assert_called_once_with('port')
-        self.driver._get_host_type_definition.assert_called_once_with(
-            'LinuxALUA')
-        self.assertEqual(self.driver._client.update_host_type.call_count, 1)
-
-    def test_get_host_update_type_failed(self):
-        self.driver._get_host_with_port = mock.Mock(
-            return_value={'hostTypeIndex': 2, 'hostRef': 'test',
-                          'label': 'test'})
-        self.driver._get_host_type_definition = mock.Mock(
-            return_value={'index': 3, 'name': 'LnxALUA'})
-        self.driver._client.update_host_type = mock.Mock(
-            side_effect=exception.NetAppDriverException)
-        host = self.driver._get_or_create_host('port', 'LinuxALUA')
-        self.assertEqual(host, {'hostTypeIndex': 2, 'hostRef': 'test',
-                                'label': 'test'})
-        self.driver._get_host_with_port.assert_called_once_with('port')
-        self.driver._get_host_type_definition.assert_called_once_with(
-            'LinuxALUA')
-        self.assertEqual(self.driver._client.update_host_type.call_count, 1)
-
-    def test_get_host_not_found(self):
-        self.driver._get_host_with_port = mock.Mock(
-            side_effect=exception.NotFound)
-        self.driver._create_host = mock.Mock()
-        self.driver._get_or_create_host('port', 'LnxALUA')
-        self.driver._get_host_with_port.assert_called_once_with('port')
-        self.driver._create_host.assert_called_once_with('port', 'LnxALUA')
 
     def test_setup_error_unsupported_host_type(self):
         configuration = self._set_config(create_configuration())

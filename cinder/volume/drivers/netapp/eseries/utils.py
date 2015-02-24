@@ -26,6 +26,11 @@ import six
 
 LOG = logging.getLogger(__name__)
 
+MULTI_ATTACH_HOST_GROUP_NAME = 'cinder-multi-attach'
+NULL_REF = '0000000000000000000000000000000000000000'
+MAX_LUNS_PER_HOST = 255
+MAX_LUNS_PER_HOST_GROUP = 256
+
 
 def encode_hex_to_base32(hex_string):
     """Encodes hex to base32 bit as per RFC4648."""
