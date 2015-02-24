@@ -92,7 +92,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'snapshot_id': None,
                 'image_id': None,
                 'source_replicaid': None,
-                'consistencygroup_id': None}
+                'consistencygroup_id': None,
+                'cgsnapshot_id': None}
 
         task = create_volume.VolumeCastTask(
             fake_scheduler_rpc_api(spec, self),
@@ -106,7 +107,8 @@ class CreateVolumeFlowTestCase(test.TestCase):
                 'snapshot_id': 3,
                 'image_id': 4,
                 'source_replicaid': 5,
-                'consistencygroup_id': 5}
+                'consistencygroup_id': 5,
+                'cgsnapshot_id': None}
 
         task = create_volume.VolumeCastTask(
             fake_scheduler_rpc_api(spec, self),

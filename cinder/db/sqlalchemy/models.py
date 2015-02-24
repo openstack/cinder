@@ -79,6 +79,7 @@ class ConsistencyGroup(BASE, CinderBase):
     description = Column(String(255))
     volume_type_id = Column(String(255))
     status = Column(String(255))
+    cgsnapshot_id = Column(String(36))
 
 
 class Cgsnapshot(BASE, CinderBase):

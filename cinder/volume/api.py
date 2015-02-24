@@ -162,7 +162,8 @@ class API(base.Base):
                image_id=None, volume_type=None, metadata=None,
                availability_zone=None, source_volume=None,
                scheduler_hints=None,
-               source_replica=None, consistencygroup=None):
+               source_replica=None, consistencygroup=None,
+               cgsnapshot=None):
 
         # NOTE(jdg): we can have a create without size if we're
         # doing a create from snap or volume.  Currently
@@ -180,7 +181,7 @@ class API(base.Base):
                     'than zero).') % size
             raise exception.InvalidInput(reason=msg)
 
-        if consistencygroup:
+        if consistencygroup and not cgsnapshot:
             if not volume_type:
                 msg = _("volume_type must be provided when creating "
                         "a volume in a consistency group.")
@@ -235,15 +236,22 @@ class API(base.Base):
             'key_manager': self.key_manager,
             'source_replica': source_replica,
             'optional_args': {'is_quota_committed': False},
-            'consistencygroup': consistencygroup
+            'consistencygroup': consistencygroup,
+            'cgsnapshot': cgsnapshot,
         }
         try:
-            flow_engine = create_volume.get_flow(self.scheduler_rpcapi,
-                                                 self.volume_rpcapi,
-                                                 self.db,
-                                                 self.image_service,
-                                                 availability_zones,
-                                                 create_what)
+            if cgsnapshot:
+                flow_engine = create_volume.get_flow_no_rpc(self.db,
+                                                            self.image_service,
+                                                            availability_zones,
+                                                            create_what)
+            else:
+                flow_engine = create_volume.get_flow(self.scheduler_rpcapi,
+                                                     self.volume_rpcapi,
+                                                     self.db,
+                                                     self.image_service,
+                                                     availability_zones,
+                                                     create_what)
         except Exception:
             msg = _('Failed to create api volume flow.')
             LOG.exception(msg)

@@ -62,6 +62,7 @@ class VolumeAPI(object):
         1.20 - Adds support for sending objects over RPC in create_snapshot()
                and delete_snapshot()
         1.21 - Adds update_consistencygroup.
+        1.22 - Adds create_consistencygroup_from_src.
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -71,7 +72,7 @@ class VolumeAPI(object):
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.21', serializer=serializer)
+        self.client = rpc.get_client(target, '1.22', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
@@ -94,6 +95,14 @@ class VolumeAPI(object):
                    add_volumes=add_volumes,
                    remove_volumes=remove_volumes)
 
+    def create_consistencygroup_from_src(self, ctxt, group, host,
+                                         cgsnapshot=None):
+        new_host = utils.extract_host(host)
+        cctxt = self.client.prepare(server=new_host, version='1.22')
+        cctxt.cast(ctxt, 'create_consistencygroup_from_src',
+                   group_id=group['id'],
+                   cgsnapshot_id=cgsnapshot['id'])
+
     def create_cgsnapshot(self, ctxt, group, cgsnapshot):
 
         host = utils.extract_host(group['host'])
@@ -114,7 +123,8 @@ class VolumeAPI(object):
                       snapshot_id=None, image_id=None,
                       source_replicaid=None,
                       source_volid=None,
-                      consistencygroup_id=None):
+                      consistencygroup_id=None,
+                      cgsnapshot_id=None):
 
         new_host = utils.extract_host(host)
         cctxt = self.client.prepare(server=new_host, version='1.4')
@@ -128,7 +138,8 @@ class VolumeAPI(object):
                    image_id=image_id,
                    source_replicaid=source_replicaid,
                    source_volid=source_volid,
-                   consistencygroup_id=consistencygroup_id)
+                   consistencygroup_id=consistencygroup_id,
+                   cgsnapshot_id=cgsnapshot_id)
 
     def delete_volume(self, ctxt, volume, unmanage_only=False):
         new_host = utils.extract_host(volume['host'])

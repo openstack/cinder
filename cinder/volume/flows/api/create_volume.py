@@ -40,8 +40,9 @@ QUOTAS = quota.QUOTAS
 # from, 'error' being the common example.
 SNAPSHOT_PROCEED_STATUS = ('available',)
 SRC_VOL_PROCEED_STATUS = ('available', 'in-use',)
-REPLICA_PROCEED_STATUS = ('active', 'active-stopped')
-CG_PROCEED_STATUS = ('available',)
+REPLICA_PROCEED_STATUS = ('active', 'active-stopped',)
+CG_PROCEED_STATUS = ('available', 'creating',)
+CGSNAPSHOT_PROCEED_STATUS = ('available',)
 
 
 class ExtractVolumeRequestTask(flow_utils.CinderTask):
@@ -61,7 +62,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
     default_provides = set(['availability_zone', 'size', 'snapshot_id',
                             'source_volid', 'volume_type', 'volume_type_id',
                             'encryption_key_id', 'source_replicaid',
-                            'consistencygroup_id'])
+                            'consistencygroup_id', 'cgsnapshot_id'])
 
     def __init__(self, image_service, availability_zones, **kwargs):
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
@@ -86,6 +87,24 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 raise exception.InvalidConsistencyGroup(reason=msg)
             consistencygroup_id = consistencygroup['id']
         return consistencygroup_id
+
+    @staticmethod
+    def _extract_cgsnapshot(cgsnapshot):
+        """Extracts the cgsnapshot id from the provided cgsnapshot.
+
+        This function validates the input cgsnapshot dict and checks that
+        the status of that cgsnapshot is valid for creating a cg from.
+        """
+
+        cgsnapshot_id = None
+        if cgsnapshot:
+            if cgsnapshot['status'] not in CGSNAPSHOT_PROCEED_STATUS:
+                msg = _("Originating CGSNAPSHOT status must be one"
+                        " of '%s' values")
+                msg = msg % (", ".join(CGSNAPSHOT_PROCEED_STATUS))
+                raise exception.InvalidCgSnapshot(reason=msg)
+            cgsnapshot_id = cgsnapshot['id']
+        return cgsnapshot_id
 
     @staticmethod
     def _extract_snapshot(snapshot):
@@ -379,7 +398,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata,
                 key_manager, source_replica,
-                consistencygroup):
+                consistencygroup, cgsnapshot):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -393,6 +412,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         source_replicaid = self._extract_source_replica(source_replica)
         size = self._extract_size(size, source_volume, snapshot)
         consistencygroup_id = self._extract_consistencygroup(consistencygroup)
+        cgsnapshot_id = self._extract_cgsnapshot(cgsnapshot)
 
         self._check_image_metadata(context, image_id, size)
 
@@ -445,6 +465,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             'qos_specs': specs,
             'source_replicaid': source_replicaid,
             'consistencygroup_id': consistencygroup_id,
+            'cgsnapshot_id': cgsnapshot_id,
         }
 
 
@@ -460,7 +481,8 @@ class EntryCreateTask(flow_utils.CinderTask):
         requires = ['availability_zone', 'description', 'metadata',
                     'name', 'reservations', 'size', 'snapshot_id',
                     'source_volid', 'volume_type_id', 'encryption_key_id',
-                    'source_replicaid', 'consistencygroup_id', ]
+                    'source_replicaid', 'consistencygroup_id',
+                    'cgsnapshot_id', ]
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
         self.db = db
@@ -672,7 +694,7 @@ class VolumeCastTask(flow_utils.CinderTask):
         requires = ['image_id', 'scheduler_hints', 'snapshot_id',
                     'source_volid', 'volume_id', 'volume_type',
                     'volume_properties', 'source_replicaid',
-                    'consistencygroup_id']
+                    'consistencygroup_id', 'cgsnapshot_id', ]
         super(VolumeCastTask, self).__init__(addons=[ACTION],
                                              requires=requires)
         self.volume_rpcapi = volume_rpcapi
@@ -687,6 +709,7 @@ class VolumeCastTask(flow_utils.CinderTask):
         image_id = request_spec['image_id']
         group_id = request_spec['consistencygroup_id']
         host = None
+        cgsnapshot_id = request_spec['cgsnapshot_id']
 
         if group_id:
             group = self.db.consistencygroup_get(context, group_id)
@@ -726,18 +749,19 @@ class VolumeCastTask(flow_utils.CinderTask):
             now = timeutils.utcnow()
             values = {'host': host, 'scheduled_at': now}
             volume_ref = self.db.volume_update(context, volume_id, values)
-            self.volume_rpcapi.create_volume(
-                context,
-                volume_ref,
-                volume_ref['host'],
-                request_spec,
-                filter_properties,
-                allow_reschedule=False,
-                snapshot_id=snapshot_id,
-                image_id=image_id,
-                source_volid=source_volid,
-                source_replicaid=source_replicaid,
-                consistencygroup_id=group_id)
+            if not cgsnapshot_id:
+                self.volume_rpcapi.create_volume(
+                    context,
+                    volume_ref,
+                    volume_ref['host'],
+                    request_spec,
+                    filter_properties,
+                    allow_reschedule=False,
+                    snapshot_id=snapshot_id,
+                    image_id=image_id,
+                    source_volid=source_volid,
+                    source_replicaid=source_replicaid,
+                    consistencygroup_id=group_id)
 
     def execute(self, context, **kwargs):
         scheduler_hints = kwargs.pop('scheduler_hints', None)
@@ -793,6 +817,36 @@ def get_flow(scheduler_rpcapi, volume_rpcapi, db_api,
     # This will cast it out to either the scheduler or volume manager via
     # the rpc apis provided.
     api_flow.add(VolumeCastTask(scheduler_rpcapi, volume_rpcapi, db_api))
+
+    # Now load (but do not run) the flow using the provided initial data.
+    return taskflow.engines.load(api_flow, store=create_what)
+
+
+def get_flow_no_rpc(db_api, image_service_api, availability_zones,
+                    create_what):
+    """Constructs and returns the api entrypoint flow.
+
+    This flow will do the following:
+
+    1. Inject keys & values for dependent tasks.
+    2. Extracts and validates the input keys & values.
+    3. Reserves the quota (reverts quota on any failures).
+    4. Creates the database entry.
+    5. Commits the quota.
+    """
+
+    flow_name = ACTION.replace(":", "_") + "_api"
+    api_flow = linear_flow.Flow(flow_name)
+
+    api_flow.add(ExtractVolumeRequestTask(
+        image_service_api,
+        availability_zones,
+        rebind={'size': 'raw_size',
+                'availability_zone': 'raw_availability_zone',
+                'volume_type': 'raw_volume_type'}))
+    api_flow.add(QuotaReserveTask(),
+                 EntryCreateTask(db_api),
+                 QuotaCommitTask())
 
     # Now load (but do not run) the flow using the provided initial data.
     return taskflow.engines.load(api_flow, store=create_what)

@@ -87,6 +87,7 @@ def create_consistencygroup(ctxt,
                             status='available',
                             availability_zone='fake_az',
                             volume_type_id=None,
+                            cgsnapshot_id=None,
                             **kwargs):
     """Create a consistencygroup object in the DB."""
     cg = {}
