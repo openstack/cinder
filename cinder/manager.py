@@ -86,7 +86,19 @@ class Manager(base.Base, periodic_task.PeriodicTasks):
     def init_host(self):
         """Handle initialization if this is a standalone service.
 
-        Child classes should override this method.
+        A hook point for services to execute tasks before the services are made
+        available (i.e. showing up on RPC and starting to accept RPC calls) to
+        other components.  Child classes should override this method.
+
+        """
+        pass
+
+    def init_host_with_rpc(self):
+        """A hook for service to do jobs after RPC is ready.
+
+        Like init_host(), this method is a hook where services get a chance
+        to execute tasks that *need* RPC. Child classes should override
+        this method.
 
         """
         pass
