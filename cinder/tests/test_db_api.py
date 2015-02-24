@@ -352,6 +352,77 @@ class DBAPIVolumeTestCase(BaseTest):
                                         db.volume_get_all_by_host(
                                         self.ctxt, 'foo'))
 
+    def test_volume_get_all_by_host_with_filters(self):
+        v1 = db.volume_create(self.ctxt, {'host': 'h1', 'display_name': 'v1',
+                                          'status': 'available'})
+        v2 = db.volume_create(self.ctxt, {'host': 'h1', 'display_name': 'v2',
+                                          'status': 'available'})
+        v3 = db.volume_create(self.ctxt, {'host': 'h2', 'display_name': 'v1',
+                                          'status': 'available'})
+        self._assertEqualListsOfObjects(
+            [v1],
+            db.volume_get_all_by_host(self.ctxt, 'h1',
+                                      filters={'display_name': 'v1'}))
+        self._assertEqualListsOfObjects(
+            [v1, v2],
+            db.volume_get_all_by_host(
+                self.ctxt, 'h1',
+                filters={'display_name': ['v1', 'v2', 'foo']}))
+        self._assertEqualListsOfObjects(
+            [v1, v2],
+            db.volume_get_all_by_host(self.ctxt, 'h1',
+                                      filters={'status': 'available'}))
+        self._assertEqualListsOfObjects(
+            [v3],
+            db.volume_get_all_by_host(self.ctxt, 'h2',
+                                      filters={'display_name': 'v1'}))
+        # No match
+        vols = db.volume_get_all_by_host(self.ctxt, 'h1',
+                                         filters={'status': 'foo'})
+        self.assertEqual([], vols)
+        # Bogus filter, should return empty list
+        vols = db.volume_get_all_by_host(self.ctxt, 'h1',
+                                         filters={'foo': 'bar'})
+        self.assertEqual([], vols)
+
+    def test_volume_get_all_by_group(self):
+        volumes = []
+        for i in xrange(3):
+            volumes.append([db.volume_create(self.ctxt, {
+                'consistencygroup_id': 'g%d' % i}) for j in xrange(3)])
+        for i in xrange(3):
+            self._assertEqualListsOfObjects(volumes[i],
+                                            db.volume_get_all_by_group(
+                                            self.ctxt, 'g%d' % i))
+
+    def test_volume_get_all_by_group_with_filters(self):
+        v1 = db.volume_create(self.ctxt, {'consistencygroup_id': 'g1',
+                                          'display_name': 'v1'})
+        v2 = db.volume_create(self.ctxt, {'consistencygroup_id': 'g1',
+                                          'display_name': 'v2'})
+        v3 = db.volume_create(self.ctxt, {'consistencygroup_id': 'g2',
+                                          'display_name': 'v1'})
+        self._assertEqualListsOfObjects(
+            [v1],
+            db.volume_get_all_by_group(self.ctxt, 'g1',
+                                       filters={'display_name': 'v1'}))
+        self._assertEqualListsOfObjects(
+            [v1, v2],
+            db.volume_get_all_by_group(self.ctxt, 'g1',
+                                       filters={'display_name': ['v1', 'v2']}))
+        self._assertEqualListsOfObjects(
+            [v3],
+            db.volume_get_all_by_group(self.ctxt, 'g2',
+                                       filters={'display_name': 'v1'}))
+        # No match
+        vols = db.volume_get_all_by_group(self.ctxt, 'g1',
+                                          filters={'display_name': 'foo'})
+        self.assertEqual([], vols)
+        # Bogus filter, should return empty list
+        vols = db.volume_get_all_by_group(self.ctxt, 'g1',
+                                          filters={'foo': 'bar'})
+        self.assertEqual([], vols)
+
     def test_volume_get_all_by_project(self):
         volumes = []
         for i in xrange(3):

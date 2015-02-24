@@ -186,14 +186,14 @@ def volume_get_all(context, marker, limit, sort_key, sort_dir,
                                filters=filters)
 
 
-def volume_get_all_by_host(context, host):
+def volume_get_all_by_host(context, host, filters=None):
     """Get all volumes belonging to a host."""
-    return IMPL.volume_get_all_by_host(context, host)
+    return IMPL.volume_get_all_by_host(context, host, filters=filters)
 
 
-def volume_get_all_by_group(context, group_id):
+def volume_get_all_by_group(context, group_id, filters=None):
     """Get all volumes belonging to a consistency group."""
-    return IMPL.volume_get_all_by_group(context, group_id)
+    return IMPL.volume_get_all_by_group(context, group_id, filters=filters)
 
 
 def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
