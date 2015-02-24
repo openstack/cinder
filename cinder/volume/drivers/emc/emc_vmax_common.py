@@ -56,6 +56,8 @@ CONCATENATED = 'concatenated'
 # V3
 SLO = 'storagetype:slo'
 WORKLOAD = 'storagetype:workload'
+INTERVAL = 'storagetype:interval'
+RETRIES = 'storagetype:retries'
 ISV3 = 'isV3'
 
 emc_opts = [
@@ -105,6 +107,7 @@ class EMCVMAXCommon(object):
         self.url = None
         self.user = None
         self.passwd = None
+        self.extraSpecs = {}
         self.masking = emc_vmax_masking.EMCVMAXMasking(prtcl)
         self.utils = emc_vmax_utils.EMCVMAXUtils(prtcl)
         self.fast = emc_vmax_fast.EMCVMAXFast(prtcl)
@@ -176,17 +179,15 @@ class EMCVMAXCommon(object):
         """
         volumeSize = int(self.utils.convert_gb_to_bits(volume['size']))
         volumeName = volume['id']
-        extraSpecs = self._initial_setup(volume)
+        self.extraSpecs = self._initial_setup(volume)
         self.conn = self._get_ecom_connection()
 
-        if extraSpecs[ISV3]:
+        if self.extraSpecs[ISV3]:
             rc, volumeDict, storageSystemName = (
-                self._create_v3_volume(volume, extraSpecs,
-                                       volumeName, volumeSize))
+                self._create_v3_volume(volume, volumeName, volumeSize))
         else:
             rc, volumeDict, storageSystemName = (
-                self._create_composite_volume(volume, extraSpecs,
-                                              volumeName, volumeSize))
+                self._create_composite_volume(volume, volumeName, volumeSize))
 
         # If volume is created as part of a consistency group.
         if 'consistencygroup_id' in volume and volume['consistencygroup_id']:
@@ -204,7 +205,8 @@ class EMCVMAXCommon(object):
                                             cgInstanceName,
                                             volumeInstance.path,
                                             cgName,
-                                            volumeName)
+                                            volumeName,
+                                            self.extraSpecs)
 
         LOG.info(_LI("Leaving create_volume: %(volumeName)s  "
                      "Return code: %(rc)lu "
@@ -225,7 +227,7 @@ class EMCVMAXCommon(object):
         :returns: cloneVolumeDict - the cloned volume dictionary
         """
         LOG.debug("Entering create_volume_from_snapshot.")
-        self._initial_setup(volume)
+        self.extraSpecs = self._initial_setup(volume)
         self.conn = self._get_ecom_connection()
         snapshotInstance = self._find_lun(snapshot)
         storageSystem = snapshotInstance['SystemName']
@@ -243,9 +245,9 @@ class EMCVMAXCommon(object):
                     data=exception_message)
 
             self.provision.delete_clone_relationship(
-                self.conn, repservice, syncName)
+                self.conn, repservice, syncName, self.extraSpecs)
 
-        return self._create_cloned_volume(volume, snapshot)
+        return self._create_cloned_volume(volume, snapshot, False)
 
     def create_cloned_volume(self, cloneVolume, sourceVolume):
         """Creates a clone of the specified volume.
@@ -254,7 +256,7 @@ class EMCVMAXCommon(object):
         :param sourceVolume - volume object
         :returns: cloneVolumeDict - the cloned volume dictionary
         """
-        return self._create_cloned_volume(cloneVolume, sourceVolume)
+        return self._create_cloned_volume(cloneVolume, sourceVolume, False)
 
     def delete_volume(self, volume):
         """Deletes a EMC(VMAX) volume.
@@ -292,7 +294,7 @@ class EMCVMAXCommon(object):
         self._delete_snapshot(snapshot)
 
     def _remove_members(self, controllerConfigService,
-                        volumeInstance, extraSpecs, connector):
+                        volumeInstance, connector):
         """This method unmaps a volume from a host.
 
         Removes volume from the Device Masking Group that belongs to
@@ -310,11 +312,9 @@ class EMCVMAXCommon(object):
         """
         volumeName = volumeInstance['ElementName']
         LOG.debug("Detaching volume %s.", volumeName)
-        fastPolicyName = extraSpecs.get(FASTPOLICY, None)
-        isV3 = extraSpecs[ISV3]
         return self.masking.remove_and_reset_members(
             self.conn, controllerConfigService, volumeInstance,
-            fastPolicyName, volumeName, isV3, connector)
+            volumeName, self.extraSpecs, connector)
 
     def _unmap_lun(self, volume, connector):
         """Unmaps a volume from the host.
@@ -323,7 +323,7 @@ class EMCVMAXCommon(object):
         :param connector: the connector Object
         :raises: VolumeBackendAPIException
         """
-        extraSpecs = self._initial_setup(volume)
+        self.extraSpecs = self._initial_setup(volume)
         volumename = volume['name']
         LOG.info(_LI("Unmap volume: %(volume)s."),
                  {'volume': volumename})
@@ -347,8 +347,7 @@ class EMCVMAXCommon(object):
                                  % {'storage_system': storage_system})
             raise exception.VolumeBackendAPIException(data=exception_message)
 
-        self._remove_members(configservice, vol_instance,
-                             extraSpecs, connector)
+        self._remove_members(configservice, vol_instance, connector)
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns device and connection info.
@@ -376,7 +375,7 @@ class EMCVMAXCommon(object):
         :returns: deviceInfoDict, device information tuple
         :raises: VolumeBackendAPIException
         """
-        extraSpecs = self._initial_setup(volume)
+        self.extraSpecs = self._initial_setup(volume)
 
         volumeName = volume['name']
         LOG.info(_LI("Initialize connection: %(volume)s."),
@@ -398,14 +397,13 @@ class EMCVMAXCommon(object):
                           'deviceNumber': deviceNumber})
             else:
                 deviceInfoDict = self._attach_volume(
-                    volume, connector, extraSpecs, True)
+                    volume, connector, True)
         else:
-            deviceInfoDict = self._attach_volume(volume, connector, extraSpecs)
+            deviceInfoDict = self._attach_volume(volume, connector)
 
         return deviceInfoDict
 
-    def _attach_volume(self, volume, connector, extraSpecs,
-                       isLiveMigration=None):
+    def _attach_volume(self, volume, connector, isLiveMigration=None):
         """Attach a volume to a host.
 
         If live migration is being undertaken then the volume
@@ -419,14 +417,14 @@ class EMCVMAXCommon(object):
         """
         volumeName = volume['name']
         maskingViewDict = self._populate_masking_dict(
-            volume, connector, extraSpecs)
+            volume, connector)
         if isLiveMigration:
             maskingViewDict['isLiveMigration'] = True
         else:
             maskingViewDict['isLiveMigration'] = False
 
         rollbackDict = self.masking.get_or_create_masking_view_and_map_lun(
-            self.conn, maskingViewDict)
+            self.conn, maskingViewDict, self.extraSpecs)
 
         # Find host lun id again after the volume is exported to the host.
         deviceInfoDict = self.find_device_number(volume)
@@ -472,7 +470,7 @@ class EMCVMAXCommon(object):
         :params volume: the volume Object
         :params connectorL the connector Object
         """
-        self._initial_setup(volume)
+        self.extraSpecs = self._initial_setup(volume)
 
         volumename = volume['name']
         LOG.info(_LI("Terminate connection: %(volume)s."),
@@ -495,7 +493,7 @@ class EMCVMAXCommon(object):
         """
         originalVolumeSize = volume['size']
         volumeName = volume['name']
-        self._initial_setup(volume)
+        self.extraSpecs = self._initial_setup(volume)
         self.conn = self._get_ecom_connection()
         volumeInstance = self._find_lun(volume)
         if volumeInstance is None:
@@ -637,7 +635,7 @@ class EMCVMAXCommon(object):
         LOG.info(_LI("Migrating using retype Volume: %(volume)s."),
                  {'volume': volumeName})
 
-        extraSpecs = self._initial_setup(volume)
+        self.extraSpecs = self._initial_setup(volume)
         self.conn = self._get_ecom_connection()
 
         volumeInstance = self._find_lun(volume)
@@ -647,14 +645,14 @@ class EMCVMAXCommon(object):
                       {'name': volumeName})
             return False
 
-        if extraSpecs[ISV3]:
+        if self.extraSpecs[ISV3]:
             return self._slo_workload_migration(volumeInstance, volume, host,
                                                 volumeName, volumeStatus,
-                                                extraSpecs, new_type)
+                                                new_type)
         else:
             return self._pool_migration(volumeInstance, volume, host,
                                         volumeName, volumeStatus,
-                                        extraSpecs[FASTPOLICY], new_type)
+                                        self.extraSpecs[FASTPOLICY], new_type)
 
     def migrate_volume(self, ctxt, volume, host, new_type=None):
         """Migrate volume to another host.
@@ -769,7 +767,7 @@ class EMCVMAXCommon(object):
         try:
             self.provision.migrate_volume_to_storage_pool(
                 conn, storageRelocationService, volumeInstance.path,
-                sourcePoolInstanceName)
+                sourcePoolInstanceName, self.extraSpecs)
         except Exception:
             LOG.error(_LE(
                 "Failed to return volume %(volumeName)s to "
@@ -825,7 +823,8 @@ class EMCVMAXCommon(object):
                     defaultStorageGroupInstanceName)):
             self.provision.remove_device_from_storage_group(
                 conn, controllerConfigurationService,
-                assocStorageGroupInstanceName, volumeInstance.path, volumeName)
+                assocStorageGroupInstanceName,
+                volumeInstance.path, volumeName, self.extraSpecs)
 
             self.add_to_default_SG(
                 conn, volumeInstance, storageSystemName, sourceFastPolicyName,
@@ -859,7 +858,7 @@ class EMCVMAXCommon(object):
         defaultStorageGroupInstanceName = (
             self.fast.get_or_create_default_storage_group(
                 self.conn, controllerConfigurationService,
-                targetFastPolicyName, volumeInstance))
+                targetFastPolicyName, volumeInstance, self.extraSpecs))
         if defaultStorageGroupInstanceName is None:
             LOG.error(_LE(
                 "Unable to create or get default storage group for FAST policy"
@@ -871,7 +870,7 @@ class EMCVMAXCommon(object):
         defaultStorageGroupInstanceName = (
             self.fast.add_volume_to_default_storage_group_for_fast_policy(
                 self.conn, controllerConfigurationService, volumeInstance,
-                volumeName, targetFastPolicyName))
+                volumeName, targetFastPolicyName, self.extraSpecs))
         if defaultStorageGroupInstanceName is None:
             LOG.error(_LE(
                 "Failed to verify that volume was added to storage group for "
@@ -921,7 +920,7 @@ class EMCVMAXCommon(object):
         try:
             rc = self.provision.migrate_volume_to_storage_pool(
                 self.conn, storageRelocationService, volumeInstance.path,
-                targetPoolInstanceName)
+                targetPoolInstanceName, self.extraSpecs)
         except Exception as e:
             # Rollback by deleting the volume if adding the volume to the
             # default storage group were to fail.
@@ -952,7 +951,7 @@ class EMCVMAXCommon(object):
             LOG.debug("Terminating migration session on: %(volumeName)s.",
                       {'volumeName': volumeName})
             self.provision._terminate_migrate_session(
-                self.conn, volumeInstance.path)
+                self.conn, volumeInstance.path, self.extraSpecs)
 
         if rc == 0:
             moved = True
@@ -980,7 +979,8 @@ class EMCVMAXCommon(object):
             defaultStorageGroupInstanceName = (
                 self.masking.remove_device_from_default_storage_group(
                     conn, controllerConfigurationService,
-                    volumeInstance.path, volumeName, sourceFastPolicyName))
+                    volumeInstance.path, volumeName, sourceFastPolicyName,
+                    self.extraSpecs))
         except Exception as ex:
             LOG.error(_LE("Exception: %s"), ex)
             exceptionMessage = (_(
@@ -1022,7 +1022,7 @@ class EMCVMAXCommon(object):
             self.fast
             .add_volume_to_default_storage_group_for_fast_policy(
                 conn, controllerConfigurationService, volumeInstance,
-                volumeName, targetFastPolicyName))
+                volumeName, targetFastPolicyName, self.extraSpecs))
         if assocDefaultStorageGroupName is None:
             LOG.error(_LE(
                 "Failed to add %(volumeName)s "
@@ -1603,7 +1603,7 @@ class EMCVMAXCommon(object):
         :returns: string the configuration file
         """
         try:
-            extraSpecs, configurationFile = (
+            self.extraSpecs, configurationFile = (
                 self._set_config_file_and_get_extra_specs(
                     volume, volumeTypeId))
 
@@ -1621,12 +1621,12 @@ class EMCVMAXCommon(object):
             isV3 = self.utils.isArrayV3(self.conn, arrayName)
 
             if isV3:
-                extraSpecs = self._set_v3_extra_specs(
-                    extraSpecs, configurationFile, arrayName)
+                self.extraSpecs = self._set_v3_extra_specs(
+                    configurationFile, arrayName)
             else:
                 # V2 extra specs.
-                extraSpecs = self._set_v2_extra_specs(
-                    extraSpecs, configurationFile, arrayName)
+                self.extraSpecs = self._set_v2_extra_specs(
+                    configurationFile, arrayName)
         except Exception:
             exceptionMessage = (_(
                 "Unable to get configuration information necessary to create "
@@ -1636,20 +1636,19 @@ class EMCVMAXCommon(object):
                 "/etc/cinder/cinder_emc_config_<CONFIG_GROUP>.xml."))
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
-        return extraSpecs
+        return self.extraSpecs
 
-    def _get_pool_and_storage_system(self, extraSpecs):
+    def _get_pool_and_storage_system(self):
         """Given the extra specs get the pool and storage system name.
 
-        :params extraSpecs: the extra spec tuple
         :returns: poolInstanceName The pool instance name
         :returns: String  the storage system name
         """
 
         try:
-            array = extraSpecs[ARRAY]
+            array = self.extraSpecs[ARRAY]
             poolInstanceName, storageSystemStr = self._find_pool_in_array(
-                array, extraSpecs[POOL], extraSpecs[ISV3])
+                array, self.extraSpecs[POOL], self.extraSpecs[ISV3])
         except Exception:
             exceptionMessage = (_(
                 "You must supply an array in your EMC configuration file."))
@@ -1664,7 +1663,7 @@ class EMCVMAXCommon(object):
 
         return poolInstanceName, storageSystemStr
 
-    def _populate_masking_dict(self, volume, connector, extraSpecs):
+    def _populate_masking_dict(self, volume, connector):
         """Get all the names of the maskingView and subComponents.
 
         :param volume: the volume object
@@ -1674,14 +1673,14 @@ class EMCVMAXCommon(object):
         """
         maskingViewDict = {}
         hostName = connector['host']
-        poolName = extraSpecs[POOL]
-        isV3 = extraSpecs[ISV3]
+        poolName = self.extraSpecs[POOL]
+        isV3 = self.extraSpecs[ISV3]
         maskingViewDict['isV3'] = isV3
         protocol = self.utils.get_short_protocol_type(self.protocol)
         shortHostName = self.utils.get_host_short_name(hostName)
         if isV3:
-            slo = extraSpecs[SLO]
-            workload = extraSpecs[WORKLOAD]
+            slo = self.extraSpecs[SLO]
+            workload = self.extraSpecs[WORKLOAD]
             maskingViewDict['slo'] = slo
             maskingViewDict['workload'] = workload
             maskingViewDict['pool'] = poolName
@@ -1747,7 +1746,7 @@ class EMCVMAXCommon(object):
 
             self.fast.add_volume_to_default_storage_group_for_fast_policy(
                 self.conn, controllerConfigurationService, volumeInstance,
-                volumeName, fastPolicyName)
+                volumeName, fastPolicyName, self.extraSpecs)
             foundStorageGroupInstanceName = (
                 self.utils.get_storage_group_from_volume(
                     self.conn, volumeInstance.path))
@@ -1771,7 +1770,7 @@ class EMCVMAXCommon(object):
             LOG.error(errorMessage)
             self.provision.delete_volume_from_pool(
                 self.conn, storageConfigService, volumeInstance.path,
-                volumeName)
+                volumeName, self.extraSpecs)
             raise exception.VolumeBackendAPIException(data=errorMessage)
 
     def _create_and_get_unbound_volume(
@@ -1819,7 +1818,7 @@ class EMCVMAXCommon(object):
         volumeDict, _ = (
             self.provision.create_volume_from_pool(
                 self.conn, storageConfigService, volumeName, poolInstanceName,
-                volumeSize))
+                volumeSize, self.extraSpecs))
         volumeInstance = self.utils.find_volume_instance(
             self.conn, volumeDict, volumeName)
         return volumeInstance
@@ -1841,7 +1840,7 @@ class EMCVMAXCommon(object):
             self.provision.unbind_volume_from_storage_pool(
                 conn, storageConfigService, poolInstanceName,
                 volumeInstanceName,
-                volumeName))
+                volumeName, self.extraSpecs))
         volumeDict = self.provision.get_volume_dict_from_job(conn, job['Job'])
         volumeInstance = self.utils.find_volume_instance(
             self.conn, volumeDict, volumeName)
@@ -1868,11 +1867,12 @@ class EMCVMAXCommon(object):
         if 'True' in isComposite:
             rc, job = self.provision.modify_composite_volume(
                 conn, elementCompositionServiceInstanceName,
-                volumeInstance.path, appendVolumeInstanceName)
+                volumeInstance.path, appendVolumeInstanceName, self.extraSpecs)
         elif 'False' in isComposite:
             rc, job = self.provision.create_new_composite_volume(
                 conn, elementCompositionServiceInstanceName,
-                volumeInstance.path, appendVolumeInstanceName, compositeType)
+                volumeInstance.path, appendVolumeInstanceName, compositeType,
+                self.extraSpecs)
         else:
             LOG.error(_LE(
                 "Unable to determine whether %(volumeName)s is "
@@ -1906,7 +1906,7 @@ class EMCVMAXCommon(object):
         defaultStorageGroupInstanceName = (
             self.fast.get_or_create_default_storage_group(
                 self.conn, controllerConfigService, fastPolicyName,
-                volumeInstance))
+                volumeInstance, self.extraSpecs))
         return defaultStorageGroupInstanceName
 
     def _create_cloned_volume(
@@ -1917,7 +1917,7 @@ class EMCVMAXCommon(object):
         :param sourceVolume: source of the clone volume
         :returns: cloneDict the cloned volume dictionary
         """
-        extraSpecs = self._initial_setup(cloneVolume)
+        self.extraSpecs = self._initial_setup(cloneVolume)
 
         sourceName = sourceVolume['name']
         cloneName = cloneVolume['name']
@@ -1948,7 +1948,7 @@ class EMCVMAXCommon(object):
                    'elementname': cloneName,
                    'sourceelement': sourceInstance.path})
 
-        if extraSpecs[ISV3]:
+        if self.extraSpecs[ISV3]:
             rc, cloneDict = self._create_replica_v3(repServiceInstanceName,
                                                     cloneVolume,
                                                     sourceVolume,
@@ -1959,8 +1959,7 @@ class EMCVMAXCommon(object):
                                                   cloneVolume,
                                                   sourceVolume,
                                                   sourceInstance,
-                                                  isSnapshot,
-                                                  extraSpecs)
+                                                  isSnapshot)
         LOG.debug("Leaving _create_cloned_volume: Volume: "
                   "%(cloneName)s Source Volume: %(sourceName)s "
                   "Return code: %(rc)lu.",
@@ -2024,7 +2023,7 @@ class EMCVMAXCommon(object):
         rc = -1
         errorRet = (rc, volumeName)
 
-        extraSpecs = self._initial_setup(volume)
+        self.extraSpecs = self._initial_setup(volume)
         self.conn = self._get_ecom_connection()
 
         volumeInstance = self._find_lun(volume)
@@ -2040,16 +2039,17 @@ class EMCVMAXCommon(object):
 
         deviceId = volumeInstance['DeviceID']
 
-        if extraSpecs[ISV3]:
+        if self.extraSpecs[ISV3]:
             storageGroupName = self.utils.get_v3_storage_group_name(
-                extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD])
+                self.extraSpecs[POOL], self.extraSpecs[SLO],
+                self.extraSpecs[WORKLOAD])
             rc = self._delete_from_pool_v3(
                 storageConfigService, volumeInstance, volumeName,
                 deviceId, storageGroupName)
         else:
             rc = self._delete_from_pool(storageConfigService, volumeInstance,
                                         volumeName, deviceId,
-                                        extraSpecs[FASTPOLICY])
+                                        self.extraSpecs[FASTPOLICY])
         return (rc, volumeName)
 
     def _remove_device_from_storage_group(
@@ -2077,7 +2077,7 @@ class EMCVMAXCommon(object):
                 self.provision.remove_device_from_storage_group(
                     self.conn, controllerConfigurationService,
                     storageGroupInstanceName,
-                    volumeInstanceName, volumeName)
+                    volumeInstanceName, volumeName, self.extraSpecs)
 
     def _find_lunmasking_scsi_protocol_controller(self, storageSystemName,
                                                   connector):
@@ -2209,10 +2209,10 @@ class EMCVMAXCommon(object):
         LOG.info(_LI("Delete Snapshot: %(snapshot)s."),
                  {'snapshot': snapshotname})
 
-        extraSpecs = self._initial_setup(snapshot)
+        self.extraSpecs = self._initial_setup(snapshot)
         self.conn = self._get_ecom_connection()
 
-        if not extraSpecs[ISV3]:
+        if not self.extraSpecs[ISV3]:
             snapshotInstance = self._find_lun(snapshot)
             storageSystem = snapshotInstance['SystemName']
 
@@ -2245,7 +2245,7 @@ class EMCVMAXCommon(object):
                            'syncName': str(syncName)})
 
                 self.provision.delete_clone_relationship(
-                    self.conn, repservice, syncName, True)
+                    self.conn, repservice, syncName, self.extraSpecs, True)
 
         # Delete the target device.
         self._delete_volume(snapshot)
@@ -2265,10 +2265,10 @@ class EMCVMAXCommon(object):
 
         cgName = self.utils.truncate_string(group['id'], 8)
 
-        extraSpecs = self._initial_setup(None, volumeTypeId)
+        self.extraSpecs = self._initial_setup(None, volumeTypeId)
 
         _, storageSystem = (
-            self._get_pool_and_storage_system(extraSpecs))
+            self._get_pool_and_storage_system())
 
         self.conn = self._get_ecom_connection()
 
@@ -2277,7 +2277,7 @@ class EMCVMAXCommon(object):
             replicationService = self.utils.find_replication_service(
                 self.conn, storageSystem)
             self.provision.create_consistency_group(
-                self.conn, replicationService, cgName)
+                self.conn, replicationService, cgName, self.extraSpecs)
         except Exception as ex:
             LOG.error(_LE("Exception: %(ex)s"), {'ex': ex})
             exceptionMessage = (_("Failed to create consistency group:"
@@ -2304,10 +2304,10 @@ class EMCVMAXCommon(object):
         modelUpdate['status'] = group['status']
         volumeTypeId = group['volume_type_id'].replace(",", "")
 
-        extraSpecs = self._initial_setup(None, volumeTypeId)
+        self.extraSpecs = self._initial_setup(None, volumeTypeId)
 
         _, storageSystem = (
-            self._get_pool_and_storage_system(extraSpecs))
+            self._get_pool_and_storage_system())
 
         try:
             replicationService = self.utils.find_replication_service(
@@ -2329,13 +2329,14 @@ class EMCVMAXCommon(object):
 
             self.provision.delete_consistency_group(self.conn,
                                                     replicationService,
-                                                    cgInstanceName, cgName)
+                                                    cgInstanceName, cgName,
+                                                    self.extraSpecs)
 
             # Do a bulk delete, a lot faster than single deletes.
             if memberInstanceNames:
                 volumes, modelUpdate = self._do_bulk_delete(
                     storageSystem, memberInstanceNames, storageConfigservice,
-                    volumes, modelUpdate, extraSpecs[ISV3])
+                    volumes, modelUpdate, self.extraSpecs[ISV3])
 
         except Exception as ex:
             LOG.error(_LE("Exception: %s"), ex)
@@ -2370,11 +2371,11 @@ class EMCVMAXCommon(object):
             if isV3:
                 self.provisionv3.delete_volume_from_pool(
                     self.conn, storageConfigservice,
-                    memberInstanceNames, None)
+                    memberInstanceNames, None, self.extraSpecs)
             else:
                 self.provision.delete_volume_from_pool(
                     self.conn, storageConfigservice,
-                    memberInstanceNames, None)
+                    memberInstanceNames, None, self.extraSpecs)
             for volumeRef in volumes:
                 volumeRef['status'] = 'deleted'
         except Exception:
@@ -2406,11 +2407,11 @@ class EMCVMAXCommon(object):
         modelUpdate = {'status': 'available'}
 
         volumeTypeId = consistencyGroup['volume_type_id'].replace(",", "")
-        extraSpecs = self._initial_setup(None, volumeTypeId)
+        self.extraSpecs = self._initial_setup(None, volumeTypeId)
         self.conn = self._get_ecom_connection()
 
         _, storageSystem = (
-            self._get_pool_and_storage_system(extraSpecs))
+            self._get_pool_and_storage_system())
 
         try:
             replicationService = self.utils.find_replication_service(
@@ -2429,7 +2430,7 @@ class EMCVMAXCommon(object):
             # Create the target consistency group.
             targetCgName = self.utils.truncate_string(cgsnapshot['id'], 8)
             self.provision.create_consistency_group(
-                self.conn, replicationService, targetCgName)
+                self.conn, replicationService, targetCgName, self.extraSpecs)
             targetCgInstanceName = self._find_consistency_group(
                 replicationService, targetCgName)
             LOG.info(_LI("Create target consistency group %(targetCg)s."),
@@ -2446,16 +2447,14 @@ class EMCVMAXCommon(object):
                 volume = {'size': int(self.utils.convert_bits_to_gbs(
                     volumeSizeInbits))}
 
-                if extraSpecs[ISV3]:
+                if self.extraSpecs[ISV3]:
                     _, volumeDict, _ = (
                         self._create_v3_volume(
-                            volume, extraSpecs,
-                            targetVolumeName, volumeSizeInbits))
+                            volume, targetVolumeName, volumeSizeInbits))
                 else:
                     _, volumeDict, _ = (
                         self._create_composite_volume(
-                            volume, extraSpecs,
-                            targetVolumeName, volumeSizeInbits))
+                            volume, targetVolumeName, volumeSizeInbits))
                 targetVolumeInstance = self.utils.find_volume_instance(
                     self.conn, volumeDict, targetVolumeName)
                 LOG.debug("Create target volume for member volume "
@@ -2468,18 +2467,19 @@ class EMCVMAXCommon(object):
                                                 targetCgInstanceName,
                                                 targetVolumeInstance.path,
                                                 targetCgName,
-                                                targetVolumeName)
+                                                targetVolumeName,
+                                                self.extraSpecs)
 
             # Less than 5 characters relationship name.
             relationName = self.utils.truncate_string(cgsnapshot['id'], 5)
-            if extraSpecs[ISV3]:
-                    self.provisionv3.create_group_replica(
-                        self.conn, replicationService, cgInstanceName,
-                        targetCgInstanceName, relationName)
+            if self.extraSpecs[ISV3]:
+                self.provisionv3.create_group_replica(
+                    self.conn, replicationService, cgInstanceName,
+                    targetCgInstanceName, relationName, self.extraSpecs)
             else:
-                    self.provision.create_group_replica(
-                        self.conn, replicationService, cgInstanceName,
-                        targetCgInstanceName, relationName)
+                self.provision.create_group_replica(
+                    self.conn, replicationService, cgInstanceName,
+                    targetCgInstanceName, relationName, self.extraSpecs)
             # Break the replica group relationship.
             rgSyncInstanceName = self.utils.find_group_sync_rg_by_target(
                 self.conn, storageSystem, targetCgInstanceName, True)
@@ -2492,14 +2492,16 @@ class EMCVMAXCommon(object):
                         storageSystem)
                     raise exception.VolumeBackendAPIException(
                         data=exception_message)
-            if extraSpecs[ISV3]:
+            if self.extraSpecs[ISV3]:
                 # Operation 7: dissolve for snapVx.
                 operation = self.utils.get_num(9, '16')
                 self.provisionv3.break_replication_relationship(
-                    self.conn, repservice, rgSyncInstanceName, operation)
+                    self.conn, repservice, rgSyncInstanceName, operation,
+                    self.extraSpecs)
             else:
                 self.provision.delete_clone_relationship(self.conn, repservice,
-                                                         rgSyncInstanceName)
+                                                         rgSyncInstanceName,
+                                                         self.extraSpecs)
 
         except Exception as ex:
             modelUpdate['status'] = 'error'
@@ -2537,16 +2539,16 @@ class EMCVMAXCommon(object):
 
         modelUpdate = {'status': 'deleted'}
         volumeTypeId = consistencyGroup['volume_type_id'].replace(",", "")
-        extraSpecs = self._initial_setup(None, volumeTypeId)
+        self.extraSpecs = self._initial_setup(None, volumeTypeId)
         self.conn = self._get_ecom_connection()
 
         _, storageSystem = (
-            self._get_pool_and_storage_system(extraSpecs))
+            self._get_pool_and_storage_system())
 
         try:
             targetCgName = self.utils.truncate_string(cgsnapshot['id'], 8)
             modelUpdate, snapshots = self._delete_cg_and_members(
-                storageSystem, extraSpecs, targetCgName, modelUpdate,
+                storageSystem, targetCgName, modelUpdate,
                 snapshots)
         except Exception as ex:
             modelUpdate['status'] = 'error_deleting'
@@ -2596,7 +2598,7 @@ class EMCVMAXCommon(object):
         return memberInstanceNames
 
     def _create_composite_volume(
-            self, volume, extraSpecs, volumeName, volumeSize):
+            self, volume, volumeName, volumeSize):
         """Create a composite volume (V2).
 
         :param volume: the volume object
@@ -2606,7 +2608,8 @@ class EMCVMAXCommon(object):
         :returns:
         """
         memberCount, errorDesc = self.utils.determine_member_count(
-            volume['size'], extraSpecs[MEMBERCOUNT], extraSpecs[COMPOSITETYPE])
+            volume['size'], self.extraSpecs[MEMBERCOUNT],
+            self.extraSpecs[COMPOSITETYPE])
         if errorDesc is not None:
             exceptionMessage = (_("The striped meta count of %(memberCount)s "
                                   "is too small for volume: %(volumeName)s "
@@ -2618,7 +2621,7 @@ class EMCVMAXCommon(object):
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         poolInstanceName, storageSystemName = (
-            self._get_pool_and_storage_system(extraSpecs))
+            self._get_pool_and_storage_system())
 
         LOG.debug("Create Volume: %(volume)s  Pool: %(pool)s "
                   "Storage System: %(storageSystem)s "
@@ -2637,79 +2640,79 @@ class EMCVMAXCommon(object):
 
         # If FAST is intended to be used we must first check that the pool
         # is associated with the correct storage tier.
-        if extraSpecs[FASTPOLICY] is not None:
+        if self.extraSpecs[FASTPOLICY] is not None:
             foundPoolInstanceName = self.fast.get_pool_associated_to_policy(
-                self.conn, extraSpecs[FASTPOLICY], extraSpecs[ARRAY],
+                self.conn, self.extraSpecs[FASTPOLICY], self.extraSpecs[ARRAY],
                 storageConfigService, poolInstanceName)
             if foundPoolInstanceName is None:
                 exceptionMessage = (_("Pool: %(poolName)s. "
                                       "is not associated to storage tier for "
                                       "fast policy %(fastPolicy)s.")
-                                    % {'poolName': extraSpecs[POOL],
-                                       'fastPolicy': extraSpecs[FASTPOLICY]})
+                                    % {'poolName': self.extraSpecs[POOL],
+                                       'fastPolicy':
+                                        self.extraSpecs[FASTPOLICY]})
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
 
         compositeType = self.utils.get_composite_type(
-            extraSpecs[COMPOSITETYPE])
+            self.extraSpecs[COMPOSITETYPE])
 
         volumeDict, rc = self.provision.create_composite_volume(
             self.conn, elementCompositionService, volumeSize, volumeName,
-            poolInstanceName, compositeType, memberCount)
+            poolInstanceName, compositeType, memberCount, self.extraSpecs)
 
         # Now that we have already checked that the pool is associated with
         # the correct storage tier and the volume was successfully created
         # add the volume to the default storage group created for
         # volumes in pools associated with this fast policy.
-        if extraSpecs[FASTPOLICY]:
+        if self.extraSpecs[FASTPOLICY]:
             LOG.info(_LI(
                 "Adding volume: %(volumeName)s to default storage group"
                 " for FAST policy: %(fastPolicyName)s."),
                 {'volumeName': volumeName,
-                 'fastPolicyName': extraSpecs[FASTPOLICY]})
+                 'fastPolicyName': self.extraSpecs[FASTPOLICY]})
             defaultStorageGroupInstanceName = (
                 self._get_or_create_default_storage_group(
                     self.conn, storageSystemName, volumeDict,
-                    volumeName, extraSpecs[FASTPOLICY]))
+                    volumeName, self.extraSpecs[FASTPOLICY]))
             if not defaultStorageGroupInstanceName:
                 exceptionMessage = (_(
                     "Unable to create or get default storage group for "
                     "FAST policy: %(fastPolicyName)s.")
-                    % {'fastPolicyName': extraSpecs[FASTPOLICY]})
+                    % {'fastPolicyName': self.extraSpecs[FASTPOLICY]})
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
 
             self._add_volume_to_default_storage_group_on_create(
                 volumeDict, volumeName, storageConfigService,
-                storageSystemName, extraSpecs[FASTPOLICY])
+                storageSystemName, self.extraSpecs[FASTPOLICY])
         return rc, volumeDict, storageSystemName
 
     def _create_v3_volume(
-            self, volume, extraSpecs, volumeName, volumeSize):
-        """create a volume (V3).
+            self, volume, volumeName, volumeSize):
+        """Create a volume (V3).
 
         :param volume: the volume object
-        :param extraSpecs:
-        :param volumeName:
-        :param volumeSize:
+        :param volumeName: the volume name
+        :param volumeSize: the volume size
         :returns:
         """
         isValidSLO, isValidWorkload = self.utils.verify_slo_workload(
-            extraSpecs[SLO], extraSpecs[WORKLOAD])
+            self.extraSpecs[SLO], self.extraSpecs[WORKLOAD])
 
         if not isValidSLO or not isValidWorkload:
             exceptionMessage = (_(
                 "Either SLO: %(slo)s or workload %(workload)s is invalid. "
                 "Examine previous error statement for valid values.")
-                % {'slo': extraSpecs[SLO],
-                   'workload': extraSpecs[WORKLOAD]})
+                % {'slo': self.extraSpecs[SLO],
+                   'workload': self.extraSpecs[WORKLOAD]})
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         poolInstanceName, storageSystemName = (
-            self._get_pool_and_storage_system(extraSpecs))
+            self._get_pool_and_storage_system())
 
         LOG.debug("Create Volume: %(volume)s  Pool: %(pool)s "
                   "Storage System: %(storageSystem)s "
@@ -2726,7 +2729,8 @@ class EMCVMAXCommon(object):
         maximumVolumeSize, minimumVolumeSize = (
             self.provisionv3.get_volume_range(
                 self.conn, storageConfigService, poolInstanceName,
-                extraSpecs[SLO], extraSpecs[WORKLOAD]))
+                self.extraSpecs[SLO], self.extraSpecs[WORKLOAD],
+                self.extraSpecs))
         if not self.utils.is_in_range(
                 volumeSize, maximumVolumeSize, minimumVolumeSize):
             LOG.warn(_LW(
@@ -2739,19 +2743,19 @@ class EMCVMAXCommon(object):
                  'volumeSize': volumeSize,
                  'minimumVolumeSize': minimumVolumeSize,
                  'maximumVolumeSize': maximumVolumeSize,
-                 'slo': extraSpecs[SLO],
-                 'workload': extraSpecs[WORKLOAD]
+                 'slo': self.extraSpecs[SLO],
+                 'workload': self.extraSpecs[WORKLOAD]
                  })
 
         # A volume created without specifying a storage group during
         # creation time is allocated from the default SRP pool and
         # assigned the optimized SLO.
         sgInstanceName = self._get_or_create_storage_group_v3(
-            extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD],
-            storageSystemName)
+            self.extraSpecs[POOL], self.extraSpecs[SLO],
+            self.extraSpecs[WORKLOAD], storageSystemName)
         volumeDict, rc = self.provisionv3.create_volume_from_sg(
             self.conn, storageConfigService, volumeName,
-            sgInstanceName, volumeSize)
+            sgInstanceName, volumeSize, self.extraSpecs)
 
         return rc, volumeDict, storageSystemName
 
@@ -2775,7 +2779,7 @@ class EMCVMAXCommon(object):
         if sgInstanceName is None:
             sgInstanceName = self.provisionv3.create_storage_group_v3(
                 self.conn, controllerConfigService, storageGroupName,
-                poolName, slo, workload)
+                poolName, slo, workload, self.extraSpecs)
 
         return sgInstanceName
 
@@ -2849,8 +2853,7 @@ class EMCVMAXCommon(object):
         return rc, modifiedVolumeDict
 
     def _slo_workload_migration(self, volumeInstance, volume, host,
-                                volumeName, volumeStatus,
-                                extraSpecs, newType):
+                                volumeName, volumeStatus, newType):
         """Migrate from SLO/Workload combination to another (V3).
 
         :param volumeInstance: the volume instance
@@ -2858,15 +2861,14 @@ class EMCVMAXCommon(object):
         :param host: the host object
         :param volumeName: the name of the volume
         :param volumeStatus: the volume status
-        :param extraSpecs: the extra specs dict
         :param newType:
         :returns: boolean
         """
         volumeInstanceName = volumeInstance.path
         isValid, targetSlo, targetWorkload = (
             self._is_valid_for_storage_assisted_migration_v3(
-                volumeInstanceName, host, extraSpecs[ARRAY],
-                extraSpecs[POOL], volumeName, volumeStatus))
+                volumeInstanceName, host, self.extraSpecs[ARRAY],
+                self.extraSpecs[POOL], volumeName, volumeStatus))
 
         storageSystemName = volumeInstance['SystemName']
 
@@ -2884,7 +2886,7 @@ class EMCVMAXCommon(object):
                  'sourceHost': volume['host'],
                  'targetHost': host['host']})
             return self._migrate_volume_v3(
-                volume, volumeInstance, extraSpecs[POOL], targetSlo,
+                volume, volumeInstance, self.extraSpecs[POOL], targetSlo,
                 targetWorkload, storageSystemName, newType)
 
         return False
@@ -2926,7 +2928,7 @@ class EMCVMAXCommon(object):
                 controllerConfigService,
                 foundStorageGroupInstanceName,
                 volumeInstance.path,
-                volumeName)
+                volumeName, self.extraSpecs)
             # Check that it has been removed.
             sgFromVolRemovedInstanceName = (
                 self.utils.wrap_get_storage_group_from_volume(
@@ -2952,7 +2954,7 @@ class EMCVMAXCommon(object):
 
         self.masking.add_volume_to_storage_group(
             self.conn, controllerConfigService, targetSgInstanceName,
-            volumeInstance, volumeName, storageGroupName)
+            volumeInstance, volumeName, storageGroupName, self.extraSpecs)
         # Check that it has been added.
         sgFromVolAddedInstanceName = (
             self.utils.get_storage_group_from_volume(
@@ -3077,18 +3079,17 @@ class EMCVMAXCommon(object):
 
         return location_info, total_capacity_gb, free_capacity_gb
 
-    def _set_v2_extra_specs(self, extraSpecs, configurationFile, arrayName):
+    def _set_v2_extra_specs(self, configurationFile, arrayName):
         """Set the VMAX V2 extra specs.
 
-        :param extraSpecs: the extraSpecs (input)
         :param configurationFile: the EMC configuration file
         :param arrayName: the array serial number
         :returns: extraSpecs (out)
         """
         try:
-            stripedMetaCount = extraSpecs[STRIPECOUNT]
-            extraSpecs[MEMBERCOUNT] = stripedMetaCount
-            extraSpecs[COMPOSITETYPE] = STRIPED
+            stripedMetaCount = self.extraSpecs[STRIPECOUNT]
+            self.extraSpecs[MEMBERCOUNT] = stripedMetaCount
+            self.extraSpecs[COMPOSITETYPE] = STRIPED
 
             LOG.debug(
                 "There are: %(stripedMetaCount)s striped metas in "
@@ -3096,8 +3097,8 @@ class EMCVMAXCommon(object):
                 {'stripedMetaCount': stripedMetaCount})
         except KeyError:
             memberCount = '1'
-            extraSpecs[MEMBERCOUNT] = memberCount
-            extraSpecs[COMPOSITETYPE] = CONCATENATED
+            self.extraSpecs[MEMBERCOUNT] = memberCount
+            self.extraSpecs[COMPOSITETYPE] = CONCATENATED
             LOG.debug("StripedMetaCount is not in the extra specs.")
 
         poolName = self.utils.parse_pool_name_from_file(configurationFile)
@@ -3118,24 +3119,25 @@ class EMCVMAXCommon(object):
             LOG.debug("The fast policy name is: %(fastPolicyName)s.",
                       {'fastPolicyName': fastPolicyName})
 
-        extraSpecs[POOL] = poolName
-        extraSpecs[ARRAY] = arrayName
-        extraSpecs[FASTPOLICY] = fastPolicyName
-        extraSpecs[ISV3] = False
+        self.extraSpecs[POOL] = poolName
+        self.extraSpecs[ARRAY] = arrayName
+        self.extraSpecs[FASTPOLICY] = fastPolicyName
+        self.extraSpecs[ISV3] = False
+        self.extraSpecs = self._get_job_extra_specs(configurationFile)
 
         LOG.debug("Pool is: %(pool)s "
                   "Array is: %(array)s "
                   "FastPolicy is: %(fastPolicy)s "
                   "CompositeType is: %(compositeType)s "
                   "MemberCount is: %(memberCount)s.",
-                  {'pool': extraSpecs[POOL],
-                   'array': extraSpecs[ARRAY],
-                   'fastPolicy': extraSpecs[FASTPOLICY],
-                   'compositeType': extraSpecs[COMPOSITETYPE],
-                   'memberCount': extraSpecs[MEMBERCOUNT]})
-        return extraSpecs
+                  {'pool': self.extraSpecs[POOL],
+                   'array': self.extraSpecs[ARRAY],
+                   'fastPolicy': self.extraSpecs[FASTPOLICY],
+                   'compositeType': self.extraSpecs[COMPOSITETYPE],
+                   'memberCount': self.extraSpecs[MEMBERCOUNT]})
+        return self.extraSpecs
 
-    def _set_v3_extra_specs(self, extraSpecs, configurationFile, arrayName):
+    def _set_v3_extra_specs(self, configurationFile, arrayName):
         """Set the VMAX V3 extra specs.
 
         If SLO or workload are not specified then the default
@@ -3147,23 +3149,48 @@ class EMCVMAXCommon(object):
         :param arrayName: the array serial number
         :returns: extraSpecs (out)
         """
-        extraSpecs[SLO] = self.utils.parse_slo_from_file(configurationFile)
-        extraSpecs[WORKLOAD] = self.utils.parse_workload_from_file(
+        self.extraSpecs[SLO] = self.utils.parse_slo_from_file(
             configurationFile)
-        extraSpecs[POOL] = self.utils.parse_pool_name_from_file(
+        self.extraSpecs[WORKLOAD] = self.utils.parse_workload_from_file(
             configurationFile)
-        extraSpecs[ARRAY] = arrayName
-        extraSpecs[ISV3] = True
+        self.extraSpecs[POOL] = self.utils.parse_pool_name_from_file(
+            configurationFile)
+        self.extraSpecs[ARRAY] = arrayName
+        self.extraSpecs[ISV3] = True
+        self.extraSpecs = self._get_job_extra_specs(configurationFile)
 
         LOG.debug("Pool is: %(pool)s "
                   "Array is: %(array)s "
                   "SLO is: %(slo)s "
                   "Workload is: %(workload)s.",
-                  {'pool': extraSpecs[POOL],
-                   'array': extraSpecs[ARRAY],
-                   'slo': extraSpecs[SLO],
-                   'workload': extraSpecs[WORKLOAD]})
-        return extraSpecs
+                  {'pool': self.extraSpecs[POOL],
+                   'array': self.extraSpecs[ARRAY],
+                   'slo': self.extraSpecs[SLO],
+                   'workload': self.extraSpecs[WORKLOAD]})
+        return self.extraSpecs
+
+    def _get_job_extra_specs(self, configurationFile):
+        """Get user defined extra specs around job intervals and retries.
+
+        :param configurationFile: the EMC configuration file
+        :param arrayName: the array serial number
+        :returns: extraSpecs (out)
+        """
+        intervalInSecs = self.utils.parse_interval_from_file(
+            configurationFile)
+        if intervalInSecs is not None:
+            LOG.debug("The user defined interval is : %(intervalInSecs)s.",
+                      {'intervalInSecs': intervalInSecs})
+            self.extraSpecs[INTERVAL] = intervalInSecs
+
+        retries = self.utils.parse_retries_from_file(
+            configurationFile)
+        if retries is not None:
+            LOG.debug("The user defined retries is : %(retries)s.",
+                      {'retries': retries})
+            self.extraSpecs[RETRIES] = retries
+
+        return self.extraSpecs
 
     def _delete_from_pool(self, storageConfigService, volumeInstance,
                           volumeName, deviceId, fastPolicyName):
@@ -3184,7 +3211,8 @@ class EMCVMAXCommon(object):
             defaultStorageGroupInstanceName = (
                 self.masking.remove_device_from_default_storage_group(
                     self.conn, controllerConfigurationService,
-                    volumeInstance.path, volumeName, fastPolicyName))
+                    volumeInstance.path, volumeName, fastPolicyName,
+                    self.extraSpecs))
             if defaultStorageGroupInstanceName is None:
                 LOG.warn(_LW(
                     "The volume: %(volumename)s. was not first part of the "
@@ -3213,7 +3241,7 @@ class EMCVMAXCommon(object):
         try:
             rc = self.provision.delete_volume_from_pool(
                 self.conn, storageConfigService, volumeInstance.path,
-                volumeName)
+                volumeName, self.extraSpecs)
 
         except Exception as e:
             # If we cannot successfully delete the volume then we want to
@@ -3225,7 +3253,8 @@ class EMCVMAXCommon(object):
                     self.fast
                     .add_volume_to_default_storage_group_for_fast_policy(
                         self.conn, controllerConfigurationService,
-                        volumeInstance, volumeName, fastPolicyName))
+                        volumeInstance, volumeName, fastPolicyName,
+                        self.extraSpecs))
                 if assocDefaultStorageGroupName is None:
                     LOG.error(_LE(
                         "Failed to Roll back to re-add volume %(volumeName)s "
@@ -3264,7 +3293,7 @@ class EMCVMAXCommon(object):
         # extra logic for case when volume is the last member.
         sgFromVolInstanceName = self.masking.remove_and_reset_members(
             self.conn, controllerConfigurationService, volumeInstance,
-            None, volumeName, True, None, 'noReset')
+            volumeName, self.extraSpecs, None, 'noReset')
 
         LOG.debug("Delete Volume: %(name)s  Method: EMCReturnToStoragePool "
                   "ConfigServic: %(service)s  TheElement: %(vol_instance)s "
@@ -3276,7 +3305,7 @@ class EMCVMAXCommon(object):
         try:
             rc = self.provisionv3.delete_volume_from_pool(
                 self.conn, storageConfigService, volumeInstance.path,
-                volumeName)
+                volumeName, self.extraSpecs)
 
         except Exception as e:
             # If we cannot successfully delete the volume, then we want to
@@ -3298,7 +3327,7 @@ class EMCVMAXCommon(object):
                 self.masking.add_volume_to_storage_group(
                     self.conn, controllerConfigurationService,
                     storageGroupInstanceName, volumeInstance, volumeName,
-                    storageGroupName)
+                    storageGroupName, self.extraSpecs)
 
             LOG.error(_LE("Exception: %s."), e)
             errorMessage = (_("Failed to delete volume %(volumeName)s.") %
@@ -3309,8 +3338,7 @@ class EMCVMAXCommon(object):
         return rc
 
     def _create_clone_v2(self, repServiceInstanceName, cloneVolume,
-                         sourceVolume, sourceInstance, isSnapshot,
-                         extraSpecs):
+                         sourceVolume, sourceInstance, isSnapshot):
         """Create a clone (v2).
 
         :param repServiceInstanceName: the replication service
@@ -3318,7 +3346,6 @@ class EMCVMAXCommon(object):
         :param sourceVolume: the source volume object
         :param sourceInstance: the device ID of the volume
         :param isSnapshot: check to see if it is a snapshot
-        :param fastPolicyName: the FAST policy name(if it exists)
         :returns: rc
         """
         # Check if the source volume contains any meta devices.
@@ -3328,7 +3355,7 @@ class EMCVMAXCommon(object):
         if metaHeadInstanceName is None:  # Simple volume.
             return self._create_v2_replica_and_delete_clone_relationship(
                 repServiceInstanceName, cloneVolume, sourceVolume,
-                sourceInstance, None, isSnapshot, extraSpecs)
+                sourceInstance, None, isSnapshot)
         else:  # Composite volume with meta device members.
             # Check if the meta members capacity.
             metaMemberInstanceNames = (
@@ -3342,7 +3369,7 @@ class EMCVMAXCommon(object):
                 LOG.debug("Meta volume all of the same size.")
                 return self._create_v2_replica_and_delete_clone_relationship(
                     repServiceInstanceName, cloneVolume, sourceVolume,
-                    sourceInstance, None, isSnapshot, extraSpecs)
+                    sourceInstance, None, isSnapshot)
 
             LOG.debug("Meta volumes are of different sizes, "
                       "%d different sizes.", len(set(volumeCapacities)))
@@ -3355,8 +3382,7 @@ class EMCVMAXCommon(object):
                         volumeSizeInbits))}
                     rc, baseVolumeDict, storageSystemName = (
                         self._create_composite_volume(
-                            volume, extraSpecs,
-                            baseVolumeName, volumeSizeInbits))
+                            volume, baseVolumeName, volumeSizeInbits))
                     baseTargetVolumeInstance = self.utils.find_volume_instance(
                         self.conn, baseVolumeDict, baseVolumeName)
                     LOG.debug("Base target volume %(targetVol)s created. "
@@ -3389,7 +3415,7 @@ class EMCVMAXCommon(object):
                         self.utils.find_element_composition_service(
                             self.conn, storageSystemName))
                     compositeType = self.utils.get_composite_type(
-                        extraSpecs[COMPOSITETYPE])
+                        self.extraSpecs[COMPOSITETYPE])
                     rc, modifiedVolumeDict = (
                         self._modify_and_get_composite_volume_instance(
                             self.conn,
@@ -3410,12 +3436,11 @@ class EMCVMAXCommon(object):
             LOG.debug("Create V2 replica for meta members of different sizes.")
             return self._create_v2_replica_and_delete_clone_relationship(
                 repServiceInstanceName, cloneVolume, sourceVolume,
-                sourceInstance, baseTargetVolumeInstance, isSnapshot,
-                extraSpecs)
+                sourceInstance, baseTargetVolumeInstance, isSnapshot)
 
     def _create_v2_replica_and_delete_clone_relationship(
             self, repServiceInstanceName, cloneVolume, sourceVolume,
-            sourceInstance, targetInstance, isSnapshot, extraSpecs):
+            sourceInstance, targetInstance, isSnapshot=False):
         """Create clone and delete relationship (v2).
 
         :param repServiceInstanceName: the replication service
@@ -3424,18 +3449,17 @@ class EMCVMAXCommon(object):
         :param sourceInstance: the source volume instance
         :param targetInstance: the target volume instance
         :param isSnapshot: check to see if it is a snapshot
-        :param extraSpecs: additional information
         :returns: rc
         """
         sourceName = sourceVolume['name']
         cloneName = cloneVolume['name']
         rc, job = self.provision.create_element_replica(
             self.conn, repServiceInstanceName, cloneName, sourceName,
-            sourceInstance, targetInstance)
+            sourceInstance, targetInstance, self.extraSpecs)
         cloneDict = self.provision.get_volume_dict_from_job(
             self.conn, job['Job'])
 
-        fastPolicyName = extraSpecs[FASTPOLICY]
+        fastPolicyName = self.extraSpecs[FASTPOLICY]
         if isSnapshot:
             if fastPolicyName is not None:
                 storageSystemName = sourceInstance['SystemName']
@@ -3455,7 +3479,8 @@ class EMCVMAXCommon(object):
         # Remove the Clone relationship so it can be used as a regular lun.
         # 8 - Detach operation.
         rc, job = self.provision.delete_clone_relationship(
-            self.conn, repServiceInstanceName, syncInstanceName)
+            self.conn, repServiceInstanceName, syncInstanceName,
+            self.extraSpecs)
         if fastPolicyName is not None:
             self._add_clone_to_default_storage_group(
                 fastPolicyName, storageSystemName, cloneDict, cloneName)
@@ -3528,7 +3553,7 @@ class EMCVMAXCommon(object):
         syncType = self.utils.get_num(8, '16')  # Default syncType 8: clone.
 
         # Create target volume
-        extraSpecs = self._initial_setup(cloneVolume)
+        self.extraSpecs = self._initial_setup(cloneVolume)
 
         numOfBlocks = sourceInstance['NumberOfBlocks']
         blockSize = sourceInstance['BlockSize']
@@ -3538,7 +3563,7 @@ class EMCVMAXCommon(object):
                   int(self.utils.convert_bits_to_gbs(volumeSizeInbits))}
         _, volumeDict, storageSystemName = (
             self._create_v3_volume(
-                volume, extraSpecs, cloneName, volumeSizeInbits))
+                volume, cloneName, volumeSizeInbits))
         targetInstance = self.utils.find_volume_instance(
             self.conn, volumeDict, cloneName)
         LOG.debug("Create replica target volume "
@@ -3553,7 +3578,7 @@ class EMCVMAXCommon(object):
         _, job = (
             self.provisionv3.create_element_replica(
                 self.conn, repServiceInstanceName, cloneName, syncType,
-                sourceInstance, targetInstance))
+                sourceInstance, self.extraSpecs, targetInstance))
         cloneDict = self.provisionv3.get_volume_dict_from_job(
             self.conn, job['Job'])
 
@@ -3574,11 +3599,11 @@ class EMCVMAXCommon(object):
 
         rc, job = self.provisionv3.break_replication_relationship(
             self.conn, repServiceInstanceName, syncInstanceName,
-            operation)
+            operation, self.extraSpecs)
         return rc, cloneDict
 
     def _delete_cg_and_members(
-            self, storageSystem, extraSpecs, cgName, modelUpdate, volumes):
+            self, storageSystem, cgName, modelUpdate, volumes):
         """Helper function to delete a consistency group and its member volumes.
 
         :param storageSystem: storage system
@@ -3601,7 +3626,8 @@ class EMCVMAXCommon(object):
             cgInstanceName)
 
         self.provision.delete_consistency_group(
-            self.conn, replicationService, cgInstanceName, cgName)
+            self.conn, replicationService, cgInstanceName, cgName,
+            self.extraSpecs)
 
         if memberInstanceNames:
             try:
@@ -3617,14 +3643,14 @@ class EMCVMAXCommon(object):
                           {'cg': cgInstanceName,
                            'numVols': len(memberInstanceNames),
                            'memVols': memberInstanceNames})
-                if extraSpecs[ISV3]:
+                if self.extraSpecs[ISV3]:
                     self.provisionv3.delete_volume_from_pool(
                         self.conn, storageConfigservice,
-                        memberInstanceNames, None)
+                        memberInstanceNames, None, self.extraSpecs)
                 else:
                     self.provision.delete_volume_from_pool(
                         self.conn, storageConfigservice,
-                        memberInstanceNames, None)
+                        memberInstanceNames, None, self.extraSpecs)
                     for volumeRef in volumes:
                             volumeRef['status'] = 'deleted'
             except Exception:

@@ -47,6 +47,8 @@ ISCSI = 'iscsi'
 FC = 'fc'
 JOB_RETRIES = 60
 INTERVAL_10_SEC = 10
+INTERVAL = 'storagetype:interval'
+RETRIES = 'storagetype:retries'
 CIM_ERR_NOT_FOUND = 6
 
 
@@ -259,7 +261,7 @@ class EMCVMAXUtils(object):
 
         return foundTierPolicyService
 
-    def wait_for_job_complete(self, conn, job):
+    def wait_for_job_complete(self, conn, job, extraSpecs=None):
         """Given the job wait for it to complete.
 
         :param conn: connection to the ecom server
@@ -269,33 +271,36 @@ class EMCVMAXUtils(object):
         """
 
         jobInstanceName = job['Job']
-        self._wait_for_job_complete(conn, job)
+        if extraSpecs and (INTERVAL in extraSpecs or RETRIES in extraSpecs):
+            self._wait_for_job_complete(conn, job, extraSpecs)
+        else:
+            self._wait_for_job_complete(conn, job)
         jobinstance = conn.GetInstance(jobInstanceName,
                                        LocalOnly=False)
         rc = jobinstance['ErrorCode']
         errorDesc = jobinstance['ErrorDescription']
-        LOG.debug("Return code is: %(rc)lu "
+        LOG.debug("Return code is: %(rc)lu. "
                   "Error Description is: %(errorDesc)s.",
                   {'rc': rc,
                    'errorDesc': errorDesc})
 
         return rc, errorDesc
 
-    def _wait_for_job_complete(self, conn, job):
+    def _wait_for_job_complete(self, conn, job, extraSpecs=None):
         """Given the job wait for it to complete.
-
-        Called at an interval until the job is finished.
 
         :param conn: connection to the ecom server
         :param job: the job dict
         """
 
         def _wait_for_job_complete():
+            # Called at an interval until the job is finished.
+            maxJobRetries = self._get_max_job_retries(extraSpecs)
             retries = kwargs['retries']
             wait_for_job_called = kwargs['wait_for_job_called']
             if self._is_job_finished(conn, job):
                 raise loopingcall.LoopingCallDone()
-            if retries > JOB_RETRIES:
+            if retries > maxJobRetries:
                 LOG.error(_LE("_wait_for_job_complete "
                               "failed after %(retries)d "
                               "tries."),
@@ -308,15 +313,44 @@ class EMCVMAXUtils(object):
                     if self._is_job_finished(conn, job):
                         kwargs['wait_for_job_called'] = True
             except Exception as e:
-                LOG.error(_LE("Exception: %s") % six.text_type(e))
+                LOG.error(_LE("Exception: %s.") % six.text_type(e))
                 exceptionMessage = (_("Issue encountered waiting for job."))
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
         kwargs = {'retries': 0,
                   'wait_for_job_called': False}
+
+        intervalInSecs = self._get_interval_in_secs(extraSpecs)
+
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_job_complete)
-        timer.start(interval=INTERVAL_10_SEC).wait()
+        timer.start(interval=intervalInSecs).wait()
+
+    def _get_max_job_retries(self, extraSpecs):
+        """Get max job retries either default or user defined
+
+        :param extraSpecs: extraSpecs
+
+        :returns: JOB_RETRIES or user defined
+        """
+        if extraSpecs:
+            jobRetries = extraSpecs[RETRIES]
+        else:
+            jobRetries = JOB_RETRIES
+        return int(jobRetries)
+
+    def _get_interval_in_secs(self, extraSpecs):
+        """Get interval in secs, either default or user defined
+
+        :param extraSpecs: extraSpecs
+
+        :returns: INTERVAL_10_SEC or user defined
+        """
+        if extraSpecs:
+            intervalInSecs = extraSpecs[INTERVAL]
+        else:
+            intervalInSecs = INTERVAL_10_SEC
+        return int(intervalInSecs)
 
     def _is_job_finished(self, conn, job):
         """Check if the job is finished.
@@ -773,6 +807,36 @@ class EMCVMAXUtils(object):
             LOG.debug("Workload not in config file. "
                       "Defaulting to NONE.")
             return 'NONE'
+
+    def parse_interval_from_file(self, fileName):
+        """Parse the interval from config file.
+
+        If it is not there then the default will be used.
+
+        :param fileName: the path and name of the file
+        :returns: interval - the interval in seconds
+        """
+        interval = self._parse_from_file(fileName, 'Interval')
+        if interval:
+            return interval
+        else:
+            LOG.debug("Interval not found in config file.")
+            return None
+
+    def parse_retries_from_file(self, fileName):
+        """Parse the retries from config file.
+
+        If it is not there then the default will be used.
+
+        :param fileName: the path and name of the file
+        :returns: retries - the max number of retries
+        """
+        retries = self._parse_from_file(fileName, 'Retries')
+        if retries:
+            return retries
+        else:
+            LOG.debug("Retries not found in config file.")
+            return None
 
     def parse_pool_instance_id(self, poolInstanceId):
         """Given the instance Id parse the pool name and system name from it.

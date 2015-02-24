@@ -43,14 +43,15 @@ class EMCVMAXProvision(object):
         self.utils = emc_vmax_utils.EMCVMAXUtils(prtcl)
 
     def delete_volume_from_pool(
-            self, conn, storageConfigservice, volumeInstanceName, volumeName):
+            self, conn, storageConfigservice, volumeInstanceName, volumeName,
+            extraSpecs):
         """Given the volume instance remove it from the pool.
 
         :param conn: connection the the ecom server
         :param storageConfigservice: volume created from job
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name (String)
-        :param
+        :param extraSpecs: additional info
         :param rc: return code
         """
         startTime = time.time()
@@ -66,7 +67,8 @@ class EMCVMAXProvision(object):
             TheElements=theElements)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Delete Volume: %(volumeName)s. "
@@ -87,7 +89,7 @@ class EMCVMAXProvision(object):
 
     def create_volume_from_pool(
             self, conn, storageConfigService, volumeName,
-            poolInstanceName, volumeSize):
+            poolInstanceName, volumeSize, extraSpecs):
         """Create the volume in the specified pool.
 
         :param conn: the connection information to the ecom server
@@ -96,6 +98,7 @@ class EMCVMAXProvision(object):
         :param poolInstanceName: the pool instance name to create
                                  the dummy volume in
         :param volumeSize: volume size (String)
+        :param extraSpecs: additional info
         :returns: volumeDict - the volume dict
         """
         startTime = time.time()
@@ -113,7 +116,8 @@ class EMCVMAXProvision(object):
                    'rc': rc})
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Create Volume: %(volumeName)s. "
@@ -135,13 +139,15 @@ class EMCVMAXProvision(object):
         return volumeDict, rc
 
     def create_and_get_storage_group(self, conn, controllerConfigService,
-                                     storageGroupName, volumeInstanceName):
+                                     storageGroupName, volumeInstanceName,
+                                     extraSpecs):
         """Create a storage group and return it.
 
         :param conn: the connection information to the ecom server
         :param controllerConfigService: the controller configuration service
         :param storageGroupName: the storage group name (String
         :param volumeInstanceName: the volume instance name
+        :param extraSpecs: additional info
         :returns: foundStorageGroupInstanceName - instance name of the
                                                   default storage group
         """
@@ -153,7 +159,8 @@ class EMCVMAXProvision(object):
             Members=[volumeInstanceName])
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Create Group: %(groupName)s. "
@@ -175,12 +182,13 @@ class EMCVMAXProvision(object):
         return foundStorageGroupInstanceName
 
     def create_storage_group_no_members(
-            self, conn, controllerConfigService, groupName):
+            self, conn, controllerConfigService, groupName, extraSpecs):
         """Create a new storage group that has no members.
 
         :param conn: connection the ecom server
         :param controllerConfigService: the controller configuration service
         :param groupName: the proposed group name
+        :param extraSpecs: additional info
         :returns: foundStorageGroupInstanceName - the instance Name of
                                                   the storage group
         """
@@ -192,7 +200,8 @@ class EMCVMAXProvision(object):
             DeleteWhenBecomesUnassociated=False)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Create Group: %(groupName)s. "
@@ -253,7 +262,7 @@ class EMCVMAXProvision(object):
 
     def remove_device_from_storage_group(
             self, conn, controllerConfigService, storageGroupInstanceName,
-            volumeInstanceName, volumeName):
+            volumeInstanceName, volumeName, extraSpecs):
         """Remove a volume from a storage group.
 
         :param conn: the connection to the ecom server
@@ -261,6 +270,7 @@ class EMCVMAXProvision(object):
         :param storageGroupInstanceName: the instance name of the storage group
         :param volumeInstanceName: the instance name of the volume
         :param volumeName: the volume name (String)
+        :param extraSpecs: additional info
         :returns: rc - the return code of the job
         """
         startTime = time.time()
@@ -270,7 +280,8 @@ class EMCVMAXProvision(object):
                                         MaskingGroup=storageGroupInstanceName,
                                         Members=[volumeInstanceName])
         if rc != 0L:
-            rc, errorDesc = self.utils.wait_for_job_complete(conn, jobDict)
+            rc, errorDesc = self.utils.wait_for_job_complete(conn, jobDict,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error removing volume %(vol)s. %(error)s.")
@@ -288,7 +299,7 @@ class EMCVMAXProvision(object):
 
     def add_members_to_masking_group(
             self, conn, controllerConfigService, storageGroupInstanceName,
-            volumeInstanceName, volumeName):
+            volumeInstanceName, volumeName, extraSpecs):
         """Add a member to a masking group group.
 
         :param conn: the connection to the ecom server
@@ -296,6 +307,7 @@ class EMCVMAXProvision(object):
         :param storageGroupInstanceName: the instance name of the storage group
         :param volumeInstanceName: the instance name of the volume
         :param volumeName: the volume name (String)
+        :param extraSpecs: additional info
         """
         startTime = time.time()
 
@@ -305,7 +317,8 @@ class EMCVMAXProvision(object):
             Members=[volumeInstanceName])
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error mapping volume %(vol)s. %(error)s.")
@@ -321,7 +334,7 @@ class EMCVMAXProvision(object):
 
     def unbind_volume_from_storage_pool(
             self, conn, storageConfigService, poolInstanceName,
-            volumeInstanceName, volumeName):
+            volumeInstanceName, volumeName, extraSpecs):
         """Unbind a volume from a pool and return the unbound volume.
 
         :param conn: the connection information to the ecom server
@@ -330,6 +343,7 @@ class EMCVMAXProvision(object):
         :param poolInstanceName: the pool instance name
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name
+        :param extraSpecs: additional info
         :returns: unboundVolumeInstance - the unbound volume instance
         """
         startTime = time.time()
@@ -341,7 +355,8 @@ class EMCVMAXProvision(object):
             TheElement=volumeInstanceName)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error unbinding volume %(vol)s from pool. %(error)s.")
@@ -359,7 +374,7 @@ class EMCVMAXProvision(object):
 
     def modify_composite_volume(
             self, conn, elementCompositionService, theVolumeInstanceName,
-            inVolumeInstanceName):
+            inVolumeInstanceName, extraSpecs):
 
         """Given a composite volume add a storage volume to it.
 
@@ -368,6 +383,7 @@ class EMCVMAXProvision(object):
         :param theVolumeInstanceName: the existing composite volume
         :param inVolumeInstanceName: the volume you wish to add to the
                                      composite volume
+        :param extraSpecs: additional info
         :returns: rc - return code
         :returns: job - job
         """
@@ -380,7 +396,8 @@ class EMCVMAXProvision(object):
             InElements=[inVolumeInstanceName])
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error adding volume to composite volume. "
@@ -398,7 +415,7 @@ class EMCVMAXProvision(object):
 
     def create_composite_volume(
             self, conn, elementCompositionService, volumeSize, volumeName,
-            poolInstanceName, compositeType, numMembers):
+            poolInstanceName, compositeType, numMembers, extraSpecs):
         """Create a new volume using the auto meta feature.
 
         :param conn: the connection the the ecom server
@@ -410,6 +427,7 @@ class EMCVMAXProvision(object):
                               e.g striped/concatenated
         :param numMembers: the number of meta members to make up the composite.
                            If it is 1 then a non composite is created
+        :param extraSpecs: additional info
         :returns: rc
         :returns: errordesc
         """
@@ -444,7 +462,8 @@ class EMCVMAXProvision(object):
             EMCNumberOfMembers=self.utils.get_num(numMembers, '32'))
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Create Volume: %(volumename)s. "
@@ -468,7 +487,7 @@ class EMCVMAXProvision(object):
 
     def create_new_composite_volume(
             self, conn, elementCompositionService, compositeHeadInstanceName,
-            compositeMemberInstanceName, compositeType):
+            compositeMemberInstanceName, compositeType, extraSpecs):
         """Creates a new composite volume.
 
         Given a bound composite head and an unbound composite member
@@ -480,6 +499,7 @@ class EMCVMAXProvision(object):
         :param compositeMemberInstanceName: the composite member.
                                             This must be unbound
         :param compositeType: the composite type e.g striped or concatenated
+        :param extraSpecs: additional info
         :returns: rc - return code
         :returns: errordesc - descriptions of the error
         """
@@ -493,7 +513,8 @@ class EMCVMAXProvision(object):
             CompositeType=self.utils.get_num(compositeType, '16'))
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Creating new composite Volume Return code: "
@@ -513,7 +534,7 @@ class EMCVMAXProvision(object):
 
     def _migrate_volume(
             self, conn, storageRelocationServiceInstanceName,
-            volumeInstanceName, targetPoolInstanceName):
+            volumeInstanceName, targetPoolInstanceName, extraSpecs):
         """Migrate a volume to another pool.
 
         :param conn: the connection to the ecom server
@@ -521,6 +542,7 @@ class EMCVMAXProvision(object):
                                                      service
         :param volumeInstanceName: the volume to be migrated
         :param targetPoolInstanceName: the target pool to migrate the volume to
+        :param extraSpecs: additional info
         :returns: rc - return code
         """
         startTime = time.time()
@@ -532,7 +554,8 @@ class EMCVMAXProvision(object):
             TargetPool=targetPoolInstanceName)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Migrating volume from one pool to another. "
@@ -551,7 +574,7 @@ class EMCVMAXProvision(object):
 
     def migrate_volume_to_storage_pool(
             self, conn, storageRelocationServiceInstanceName,
-            volumeInstanceName, targetPoolInstanceName):
+            volumeInstanceName, targetPoolInstanceName, extraSpecs):
         """Given the storage system name, get the storage relocation service.
 
         :param conn: the connection to the ecom server
@@ -560,6 +583,7 @@ class EMCVMAXProvision(object):
         :param volumeInstanceName: the volume to be migrated
         :param targetPoolInstanceName: the target pool to migrate the
                                        volume to.
+        :param extraSpecs: additional info
         :returns: rc
         """
         LOG.debug(
@@ -571,12 +595,12 @@ class EMCVMAXProvision(object):
         try:
             rc = self._migrate_volume(
                 conn, storageRelocationServiceInstanceName,
-                volumeInstanceName, targetPoolInstanceName)
+                volumeInstanceName, targetPoolInstanceName, extraSpecs)
         except Exception as ex:
             if 'source of a migration session' in six.text_type(ex):
                 try:
                     rc = self._terminate_migrate_session(
-                        conn, volumeInstanceName)
+                        conn, volumeInstanceName, extraSpecs)
                 except Exception as ex:
                     LOG.error(_LE('Exception: %s.'), ex)
                     exceptionMessage = (_(
@@ -587,7 +611,8 @@ class EMCVMAXProvision(object):
                 try:
                     rc = self._migrate_volume(
                         conn, storageRelocationServiceInstanceName,
-                        volumeInstanceName, targetPoolInstanceName)
+                        volumeInstanceName, targetPoolInstanceName,
+                        extraSpecs)
                 except Exception as ex:
                     LOG.error(_LE('Exception: %s'), ex)
                     exceptionMessage = (_(
@@ -606,11 +631,13 @@ class EMCVMAXProvision(object):
 
         return rc
 
-    def _terminate_migrate_session(self, conn, volumeInstanceName):
+    def _terminate_migrate_session(self, conn, volumeInstanceName,
+                                   extraSpecs):
         """Given the volume instance terminate a migrate session.
 
         :param conn: the connection to the ecom server
         :param volumeInstanceName: the volume to be migrated
+        :param extraSpecs: additional info
         :returns: rc
         """
         startTime = time.time()
@@ -619,7 +646,8 @@ class EMCVMAXProvision(object):
             'RequestStateChange', volumeInstanceName,
             RequestedState=self.utils.get_num(32769, '16'))
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Terminating migrate session. "
@@ -639,7 +667,8 @@ class EMCVMAXProvision(object):
 
     def create_element_replica(
             self, conn, repServiceInstanceName, cloneName,
-            sourceName, sourceInstance, targetInstance, copyOnWrite=False):
+            sourceName, sourceInstance, targetInstance, extraSpecs,
+            copyOnWrite=False):
         """Make SMI-S call to create replica for source element.
 
         :param conn - the connection to the ecom server
@@ -647,6 +676,8 @@ class EMCVMAXProvision(object):
         :param cloneName - replica name
         :param sourceName - source volume name
         :param sourceInstance - source volume instance
+        :param extraSpecs: additional info
+        :param copyOnWrite: optional
 
         :returns: rc - return code
         :returns: job - job object of the replica creation operation
@@ -667,7 +698,8 @@ class EMCVMAXProvision(object):
                 ReplicationType=self.utils.get_num(10, '16'))
 
             if rc != 0L:
-                rc, errordesc = self.utils.wait_for_job_complete(conn, rsd)
+                rc, errordesc = self.utils.wait_for_job_complete(conn, rsd,
+                                                                 extraSpecs)
                 if rc != 0L:
                     exceptionMessage = (_(
                         "Error creating cloned volume using "
@@ -717,7 +749,8 @@ class EMCVMAXProvision(object):
                     TargetElement=targetInstance.path)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Create Cloned Volume: "
@@ -739,7 +772,8 @@ class EMCVMAXProvision(object):
         return rc, job
 
     def delete_clone_relationship(
-            self, conn, repServiceInstanceName, syncInstanceName, force=False):
+            self, conn, repServiceInstanceName, syncInstanceName, extraSpecs,
+            force=False):
         """Deletes the relationship between the clone and source volume.
 
         Makes an SMI-S call to break clone relationship between the clone
@@ -751,6 +785,8 @@ class EMCVMAXProvision(object):
         :param repServiceInstanceName: instance name of the replication service
         :param syncInstanceName: instance name of the
                                  SE_StorageSynchronized_SV_SV object
+        :param extraSpecs - additional info
+        :param force - optional param
         :returns: rc - return code
         :returns: job - job object of the replica creation operation
         """
@@ -768,7 +804,8 @@ class EMCVMAXProvision(object):
                    'rc': rc})
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error break clone relationship: "
@@ -816,12 +853,13 @@ class EMCVMAXProvision(object):
         return rc, targetEndpoints
 
     def create_consistency_group(
-            self, conn, replicationService, consistencyGroupName):
+            self, conn, replicationService, consistencyGroupName, extraSpecs):
         """Create a new consistency group.
 
         :param conn: the connection to the ecom server
         :param replicationService: the replication Service
         :param consistencyGroupName: the CG group name
+        :param extraSpecs - additional info
         :returns: rc
         :returns: job
         """
@@ -833,7 +871,8 @@ class EMCVMAXProvision(object):
             GroupName=consistencyGroupName)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Failed to create consistency group: "
@@ -855,7 +894,7 @@ class EMCVMAXProvision(object):
 
     def delete_consistency_group(
             self, conn, replicationService, cgInstanceName,
-            consistencyGroupName):
+            consistencyGroupName, extraSpecs):
 
         """Delete a consistency group.
 
@@ -863,6 +902,7 @@ class EMCVMAXProvision(object):
         :param replicationService: the replication Service
         :param cgInstanceName: the CG instance name
         :param consistencyGroupName: the CG group name
+        :param extraSpecs - additional info
         :returns: rc
         :returns: job
         """
@@ -875,7 +915,8 @@ class EMCVMAXProvision(object):
             RemoveElements=True)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Failed to delete consistency group: "
@@ -897,7 +938,7 @@ class EMCVMAXProvision(object):
 
     def add_volume_to_cg(
             self, conn, replicationService, cgInstanceName,
-            volumeInstanceName, cgName, volumeName):
+            volumeInstanceName, cgName, volumeName, extraSpecs):
         """Add a volume to a consistency group.
 
         :param conn: the connection to the ecom server
@@ -906,6 +947,7 @@ class EMCVMAXProvision(object):
         :param cgInstanceName: the CG instance name
         :param cgName: the CG group name
         :param volumeName: the volume name
+        :param extraSpecs - additional info
         :returns: rc
         :returns: job
         """
@@ -918,7 +960,8 @@ class EMCVMAXProvision(object):
             ReplicationGroup=cgInstanceName)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Failed to add volume %(volumeName)s: "
@@ -940,7 +983,7 @@ class EMCVMAXProvision(object):
 
     def remove_volume_from_cg(
             self, conn, replicationService, cgInstanceName,
-            volumeInstanceName, cgName, volumeName):
+            volumeInstanceName, cgName, volumeName, extraSpecs):
         """Remove a volume from a consistency group.
 
         :param conn: the connection to the ecom server
@@ -949,6 +992,7 @@ class EMCVMAXProvision(object):
         :param cgInstanceName: the CG instance name
         :param cgName: the CG group name
         :param volumeName: the volume name
+        :param extraSpecs - additional info
         :returns: rc
         :returns: job
         """
@@ -962,7 +1006,8 @@ class EMCVMAXProvision(object):
             RemoveElements=True)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Failed to remove volume %(volumeName)s: "
@@ -984,14 +1029,16 @@ class EMCVMAXProvision(object):
 
     def create_group_replica(
             self, conn, replicationService,
-            srcGroupInstanceName, tgtGroupInstanceName, relationName):
+            srcGroupInstanceName, tgtGroupInstanceName, relationName,
+            extraSpecs):
         """Make SMI-S call to create replica for source group.
 
         :param conn - the connection to the ecom server
         :param repServiceInstanceName - replication service
         :param srcGroupInstanceName - source group instance name
         :param tgtGroupInstanceName - target group instance name
-        :param cgName - target group name
+        :param relationName -
+        :param extraSpecs - additional info
 
         :returns: rc - return code
         :returns: job - job object of the replica creation operation
@@ -1016,7 +1063,8 @@ class EMCVMAXProvision(object):
             SyncType=self.utils.get_num(8, '16'))
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMsg = (_("Error CreateGroupReplica: "
                                   "source: %(source)s target: %(target)s. "
