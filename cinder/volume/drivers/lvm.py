@@ -190,7 +190,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         total_capacity = 0
         free_capacity = 0
-        thin_enabled = False
 
         if self.configuration.lvm_mirrors > 0:
             total_capacity =\
@@ -203,7 +202,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
             total_capacity = self.vg.vg_thin_pool_size
             free_capacity = self.vg.vg_thin_pool_free_space
             provisioned_capacity = self.vg.vg_provisioned_capacity
-            thin_enabled = True
         else:
             total_capacity = self.vg.vg_size
             free_capacity = self.vg.vg_free_space
@@ -217,6 +215,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
               'vg': self.configuration.volume_group,
               'lvm_type': self.configuration.lvm_type,
               'lvm_mirrors': self.configuration.lvm_mirrors})
+
+        thin_enabled = self.configuration.lvm_type == 'thin'
 
         # Skip enabled_pools setting, treat the whole backend as one pool
         # XXX FIXME if multipool support is added to LVM driver.
