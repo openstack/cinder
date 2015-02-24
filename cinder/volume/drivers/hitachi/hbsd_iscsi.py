@@ -46,7 +46,7 @@ volume_opts = [
                help='iSCSI authentication username'),
     cfg.StrOpt('hitachi_auth_password',
                default='%sCHAP-password' % basic_lib.NAME_PREFIX,
-               help='iSCSI authentication password'),
+               help='iSCSI authentication password', secret=True),
 ]
 
 CONF = cfg.CONF

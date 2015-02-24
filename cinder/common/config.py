@@ -194,7 +194,8 @@ global_opts = [
     cfg.StrOpt('os_privileged_user_password',
                default=None,
                help='Password associated with the OpenStack privileged '
-                    'account.'),
+                    'account.',
+               secret=True),
     cfg.StrOpt('os_privileged_user_tenant',
                default=None,
                help='Tenant name associated with the OpenStack privileged '
