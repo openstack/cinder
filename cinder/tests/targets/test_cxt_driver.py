@@ -195,7 +195,10 @@ class TestCxtAdmDriver(test.TestCase):
             self.assertTrue(mock_get.called)
             self.assertTrue(mock_execute.called)
 
-    def test_ensure_export(self):
+    @mock.patch('cinder.volume.targets.cxt.CxtAdm._get_target_chap_auth')
+    def test_ensure_export(self, mock_get_chap):
+        fake_creds = ('asdf', 'qwert')
+        mock_get_chap.return_value = fake_creds
         ctxt = context.get_admin_context()
         with mock.patch.object(self.target, 'create_iscsi_target'):
             self.target.ensure_export(ctxt,
@@ -203,6 +206,6 @@ class TestCxtAdmDriver(test.TestCase):
                                       self.fake_volumes_dir)
             self.target.create_iscsi_target.assert_called_once_with(
                 'iqn.2010-10.org.openstack:testvol',
-                1, 0, self.fake_volumes_dir, None,
+                1, 0, self.fake_volumes_dir, fake_creds,
                 check_exit_code=False,
                 old_name=None)
