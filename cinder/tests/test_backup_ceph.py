@@ -14,7 +14,6 @@
 #    under the License.
 """ Tests for Ceph backup service."""
 
-import contextlib
 import hashlib
 import os
 import tempfile
@@ -481,10 +480,9 @@ class BackupCephTestCase(test.TestCase):
         self.mock_rbd.RBD.list = mock.Mock()
         self.mock_rbd.RBD.list.return_value = [backup_name]
 
-        with contextlib.nested(
-                mock.patch.object(self.service, 'get_backup_snaps'),
-                mock.patch.object(self.service, '_rbd_diff_transfer')
-        ) as (_unused, mock_rbd_diff_transfer):
+        with mock.patch.object(self.service, 'get_backup_snaps'), \
+                mock.patch.object(self.service, '_rbd_diff_transfer') as \
+                mock_rbd_diff_transfer:
             def mock_rbd_diff_transfer_side_effect(src_name, src_pool,
                                                    dest_name, dest_pool,
                                                    src_user, src_conf,
@@ -495,10 +493,11 @@ class BackupCephTestCase(test.TestCase):
             # Raise a pseudo exception.BackupRBDOperationFailed.
             mock_rbd_diff_transfer.side_effect \
                 = mock_rbd_diff_transfer_side_effect
-            with contextlib.nested(
-                    mock.patch.object(self.service, '_full_backup'),
-                    mock.patch.object(self.service, '_try_delete_base_image')
-            ) as (_unused, mock_try_delete_base_image):
+
+            with mock.patch.object(self.service, '_full_backup'), \
+                    mock.patch.object(self.service,
+                                      '_try_delete_base_image') as \
+                    mock_try_delete_base_image:
                 def mock_try_delete_base_image_side_effect(backup_id,
                                                            volume_id,
                                                            base_name):
@@ -556,12 +555,11 @@ class BackupCephTestCase(test.TestCase):
         self.mock_rbd.RBD.list = mock.Mock()
         self.mock_rbd.RBD.list.return_value = [backup_name]
 
-        with contextlib.nested(
-                mock.patch.object(self.service, 'get_backup_snaps'),
-                mock.patch.object(self.service, '_rbd_diff_transfer'),
-                mock.patch.object(self.service, '_full_backup'),
-                mock.patch.object(self.service, '_backup_metadata')
-        ) as (_unused1, _u2, _u3, mock_backup_metadata):
+        with mock.patch.object(self.service, 'get_backup_snaps'), \
+                mock.patch.object(self.service, '_rbd_diff_transfer'), \
+                mock.patch.object(self.service, '_full_backup'), \
+                mock.patch.object(self.service, '_backup_metadata') as \
+                mock_backup_metadata:
 
             def mock_backup_metadata_side_effect(backup):
                 raise exception.BackupOperationError(_('mock'))

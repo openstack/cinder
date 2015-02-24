@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
-
 import mock
 
 from cinder.compute import nova
@@ -102,11 +100,10 @@ class NovaApiTestCase(test.TestCase):
         self.ctx = context.get_admin_context()
 
     def test_update_server_volume(self):
-        with contextlib.nested(
-                mock.patch.object(nova, 'novaclient'),
+        with mock.patch.object(nova, 'novaclient') as mock_novaclient, \
                 mock.patch.object(self.novaclient.volumes,
-                                  'update_server_volume')
-        ) as (mock_novaclient, mock_update_server_volume):
+                                  'update_server_volume') as \
+                mock_update_server_volume:
             mock_novaclient.return_value = self.novaclient
 
             self.api.update_server_volume(self.ctx, 'server_id',
