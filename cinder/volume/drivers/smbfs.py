@@ -39,9 +39,9 @@ volume_opts = [
                help='File with the list of available smbfs shares.'),
     cfg.StrOpt('smbfs_default_volume_format',
                default='qcow2',
+               choices=['raw', 'qcow2', 'vhd', 'vhdx'],
                help=('Default format that will be used when creating volumes '
-                     'if no volume format is specified. Can be set to: '
-                     'raw, qcow2, vhd or vhdx.')),
+                     'if no volume format is specified.')),
     cfg.BoolOpt('smbfs_sparsed_volumes',
                 default=True,
                 help=('Create volumes as sparsed files which take no space '

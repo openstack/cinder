@@ -51,7 +51,8 @@ volume_opts = [
                     'this requires lvm_mirrors + 2 PVs with available space'),
     cfg.StrOpt('lvm_type',
                default='default',
-               help='Type of LVM volumes to deploy; (default or thin)'),
+               choices=['default', 'thin'],
+               help='Type of LVM volumes to deploy'),
     cfg.StrOpt('lvm_conf_file',
                default='/etc/cinder/lvm.conf',
                help='LVM conf file to use for the LVM driver in Cinder; '

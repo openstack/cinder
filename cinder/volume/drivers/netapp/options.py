@@ -29,15 +29,16 @@ from oslo_config import cfg
 netapp_proxy_opts = [
     cfg.StrOpt('netapp_storage_family',
                default='ontap_cluster',
+               choices=['ontap_7mode', 'ontap_cluster', 'eseries'],
                help=('The storage family type used on the storage system; '
                      'valid values are ontap_7mode for using Data ONTAP '
                      'operating in 7-Mode, ontap_cluster for using '
                      'clustered Data ONTAP, or eseries for using E-Series.')),
     cfg.StrOpt('netapp_storage_protocol',
-               default=None,
+               default='iscsi',
+               choices=['iscsi', 'fc', 'nfs'],
                help=('The storage protocol to be used on the data path with '
-                     'the storage system; valid values are iscsi, fc, or '
-                     'nfs.')), ]
+                     'the storage system.')), ]
 
 netapp_connection_opts = [
     cfg.StrOpt('netapp_server_hostname',
@@ -54,9 +55,9 @@ netapp_connection_opts = [
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',
                default='http',
+               choices=['http', 'https'],
                help=('The transport protocol used when communicating with '
-                     'the storage system or proxy server. Valid values are '
-                     'http or https.')), ]
+                     'the storage system or proxy server.')), ]
 
 netapp_basicauth_opts = [
     cfg.StrOpt('netapp_login',

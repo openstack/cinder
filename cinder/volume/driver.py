@@ -77,8 +77,8 @@ volume_opts = [
                      'running. Otherwise, it will fallback to single path.'),
     cfg.StrOpt('volume_clear',
                default='zero',
-               help='Method used to wipe old volumes (valid options are: '
-                    'none, zero, shred)'),
+               choices=['none', 'zero', 'shred'],
+               help='Method used to wipe old volumes'),
     cfg.IntOpt('volume_clear_size',
                default=0,
                help='Size in MiB to wipe at start of old volumes. 0 => all'),
@@ -89,6 +89,7 @@ volume_opts = [
                     'for example "-c3" for idle only priority.'),
     cfg.StrOpt('iscsi_helper',
                default='tgtadm',
+               choices=['tgtadm', 'lioadm', 'iseradm', 'iscsictl', 'fake'],
                help='iSCSI target user-land tool to use. tgtadm is default, '
                     'use lioadm for LIO iSCSI support, iseradm for the ISER '
                     'protocol, iscsictl for Chelsio iSCSI Target or fake for '
@@ -109,6 +110,7 @@ volume_opts = [
                     'It will be removed in the next release.'),
     cfg.StrOpt('iscsi_iotype',
                default='fileio',
+               choices=['blockio', 'fileio', 'auto'],
                help=('Sets the behavior of the iSCSI target '
                      'to either perform blockio or fileio '
                      'optionally, auto can be set and Cinder '
@@ -127,12 +129,14 @@ volume_opts = [
                     '0 => unlimited'),
     cfg.StrOpt('iscsi_write_cache',
                default='on',
+               choices=['on', 'off'],
                help='Sets the behavior of the iSCSI target to either '
                     'perform write-back(on) or write-through(off). '
                     'This parameter is valid if iscsi_helper is set '
                     'to tgtadm or iseradm.'),
     cfg.StrOpt('iscsi_protocol',
                default='iscsi',
+               choices=['iscsi', 'iser'],
                help='Determines the iSCSI protocol for new iSCSI volumes, '
                     'created with tgtadm or lioadm target helpers. In '
                     'order to enable RDMA, this parameter should be set '
