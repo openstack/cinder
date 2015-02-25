@@ -631,9 +631,14 @@ class LVM(executor.Executor):
                           root_helper=self._root_helper, run_as_root=True,
                           check_exit_code=False)
 
+        # LV removal seems to be a race with other writers or udev in
+        # some cases (see LP #1270192), so we enable retry deactivation
+        LVM_CONFIG = 'activation { retry_deactivation = 1} '
+
         try:
             self._execute(
                 'lvremove',
+                '--config', LVM_CONFIG,
                 '-f',
                 '%s/%s' % (self.vg_name, name),
                 root_helper=self._root_helper, run_as_root=True)
@@ -650,14 +655,7 @@ class LVM(executor.Executor):
             # suspended devices; when lvmetad is not available, any
             # further lvm command will block forever.
             # Therefore we need to skip suspended devices on retry.
-
-            # NOTE(jdg): This is one we don't want to set in the
-            # conf file, but only use when performing a recovery
-            # operation.  In the future, I think a more reliable
-            # method for this may be to consult dmsetup for
-            # suspended devices and fix them up rather than ignoring
-            # them.
-            LVM_CONFIG = 'devices { ignore_suspended_devices = 1}'
+            LVM_CONFIG += 'devices { ignore_suspended_devices = 1}'
 
             self._execute(
                 'lvremove',
