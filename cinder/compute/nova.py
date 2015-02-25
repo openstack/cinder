@@ -96,6 +96,13 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
     if admin_endpoint:
         nova_endpoint_template = CONF.nova_endpoint_admin_template
         nova_catalog_info = CONF.nova_catalog_admin_info
+    service_type, service_name, endpoint_type = nova_catalog_info.split(':')
+
+    # Extract the region if set in configuration
+    if CONF.os_region_name:
+        region_filter = {'attr': 'region', 'filter_value': CONF.os_region_name}
+    else:
+        region_filter = {}
 
     if privileged_user and CONF.os_privileged_user_name:
         context = ctx.RequestContext(
@@ -104,8 +111,13 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
             project_name=CONF.os_privileged_user_tenant,
             service_catalog=context.service_catalog)
 
-        # The admin user needs to authenticate before querying Nova
-        url = sc.url_for(service_type='identity')
+        # When privileged_user is used, it needs to authenticate to Keystone
+        # before querying Nova, so we set auth_url to the identity service
+        # endpoint. We then pass region_name, endpoint_type, etc. to the
+        # Client() constructor so that the final endpoint is chosen correctly.
+        url = sc.url_for(service_type='identity',
+                         endpoint_type=endpoint_type,
+                         **region_filter)
 
         LOG.debug('Creating a Nova client using "%s" user' %
                   CONF.os_privileged_user_name)
@@ -113,20 +125,10 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
         if nova_endpoint_template:
             url = nova_endpoint_template % context.to_dict()
         else:
-            info = nova_catalog_info
-            service_type, service_name, endpoint_type = info.split(':')
-            # extract the region if set in configuration
-            if CONF.os_region_name:
-                attr = 'region'
-                filter_value = CONF.os_region_name
-            else:
-                attr = None
-                filter_value = None
-            url = sc.url_for(attr=attr,
-                             filter_value=filter_value,
-                             service_type=service_type,
+            url = sc.url_for(service_type=service_type,
                              service_name=service_name,
-                             endpoint_type=endpoint_type)
+                             endpoint_type=endpoint_type,
+                             **region_filter)
 
         LOG.debug('Nova client connection created using URL: %s' % url)
 
@@ -136,6 +138,8 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
                            auth_url=url,
                            insecure=CONF.nova_api_insecure,
                            timeout=timeout,
+                           region_name=CONF.os_region_name,
+                           endpoint_type=endpoint_type,
                            cacert=CONF.nova_ca_certificates_file,
                            extensions=nova_extensions)
 
