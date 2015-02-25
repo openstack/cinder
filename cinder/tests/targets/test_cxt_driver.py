@@ -172,13 +172,12 @@ class TestCxtAdmDriver(test.TestCase):
     @mock.patch('cinder.volume.targets.cxt.CxtAdm._get_target',
                 return_value=1)
     @mock.patch('cinder.utils.execute')
-    @mock.patch('cinder.volume.utils.generate_password',
-                return_value="P68eE7u9eFqDGexd28DQ")
-    @mock.patch('cinder.volume.utils.generate_username',
-                return_value="QZJbisGmn9AL954FNF4D")
-    def test_create_export(self, mock_user, mock_pass, mock_execute,
+    @mock.patch.object(cxt.CxtAdm, '_get_target_chap_auth')
+    def test_create_export(self, mock_chap, mock_execute,
                            mock_get_targ):
         mock_execute.return_value = ('', '')
+        mock_chap.return_value = ('QZJbisGmn9AL954FNF4D',
+                                  'P68eE7u9eFqDGexd28DQ')
         with mock.patch.object(self.target, '_get_volumes_dir') as mock_get:
             mock_get.return_value = self.fake_volumes_dir
 
