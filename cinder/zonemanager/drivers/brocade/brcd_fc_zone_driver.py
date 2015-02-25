@@ -1,7 +1,7 @@
-#    (c) Copyright 2014 Brocade Communications Systems Inc.
+#    (c) Copyright 2015 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
-#    Copyright 2014 OpenStack Foundation
+#    Copyright 2015 OpenStack Foundation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -76,8 +76,6 @@ class BrcdFCZoneDriver(FCZoneDriver):
             # Adding a hack to hendle parameters from super classes
             # in case configured with multi backend.
             fabric_names = self.configuration.safe_get('fc_fabric_names')
-            activate = self.configuration.safe_get('zone_activate')
-            prefix = self.configuration.safe_get('zone_name_prefix')
             base_san_opts = []
             if not fabric_names:
                 base_san_opts.append(
@@ -87,17 +85,6 @@ class BrcdFCZoneDriver(FCZoneDriver):
                                ' retrieve other SAN credentials for connecting'
                                ' to each SAN fabric'
                                ))
-            if not activate:
-                base_san_opts.append(
-                    cfg.BoolOpt('zone_activate',
-                                default=True,
-                                help='Indicates whether zone should '
-                                'be activated or not'))
-            if not prefix:
-                base_san_opts.append(
-                    cfg.StrOpt('zone_name_prefix',
-                               default="openstack",
-                               help="A prefix to be used when naming zone"))
             if len(base_san_opts) > 0:
                 CONF.register_opts(base_san_opts)
                 self.configuration.append_config_values(base_san_opts)
@@ -141,6 +128,12 @@ class BrcdFCZoneDriver(FCZoneDriver):
             'zoning_policy')
         if zoning_policy_fab:
             zoning_policy = zoning_policy_fab
+        zone_name_prefix = self.fabric_configs[fabric].safe_get(
+            'zone_name_prefix')
+        if not zone_name_prefix:
+            zone_name_prefix = 'openstack'
+        zone_activate = self.fabric_configs[fabric].safe_get(
+            'zone_activate')
 
         LOG.info(_LI("Zoning policy for Fabric %s"), zoning_policy)
         cli_client = self._get_cli_client(fabric)
@@ -160,7 +153,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                     target = t.lower()
                     zone_members = [self.get_formatted_wwn(initiator),
                                     self.get_formatted_wwn(target)]
-                    zone_name = (self.configuration.zone_name_prefix
+                    zone_name = (zone_name_prefix
                                  + initiator.replace(':', '')
                                  + target.replace(':', ''))
                     if (
@@ -177,8 +170,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                     target = t.lower()
                     zone_members.append(self.get_formatted_wwn(target))
 
-                zone_name = self.configuration.zone_name_prefix \
-                    + initiator.replace(':', '')
+                zone_name = zone_name_prefix + initiator.replace(':', '')
 
                 if len(zone_names) > 0 and (zone_name in zone_names):
                     zone_members = zone_members + filter(
@@ -197,7 +189,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
             if len(zone_map) > 0:
                 try:
                     cli_client.add_zones(
-                        zone_map, self.configuration.zone_activate,
+                        zone_map, zone_activate,
                         cfgmap_from_fabric)
                     cli_client.cleanup()
                 except exception.BrocadeZoningCliException as brocade_ex:
@@ -227,6 +219,12 @@ class BrcdFCZoneDriver(FCZoneDriver):
             'zoning_policy')
         if zoning_policy_fab:
             zoning_policy = zoning_policy_fab
+        zone_name_prefix = self.fabric_configs[fabric].safe_get(
+            'zone_name_prefix')
+        if not zone_name_prefix:
+            zone_name_prefix = 'openstack'
+        zone_activate = self.fabric_configs[fabric].safe_get(
+            'zone_activate')
 
         LOG.info(_LI("Zoning policy for fabric %s"), zoning_policy)
         conn = self._get_cli_client(fabric)
@@ -251,7 +249,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                 for t in t_list:
                     target = t.lower()
                     zone_name = (
-                        self.configuration.zone_name_prefix
+                        zone_name_prefix
                         + initiator.replace(':', '')
                         + target.replace(':', ''))
                     LOG.debug("Zone name to del: %s", zone_name)
@@ -267,8 +265,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                     target = t.lower()
                     zone_members.append(self.get_formatted_wwn(target))
 
-                zone_name = self.configuration.zone_name_prefix \
-                    + initiator.replace(':', '')
+                zone_name = zone_name_prefix + initiator.replace(':', '')
 
                 if (zone_names and (zone_name in zone_names)):
                     filtered_members = filter(
@@ -300,7 +297,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                 # Update zone membership.
                 if zone_map:
                     conn.add_zones(
-                        zone_map, self.configuration.zone_activate,
+                        zone_map, zone_activate,
                         cfgmap_from_fabric)
                 # Delete zones ~sk.
                 if zones_to_delete:
@@ -316,7 +313,7 @@ class BrcdFCZoneDriver(FCZoneDriver):
                                 zone_name_string, ';', zones_to_delete[i])
 
                     conn.delete_zones(
-                        zone_name_string, self.configuration.zone_activate,
+                        zone_name_string, zone_activate,
                         cfgmap_from_fabric)
                 conn.cleanup()
             except Exception as e:
