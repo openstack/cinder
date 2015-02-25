@@ -15,10 +15,10 @@ oslo.rootwrap<1.4
 paramiko>=1.9.0
 Paste
 PasteDeploy>=1.5.0
-python-glanceclient>=0.9.0,!=0.14.0,<0.15
-python-keystoneclient>=0.7.0,<0.12
+python-glanceclient>=0.9.0,!=0.14.0,<=0.14.2
+python-keystoneclient>=0.7.0,<=0.11.2
 python-novaclient>=2.17.0,<2.21
-python-swiftclient>=1.6,<2.4
+python-swiftclient>=1.6,<=2.3.1
 requests>=1.1
 Routes>=1.12.3,!=2.0
 taskflow>=0.1.3,<0.2
