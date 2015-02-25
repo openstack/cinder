@@ -67,14 +67,14 @@ class SCSTAdm(iscsi.ISCSITarget):
                 return parsed[1]
 
     def _get_group(self):
-        scst_group = self.initiator_iqn
+        scst_group = "%s%s" % (self.initiator_iqn, self.target_name)
         (out, _err) = self.scst_execute('-list_group')
         if scst_group in out:
             return out
         return None
 
     def _get_luns_info(self):
-        scst_group = self.initiator_iqn
+        scst_group = "%s%s" % (self.initiator_iqn, self.target_name)
         (out, _err) = self.scst_execute('-list_group', scst_group,
                                         '-driver', self.target_driver,
                                         '-target', self.target_name)
@@ -108,7 +108,7 @@ class SCSTAdm(iscsi.ISCSITarget):
 
     def create_iscsi_target(self, name, vol_id, tid, lun, path,
                             chap_auth=None):
-        scst_group = self.initiator_iqn
+        scst_group = "%s%s" % (self.initiator_iqn, self.target_name)
         vol_name = path.split("/")[3]
         try:
             (out, _err) = self.scst_execute('-noprompt',
@@ -318,10 +318,12 @@ class SCSTAdm(iscsi.ISCSITarget):
             if not int(lun) in self._get_luns_info():
                 raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
             try:
+                scst_group = "%s%s" % (self.remove_initiator_iqn,
+                                       self.target_name)
                 self.scst_execute('-noprompt', '-rem_lun', lun,
                                   '-driver', self.target_driver,
                                   '-target', iqn, '-group',
-                                  self.remove_initiator_iqn)
+                                  scst_group)
             except putils.ProcessExecutionError as e:
                 LOG.error(_LE("Failed to remove LUN %s"), e)
                 raise exception.ISCSITargetHelperCommandFailed(
