@@ -625,7 +625,7 @@ class LVMISCSIDriver(LVMVolumeDriver):
         super(LVMISCSIDriver, self).__init__(*args, **kwargs)
         LOG.warning(_LW('LVMISCSIDriver is deprecated, you should '
                         'now just use LVMVolumeDriver and specify '
-                        'target_helper for the target driver you '
+                        'iscsi_helper for the target driver you '
                         'wish to use.'))
 
 
@@ -642,7 +642,7 @@ class LVMISERDriver(LVMVolumeDriver):
 
         LOG.warning(_LW('LVMISERDriver is deprecated, you should '
                         'now just use LVMVolumeDriver and specify '
-                        'target_helper for the target driver you '
+                        'iscsi_helper for the target driver you '
                         'wish to use. In order to enable iser, please '
                         'set iscsi_protocol with the value iser.'))
 
