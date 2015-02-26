@@ -118,6 +118,9 @@ class HostState(object):
         self.max_over_subscription_ratio = 1.0
         self.thin_provisioning_support = False
         self.thick_provisioning_support = False
+        # Does this backend support attaching a volume to more than
+        # once host/instance?
+        self.multiattach = False
 
         # PoolState for all pools
         self.pools = {}
@@ -331,6 +334,7 @@ class PoolState(HostState):
                 'thin_provisioning_support', False)
             self.thick_provisioning_support = capability.get(
                 'thick_provisioning_support', False)
+            self.multiattach = capability.get('multiattach', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
