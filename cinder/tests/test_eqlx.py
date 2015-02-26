@@ -50,12 +50,15 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.configuration.ssh_max_pool_conn = 5
         self.configuration.ssh_conn_timeout = 30
         self.configuration.eqlx_pool = 'non-default'
-        self.configuration.eqlx_use_chap = True
         self.configuration.eqlx_group_name = 'group-0'
         self.configuration.eqlx_cli_timeout = 30
         self.configuration.eqlx_cli_max_retries = 5
-        self.configuration.eqlx_chap_login = 'admin'
-        self.configuration.eqlx_chap_password = 'password'
+
+        self.configuration.eqlx_use_chap = False
+        self.configuration.use_chap_auth = True
+        self.configuration.chap_username = 'admin'
+        self.configuration.chap_password = 'password'
+
         self._context = context.get_admin_context()
         self.driver = eqlx.DellEQLSanISCSIDriver(
             configuration=self.configuration)
@@ -82,8 +85,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
             'provider_location': "%s:3260,1 %s 0" % (self.driver._group_ip,
                                                      self.fake_iqn),
             'provider_auth': 'CHAP %s %s' % (
-                self.configuration.eqlx_chap_login,
-                self.configuration.eqlx_chap_password)
+                self.configuration.chap_username,
+                self.configuration.chap_password)
         }
 
     def _fake_get_iscsi_properties(self, volume):
@@ -206,7 +209,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                                  self.connector['initiator'],
                                  'authmethod', 'chap',
                                  'username',
-                                 self.configuration.eqlx_chap_login)
+                                 self.configuration.chap_username)
         self.mox.ReplayAll()
         iscsi_properties = self.driver.initialize_connection(volume,
                                                              self.connector)

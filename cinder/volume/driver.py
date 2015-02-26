@@ -36,6 +36,11 @@ from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
+
+deprecated_use_chap_auth_opts = [cfg.DeprecatedOpt('eqlx_use_chap')]
+deprecated_chap_username_opts = [cfg.DeprecatedOpt('eqlx_chap_login')]
+deprecated_chap_password_opts = [cfg.DeprecatedOpt('eqlx_chap_password')]
+
 volume_opts = [
     cfg.IntOpt('num_shell_tries',
                default=3,
@@ -169,12 +174,20 @@ volume_opts = [
                default='iscsi',
                help='SCST target implementation can choose from multiple '
                     'SCST target drivers.'),
+    cfg.BoolOpt('use_chap_auth',
+                default=False,
+                help='Option to enable/disable CHAP authentication for '
+                     'targets.',
+                deprecated_opts=deprecated_use_chap_auth_opts),
     cfg.StrOpt('chap_username',
-               default=None,
-               help='CHAP username to use for iSCSI Targets'),
+               default='',
+               help='CHAP user name.',
+               deprecated_opts=deprecated_chap_username_opts),
     cfg.StrOpt('chap_password',
-               default=None,
-               help='CHAP password to use for iSCSI Targets'),
+               default='',
+               help='Password for specified CHAP account name.',
+               deprecated_opts=deprecated_chap_password_opts,
+               secret=True),
 ]
 
 # for backward compatibility
