@@ -1947,6 +1947,18 @@ class EMCVMAXCommon(object):
 
         sourceInstance = self._find_lun(sourceVolume)
         storageSystem = sourceInstance['SystemName']
+        repServCapabilityInstanceName = (
+            self.utils.find_replication_service_capabilities(self.conn,
+                                                             storageSystem))
+        is_clone_license = self.utils.is_clone_licensed(
+            self.conn, repServCapabilityInstanceName)
+
+        if is_clone_license is False:
+            exceptionMessage = (_(
+                "Clone feature is not licensed on %(storageSystem)s.")
+                % {'storageSystem': storageSystem})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         repServiceInstanceName = self.utils.find_replication_service(
             self.conn, storageSystem)

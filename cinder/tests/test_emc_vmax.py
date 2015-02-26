@@ -138,6 +138,11 @@ class Fake_CIMProperty():
         cimproperty.value = 'OS-myhost-MV'
         return cimproperty
 
+    def fake_getSupportedReplicationTypes(self):
+        cimproperty = Fake_CIMProperty()
+        cimproperty.value = [2L, 10L]
+        return cimproperty
+
 
 class Fake_CIM_TierPolicyServiceCapabilities():
 
@@ -540,6 +545,8 @@ class FakeEcomConnection():
             result = self._enum_storagesystems()
         elif name == 'Symm_TierPolicyRule':
             result = self._enum_policyrules()
+        elif name == 'CIM_ReplicationServiceCapabilities':
+            result = self._enum_repservcpbls()
         else:
             result = self._default_enum()
         return result
@@ -590,6 +597,8 @@ class FakeEcomConnection():
             result = self._getinstance_storagehardwareid(objectpath)
         elif name == 'Symm_VirtualProvisioningPool':
             result = self._getinstance_pool(objectpath)
+        elif name == 'Symm_ReplicationServiceCapabilities':
+            result = self._getinstance_replicationServCapabilities(objectpath)
         else:
             result = self._default_getinstance(objectpath)
 
@@ -672,6 +681,8 @@ class FakeEcomConnection():
             result = self._enum_initMaskingGroup()
         elif ResultClass == 'Symm_LunMaskingView':
             result = self._enum_maskingView()
+        elif ResultClass == 'EMC_Meta':
+            result = self._enum_metavolume()
         else:
             result = self._default_assocnames(objectpath)
         return result
@@ -1012,6 +1023,15 @@ class FakeEcomConnection():
         svInstance['SystemElement'] = 'SystemElement'
         svInstance['PercentSynced'] = 100
         return svInstance
+
+    def _getinstance_replicationServCapabilities(self, objectpath):
+        repServCpblInstance = SYMM_SrpStoragePool()
+        classcimproperty = Fake_CIMProperty()
+        repTypesCimproperty = (
+            classcimproperty.fake_getSupportedReplicationTypes())
+        properties = {u'SupportedReplicationTypes': repTypesCimproperty}
+        repServCpblInstance.properties = properties
+        return repServCpblInstance
 
     def _default_getinstance(self, objectpath):
         return objectpath
@@ -1376,6 +1396,9 @@ class FakeEcomConnection():
         portgroup['ElementName'] = self.data.port_group
         portgroups.append(portgroup)
         return portgroups
+
+    def _enum_metavolume(self):
+        return []
 
     def _default_enum(self):
         names = []
@@ -2996,31 +3019,6 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
                           EMCVMAXCommonData.test_source_volume)
 
     @mock.patch.object(
-        emc_vmax_utils.EMCVMAXUtils,
-        'get_volume_meta_head',
-        return_value=None)
-    @mock.patch.object(
-        emc_vmax_common.EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
-    @mock.patch.object(
-        volume_types,
-        'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'ISCSIFAST'})
-    def test_create_clone_simple_volume_fast_success(
-            self, mock_volume_type, mock_volume, mock_sync_sv,
-            mock_simple_volume):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
-        self.driver.common.fast.is_volume_in_default_SG = (
-            mock.Mock(return_value=True))
-        self.driver.create_cloned_volume(self.data.test_volume,
-                                         EMCVMAXCommonData.test_source_volume)
-
-    @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
@@ -4098,28 +4096,23 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
                           self.data.test_volume,
                           EMCVMAXCommonData.test_source_volume)
 
-    @mock.patch.object(
-        emc_vmax_utils.EMCVMAXUtils,
-        'get_volume_meta_head',
-        return_value=None)
-    @mock.patch.object(
-        emc_vmax_common.EMCVMAXCommon,
-        '_find_storage_sync_sv_sv',
-        return_value=(None, None))
-    @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
-    @mock.patch.object(
-        volume_types,
-        'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'FCFAST'})
-    def test_create_clone_simple_volume_fast_success(
-            self, mock_volume_type, mock_volume, mock_sync_sv,
-            mock_simple_volume):
+    def test_create_clone_simple_volume_fast_success(self):
+        extraSpecs = {'storagetype:fastpolicy': 'FC_GOLD1',
+                      'volume_backend_name': 'FCFAST',
+                      'isV3': False}
+        self.driver.common._initial_setup = (
+            mock.Mock(return_value=extraSpecs))
+        self.driver.common.extraSpecs = extraSpecs
+        self.driver.utils.is_clone_licensed = (
+            mock.Mock(return_value=True))
+        FakeDB.volume_get = (
+            mock.Mock(return_value=EMCVMAXCommonData.test_source_volume))
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.common.fast.is_volume_in_default_SG = (
             mock.Mock(return_value=True))
+        self.driver.utils.isArrayV3 = mock.Mock(return_value=False)
+        self.driver.common._find_storage_sync_sv_sv = (
+            mock.Mock(return_value=(None, None)))
         self.driver.create_cloned_volume(self.data.test_volume,
                                          EMCVMAXCommonData.test_source_volume)
 
@@ -4270,6 +4263,19 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage):
         self.driver.delete_cgsnapshot(
             self.data.test_ctxt, self.data.test_CG_snapshot)
+
+    # Bug 1385450
+    def test_create_clone_without_license(self):
+        mockRepServCap = {}
+        mockRepServCap['InstanceID'] = 'SYMMETRIX+1385450'
+        self.driver.utils.find_replication_service_capabilities = (
+            mock.Mock(return_value=mockRepServCap))
+        self.driver.utils.is_clone_licensed = (
+            mock.Mock(return_value=False))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          self.data.test_volume,
+                          EMCVMAXCommonData.test_source_volume)
 
     def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)
