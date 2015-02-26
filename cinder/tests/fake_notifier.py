@@ -44,11 +44,15 @@ class FakeNotifier(object):
         self._serializer = serializer or messaging.serializer.NoOpSerializer()
         self._topic = topic
         self.retry = retry
+        self.notifications = []
 
     def prepare(self, publisher_id=None):
         if publisher_id is None:
             publisher_id = self.publisher_id
         return self.__class__(self.transport, publisher_id, self._serializer)
+
+    def get_notification_count(self):
+        return len(self.notifications)
 
     def _notify(self, priority, ctxt, event_type, payload):
         payload = self._serializer.serialize_entity(ctxt, payload)
@@ -61,6 +65,7 @@ class FakeNotifier(object):
                    event_type=event_type,
                    payload=payload)
         NOTIFICATIONS.append(msg)
+        self.notifications.append(msg)
 
 
 def stub_notifier(stubs):
@@ -70,3 +75,12 @@ def stub_notifier(stubs):
         stubs.Set(rpc, 'NOTIFIER', FakeNotifier(rpc.NOTIFIER.transport,
                                                 rpc.NOTIFIER.publisher_id,
                                                 serializer=serializer))
+
+
+def get_fake_notifier(service=None, host=None, publisher_id=None):
+    if not publisher_id:
+        publisher_id = "%s.%s" % (service, host)
+    serializer = getattr(rpc.NOTIFIER, '_serializer', None)
+    notifier = FakeNotifier(None, publisher_id=publisher_id,
+                            serializer=serializer)
+    return notifier.prepare(publisher_id=publisher_id)
