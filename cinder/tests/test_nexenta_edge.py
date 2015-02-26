@@ -38,6 +38,8 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
     BUCKET_PATH = CLUSTER + '/' + TENANT + '/' + BUCKET
     BUCKET_URL = 'clusters/' + CLUSTER + '/tenants/' + TENANT + \
         '/buckets/' + BUCKET
+    LUN_BLOCKSIZE = 512
+    LUN_CHUNKSIZE = 131072
     TEST_VOLUME1 = {
         'name': 'volume1',
         'size': 1,
@@ -47,8 +49,8 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
     TEST_VOLUME1_NEDGE = {
         'objectPath': BUCKET_PATH + '/1',
         'volSizeMB': TEST_VOLUME1['size'] * 1024,
-        'blockSize': 4096,
-        'chunkSize': 4096,
+        'blockSize': LUN_BLOCKSIZE,
+        'chunkSize': LUN_CHUNKSIZE,
         'number': 1
     }
     TEST_VOLUME2 = {
@@ -60,8 +62,8 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
     TEST_VOLUME2_NEDGE = {
         'objectPath': BUCKET_PATH + '/2',
         'volSizeMB': TEST_VOLUME2['size'] * 1024,
-        'blockSize': 4096,
-        'chunkSize': 4096,
+        'blockSize': LUN_BLOCKSIZE,
+        'chunkSize': LUN_CHUNKSIZE,
         'number': 2
     }
     TEST_SNAPSHOT = {
@@ -222,6 +224,10 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         ).AndReturn({'response': 'OK'})
         self.restapi_mock.post('iscsi', self.TEST_VOLUME2_NEDGE).AndReturn(
             {'response': 'OK'})
+        namemap[self.TEST_VOLUME2['name']] = self.TEST_VOLUME2_NEDGE['number']
+        self.restapi_mock.put(self.BUCKET_URL, {
+            'optionsObject': {'X-Name-Map': jsonutils.dumps(namemap)}
+        }).AndReturn({'response': 'OK'})
         self.mox.ReplayAll()
         self.drv.create_cloned_volume(self.TEST_VOLUME2, self.TEST_VOLUME1)
 

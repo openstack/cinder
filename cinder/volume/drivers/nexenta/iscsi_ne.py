@@ -22,6 +22,7 @@
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
+from cinder.image import image_utils
 from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
@@ -29,6 +30,10 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
 from oslo_serialization import jsonutils
+
+import os
+import base64
+import tempfile
 
 LOG = logging.getLogger(__name__)
 
@@ -40,6 +45,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """
 
     VERSION = '1.0.0'
+
+    LUN_BLOCKSIZE = 512
+    LUN_CHUNKSIZE = 131072
 
     def __init__(self, *args, **kwargs):
         super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
@@ -140,7 +148,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             if not exists:
                 lunNumber = i
                 break
-        if lunNumber == 0:
+        if lunNumber is None:
             LOG.error(_('Failed to allocate LUN number: ' +
                         'All 255 lun numbers used, WOW!'))
             raise nexenta.NexentaException('All 255 lun numbers used')
@@ -164,8 +172,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             rsp = self.restapi.post('iscsi', {
                 'objectPath': self.bucket_path + '/' + str(lunNumber),
                 'volSizeMB': int(volume['size']) * 1024,
-                'blockSize': 4096,
-                'chunkSize': 4096,
+                'blockSize': self.LUN_BLOCKSIZE,
+                'chunkSize': self.LUN_CHUNKSIZE,
                 'number': lunNumber
             })
 
@@ -224,8 +232,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             rsp = self.restapi.post('iscsi', {
                 'objectPath': self.bucket_path + '/' + str(newLun),
                 'volSizeMB': int(snapshot['volume_size']) * 1024,
-                'blockSize': 4096,
-                'chunkSize': 4096,
+                'blockSize': self.LUN_BLOCKSIZE,
+                'chunkSize': self.LUN_CHUNKSIZE,
                 'number': newLun
             })
 
@@ -256,8 +264,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         namemap = self._get_bucket_name_map()
         self._verify_name_in_map(namemap, src_vref['name'])
 
-        vol_url = self.bucket_path + '/objects/' + \
-            str(namemap[src_vref['name']])
+        vol_url = self.bucket_url + '/objects/' + \
+            str(namemap[src_vref['name']]) + '/clone'
         newLun = self._allocate_lun_number(namemap)
         clone_body = {
             'tenant_name': self.tenant,
@@ -271,13 +279,55 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             rsp = self.restapi.post('iscsi', {
                 'objectPath': self.bucket_path + '/' + str(newLun),
                 'volSizeMB': int(src_vref['size']) * 1024,
-                'blockSize': 4096,
-                'chunkSize': 4096,
+                'blockSize': self.LUN_BLOCKSIZE,
+                'chunkSize': self.LUN_CHUNKSIZE,
                 'number': newLun
             })
+
+            namemap[volume['name']] = newLun
+            self._set_bucket_name_map(namemap)
+
         except nexenta.NexentaException, e:
             LOG.error(_('Error creating cloned volume: %s'), str(e))
             raise
+
+    def copy_image_to_volume(self, context, volume, image_service, image_id):
+        namemap = self._get_bucket_name_map()
+        lunNumber = self._allocate_lun_number(namemap)
+        with tempfile.NamedTemporaryFile(dir='/tmp') as tmp:
+            image_utils.fetch_to_raw(context,
+                                     image_service,
+                                     image_id,
+                                     tmp.name,
+                                     self.configuration.volume_dd_blocksize,
+                                     size=volume['size'])
+            obj_f = open(tmp.name, "rb")
+            for x in range(0, os.path.getsize(tmp.name) /
+                           (self.LUN_CHUNKSIZE)):
+                obj_data = obj_f.read(self.LUN_CHUNKSIZE)
+                data64 = base64.b64encode(obj_data, None)
+                payload = {'data': data64}
+                url = self.bucket_url + '/objects/' + str(lunNumber) + \
+                    '?offsetSize=' + str(x * self.LUN_CHUNKSIZE) + \
+                    '?bufferSize=' + str(len(data64))
+                try:
+                    rsp = self.restapi.post(url, payload)
+                except nexenta.NexentaException, e:
+                    LOG.error(_('Error copying Image to Volume: %s'), str(e))
+                    pass
+
+        try:
+            rsp = self.restapi.post('iscsi/' + str(lunNumber) + '/resize', {
+                'objectPath': self.bucket_path + '/' + str(lunNumber),
+                'newSizeMB': int(volume['size']) * 1024,
+            })
+
+            namemap[volume['name']] = lunNumber
+            self._set_bucket_name_map(namemap)
+
+        except nexenta.NexentaException, e:
+            LOG.error(_('Error while creating Volume from Image: %s'), str(e))
+            pass
 
     def create_export(self, context, volume):
         return {'provider_location': self._get_provider_location(volume, None)}
