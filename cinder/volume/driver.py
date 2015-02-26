@@ -151,11 +151,11 @@ volume_opts = [
                 help='Tell driver to use SSL for connection to backend '
                      'storage if the driver supports it.'),
     cfg.FloatOpt('max_over_subscription_ratio',
-                 default=2.0,
+                 default=20.0,
                  help='Float representation of the over subscription ratio '
                       'when thin provisioning is involved. Default ratio is '
-                      '2.0, meaning provisioned capacity can be twice of the '
-                      'total physical capacity. If the ratio is 10.5, it '
+                      '20.0, meaning provisioned capacity can be 20 times of '
+                      'the total physical capacity. If the ratio is 10.5, it '
                       'means provisioned capacity can be 10.5 times of the '
                       'total physical capacity. A ratio of 1.0 means '
                       'provisioned capacity cannot exceed the total physical '
