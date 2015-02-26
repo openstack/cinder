@@ -15,7 +15,7 @@
 #
 from oslo_config import cfg
 
-from cinder.volume.configuration import Configuration
+from cinder.volume import configuration
 
 cisco_zone_opts = [
     cfg.StrOpt('cisco_fc_fabric_address',
@@ -52,7 +52,7 @@ CONF.register_opts(cisco_zone_opts, 'CISCO_FABRIC_EXAMPLE')
 def load_fabric_configurations(fabric_names):
     fabric_configs = {}
     for fabric_name in fabric_names:
-        config = Configuration(cisco_zone_opts, fabric_name)
+        config = configuration.Configuration(cisco_zone_opts, fabric_name)
         fabric_configs[fabric_name] = config
 
     return fabric_configs

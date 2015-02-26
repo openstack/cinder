@@ -33,10 +33,8 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
 from cinder.volume.drivers.netapp.eseries import client
 from cinder.volume.drivers.netapp.eseries import iscsi
-from cinder.volume.drivers.netapp.eseries.iscsi import LOG as driver_log
 from cinder.volume.drivers.netapp.eseries import utils
-from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
-from cinder.volume.drivers.netapp.options import netapp_eseries_opts
+from cinder.volume.drivers.netapp import options
 import cinder.volume.drivers.netapp.utils as na_utils
 
 
@@ -45,8 +43,8 @@ LOG = logging.getLogger(__name__)
 
 def create_configuration():
     configuration = conf.Configuration(None)
-    configuration.append_config_values(netapp_basicauth_opts)
-    configuration.append_config_values(netapp_eseries_opts)
+    configuration.append_config_values(options.netapp_basicauth_opts)
+    configuration.append_config_values(options.netapp_eseries_opts)
     return configuration
 
 
@@ -845,7 +843,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
                           self.driver._create_volume, wrong_eseries_pool_label,
                           self.fake_eseries_volume_label, self.fake_size_gb)
 
-    @mock.patch.object(driver_log, 'info')
+    @mock.patch.object(iscsi.LOG, 'info')
     @mock.patch.object(client.RestClient, 'list_storage_pools')
     @mock.patch.object(client.RestClient, 'create_volume',
                        mock.MagicMock(return_value='CorrectVolume'))
@@ -867,7 +865,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(client.RestClient, 'create_volume',
                        mock.MagicMock(
                            side_effect=exception.NetAppDriverException))
-    @mock.patch.object(driver_log, 'info', mock.Mock())
+    @mock.patch.object(iscsi.LOG, 'info', mock.Mock())
     def test_create_volume_check_exception(self, fake_list_pools):
         fake_pool = {}
         fake_pool['label'] = self.fake_eseries_pool_label

@@ -735,14 +735,17 @@ class FJISCSIDriverTestCase(test.TestCase):
         # self.stubs.Set(self.driver.configuration, 'safe_get',
         #                self.fake_configuration_safe_get)
 
-        self.stubs.Set(eternus_dx_iscsi.FJDXISCSIDriver, '_do_iscsi_discovery',
+        self.stubs.Set(eternus_dx_iscsi.FJDXISCSIDriver,
+                       '_do_iscsi_discovery',
                        self.fake_do_iscsi_discovery)
 
-        self.stubs.Set(eternus_dx_common.FJDXCommon, '_get_ecom_connection',
+        self.stubs.Set(eternus_dx_common.FJDXCommon,
+                       '_get_ecom_connection',
                        self.fake_ecom_connection)
 
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(eternus_dx_common.FJDXCommon, '_getinstancename',
+        self.stubs.Set(eternus_dx_common.FJDXCommon,
+                       '_getinstancename',
                        instancename.fake_getinstancename)
 
         # set iscsi driver to self.driver

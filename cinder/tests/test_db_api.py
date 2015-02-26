@@ -22,7 +22,7 @@ from oslo_utils import uuidutils
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.quota import ReservableResource
+from cinder import quota
 from cinder import test
 
 
@@ -48,8 +48,8 @@ def _quota_reserve(context, project_id):
     for i, resource in enumerate(('volumes', 'gigabytes')):
         quotas[resource] = db.quota_create(context, project_id,
                                            resource, i + 1)
-        resources[resource] = ReservableResource(resource,
-                                                 '_sync_%s' % resource)
+        resources[resource] = quota.ReservableResource(resource,
+                                                       '_sync_%s' % resource)
         deltas[resource] = i + 1
     return db.quota_reserve(
         context, resources, quotas, deltas,

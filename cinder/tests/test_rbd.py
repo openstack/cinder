@@ -31,7 +31,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.image import fake as fake_image
-from cinder.tests.test_volume import DriverTestCase
+from cinder.tests import test_volume
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.rbd as driver
 from cinder.volume.flows.manager import create_volume
@@ -1021,7 +1021,7 @@ class RBDImageIOWrapperTestCase(test.TestCase):
         self.mock_rbd_wrapper.close()
 
 
-class ManagedRBDTestCase(DriverTestCase):
+class ManagedRBDTestCase(test_volume.DriverTestCase):
     driver_name = "cinder.volume.drivers.rbd.RBDDriver"
 
     def setUp(self):

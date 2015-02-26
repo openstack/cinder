@@ -12,8 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from contextlib import nested
-from functools import wraps
+import functools
 import os
 import re
 import shlex
@@ -119,7 +118,7 @@ CONF.register_opts(volume_opts)
 
 
 def horcm_synchronized(function):
-    @wraps(function)
+    @functools.wraps(function)
     def wrapper(*args, **kargs):
         if len(args) == 1:
             inst = args[0].conf.hitachi_horcm_numbers[0]
@@ -129,19 +128,19 @@ def horcm_synchronized(function):
             raidcom_obj_lock = args[0].raidcom_pair_lock
         raidcom_lock_file = '%s%d' % (RAIDCOM_LOCK_FILE, inst)
         lock = basic_lib.get_process_lock(raidcom_lock_file)
-        with nested(raidcom_obj_lock, lock):
+        with raidcom_obj_lock, lock:
             return function(*args, **kargs)
     return wrapper
 
 
 def storage_synchronized(function):
-    @wraps(function)
+    @functools.wraps(function)
     def wrapper(*args, **kargs):
         serial = args[0].conf.hitachi_serial_number
         resource_lock = args[0].resource_lock
         resource_lock_file = '%s%s' % (RESOURCE_LOCK_FILE, serial)
         lock = basic_lib.get_process_lock(resource_lock_file)
-        with nested(resource_lock, lock):
+        with resource_lock, lock:
             return function(*args, **kargs)
     return wrapper
 
@@ -270,7 +269,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
         raidcom_lock_file = '%s%d' % (RAIDCOM_LOCK_FILE, inst)
         lock = basic_lib.get_process_lock(raidcom_lock_file)
 
-        with nested(raidcom_obj_lock, lock):
+        with raidcom_obj_lock, lock:
             ret, stdout, stderr = self.exec_command(cmd, args=args,
                                                     printflag=printflag)
 
@@ -290,7 +289,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
 
         elif ret in HORCM_ERROR:
             _ret = 0
-            with nested(raidcom_obj_lock, lock):
+            with raidcom_obj_lock, lock:
                 if self.check_horcm(inst) != HORCM_RUNNING:
                     _ret, _stdout, _stderr = self.start_horcm(inst)
             if _ret and _ret != HORCM_RUNNING:

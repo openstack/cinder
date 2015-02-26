@@ -19,8 +19,6 @@ import os
 
 import mock
 import mox as mox_lib
-from mox import IgnoreArg
-from mox import IsA
 from mox import stubout
 from oslo_utils import units
 
@@ -612,7 +610,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
 
         self.assertRaises(exception.NfsException,
-                          drv.do_setup, IsA(context.RequestContext))
+                          drv.do_setup, mox_lib.IsA(context.RequestContext))
 
     def test_setup_should_throw_error_if_oversub_ratio_less_than_zero(self):
         """do_setup should throw error if nfs_oversub_ratio is less than 0."""
@@ -620,7 +618,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_oversub_ratio = -1
         self.assertRaises(exception.NfsException,
                           drv.do_setup,
-                          IsA(context.RequestContext))
+                          mox_lib.IsA(context.RequestContext))
 
     def test_setup_should_throw_error_if_used_ratio_less_than_zero(self):
         """do_setup should throw error if nfs_used_ratio is less than 0."""
@@ -628,7 +626,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_used_ratio = -1
         self.assertRaises(exception.NfsException,
                           drv.do_setup,
-                          IsA(context.RequestContext))
+                          mox_lib.IsA(context.RequestContext))
 
     def test_setup_should_throw_error_if_used_ratio_greater_than_one(self):
         """do_setup should throw error if nfs_used_ratio is greater than 1."""
@@ -636,7 +634,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_used_ratio = 2
         self.assertRaises(exception.NfsException,
                           drv.do_setup,
-                          IsA(context.RequestContext))
+                          mox_lib.IsA(context.RequestContext))
 
     def test_setup_should_throw_exception_if_nfs_client_is_not_installed(self):
         """do_setup should throw error if nfs client is not installed."""
@@ -652,7 +650,7 @@ class NfsDriverTestCase(test.TestCase):
         mox.ReplayAll()
 
         self.assertRaises(exception.NfsException,
-                          drv.do_setup, IsA(context.RequestContext))
+                          drv.do_setup, mox_lib.IsA(context.RequestContext))
 
         mox.VerifyAll()
 
@@ -732,8 +730,8 @@ class NfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_create_sparsed_file')
         mox.StubOutWithMock(drv, '_set_rw_permissions')
 
-        drv._create_sparsed_file(IgnoreArg(), IgnoreArg())
-        drv._set_rw_permissions(IgnoreArg())
+        drv._create_sparsed_file(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())
+        drv._set_rw_permissions(mox_lib.IgnoreArg())
 
         mox.ReplayAll()
 
@@ -752,8 +750,8 @@ class NfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_create_regular_file')
         mox.StubOutWithMock(drv, '_set_rw_permissions')
 
-        drv._create_regular_file(IgnoreArg(), IgnoreArg())
-        drv._set_rw_permissions(IgnoreArg())
+        drv._create_regular_file(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())
+        drv._set_rw_permissions(mox_lib.IgnoreArg())
 
         mox.ReplayAll()
 

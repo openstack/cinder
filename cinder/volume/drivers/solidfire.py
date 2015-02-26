@@ -24,14 +24,14 @@ from oslo_config import cfg
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
-from six import wraps
+import six
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
-from cinder.volume.drivers.san.san import SanISCSIDriver
+from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
@@ -76,7 +76,7 @@ CONF.register_opts(sf_opts)
 
 def retry(exc_tuple, tries=5, delay=1, backoff=2):
     def retry_dec(f):
-        @wraps(f)
+        @six.wraps(f)
         def func_retry(*args, **kwargs):
             _tries, _delay = tries, delay
             while _tries > 1:
@@ -100,7 +100,7 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
     return retry_dec
 
 
-class SolidFireDriver(SanISCSIDriver):
+class SolidFireDriver(san.SanISCSIDriver):
     """OpenStack driver to enable SolidFire cluster.
 
     Version history:

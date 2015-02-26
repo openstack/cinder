@@ -16,7 +16,7 @@
 import datetime
 import random
 import re
-from xml.dom.minidom import parseString
+from xml.dom import minidom
 
 import six
 
@@ -671,7 +671,7 @@ class EMCVMAXUtils(object):
         myFile = open(fileName, 'r')
         data = myFile.read()
         myFile.close()
-        dom = parseString(data)
+        dom = minidom.parseString(data)
         portGroupElements = dom.getElementsByTagName('PortGroup')
 
         if portGroupElements is not None and len(portGroupElements) > 0:
@@ -714,7 +714,7 @@ class EMCVMAXUtils(object):
         myFile = open(fileName, 'r')
         data = myFile.read()
         myFile.close()
-        dom = parseString(data)
+        dom = minidom.parseString(data)
         tag = dom.getElementsByTagName(stringToParse)
         if tag is not None and len(tag) > 0:
             strXml = tag[0].toxml()

@@ -27,13 +27,13 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.volume.drivers.san.san import SanISCSIDriver
+from cinder.volume.drivers.san import san
 
 
 LOG = logging.getLogger(__name__)
 
 
-class HPLeftHandCLIQProxy(SanISCSIDriver):
+class HPLeftHandCLIQProxy(san.SanISCSIDriver):
     """Executes commands relating to HP/LeftHand SAN ISCSI volumes.
 
     We use the CLIQ interface, over SSH.

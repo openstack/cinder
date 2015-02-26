@@ -18,7 +18,7 @@ import os
 import shutil
 import tempfile
 import time
-from xml.dom.minidom import Document
+from xml.dom import minidom
 
 import mock
 
@@ -697,7 +697,7 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
           file is used to set the Huawei storage custom parameters, therefore,
           in the UT test we need to simulate such a configuration file
         """
-        doc = Document()
+        doc = minidom.Document()
 
         config = doc.createElement('config')
         doc.appendChild(config)
@@ -905,7 +905,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
           file is used to set the Huawei storage custom parameters, therefore,
           in the UT test we need to simulate such a configuration file
         """
-        doc = Document()
+        doc = minidom.Document()
 
         config = doc.createElement('config')
         doc.appendChild(config)

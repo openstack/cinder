@@ -17,7 +17,7 @@ import os
 import shutil
 import tempfile
 import time
-from xml.dom.minidom import Document
+from xml.dom import minidom
 
 import mock
 import six
@@ -601,7 +601,7 @@ class FakeEcomConnection():
         result = None
         if ResultClass == 'EMC_StorageHardwareID':
             result = self._assoc_hdwid()
-        elif ResultClass == 'EMC_iSCSIProtocolEndpoint':
+        elif ResultClass == 'EMC_iSHEADCSIProtocolEndpoint':
             result = self._assoc_endpoint()
         elif ResultClass == 'EMC_StorageVolume':
             result = self._assoc_storagevolume(objectpath)
@@ -1421,7 +1421,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     def create_fake_config_file_no_fast(self):
 
-        doc = Document()
+        doc = minidom.Document()
         emc = doc.createElement("EMC")
         doc.appendChild(emc)
         doc = self.add_array_info(doc, emc)
@@ -1434,7 +1434,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     def create_fake_config_file_no_fast_with_add_ons(self):
 
-        doc = Document()
+        doc = minidom.Document()
         emc = doc.createElement("EMC")
         doc.appendChild(emc)
         doc = self.add_array_info(doc, emc)
@@ -2527,7 +2527,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
 
     def create_fake_config_file_fast(self):
 
-        doc = Document()
+        doc = minidom.Document()
         emc = doc.createElement("EMC")
         doc.appendChild(emc)
 
@@ -3151,7 +3151,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
 
     def create_fake_config_file_no_fast(self):
 
-        doc = Document()
+        doc = minidom.Document()
         emc = doc.createElement("EMC")
         doc.appendChild(emc)
 
@@ -3628,7 +3628,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
 
     def create_fake_config_file_fast(self):
 
-        doc = Document()
+        doc = minidom.Document()
         emc = doc.createElement("EMC")
         doc.appendChild(emc)
 
@@ -4255,7 +4255,7 @@ class EMCV3DriverTestCase(test.TestCase):
 
     def create_fake_config_file_fast(self):
 
-        doc = Document()
+        doc = minidom.Document()
         emc = doc.createElement("EMC")
         doc.appendChild(emc)
 

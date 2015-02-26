@@ -17,8 +17,7 @@ Volume driver for NetApp Data ONTAP (C-mode) iSCSI storage systems.
 
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
-from cinder.volume.drivers.netapp.dataontap.block_cmode import \
-    NetAppBlockStorageCmodeLibrary as lib_cmode
+from cinder.volume.drivers.netapp.dataontap import block_cmode
 
 
 LOG = logging.getLogger(__name__)
@@ -31,7 +30,8 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(NetAppCmodeISCSIDriver, self).__init__(*args, **kwargs)
-        self.library = lib_cmode(self.DRIVER_NAME, 'iSCSI', **kwargs)
+        self.library = block_cmode.NetAppBlockStorageCmodeLibrary(
+            self.DRIVER_NAME, 'iSCSI', **kwargs)
 
     def do_setup(self, context):
         self.library.do_setup(context)

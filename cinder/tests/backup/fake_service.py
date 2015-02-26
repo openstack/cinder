@@ -13,13 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.backup.driver import BackupDriver
+from cinder.backup import driver
 from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 
 
-class FakeBackupService(BackupDriver):
+class FakeBackupService(driver.BackupDriver):
     def __init__(self, context, db_driver=None):
         super(FakeBackupService, self).__init__(context, db_driver)
 

@@ -16,7 +16,6 @@ Common class for Hitachi storage drivers.
 
 """
 
-from contextlib import nested
 import re
 import threading
 
@@ -528,7 +527,7 @@ class HBSDCommon(object):
         pool_id = self.configuration.hitachi_pool_id
 
         lock = basic_lib.get_process_lock(self.storage_lock_file)
-        with nested(self.storage_obj_lock, lock):
+        with self.storage_obj_lock, lock:
             ldev = self.create_ldev(size, ldev_range, pool_id, is_vvol)
         return ldev
 

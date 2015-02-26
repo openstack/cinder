@@ -35,10 +35,7 @@ from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import client
 from cinder.volume.drivers.netapp.eseries import utils
-from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
-from cinder.volume.drivers.netapp.options import netapp_connection_opts
-from cinder.volume.drivers.netapp.options import netapp_eseries_opts
-from cinder.volume.drivers.netapp.options import netapp_transport_opts
+from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 
@@ -47,10 +44,10 @@ LOG = logging.getLogger(__name__)
 
 
 CONF = cfg.CONF
-CONF.register_opts(netapp_basicauth_opts)
-CONF.register_opts(netapp_connection_opts)
-CONF.register_opts(netapp_eseries_opts)
-CONF.register_opts(netapp_transport_opts)
+CONF.register_opts(na_opts.netapp_basicauth_opts)
+CONF.register_opts(na_opts.netapp_connection_opts)
+CONF.register_opts(na_opts.netapp_eseries_opts)
+CONF.register_opts(na_opts.netapp_transport_opts)
 
 
 class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
@@ -96,10 +93,11 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
         super(NetAppEseriesISCSIDriver, self).__init__(*args, **kwargs)
         na_utils.validate_instantiation(**kwargs)
-        self.configuration.append_config_values(netapp_basicauth_opts)
-        self.configuration.append_config_values(netapp_connection_opts)
-        self.configuration.append_config_values(netapp_transport_opts)
-        self.configuration.append_config_values(netapp_eseries_opts)
+        self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
+        self.configuration.append_config_values(
+            na_opts.netapp_connection_opts)
+        self.configuration.append_config_values(na_opts.netapp_transport_opts)
+        self.configuration.append_config_values(na_opts.netapp_eseries_opts)
         self._backend_name = self.configuration.safe_get("volume_backend_name")\
             or "NetApp_ESeries"
         self._objects = {'disk_pool_refs': [], 'pools': [],

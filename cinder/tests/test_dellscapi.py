@@ -19,7 +19,7 @@ from cinder import test
 from cinder.volume.drivers.dell import dell_storagecenter_api
 
 import mock
-from requests.models import Response
+from requests import models
 
 import uuid
 
@@ -1096,19 +1096,19 @@ class DellSCSanAPITestCase(test.TestCase):
     FLDR_PATH = 'StorageCenter/ScVolumeFolder/'
 
     # Create a Response object that indicates OK
-    response_ok = Response()
+    response_ok = models.Response()
     response_ok.status_code = 200
     response_ok.reason = u'ok'
     RESPONSE_200 = response_ok
 
     # Create a Response object that indicates created
-    response_created = Response()
+    response_created = models.Response()
     response_created.status_code = 201
     response_created.reason = u'created'
     RESPONSE_201 = response_created
 
     # Create a Response object that indicates a failure (no content)
-    response_nc = Response()
+    response_nc = models.Response()
     response_nc.status_code = 204
     response_nc.reason = u'duplicate'
     RESPONSE_204 = response_nc
@@ -3274,13 +3274,13 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
     '''
 
     # Create a Response object that indicates OK
-    response_ok = Response()
+    response_ok = models.Response()
     response_ok.status_code = 200
     response_ok.reason = u'ok'
     RESPONSE_200 = response_ok
 
     # Create a Response object that indicates a failure (no content)
-    response_nc = Response()
+    response_nc = models.Response()
     response_nc.status_code = 204
     response_nc.reason = u'duplicate'
     RESPONSE_204 = response_nc

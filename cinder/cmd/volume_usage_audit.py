@@ -34,7 +34,7 @@
 
 from __future__ import print_function
 
-from datetime import datetime
+import datetime
 import sys
 import traceback
 import warnings
@@ -84,9 +84,11 @@ def main():
     rpc.init(CONF)
     begin, end = utils.last_completed_audit_period()
     if CONF.start_time:
-        begin = datetime.strptime(CONF.start_time, "%Y-%m-%d %H:%M:%S")
+        begin = datetime.datetime.strptime(CONF.start_time,
+                                           "%Y-%m-%d %H:%M:%S")
     if CONF.end_time:
-        end = datetime.strptime(CONF.end_time, "%Y-%m-%d %H:%M:%S")
+        end = datetime.datetime.strptime(CONF.end_time,
+                                         "%Y-%m-%d %H:%M:%S")
     if not end > begin:
         msg = _("The end time (%(end)s) must be after the start "
                 "time (%(start)s).") % {'start': begin,

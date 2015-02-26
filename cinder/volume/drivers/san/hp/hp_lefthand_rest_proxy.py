@@ -22,7 +22,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
-from cinder.volume.driver import ISCSIDriver
+from cinder.volume import driver
 from cinder.volume import utils
 from cinder.volume import volume_types
 
@@ -30,7 +30,6 @@ LOG = logging.getLogger(__name__)
 
 try:
     import hplefthandclient
-    from hplefthandclient import client as hp_lh_client
     from hplefthandclient import exceptions as hpexceptions
 except ImportError:
     import cinder.tests.fake_hp_lefthand_client as hplefthandclient
@@ -80,7 +79,7 @@ extra_specs_value_map = {
 }
 
 
-class HPLeftHandRESTProxy(ISCSIDriver):
+class HPLeftHandRESTProxy(driver.ISCSIDriver):
     """Executes REST commands relating to HP/LeftHand SAN ISCSI volumes.
 
     Version history:
@@ -121,7 +120,7 @@ class HPLeftHandRESTProxy(ISCSIDriver):
         client.logout()
 
     def _create_client(self):
-        return hp_lh_client.HPLeftHandClient(
+        return hplefthandclient.client.HPLeftHandClient(
             self.configuration.hplefthand_api_url)
 
     def do_setup(self, context):

@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from contextlib import nested
 import re
 import shlex
 import threading
@@ -66,7 +65,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
 
     def _wait_for_exec_hsnm(self, args, printflag, noretry, timeout, start):
         lock = basic_lib.get_process_lock(self.hsnm_lock_file)
-        with nested(self.hsnm_lock, lock):
+        with self.hsnm_lock, lock:
             ret, stdout, stderr = self.exec_command('env', args=args,
                                                     printflag=printflag)
 
@@ -617,7 +616,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
         import pexpect
 
         lock = basic_lib.get_process_lock(self.hsnm_lock_file)
-        with nested(self.hsnm_lock, lock):
+        with self.hsnm_lock, lock:
             try:
                 child = pexpect.spawn(cmd)
                 child.expect('Secret: ', timeout=CHAP_TIMEOUT)

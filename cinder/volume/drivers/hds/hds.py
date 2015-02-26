@@ -29,7 +29,7 @@ from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
-from cinder.volume.drivers.hds.hus_backend import HusBackend
+from cinder.volume.drivers.hds import hus_backend
 
 HDS_VERSION = '1.0.2'
 
@@ -53,7 +53,7 @@ HUS_DEFAULT_CONFIG = {'hus_cmd': 'hus-cmd',
 
 def factory_bend():
     """Factory over-ride in self-tests."""
-    return HusBackend()
+    return hus_backend.HusBackend()
 
 
 def _loc_info(loc):

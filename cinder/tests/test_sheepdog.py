@@ -23,7 +23,7 @@ from oslo_utils import units
 
 from cinder.image import image_utils
 from cinder import test
-from cinder.volume.drivers.sheepdog import SheepdogDriver
+from cinder.volume.drivers import sheepdog
 
 
 COLLIE_NODE_INFO = """
@@ -58,7 +58,7 @@ class FakeImageService:
 class SheepdogTestCase(test.TestCase):
     def setUp(self):
         super(SheepdogTestCase, self).setUp()
-        self.driver = SheepdogDriver()
+        self.driver = sheepdog.SheepdogDriver()
 
     def test_update_volume_stats(self):
         def fake_stats(*args):
@@ -120,7 +120,9 @@ class SheepdogTestCase(test.TestCase):
                        lambda w, x, y, z: None)
         self.stubs.Set(image_utils, 'convert_image',
                        lambda x, y, z: None)
-        self.stubs.Set(SheepdogDriver, '_try_execute', fake_try_execute)
+        self.stubs.Set(sheepdog.SheepdogDriver,
+                       '_try_execute',
+                       fake_try_execute)
         self.driver.copy_image_to_volume(None, {'name': 'test',
                                                 'size': 1},
                                          FakeImageService(), None)
@@ -154,7 +156,8 @@ class SheepdogTestCase(test.TestCase):
                          'id': ss_uuid,
                          'size': fake_size}
 
-        with mock.patch.object(SheepdogDriver, '_try_execute') as mock_exe:
+        with mock.patch.object(sheepdog.SheepdogDriver,
+                               '_try_execute') as mock_exe:
             self.driver.create_volume_from_snapshot(fake_vol, fake_snapshot)
             args = ['qemu-img', 'create', '-b',
                     "sheepdog:%s:%s" % (fake_snapshot['volume_name'],

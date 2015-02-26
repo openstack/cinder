@@ -59,14 +59,14 @@ from cinder.openstack.common import log as logging
 from cinder.openstack.common import periodic_task
 from cinder import quota
 from cinder import utils
-from cinder.volume.configuration import Configuration
+from cinder.volume import configuration as config
 from cinder.volume.flows.manager import create_volume
 from cinder.volume.flows.manager import manage_existing
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
-from eventlet.greenpool import GreenPool
+from eventlet import greenpool
 
 LOG = logging.getLogger(__name__)
 
@@ -170,9 +170,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         # update_service_capabilities needs service_name to be volume
         super(VolumeManager, self).__init__(service_name='volume',
                                             *args, **kwargs)
-        self.configuration = Configuration(volume_manager_opts,
-                                           config_group=service_name)
-        self._tp = GreenPool()
+        self.configuration = config.Configuration(volume_manager_opts,
+                                                  config_group=service_name)
+        self._tp = greenpool.GreenPool()
         self.stats = {}
 
         if not volume_driver:

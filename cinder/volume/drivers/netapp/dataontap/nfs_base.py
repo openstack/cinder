@@ -22,7 +22,7 @@ Volume driver for NetApp NFS storage.
 
 import os
 import re
-from threading import Timer
+import threading
 import time
 
 from oslo_concurrency import processutils
@@ -276,7 +276,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
         else:
             # Set cleaning to True
             self.cleaning = True
-            t = Timer(0, self._clean_image_cache)
+            t = threading.Timer(0, self._clean_image_cache)
             t.start()
 
     def _clean_image_cache(self):

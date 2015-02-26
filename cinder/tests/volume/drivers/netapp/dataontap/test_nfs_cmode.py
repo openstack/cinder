@@ -25,7 +25,7 @@ from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_cmode
 from cinder.volume.drivers.netapp import utils as na_utils
-from cinder.volume.drivers.nfs import NfsDriver as nfs_lib
+from cinder.volume.drivers import nfs
 
 
 class NetAppCmodeNfsDriverTestCase(test.TestCase):
@@ -52,7 +52,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         return config
 
     @mock.patch.object(client_cmode, 'Client', mock.Mock())
-    @mock.patch.object(nfs_lib, 'do_setup')
+    @mock.patch.object(nfs.NfsDriver, 'do_setup')
     @mock.patch.object(na_utils, 'check_flags')
     def test_do_setup(self, mock_check_flags, mock_super_do_setup):
         self.driver.do_setup(mock.Mock())

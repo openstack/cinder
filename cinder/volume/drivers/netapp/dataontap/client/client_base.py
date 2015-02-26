@@ -24,9 +24,6 @@ import six
 from cinder.i18n import _LE, _LW, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
-from cinder.volume.drivers.netapp.dataontap.client.api import NaApiError
-from cinder.volume.drivers.netapp.dataontap.client.api import NaElement
-from cinder.volume.drivers.netapp.dataontap.client.api import NaServer
 
 
 LOG = logging.getLogger(__name__)
@@ -35,11 +32,12 @@ LOG = logging.getLogger(__name__)
 class Client(object):
 
     def __init__(self, **kwargs):
-        self.connection = NaServer(host=kwargs['hostname'],
-                                   transport_type=kwargs['transport_type'],
-                                   port=kwargs['port'],
-                                   username=kwargs['username'],
-                                   password=kwargs['password'])
+        self.connection = netapp_api.NaServer(
+            host=kwargs['hostname'],
+            transport_type=kwargs['transport_type'],
+            port=kwargs['port'],
+            username=kwargs['username'],
+            password=kwargs['password'])
 
     def get_ontapi_version(self, cached=True):
         """Gets the supported ontapi version."""
@@ -58,7 +56,7 @@ class Client(object):
 
     def check_is_naelement(self, elem):
         """Checks if object is instance of NaElement."""
-        if not isinstance(elem, NaElement):
+        if not isinstance(elem, netapp_api.NaElement):
             raise ValueError('Expects NaElement')
 
     def create_lun(self, volume_name, lun_name, size, metadata,
@@ -255,7 +253,7 @@ class Client(object):
         """
         def _create_ems(netapp_backend, app_version, server_type):
             """Create ems API request."""
-            ems_log = NaElement('ems-autosupport-log')
+            ems_log = netapp_api.NaElement('ems-autosupport-log')
             host = socket.getfqdn() or 'Cinder_node'
             if server_type == "cluster":
                 dest = "cluster node"
@@ -275,13 +273,13 @@ class Client(object):
 
         def _create_vs_get():
             """Create vs_get API request."""
-            vs_get = NaElement('vserver-get-iter')
+            vs_get = netapp_api.NaElement('vserver-get-iter')
             vs_get.add_new_child('max-records', '1')
-            query = NaElement('query')
+            query = netapp_api.NaElement('query')
             query.add_node_with_children('vserver-info',
                                          **{'vserver-type': 'node'})
             vs_get.add_child_elem(query)
-            desired = NaElement('desired-attributes')
+            desired = netapp_api.NaElement('desired-attributes')
             desired.add_node_with_children(
                 'vserver-info', **{'vserver-name': '', 'vserver-type': ''})
             vs_get.add_child_elem(desired)
@@ -315,21 +313,23 @@ class Client(object):
                     if api_version:
                         major, minor = api_version
                     else:
-                        raise NaApiError(code='Not found',
-                                         message='No API version found')
+                        raise netapp_api.NaApiError(
+                            code='Not found',
+                            message='No API version found')
                     if major == 1 and minor > 15:
                         node = getattr(requester, 'vserver', None)
                     else:
                         node = _get_cluster_node(na_server)
                     if node is None:
-                        raise NaApiError(code='Not found',
-                                         message='No vserver found')
+                        raise netapp_api.NaApiError(
+                            code='Not found',
+                            message='No vserver found')
                     na_server.set_vserver(node)
                 else:
                     na_server.set_vfiler(None)
                 na_server.invoke_successfully(ems, True)
                 LOG.debug("ems executed successfully.")
-            except NaApiError as e:
+            except netapp_api.NaApiError as e:
                 LOG.warning(_LW("Failed to invoke ems. Message : %s") % e)
             finally:
                 requester.last_ems = timeutils.utcnow()

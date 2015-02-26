@@ -24,7 +24,7 @@ from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
-from cinder.volume.drivers.netapp.options import netapp_proxy_opts
+from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -69,7 +69,7 @@ class NetAppDriver(driver.ProxyVD):
             raise exception.InvalidInput(
                 reason=_('Required configuration not found'))
 
-        config.append_config_values(netapp_proxy_opts)
+        config.append_config_values(options.netapp_proxy_opts)
         na_utils.check_flags(NetAppDriver.REQUIRED_FLAGS, config)
 
         app_version = na_utils.OpenStackInfo().info()

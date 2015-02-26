@@ -15,7 +15,7 @@
 ZFS Storage Appliance NFS Cinder Volume Driver
 """
 import base64
-from datetime import datetime
+import datetime as dt
 import errno
 
 from oslo_config import cfg
@@ -261,7 +261,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
 
     def _create_snapshot_name(self):
         """Creates a snapshot name from the date and time."""
-        return 'cinder-zfssa-nfs-snapshot-%s' % datetime.now().isoformat()
+        return 'cinder-zfssa-nfs-snapshot-%s' % dt.datetime.now().isoformat()
 
     def _get_share_capacity_info(self):
         """Get available and used capacity info for the NFS share."""

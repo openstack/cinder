@@ -29,8 +29,7 @@ from cinder.i18n import _LI
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.zonemanager.drivers.brocade.brcd_fc_zone_driver \
-    import BrcdFCZoneDriver
+from cinder.zonemanager.drivers.brocade import brcd_fc_zone_driver as driver
 
 LOG = logging.getLogger(__name__)
 
@@ -119,7 +118,7 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         fabric_map = {}
         return fabric_map
 
-    @mock.patch.object(BrcdFCZoneDriver, '_get_active_zone_set')
+    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_active_zone_set')
     def test_add_connection(self, get_active_zs_mock):
         """Normal flow for i-t mode."""
         GlobalVars._is_normal_test = True
@@ -132,7 +131,7 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
         self.assertTrue(_zone_name in GlobalVars._zone_state)
 
-    @mock.patch.object(BrcdFCZoneDriver, '_get_active_zone_set')
+    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_active_zone_set')
     def test_delete_connection(self, get_active_zs_mock):
         GlobalVars._is_normal_test = True
         get_active_zs_mock.return_value = _active_cfg_before_delete
@@ -140,7 +139,7 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
             'BRCD_FAB_1', _initiator_target_map)
         self.assertFalse(_zone_name in GlobalVars._zone_state)
 
-    @mock.patch.object(BrcdFCZoneDriver, '_get_active_zone_set')
+    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_active_zone_set')
     def test_add_connection_for_initiator_mode(self, get_active_zs_mock):
         """Normal flow for i mode."""
         GlobalVars._is_normal_test = True
@@ -149,7 +148,7 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
         self.assertTrue(_zone_name in GlobalVars._zone_state)
 
-    @mock.patch.object(BrcdFCZoneDriver, '_get_active_zone_set')
+    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_active_zone_set')
     def test_delete_connection_for_initiator_mode(self, get_active_zs_mock):
         GlobalVars._is_normal_test = True
         get_active_zs_mock.return_value = _active_cfg_before_delete

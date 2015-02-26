@@ -23,7 +23,7 @@ This common class is for FUJITSU ETERNUS DX volume drivers based on SMI-S.
 import base64
 import hashlib
 import time
-from xml.dom.minidom import parseString
+from xml.dom import minidom
 
 from oslo_config import cfg
 from oslo_utils import units
@@ -1109,7 +1109,7 @@ class FJDXCommon(object):
         file = open(filename, 'r')
         data = file.read()
         file.close()
-        dom = parseString(data)
+        dom = minidom.parseString(data)
         storageTypes = dom.getElementsByTagName('StorageType')
         if storageTypes is not None and len(storageTypes) > 0:
             storageType = storageTypes[0].toxml()
@@ -1134,7 +1134,7 @@ class FJDXCommon(object):
         file = open(filename, 'r')
         data = file.read()
         file.close()
-        dom = parseString(data)
+        dom = minidom.parseString(data)
         snappools = dom.getElementsByTagName('SnapPool')
         if snappools is not None and len(snappools) > 0:
             snappool = snappools[0].toxml()
@@ -1155,7 +1155,7 @@ class FJDXCommon(object):
         file = open(filename, 'r')
         data = file.read()
         file.close()
-        dom = parseString(data)
+        dom = minidom.parseString(data)
         timeouts = dom.getElementsByTagName('Timeout')
         if timeouts is not None and len(timeouts) > 0:
             timeout = timeouts[0].toxml().replace('<Timeout>', '')
@@ -1173,7 +1173,7 @@ class FJDXCommon(object):
         file = open(filename, 'r')
         data = file.read()
         file.close()
-        dom = parseString(data)
+        dom = minidom.parseString(data)
         ecomUsers = dom.getElementsByTagName('EcomUserName')
         if ecomUsers is not None and len(ecomUsers) > 0:
             ecomUser = ecomUsers[0].toxml().replace('<EcomUserName>', '')
@@ -1195,7 +1195,7 @@ class FJDXCommon(object):
         file = open(filename, 'r')
         data = file.read()
         file.close()
-        dom = parseString(data)
+        dom = minidom.parseString(data)
         ecomIps = dom.getElementsByTagName('EcomServerIp')
         if ecomIps is not None and len(ecomIps) > 0:
             ecomIp = ecomIps[0].toxml().replace('<EcomServerIp>', '')

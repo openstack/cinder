@@ -30,7 +30,7 @@ from cinder.i18n import _, _LE, _LW, _LI
 from cinder.openstack.common import log as logging
 from cinder import ssh_utils
 from cinder import utils
-from cinder.volume.drivers.san import SanISCSIDriver
+from cinder.volume.drivers import san
 
 LOG = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ def with_timeout(f):
     return __inner
 
 
-class DellEQLSanISCSIDriver(SanISCSIDriver):
+class DellEQLSanISCSIDriver(san.SanISCSIDriver):
     """Implements commands for Dell EqualLogic SAN ISCSI management.
 
     To enable the driver add the following line to the cinder configuration:

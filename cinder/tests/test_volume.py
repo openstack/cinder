@@ -23,7 +23,7 @@ import datetime
 import os
 import shutil
 import socket
-from sys import platform
+import sys
 import tempfile
 
 import eventlet
@@ -49,7 +49,7 @@ from cinder.openstack.common import log as logging
 import cinder.policy
 from cinder import quota
 from cinder import test
-from cinder.tests.brick.fake_lvm import FakeBrickLVM
+from cinder.tests.brick import fake_lvm
 from cinder.tests import conf_fixture
 from cinder.tests import fake_driver
 from cinder.tests import fake_notifier
@@ -61,7 +61,7 @@ import cinder.volume
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
-from cinder.volume.manager import VolumeManager
+from cinder.volume import manager as vol_manager
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume.targets import tgt
 from cinder.volume import utils as volutils
@@ -74,7 +74,7 @@ CGQUOTAS = quota.CGQUOTAS
 CONF = cfg.CONF
 
 ENCRYPTION_PROVIDER = 'nova.volume.encryptors.cryptsetup.CryptsetupEncryptor'
-PLATFORM = platform
+PLATFORM = sys.platform
 
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa'
 
@@ -624,7 +624,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         with mock.patch.object(jsonutils, 'loads') as mock_loads:
             mock_loads.return_value = fake_capabilities
-            manager = VolumeManager()
+            manager = vol_manager.VolumeManager()
             manager.stats = {'pools': {}}
             manager.driver.set_initialized()
             manager.publish_service_capabilities(self.context)
@@ -638,7 +638,8 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_extra_capabilities_fail(self):
         with mock.patch.object(jsonutils, 'loads') as mock_loads:
             mock_loads.side_effect = exception.CinderException('test')
-            self.assertRaises(exception.CinderException, VolumeManager)
+            self.assertRaises(exception.CinderException,
+                              vol_manager.VolumeManager)
 
     def test_delete_busy_volume(self):
         """Test volume survives deletion if driver reports it as busy."""
@@ -2348,10 +2349,10 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_delete_busy_snapshot(self):
         """Test snapshot can be created and deleted."""
 
-        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
-                                             False,
-                                             None,
-                                             'default')
+        self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                                      False,
+                                                      None,
+                                                      'default')
 
         volume = tests_utils.create_volume(self.context, **self.volume_params)
         volume_id = volume['id']
@@ -2374,14 +2375,14 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snapshot_id)
         self.volume.delete_volume(self.context, volume_id)
 
-    @test.testtools.skipIf(platform == "darwin", "SKIP on OSX")
+    @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_delete_no_dev_fails(self):
         """Test delete snapshot with no dev file fails."""
         self.stubs.Set(os.path, 'exists', lambda x: False)
-        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
-                                             False,
-                                             None,
-                                             'default')
+        self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                                      False,
+                                                      None,
+                                                      'default')
 
         volume = tests_utils.create_volume(self.context, **self.volume_params)
         volume_id = volume['id']
@@ -3960,10 +3961,10 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.stubs.Set(self.volume.driver, '_delete_volume',
                        lambda x: False)
 
-        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
-                                             False,
-                                             None,
-                                             'default')
+        self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                                      False,
+                                                      None,
+                                                      'default')
 
         self.stubs.Set(self.volume.driver.vg, 'lv_has_snapshot',
                        lambda x: True)
@@ -4032,10 +4033,10 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
                         'cinder-volumes:default:0' % hostname}
         host = {'capabilities': capabilities}
         vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
-        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
-                                             False,
-                                             None,
-                                             'default')
+        self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                                      False,
+                                                      None,
+                                                      'default')
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.volume.driver.migrate_volume, self.context,
@@ -4054,10 +4055,10 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.stubs.Set(volutils, 'get_all_volume_groups',
                        get_all_volume_groups)
 
-        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
-                                             False,
-                                             None,
-                                             'default')
+        self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                                      False,
+                                                      None,
+                                                      'default')
 
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
@@ -4101,10 +4102,10 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.stubs.Set(self.volume.driver, 'create_export',
                        lambda x, y, vg='vg': None)
 
-        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
-                                             False,
-                                             None,
-                                             'default')
+        self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                                      False,
+                                                      None,
+                                                      'default')
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
         self.assertEqual(moved, True)
@@ -4121,10 +4122,10 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
 
     def _setup_stubs_for_manage_existing(self):
         """Helper to set up common stubs for the manage_existing tests."""
-        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
-                                             False,
-                                             None,
-                                             'default')
+        self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                                      False,
+                                                      None,
+                                                      'default')
         self.stubs.Set(self.volume.driver.vg, 'get_volume',
                        self._get_manage_existing_lvs)
 

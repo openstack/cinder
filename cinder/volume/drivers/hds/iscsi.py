@@ -28,7 +28,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
-from cinder.volume.drivers.hds.hnas_backend import HnasBackend
+from cinder.volume.drivers.hds import hnas_backend
 from cinder.volume import utils
 
 
@@ -48,7 +48,7 @@ HNAS_DEFAULT_CONFIG = {'hnas_cmd': 'ssc', 'chap_enabled': 'True'}
 
 
 def factory_bend(type):
-    return HnasBackend()
+    return hnas_backend.HnasBackend()
 
 
 def _loc_info(loc):

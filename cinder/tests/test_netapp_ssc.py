@@ -19,7 +19,7 @@ import copy
 import httplib
 
 from lxml import etree
-from mox import IgnoreArg
+import mox
 import six
 
 from cinder import exception
@@ -395,14 +395,14 @@ class SscUtilsTestCase(test.TestCase):
             mirrored)
         raiddp = {'ha_policy': 'cfo', 'raid_type': 'raiddp'}
         ssc_cmode.query_aggr_options(
-            na_server, IgnoreArg()).AndReturn(raiddp)
+            na_server, mox.IgnoreArg()).AndReturn(raiddp)
         ssc_cmode.query_aggr_storage_disk(
-            na_server, IgnoreArg()).AndReturn('SSD')
+            na_server, mox.IgnoreArg()).AndReturn('SSD')
         raid4 = {'ha_policy': 'cfo', 'raid_type': 'raid4'}
         ssc_cmode.query_aggr_options(
-            na_server, IgnoreArg()).AndReturn(raid4)
+            na_server, mox.IgnoreArg()).AndReturn(raid4)
         ssc_cmode.query_aggr_storage_disk(
-            na_server, IgnoreArg()).AndReturn('SAS')
+            na_server, mox.IgnoreArg()).AndReturn('SAS')
         self.mox.ReplayAll()
 
         res_vols = ssc_cmode.get_cluster_vols_with_ssc(

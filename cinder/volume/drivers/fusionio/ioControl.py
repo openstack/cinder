@@ -31,7 +31,7 @@ from cinder import exception
 from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.volume.drivers.san.san import SanISCSIDriver
+from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
@@ -191,7 +191,7 @@ class FIOconnection(object):
         return
 
 
-class FIOioControlDriver(SanISCSIDriver):
+class FIOioControlDriver(san.SanISCSIDriver):
     """Fusion-io ioControl iSCSI volume driver."""
 
     VERSION = '1.0.0'

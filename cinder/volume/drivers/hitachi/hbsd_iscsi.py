@@ -16,7 +16,6 @@ iSCSI Cinder volume driver for Hitachi storage.
 
 """
 
-from contextlib import nested
 import os
 import threading
 
@@ -348,8 +347,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
             msg = basic_lib.output_err(619, volume_id=volume['id'])
             raise exception.HBSDError(message=msg)
         self.common.add_volinfo(ldev, volume['id'])
-        with nested(self.common.volume_info[ldev]['lock'],
-                    self.common.volume_info[ldev]['in_use']):
+        with self.common.volume_info[ldev]['lock'],\
+                self.common.volume_info[ldev]['in_use']:
             hostgroups = self._initialize_connection(ldev, connector)
             protocol = 'iscsi'
             properties = self._get_properties(volume, hostgroups)
@@ -390,8 +389,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
             raise exception.HBSDError(message=msg)
 
         self.common.add_volinfo(ldev, volume['id'])
-        with nested(self.common.volume_info[ldev]['lock'],
-                    self.common.volume_info[ldev]['in_use']):
+        with self.common.volume_info[ldev]['lock'],\
+                self.common.volume_info[ldev]['in_use']:
             self._terminate_connection(ldev, connector, hostgroups)
 
     def create_export(self, context, volume):

@@ -44,7 +44,7 @@ from oslo_utils import units
 import six
 from swiftclient import client as swift
 
-from cinder.backup.driver import BackupDriver
+from cinder.backup import driver
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
@@ -108,7 +108,7 @@ CONF = cfg.CONF
 CONF.register_opts(swiftbackup_service_opts)
 
 
-class SwiftBackupDriver(BackupDriver):
+class SwiftBackupDriver(driver.BackupDriver):
     """Provides backup, restore and delete of backup objects within Swift."""
 
     DRIVER_VERSION = '1.0.0'

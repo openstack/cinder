@@ -20,12 +20,11 @@
 """Unit tests for FC Zone Manager."""
 
 import mock
-from mock import Mock
 
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.zonemanager.drivers.fc_zone_driver import FCZoneDriver
+from cinder.zonemanager.drivers import fc_zone_driver
 from cinder.zonemanager import fc_zone_manager
 
 fabric_name = 'BRCD_FAB_3'
@@ -43,7 +42,7 @@ class TestFCZoneManager(test.TestCase):
         config.fc_fabric_names = fabric_name
 
         def fake_build_driver(self):
-            self.driver = Mock(FCZoneDriver)
+            self.driver = mock.Mock(fc_zone_driver.FCZoneDriver)
 
         self.stubs.Set(fc_zone_manager.ZoneManager, '_build_driver',
                        fake_build_driver)
@@ -51,7 +50,7 @@ class TestFCZoneManager(test.TestCase):
         self.zm = fc_zone_manager.ZoneManager(configuration=config)
         self.configuration = conf.Configuration(None)
         self.configuration.fc_fabric_names = fabric_name
-        self.driver = Mock(FCZoneDriver)
+        self.driver = mock.Mock(fc_zone_driver.FCZoneDriver)
 
     def __init__(self, *args, **kwargs):
         super(TestFCZoneManager, self).__init__(*args, **kwargs)

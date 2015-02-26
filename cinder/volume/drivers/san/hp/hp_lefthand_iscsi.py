@@ -34,7 +34,7 @@ LeftHand array.
 from cinder import exception
 from cinder.i18n import _LE, _LI
 from cinder.openstack.common import log as logging
-from cinder.volume.driver import VolumeDriver
+from cinder.volume import driver
 from cinder.volume.drivers.san.hp import hp_lefthand_cliq_proxy as cliq_proxy
 from cinder.volume.drivers.san.hp import hp_lefthand_rest_proxy as rest_proxy
 
@@ -43,7 +43,7 @@ LOG = logging.getLogger(__name__)
 MIN_CLIENT_VERSION = '1.0.3'
 
 
-class HPLeftHandISCSIDriver(VolumeDriver):
+class HPLeftHandISCSIDriver(driver.VolumeDriver):
     """Executes commands relating to HP/LeftHand SAN ISCSI volumes.
 
     Version history:

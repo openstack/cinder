@@ -22,8 +22,7 @@ Tests for NetApp API layer
 
 from cinder.i18n import _
 from cinder import test
-from cinder.volume.drivers.netapp.dataontap.client.api import NaElement
-from cinder.volume.drivers.netapp.dataontap.client.api import NaServer
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 
 
 class NetAppApiElementTransTests(test.TestCase):
@@ -34,7 +33,7 @@ class NetAppApiElementTransTests(test.TestCase):
 
     def test_translate_struct_dict_unique_key(self):
         """Tests if dict gets properly converted to NaElements."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         child = {'e1': 'v1', 'e2': 'v2', 'e3': 'v3'}
         root.translate_struct(child)
         self.assertEqual(len(root.get_children()), 3)
@@ -44,7 +43,7 @@ class NetAppApiElementTransTests(test.TestCase):
 
     def test_translate_struct_dict_nonunique_key(self):
         """Tests if list/dict gets properly converted to NaElements."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         child = [{'e1': 'v1', 'e2': 'v2'}, {'e1': 'v3'}]
         root.translate_struct(child)
         self.assertEqual(len(root.get_children()), 3)
@@ -57,7 +56,7 @@ class NetAppApiElementTransTests(test.TestCase):
 
     def test_translate_struct_list(self):
         """Tests if list gets properly converted to NaElements."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         child = ['e1', 'e2']
         root.translate_struct(child)
         self.assertEqual(len(root.get_children()), 2)
@@ -66,7 +65,7 @@ class NetAppApiElementTransTests(test.TestCase):
 
     def test_translate_struct_tuple(self):
         """Tests if tuple gets properly converted to NaElements."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         child = ('e1', 'e2')
         root.translate_struct(child)
         self.assertEqual(len(root.get_children()), 2)
@@ -75,13 +74,13 @@ class NetAppApiElementTransTests(test.TestCase):
 
     def test_translate_invalid_struct(self):
         """Tests if invalid data structure raises exception."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         child = 'random child element'
         self.assertRaises(ValueError, root.translate_struct, child)
 
     def test_setter_builtin_types(self):
         """Tests str, int, float get converted to NaElement."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         root['e1'] = 'v1'
         root['e2'] = 1
         root['e3'] = 2.0
@@ -94,19 +93,20 @@ class NetAppApiElementTransTests(test.TestCase):
 
     def test_setter_na_element(self):
         """Tests na_element gets appended as child."""
-        root = NaElement('root')
-        root['e1'] = NaElement('nested')
+        root = netapp_api.NaElement('root')
+        root['e1'] = netapp_api.NaElement('nested')
         self.assertEqual(len(root.get_children()), 1)
         e1 = root.get_child_by_name('e1')
-        self.assertIsInstance(e1, NaElement)
-        self.assertIsInstance(e1.get_child_by_name('nested'), NaElement)
+        self.assertIsInstance(e1, netapp_api.NaElement)
+        self.assertIsInstance(e1.get_child_by_name('nested'),
+                              netapp_api.NaElement)
 
     def test_setter_child_dict(self):
         """Tests dict is appended as child to root."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         root['d'] = {'e1': 'v1', 'e2': 'v2'}
         e1 = root.get_child_by_name('d')
-        self.assertIsInstance(e1, NaElement)
+        self.assertIsInstance(e1, netapp_api.NaElement)
         sub_ch = e1.get_children()
         self.assertEqual(len(sub_ch), 2)
         for c in sub_ch:
@@ -118,13 +118,13 @@ class NetAppApiElementTransTests(test.TestCase):
 
     def test_setter_child_list_tuple(self):
         """Tests list/tuple are appended as child to root."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         root['l'] = ['l1', 'l2']
         root['t'] = ('t1', 't2')
         l = root.get_child_by_name('l')
-        self.assertIsInstance(l, NaElement)
+        self.assertIsInstance(l, netapp_api.NaElement)
         t = root.get_child_by_name('t')
-        self.assertIsInstance(t, NaElement)
+        self.assertIsInstance(t, netapp_api.NaElement)
         for le in l.get_children():
             self.assertIn(le.get_name(), ['l1', 'l2'])
         for te in t.get_children():
@@ -132,22 +132,22 @@ class NetAppApiElementTransTests(test.TestCase):
 
     def test_setter_no_value(self):
         """Tests key with None value."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         root['k'] = None
         self.assertIsNone(root.get_child_content('k'))
 
     def test_setter_invalid_value(self):
         """Tests invalid value raises exception."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         try:
-            root['k'] = NaServer('localhost')
+            root['k'] = netapp_api.NaServer('localhost')
         except Exception as e:
             if not isinstance(e, TypeError):
                 self.fail(_('Error not a TypeError.'))
 
     def test_setter_invalid_key(self):
         """Tests invalid value raises exception."""
-        root = NaElement('root')
+        root = netapp_api.NaElement('root')
         try:
             root[None] = 'value'
         except Exception as e:

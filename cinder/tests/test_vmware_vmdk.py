@@ -17,7 +17,7 @@
 Test suite for VMware VMDK driver.
 """
 
-from distutils.version import LooseVersion
+from distutils import version as ver
 
 import mock
 import mox
@@ -1850,12 +1850,12 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     def test_get_vc_version(self, session):
         # test config overrides fetching from VC server
         version = self._driver._get_vc_version()
-        self.assertEqual(LooseVersion(self.DEFAULT_VC_VERSION), version)
+        self.assertEqual(ver.LooseVersion(self.DEFAULT_VC_VERSION), version)
         # explicitly remove config entry
         self._driver.configuration.vmware_host_version = None
         session.return_value.vim.service_content.about.version = '6.0.1'
         version = self._driver._get_vc_version()
-        self.assertEqual(LooseVersion('6.0.1'), version)
+        self.assertEqual(ver.LooseVersion('6.0.1'), version)
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_vc_version')
@@ -1864,7 +1864,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     def test_do_setup_with_pbm_disabled(self, session, get_vc_version):
         session_obj = mock.Mock(name='session')
         session.return_value = session_obj
-        get_vc_version.return_value = LooseVersion('5.0')
+        get_vc_version.return_value = ver.LooseVersion('5.0')
 
         self._driver.do_setup(mock.ANY)
 
@@ -1878,7 +1878,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                 '_get_vc_version')
     def test_do_setup_with_invalid_pbm_wsdl(self, get_vc_version,
                                             get_pbm_wsdl_location):
-        vc_version = LooseVersion('5.5')
+        vc_version = ver.LooseVersion('5.5')
         get_vc_version.return_value = vc_version
         get_pbm_wsdl_location.return_value = None
 
@@ -1900,7 +1900,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         session_obj = mock.Mock(name='session')
         session.return_value = session_obj
 
-        vc_version = LooseVersion('5.5')
+        vc_version = ver.LooseVersion('5.5')
         get_vc_version.return_value = vc_version
         get_pbm_wsdl_location.return_value = 'file:///pbm.wsdl'
 

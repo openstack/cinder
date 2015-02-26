@@ -36,7 +36,6 @@ from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
-from cinder.volume.drivers.netapp.utils import get_volume_extra_specs
 from cinder.volume import utils as volume_utils
 
 
@@ -91,7 +90,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
             msg = _("Pool is not available in the volume host field.")
             raise exception.InvalidHost(reason=msg)
 
-        extra_specs = get_volume_extra_specs(volume)
+        extra_specs = na_utils.get_volume_extra_specs(volume)
         qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
             if extra_specs else None
 
@@ -107,7 +106,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                                                      qos_policy_group)
             return {'provider_location': volume['provider_location']}
         except Exception as ex:
-            LOG.error(_LW("Exception creating vol %(name)s on "
+            LOG.error(_LW("Exception creattest_nfs.pying vol %(name)s on "
                           "share %(share)s. Details: %(ex)s")
                       % {'name': volume['name'],
                          'share': volume['provider_location'],
@@ -329,7 +328,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         netapp_vol = self._get_vol_for_share(share)
         LOG.debug("Found volume %(vol)s for share %(share)s."
                   % {'vol': netapp_vol, 'share': share})
-        extra_specs = get_volume_extra_specs(volume)
+        extra_specs = na_utils.get_volume_extra_specs(volume)
         vols = ssc_cmode.get_volumes_for_specs(self.ssc_vols, extra_specs)
         return netapp_vol in vols
 
