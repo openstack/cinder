@@ -948,3 +948,8 @@ class WebDAVClientError(CinderException):
         message = _("The WebDAV request failed. Reason: %(msg)s, "
                     "Return code/reason: %(code)s, Source Volume: %(src)s, "
                     "Destination Volume: %(dst)s, Method: %(method)s.")
+
+
+# XtremIO Drivers
+class XtremIOAlreadyMappedError(CinderException):
+    message = _("Volume to Initiator Group mapping already exists")
