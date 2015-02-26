@@ -16,6 +16,7 @@
 """HP LeftHand SAN ISCSI REST Proxy."""
 
 from oslo_config import cfg
+from oslo_utils import importutils
 from oslo_utils import units
 
 from cinder import context
@@ -28,11 +29,10 @@ from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
-try:
-    import hplefthandclient
+hplefthandclient = importutils.try_import("hplefthandclient")
+if hplefthandclient:
+    from hplefthandclient import client as hp_lh_client
     from hplefthandclient import exceptions as hpexceptions
-except ImportError:
-    import cinder.tests.fake_hp_lefthand_client as hplefthandclient
 
 hplefthand_opts = [
     cfg.StrOpt('hplefthand_api_url',
@@ -120,7 +120,7 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         client.logout()
 
     def _create_client(self):
-        return hplefthandclient.client.HPLeftHandClient(
+        return hp_lh_client.HPLeftHandClient(
             self.configuration.hplefthand_api_url)
 
     def do_setup(self, context):
@@ -321,8 +321,8 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
 
             iscsi_properties = self._get_iscsi_properties(volume)
 
-            if ('chapAuthenticationRequired' in server_info
-                    and server_info['chapAuthenticationRequired']):
+            if ('chapAuthenticationRequired' in server_info and
+                    server_info['chapAuthenticationRequired']):
                 iscsi_properties['auth_method'] = 'CHAP'
                 iscsi_properties['auth_username'] = connector['initiator']
                 iscsi_properties['auth_password'] = (
