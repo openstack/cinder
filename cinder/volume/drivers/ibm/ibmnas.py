@@ -52,6 +52,7 @@ LOG = logging.getLogger(__name__)
 platform_opts = [
     cfg.StrOpt('ibmnas_platform_type',
                default='v7ku',
+               choices=['v7ku', 'sonas', 'gpfs-nas'],
                help=('IBMNAS platform type to be used as backend storage; '
                      'valid values are - '
                      'v7ku : for using IBM Storwize V7000 Unified, '

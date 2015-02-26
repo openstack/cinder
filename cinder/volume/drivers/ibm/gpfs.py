@@ -50,7 +50,8 @@ gpfs_opts = [
                help='Specifies the path of the Image service repository in '
                     'GPFS.  Leave undefined if not storing images in GPFS.'),
     cfg.StrOpt('gpfs_images_share_mode',
-               default=None,
+               default='copy_on_write',
+               choices=['copy', 'copy_on_write'],
                help='Specifies the type of image copy to be used.  Set this '
                     'when the Image service repository also uses GPFS so '
                     'that image files can be transferred efficiently from '

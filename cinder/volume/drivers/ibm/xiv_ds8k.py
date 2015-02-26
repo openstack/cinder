@@ -37,11 +37,12 @@ xiv_ds8k_opts = [
     cfg.StrOpt(
         'xiv_ds8k_connection_type',
         default='iscsi',
-        help='Connection type to the IBM Storage Array'
-        ' (fibre_channel|iscsi)'),
+        choices=['fibre_channel', 'iscsi'],
+        help='Connection type to the IBM Storage Array'),
     cfg.StrOpt(
         'xiv_chap',
         default='disabled',
+        choices=['disabled', 'enabled'],
         help='CHAP authentication mode, effective only for iscsi'
         ' (disabled|enabled)'),
 ]

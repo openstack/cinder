@@ -44,8 +44,10 @@ ZFSSA_OPTS = [
     cfg.StrOpt('zfssa_nfs_share', default='nfs_share',
                help='Share name.'),
     cfg.StrOpt('zfssa_nfs_share_compression', default='off',
-               help='Data compression-off, lzjb, gzip-2, gzip, gzip-9.'),
+               choices=['off', 'lzjb', 'gzip-2', 'gzip', 'gzip-9'],
+               help='Data compression.'),
     cfg.StrOpt('zfssa_nfs_share_logbias', default='latency',
+               choices=['latency', 'throughput'],
                help='Synchronous write bias-latency, throughput.'),
     cfg.IntOpt('zfssa_rest_timeout',
                help='REST connection timeout. (seconds)')
