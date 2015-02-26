@@ -28,8 +28,8 @@ LOG = logging.getLogger(__name__)
 
 def root_app_factory(loader, global_conf, **local_conf):
     if CONF.enable_v1_api:
-        LOG.warn(_LW('The v1 api is deprecated and will be removed after the '
-                     'Juno release. You should set enable_v1_api=false and '
+        LOG.warn(_LW('The v1 api is deprecated and will be removed in the '
+                     'Liberty release. You should set enable_v1_api=false and '
                      'enable_v2_api=true in your cinder.conf file.'))
     else:
         del local_conf['/v1']
