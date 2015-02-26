@@ -103,11 +103,16 @@ PORTS_WITHOUT = [NON_ISCSI_PORT]
 VOLUME_CONNECTIONS = [{"host": "h1", "name": VOLUME["name"] + "-cinder"},
                       {"host": "h2", "name": VOLUME["name"] + "-cinder"},
                       ]
-TOTAL_SPACE = 50.0
-FREE_SPACE = 32.1
-SPACE_INFO = {"capacity": TOTAL_SPACE * units.Gi,
-              "total": (TOTAL_SPACE - FREE_SPACE) * units.Gi,
+TOTAL_CAPACITY = 50.0
+USED_SPACE = 32.1
+PROVISIONED_CAPACITY = 70.0
+DEFAULT_OVER_SUBSCRIPTION = 20
+SPACE_INFO = {"capacity": TOTAL_CAPACITY * units.Gi,
+              "total": USED_SPACE * units.Gi
               }
+SPACE_INFO_EMPTY = {"capacity": TOTAL_CAPACITY * units.Gi,
+                    "total": 0
+                    }
 
 
 class FakePureStorageHTTPError(Exception):
@@ -570,17 +575,65 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.assertFalse(self.array.list_host_connections.called)
         self.assertFalse(self.array.delete_host.called)
 
-    def test_get_volume_stats(self):
+    @mock.patch(DRIVER_OBJ + "._get_provisioned_space", autospec=True)
+    def test_get_volume_stats(self, mock_space):
+        mock_space.return_value = PROVISIONED_CAPACITY * units.Gi
         self.assertEqual(self.driver.get_volume_stats(), {})
         self.array.get.return_value = SPACE_INFO
         result = {"volume_backend_name": VOLUME_BACKEND_NAME,
                   "vendor_name": "Pure Storage",
                   "driver_version": self.driver.VERSION,
                   "storage_protocol": "iSCSI",
-                  "total_capacity_gb": TOTAL_SPACE,
-                  "free_capacity_gb": FREE_SPACE,
+                  "total_capacity_gb": TOTAL_CAPACITY,
+                  "free_capacity_gb": TOTAL_CAPACITY - USED_SPACE,
                   "reserved_percentage": 0,
-                  "consistencygroup_support": True
+                  "consistencygroup_support": True,
+                  "thin_provisioning_support": True,
+                  "provisioned_capacity": PROVISIONED_CAPACITY,
+                  "max_over_subscription_ratio": (PROVISIONED_CAPACITY /
+                                                  USED_SPACE)
+                  }
+        real_result = self.driver.get_volume_stats(refresh=True)
+        self.assertDictMatch(result, real_result)
+        self.assertDictMatch(result, self.driver._stats)
+
+    @mock.patch(DRIVER_OBJ + "._get_provisioned_space", autospec=True)
+    def test_get_volume_stats_empty_array(self, mock_space):
+        mock_space.return_value = PROVISIONED_CAPACITY * units.Gi
+        self.assertEqual(self.driver.get_volume_stats(), {})
+        self.array.get.return_value = SPACE_INFO_EMPTY
+        result = {"volume_backend_name": VOLUME_BACKEND_NAME,
+                  "vendor_name": "Pure Storage",
+                  "driver_version": self.driver.VERSION,
+                  "storage_protocol": "iSCSI",
+                  "total_capacity_gb": TOTAL_CAPACITY,
+                  "free_capacity_gb": TOTAL_CAPACITY,
+                  "reserved_percentage": 0,
+                  "consistencygroup_support": True,
+                  "thin_provisioning_support": True,
+                  "provisioned_capacity": PROVISIONED_CAPACITY,
+                  "max_over_subscription_ratio": DEFAULT_OVER_SUBSCRIPTION
+                  }
+        real_result = self.driver.get_volume_stats(refresh=True)
+        self.assertDictMatch(result, real_result)
+        self.assertDictMatch(result, self.driver._stats)
+
+    @mock.patch(DRIVER_OBJ + "._get_provisioned_space", autospec=True)
+    def test_get_volume_stats_nothing_provisioned(self, mock_space):
+        mock_space.return_value = 0
+        self.assertEqual(self.driver.get_volume_stats(), {})
+        self.array.get.return_value = SPACE_INFO
+        result = {"volume_backend_name": VOLUME_BACKEND_NAME,
+                  "vendor_name": "Pure Storage",
+                  "driver_version": self.driver.VERSION,
+                  "storage_protocol": "iSCSI",
+                  "total_capacity_gb": TOTAL_CAPACITY,
+                  "free_capacity_gb": TOTAL_CAPACITY - USED_SPACE,
+                  "reserved_percentage": 0,
+                  "consistencygroup_support": True,
+                  "thin_provisioning_support": True,
+                  "provisioned_capacity": 0,
+                  "max_over_subscription_ratio": DEFAULT_OVER_SUBSCRIPTION
                   }
         real_result = self.driver.get_volume_stats(refresh=True)
         self.assertDictMatch(result, real_result)
