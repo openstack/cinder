@@ -289,8 +289,8 @@ class DellEQLSanISCSIDriver(SanISCSIDriver):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
 
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
+        data['total_capacity_gb'] = 0
+        data['free_capacity_gb'] = 0
 
         for line in self._eql_execute('pool', 'select',
                                       self.configuration.eqlx_pool, 'show'):
