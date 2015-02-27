@@ -106,7 +106,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
 
     def _get_bucket_name_map(self):
-        self.restapi.get(self.bucket_url)
+        rsp = self.restapi.get(self.bucket_url)
         if not (('bucketMetadata' in rsp) and
                 ('X-Name-Map' in rsp['bucketMetadata'])):
             LOG.error(_('Bucket metadata missing name mapping'))
