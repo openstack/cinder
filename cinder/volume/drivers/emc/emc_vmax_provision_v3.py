@@ -50,7 +50,8 @@ class EMCVMAXProvisionV3(object):
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name (String)
         :param extraSpecs: additional info
-        :returns: rc -- return code
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -97,11 +98,12 @@ class EMCVMAXProvisionV3(object):
         :param storageConfigService: the storage configuration service
         :param volumeName: the volume name (String)
         :param sgInstanceName: the storage group instance name
-                                associated with an SLO
+            associated with an SLO
         :param volumeSize: volume size (String)
         :param extraSpecs: additional info
-        :returns: volumeDict - the volume dict
-        :returns: rc - return code
+        :returns: dict -- volumeDict - the volume dict
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -159,7 +161,7 @@ class EMCVMAXProvisionV3(object):
 
         :param conn: the ecom connection
         :param jobInstance: the instance of a job
-        :returns: volumeDict - an instance of a volume
+        :returns: dict -- volumeDict - an instance of a volume
         """
         associators = conn.Associators(
             jobInstance,
@@ -182,15 +184,16 @@ class EMCVMAXProvisionV3(object):
             targetInstance=None):
         """Make SMI-S call to create replica for source element.
 
-        :param conn - the connection to the ecom server
-        :param repServiceInstanceName - replication service
-        :param cloneName - clone volume name
-        :param syncType - 7: snapshot, 8: clone
-        :param sourceInstance - source volume instance
+        :param conn: the connection to the ecom server
+        :param repServiceInstanceName: replication service
+        :param cloneName: clone volume name
+        :param syncType: 7=snapshot, 8=clone
+        :param sourceInstance: source volume instance
         :param extraSpecs: additional info
-        :param targetInstance - target volume instance
-        :returns: rc - return code
+        :param targetInstance: target volume instance. Defaults to None
+        :returns: int -- rc - return code
         :returns: job - job object of the replica creation operation
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -249,7 +252,7 @@ class EMCVMAXProvisionV3(object):
         :param conn: the connection to the ecom server
         :param repServiceInstanceName: instance name of the replication service
         :param syncInstanceName: instance name of the
-                                 SE_StorageSynchronized_SV_SV object
+            SE_StorageSynchronized_SV_SV object
         :param operation: operation code
         :param extraSpecs: additional info
         :param force: force to break replication relationship if True
@@ -276,7 +279,6 @@ class EMCVMAXProvisionV3(object):
         :param workload: the workload (String)
         :param extraSpecs: additional info
         :returns: storageGroupInstanceName - storage group instance name
-
         """
         startTime = time.time()
 
@@ -316,8 +318,7 @@ class EMCVMAXProvisionV3(object):
 
         :param conn: the connection information to the ecom server
         :param poolInstanceName: the pool instance
-        :returns: storagePoolCapability - the storage pool capability instance
-                  None - if not found
+        :returns: the storage pool capability instance. None if not found
         """
         storagePoolCapability = None
 
@@ -338,7 +339,7 @@ class EMCVMAXProvisionV3(object):
         :param storagePoolCapability: the storage pool capability instance
         :param slo: the slo string e.g Bronze
         :param workload: the workload string e.g DSS_REP
-        :returns: foundStoragePoolSetting - the storage pool setting instance
+        :returns: the storage pool setting instance
         """
 
         foundStoragePoolSetting = None
@@ -362,10 +363,10 @@ class EMCVMAXProvisionV3(object):
         :param conn: the connection information to the ecom server
         :param storageConfigService: the storage configuration service instance
         :param srpPoolInstanceName: the SRP storage pool instance
-        :param storagePoolSettingInstanceName: the SLO type
-                                e.g Bronze
+        :param storagePoolSettingInstanceName: the SLO type, e.g Bronze
         :param extraSpecs: additional info
-        :returns: supportedSizeDict - the supported size dict
+        :returns: dict -- supportedSizeDict - the supported size dict
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -435,10 +436,10 @@ class EMCVMAXProvisionV3(object):
         :param conn: the connection to the ecom server
         :param repServiceInstanceName: instance name of the replication service
         :param syncInstanceName: instance name of the
-                                 SE_StorageSynchronized_SV_SV object
+            SE_StorageSynchronized_SV_SV object
         :param extraSpecs: additional info
-        :returns: rc - return code
-        :returns: job - job object of the replica creation operation
+        :returns: int -- return code
+        :returns: job object of the replica creation operation
         """
         # Operation 4: activate the snapVx.
         operation = self.utils.get_num(4, '16')
@@ -459,7 +460,7 @@ class EMCVMAXProvisionV3(object):
         :param syncInstanceName: instance name of the
         :param extraSpecs: additional info
         :returns: rc - return code
-        :returns: job - job object of the replica creation operation
+        :returns: job object of the replica creation operation
         """
         # Operation 4: activate the snapVx.
         operation = self.utils.get_num(19, '16')
@@ -483,12 +484,13 @@ class EMCVMAXProvisionV3(object):
         :param conn: the connection to the ecom server
         :param repServiceInstanceName: instance name of the replication service
         :param syncInstanceName: instance name of the
-                                 SE_StorageSynchronized_SV_SV object
-        :param operation: opeation code
+            SE_StorageSynchronized_SV_SV object
+        :param operation: operation code
         :param extraSpecs: additional info
         :param force: force to modify replication synchronization if True
-        :returns: rc - return code
-        :returns: job - job object of the replica creation operation
+        :returns: int -- return code
+        :returns: job object of the replica creation operation
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -529,14 +531,15 @@ class EMCVMAXProvisionV3(object):
             extraSpecs):
         """Make SMI-S call to create replica for source group.
 
-        :param conn - the connection to the ecom server
-        :param replicationService - replication service
-        :param srcGroupInstanceName - source group instance name
-        :param tgtGroupInstanceName - target group instance name
-        :param relationName - replica relationship name
+        :param conn: the connection to the ecom server
+        :param replicationService: replication service
+        :param srcGroupInstanceName: source group instance name
+        :param tgtGroupInstanceName: target group instance name
+        :param relationName: replica relationship name
         :param extraSpecs: additional info
-        :returns: rc - return code
-        :returns: job - job object of the replica creation operation
+        :returns: int -- return code
+        :returns: job object of the replica creation operation
+        :raises: VolumeBackendAPIException
         """
         LOG.debug(
             "Creating CreateGroupReplica V3: "

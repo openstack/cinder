@@ -274,27 +274,24 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
 
     def migrate_volume(self, ctxt, volume, host):
         """Migrate a volume from one Volume Backend to another.
-        :param self: reference to class
-        :param ctxt:
+
+        :param ctxt: context
         :param volume: the volume object including the volume_type_id
-        :param host: the host dict holding the relevant target(destination)
-                     information
-        :returns: moved
-        :returns: list
+        :param host: the host dict holding the relevant target information
+        :returns: boolean -- Always returns True
+        :returns: dict -- Empty dict {}
         """
         return self.common.migrate_volume(ctxt, volume, host)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Migrate volume to another host using retype.
 
-        :param self: reference to class
-        :param ctxt:
+        :param ctxt: context
         :param volume: the volume object including the volume_type_id
         :param new_type: the new volume type.
-        :param host: the host dict holding the relevant target(destination)
-                     information
-        :returns: moved
-        {}
+        :param diff: Unused parameter in common.retype
+        :param host: the host dict holding the relevant target information
+        :returns: boolean -- True if retype succeeded, Fasle if error
         """
         return self.common.retype(ctxt, volume, new_type, diff, host)
 
@@ -319,7 +316,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
     def _check_for_iscsi_ip_address(self):
         """Check to see if iscsi_ip_address is set in cinder.conf
 
-        :returns: True/False
+        :returns: boolean -- True if iscsi_ip_address id defined in config.
         """
         bExists = os.path.exists(CINDER_CONF)
         if bExists:

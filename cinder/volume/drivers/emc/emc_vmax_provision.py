@@ -52,7 +52,8 @@ class EMCVMAXProvision(object):
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name (String)
         :param extraSpecs: additional info
-        :param rc: return code
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -96,10 +97,11 @@ class EMCVMAXProvision(object):
         :param storageConfigService: the storage configuration service
         :param volumeName: the volume name (String)
         :param poolInstanceName: the pool instance name to create
-                                 the dummy volume in
+            the dummy volume in
         :param volumeSize: volume size (String)
         :param extraSpecs: additional info
-        :returns: volumeDict - the volume dict
+        :returns: dict -- the volume dict
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -149,7 +151,8 @@ class EMCVMAXProvision(object):
         :param volumeInstanceName: the volume instance name
         :param extraSpecs: additional info
         :returns: foundStorageGroupInstanceName - instance name of the
-                                                  default storage group
+            default storage group
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -189,8 +192,8 @@ class EMCVMAXProvision(object):
         :param controllerConfigService: the controller configuration service
         :param groupName: the proposed group name
         :param extraSpecs: additional info
-        :returns: foundStorageGroupInstanceName - the instance Name of
-                                                  the storage group
+        :returns: foundStorageGroupInstanceName
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -243,7 +246,7 @@ class EMCVMAXProvision(object):
 
         :param conn: the ecom connection
         :param jobInstance: the instance of a job
-        :returns: volumeDict - an instance of a volume
+        :returns: dict -- volumeDict - an instance of a volume
         """
         associators = conn.Associators(
             jobInstance,
@@ -271,7 +274,8 @@ class EMCVMAXProvision(object):
         :param volumeInstanceName: the instance name of the volume
         :param volumeName: the volume name (String)
         :param extraSpecs: additional info
-        :returns: rc - the return code of the job
+        :returns: int -- the return code of the job
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -308,6 +312,7 @@ class EMCVMAXProvision(object):
         :param volumeInstanceName: the instance name of the volume
         :param volumeName: the volume name (String)
         :param extraSpecs: additional info
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -339,12 +344,14 @@ class EMCVMAXProvision(object):
 
         :param conn: the connection information to the ecom server
         :param storageConfigService: the storage configuration service
-                                     instance name
+            instance name
         :param poolInstanceName: the pool instance name
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name
         :param extraSpecs: additional info
-        :returns: unboundVolumeInstance - the unbound volume instance
+        :returns: int -- return code
+        :returns: the job object
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -382,10 +389,11 @@ class EMCVMAXProvision(object):
         :param elementCompositionService: the element composition service
         :param theVolumeInstanceName: the existing composite volume
         :param inVolumeInstanceName: the volume you wish to add to the
-                                     composite volume
+            composite volume
         :param extraSpecs: additional info
-        :returns: rc - return code
-        :returns: job - job
+        :returns: int -- rc - return code
+        :returns: the job object
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -424,12 +432,13 @@ class EMCVMAXProvision(object):
         :param volumeName: user friendly name
         :param poolInstanceName: the pool to bind the composite volume to
         :param compositeType: the proposed composite type of the volume
-                              e.g striped/concatenated
+            e.g striped/concatenated
         :param numMembers: the number of meta members to make up the composite.
-                           If it is 1 then a non composite is created
+            If it is 1 then a non composite is created
         :param extraSpecs: additional info
-        :returns: rc
-        :returns: errordesc
+        :returns: dict -- volumeDict
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -496,12 +505,13 @@ class EMCVMAXProvision(object):
         :param conn: the connection the the ecom server
         :param elementCompositionService: the element composition service
         :param compositeHeadInstanceName: the composite head. This can be bound
-        :param compositeMemberInstanceName: the composite member.
-                                            This must be unbound
+        :param compositeMemberInstanceName: the composite member. This must be
+            unbound
         :param compositeType: the composite type e.g striped or concatenated
         :param extraSpecs: additional info
-        :returns: rc - return code
-        :returns: errordesc - descriptions of the error
+        :returns: int -- return code
+        :returns: the job object
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -539,11 +549,12 @@ class EMCVMAXProvision(object):
 
         :param conn: the connection to the ecom server
         :param storageRelocationServiceInstanceName: the storage relocation
-                                                     service
+            service
         :param volumeInstanceName: the volume to be migrated
         :param targetPoolInstanceName: the target pool to migrate the volume to
         :param extraSpecs: additional info
-        :returns: rc - return code
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -579,12 +590,13 @@ class EMCVMAXProvision(object):
 
         :param conn: the connection to the ecom server
         :param storageRelocationServiceInstanceName: the storage relocation
-                                                     service
+            service
         :param volumeInstanceName: the volume to be migrated
         :param targetPoolInstanceName: the target pool to migrate the
-                                       volume to.
+            volume to.
         :param extraSpecs: additional info
-        :returns: rc
+        :returns: int -- rc, return code
+        :raises: VolumeBackendAPIException
         """
         LOG.debug(
             "Volume instance name is %(volumeInstanceName)s. "
@@ -638,7 +650,8 @@ class EMCVMAXProvision(object):
         :param conn: the connection to the ecom server
         :param volumeInstanceName: the volume to be migrated
         :param extraSpecs: additional info
-        :returns: rc
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -671,16 +684,17 @@ class EMCVMAXProvision(object):
             copyOnWrite=False):
         """Make SMI-S call to create replica for source element.
 
-        :param conn - the connection to the ecom server
-        :param repServiceInstanceName - replication service
-        :param cloneName - replica name
-        :param sourceName - source volume name
-        :param sourceInstance - source volume instance
+        :param conn: the connection to the ecom server
+        :param repServiceInstanceName: replication service
+        :param cloneName: replica name
+        :param sourceName: source volume name
+        :param sourceInstance: source volume instance
+        :param targetInstance: the target instance
         :param extraSpecs: additional info
         :param copyOnWrite: optional
-
-        :returns: rc - return code
-        :returns: job - job object of the replica creation operation
+        :returns: int -- return code
+        :returns: job object of the replica creation operation
+        :raises: VolumeBackendAPIException
         """
         if copyOnWrite:
             startTime = time.time()
@@ -777,18 +791,19 @@ class EMCVMAXProvision(object):
         """Deletes the relationship between the clone and source volume.
 
         Makes an SMI-S call to break clone relationship between the clone
-        volume and the source. 8/Detach - Delete the synchronization between
-        two storage objects. Treat the objects as independent after the
-        synchronization is deleted.
+        volume and the source.
+        8/Detach - Delete the synchronization between two storage objects.
+        Treat the objects as independent after the synchronization is deleted.
 
         :param conn: the connection to the ecom server
         :param repServiceInstanceName: instance name of the replication service
         :param syncInstanceName: instance name of the
-                                 SE_StorageSynchronized_SV_SV object
-        :param extraSpecs - additional info
-        :param force - optional param
-        :returns: rc - return code
-        :returns: job - job object of the replica creation operation
+            SE_StorageSynchronized_SV_SV object
+        :param extraSpecs: additional info
+        :param force: optional param
+        :returns: int -- return code
+        :returns: job object of the replica creation operation
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -831,8 +846,9 @@ class EMCVMAXProvision(object):
         :param conn: the connection to the ecom server
         :param storageHardwareService: the storage HardwareId Service
         :param hardwareId: the hardware Id
-        :returns: rc
-        :returns: targetendpoints
+        :returns: int -- return code
+        :returns: targetEndpoints
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -859,9 +875,10 @@ class EMCVMAXProvision(object):
         :param conn: the connection to the ecom server
         :param replicationService: the replication Service
         :param consistencyGroupName: the CG group name
-        :param extraSpecs - additional info
-        :returns: rc
-        :returns: job
+        :param extraSpecs: additional info
+        :returns: int -- return code
+        :returns: job object
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -902,9 +919,10 @@ class EMCVMAXProvision(object):
         :param replicationService: the replication Service
         :param cgInstanceName: the CG instance name
         :param consistencyGroupName: the CG group name
-        :param extraSpecs - additional info
-        :returns: rc
-        :returns: job
+        :param extraSpecs: additional info
+        :returns: int -- return code
+        :returns: job object
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -943,13 +961,14 @@ class EMCVMAXProvision(object):
 
         :param conn: the connection to the ecom server
         :param replicationService: the replication Service
-        :param volumeInstanceName: the volume instance name
         :param cgInstanceName: the CG instance name
+        :param volumeInstanceName: the volume instance name
         :param cgName: the CG group name
         :param volumeName: the volume name
-        :param extraSpecs - additional info
-        :returns: rc
-        :returns: job
+        :param extraSpecs: additional info
+        :returns: int -- return code
+        :returns: job object
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -988,13 +1007,14 @@ class EMCVMAXProvision(object):
 
         :param conn: the connection to the ecom server
         :param replicationService: the replication Service
-        :param volumeInstanceName: the volume instance name
         :param cgInstanceName: the CG instance name
+        :param volumeInstanceName: the volume instance name
         :param cgName: the CG group name
         :param volumeName: the volume name
-        :param extraSpecs - additional info
-        :returns: rc
-        :returns: job
+        :param extraSpecs: additional info
+        :returns: int -- return code
+        :returns: job object
+        :raises: VolumeBackendAPIException
         """
         startTime = time.time()
 
@@ -1033,15 +1053,15 @@ class EMCVMAXProvision(object):
             extraSpecs):
         """Make SMI-S call to create replica for source group.
 
-        :param conn - the connection to the ecom server
-        :param repServiceInstanceName - replication service
-        :param srcGroupInstanceName - source group instance name
-        :param tgtGroupInstanceName - target group instance name
-        :param relationName -
-        :param extraSpecs - additional info
-
-        :returns: rc - return code
-        :returns: job - job object of the replica creation operation
+        :param conn: the connection to the ecom server
+        :param replicationService: replication service
+        :param srcGroupInstanceName: source group instance name
+        :param tgtGroupInstanceName: target group instance name
+        :param relationName: relation name
+        :param extraSpecs: additional info
+        :returns: int -- return code
+        :returns: job object of the replica creation operation
+        :raises: VolumeBackendAPIException
         """
         LOG.debug(
             "Parameters for CreateGroupReplica: "

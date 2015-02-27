@@ -72,7 +72,8 @@ class EMCVMAXUtils(object):
 
         :param conn: connection to the ecom server
         :param storageSystemName: the storage system name
-        :returns: foundconfigService
+        :returns: foundConfigService
+        :raises: VolumeBackendAPIException
         """
         foundConfigService = None
         configservices = conn.EnumerateInstanceNames(
@@ -103,6 +104,7 @@ class EMCVMAXUtils(object):
         :param conn: connection to the ecom server
         :param storageSystemName: the storage system name
         :returns: foundconfigService
+        :raises: VolumeBackendAPIException
         """
         foundConfigService = None
         configservices = conn.EnumerateInstanceNames(
@@ -130,6 +132,7 @@ class EMCVMAXUtils(object):
         :param conn: the connection to the ecom server
         :param storageSystemName: the storage system name
         :returns: foundElementCompositionService
+        :raises: VolumeBackendAPIException
         """
         foundElementCompositionService = None
         elementCompositionServices = conn.EnumerateInstanceNames(
@@ -157,6 +160,7 @@ class EMCVMAXUtils(object):
         :param conn: the connection to the ecom server
         :param storageSystemName: the storage system name
         :returns: foundStorageRelocationService
+        :raises: VolumeBackendAPIException
         """
         foundStorageRelocationService = None
         storageRelocationServices = conn.EnumerateInstanceNames(
@@ -185,6 +189,7 @@ class EMCVMAXUtils(object):
         :param conn: the connection to the ecom server
         :param storageSystemName: the storage system name
         :returns: foundStorageRelocationService
+        :raises: VolumeBackendAPIException
         """
         foundHardwareService = None
         storageHardwareservices = conn.EnumerateInstanceNames(
@@ -212,6 +217,7 @@ class EMCVMAXUtils(object):
         :param conn: the connection to the ecom server
         :param storageSystemName: the storage system name
         :returns: foundRepService
+        :raises: VolumeBackendAPIException
         """
         foundRepService = None
         repservices = conn.EnumerateInstanceNames(
@@ -241,7 +247,8 @@ class EMCVMAXUtils(object):
         :param conn: the connection information to the ecom server
         :param storageSystemInstanceName: the storageSystem instance Name
         :returns: foundTierPolicyService - the tier policy
-                                                  service instance name
+            service instance name
+        :raises: VolumeBackendAPIException
         """
         foundTierPolicyService = None
         groups = conn.AssociatorNames(
@@ -266,7 +273,8 @@ class EMCVMAXUtils(object):
 
         :param conn: connection to the ecom server
         :param job: the job dict
-        :returns: rc - the return code
+        :param extraSpecs: the extraSpecs dict. Defaults to None
+        :returns: int -- the return code
         :returns: errorDesc - the error description string
         """
 
@@ -291,6 +299,9 @@ class EMCVMAXUtils(object):
 
         :param conn: connection to the ecom server
         :param job: the job dict
+        :param extraSpecs: the extraSpecs dict. Defaults to None
+        :raises: loopingcall.LoopingCallDone
+        :raises: VolumeBackendAPIException
         """
 
         def _wait_for_job_complete():
@@ -329,8 +340,7 @@ class EMCVMAXUtils(object):
     def _get_max_job_retries(self, extraSpecs):
         """Get max job retries either default or user defined
 
-        :param extraSpecs: extraSpecs
-
+        :param extraSpecs: extraSpecs dict
         :returns: JOB_RETRIES or user defined
         """
         if extraSpecs:
@@ -342,8 +352,7 @@ class EMCVMAXUtils(object):
     def _get_interval_in_secs(self, extraSpecs):
         """Get interval in secs, either default or user defined
 
-        :param extraSpecs: extraSpecs
-
+        :param extraSpecs: extraSpecs dict
         :returns: INTERVAL_10_SEC or user defined
         """
         if extraSpecs:
@@ -357,8 +366,7 @@ class EMCVMAXUtils(object):
 
         :param conn: connection to the ecom server
         :param job: the job dict
-
-        :returns: True if finished; False if not finished;
+        :returns: boolean -- True if finished; False if not finished;
         """
 
         jobInstanceName = job['Job']
@@ -380,13 +388,18 @@ class EMCVMAXUtils(object):
     def wait_for_sync(self, conn, syncName):
         """Given the sync name wait for it to fully synchronize.
 
-        Called at an interval until the synchronization is finished.
-
         :param conn: connection to the ecom server
         :param syncName: the syncName
+        :raises: loopingcall.LoopingCallDone
+        :raises: VolumeBackendAPIException
         """
 
         def _wait_for_sync():
+            """Called at an interval until the synchronization is finished.
+
+            :raises: loopingcall.LoopingCallDone
+            :raises: VolumeBackendAPIException
+            """
             retries = kwargs['retries']
             wait_for_sync_called = kwargs['wait_for_sync_called']
             if self._is_sync_complete(conn, syncName):
@@ -418,7 +431,6 @@ class EMCVMAXUtils(object):
 
         :param conn: connection to the ecom server
         :param syncName: the sync name
-
         :returns: True if fully synchronized; False if not;
         """
         syncInstance = conn.GetInstance(syncName,
@@ -460,9 +472,9 @@ class EMCVMAXUtils(object):
         from it.
 
         :param conn: the connection to the ecom server
-        :param storageConfigService: the storage configuration service
-        :returns: rc - the return code of the job
-        :returns: jobDict - the job dict
+        :param configService: the storage configuration service
+        :returns: int -- rc - the return code of the job
+        :returns: dict -- jobDict - the job dict
         """
         foundStorageSystemInstanceName = None
         groups = conn.AssociatorNames(
@@ -485,8 +497,7 @@ class EMCVMAXUtils(object):
 
         :param conn: connection to the ecom server
         :param volumeInstanceName: the volume instance name
-        :returns: foundStorageGroupInstanceName - the storage group
-                                                  instance name
+        :returns: foundStorageGroupInstanceName
         """
         foundStorageGroupInstanceName = None
 
@@ -510,7 +521,7 @@ class EMCVMAXUtils(object):
         :param conn: connection to the ecom server
         :param controllerConfigService: the controllerConfigService
         :param storageGroupName: the name of the storage group you are getting
-        :param foundStorageGroup: storage group instance name
+        :returns: foundStorageMaskingGroupInstanceName
         """
         foundStorageMaskingGroupInstanceName = None
 
@@ -539,7 +550,7 @@ class EMCVMAXUtils(object):
         """Given any service get the storage system name from it.
 
         :param configService: the configuration service
-        :returns: configService['SystemName'] - storage system name (String)
+        :returns: string -- configService['SystemName'] - storage system name
         """
         return configService['SystemName']
 
@@ -549,7 +560,7 @@ class EMCVMAXUtils(object):
         :param conn: connection to the ecom server
         :param volumeDict: the volume Dict
         :param volumeName: the user friendly name of the volume
-        :returns: foundVolumeInstance - the volume instance
+        :returns: foundVolumeInstance - the found volume instance
         """
         volumeInstanceName = self.get_instance_name(volumeDict['classname'],
                                                     volumeDict['keybindings'])
@@ -574,7 +585,7 @@ class EMCVMAXUtils(object):
         the full hostName is returned.
 
         :param hostName: the fully qualified host name ()
-        :param shortHostName: the short hostName
+        :returns: string -- the short hostName
         """
         shortHostName = None
 
@@ -591,8 +602,7 @@ class EMCVMAXUtils(object):
 
         :param classname: class name for the volume instance
         :param bindings: volume created from job
-        :returns: foundVolumeInstance - the volume instance
-
+        :returns: pywbem.CIMInstanceName -- instanceName
         """
         instanceName = None
         try:
@@ -641,8 +651,9 @@ class EMCVMAXUtils(object):
         """Given the filename get the ecomUser and ecomPasswd.
 
         :param filename: the path and filename of the emc configuration file
-        :returns: ecomUser - the ecom user
-        :returns: ecomPasswd - the ecom password
+        :returns: string -- ecomUseSSL
+        :returns: string -- ecomCACert
+        :returns: string -- ecomNoVerification
         """
         ecomUseSSL = self._parse_from_file(filename, 'EcomUseSSL')
         ecomCACert = self._parse_from_file(filename, 'EcomCACert')
@@ -665,7 +676,8 @@ class EMCVMAXUtils(object):
         portGroupElements and choose one randomly.
 
         :param fileName: the path and name of the file
-        :returns: portGroupName - the name of the port group chosen
+        :returns: string -- portGroupName - the name of the port group chosen
+        :raises: VolumeBackendAPIException
         """
         portGroupName = None
         myFile = open(fileName, 'r')
@@ -708,7 +720,8 @@ class EMCVMAXUtils(object):
         Remove newlines, tabs and trailing spaces.
 
         :param fileName: the path and name of the file
-        :returns: retString - the returned string
+        :param stringToParse: the name of the tag to get the value for
+        :returns: string -- the returned string; value of the tag
         """
         retString = None
         myFile = open(fileName, 'r')
@@ -752,7 +765,7 @@ class EMCVMAXUtils(object):
         the ecom. If there is more than one then erroneous results can occur.
 
         :param fileName: the path and name of the file
-        :returns: arrayName - the array name
+        :returns: string -- arrayName - the array name
         """
         arrayName = self._parse_from_file(fileName, 'Array')
         if arrayName:
@@ -767,7 +780,7 @@ class EMCVMAXUtils(object):
         If it is not there then we will attempt to get it from extra specs.
 
         :param fileName: the path and name of the file
-        :returns: poolName - the pool name
+        :returns: string -- poolName - the pool name
         """
         poolName = self._parse_from_file(fileName, 'Pool')
         if poolName:
@@ -782,7 +795,7 @@ class EMCVMAXUtils(object):
         Please note that the string 'NONE' is returned if it is not found.
 
         :param fileName: the path and name of the file
-        :returns: slo - the slo or 'NONE'
+        :returns: string -- the slo or 'NONE'
         """
         slo = self._parse_from_file(fileName, 'SLO')
         if slo:
@@ -798,7 +811,7 @@ class EMCVMAXUtils(object):
         Please note that the string 'NONE' is returned if it is not found.
 
         :param fileName: the path and name of the file
-        :returns: workload - the workload or 'NONE'
+        :returns: string -- the workload or 'NONE'
         """
         workload = self._parse_from_file(fileName, 'Workload')
         if workload:
@@ -814,7 +827,7 @@ class EMCVMAXUtils(object):
         If it is not there then the default will be used.
 
         :param fileName: the path and name of the file
-        :returns: interval - the interval in seconds
+        :returns: string -- interval - the interval in seconds
         """
         interval = self._parse_from_file(fileName, 'Interval')
         if interval:
@@ -829,7 +842,7 @@ class EMCVMAXUtils(object):
         If it is not there then the default will be used.
 
         :param fileName: the path and name of the file
-        :returns: retries - the max number of retries
+        :returns: string -- retries - the max number of retries
         """
         retries = self._parse_from_file(fileName, 'Retries')
         if retries:
@@ -844,8 +857,8 @@ class EMCVMAXUtils(object):
         Example of pool InstanceId: Symmetrix+0001233455555+U+Pool 0
 
         :param poolInstanceId: the path and name of the file
-        :returns: poolName - the pool name
-        :returns: systemName - the system name
+        :returns: string -- poolName - the pool name
+        :returns: string -- systemName - the system name
         """
         poolName = None
         systemName = None
@@ -885,10 +898,10 @@ class EMCVMAXUtils(object):
         return poolName, systemName
 
     def convert_gb_to_bits(self, strGbSize):
-        """Convert GB(string) to bits(string).
+        """Convert GB(string) to bytes(string).
 
         :param strGB: string -- The size in GB
-        :returns: strBitsSize string -- The size in bits
+        :returns: string -- The size in bytes
         """
         strBitsSize = six.text_type(int(strGbSize) * 1024 * 1024 * 1024)
 
@@ -902,7 +915,7 @@ class EMCVMAXUtils(object):
 
         :param conn: the connection information to the ecom server
         :param volumeInstance: the volume Instance
-        :returns: 'True', 'False' or 'Undetermined'
+        :returns: string -- 'True', 'False' or 'Undetermined'
         """
         propertiesList = volumeInstance.properties.items()
         for properties in propertiesList:
@@ -946,7 +959,7 @@ class EMCVMAXUtils(object):
 
         :param conn: the connection information to the ecom server
         :param volumeInstance: the volume instance
-        :returns: 'True', 'False' or 'Undetermined'
+        :returns: string -- 'True', 'False' or 'Undetermined'
         """
         isConcatenated = None
 
@@ -983,7 +996,7 @@ class EMCVMAXUtils(object):
         The default is '2' concatenated.
 
         :param compositeTypeStr: 'concatenated' or 'striped'. Cannot be None
-        :returns: compositeType = 2 or 3
+        :returns: int -- compositeType = 2 for concatenated, or 3 for striped
         """
         compositeType = 2
         stripedStr = 'striped'
@@ -1000,8 +1013,8 @@ class EMCVMAXUtils(object):
         """Check if volume is bound to a pool.
 
         :param conn: the connection information to the ecom server
-        :param storageServiceInstanceName: the storageSystem instance Name
-        :returns: foundIsSupportsTieringPolicies - true/false
+        :param volumeInstance: the volume instance
+        :returns: string -- 'True' 'False' or 'Undetermined'
         """
         propertiesList = volumeInstance.properties.items()
         for properties in propertiesList:
@@ -1041,11 +1054,11 @@ class EMCVMAXUtils(object):
         return foundSpaceConsumed
 
     def get_volume_size(self, conn, volumeInstance):
-        """Get the volume size.  ConsumableBlocks * BlockSize.
+        """Get the volume size which is ConsumableBlocks * BlockSize.
 
         :param conn: the connection information to the ecom server
         :param volumeInstance: the volume Instance
-        :returns: volumeSizeOut
+        :returns: string -- volumeSizeOut
         """
         volumeSizeOut = 'Undetermined'
         numBlocks = 0
@@ -1076,8 +1089,8 @@ class EMCVMAXUtils(object):
         :param sizeStr: the size in GBs of the proposed volume
         :param memberCount: the initial member count
         :param compositeType: the composite type
-        :returns: memberCount - string
-        :returns: errorDesc - the error description
+        :returns: string -- memberCount
+        :returns: string -- errorDesc - the error description
         """
         errorDesc = None
         if compositeType in 'concatenated' and int(sizeStr) > 240:
@@ -1119,10 +1132,9 @@ class EMCVMAXUtils(object):
         capacity in GB.
 
         :param conn: connection to the ecom server
-        :param storagePoolName: string value of the storage pool name
-        :returns: total_capacity_gb - total capacity of the storage pool in GB
-        :returns: free_capacity_gb - remaining capacity of the
-                                     storage pool in GB
+        :param poolName: string value of the storage pool name
+        :param storageSystemName: the storage system name
+        :returns: tuple -- (total_capacity_gb, free_capacity_gb)
         """
         LOG.debug(
             "Retrieving capacity for pool %(poolName)s on array %(array)s.",
@@ -1152,7 +1164,7 @@ class EMCVMAXUtils(object):
         :param conn: connection to the ecom server
         :param storagePoolName: string value of the storage pool name
         :param storageSystemName: string value of array
-        :returns: poolInstanceName - instance name of storage pool
+        :returns: foundPoolInstanceName - instance name of storage pool
         """
         foundPoolInstanceName = None
         LOG.debug(
@@ -1176,10 +1188,10 @@ class EMCVMAXUtils(object):
         return foundPoolInstanceName
 
     def convert_bits_to_gbs(self, strBitSize):
-        """Convert Bits(string) to GB(string).
+        """Convert bytes(string) to GB(string).
 
-        :param strBitSize: string -- The size in bits
-        :returns: gbSize string -- The size in GB
+        :param strBitSize: string -- The size in bytes
+        :returns: int -- The size in GB
         """
         gbSize = int(strBitSize) / 1024 / 1024 / 1024
         return gbSize
@@ -1189,7 +1201,7 @@ class EMCVMAXUtils(object):
 
         :param size1Str: the first bit size (String)
         :param size2Str: the second bit size (String)
-        :returns: size1GBs - size2GBs (int)
+        :returns: int -- size1GBs - size2GBs
         """
         size1GBs = self.convert_bits_to_gbs(size1Str)
         size2GBs = self.convert_bits_to_gbs(size2Str)
@@ -1200,7 +1212,8 @@ class EMCVMAXUtils(object):
         """Compare the bit sizes to an approximate.
 
         :param volume: the volume dictionary
-        :returns: extraSpecs - the extra specs
+        :param volumeTypeId: Optional override for volume['volume_type_id']
+        :returns: dict -- extraSpecs - the extra specs
         """
         extraSpecs = {}
 
@@ -1221,7 +1234,7 @@ class EMCVMAXUtils(object):
         """Get the volume type name.
 
         :param volume: the volume dictionary
-        :returns: volumeTypeName - the volume type name
+        :returns: string -- volumeTypeName - the volume type name
         """
         volumeTypeName = None
 
@@ -1251,8 +1264,8 @@ class EMCVMAXUtils(object):
         """Check the space consumed of a volume.
 
         :param conn: the connection information to the ecom server
-        :param volumeInstance: the volume Instance
-        :returns: spaceConsumed
+        :param poolInstanceName: the pool instance name
+        :returns: the volumes in the pool
         """
         return conn.AssociatorNames(
             poolInstanceName, AssocClass='CIM_AllocatedFromStoragePool',
@@ -1263,7 +1276,7 @@ class EMCVMAXUtils(object):
 
         :param conn: the connection information to the ecom server
         :param volumeInstance: the volume Instance
-        :returns: spaceConsumed
+        :returns: string -- 'True', 'False' or 'Undetermined'
         """
         foundSpaceConsumed = None
         unitnames = conn.References(
@@ -1290,7 +1303,7 @@ class EMCVMAXUtils(object):
         """Given the protocol type, return I for iscsi and F for fc.
 
         :param protocol: iscsi or fc
-        :returns: 'I' or 'F'
+        :returns: string -- 'I' for iscsi or 'F' for fc
         """
         if protocol.lower() == ISCSI.lower():
             return 'I'
@@ -1306,7 +1319,7 @@ class EMCVMAXUtils(object):
         :param conn: connection to the ecom server
         :param: hardwareIdManagementService - hardware id management service
         :returns: hardwareIdInstances - the list of hardware
-                                            id instances
+            id instances
         """
         hardwareIdInstances = (
             conn.Associators(hardwareIdManagementService,
@@ -1319,7 +1332,7 @@ class EMCVMAXUtils(object):
 
         :param strToTruncate: the string to be truncated
         :param maxNum: the maximum number of characters
-        :returns: truncated string or original string
+        :returns: string -- truncated string or original string
         """
         if len(strToTruncate) > maxNum:
             newNum = len(strToTruncate) - maxNum / 2
@@ -1350,7 +1363,7 @@ class EMCVMAXUtils(object):
 
         :param startTime: the start time
         :param endTime: the end time
-        :returns: delta in string H:MM:SS
+        :returns: string -- delta in string H:MM:SS
         """
         delta = endTime - startTime
         return str(datetime.timedelta(seconds=int(delta)))
@@ -1363,7 +1376,7 @@ class EMCVMAXUtils(object):
         :param storageSystem: the storage system name
         :param target: target volume object
         :param waitforsync: wait for the synchronization to complete if True
-        :returns: foundSyncName (String)
+        :returns: foundSyncInstanceName
         """
         foundSyncInstanceName = None
         syncInstanceNames = conn.EnumerateInstanceNames(
@@ -1440,11 +1453,11 @@ class EMCVMAXUtils(object):
             self, context, db, cgsnapshot_id, status='available'):
         """Update cgsnapshot status in the cinder database.
 
-        :param context:
+        :param context: the context
         :param db: cinder database
         :param cgsnapshot_id: cgsnapshot id
         :param status: string value reflects the status of the member snapshot
-        :return snapshots: updated snapshots
+        :returns: snapshots - updated snapshots
         """
         snapshots = db.snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id)
         LOG.info(_LI(
@@ -1463,7 +1476,7 @@ class EMCVMAXUtils(object):
 
         :param conn: the connection to the ecom server
         :param arrayName: the array name
-        :returns: firmwareVersion (String)
+        :returns: string -- firmwareVersion
         """
         firmwareVersion = None
         softwareIdentities = conn.EnumerateInstanceNames(
@@ -1487,7 +1500,8 @@ class EMCVMAXUtils(object):
         :param conn: the connection to the ecom server
         :param arrayName: the array name
         :param poolName: the pool name
-        :returns: totalManagedSpace, remainingManagedSpace
+        :returns: totalCapacityGb
+        :returns: remainingCapacityGb
         """
         totalCapacityGb = -1
         remainingCapacityGb = -1
@@ -1547,7 +1561,8 @@ class EMCVMAXUtils(object):
         :param conn: the connection to the ecom server
         :param storageSystemInstanceName: the storage system instance name
         :param poolNameInStr: the pool name
-        :returns: foundPoolInstanceName, systemNameStr
+        :returns: foundPoolInstanceName
+        :returns: string -- systemNameStr
         """
         foundPoolInstanceName = None
         vpoolInstanceNames = conn.AssociatorNames(
@@ -1578,7 +1593,8 @@ class EMCVMAXUtils(object):
         :param conn: the connection to the ecom server
         :param storageSystemInstanceName: the storage system instance name
         :param poolNameInStr: the pool name
-        :returns: foundPoolInstanceName, systemNameStr
+        :returns: foundPoolInstanceName
+        :returns: string -- systemNameStr
         """
         foundPoolInstanceName = None
         srpPoolInstanceNames = conn.AssociatorNames(
@@ -1604,8 +1620,10 @@ class EMCVMAXUtils(object):
     def find_storageSystem(self, conn, arrayStr):
         """Find an array instance name given the array name.
 
+        :param conn: the ecom connection
         :param arrayStr: the array Serial number (string)
         :returns: foundPoolInstanceName, the CIM Instance Name of the Pool
+        :raises: VolumeBackendAPIException
         """
         foundStorageSystemInstanceName = None
         storageSystemInstanceNames = conn.EnumerateInstanceNames(
@@ -1633,7 +1651,7 @@ class EMCVMAXUtils(object):
         :param volumeSize: volume size
         :param maximumVolumeSize: the max volume size
         :param minimumVolumeSize: the min volume size
-        :returns: true/false
+        :returns: boolean
         """
 
         if (long(volumeSize) < long(maximumVolumeSize)) and (
@@ -1647,7 +1665,7 @@ class EMCVMAXUtils(object):
 
         :param slo: Service Level Object e.g bronze
         :param workload: workload e.g DSS
-        :returns: true/false
+        :returns: boolean
         """
         isValidSLO = False
         isValidWorkload = False
@@ -1718,6 +1736,7 @@ class EMCVMAXUtils(object):
     def get_volume_meta_head(self, conn, volumeInstanceName):
         """Get the head of a meta volume.
 
+        :param conn: the ecom connection
         :param volumeInstanceName: the composite volume instance name
         :returns: the instance name of the meta volume head
         """
@@ -1739,6 +1758,7 @@ class EMCVMAXUtils(object):
             self, conn, metaHeadInstanceName):
         """Get the member volumes of a composite volume.
 
+        :param conn: the ecom connection
         :param metaHeadInstanceName: head of the composite volume
         :returns: an array containing instance names of member volumes
         """
@@ -1752,6 +1772,7 @@ class EMCVMAXUtils(object):
     def get_meta_members_capacity_in_bit(self, conn, volumeInstanceNames):
         """Get the capacity in bits of all meta device member volumes.
 
+        :param conn: the ecom connection
         :param volumeInstanceNames: array contains meta device member volumes
         :returns: array contains capacities of each member device in bits
         """

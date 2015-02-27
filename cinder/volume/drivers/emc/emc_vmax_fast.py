@@ -38,8 +38,9 @@ class EMCVMAXFast(object):
     def _check_if_fast_supported(self, conn, storageSystemInstanceName):
         """Check to see if fast is supported on the array.
 
-        :param conn: the connection to the ecom server
+        :param conn: the ecom connection
         :param storageSystemInstanceName: the storage system Instance name
+        :returns: boolean -- isTieringPolicySupported
         """
 
         tierPolicyServiceInstanceName = self.utils.get_tier_policy_service(
@@ -63,8 +64,8 @@ class EMCVMAXFast(object):
 
         :param conn: the connection information to the ecom server
         :param tierPolicyServiceInstanceName: the tier policy service
-                                              instance name
-        :returns: foundIsSupportsTieringPolicies - True/False
+            instance name
+        :returns: boolean -- foundIsSupportsTieringPolicies
         """
         foundIsSupportsTieringPolicies = None
         tierPolicyCapabilityInstanceNames = conn.AssociatorNames(
@@ -155,7 +156,7 @@ class EMCVMAXFast(object):
         :param fastPolicyName: the fast policy name (String)
         :param extraSpecs: additional info
         :returns: assocStorageGroupInstanceName - the storage group
-                                                  associated with the volume
+            associated with the volume
         """
         failedRet = None
         defaultSgGroupName = (DEFAULT_SG_PREFIX + fastPolicyName +
@@ -194,7 +195,7 @@ class EMCVMAXFast(object):
         :param volumeInstance: the volume instance
         :param extraSpecs: additional info
         :returns: defaultstorageGroupInstanceName - instance name of the
-                                                    default storage group
+            default storage group
         """
         failedRet = None
         firstVolumeInstance = self._create_volume_for_default_volume_group(
@@ -292,6 +293,8 @@ class EMCVMAXFast(object):
         :param storageGroupName: the storage group name (String)
         :param fastPolicyName: the fast policy name (String)
         :param extraSpecs: additional info
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
         """
         # 5 is ("Add InElements to Policy").
         modificationType = '5'
@@ -329,7 +332,7 @@ class EMCVMAXFast(object):
         :param tierPolicyServiceInstanceName: the policy service
         :param fastPolicyName: the fast policy name e.g BRONZE1
         :returns: foundTierPolicyRuleInstanceName - the short name,
-                                                    everything after the :
+            everything after the :
         """
         foundTierPolicyRuleInstanceName = None
 
@@ -349,9 +352,8 @@ class EMCVMAXFast(object):
 
         :param conn: the connection information to the ecom server
         :param tierPolicyServiceInstanceName: the tier policy service
-                                              instance Name
-        :returns: tierPolicyRuleInstanceNames - the tier policy rule
-                                                instance names
+            instance Name
+        :returns: list -- the tier policy rule instance names
         """
         tierPolicyRuleInstanceNames = conn.AssociatorNames(
             tierPolicyServiceInstanceName, ResultClass='Symm_TierPolicyRule')
@@ -364,8 +366,7 @@ class EMCVMAXFast(object):
 
         :param conn: the connection information to the ecom server
         :param storageGroupInstanceName: the storage group instance name
-        :returns: tierPolicyInstanceNames - the list of tier policy
-                                            instance names
+        :returns: list -- the list of tier policy instance names
         """
         tierPolicyInstanceName = None
 
@@ -386,8 +387,7 @@ class EMCVMAXFast(object):
 
         :param conn: the connection information to the ecom server
         :param tierPolicyRuleInstanceName: the tier policy rule instance name
-        :returns: storageTierInstanceNames - a list of storage tier
-                                             instance names
+        :returns: list -- a list of storage tier instance names
         """
         storageTierInstanceNames = conn.AssociatorNames(
             tierPolicyRuleInstanceName,
@@ -409,10 +409,10 @@ class EMCVMAXFast(object):
 
         :param conn: the connection information to the ecom server
         :param controllerConfigService: ControllerConfigurationService
-                                        instance name
+            instance name
         :param policyName: string value
         :returns: storageGroupInstanceName - instance name of the default
-                                             storage group
+            storage group
         """
         foundStorageMaskingGroupInstanceName = None
         storageMaskingGroupInstances = conn.Associators(
@@ -441,8 +441,7 @@ class EMCVMAXFast(object):
 
         :param conn: the connection information to the ecom server
         :param tierPolicyInstanceName: tier policy instance name
-        :returns: managedElementInstanceNames - the list of storage
-                                                instance names
+        :returns: list -- the list of storage instance names
         """
         managedElementInstanceNames = conn.AssociatorNames(
             tierPolicyInstanceName,
@@ -457,8 +456,7 @@ class EMCVMAXFast(object):
 
         :param conn: the connection information to the ecom server
         :param storageTierInstanceName: the storage tier instance name
-        :returns: storagePoolInstanceNames - a list of storage tier
-                                             instance names
+        :returns: list -- a list of storage tier instance names
         """
         storagePoolInstanceNames = conn.AssociatorNames(
             storageTierInstanceName,
@@ -538,7 +536,7 @@ class EMCVMAXFast(object):
         :param conn: the connection information to the ecom server
         :param storageGroupInstanceName: storage group instance name
         :returns: foundTierPolicyInstanceName - instance name of the
-                                                tier policy object
+            tier policy object
         """
         foundTierPolicyInstanceName = None
 
@@ -560,10 +558,10 @@ class EMCVMAXFast(object):
 
         :param conn: connection the ecom server
         :param tierPolicyServiceInstanceName: instance name of the tier policy
-                                              service
+            service
         :param storageGroupInstanceName: instance name of the storage group
         :param tierPolicyRuleInstanceName: instance name of the tier policy
-                                           associated with the storage group
+            associated with the storage group
         :param extraSpecs: additional information
         """
         modificationType = '6'
@@ -602,7 +600,7 @@ class EMCVMAXFast(object):
         :param arraySN: the array serial number (String)
         :param storageConfigService: the storage Config Service
         :param poolInstanceName: the pool instance we want to check for
-                                 association with the fast storage tier
+            association with the fast storage tier
         :returns: foundPoolInstanceName
         """
         storageSystemInstanceName = self.utils.find_storage_system(
@@ -645,8 +643,9 @@ class EMCVMAXFast(object):
         True if FAST policy enabled on the given storage system;
         False otherwise.
 
+        :param conn: the ecom connection
         :param storageSystemInstanceName: a storage system instance name
-        :returns: boolean
+        :returns: boolean -- isTieringPolicySupported
         """
         try:
             tierPolicyServiceInstanceName = self.utils.get_tier_policy_service(
@@ -663,8 +662,10 @@ class EMCVMAXFast(object):
             self, conn, arrayName, policyName):
         """Given the name of the policy, get the TierPolicyRule instance name.
 
-        :param policyName: the name of policy rule, a string value
-        :returns: tierPolicyInstanceName - tier policy instance name
+        :param conn: the ecom connection
+        :param arrayName: the array
+        :param policyName: string -- the name of policy rule
+        :returns: tier policy instance name. None if not found
         """
         tierPolicyInstanceNames = conn.EnumerateInstanceNames(
             'Symm_TierPolicyRule')
@@ -680,12 +681,13 @@ class EMCVMAXFast(object):
         Given the name of the policy, get the total capacity and un-used
         capacity in GB of all the storage pools associated with the policy.
 
+        :param conn: the ecom connection
+        :param arrayName: the array
         :param policyName: the name of policy rule, a string value
-        :returns: total_capacity_gb - total capacity in GB of all pools
-                                      associated with the policy
-        :returns: free_capacity_gb  - (total capacity-EMCSubscribedCapacity)
-                                      in GB of all pools associated with
-                                      the policy
+        :returns: int -- total capacity in GB of all pools associated with
+            the policy
+        :returns: int  -- (total capacity-EMCSubscribedCapacity) in GB of all
+            pools associated with the policy
         """
         policyInstanceName = self.get_tier_policy_by_name(
             conn, arrayName, policyName)
@@ -761,7 +763,7 @@ class EMCVMAXFast(object):
 
         :param conn: the connection information to the ecom server
         :param poolInstanceName: the pool instance name
-        :param fastPolicyName: the FAST Policy name (if it exists)
+        :returns: the FAST Policy name (if it exists)
         """
         fastPolicyName = None
 
@@ -784,9 +786,10 @@ class EMCVMAXFast(object):
     def is_volume_in_default_SG(self, conn, volumeInstanceName):
         """Check if the volume is already part of the default storage group.
 
+        :param conn: the ecom connection
         :param volumeInstanceName: the volume instance
-        :returns: True if the volume is already in default storage group
-                  False otherwise
+        :returns: boolean -- True if the volume is already in default
+            storage group. False otherwise
         """
         sgInstanceNames = conn.AssociatorNames(
             volumeInstanceName,

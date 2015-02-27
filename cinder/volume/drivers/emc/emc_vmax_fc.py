@@ -142,7 +142,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
 
             or
 
-             {
+            {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
                     'target_discovered': True,
@@ -178,8 +178,10 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         if there isn't an initiator_target_map in the
         return of terminate_connection.
 
-        :returns: data - the target_wwns and initiator_target_map if the
-                         zone is to be removed, otherwise empty
+        :param volume: the volume object
+        :param connector: the connector object
+        :returns: dict -- the target_wwns and initiator_target_map if the
+            zone is to be removed, otherwise empty
         """
         data = {}
         loc = volume['provider_location']
@@ -257,7 +259,8 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
 
-        If 'refresh' is True, run update the stats first.
+        :param refresh: boolean -- If True, run update the stats first.
+        :returns: dict -- the stats dict
         """
         if refresh:
             self.update_volume_stats()
@@ -275,27 +278,25 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
     def migrate_volume(self, ctxt, volume, host):
         """Migrate a volume from one Volume Backend to another.
 
-        :param self: reference to class
-        :param ctxt:
+        :param ctxt: context
         :param volume: the volume object including the volume_type_id
         :param host: the host dict holding the relevant target(destination)
-                     information
-        :returns: moved
-        :returns: list
+            information
+        :returns: boolean -- Always returns True
+        :returns: dict -- Empty dict {}
         """
         return self.common.migrate_volume(ctxt, volume, host)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Migrate volume to another host using retype.
 
-        :param self: reference to class
-        :param ctxt:
+        :param ctxt: context
         :param volume: the volume object including the volume_type_id
         :param new_type: the new volume type.
+        :param diff: Unused parameter.
         :param host: the host dict holding the relevant
-                     target(destination) information
-        :returns: moved
-        "returns: list
+            target(destination) information
+        :returns: boolean -- True if retype succeeded, Fasle if error
         """
         return self.common.retype(ctxt, volume, new_type, diff, host)
 
