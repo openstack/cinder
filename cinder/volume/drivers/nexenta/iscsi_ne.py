@@ -19,7 +19,6 @@
 .. moduleauthor:: Zohar Mamedov <zohar.mamedov@nexenta.com>
 """
 
-from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder.image import image_utils
@@ -27,7 +26,6 @@ from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
-from cinder.volume.drivers.nexenta import utils
 
 from oslo_serialization import jsonutils
 
@@ -108,7 +106,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
 
     def _get_bucket_name_map(self):
-        rsp = self.restapi.get(self.bucket_url)
+        self.restapi.get(self.bucket_url)
         if not (('bucketMetadata' in rsp) and
                 ('X-Name-Map' in rsp['bucketMetadata'])):
             LOG.error(_('Bucket metadata missing name mapping'))
@@ -118,7 +116,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return namemap
 
     def _set_bucket_name_map(self, namemap):
-        rsp = self.restapi.put(
+        self.restapi.put(
             self.bucket_url,
             {'optionsObject': {'X-Name-Map': jsonutils.dumps(namemap)}})
 
@@ -135,7 +133,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _allocate_lun_number(self, namemap):
         if namemap is None:
-            LOG.error(_('Failed to allocate LUN number: ' +
+            LOG.error(_('Failed to allocate LUN number: '
                         'Received None name_map object'))
             raise nexenta.NexentaException('None name_map object')
         lunNumber = None
@@ -149,7 +147,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 lunNumber = i
                 break
         if lunNumber is None:
-            LOG.error(_('Failed to allocate LUN number: ' +
+            LOG.error(_('Failed to allocate LUN number: '
                         'All 255 lun numbers used, WOW!'))
             raise nexenta.NexentaException('All 255 lun numbers used')
         return lunNumber
@@ -158,7 +156,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         lunNumber = 0
         try:
             namemap = self._get_bucket_name_map()
-        except nexenta.NexentaException, e:
+        except nexenta.NexentaException as e:
             if (str(e) == 'Bucket metadata missing name mapping'):
                 namemap = {}
                 lunNumber = 1
@@ -169,7 +167,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             lunNumber = self._allocate_lun_number(namemap)
 
         try:
-            rsp = self.restapi.post('iscsi', {
+            self.restapi.post('iscsi', {
                 'objectPath': self.bucket_path + '/' + str(lunNumber),
                 'volSizeMB': int(volume['size']) * 1024,
                 'blockSize': self.LUN_BLOCKSIZE,
@@ -180,7 +178,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             namemap[volume['name']] = lunNumber
             self._set_bucket_name_map(namemap)
 
-        except nexenta.NexentaException, e:
+        except nexenta.NexentaException as e:
             LOG.error(_('Error while creating volume: %s'), str(e))
             raise
 
@@ -192,20 +190,20 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self._verify_name_in_map(namemap, volume['name'])
         lunNumber = namemap[volume['name']]
         try:
-            rsp = self.restapi.delete(
+            self.restapi.delete(
                 'iscsi/' + str(lunNumber),
                 {'objectPath': self.bucket_path + '/' + str(lunNumber)})
 
             namemap.pop(volume['name'])
             self._set_bucket_name_map(namemap)
 
-        except nexenta.NexentaException, e:
+        except nexenta.NexentaException as e:
             LOG.error(_('Error while deleting: %s'), str(e))
             raise
 
     def extend_volume(self, volume, new_size):
         lunNumber = self._get_lun_from_name(volume['name'])
-        rsp = self.restapi.post(
+        self.restapi.post(
             'iscsi/' + str(lunNumber) + '/resize',
             {'objectPath': self.bucket_path + '/' + str(lunNumber),
              'newSizeMB': new_size * 1024})
@@ -227,9 +225,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 'ss_bucket': self.bucket,
                 'ss_object': str(newLun)
             }
-            rsp = self.restapi.post(snap_url, snap_body)
+            self.restapi.post(snap_url, snap_body)
 
-            rsp = self.restapi.post('iscsi', {
+            self.restapi.post('iscsi', {
                 'objectPath': self.bucket_path + '/' + str(newLun),
                 'volSizeMB': int(snapshot['volume_size']) * 1024,
                 'blockSize': self.LUN_BLOCKSIZE,
@@ -239,7 +237,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
             self._set_bucket_name_map(namemap)
 
-        except nexenta.NexentaException, e:
+        except nexenta.NexentaException as e:
             LOG.error(_('Error while creating volume: %s'), str(e))
             raise
 
@@ -252,11 +250,11 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'ss_object': str(lunNumber),
             'ss_name': snapshot['name']
         }
-        rsp = self.restapi.post(snap_url, snap_body)
+        self.restapi.post(snap_url, snap_body)
 
     def delete_snapshot(self, snapshot):
         lunNumber = self._get_lun_from_name(snapshot['volume_name'])
-        rsp = self.restapi.delete(
+        self.restapi.delete(
             self.bucket_url + '/snapviews/' + str(lunNumber) +
             '.snapview/snapshots/' + snapshot['name'])
 
@@ -274,9 +272,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
 
         try:
-            rsp = self.restapi.post(vol_url, clone_body)
+            self.restapi.post(vol_url, clone_body)
 
-            rsp = self.restapi.post('iscsi', {
+            self.restapi.post('iscsi', {
                 'objectPath': self.bucket_path + '/' + str(newLun),
                 'volSizeMB': int(src_vref['size']) * 1024,
                 'blockSize': self.LUN_BLOCKSIZE,
@@ -287,7 +285,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             namemap[volume['name']] = newLun
             self._set_bucket_name_map(namemap)
 
-        except nexenta.NexentaException, e:
+        except nexenta.NexentaException as e:
             LOG.error(_('Error creating cloned volume: %s'), str(e))
             raise
 
@@ -311,13 +309,13 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     '?offsetSize=' + str(x * self.LUN_CHUNKSIZE) + \
                     '?bufferSize=' + str(len(data64))
                 try:
-                    rsp = self.restapi.post(url, payload)
-                except nexenta.NexentaException, e:
+                    self.restapi.post(url, payload)
+                except nexenta.NexentaException as e:
                     LOG.error(_('Error copying Image to Volume: %s'), str(e))
                     pass
 
         try:
-            rsp = self.restapi.post('iscsi/' + str(lunNumber) + '/resize', {
+            self.restapi.post('iscsi/' + str(lunNumber) + '/resize', {
                 'objectPath': self.bucket_path + '/' + str(lunNumber),
                 'newSizeMB': int(volume['size']) * 1024,
             })
@@ -325,7 +323,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             namemap[volume['name']] = lunNumber
             self._set_bucket_name_map(namemap)
 
-        except nexenta.NexentaException, e:
+        except nexenta.NexentaException as e:
             LOG.error(_('Error while creating Volume from Image: %s'), str(e))
             pass
 
@@ -342,7 +340,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         lunNumber = self._get_lun_from_name(volume['name'])
         try:
             rsp = self.restapi.get('iscsi?number=' + str(lunNumber))
-        except nexenta.NexentaException, e:
+        except nexenta.NexentaException as e:
             raise
 
         target_portal = self.restapi_host + ':' + \
