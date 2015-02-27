@@ -17,24 +17,23 @@
 Test suite for VMware VMDK driver.
 """
 
-from distutils.version import LooseVersion
-import os
+from distutils import version as ver
 
 import mock
 import mox
+from oslo_utils import units
+from oslo_vmware import api
+from oslo_vmware import exceptions
+from oslo_vmware import image_transfer
+import six
 
-from cinder import exception
+from cinder import exception as cinder_exceptions
 from cinder.image import glance
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration
-from cinder.volume.drivers.vmware import api
 from cinder.volume.drivers.vmware import datastore as hub
-from cinder.volume.drivers.vmware import error_util
-from cinder.volume.drivers.vmware import vim
-from cinder.volume.drivers.vmware import vim_util
+from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 from cinder.volume.drivers.vmware import vmdk
-from cinder.volume.drivers.vmware import vmware_images
 from cinder.volume.drivers.vmware import volumeops
 
 
@@ -133,10 +132,13 @@ class FakeObj(object):
         self.obj = obj
 
 
+# TODO(vbala) Split test methods handling multiple cases into multiple methods,
+# each handling a specific case.
 class VMwareEsxVmdkDriverTestCase(test.TestCase):
     """Test class for VMwareEsxVmdkDriver."""
 
     IP = 'localhost'
+    PORT = 443
     USERNAME = 'username'
     PASSWORD = 'password'
     VOLUME_FOLDER = 'cinder-volumes'
@@ -173,42 +175,6 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._volumeops = volumeops.VMwareVolumeOps(self._session,
                                                     self.MAX_OBJECTS)
         self._vim = FakeVim()
-
-    def test_retry(self):
-        """Test Retry."""
-
-        class TestClass(object):
-
-            def __init__(self):
-                self.counter1 = 0
-                self.counter2 = 0
-
-            @api.Retry(max_retry_count=2, inc_sleep_time=0.001,
-                       exceptions=(Exception))
-            def fail(self):
-                self.counter1 += 1
-                raise exception.CinderException('Fail')
-
-            @api.Retry(max_retry_count=2)
-            def success(self):
-                self.counter2 += 1
-                return self.counter2
-
-        test_obj = TestClass()
-        self.assertRaises(exception.CinderException, test_obj.fail)
-        self.assertEqual(test_obj.counter1, 3)
-        ret = test_obj.success()
-        self.assertEqual(1, ret)
-
-    def test_create_session(self):
-        """Test create_session."""
-        m = self.mox
-        m.StubOutWithMock(api.VMwareAPISession, 'vim')
-        self._session.vim = self._vim
-        m.ReplayAll()
-        self._session.create_session()
-        m.UnsetStubs()
-        m.VerifyAll()
 
     def test_do_setup(self):
         """Test do_setup."""
@@ -251,48 +217,12 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         driver._select_ds_for_volume.assert_called_once_with(volume)
 
         # test create_volume call when _select_ds_for_volume fails
-        driver._select_ds_for_volume.side_effect = error_util.VimException('')
-        self.assertRaises(error_util.VimFaultException, driver.create_volume,
+        driver._select_ds_for_volume.side_effect = exceptions.VimException('')
+        self.assertRaises(exceptions.VimFaultException, driver.create_volume,
                           volume)
 
         # Clear side effects.
         driver._select_ds_for_volume.side_effect = None
-
-    def test_success_wait_for_task(self):
-        """Test successful wait_for_task."""
-        m = self.mox
-        m.StubOutWithMock(api.VMwareAPISession, 'vim')
-        self._session.vim = self._vim
-        result = FakeMor('VirtualMachine', 'my_vm')
-        success_task_info = FakeTaskInfo('success', result=result)
-        m.StubOutWithMock(vim_util, 'get_object_property')
-        vim_util.get_object_property(self._session.vim,
-                                     mox.IgnoreArg(),
-                                     'info').AndReturn(success_task_info)
-
-        m.ReplayAll()
-        ret = self._session.wait_for_task(mox.IgnoreArg())
-        self.assertEqual(ret.result, result)
-        m.UnsetStubs()
-        m.VerifyAll()
-
-    def test_failed_wait_for_task(self):
-        """Test failed wait_for_task."""
-        m = self.mox
-        m.StubOutWithMock(api.VMwareAPISession, 'vim')
-        self._session.vim = self._vim
-        failed_task_info = FakeTaskInfo('failed')
-        m.StubOutWithMock(vim_util, 'get_object_property')
-        vim_util.get_object_property(self._session.vim,
-                                     mox.IgnoreArg(),
-                                     'info').AndReturn(failed_task_info)
-
-        m.ReplayAll()
-        self.assertRaises(error_util.VimFaultException,
-                          self._session.wait_for_task,
-                          mox.IgnoreArg())
-        m.UnsetStubs()
-        m.VerifyAll()
 
     def test_delete_volume_without_backing(self):
         """Test delete_volume without backing."""
@@ -362,7 +292,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         volume['name'] = 'vol_name'
         backing = FakeMor('VirtualMachine', 'my_back')
         mux = self._driver._create_backing(volume, host1.obj, {})
-        mux.AndRaise(error_util.VimException('Maintenance mode'))
+        mux.AndRaise(exceptions.VimException('Maintenance mode'))
         mux = self._driver._create_backing(volume, host2.obj, {})
         mux.AndReturn(backing)
         m.StubOutWithMock(self._volumeops, 'cancel_retrieval')
@@ -468,7 +398,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         summary = self._driver._select_datastore_summary(40, datastores)
         self.assertEqual(summary, summary4)
 
-        self.assertRaises(error_util.VimException,
+        self.assertRaises(exceptions.VimException,
                           self._driver._select_datastore_summary,
                           100, datastores)
         m.UnsetStubs()
@@ -525,7 +455,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         # Test with invalid vmdk_type.
         get_volume_type_extra_specs.return_value = 'sparse'
 
-        self.assertRaises(error_util.InvalidDiskTypeException,
+        self.assertRaises(vmdk_exceptions.InvalidDiskTypeException,
                           vmdk.VMwareEsxVmdkDriver._get_disk_type,
                           volume)
 
@@ -641,7 +571,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         snapshot['volume'] = FakeObject()
         snapshot['volume']['status'] = 'in-use'
 
-        self.assertRaises(exception.InvalidVolume,
+        self.assertRaises(cinder_exceptions.InvalidVolume,
                           self._driver.create_snapshot, snapshot)
 
     def test_delete_snapshot_without_backing(self):
@@ -691,7 +621,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         snapshot['volume'] = FakeObject()
         snapshot['volume']['status'] = 'in-use'
 
-        self.assertRaises(exception.InvalidVolume,
+        self.assertRaises(cinder_exceptions.InvalidVolume,
                           self._driver.delete_snapshot, snapshot)
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareEsxVmdkDriver.'
@@ -755,7 +685,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         fake_src_vmdk_path = "[datastore] src_vm/src_vm.vmdk"
         fake_backing = mock.sentinel.backing
         fake_vmdk_path = mock.sentinel.path
-        #"[datastore] dest_vm/dest_vm.vmdk"
+        # "[datastore] dest_vm/dest_vm.vmdk"
         fake_dc = mock.sentinel.datacenter
 
         create_backing.return_value = fake_backing
@@ -899,8 +829,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         # _extend_virtual_disk is called, VimFaultException is raised. The
         # second time it is called, there is no exception.
         _extend_virtual_disk.reset_mock()
-        _extend_virtual_disk.side_effect = [error_util.
-                                            VimFaultException(mock.Mock(),
+        _extend_virtual_disk.side_effect = [exceptions.
+                                            VimFaultException([],
                                                               'Error'), None]
         # When _select_ds_for_volume raises no exception.
         _select_ds_for_volume.return_value = (fake_host, fake_rp,
@@ -919,11 +849,11 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         # If get_backing raises error_util.VimException,
         # this exception will be caught for volume extend.
         _extend_virtual_disk.reset_mock()
-        _extend_virtual_disk.side_effect = [error_util.
-                                            VimFaultException(mock.Mock(),
+        _extend_virtual_disk.side_effect = [exceptions.
+                                            VimFaultException([],
                                                               'Error'), None]
-        volume_ops.get_backing.side_effect = error_util.VimException('Error')
-        self.assertRaises(error_util.VimException, self._driver.extend_volume,
+        volume_ops.get_backing.side_effect = exceptions.VimException('Error')
+        self.assertRaises(exceptions.VimException, self._driver.extend_volume,
                           fake_vol, new_size)
 
         # If _select_ds_for_volume raised an exception, the rest code will
@@ -932,11 +862,11 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         volume_ops.get_backing.reset_mock()
         volume_ops.relocate_backing.reset_mock()
         volume_ops.move_backing_to_folder.reset_mock()
-        _extend_virtual_disk.side_effect = [error_util.
-                                            VimFaultException(mock.Mock(),
+        _extend_virtual_disk.side_effect = [exceptions.
+                                            VimFaultException([],
                                                               'Error'), None]
-        _select_ds_for_volume.side_effect = error_util.VimException('Error')
-        self.assertRaises(error_util.VimException, self._driver.extend_volume,
+        _select_ds_for_volume.side_effect = exceptions.VimException('Error')
+        self.assertRaises(exceptions.VimException, self._driver.extend_volume,
                           fake_vol, new_size)
         _extend_virtual_disk.assert_called_once_with(fake_name, new_size)
         self.assertFalse(volume_ops.get_backing.called)
@@ -951,13 +881,13 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         image_service = mock.Mock()
         image_service.show.return_value = fake_image_meta
         fake_volume = {'name': 'fake_name', 'size': 1}
-        self.assertRaises(exception.ImageUnacceptable,
+        self.assertRaises(cinder_exceptions.ImageUnacceptable,
                           self._driver.copy_image_to_volume,
                           fake_context, fake_volume,
                           image_service, fake_image_id)
 
     @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER,
@@ -1076,9 +1006,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         extend_disk.reset_mock()
         create_disk_from_preallocated_image.side_effect = (
-            error_util.VimException("Error"))
+            exceptions.VimException("Error"))
 
-        self.assertRaises(error_util.VimException,
+        self.assertRaises(exceptions.VimException,
                           self._driver.copy_image_to_volume,
                           context, volume, image_service, image_id)
         vops.delete_backing.assert_called_once_with(backing)
@@ -1123,9 +1053,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         create_descriptor.reset_mock()
         copy_image.reset_mock()
-        copy_image.side_effect = error_util.VimException("error")
+        copy_image.side_effect = exceptions.VimException("error")
         self.assertRaises(
-            error_util.VimException,
+            exceptions.VimException,
             self._driver._create_virtual_disk_from_preallocated_image,
             context, image_service, image_id, image_size_in_bytes, dc_ref,
             ds_name, folder_path, disk_name, adapter_type)
@@ -1173,7 +1103,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
             dc_ref, src_path, dest_path)
         self.assertEqual(dest_path, ret)
 
-    @mock.patch.object(vmware_images, 'fetch_stream_optimized_image')
+    @mock.patch.object(image_transfer, 'download_stream_optimized_image')
     @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
@@ -1185,7 +1115,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                                                    get_profile_id,
                                                    _select_ds_for_volume,
                                                    _extend_virtual_disk,
-                                                   fetch_optimized_image):
+                                                   download_image):
         """Test copy_image_to_volume.
 
         Test with an acceptable vmdk disk format and streamOptimized disk type.
@@ -1195,14 +1125,14 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                                                          get_profile_id,
                                                          _select_ds_for_volume,
                                                          _extend_virtual_disk,
-                                                         fetch_optimized_image)
+                                                         download_image)
 
     def _test_copy_image_to_volume_stream_optimized(self, volumeops,
                                                     session,
                                                     get_profile_id,
                                                     _select_ds_for_volume,
                                                     _extend_virtual_disk,
-                                                    fetch_optimized_image):
+                                                    download_image):
         fake_context = mock.Mock()
         fake_backing = mock.sentinel.backing
         fake_image_id = 'image-id'
@@ -1238,8 +1168,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         # If _select_ds_for_volume raises an exception, get_create_spec
         # will not be called.
-        _select_ds_for_volume.side_effect = error_util.VimException('Error')
-        self.assertRaises(exception.VolumeBackendAPIException,
+        _select_ds_for_volume.side_effect = exceptions.VimException('Error')
+        self.assertRaises(cinder_exceptions.VolumeBackendAPIException,
                           self._driver.copy_image_to_volume,
                           fake_context, fake_volume,
                           image_service, fake_image_id)
@@ -1267,17 +1197,17 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                                                      fake_summary.name,
                                                      profile_id,
                                                      adapter_type)
-        self.assertTrue(fetch_optimized_image.called)
-        fetch_optimized_image.assert_called_with(fake_context, timeout,
-                                                 image_service,
-                                                 fake_image_id,
-                                                 session=session,
-                                                 host=self.IP,
-                                                 resource_pool=fake_rp,
-                                                 vm_folder=fake_folder,
-                                                 vm_create_spec=
-                                                 vm_import_spec,
-                                                 image_size=size)
+        self.assertTrue(download_image.called)
+        download_image.assert_called_with(fake_context, timeout,
+                                          image_service,
+                                          fake_image_id,
+                                          session=session,
+                                          host=self.IP,
+                                          port=self.PORT,
+                                          resource_pool=fake_rp,
+                                          vm_folder=fake_folder,
+                                          vm_import_spec=vm_import_spec,
+                                          image_size=size)
         _extend_virtual_disk.assert_called_once_with(fake_volume['name'],
                                                      fake_volume_size)
 
@@ -1293,9 +1223,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         # If fetch_stream_optimized_image raises an exception,
         # get_backing and delete_backing will be called.
-        fetch_optimized_image.side_effect = exception.CinderException
+        download_image.side_effect = exceptions.VimException('error')
 
-        self.assertRaises(exception.CinderException,
+        self.assertRaises(exceptions.VimException,
                           self._driver.copy_image_to_volume,
                           fake_context, fake_volume,
                           image_service, fake_image_id)
@@ -1314,7 +1244,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         volume['attached_host'] = None
 
         m.ReplayAll()
-        self.assertRaises(exception.ImageUnacceptable,
+        self.assertRaises(cinder_exceptions.ImageUnacceptable,
                           self._driver.copy_volume_to_image,
                           mox.IgnoreArg(), volume,
                           mox.IgnoreArg(), image_meta)
@@ -1328,7 +1258,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         volume['instance_uuid'] = 'my_uuid'
 
         m.ReplayAll()
-        self.assertRaises(exception.InvalidVolume,
+        self.assertRaises(cinder_exceptions.InvalidVolume,
                           self._driver.copy_volume_to_image,
                           mox.IgnoreArg(), volume,
                           mox.IgnoreArg(), mox.IgnoreArg())
@@ -1374,14 +1304,21 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         # vmware_images.upload_image
         timeout = self._config.vmware_image_transfer_timeout_secs
         host_ip = self.IP
-        m.StubOutWithMock(vmware_images, 'upload_image')
-        vmware_images.upload_image(mox.IgnoreArg(), timeout, image_service,
-                                   image_id, project_id, session=self._session,
-                                   host=host_ip, vm=backing,
-                                   vmdk_file_path=vmdk_file_path,
-                                   vmdk_size=size,
-                                   image_name=image_id,
-                                   image_version=1)
+        m.StubOutWithMock(image_transfer, 'upload_image')
+        image_transfer.upload_image(mox.IgnoreArg(),
+                                    timeout,
+                                    image_service,
+                                    image_id,
+                                    project_id,
+                                    session=self._session,
+                                    host=host_ip,
+                                    port=self.PORT,
+                                    vm=backing,
+                                    vmdk_file_path=vmdk_file_path,
+                                    vmdk_size=size,
+                                    image_name=image_id,
+                                    image_version=1,
+                                    is_public=True)
 
         m.ReplayAll()
         self._driver.copy_volume_to_image(mox.IgnoreArg(), volume,
@@ -1389,40 +1326,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         m.UnsetStubs()
         m.VerifyAll()
 
-    def test_retrieve_properties_ex_fault_checker(self):
-        """Test retrieve_properties_ex_fault_checker is called."""
-        m = self.mox
-
-        class FakeVim(vim.Vim):
-            def __init__(self):
-                pass
-
-            @property
-            def client(self):
-
-                class FakeRetrv(object):
-                    def RetrievePropertiesEx(self, collector):
-                        pass
-
-                    def __getattr__(self, name):
-                        if name == 'service':
-                            return FakeRetrv()
-
-                return FakeRetrv()
-
-            def RetrieveServiceContent(self, type='ServiceInstance'):
-                return mox.MockAnything()
-
-        _vim = FakeVim()
-        m.ReplayAll()
-        # retrieve_properties_ex_fault_checker throws authentication error
-        self.assertRaises(error_util.VimFaultException,
-                          _vim.RetrievePropertiesEx, mox.IgnoreArg())
-        m.UnsetStubs()
-        m.VerifyAll()
-
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -1531,6 +1436,27 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vops.change_backing_profile.assert_called_once_with(backing,
                                                             profile_id)
 
+        # Modify the previous case with no profile change.
+        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
+                                                   vmdk.THIN_VMDK_TYPE,
+                                                   'gold-1',
+                                                   'gold-1']
+        ds_sel.select_datastore.reset_mock()
+        vops.relocate_backing.reset_mock()
+        vops.move_backing_to_folder.reset_mock()
+        vops.change_backing_profile.reset_mock()
+
+        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
+                                            host))
+        exp_req = {hub.DatastoreSelector.HARD_ANTI_AFFINITY_DS: [ds_value],
+                   hub.DatastoreSelector.PROFILE_NAME: 'gold-1',
+                   hub.DatastoreSelector.SIZE_BYTES: units.Gi}
+        ds_sel.select_datastore.assert_called_once_with(exp_req)
+        vops.relocate_backing.assert_called_once_with(
+            backing, candidate_ds, rp, host, vmdk.THIN_VMDK_TYPE)
+        vops.move_backing_to_folder.assert_called_once_with(backing, folder)
+        self.assertFalse(vops.change_backing_profile.called)
+
         # Test with disk type conversion, profile change, backing with
         # no snapshots and candidate datastore which is same as the backing
         # datastore.
@@ -1565,13 +1491,13 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                                                    'gold-1',
                                                    new_profile]
 
-        vops.clone_backing.side_effect = error_util.VimException('error')
+        vops.clone_backing.side_effect = exceptions.VimException('error')
 
         vops.rename_backing.reset_mock()
         vops.change_backing_profile.reset_mock()
 
         self.assertRaises(
-            error_util.VimException, self._driver.retype, context, vol,
+            exceptions.VimException, self._driver.retype, context, vol,
             new_type, diff, host)
         exp_rename_calls = [mock.call(backing, uuid),
                             mock.call(backing, vol['name'])]
@@ -1613,26 +1539,26 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                                                                fake_dc)
 
         # Test the exceptional case for extend_virtual_disk
-        volume_ops.extend_virtual_disk.side_effect = error_util.VimException(
+        volume_ops.extend_virtual_disk.side_effect = exceptions.VimException(
             'VimException raised.')
-        self.assertRaises(error_util.VimException,
+        self.assertRaises(exceptions.VimException,
                           self._driver._extend_vmdk_virtual_disk,
                           fake_name, fake_size)
 
-    @mock.patch.object(vmware_images, 'download_stream_optimized_disk')
+    @mock.patch.object(image_transfer, 'copy_stream_optimized_disk')
     @mock.patch('cinder.openstack.common.fileutils.file_open')
     @mock.patch.object(VMDK_DRIVER, '_temporary_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_create_backing_in_inventory')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, 'session')
     def test_backup_volume(self, session, vops, create_backing, generate_uuid,
-                           temporary_file, file_open, download_disk):
+                           temporary_file, file_open, copy_disk):
         self._test_backup_volume(session, vops, create_backing, generate_uuid,
-                                 temporary_file, file_open, download_disk)
+                                 temporary_file, file_open, copy_disk)
 
     def _test_backup_volume(self, session, vops, create_backing, generate_uuid,
-                            temporary_file, file_open, download_disk):
+                            temporary_file, file_open, copy_disk):
         volume = {'name': 'vol-1', 'id': 1, 'size': 1}
         self._db.volume_get.return_value = volume
 
@@ -1666,9 +1592,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         temporary_file.assert_called_once_with(suffix=".vmdk", prefix=uuid)
         self.assertEqual(mock.call(tmp_file_path, "wb"),
                          file_open.call_args_list[0])
-        download_disk.assert_called_once_with(
+        copy_disk.assert_called_once_with(
             context, self.IMG_TX_TIMEOUT, tmp_file, session=session,
-            host=self.IP, vm=backing, vmdk_file_path=vmdk_path,
+            host=self.IP, port=self.PORT, vm=backing, vmdk_file_path=vmdk_path,
             vmdk_size=volume['size'] * units.Gi)
         self.assertEqual(mock.call(tmp_file_path, "rb"),
                          file_open.call_args_list[1])
@@ -1678,7 +1604,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_restore_backing')
     @mock.patch('cinder.openstack.common.fileutils.file_open')
     @mock.patch.object(VMDK_DRIVER, '_temporary_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_restore_backup(self, vops, generate_uuid, temporary_file,
                             file_open, restore_backing, extend_volume):
@@ -1697,8 +1623,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vops.get_backing.return_value = backing
         vops.snapshot_exists.return_value = True
         self.assertRaises(
-            exception.InvalidVolume, self._driver.restore_backup, context,
-            backup, volume, backup_service)
+            cinder_exceptions.InvalidVolume, self._driver.restore_backup,
+            context, backup, volume, backup_service)
 
         uuid = "c1037b23-c5e9-4446-815f-3e097cbf5bb0"
         generate_uuid.return_value = uuid
@@ -1747,7 +1673,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER,
                        '_create_backing_from_stream_optimized_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     def test_restore_backing(
             self, generate_uuid, create_backing, select_ds, get_disk_type,
             vops, delete_temp_backing):
@@ -1819,12 +1745,12 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         def vops_rename(backing, new_name):
             if backing == dest and new_name == volume['name']:
-                raise error_util.VimException("error")
+                raise exceptions.VimException("error")
 
         vops.rename_backing.side_effect = vops_rename
         generate_uuid.side_effect = [src_uuid, dest_uuid, tmp_uuid]
         self.assertRaises(
-            error_util.VimException, self._driver._restore_backing, context,
+            exceptions.VimException, self._driver._restore_backing, context,
             volume, backing, tmp_file_path, backup_size)
         exp_rename_calls = [mock.call(backing, tmp_uuid),
                             mock.call(dest, volume['name']),
@@ -1835,7 +1761,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                          delete_temp_backing.call_args_list)
 
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
-    @mock.patch.object(vmware_images, 'upload_stream_optimized_disk')
+    @mock.patch.object(image_transfer, 'download_stream_optimized_data')
     @mock.patch('cinder.openstack.common.fileutils.file_open')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch(
@@ -1845,14 +1771,14 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     def test_create_backing_from_stream_optimized_file(
             self, select_ds, session, get_storage_profile_id, get_disk_type,
-            vops, file_open, upload_disk, delete_temp_backing):
+            vops, file_open, download_data, delete_temp_backing):
         self._test_create_backing_from_stream_optimized_file(
             select_ds, session, get_storage_profile_id, get_disk_type, vops,
-            file_open, upload_disk, delete_temp_backing)
+            file_open, download_data, delete_temp_backing)
 
     def _test_create_backing_from_stream_optimized_file(
             self, select_ds, session, get_storage_profile_id, get_disk_type,
-            vops, file_open, upload_disk, delete_temp_backing):
+            vops, file_open, download_data, delete_temp_backing):
         rp = mock.sentinel.rp
         folder = mock.sentinel.folder
         summary = mock.Mock()
@@ -1878,7 +1804,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         file_open_ret.__exit__ = mock.Mock(return_value=None)
 
         vm_ref = mock.sentinel.vm_ref
-        upload_disk.return_value = vm_ref
+        download_data.return_value = vm_ref
 
         context = mock.sentinel.context
         name = 'vm-1'
@@ -1892,16 +1818,16 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vops.get_create_spec.assert_called_once_with(
             name, 0, disk_type, summary.name, profile_id)
         file_open.assert_called_once_with(tmp_file_path, "rb")
-        upload_disk.assert_called_once_with(
+        download_data.assert_called_once_with(
             context, self.IMG_TX_TIMEOUT, tmp_file, session=session,
-            host=self.IP, resource_pool=rp, vm_folder=folder,
-            vm_create_spec=import_spec, vmdk_size=file_size_bytes)
+            host=self.IP, port=self.PORT, resource_pool=rp, vm_folder=folder,
+            vm_import_spec=import_spec, image_size=file_size_bytes)
 
-        upload_disk.side_effect = error_util.VimException("error")
+        download_data.side_effect = exceptions.VimException("error")
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
         self.assertRaises(
-            error_util.VimException,
+            exceptions.VimException,
             self._driver._create_backing_from_stream_optimized_file,
             context, name, volume, tmp_file_path, file_size_bytes)
         delete_temp_backing.assert_called_once_with(backing)
@@ -1919,43 +1845,17 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
                                                db=self._db)
 
-    def test_get_pbm_wsdl_location(self):
-        # no version returns None
-        wsdl = self._driver._get_pbm_wsdl_location(None)
-        self.assertIsNone(wsdl)
-
-        def expected_wsdl(version):
-            driver_dir = os.path.join(os.path.dirname(__file__), '..',
-                                      'volume', 'drivers', 'vmware')
-            driver_abs_dir = os.path.abspath(driver_dir)
-            return 'file://' + os.path.join(driver_abs_dir, 'wsdl', version,
-                                            'pbmService.wsdl')
-
-        # verify wsdl path for different version strings
-        with mock.patch('os.path.exists') as path_exists:
-            path_exists.return_value = True
-            wsdl = self._driver._get_pbm_wsdl_location(LooseVersion('5'))
-            self.assertEqual(expected_wsdl('5'), wsdl)
-            wsdl = self._driver._get_pbm_wsdl_location(LooseVersion('5.5'))
-            self.assertEqual(expected_wsdl('5.5'), wsdl)
-            wsdl = self._driver._get_pbm_wsdl_location(LooseVersion('5.5.1'))
-            self.assertEqual(expected_wsdl('5.5'), wsdl)
-            # if wsdl path does not exist, then it returns None
-            path_exists.return_value = False
-            wsdl = self._driver._get_pbm_wsdl_location(LooseVersion('5.5'))
-            self.assertIsNone(wsdl)
-
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'session', new_callable=mock.PropertyMock)
     def test_get_vc_version(self, session):
         # test config overrides fetching from VC server
         version = self._driver._get_vc_version()
-        self.assertEqual(self.DEFAULT_VC_VERSION, version)
+        self.assertEqual(ver.LooseVersion(self.DEFAULT_VC_VERSION), version)
         # explicitly remove config entry
         self._driver.configuration.vmware_host_version = None
         session.return_value.vim.service_content.about.version = '6.0.1'
         version = self._driver._get_vc_version()
-        self.assertEqual(LooseVersion('6.0.1'), version)
+        self.assertEqual(ver.LooseVersion('6.0.1'), version)
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_vc_version')
@@ -1964,7 +1864,11 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     def test_do_setup_with_pbm_disabled(self, session, get_vc_version):
         session_obj = mock.Mock(name='session')
         session.return_value = session_obj
+<<<<<<< HEAD
         get_vc_version.return_value = LooseVersion('5.0')
+=======
+        get_vc_version.return_value = ver.LooseVersion('5.0')
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
         self._driver.do_setup(mock.ANY)
 
@@ -1973,26 +1877,45 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self.assertEqual(session_obj, self._driver.volumeops._session)
         self.assertEqual(session_obj, self._driver.ds_sel._session)
 
+<<<<<<< HEAD
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_pbm_wsdl_location')
+=======
+    @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_vc_version')
     def test_do_setup_with_invalid_pbm_wsdl(self, get_vc_version,
                                             get_pbm_wsdl_location):
+<<<<<<< HEAD
         vc_version = LooseVersion('5.5')
         get_vc_version.return_value = vc_version
         get_pbm_wsdl_location.return_value = None
 
         self.assertRaises(error_util.VMwareDriverException,
+=======
+        vc_version = ver.LooseVersion('5.5')
+        get_vc_version.return_value = vc_version
+        get_pbm_wsdl_location.return_value = None
+
+        self.assertRaises(exceptions.VMwareDriverException,
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
                           self._driver.do_setup,
                           mock.ANY)
 
         self.assertFalse(self._driver._storage_policy_enabled)
         get_vc_version.assert_called_once_with()
+<<<<<<< HEAD
         get_pbm_wsdl_location.assert_called_once_with(vc_version)
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_pbm_wsdl_location')
+=======
+        get_pbm_wsdl_location.assert_called_once_with(
+            six.text_type(vc_version))
+
+    @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_vc_version')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
@@ -2001,7 +1924,11 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         session_obj = mock.Mock(name='session')
         session.return_value = session_obj
 
+<<<<<<< HEAD
         vc_version = LooseVersion('5.5')
+=======
+        vc_version = ver.LooseVersion('5.5')
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
         get_vc_version.return_value = vc_version
         get_pbm_wsdl_location.return_value = 'file:///pbm.wsdl'
 
@@ -2009,7 +1936,12 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
         self.assertTrue(self._driver._storage_policy_enabled)
         get_vc_version.assert_called_once_with()
+<<<<<<< HEAD
         get_pbm_wsdl_location.assert_called_once_with(vc_version)
+=======
+        get_pbm_wsdl_location.assert_called_once_with(
+            six.text_type(vc_version))
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
         self.assertEqual(session_obj, self._driver.volumeops._session)
         self.assertEqual(session_obj, self._driver.ds_sel._session)
 
@@ -2361,7 +2293,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         get_clone_type.return_value = linked_clone
 
         # invoke the create_volume_from_snapshot api
-        self.assertRaises(exception.InvalidVolume,
+        self.assertRaises(cinder_exceptions.InvalidVolume,
                           driver.create_cloned_volume,
                           volume,
                           src_vref)
@@ -2396,50 +2328,46 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         profile = self._driver._get_storage_profile(volume)
         self.assertIsNone(profile)
 
-    @mock.patch('cinder.volume.drivers.vmware.vim_util.'
-                'convert_datastores_to_hubs')
-    @mock.patch('cinder.volume.drivers.vmware.vim_util.'
-                'convert_hubs_to_datastores')
+    @mock.patch('oslo_vmware.pbm.convert_datastores_to_hubs')
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    @mock.patch('oslo_vmware.pbm.filter_hubs_by_profile')
+    @mock.patch('oslo_vmware.pbm.filter_datastores_by_hubs')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'session', new_callable=mock.PropertyMock)
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'volumeops', new_callable=mock.PropertyMock)
-    def test_filter_ds_by_profile(self, volumeops, session, hubs_to_ds,
-                                  ds_to_hubs):
+    def test_filter_ds_by_profile(self, session, filter_dss, filter_hubs,
+                                  get_profile_id, dss_to_hubs):
         """Test vmdk _filter_ds_by_profile() method."""
 
-        volumeops = volumeops.return_value
         session = session.return_value
 
         # Test with no profile id
         datastores = [mock.sentinel.ds1, mock.sentinel.ds2]
         profile = 'fake_profile'
-        volumeops.retrieve_profile_id.return_value = None
-        self.assertRaises(error_util.VimException,
+        get_profile_id.return_value = None
+        self.assertRaises(exceptions.VimException,
                           self._driver._filter_ds_by_profile,
                           datastores, profile)
-        volumeops.retrieve_profile_id.assert_called_once_with(profile)
+        get_profile_id.assert_called_once_with(session, profile)
 
         # Test with a fake profile id
         profileId = 'fake_profile_id'
         filtered_dss = [mock.sentinel.ds1]
         # patch method calls from _filter_ds_by_profile
-        volumeops.retrieve_profile_id.return_value = profileId
+        get_profile_id.return_value = profileId
         pbm_cf = mock.sentinel.pbm_cf
         session.pbm.client.factory = pbm_cf
         hubs = [mock.sentinel.hub1, mock.sentinel.hub2]
-        ds_to_hubs.return_value = hubs
-        volumeops.filter_matching_hubs.return_value = mock.sentinel.hubs
-        hubs_to_ds.return_value = filtered_dss
+        dss_to_hubs.return_value = hubs
+        filter_hubs.return_value = mock.sentinel.hubs
+        filter_dss.return_value = filtered_dss
         # call _filter_ds_by_profile with a fake profile
         actual_dss = self._driver._filter_ds_by_profile(datastores, profile)
         # verify return value and called methods
         self.assertEqual(filtered_dss, actual_dss,
                          "Wrong filtered datastores returned.")
-        ds_to_hubs.assert_called_once_with(pbm_cf, datastores)
-        volumeops.filter_matching_hubs.assert_called_once_with(hubs,
-                                                               profileId)
-        hubs_to_ds.assert_called_once_with(mock.sentinel.hubs, datastores)
+        dss_to_hubs.assert_called_once_with(pbm_cf, datastores)
+        filter_hubs.assert_called_once_with(session, hubs, profileId)
+        filter_dss.assert_called_once_with(mock.sentinel.hubs, datastores)
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'session', new_callable=mock.PropertyMock)
@@ -2495,7 +2423,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self._test_extend_vmdk_virtual_disk(volume_ops)
 
     @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER,
@@ -2542,7 +2470,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self._test_create_virtual_disk_from_sparse_image(
             copy_image, copy_temp_virtual_disk, flat_extent_path, sparse_path)
 
-    @mock.patch.object(vmware_images, 'fetch_stream_optimized_image')
+    @mock.patch.object(image_transfer, 'download_stream_optimized_image')
     @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
@@ -2553,7 +2481,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                    get_profile_id,
                                                    _select_ds_for_volume,
                                                    _extend_virtual_disk,
-                                                   fetch_optimized_image):
+                                                   download_image):
         """Test copy_image_to_volume.
 
         Test with an acceptable vmdk disk format and streamOptimized disk type.
@@ -2563,10 +2491,10 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                          get_profile_id,
                                                          _select_ds_for_volume,
                                                          _extend_virtual_disk,
-                                                         fetch_optimized_image)
+                                                         download_image)
 
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -2587,23 +2515,23 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self._test_extend_volume(volume_ops, _extend_virtual_disk,
                                  _select_ds_for_volume)
 
-    @mock.patch.object(vmware_images, 'download_stream_optimized_disk')
+    @mock.patch.object(image_transfer, 'copy_stream_optimized_disk')
     @mock.patch('cinder.openstack.common.fileutils.file_open')
     @mock.patch.object(VMDK_DRIVER, '_temporary_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_create_backing_in_inventory')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, 'session')
     def test_backup_volume(self, session, vops, create_backing, generate_uuid,
-                           temporary_file, file_open, download_disk):
+                           temporary_file, file_open, copy_disk):
         self._test_backup_volume(session, vops, create_backing, generate_uuid,
-                                 temporary_file, file_open, download_disk)
+                                 temporary_file, file_open, copy_disk)
 
     @mock.patch.object(VMDK_DRIVER, 'extend_volume')
     @mock.patch.object(VMDK_DRIVER, '_restore_backing')
     @mock.patch('cinder.openstack.common.fileutils.file_open')
     @mock.patch.object(VMDK_DRIVER, '_temporary_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_restore_backup(self, vops, generate_uuid, temporary_file,
                             file_open, restore_backing, extend_volume):
@@ -2617,7 +2545,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER,
                        '_create_backing_from_stream_optimized_file')
-    @mock.patch('cinder.openstack.common.uuidutils.generate_uuid')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
     def test_restore_backing(
             self, generate_uuid, create_backing, select_ds, get_disk_type,
             vops, delete_temp_backing):
@@ -2626,7 +2554,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
             delete_temp_backing)
 
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
-    @mock.patch.object(vmware_images, 'upload_stream_optimized_disk')
+    @mock.patch.object(image_transfer, 'download_stream_optimized_data')
     @mock.patch('cinder.openstack.common.fileutils.file_open')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch(
@@ -2636,10 +2564,10 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     def test_create_backing_from_stream_optimized_file(
             self, select_ds, session, get_storage_profile_id, get_disk_type,
-            vops, file_open, upload_disk, delete_temp_backing):
+            vops, file_open, download_data, delete_temp_backing):
         self._test_create_backing_from_stream_optimized_file(
             select_ds, session, get_storage_profile_id, get_disk_type, vops,
-            file_open, upload_disk, delete_temp_backing)
+            file_open, download_data, delete_temp_backing)
 
     @mock.patch.object(VMDK_DRIVER, '_get_folder_ds_summary')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -2727,6 +2655,6 @@ class ImageDiskTypeTest(test.TestCase):
         vmdk.ImageDiskType.validate("preallocated")
         vmdk.ImageDiskType.validate("streamOptimized")
         vmdk.ImageDiskType.validate("sparse")
-        self.assertRaises(exception.ImageUnacceptable,
+        self.assertRaises(cinder_exceptions.ImageUnacceptable,
                           vmdk.ImageDiskType.validate,
                           "thick")

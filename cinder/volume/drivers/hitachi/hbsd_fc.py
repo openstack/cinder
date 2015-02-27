@@ -16,16 +16,15 @@ Fibre channel Cinder volume driver for Hitachi storage.
 
 """
 
-from contextlib import nested
 import os
 import threading
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import excutils
+from cinder.i18n import _LW
 from cinder.openstack.common import log as logging
 from cinder import utils
 import cinder.volume.driver
@@ -181,7 +180,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
                     try:
                         self._fill_group(hgs, port, host_grp_name, wwns_copy)
                     except Exception as ex:
-                        LOG.warning(_('Failed to add host group: %s') %
+                        LOG.warning(_LW('Failed to add host group: %s') %
                                     six.text_type(ex))
                         msg = basic_lib.set_msg(
                             308, port=port, name=host_grp_name)
@@ -416,8 +415,8 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             msg = basic_lib.output_err(619, volume_id=volume['id'])
             raise exception.HBSDError(message=msg)
         self.common.add_volinfo(ldev, volume['id'])
-        with nested(self.common.volume_info[ldev]['lock'],
-                    self.common.volume_info[ldev]['in_use']):
+        with self.common.volume_info[ldev]['lock'],\
+                self.common.volume_info[ldev]['in_use']:
             hostgroups = self._initialize_connection(ldev, connector)
             properties = self._get_properties(volume, hostgroups)
             LOG.debug('Initialize volume_info: %s'
@@ -457,8 +456,8 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             raise exception.HBSDError(message=msg)
 
         self.common.add_volinfo(ldev, volume['id'])
-        with nested(self.common.volume_info[ldev]['lock'],
-                    self.common.volume_info[ldev]['in_use']):
+        with self.common.volume_info[ldev]['lock'],\
+                self.common.volume_info[ldev]['in_use']:
             self._terminate_connection(ldev, connector, hostgroups)
             properties = self._get_properties(volume, hostgroups,
                                               terminate=True)
@@ -519,3 +518,14 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
         super(HBSDFCDriver, self).restore_backup(context, backup,
                                                  volume, backup_service)
         self.discard_zero_page(volume)
+
+    def manage_existing(self, volume, existing_ref):
+        return self.common.manage_existing(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        self.do_setup_status.wait()
+        return self.common.manage_existing_get_size(volume, existing_ref)
+
+    def unmanage(self, volume):
+        self.do_setup_status.wait()
+        self.common.unmanage(volume)

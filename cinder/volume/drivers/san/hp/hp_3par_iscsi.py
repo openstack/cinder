@@ -36,9 +36,8 @@ except ImportError:
     hpexceptions = None
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import log as logging
-from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san import san
@@ -74,32 +73,48 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.5 - Added CHAP support, requires 3.1.3 MU1 firmware
                 and hp3parclient 3.1.0.
         2.0.6 - Fixing missing login/logout around attach/detach bug #1367429
+        2.0.7 - Add support for pools with model update
+        2.0.8 - Migrate without losing type settings bug #1356608
+        2.0.9 - Removing locks bug #1381190
+        2.0.10 - Add call to queryHost instead SSH based findHost #1398206
+        2.0.11 - Added missing host name during attach fix #1398206
+        2.0.12 - Removed usage of host name cache #1398914
+        2.0.13 - Update LOG usage to fix translations.  bug #1384312
+        2.0.14 - Do not allow a different iSCSI IP (hp3par_iscsi_ips) to be
+                 used during live-migration.  bug #1423958
 
     """
 
-    VERSION = "2.0.6"
+    VERSION = "2.0.14"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
-        self.common = None
         self.configuration.append_config_values(hpcommon.hp3par_opts)
         self.configuration.append_config_values(san.san_opts)
 
     def _init_common(self):
         return hpcommon.HP3PARCommon(self.configuration)
 
-    def _check_flags(self):
+    def _login(self):
+        common = self._init_common()
+        common.do_setup(None)
+        common.client_login()
+        return common
+
+    def _logout(self, common):
+        common.client_logout()
+
+    def _check_flags(self, common):
         """Sanity check to ensure we have required options set."""
         required_flags = ['hp3par_api_url', 'hp3par_username',
                           'hp3par_password', 'san_ip', 'san_login',
                           'san_password']
-        self.common.check_flags(self.configuration, required_flags)
+        common.check_flags(self.configuration, required_flags)
 
-    @utils.synchronized('3par', external=True)
-    def get_volume_stats(self, refresh):
-        self.common.client_login()
+    def get_volume_stats(self, refresh=False):
+        common = self._login()
         try:
-            stats = self.common.get_volume_stats(refresh)
+            stats = common.get_volume_stats(refresh)
             stats['storage_protocol'] = 'iSCSI'
             stats['driver_version'] = self.VERSION
             backend_name = self.configuration.safe_get('volume_backend_name')
@@ -107,20 +122,21 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                                             self.__class__.__name__)
             return stats
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
     def do_setup(self, context):
-        self.common = self._init_common()
-        self._check_flags()
-        self.common.do_setup(context)
+        common = self._init_common()
+        common.do_setup(context)
+        self._check_flags(common)
+        common.check_for_setup_error()
 
-        self.common.client_login()
+        common.client_login()
         try:
-            self.initialize_iscsi_ports()
+            self.initialize_iscsi_ports(common)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    def initialize_iscsi_ports(self):
+    def initialize_iscsi_ports(self, common):
         # map iscsi_ip-> ip_port
         #             -> iqn
         #             -> nsp
@@ -151,7 +167,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         # get all the valid iSCSI ports from 3PAR
         # when found, add the valid iSCSI ip, ip port, iqn and nsp
         # to the iSCSI IP dictionary
-        iscsi_ports = self.common.get_active_iscsi_target_ports()
+        iscsi_ports = common.get_active_iscsi_target_ports()
 
         for port in iscsi_ports:
             ip = port['IPAddr']
@@ -182,67 +198,56 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             raise exception.InvalidInput(reason=(msg))
 
     def check_for_setup_error(self):
-        """Returns an error if prerequisites aren't met."""
-        self._check_flags()
+        """Setup errors are already checked for in do_setup so return pass."""
+        pass
 
-    @utils.synchronized('3par', external=True)
     def create_volume(self, volume):
-        self.common.client_login()
+        common = self._login()
         try:
-            metadata = self.common.create_volume(volume)
-            return {'metadata': metadata}
+            return common.create_volume(volume)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def create_cloned_volume(self, volume, src_vref):
         """Clone an existing volume."""
-        self.common.client_login()
+        common = self._login()
         try:
-            new_vol = self.common.create_cloned_volume(volume, src_vref)
-            return {'metadata': new_vol}
+            return common.create_cloned_volume(volume, src_vref)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def delete_volume(self, volume):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.delete_volume(volume)
+            common.delete_volume(volume)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
 
         TODO: support using the size from the user.
         """
-        self.common.client_login()
+        common = self._login()
         try:
-            metadata = self.common.create_volume_from_snapshot(volume,
-                                                               snapshot)
-            return {'metadata': metadata}
+            return common.create_volume_from_snapshot(volume, snapshot)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def create_snapshot(self, snapshot):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.create_snapshot(snapshot)
+            common.create_snapshot(snapshot)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def delete_snapshot(self, snapshot):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.delete_snapshot(snapshot)
+            common.delete_snapshot(snapshot)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
 
@@ -268,14 +273,36 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
           * Create a host on the 3par
           * create vlun on the 3par
         """
-        self.common.client_login()
+        common = self._login()
         try:
             # we have to make sure we have a host
-            host, username, password = self._create_host(volume, connector)
-            least_used_nsp = self._get_least_used_nsp_for_host(host['name'])
+            host, username, password = self._create_host(
+                common,
+                volume,
+                connector)
+
+            least_used_nsp = None
+            try:
+                vol_name = common._get_3par_vol_name(volume['id'])
+                existing_vlun = common.client.getVLUN(vol_name)
+
+                # We override the nsp here on purpose to force the
+                # volume to be exported out the same IP as it already is.
+                # This happens during nova live-migration, we want to
+                # disable the picking of a different IP that we export
+                # the volume to, or nova complains.
+                least_used_nsp = common.build_nsp(existing_vlun['portPos'])
+            except hpexceptions.HTTPNotFound:
+                # ignore this error, as we will create the vlun later
+                pass
+
+            if not least_used_nsp:
+                least_used_nsp = self._get_least_used_nsp_for_host(
+                    common,
+                    host['name'])
 
             # now that we have a host, create the VLUN
-            vlun = self.common.create_vlun(volume, host, least_used_nsp)
+            vlun = common.create_vlun(volume, host, least_used_nsp)
 
             if least_used_nsp is None:
                 msg = _("Least busy iSCSI port not found, "
@@ -303,42 +330,44 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
             return info
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
-        self.common.client_login()
+        common = self._login()
         try:
-            hostname = self.common._safe_hostname(connector['host'])
-            self.common.terminate_connection(volume, hostname,
-                                             iqn=connector['initiator'])
-            self._clear_chap_3par(volume)
+            hostname = common._safe_hostname(connector['host'])
+            common.terminate_connection(
+                volume,
+                hostname,
+                iqn=connector['initiator'])
+            self._clear_chap_3par(common, volume)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    def _clear_chap_3par(self, volume):
+    def _clear_chap_3par(self, common, volume):
         """Clears CHAP credentials on a 3par volume.
 
         Ignore exceptions caused by the keys not being present on a volume.
         """
-        vol_name = self.common._get_3par_vol_name(volume['id'])
+        vol_name = common._get_3par_vol_name(volume['id'])
 
         try:
-            self.common.client.removeVolumeMetaData(vol_name, CHAP_USER_KEY)
+            common.client.removeVolumeMetaData(vol_name, CHAP_USER_KEY)
         except hpexceptions.HTTPNotFound:
             pass
         except Exception:
             raise
 
         try:
-            self.common.client.removeVolumeMetaData(vol_name, CHAP_PASS_KEY)
+            common.client.removeVolumeMetaData(vol_name, CHAP_PASS_KEY)
         except hpexceptions.HTTPNotFound:
             pass
         except Exception:
             raise
 
-    def _create_3par_iscsi_host(self, hostname, iscsi_iqn, domain, persona_id):
+    def _create_3par_iscsi_host(self, common, hostname, iscsi_iqn, domain,
+                                persona_id):
         """Create a 3PAR host.
 
         Create a 3PAR host, if there is already a host on the 3par using
@@ -346,9 +375,13 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         used by 3PAR.
         """
         # first search for an existing host
-        host_found = self.common.client.findHost(iqn=iscsi_iqn)
+        host_found = None
+        hosts = common.client.queryHost(iqns=[iscsi_iqn])
+
+        if hosts and hosts['members'] and 'name' in hosts['members'][0]:
+            host_found = hosts['members'][0]['name']
+
         if host_found is not None:
-            self.common.hosts_naming_dict[hostname] = host_found
             return host_found
         else:
             if isinstance(iscsi_iqn, str) or isinstance(iscsi_iqn, unicode):
@@ -356,73 +389,87 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             else:
                 iqn = iscsi_iqn
             persona_id = int(persona_id)
-            self.common.client.createHost(hostname, iscsiNames=iqn,
-                                          optional={'domain': domain,
-                                                    'persona': persona_id})
+            common.client.createHost(hostname, iscsiNames=iqn,
+                                     optional={'domain': domain,
+                                               'persona': persona_id})
             return hostname
 
-    def _modify_3par_iscsi_host(self, hostname, iscsi_iqn):
-        mod_request = {'pathOperation': self.common.client.HOST_EDIT_ADD,
+    def _modify_3par_iscsi_host(self, common, hostname, iscsi_iqn):
+        mod_request = {'pathOperation': common.client.HOST_EDIT_ADD,
                        'iSCSINames': [iscsi_iqn]}
 
-        self.common.client.modifyHost(hostname, mod_request)
+        common.client.modifyHost(hostname, mod_request)
 
-    def _set_3par_chaps(self, hostname, volume, username, password):
+    def _set_3par_chaps(self, common, hostname, volume, username, password):
         """Sets a 3PAR host's CHAP credentials."""
         if not self.configuration.hp3par_iscsi_chap_enabled:
             return
 
-        mod_request = {'chapOperation': self.common.client.HOST_EDIT_ADD,
-                       'chapOperationMode': self.common.client.CHAP_INITIATOR,
+        mod_request = {'chapOperation': common.client.HOST_EDIT_ADD,
+                       'chapOperationMode': common.client.CHAP_INITIATOR,
                        'chapName': username,
                        'chapSecret': password}
-        self.common.client.modifyHost(hostname, mod_request)
+        common.client.modifyHost(hostname, mod_request)
 
-    def _create_host(self, volume, connector):
+    def _create_host(self, common, volume, connector):
         """Creates or modifies existing 3PAR host."""
         # make sure we don't have the host already
         host = None
         username = None
         password = None
-        hostname = self.common._safe_hostname(connector['host'])
-        cpg = self.common.get_cpg(volume, allowSnap=True)
-        domain = self.common.get_domain(cpg)
+        hostname = common._safe_hostname(connector['host'])
+        cpg = common.get_cpg(volume, allowSnap=True)
+        domain = common.get_domain(cpg)
 
         # Get the CHAP secret if CHAP is enabled
         if self.configuration.hp3par_iscsi_chap_enabled:
-            vol_name = self.common._get_3par_vol_name(volume['id'])
-            username = self.common.client.getVolumeMetaData(
+            vol_name = common._get_3par_vol_name(volume['id'])
+            username = common.client.getVolumeMetaData(
                 vol_name, CHAP_USER_KEY)['value']
-            password = self.common.client.getVolumeMetaData(
+            password = common.client.getVolumeMetaData(
                 vol_name, CHAP_PASS_KEY)['value']
 
         try:
-            host = self.common._get_3par_host(hostname)
+            host = common._get_3par_host(hostname)
         except hpexceptions.HTTPNotFound:
             # get persona from the volume type extra specs
-            persona_id = self.common.get_persona_type(volume)
+            persona_id = common.get_persona_type(volume)
             # host doesn't exist, we have to create it
-            hostname = self._create_3par_iscsi_host(hostname,
+            hostname = self._create_3par_iscsi_host(common,
+                                                    hostname,
                                                     connector['initiator'],
                                                     domain,
                                                     persona_id)
-            self._set_3par_chaps(hostname, volume, username, password)
-            host = self.common._get_3par_host(hostname)
+            self._set_3par_chaps(common, hostname, volume, username, password)
+            host = common._get_3par_host(hostname)
         else:
             if 'iSCSIPaths' not in host or len(host['iSCSIPaths']) < 1:
-                self._modify_3par_iscsi_host(hostname, connector['initiator'])
-                self._set_3par_chaps(hostname, volume, username, password)
-                host = self.common._get_3par_host(hostname)
+                self._modify_3par_iscsi_host(
+                    common, hostname,
+                    connector['initiator'])
+                self._set_3par_chaps(
+                    common,
+                    hostname,
+                    volume,
+                    username,
+                    password)
+                host = common._get_3par_host(hostname)
             elif (not host['initiatorChapEnabled'] and
                     self.configuration.hp3par_iscsi_chap_enabled):
-                LOG.warn(_("Host exists without CHAP credentials set and has "
-                           "iSCSI attachments but CHAP is enabled.  Updating "
-                           "host with new CHAP credentials."))
-                self._set_3par_chaps(hostname, volume, username, password)
+                LOG.warn(_LW("Host exists without CHAP credentials set "
+                             "and has iSCSI attachments but CHAP is "
+                             "enabled.  Updating host with new CHAP "
+                             "credentials."))
+                self._set_3par_chaps(
+                    common,
+                    hostname,
+                    volume,
+                    username,
+                    password)
 
         return host, username, password
 
-    def _do_export(self, volume):
+    def _do_export(self, common, volume):
         """Gets the associated account, generates CHAP info and updates."""
         model_update = {}
 
@@ -436,17 +483,17 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         chap_password = None
         try:
             # Get all active VLUNs for the host
-            vluns = self.common.client.getHostVLUNs(chap_username)
+            vluns = common.client.getHostVLUNs(chap_username)
 
             # Host has active VLUNs... is CHAP enabled on host?
-            host_info = self.common.client.getHost(chap_username)
+            host_info = common.client.getHost(chap_username)
 
             if not host_info['initiatorChapEnabled']:
-                LOG.warn(_("Host has no CHAP key, but CHAP is enabled."))
+                LOG.warn(_LW("Host has no CHAP key, but CHAP is enabled."))
 
         except hpexceptions.HTTPNotFound:
             chap_password = volume_utils.generate_password(16)
-            LOG.warn(_("No host or VLUNs exist. Generating new CHAP key."))
+            LOG.warn(_LW("No host or VLUNs exist. Generating new CHAP key."))
         else:
             # Get a list of all iSCSI VLUNs and see if there is already a CHAP
             # key assigned to one of them.  Use that CHAP key if present,
@@ -465,7 +512,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 if ('remoteName' in vlun and
                         re.match('iqn.*', vlun['remoteName'])):
                     try:
-                        chap_password = self.common.client.getVolumeMetaData(
+                        chap_password = common.client.getVolumeMetaData(
                             vlun['volumeName'], CHAP_PASS_KEY)['value']
                         chap_exists = True
                         break
@@ -474,18 +521,18 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                                   "but CHAP is enabled. Skipping." %
                                   vlun['remoteName'])
                 else:
-                    LOG.warn(_("Non-iSCSI VLUN detected."))
+                    LOG.warn(_LW("Non-iSCSI VLUN detected."))
 
             if not chap_exists:
                 chap_password = volume_utils.generate_password(16)
-                LOG.warn(_("No VLUN contained CHAP credentials. "
-                           "Generating new CHAP key."))
+                LOG.warn(_LW("No VLUN contained CHAP credentials. "
+                             "Generating new CHAP key."))
 
         # Add CHAP credentials to the volume metadata
-        vol_name = self.common._get_3par_vol_name(volume['id'])
-        self.common.client.setVolumeMetaData(
+        vol_name = common._get_3par_vol_name(volume['id'])
+        common.client.setVolumeMetaData(
             vol_name, CHAP_USER_KEY, chap_username)
-        self.common.client.setVolumeMetaData(
+        common.client.setVolumeMetaData(
             vol_name, CHAP_PASS_KEY, chap_password)
 
         model_update['provider_auth'] = ('CHAP %s %s' %
@@ -493,28 +540,26 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
         return model_update
 
-    @utils.synchronized('3par', external=True)
     def create_export(self, context, volume):
+        common = self._login()
         try:
-            self.common.client_login()
-            return self._do_export(volume)
+            return self._do_export(common, volume)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def ensure_export(self, context, volume):
         """Ensure the volume still exists on the 3PAR.
 
         Also retrieves CHAP credentials, if present on the volume
         """
+        common = self._login()
         try:
-            self.common.client_login()
-            vol_name = self.common._get_3par_vol_name(volume['id'])
-            self.common.client.getVolume(vol_name)
+            vol_name = common._get_3par_vol_name(volume['id'])
+            common.client.getVolume(vol_name)
         except hpexceptions.HTTPNotFound:
-            LOG.error(_("Volume %s doesn't exist on array.") % vol_name)
+            LOG.error(_LE("Volume %s doesn't exist on array."), vol_name)
         else:
-            metadata = self.common.client.getAllVolumeMetaData(vol_name)
+            metadata = common.client.getAllVolumeMetaData(vol_name)
 
             username = None
             password = None
@@ -533,13 +578,12 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
             return model_update
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def remove_export(self, context, volume):
         pass
 
-    def _get_least_used_nsp_for_host(self, hostname):
+    def _get_least_used_nsp_for_host(self, common, hostname):
         """Get the least used NSP for the current host.
 
         Steps to determine which NSP to use.
@@ -554,17 +598,18 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             return iscsi_nsps[0]
 
         # Try to reuse an existing iscsi path to the host
-        vluns = self.common.client.getVLUNs()
+        vluns = common.client.getVLUNs()
         for vlun in vluns['members']:
             if vlun['active']:
                 if vlun['hostname'] == hostname:
-                    temp_nsp = self.common.build_nsp(vlun['portPos'])
+                    temp_nsp = common.build_nsp(vlun['portPos'])
                     if temp_nsp in iscsi_nsps:
                         # this host already has an iscsi path, so use it
                         return temp_nsp
 
         # Calculate the least used iscsi nsp
-        least_used_nsp = self._get_least_used_nsp(vluns['members'],
+        least_used_nsp = self._get_least_used_nsp(common,
+                                                  vluns['members'],
                                                   self._get_iscsi_nsps())
         return least_used_nsp
 
@@ -581,7 +626,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             if value['nsp'] == nsp:
                 return key
 
-    def _get_least_used_nsp(self, vluns, nspss):
+    def _get_least_used_nsp(self, common, vluns, nspss):
         """"Return the nsp that has the fewest active vluns."""
         # return only the nsp (node:server:port)
         # count the number of nsps
@@ -594,7 +639,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
         for vlun in vluns:
             if vlun['active']:
-                nsp = self.common.build_nsp(vlun['portPos'])
+                nsp = common.build_nsp(vlun['portPos'])
                 if nsp in nsp_counts:
                     nsp_counts[nsp] = nsp_counts[nsp] + 1
 
@@ -607,70 +652,78 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
         return current_least_used_nsp
 
-    @utils.synchronized('3par', external=True)
     def extend_volume(self, volume, new_size):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.extend_volume(volume, new_size)
+            common.extend_volume(volume, new_size)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def manage_existing(self, volume, existing_ref):
-        self.common.client_login()
+        common = self._login()
         try:
-            return self.common.manage_existing(volume, existing_ref)
+            return common.manage_existing(volume, existing_ref)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def manage_existing_get_size(self, volume, existing_ref):
-        self.common.client_login()
+        common = self._login()
         try:
-            size = self.common.manage_existing_get_size(volume, existing_ref)
+            return common.manage_existing_get_size(volume, existing_ref)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-        return size
-
-    @utils.synchronized('3par', external=True)
     def unmanage(self, volume):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.unmanage(volume)
+            common.unmanage(volume)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def attach_volume(self, context, volume, instance_uuid, host_name,
                       mountpoint):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.attach_volume(volume, instance_uuid)
+            common.attach_volume(volume, instance_uuid)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def detach_volume(self, context, volume):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.detach_volume(volume)
+            common.detach_volume(volume)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
-        self.common.client_login()
+        common = self._login()
         try:
-            return self.common.retype(volume, new_type, diff, host)
+            return common.retype(volume, new_type, diff, host)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def migrate_volume(self, context, volume, host):
-        self.common.client_login()
+        if volume['status'] == 'in-use':
+            protocol = host['capabilities']['storage_protocol']
+            if protocol != 'iSCSI':
+                LOG.debug("3PAR ISCSI driver cannot migrate in-use volume "
+                          "to a host with storage_protocol=%s." % protocol)
+                return False, None
+
+        common = self._login()
         try:
-            return self.common.migrate_volume(volume, host)
+            return common.migrate_volume(volume, host)
         finally:
-            self.common.client_logout()
+            self._logout(common)
+
+    def get_pool(self, volume):
+        common = self._login()
+        try:
+            return common.get_cpg(volume)
+        except hpexceptions.HTTPNotFound:
+            reason = (_("Volume %s doesn't exist on array.") % volume)
+            LOG.error(reason)
+            raise exception.InvalidVolume(reason)
+        finally:
+            self._logout(common)

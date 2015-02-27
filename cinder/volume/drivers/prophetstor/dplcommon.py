@@ -14,6 +14,8 @@
 #    under the License.
 """
 Implementation of the class of ProphetStor DPL storage adapter of Federator.
+    # v2.0.1 Consistency group support
+    # v2.0.2 Pool aware scheduler
 """
 
 import base64
@@ -23,20 +25,22 @@ import json
 import random
 import time
 
+from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LI, _LW, _LE
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import units
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import options
 from cinder.volume.drivers.san import san
+from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
 CONNECTION_RETRY = 10
+MAXSNAPSHOTS = 1024
 DISCOVER_SERVER_TYPE = 'dpl'
 DPL_BLOCKSTOR = '/dpl_blockstor'
 DPL_SYSTEM = '/dpl_system'
@@ -85,9 +89,9 @@ class DPLCommand(object):
             try:
                 payload = json.dumps(params, ensure_ascii=False)
                 payload.encode('utf-8')
-            except Exception:
-                LOG.error(_('JSON encode params error: %s.'),
-                          six.text_type(params))
+            except Exception as e:
+                LOG.error(_LE('JSON encode params %(param)s error:'
+                              ' %(status)s.'), {'param': params, 'status': e})
                 retcode = errno.EINVAL
         for i in range(CONNECTION_RETRY):
             try:
@@ -98,12 +102,12 @@ class DPLCommand(object):
                     retcode = 0
                     break
             except IOError as ioerr:
-                LOG.error(_('Connect to Flexvisor error: %s.'),
-                          six.text_type(ioerr))
+                LOG.error(_LE('Connect to Flexvisor error: %s.'),
+                          ioerr)
                 retcode = errno.ENOTCONN
             except Exception as e:
-                LOG.error(_('Connect to Flexvisor failed: %s.'),
-                          six.text_type(e))
+                LOG.error(_LE('Connect to Flexvisor failed: %s.'),
+                          e)
                 retcode = errno.EFAULT
 
         retry = CONNECTION_RETRY
@@ -126,8 +130,8 @@ class DPLCommand(object):
                     retcode = errno.ENOTCONN
                 continue
             except Exception as e:
-                LOG.error(_('Failed to send request: %s.'),
-                          six.text_type(e))
+                LOG.error(_LE('Failed to send request: %s.'),
+                          e)
                 retcode = errno.EFAULT
                 break
 
@@ -135,7 +139,7 @@ class DPLCommand(object):
                 try:
                     response = connection.getresponse()
                     if response.status == httplib.SERVICE_UNAVAILABLE:
-                        LOG.error(_('The Flexvisor service is unavailable.'))
+                        LOG.error(_LE('The Flexvisor service is unavailable.'))
                         time.sleep(1)
                         retry -= 1
                         retcode = errno.ENOPROTOOPT
@@ -149,8 +153,8 @@ class DPLCommand(object):
                     retcode = errno.EFAULT
                     continue
                 except Exception as e:
-                    LOG.error(_('Failed to get response: %s.'),
-                              six.text_type(e.message))
+                    LOG.error(_LE('Failed to get response: %s.'),
+                              e)
                     retcode = errno.EFAULT
                     break
 
@@ -158,12 +162,12 @@ class DPLCommand(object):
                 response.status == httplib.NOT_FOUND:
             retcode = errno.ENODATA
         elif retcode == 0 and response.status not in expected_status:
-            LOG.error(_('%(method)s %(url)s unexpected response status: '
-                        '%(response)s (expects: %(expects)s).')
-                      % {'method': method,
-                         'url': url,
-                         'response': httplib.responses[response.status],
-                         'expects': expected_status})
+            LOG.error(_LE('%(method)s %(url)s unexpected response status: '
+                          '%(response)s (expects: %(expects)s).'),
+                      {'method': method,
+                       'url': url,
+                       'response': httplib.responses[response.status],
+                       'expects': expected_status})
             if response.status == httplib.UNAUTHORIZED:
                 raise exception.NotAuthorized
                 retcode = errno.EACCES
@@ -177,12 +181,12 @@ class DPLCommand(object):
                 data = response.read()
                 data = json.loads(data)
             except (TypeError, ValueError) as e:
-                LOG.error(_('Call to json.loads() raised an exception: %s.'),
-                          six.text_type(e))
+                LOG.error(_LE('Call to json.loads() raised an exception: %s.'),
+                          e)
                 retcode = errno.ENOEXEC
             except Exception as e:
-                LOG.error(_('Read response raised an exception: %s.'),
-                          six.text_type(e))
+                LOG.error(_LE('Read response raised an exception: %s.'),
+                          e)
                 retcode = errno.ENOEXEC
         elif retcode == 0 and \
                 response.status in [httplib.OK, httplib.CREATED] and \
@@ -191,12 +195,12 @@ class DPLCommand(object):
                 data = response.read()
                 data = json.loads(data)
             except (TypeError, ValueError) as e:
-                LOG.error(_('Call to json.loads() raised an exception: %s.'),
-                          six.text_type(e))
+                LOG.error(_LE('Call to json.loads() raised an exception: %s.'),
+                          e)
                 retcode = errno.ENOEXEC
             except Exception as e:
-                LOG.error(_('Read response raised an exception: %s.'),
-                          six.text_type(e))
+                LOG.error(_LE('Read response raised an exception: %s.'),
+                          e)
                 retcode = errno.ENOEXEC
 
         if connection:
@@ -221,11 +225,11 @@ class DPLVolume(object):
 
     def get_server_info(self):
         method = 'GET'
-        url = '/%s/%s/' % (DPL_VER_V1, DPL_OBJ_SYSTEM)
+        url = ('/%s/%s/' % (DPL_VER_V1, DPL_OBJ_SYSTEM))
         return self._execute(method, url, None, [httplib.OK, httplib.ACCEPTED])
 
     def create_vdev(self, volumeID, volumeName, volumeDesc, poolID, volumeSize,
-                    fthinprovision=True, maximum_snapshot=1024,
+                    fthinprovision=True, maximum_snapshot=MAXSNAPSHOTS,
                     snapshot_quota=None):
         method = 'PUT'
         metadata = {}
@@ -239,7 +243,7 @@ class DPLVolume(object):
         metadata['display_description'] = volumeDesc
         metadata['pool_uuid'] = poolID
         metadata['total_capacity'] = volumeSize
-        metadata['maximum_snapshot'] = 1024
+        metadata['maximum_snapshot'] = maximum_snapshot
         if snapshot_quota is not None:
             metadata['snapshot_quota'] = int(snapshot_quota)
         metadata['properties'] = dict(thin_provision=fthinprovision)
@@ -249,7 +253,7 @@ class DPLVolume(object):
                              [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
 
     def extend_vdev(self, volumeID, volumeName, volumeDesc, volumeSize,
-                    maximum_snapshot=1024, snapshot_quota=None):
+                    maximum_snapshot=MAXSNAPSHOTS, snapshot_quota=None):
         method = 'PUT'
         metadata = {}
         params = {}
@@ -284,7 +288,8 @@ class DPLVolume(object):
 
     def create_vdev_from_snapshot(self, vdevID, vdevDisplayName, vdevDesc,
                                   snapshotID, poolID, fthinprovision=True,
-                                  maximum_snapshot=1024, snapshot_quota=None):
+                                  maximum_snapshot=MAXSNAPSHOTS,
+                                  snapshot_quota=None):
         method = 'PUT'
         metadata = {}
         params = {}
@@ -327,15 +332,19 @@ class DPLVolume(object):
         return self._execute(method, url, params,
                              [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
 
+    def get_pools(self):
+        method = 'GET'
+        url = '/%s/%s/' % (DPL_VER_V1, DPL_OBJ_POOL)
+        return self._execute(method, url, None, [httplib.OK])
+
     def get_pool(self, poolid):
         method = 'GET'
         url = '/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_POOL, poolid)
-
         return self._execute(method, url, None, [httplib.OK, httplib.ACCEPTED])
 
     def clone_vdev(self, SourceVolumeID, NewVolumeID, poolID, volumeName,
                    volumeDesc, volumeSize, fthinprovision=True,
-                   maximum_snapshot=1024, snapshot_quota=None):
+                   maximum_snapshot=MAXSNAPSHOTS, snapshot_quota=None):
         method = 'PUT'
         params = {}
         metadata = {}
@@ -359,21 +368,24 @@ class DPLVolume(object):
                              url, params,
                              [httplib.OK, httplib.CREATED, httplib.ACCEPTED])
 
-    def create_vdev_snapshot(self, volumeID, snapshotID, snapshotName='',
-                             snapshotDes=''):
+    def create_vdev_snapshot(self, vdevid, snapshotid, snapshotname='',
+                             snapshotdes='', isgroup=False):
         method = 'PUT'
         metadata = {}
         params = {}
-        url = '/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_VOLUME, volumeID)
-
-        if snapshotName is None or snapshotName == '':
-            metadata['display_name'] = snapshotID
+        if isgroup:
+            url = '/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_VOLUMEGROUP, vdevid)
         else:
-            metadata['display_name'] = snapshotName
-        metadata['display_description'] = snapshotDes
+            url = '/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_VOLUME, vdevid)
+
+        if not snapshotname:
+            metadata['display_name'] = snapshotid
+        else:
+            metadata['display_name'] = snapshotname
+        metadata['display_description'] = snapshotdes
 
         params['metadata'] = metadata
-        params['snapshot'] = snapshotID
+        params['snapshot'] = snapshotid
 
         return self._execute(method,
                              url, params,
@@ -389,8 +401,8 @@ class DPLVolume(object):
 
     def get_vdev_status(self, vdevid, eventid):
         method = 'GET'
-        url = '/%s/%s/%s/?event_uuid=%s' \
-              % (DPL_VER_V1, DPL_OBJ_VOLUME, vdevid, eventid)
+        url = ('/%s/%s/%s/?event_uuid=%s' % (DPL_VER_V1, DPL_OBJ_VOLUME,
+                                             vdevid, eventid))
 
         return self._execute(method,
                              url, None,
@@ -398,8 +410,8 @@ class DPLVolume(object):
 
     def get_pool_status(self, poolid, eventid):
         method = 'GET'
-        url = '/%s/%s/%s/?event_uuid=%s' \
-              % (DPL_VER_V1, DPL_OBJ_POOL, poolid, eventid)
+        url = ('/%s/%s/%s/?event_uuid=%s' % (DPL_VER_V1, DPL_OBJ_POOL,
+                                             poolid, eventid))
 
         return self._execute(method,
                              url, None,
@@ -500,11 +512,17 @@ class DPLVolume(object):
                              [httplib.OK, httplib.ACCEPTED,
                               httplib.NO_CONTENT, httplib.NOT_FOUND])
 
-    def delete_vdev_snapshot(self, volumeID, snapshotID):
+    def delete_vdev_snapshot(self, objID, snapshotID, isGroup=False):
         method = 'DELETE'
-        url = '/%s/%s/%s/%s/%s/' \
-              % (DPL_VER_V1, DPL_OBJ_VOLUME, volumeID,
-                 DPL_OBJ_SNAPSHOT, snapshotID)
+        if isGroup:
+            url = ('/%s/%s/%s/%s/%s/' % (DPL_VER_V1,
+                                         DPL_OBJ_VOLUMEGROUP,
+                                         objID,
+                                         DPL_OBJ_SNAPSHOT, snapshotID))
+        else:
+            url = ('/%s/%s/%s/%s/%s/' % (DPL_VER_V1,
+                                         DPL_OBJ_VOLUME, objID,
+                                         DPL_OBJ_SNAPSHOT, snapshotID))
 
         return self._execute(method,
                              url, None,
@@ -522,10 +540,27 @@ class DPLVolume(object):
                              url, params,
                              [httplib.OK, httplib.ACCEPTED])
 
-    def list_vdev_snapshots(self, vdevid):
+    def list_vdev_snapshots(self, vdevid, isGroup=False):
         method = 'GET'
-        url = '/%s/%s/%s/%s/' \
-              % (DPL_VER_V1, DPL_OBJ_VOLUME, vdevid, DPL_OBJ_SNAPSHOT)
+        if isGroup:
+            url = ('/%s/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_VOLUMEGROUP, vdevid,
+                                      DPL_OBJ_SNAPSHOT))
+        else:
+            url = ('/%s/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_VOLUME,
+                                      vdevid, DPL_OBJ_SNAPSHOT))
+
+        return self._execute(method,
+                             url, None,
+                             [httplib.OK])
+
+    def query_vdev_snapshot(self, vdevid, snapshotID, isGroup=False):
+        method = 'GET'
+        if isGroup:
+            url = ('/%s/%s/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_VOLUMEGROUP,
+                                         vdevid, DPL_OBJ_SNAPSHOT, snapshotID))
+        else:
+            url = ('/%s/%s/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_VOLUME, vdevid,
+                                         DPL_OBJ_SNAPSHOT, snapshotID))
 
         return self._execute(method,
                              url, None,
@@ -535,8 +570,7 @@ class DPLVolume(object):
                       description=''):
         method = 'PUT'
         params = {}
-        url = '/%s/%s/%s/' \
-            % (DPL_VER_V1, DPL_OBJ_EXPORT, targetID)
+        url = '/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_EXPORT, targetID)
         params['metadata'] = {}
         metadata = params['metadata']
         metadata['type'] = 'target'
@@ -579,10 +613,77 @@ class DPLVolume(object):
         params['metadata']['address'] = str(wwpn)
         return self._execute(method, url, params, [httplib.OK])
 
+    def create_vg(self, groupID, groupName, groupDesc='', listVolume=None,
+                  maxSnapshots=MAXSNAPSHOTS, rotationSnapshot=True):
+        method = 'PUT'
+        metadata = {}
+        params = {}
+        properties = {}
+        url = '/%s/%s/' % (DPL_OBJ_VOLUMEGROUP, groupID)
+        if listVolume:
+            metadata['volume'] = listVolume
+        else:
+            metadata['volume'] = []
+        metadata['display_name'] = groupName
+        metadata['display_description'] = groupDesc
+        metadata['maximum_snapshot'] = maxSnapshots
+        properties['snapshot_rotation'] = rotationSnapshot
+        metadata['properties'] = properties
+        params['metadata'] = metadata
+        return self._execute(method, url, params,
+                             [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+
+    def get_vg_list(self, vgtype=None):
+        method = 'GET'
+        if vgtype:
+            url = '/%s/?volume_group_type=%s' % (DPL_OBJ_VOLUMEGROUP, vgtype)
+        else:
+            url = '/%s/' % (DPL_OBJ_VOLUMEGROUP)
+        return self._execute(method, url, None, [httplib.OK])
+
+    def get_vg(self, groupID):
+        method = 'GET'
+        url = '/%s/%s/' % (DPL_OBJ_VOLUMEGROUP, groupID)
+        return self._execute(method, url, None, [httplib.OK])
+
+    def delete_vg(self, groupID, force=True):
+        method = 'DELETE'
+        metadata = {}
+        params = {}
+        url = '/%s/%s/' % (DPL_OBJ_VOLUMEGROUP, groupID)
+        metadata['force'] = force
+        params['metadata'] = metadata
+        return self._execute(method, url, params,
+                             [httplib.NO_CONTENT, httplib.NOT_FOUND])
+
+    def join_vg(self, volumeID, groupID):
+        method = 'PUT'
+        metadata = {}
+        params = {}
+        url = '/%s/%s/' % (DPL_OBJ_VOLUMEGROUP, groupID)
+        metadata['volume_group_operation'] = 'join'
+        metadata['volume'] = []
+        metadata['volume'].append(volumeID)
+        params['metadata'] = metadata
+        return self._execute(method, url, params,
+                             [httplib.OK, httplib.ACCEPTED])
+
+    def leave_vg(self, volumeID, groupID):
+        method = 'PUT'
+        metadata = {}
+        params = {}
+        url = '/%s/%s/' % (DPL_OBJ_VOLUMEGROUP, groupID)
+        metadata['volume_group_operation'] = 'leave'
+        metadata['volume'] = []
+        metadata['volume'].append(volumeID)
+        params['metadata'] = metadata
+        return self._execute(method, url, params,
+                             [httplib.OK, httplib.ACCEPTED])
+
 
 class DPLCOMMONDriver(driver.VolumeDriver):
     """class of dpl storage adapter."""
-    VERSION = '2.0'
+    VERSION = '2.0.2'
 
     def __init__(self, *args, **kwargs):
         super(DPLCOMMONDriver, self).__init__(*args, **kwargs)
@@ -661,18 +762,60 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     continue
 
             except Exception as e:
-                msg = _('Flexvisor failed to get event %(volume)s'
-                        '(%(status)s).') % {'volume': eventid,
-                                            'status': six.text_type(e)}
-                LOG.error(msg)
+                LOG.error(_LE('Flexvisor failed to get event %(volume)s '
+                              '(%(status)s).'),
+                          {'volume': eventid, 'status': e})
                 raise loopingcall.LoopingCallDone(retvalue=False)
                 status['state'] = 'error'
                 fExit = True
 
             if fExit is True:
                 break
-
         return status
+
+    def _join_volume_group(self, volume):
+        # Join volume group if consistency group id not empty
+        cgId = volume['consistencygroup_id']
+        msg = ''
+        try:
+            ret, output = self.dpl.join_vg(
+                self._conver_uuid2hex(volume['id']),
+                self._conver_uuid2hex(cgId))
+        except Exception as e:
+            ret = errno.EFAULT
+            msg = _('Fexvisor failed to add volume %(id)s '
+                    'due to %(reason)s.') % {"id": volume['id'],
+                                             "reason": six.text_type(e)}
+        if ret:
+            if not msg:
+                msg = _('Flexvisor failed to add volume %(id)s '
+                        'to group %(cgid)s.') % {'id': volume['id'],
+                                                 'cgid': cgId}
+            raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            LOG.info(_LI('Flexvisor succeeded to add volume %(id)s to '
+                         'group %(cgid)s.'),
+                     {'id': volume['id'], 'cgid': cgId})
+
+    def _get_snapshotid_of_vgsnapshot(self, vgID, vgsnapshotID, volumeID):
+        snapshotID = None
+        ret, out = self.dpl.query_vdev_snapshot(vgID, vgsnapshotID, True)
+        if ret == 0:
+            volumes = out.get('metadata', {}).get('member', {})
+            if volumes:
+                snapshotID = volumes.get(volumeID, None)
+        else:
+            msg = _('Flexvisor failed to get snapshot id of volume '
+                    '%(id)s from group %(vgid)s.') % {'id': volumeID,
+                                                      'vgid': vgID}
+            raise exception.VolumeBackendAPIException(data=msg)
+        if not snapshotID:
+            msg = _('Flexvisor could not find volume %(id)s snapshot in'
+                    ' the group %(vgid)s snapshot '
+                    '%(vgsid)s.') % {'id': volumeID, 'vgid': vgID,
+                                     'vgsid': vgsnapshotID}
+            raise exception.VolumeBackendAPIException(data=msg)
+        return snapshotID
 
     def create_export(self, context, volume):
         pass
@@ -683,9 +826,128 @@ class DPLCOMMONDriver(driver.VolumeDriver):
     def remove_export(self, context, volume):
         pass
 
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+        LOG.info(_LI('Start to create consistency group: %(group_name)s '
+                     'id: %(id)s'),
+                 {'group_name': group['name'], 'id': group['id']})
+        model_update = {'status': 'available'}
+        try:
+            ret, output = self.dpl.create_vg(
+                self._conver_uuid2hex(group['id']),
+                group['name'],
+                group['description'])
+            if ret:
+                msg = _('Failed to create consistency group '
+                        '%(id)s:%(ret)s.') % {'id': group['id'],
+                                              'ret': ret}
+                raise exception.VolumeBackendAPIException(data=msg)
+            else:
+                return model_update
+        except Exception as e:
+            msg = _('Failed to create consistency group '
+                    '%(id)s due to %(reason)s.') % {'id': group['id'],
+                                                    'reason': six.text_type(e)}
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def delete_consistencygroup(self, context, group):
+        """Delete a consistency group."""
+        ret = 0
+        volumes = self.db.volume_get_all_by_group(
+            context, group['id'])
+        model_update = {}
+        model_update['status'] = group['status']
+        LOG.info(_LI('Start to delete consistency group: %(cg_name)s'),
+                 {'cg_name': group['id']})
+        try:
+            self.dpl.delete_vg(self._conver_uuid2hex(group['id']))
+        except Exception as e:
+            msg = _('Failed to delete consistency group %(id)s '
+                    'due to %(reason)s.') % {'id': group['id'],
+                                             'reason': six.text_type(e)}
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        for volume_ref in volumes:
+            try:
+                self.dpl.delete_vdev(self._conver_uuid2hex(volume_ref['id']))
+                volume_ref['status'] = 'deleted'
+            except Exception:
+                ret = errno.EFAULT
+                volume_ref['status'] = 'error_deleting'
+                model_update['status'] = 'error_deleting'
+        if ret == 0:
+            model_update['status'] = 'deleted'
+        return model_update, volumes
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Creates a cgsnapshot."""
+        cgId = cgsnapshot['consistencygroup_id']
+        cgsnapshot_id = cgsnapshot['id']
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+            context, cgsnapshot_id)
+
+        model_update = {}
+        LOG.info(_LI('Start to create cgsnapshot for consistency group'
+                     ': %(group_name)s'), {'group_name': cgId})
+
+        try:
+            self.dpl.create_vdev_snapshot(self._conver_uuid2hex(cgId),
+                                          self._conver_uuid2hex(cgsnapshot_id),
+                                          cgsnapshot['name'],
+                                          cgsnapshot['description'],
+                                          True)
+            for snapshot in snapshots:
+                snapshot['status'] = 'available'
+        except Exception as e:
+            msg = _('Failed to create cg snapshot %(id)s '
+                    'due to %(reason)s.') % {'id': cgsnapshot_id,
+                                             'reason': six.text_type(e)}
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        model_update['status'] = 'available'
+
+        return model_update, snapshots
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+        cgId = cgsnapshot['consistencygroup_id']
+        cgsnapshot_id = cgsnapshot['id']
+        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+            context, cgsnapshot_id)
+
+        model_update = {}
+        model_update['status'] = cgsnapshot['status']
+        LOG.info(_LI('Delete cgsnapshot %(snap_name)s for consistency group: '
+                     '%(group_name)s'),
+                 {'snap_name': cgsnapshot['id'],
+                  'group_name': cgsnapshot['consistencygroup_id']})
+
+        try:
+            self.dpl.delete_vdev_snapshot(self._conver_uuid2hex(cgId),
+                                          self._conver_uuid2hex(cgsnapshot_id),
+                                          True)
+            for snapshot in snapshots:
+                snapshot['status'] = 'deleted'
+        except Exception as e:
+            msg = _('Failed to delete cgsnapshot %(id)s due to '
+                    '%(reason)s.') % {'id': cgsnapshot_id,
+                                      'reason': six.text_type(e)}
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        model_update['status'] = 'deleted'
+        return model_update, snapshots
+
     def create_volume(self, volume):
         """Create a volume."""
-        pool = self.configuration.dpl_pool
+        pool = volume_utils.extract_host(volume['host'],
+                                         level='pool')
+        if not pool:
+            if not self.configuration.dpl_pool:
+                msg = _("Pool is not available in the volume host fields.")
+                raise exception.InvalidHost(reason=msg)
+            else:
+                pool = self.configuration.dpl_pool
+
         ret, output = self.dpl.create_vdev(
             self._conver_uuid2hex(volume['id']),
             volume.get('display_name', ''),
@@ -703,33 +965,75 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     msg = _('Flexvisor failed to create volume %(volume)s: '
                             '%(status)s.') % {'volume': volume['id'],
                                               'status': ret}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
             else:
                 msg = _('Flexvisor failed to create volume (get event) '
                         '%s.') % (volume['id'])
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(
                     data=msg)
         elif ret != 0:
             msg = _('Flexvisor create volume failed.:%(volumeid)s:'
-                    '%(status)s.') % {'volumeid': volume['id'], 'status': ret}
-            LOG.error(msg)
+                    '%(status)s.') % {'volumeid': volume['id'],
+                                      'status': ret}
             raise exception.VolumeBackendAPIException(
                 data=msg)
         else:
-            msg = _('Flexvisor succeed to create volume '
-                    '%(id)s.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to create volume %(id)s.'),
+                     {'id': volume['id']})
+
+        if volume.get('consistencygroup_id', None):
+            try:
+                self._join_volume_group(volume)
+            except Exception:
+                # Delete volume if volume failed to join group.
+                self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
+                msg = _('Flexvisor failed to create volume %(id)s in the '
+                        'group %(vgid)s.') % {
+                    'id': volume['id'],
+                    'vgid': volume['consistencygroup_id']}
+                raise exception.VolumeBackendAPIException(data=msg)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        pool = self.configuration.dpl_pool
+        src_volume = None
+        vgID = None
+        # Detect whether a member of the group.
+        snapshotID = snapshot['id']
+        # Try to get cgid if volume belong in the group.
+        src_volumeID = snapshot['volume_id']
+        cgsnapshotID = snapshot.get('cgsnapshot_id', None)
+        if cgsnapshotID:
+            try:
+                src_volume = self.db.volume_get(src_volumeID)
+            except Exception:
+                msg = _("Flexvisor unable to find the source volume "
+                        "%(id)s info.") % {'id': src_volumeID}
+                raise exception.VolumeBackendAPIException(data=msg)
+        if src_volume:
+            vgID = src_volume.get('consistencygroup_id', None)
+
+        # Get the volume origin snapshot id if the source snapshot is group
+        # snapshot.
+        if vgID:
+            snapshotID = self._get_snapshotid_of_vgsnapshot(
+                self._conver_uuid2hex(vgID),
+                self._conver_uuid2hex(cgsnapshotID),
+                self._conver_uuid2hex(src_volumeID))
+
+        pool = volume_utils.extract_host(volume['host'],
+                                         level='pool')
+        if not pool:
+            if not self.configuration.dpl_pool:
+                msg = _("Pool is not available in the volume host fields.")
+                raise exception.InvalidHost(reason=msg)
+            else:
+                pool = self.configuration.dpl_pool
+
         ret, output = self.dpl.create_vdev_from_snapshot(
             self._conver_uuid2hex(volume['id']),
             volume.get('display_name', ''),
             volume.get('display_description', ''),
-            self._conver_uuid2hex(snapshot['id']),
+            self._conver_uuid2hex(snapshotID),
             pool,
             self.configuration.san_thin_provision)
         if ret == errno.EAGAIN:
@@ -739,29 +1043,34 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                                           volume['id'],
                                           event_uuid)
                 if status['state'] != 'available':
-                    msg = _('Flexvisor failed to create volume from snapshot '
-                            '%(id)s:%(status)s.') % {'id': snapshot['id'],
-                                                     'status': ret}
-                    LOG.error(msg)
+                    msg = _('Flexvisor failed to create volume from '
+                            'snapshot %(id)s:'
+                            '%(status)s.') % {'id': snapshot['id'],
+                                              'status': ret}
                     raise exception.VolumeBackendAPIException(
                         data=msg)
             else:
                 msg = _('Flexvisor failed to create volume from snapshot '
                         '(failed to get event) '
                         '%(id)s.') % {'id': snapshot['id']}
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret != 0:
             msg = _('Flexvisor failed to create volume from snapshot '
                     '%(id)s: %(status)s.') % {'id': snapshot['id'],
                                               'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(
                 data=msg)
         else:
-            msg = _('Flexvisor succeed to create volume %(id)s '
-                    'from snapshot.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to create volume %(id)s '
+                         'from snapshot.'), {'id': volume['id']})
+
+        if volume.get('consistencygroup_id', None):
+            try:
+                self._join_volume_group(volume)
+            except Exception:
+                # Delete volume if volume failed to join group.
+                self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
+                raise
 
     def spawn_volume_from_snapshot(self, volume, snapshot):
         """Spawn a REFERENCED volume from a snapshot."""
@@ -782,29 +1091,34 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     msg = _('Flexvisor failed to spawn volume from snapshot '
                             '%(id)s:%(status)s.') % {'id': snapshot['id'],
                                                      'status': ret}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
             else:
                 msg = _('Flexvisor failed to spawn volume from snapshot '
                         '(failed to get event) '
                         '%(id)s.') % {'id': snapshot['id']}
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret != 0:
             msg = _('Flexvisor failed to create volume from snapshot '
                     '%(id)s: %(status)s.') % {'id': snapshot['id'],
                                               'status': ret}
-            LOG.error(msg)
+
             raise exception.VolumeBackendAPIException(
                 data=msg)
         else:
-            msg = _('Flexvisor succeed to create volume %(id)s '
-                    'from snapshot.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to create volume %(id)s '
+                         'from snapshot.'), {'id': volume['id']})
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        pool = self.configuration.dpl_pool
+        pool = volume_utils.extract_host(volume['host'],
+                                         level='pool')
+        if not pool:
+            if not self.configuration.dpl_pool:
+                msg = _("Pool is not available in the volume host fields.")
+                raise exception.InvalidHost(reason=msg)
+            else:
+                pool = self.configuration.dpl_pool
+
         ret, output = self.dpl.clone_vdev(
             self._conver_uuid2hex(src_vref['id']),
             self._conver_uuid2hex(volume['id']),
@@ -823,44 +1137,70 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     msg = _('Flexvisor failed to clone volume %(id)s: '
                             '%(status)s.') % {'id': src_vref['id'],
                                               'status': ret}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
             else:
-                msg = _('Flexvisor failed to clone volume (failed to get event'
-                        ') %(id)s.') % {'id': src_vref['id']}
-                LOG.error(msg)
+                msg = _('Flexvisor failed to clone volume (failed to'
+                        ' get event) %(id)s.') % {'id': src_vref['id']}
                 raise exception.VolumeBackendAPIException(
                     data=msg)
         elif ret != 0:
             msg = _('Flexvisor failed to clone volume %(id)s: '
                     '%(status)s.') % {'id': src_vref['id'], 'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(
                 data=msg)
         else:
-            msg = _('Flexvisor succeed to clone '
-                    'volume %(id)s.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to clone volume %(id)s.'),
+                     {'id': volume['id']})
+
+        if volume.get('consistencygroup_id', None):
+            try:
+                self._join_volume_group(volume)
+            except Exception:
+                # Delete volume if volume failed to join group.
+                self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
+                msg = _('Flexvisor volume %(id)s failed to join group '
+                        '%(vgid)s.') % {'id': volume['id'],
+                                        'vgid': volume['consistencygroup_id']}
+                raise exception.VolumeBackendAPIException(data=msg)
 
     def delete_volume(self, volume):
         """Deletes a volume."""
+        ret = 0
+        if volume.get('consistencygroup_id', None):
+            msg = ''
+            try:
+                ret, out = self.dpl.leave_vg(
+                    self._conver_uuid2hex(volume['id']),
+                    self._conver_uuid2hex(volume['consistencygroup_id']))
+                if ret:
+                    LOG.warning(_LW('Flexvisor failed to delete volume '
+                                    '%(id)s from the group %(vgid)s.'),
+                                {'id': volume['id'],
+                                 'vgid': volume['consistencygroup_id']})
+            except Exception as e:
+                LOG.warning(_LW('Flexvisor failed to delete volume %(id)s '
+                                'from group %(vgid)s due to %(status)s.'),
+                            {'id': volume['id'],
+                             'vgid': volume['consistencygroup_id'],
+                             'status': e})
+
+            if ret:
+                ret = 0
+
         ret, output = self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
         if ret == errno.EAGAIN:
             status = self._wait_event(self.dpl.get_vdev, volume['id'])
             if status['state'] == 'error':
                 msg = _('Flexvisor failed deleting volume %(id)s: '
                         '%(status)s.') % {'id': volume['id'], 'status': ret}
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret == errno.ENODATA:
             ret = 0
-            msg = _('Flexvisor volume %(id)s not '
-                    'existed.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor volume %(id)s does not '
+                         'exist.'), {'id': volume['id']})
         elif ret != 0:
             msg = _('Flexvisor failed to delete volume %(id)s: '
                     '%(status)s.') % {'id': volume['id'], 'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(
                 data=msg)
 
@@ -880,26 +1220,22 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     msg = _('Flexvisor failed to extend volume '
                             '%(id)s:%(status)s.') % {'id': volume,
                                                      'status': ret}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(
                         data=msg)
             else:
                 msg = _('Flexvisor failed to extend volume '
                         '(failed to get event) '
                         '%(id)s.') % {'id': volume['id']}
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret != 0:
             msg = _('Flexvisor failed to extend volume '
                     '%(id)s: %(status)s.') % {'id': volume['id'],
                                               'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(
                 data=msg)
         else:
-            msg = _('Flexvisor succeed to extend volume'
-                    ' %(id)s.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to extend volume'
+                         ' %(id)s.'), {'id': volume['id']})
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -919,19 +1255,16 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     msg = _('Flexvisor failed to create snapshot for volume '
                             '%(id)s: %(status)s.') % \
                         {'id': snapshot['volume_id'], 'status': ret}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
             else:
                 msg = _('Flexvisor failed to create snapshot for volume '
                         '(failed to get event) %(id)s.') % \
                     {'id': snapshot['volume_id']}
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret != 0:
             msg = _('Flexvisor failed to create snapshot for volume %(id)s: '
                     '%(status)s.') % {'id': snapshot['volume_id'],
                                       'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
     def delete_snapshot(self, snapshot):
@@ -949,26 +1282,21 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                     msg = _('Flexvisor failed to delete snapshot %(id)s: '
                             '%(status)s.') % {'id': snapshot['id'],
                                               'status': ret}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
             else:
                 msg = _('Flexvisor failed to delete snapshot (failed to '
                         'get event) %(id)s.') % {'id': snapshot['id']}
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret == errno.ENODATA:
-            msg = _('Flexvisor snapshot %(id)s not existed.') % \
-                {'id': snapshot['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor snapshot %(id)s not existed.'),
+                     {'id': snapshot['id']})
         elif ret != 0:
             msg = _('Flexvisor failed to delete snapshot %(id)s: '
                     '%(status)s.') % {'id': snapshot['id'], 'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         else:
-            msg = _('Flexvisor succeed to delete '
-                    'snapshot %(id)s.') % {'id': snapshot['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to delete snapshot %(id)s.'),
+                     {'id': snapshot['id']})
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -980,53 +1308,82 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
         return self._stats
 
+    def _get_pools(self):
+        pools = []
+        qpools = []
+        # Defined access pool by cinder configuration.
+        defined_pool = self.configuration.dpl_pool
+        if defined_pool:
+            qpools.append(defined_pool)
+        else:
+            try:
+                ret, output = self.dpl.get_pools()
+                if ret == 0:
+                    for poolUuid, poolName in output.get('children', []):
+                        qpools.append(poolUuid)
+                else:
+                    LOG.error(_LE("Flexvisor failed to get pool list."
+                                  "(Error: %d)"), ret)
+            except Exception as e:
+                LOG.error(_LE("Flexvisor failed to get pool list due to "
+                              "%s."), e)
+
+        # Query pool detail information
+        for poolid in qpools:
+            ret, output = self._get_pool_info(poolid)
+            if ret == 0:
+                pool = {}
+                pool['pool_name'] = output['metadata']['pool_uuid']
+                pool['total_capacity_gb'] = \
+                    self._convert_size_GB(
+                        int(output['metadata']['total_capacity']))
+                pool['free_capacity_gb'] = \
+                    self._convert_size_GB(
+                        int(output['metadata']['available_capacity']))
+                pool['allocated_capacity_gb'] = \
+                    self._convert_size_GB(
+                        int(output['metadata']['used_capacity']))
+                pool['QoS_support'] = False
+                pool['reserved_percentage'] = 0
+                pools.append(pool)
+            else:
+                LOG.warning(_LW("Failed to query pool %(id)s status "
+                                "%(ret)d."), {'id': poolid, 'ret': ret})
+                continue
+        return pools
+
     def _update_volume_stats(self, refresh=False):
         """Return the current state of the volume service. If 'refresh' is
            True, run the update first.
         """
         data = {}
-        totalSize = 0
-        availableSize = 0
-
-        ret, output = self._get_pool_info(self.configuration.dpl_pool)
-        if ret == 0:
-            totalSize = int(output['metadata']['total_capacity'])
-            availableSize = int(output['metadata']['available_capacity'])
-        else:
-            totalSize = 0
-            availableSize = 0
-
+        pools = self._get_pools()
         data['volume_backend_name'] = \
             self.configuration.safe_get('volume_backend_name')
-
         location_info = '%(driver)s:%(host)s:%(volume)s' % {
             'driver': self.__class__.__name__,
             'host': self.configuration.san_ip,
             'volume': self.configuration.dpl_pool
         }
-
         try:
             ret, output = self.dpl.get_server_info()
             if ret == 0:
                 data['vendor_name'] = output['metadata']['vendor']
                 data['driver_version'] = output['metadata']['version']
                 data['storage_protocol'] = 'iSCSI'
-                data['total_capacity_gb'] = self._convert_size_GB(totalSize)
-                data['free_capacity_gb'] = self._convert_size_GB(availableSize)
-                data['reserved_percentage'] = 0
-                data['QoS_support'] = False
                 data['location_info'] = location_info
+                data['consistencygroup_support'] = True
+                data['pools'] = pools
                 self._stats = data
         except Exception as e:
-            msg = _('Failed to get server info due to '
-                    '%(state)s.') % {'state': six.text_type(e)}
-            LOG.error(msg)
+            LOG.error(_LE('Failed to get server info due to '
+                      '%(state)s.'), {'state': e})
         return self._stats
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         self.context = context
-        LOG.info(_('Activate Flexvisor cinder volume driver.'))
+        LOG.info(_LI('Activate Flexvisor cinder volume driver.'))
 
     def check_for_setup_error(self):
         """Check DPL can connect properly."""
@@ -1043,22 +1400,19 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                 if status['state'] != 'available':
                     msg = _('Flexvisor failed to get pool info %(id)s: '
                             '%(status)s.') % {'id': poolid, 'status': ret}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
                 else:
                     ret = 0
                     output = status.get('output', {})
             else:
-                LOG.error(_('Flexvisor failed to get pool info '
-                          '(failed to get event)%s.') % (poolid))
+                LOG.error(_LE('Flexvisor failed to get pool %(id)s info.'),
+                          {'id': poolid})
                 raise exception.VolumeBackendAPIException(
                     data="failed to get event")
         elif ret != 0:
             msg = _('Flexvisor failed to get pool info %(id)s: '
                     '%(status)s.') % {'id': poolid, 'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         else:
-            msg = 'Flexvisor succeed to get pool info.'
-            LOG.debug(msg)
+            LOG.debug('Flexvisor succeeded to get pool info.')
         return ret, output

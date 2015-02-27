@@ -23,15 +23,15 @@ import json
 import random
 import uuid
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import units
 import requests
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import units
-from cinder.volume.drivers.san.san import SanISCSIDriver
+from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
@@ -191,7 +191,7 @@ class FIOconnection(object):
         return
 
 
-class FIOioControlDriver(SanISCSIDriver):
+class FIOioControlDriver(san.SanISCSIDriver):
     """Fusion-io ioControl iSCSI volume driver."""
 
     VERSION = '1.0.0'
@@ -251,8 +251,8 @@ class FIOioControlDriver(SanISCSIDriver):
                    if i.key == 'fio-qos' and i.value in valid_presets]
         if len(presets) > 0:
             if len(presets) > 1:
-                LOG.warning(_('More than one valid preset was '
-                              'detected, using %s') % presets[0])
+                LOG.warning(_LW('More than one valid preset was '
+                                'detected, using %s') % presets[0])
             return self.fio_qos_dict[presets[0]]
 
     def _set_qos_by_volume_type(self, type_id):

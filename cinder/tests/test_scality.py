@@ -22,13 +22,16 @@ import shutil
 import tempfile
 
 import mox as mox_lib
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
-from cinder.openstack.common import units
+from cinder.openstack.common import fileutils
+from cinder.openstack.common import imageutils
 from cinder import test
 from cinder import utils
+from cinder.volume import configuration as conf
 from cinder.volume.drivers import scality
 
 
@@ -40,7 +43,7 @@ class ScalityDriverTestCase(test.TestCase):
     TEST_VOLDIR = 'volumes'
 
     TEST_VOLNAME = 'volume_name'
-    TEST_VOLSIZE = '0'
+    TEST_VOLSIZE = '1'
     TEST_VOLUME = {
         'name': TEST_VOLNAME,
         'size': TEST_VOLSIZE
@@ -93,10 +96,10 @@ class ScalityDriverTestCase(test.TestCase):
                 raise
 
     def _configure_driver(self):
-        scality.CONF.scality_sofs_config = self.TEST_CONFIG
-        scality.CONF.scality_sofs_mount_point = self.TEST_MOUNT
-        scality.CONF.scality_sofs_volume_dir = self.TEST_VOLDIR
-        scality.CONF.volume_dd_blocksize = '1M'
+        self.configuration.scality_sofs_config = self.TEST_CONFIG
+        self.configuration.scality_sofs_mount_point = self.TEST_MOUNT
+        self.configuration.scality_sofs_volume_dir = self.TEST_VOLDIR
+        self.configuration.volume_dd_blocksize = '1M'
 
     def _execute_wrapper(self, cmd, *args, **kwargs):
         try:
@@ -116,8 +119,6 @@ class ScalityDriverTestCase(test.TestCase):
         self.stubs.Set(os, 'access', _access_wrapper)
 
     def setUp(self):
-        super(ScalityDriverTestCase, self).setUp()
-
         self.tempdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tempdir)
 
@@ -132,25 +133,26 @@ class ScalityDriverTestCase(test.TestCase):
                                            self.TEST_VOLDIR,
                                            self.TEST_CLONENAME)
 
-        self._driver = scality.ScalityDriver()
-        self._driver.set_execute(self._execute_wrapper)
         self._mox = mox_lib.Mox()
+        self.configuration = mox_lib.MockObject(conf.Configuration)
+        self._configure_driver()
+        super(ScalityDriverTestCase, self).setUp()
 
+        self._driver = scality.ScalityDriver(configuration=self.configuration)
+        self._driver.set_execute(self._execute_wrapper)
         self._create_fake_mount()
         self._create_fake_config()
         self.addCleanup(self._remove_fake_config)
 
-        self._configure_driver()
-
     def test_setup_no_config(self):
         """Missing SOFS configuration shall raise an error."""
-        scality.CONF.scality_sofs_config = None
+        self.configuration.scality_sofs_config = None
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver.do_setup, None)
 
     def test_setup_missing_config(self):
         """Non-existent SOFS configuration file shall raise an error."""
-        scality.CONF.scality_sofs_config = 'nonexistent.conf'
+        self.configuration.scality_sofs_config = 'nonexistent.conf'
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver.do_setup, None)
 
@@ -181,7 +183,7 @@ class ScalityDriverTestCase(test.TestCase):
                                       self.TEST_VOLNAME))
         self.assertTrue(os.path.isfile(self.TEST_VOLPATH))
         self.assertEqual(os.stat(self.TEST_VOLPATH).st_size,
-                         100 * units.Mi)
+                         1 * units.Gi)
 
     def test_delete_volume(self):
         """Expected behaviour for delete_volume."""
@@ -286,3 +288,59 @@ class ScalityDriverTestCase(test.TestCase):
         self.mox.ReplayAll()
 
         self._driver.extend_volume(self.TEST_VOLUME, self.TEST_NEWSIZE)
+
+    def test_backup_volume(self):
+        self.mox.StubOutWithMock(self._driver, 'db')
+        self.mox.StubOutWithMock(self._driver.db, 'volume_get')
+
+        volume = {'id': '2', 'name': self.TEST_VOLNAME}
+        self._driver.db.volume_get(context, volume['id']).AndReturn(volume)
+
+        info = imageutils.QemuImgInfo()
+        info.file_format = 'raw'
+        self.mox.StubOutWithMock(image_utils, 'qemu_img_info')
+        image_utils.qemu_img_info(self.TEST_VOLPATH).AndReturn(info)
+
+        self.mox.StubOutWithMock(utils, 'temporary_chown')
+        mock_tempchown = self.mox.CreateMockAnything()
+        utils.temporary_chown(self.TEST_VOLPATH).AndReturn(mock_tempchown)
+        mock_tempchown.__enter__()
+        mock_tempchown.__exit__(None, None, None)
+
+        self.mox.StubOutWithMock(fileutils, 'file_open')
+        mock_fileopen = self.mox.CreateMockAnything()
+        fileutils.file_open(self.TEST_VOLPATH).AndReturn(mock_fileopen)
+        mock_fileopen.__enter__()
+        mock_fileopen.__exit__(None, None, None)
+
+        backup = {'volume_id': volume['id']}
+        mock_servicebackup = self.mox.CreateMockAnything()
+        mock_servicebackup.backup(backup, mox_lib.IgnoreArg())
+
+        self.mox.ReplayAll()
+        self._driver.backup_volume(context, backup, mock_servicebackup)
+        self.mox.VerifyAll()
+
+    def test_restore_backup(self):
+        volume = {'id': '2', 'name': self.TEST_VOLNAME}
+
+        self.mox.StubOutWithMock(utils, 'temporary_chown')
+        mock_tempchown = self.mox.CreateMockAnything()
+        utils.temporary_chown(self.TEST_VOLPATH).AndReturn(mock_tempchown)
+        mock_tempchown.__enter__()
+        mock_tempchown.__exit__(None, None, None)
+
+        self.mox.StubOutWithMock(fileutils, 'file_open')
+        mock_fileopen = self.mox.CreateMockAnything()
+        fileutils.file_open(self.TEST_VOLPATH, 'wb').AndReturn(mock_fileopen)
+        mock_fileopen.__enter__()
+        mock_fileopen.__exit__(None, None, None)
+
+        backup = {'id': 123, 'volume_id': volume['id']}
+        mock_servicebackup = self.mox.CreateMockAnything()
+        mock_servicebackup.restore(backup, volume['id'], mox_lib.IgnoreArg())
+
+        self.mox.ReplayAll()
+        self._driver.restore_backup(context, backup, volume,
+                                    mock_servicebackup)
+        self.mox.VerifyAll()

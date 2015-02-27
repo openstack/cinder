@@ -15,7 +15,6 @@
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
-from cinder import volume
 
 
 authorize = extensions.soft_extension_authorizer('volume',
@@ -23,13 +22,8 @@ authorize = extensions.soft_extension_authorizer('volume',
 
 
 class VolumeMigStatusAttributeController(wsgi.Controller):
-    def __init__(self, *args, **kwargs):
-        super(VolumeMigStatusAttributeController, self).__init__(*args,
-                                                                 **kwargs)
-        self.volume_api = volume.API()
-
     def _add_volume_mig_status_attribute(self, req, context, resp_volume):
-        db_volume = req.cached_resource_by_id(resp_volume['id'])
+        db_volume = req.get_db_volume(resp_volume['id'])
         key = "%s:migstat" % Volume_mig_status_attribute.alias
         resp_volume[key] = db_volume['migration_status']
         key = "%s:name_id" % Volume_mig_status_attribute.alias

@@ -25,12 +25,12 @@ import random
 import re
 
 from eventlet import greenthread
+from oslo_concurrency import processutils
+from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import excutils
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import ssh_utils
 from cinder import utils
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
@@ -79,8 +79,8 @@ class BrcdFCZoneClientCLI(object):
                 [ZoneConstant.GET_ACTIVE_ZONE_CFG])
         except exception.BrocadeZoningCliException:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Failed getting active zone set "
-                            "from fabric %s"), self.switch_ip)
+                LOG.error(_LE("Failed getting active zone set "
+                              "from fabric %s"), self.switch_ip)
         try:
             for line in switch_data:
                 line_split = re.split('\\t', line)
@@ -148,7 +148,7 @@ class BrcdFCZoneClientCLI(object):
                     self.delete_zones(zone, activate, active_zone_set)
                 except exception.BrocadeZoningCliException:
                     with excutils.save_and_reraise_exception():
-                        LOG.error(_("Deleting zone failed %s"), zone)
+                        LOG.error(_LE("Deleting zone failed %s"), zone)
                 LOG.debug("Deleted Zone before insert : %s", zone)
             zone_members_with_sep = ';'.join(str(member) for
                                              member in zones[zone])
@@ -257,8 +257,8 @@ class BrcdFCZoneClientCLI(object):
             cli_output = self._get_switch_info([cmd])
         except exception.BrocadeZoningCliException:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Failed collecting nsshow "
-                            "info for fabric %s"), self.switch_ip)
+                LOG.error(_LE("Failed collecting nsshow "
+                              "info for fabric %s"), self.switch_ip)
         if (cli_output):
             return_list = self._parse_ns_output(cli_output)
         cli_output = None
@@ -329,7 +329,7 @@ class BrcdFCZoneClientCLI(object):
                             firmware = int(ver[0] + ver[1])
                 return firmware > 63
             else:
-                LOG.error(_("No CLI output for firmware version check"))
+                LOG.error(_LE("No CLI output for firmware version check"))
                 return False
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
@@ -414,7 +414,7 @@ class BrcdFCZoneClientCLI(object):
                         cmd=command)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error running SSH command: %s") % command)
+                LOG.error(_LE("Error running SSH command: %s") % command)
 
     def _ssh_execute(self, cmd_list, check_exit_code=True, attempts=1):
         """Execute cli with status update.
@@ -479,7 +479,7 @@ class BrcdFCZoneClientCLI(object):
                         cmd=command)
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error executing command via ssh: %s"), e)
+                LOG.error(_LE("Error executing command via ssh: %s"), e)
         finally:
             if stdin:
                 stdin.flush()

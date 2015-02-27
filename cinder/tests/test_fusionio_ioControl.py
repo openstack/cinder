@@ -17,18 +17,17 @@ import copy
 import json
 
 import mock
+from oslo_utils import timeutils
+from oslo_utils import units
 import requests
 
 from cinder import context
-from cinder.db.sqlalchemy.models import VolumeMetadata
+from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.fusionio.ioControl import FIOconnection
-from cinder.volume.drivers.fusionio.ioControl import FIOioControlDriver
+from cinder.volume.drivers.fusionio import ioControl
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
@@ -189,16 +188,18 @@ class FIOioControlConnectionTests(test.TestCase):
         super(FIOioControlConnectionTests, self).setUp()
         self.configuration = create_configuration()
         self.ctxt = context.get_admin_context()
-        return_text = json.dumps({"Version": FIOconnection.APIVERSION})
+        return_text = json.dumps(
+            {"Version": ioControl.FIOconnection.APIVERSION})
         get_return = FIOFakeResponse(code=200,
                                      text=return_text)
         requests.get = mock.Mock(return_value=get_return)
-        self.conn = FIOconnection(self.configuration.san_ip,
-                                  self.configuration.san_login,
-                                  self.configuration.san_password,
-                                  self.configuration.fusionio_iocontrol_retry,
-                                  (self.configuration.
-                                   fusionio_iocontrol_verify_cert),)
+        self.conn = ioControl.FIOconnection(
+            self.configuration.san_ip,
+            self.configuration.san_login,
+            self.configuration.san_password,
+            self.configuration.fusionio_iocontrol_retry,
+            (self.configuration.
+             fusionio_iocontrol_verify_cert),)
 
     def test_conn_init_sucess(self):
         expected = [mock.call(url=("https://" +
@@ -209,12 +210,13 @@ class FIOioControlConnectionTests(test.TestCase):
         requests.get.assert_has_calls(expected)
 
     def test_wrong_version(self):
-        expected = json.dumps({"Version": (FIOconnection.APIVERSION + ".1")})
+        expected = json.dumps(
+            {"Version": (ioControl.FIOconnection.APIVERSION + ".1")})
         get_return = FIOFakeResponse(code=200,
                                      text=expected)
         requests.get = mock.Mock(return_value=get_return)
         self.assertRaises(exception.VolumeDriverException,
-                          FIOconnection,
+                          ioControl.FIOconnection,
                           self.configuration.san_ip,
                           self.configuration.san_login,
                           self.configuration.san_password,
@@ -415,7 +417,8 @@ class FIOioControlTestCases(test.TestCase):
         super(FIOioControlTestCases, self).setUp()
         self.configuration = create_configuration()
         self.ctxt = context.get_admin_context()
-        self.drv = FIOioControlDriver(configuration=self.configuration)
+        self.drv = ioControl.FIOioControlDriver(
+            configuration=self.configuration)
         self.drv.fio_qos_dict = self.policyTable
 
     def test_do_setup_sucess(self, connmock):
@@ -783,7 +786,7 @@ class FIOioControlTestCases(test.TestCase):
                          "Driver/Test version Mismatch")
 
     def test_create_volume_QoS_by_presets(self, connmock):
-        preset_qos = VolumeMetadata(key='fio-qos', value='Policy 2')
+        preset_qos = models.VolumeMetadata(key='fio-qos', value='Policy 2')
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,

@@ -26,7 +26,7 @@ from cinder.api.views import consistencygroups as consistencygroup_views
 from cinder.api import xmlutil
 from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder import utils
 
@@ -118,7 +118,7 @@ class ConsistencyGroupsController(wsgi.Controller):
             cg_body = body['consistencygroup']
             force = cg_body.get('force', False)
 
-        LOG.info(_('Delete consistency group with id: %s'), id,
+        LOG.info(_LI('Delete consistency group with id: %s'), id,
                  context=context)
 
         try:
@@ -181,7 +181,7 @@ class ConsistencyGroupsController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=msg)
         availability_zone = consistencygroup.get('availability_zone', None)
 
-        LOG.info(_("Creating consistency group %(name)s."),
+        LOG.info(_LI("Creating consistency group %(name)s."),
                  {'name': name},
                  context=context)
 

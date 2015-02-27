@@ -13,12 +13,11 @@
 #    under the License.
 
 
-from oslo.config import cfg
-
-import cinder.openstack.common.importutils
+from oslo_config import cfg
+from oslo_utils import importutils
 
 
 CONF = cfg.CONF
 
 cls = CONF.replication_api_class
-API = cinder.openstack.common.importutils.import_class(cls)
+API = importutils.import_class(cls)

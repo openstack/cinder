@@ -108,7 +108,7 @@ class SmbFsTestCase(test.TestCase):
             else:
                 self._smbfs_driver.do_setup(None)
                 self.assertEqual(self._smbfs_driver.shares, {})
-                fake_ensure_mounted.assert_called_once()
+                fake_ensure_mounted.assert_called_once_with()
 
     def test_setup_missing_shares_config_option(self):
         fake_config = copy.copy(self._FAKE_SMBFS_CONFIG)
@@ -319,6 +319,7 @@ class SmbFsTestCase(test.TestCase):
             return_value=not extend_failed)
         drv._qemu_img_info = mock.Mock(
             return_value=mock.Mock(file_format=image_format))
+        drv._delete = mock.Mock()
 
         with contextlib.nested(
                 mock.patch.object(image_utils, 'resize_image'),

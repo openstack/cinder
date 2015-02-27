@@ -20,10 +20,10 @@ You can customize this scheduler by specifying your own volume Filters and
 Weighing Functions.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 from cinder.scheduler import driver
 from cinder.scheduler import scheduler_options
@@ -169,7 +169,7 @@ class FilterScheduler(driver.Scheduler):
         return top_host.obj
 
     def get_pools(self, context, filters):
-        #TODO(zhiteng) Add filters support
+        # TODO(zhiteng) Add filters support
         return self.host_manager.get_pools(context)
 
     def _post_select_populate_filter_properties(self, filter_properties,
@@ -397,8 +397,8 @@ class FilterScheduler(driver.Scheduler):
         weighed_hosts = self._get_weighted_candidates(context, request_spec,
                                                       filter_properties)
         if not weighed_hosts:
-            LOG.warning(_('No weighed hosts found for volume '
-                          'with properties: %s'),
+            LOG.warning(_LW('No weighed hosts found for volume '
+                            'with properties: %s'),
                         filter_properties['request_spec']['volume_type'])
             return None
         return self._choose_top_host(weighed_hosts, request_spec)

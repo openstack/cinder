@@ -11,9 +11,13 @@
 # under the License.
 
 import ast
-import tempfile
 
-from oslo.config import cfg
+import fixtures
+from oslo_concurrency import lockutils
+from oslo_config import cfg
+from oslo_config import fixture as config_fixture
+from oslo_serialization import jsonutils
+from oslo_utils import timeutils
 import webob
 from webob import exc
 
@@ -22,13 +26,12 @@ from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import jsonutils
-from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.tests import cast_as_call
 from cinder.volume import api as volume_api
+from cinder.volume.targets import tgt
 
 CONF = cfg.CONF
 
@@ -45,15 +48,25 @@ class AdminActionsTest(test.TestCase):
     def setUp(self):
         super(AdminActionsTest, self).setUp()
 
-        self.tempdir = tempfile.mkdtemp()
+        self.tempdir = self.useFixture(fixtures.TempDir()).path
+        self.fixture = self.useFixture(config_fixture.Config(lockutils.CONF))
+        self.fixture.config(lock_path=self.tempdir,
+                            group='oslo_concurrency')
+        self.fixture.config(disable_process_locking=True,
+                            group='oslo_concurrency')
         self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
-        self.flags(lock_path=self.tempdir,
-                   disable_process_locking=True)
 
         self.volume_api = volume_api.API()
         cast_as_call.mock_cast_as_call(self.volume_api.volume_rpcapi.client)
         cast_as_call.mock_cast_as_call(self.volume_api.scheduler_rpcapi.client)
         self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
+        self.stubs.Set(tgt.TgtAdm,
+                       'create_iscsi_target',
+                       self._fake_create_iscsi_target)
+
+    def _fake_create_iscsi_target(self, name, tid, lun,
+                                  path, chap_auth=None, **kwargs):
+        return 1
 
     def _issue_volume_reset(self, ctx, volume, updated_status):
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
@@ -384,7 +397,8 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(admin_metadata[1]['key'], 'attached_mode')
         self.assertEqual(admin_metadata[1]['value'], 'rw')
         conn_info = self.volume_api.initialize_connection(ctx,
-                                                          volume, connector)
+                                                          volume,
+                                                          connector)
         self.assertEqual(conn_info['data']['access_mode'], 'rw')
         # build request to force detach
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
@@ -549,7 +563,7 @@ class AdminActionsTest(test.TestCase):
         connector = {}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.InvalidInput,
                           self.volume_api.initialize_connection,
                           ctx, volume, connector)
         # cleanup

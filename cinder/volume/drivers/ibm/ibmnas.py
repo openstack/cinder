@@ -32,17 +32,17 @@ Notes:
 import os
 import re
 
-from oslo.config import cfg
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
-from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers import nfs
-from cinder.volume.drivers.remotefs import nas_opts
+from cinder.volume.drivers import remotefs
 from cinder.volume.drivers.san import san
 
 VERSION = '1.1.0'
@@ -52,6 +52,7 @@ LOG = logging.getLogger(__name__)
 platform_opts = [
     cfg.StrOpt('ibmnas_platform_type',
                default='v7ku',
+               choices=['v7ku', 'sonas', 'gpfs-nas'],
                help=('IBMNAS platform type to be used as backend storage; '
                      'valid values are - '
                      'v7ku : for using IBM Storwize V7000 Unified, '
@@ -78,7 +79,7 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
     def __init__(self, execute=utils.execute, *args, **kwargs):
         self._context = None
         super(IBMNAS_NFSDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(nas_opts)
+        self.configuration.append_config_values(remotefs.nas_opts)
         self.configuration.append_config_values(platform_opts)
         self.configuration.san_ip = self.configuration.nas_ip
         self.configuration.san_login = self.configuration.nas_login
@@ -88,7 +89,7 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
         self.configuration.san_ssh_port = self.configuration.nas_ssh_port
         self.configuration.ibmnas_platform_type = \
             self.configuration.ibmnas_platform_type.lower()
-        LOG.info(_('Initialized driver for IBMNAS Platform: %s.'),
+        LOG.info(_LI('Initialized driver for IBMNAS Platform: %s.'),
                  self.configuration.ibmnas_platform_type)
 
     def set_execute(self, execute):
@@ -127,14 +128,14 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def _get_provider_location(self, volume_id):
         """Returns provider location for given volume."""
-        LOG.debug("Enter _get_provider_location: volume_id %s" % volume_id)
+        LOG.debug("Enter _get_provider_location: volume_id %s", volume_id)
         volume = self.db.volume_get(self._context, volume_id)
         LOG.debug("Exit _get_provider_location")
         return volume['provider_location']
 
     def _get_export_path(self, volume_id):
         """Returns NFS export path for the given volume."""
-        LOG.debug("Enter _get_export_path: volume_id %s" % volume_id)
+        LOG.debug("Enter _get_export_path: volume_id %s", volume_id)
         return self._get_provider_location(volume_id).split(':')[1]
 
     def _update_volume_stats(self):
@@ -175,8 +176,8 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def _create_ibmnas_snap(self, src, dest, mount_path):
         """Create volume clones and snapshots."""
-        LOG.debug("Enter _create_ibmnas_snap: src %(src)s, dest %(dest)s"
-                  % {'src': src, 'dest': dest})
+        LOG.debug("Enter _create_ibmnas_snap: src %(src)s, dest %(dest)s",
+                  {'src': src, 'dest': dest})
         if self.configuration.ibmnas_platform_type == 'gpfs-nas':
             ssh_cmd = ['mmclone', 'snap', src, dest]
             self._ssh_operation(ssh_cmd)
@@ -201,9 +202,9 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
     def _create_ibmnas_copy(self, src, dest, snap):
         """Create a cloned volume, parent & the clone both remain writable."""
         LOG.debug('Enter _create_ibmnas_copy: src %(src)s, dest %(dest)s, '
-                  'snap %(snap)s' % {'src': src,
-                                     'dest': dest,
-                                     'snap': snap})
+                  'snap %(snap)s', {'src': src,
+                                    'dest': dest,
+                                    'snap': snap})
         if self.configuration.ibmnas_platform_type == 'gpfs-nas':
             ssh_cmd = ['mmclone', 'snap', src, snap]
             self._ssh_operation(ssh_cmd)
@@ -216,7 +217,7 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def _resize_volume_file(self, path, new_size):
         """Resize the image file on share to new size."""
-        LOG.debug("Resizing file to %sG." % new_size)
+        LOG.debug("Resizing file to %sG.", new_size)
         try:
             image_utils.resize_image(path, new_size, run_as_root=True)
         except processutils.ProcessExecutionError as e:
@@ -230,15 +231,15 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
-        LOG.debug("Extending volume %s" % volume['name'])
+        LOG.debug("Extending volume %s", volume['name'])
         path = self.local_path(volume)
         self._resize_volume_file(path, new_size)
 
     def _delete_snapfiles(self, fchild, mount_point):
         LOG.debug('Enter _delete_snapfiles: fchild %(fchild)s, '
-                  'mount_point %(mount_point)s'
-                  % {'fchild': fchild,
-                     'mount_point': mount_point})
+                  'mount_point %(mount_point)s',
+                  {'fchild': fchild,
+                   'mount_point': mount_point})
         if self.configuration.ibmnas_platform_type == 'gpfs-nas':
             ssh_cmd = ['mmclone', 'show', fchild]
         else:
@@ -284,8 +285,9 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         if not volume['provider_location']:
-            LOG.warn(_('Volume %s does not have provider_location specified, '
-                     'skipping.'), volume['name'])
+            LOG.warn(_LW('Volume %s does not have '
+                         'provider_location specified, '
+                         'skipping.'), volume['name'])
             return
 
         export_path = self._get_export_path(volume['id'])

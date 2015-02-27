@@ -16,10 +16,11 @@
 
 import re
 
+from oslo_concurrency import processutils
+
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 
 LOG = logging.getLogger(__name__)
 
@@ -163,8 +164,8 @@ class StorwizeSSH(object):
             raise exception.VolumeBackendAPIException(data=msg)
         if err.startswith('CMMVC6071E'):
             if not multihostmap:
-                LOG.error(_('storwize_svc_multihostmap_enabled is set '
-                            'to False, not allowing multi host mapping.'))
+                LOG.error(_LE('storwize_svc_multihostmap_enabled is set '
+                              'to False, not allowing multi host mapping.'))
                 msg = 'CMMVC6071E The VDisk-to-host mapping '\
                       'was not created because the VDisk is '\
                       'already mapped to a host.\n"'
@@ -241,11 +242,13 @@ class StorwizeSSH(object):
                     '-unit', 'gb', vdisk])
         self.run_ssh_assert_no_output(ssh_cmd)
 
-    def mkfcmap(self, source, target, full_copy):
+    def mkfcmap(self, source, target, full_copy, consistgrp=None):
         ssh_cmd = ['svctask', 'mkfcmap', '-source', source, '-target',
                    target, '-autodelete']
         if not full_copy:
             ssh_cmd.extend(['-copyrate', '0'])
+        if consistgrp:
+            ssh_cmd.extend(['-consistgrp', consistgrp])
         out, err = self._ssh(ssh_cmd, check_exit_code=False)
         if 'successfully created' not in out:
             msg = (_('CLI Exception output:\n command: %(cmd)s\n '
@@ -277,6 +280,18 @@ class StorwizeSSH(object):
         ssh_cmd = ['svctask', 'startfcmap', fc_map_id]
         self.run_ssh_assert_no_output(ssh_cmd)
 
+    def prestartfcconsistgrp(self, fc_consist_group):
+        ssh_cmd = ['svctask', 'prestartfcconsistgrp', fc_consist_group]
+        self.run_ssh_assert_no_output(ssh_cmd)
+
+    def startfcconsistgrp(self, fc_consist_group):
+        ssh_cmd = ['svctask', 'startfcconsistgrp', fc_consist_group]
+        self.run_ssh_assert_no_output(ssh_cmd)
+
+    def stopfcconsistgrp(self, fc_consist_group):
+        ssh_cmd = ['svctask', 'stopfcconsistgrp', fc_consist_group]
+        self.run_ssh_assert_no_output(ssh_cmd)
+
     def chfcmap(self, fc_map_id, copyrate='50', autodel='on'):
         ssh_cmd = ['svctask', 'chfcmap', '-copyrate', copyrate,
                    '-autodelete', autodel, fc_map_id]
@@ -298,6 +313,20 @@ class StorwizeSSH(object):
         ssh_cmd = ['svcinfo', 'lsfcmap', '-filtervalue',
                    'id=%s' % fc_map_id, '-delim', '!']
         return self.run_ssh_info(ssh_cmd, with_header=True)
+
+    def lsfcconsistgrp(self, fc_consistgrp):
+        ssh_cmd = ['svcinfo', 'lsfcconsistgrp', '-delim', '!', fc_consistgrp]
+        out, err = self._ssh(ssh_cmd)
+        return CLIResponse((out, err), ssh_cmd=ssh_cmd, delim='!',
+                           with_header=False)
+
+    def mkfcconsistgrp(self, fc_consist_group):
+        ssh_cmd = ['svctask', 'mkfcconsistgrp', '-name', fc_consist_group]
+        return self.run_ssh_check_created(ssh_cmd)
+
+    def rmfcconsistgrp(self, fc_consist_group):
+        ssh_cmd = ['svctask', 'rmfcconsistgrp', '-force', fc_consist_group]
+        return self.run_ssh_assert_no_output(ssh_cmd)
 
     def addvdiskcopy(self, vdisk, dest_pool, params):
         ssh_cmd = (['svctask', 'addvdiskcopy'] + params + ['-mdiskgrp',

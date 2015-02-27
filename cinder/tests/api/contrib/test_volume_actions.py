@@ -17,14 +17,14 @@ import json
 import uuid
 
 import mock
-from oslo.config import cfg
 from oslo import messaging
+from oslo_config import cfg
+from oslo_serialization import jsonutils
 import webob
 
 from cinder.api.contrib import volume_actions
 from cinder import exception
-from cinder.image.glance import GlanceImageService
-from cinder.openstack.common import jsonutils
+from cinder.image import glance
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
@@ -357,7 +357,8 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
         # Test that the retype API works for both available and in-use
         self._retype_volume_exec(202)
         self.mock_volume_get.return_value['status'] = 'in-use'
-        specs = {'qos_specs': {'id': 'fakeqid1', 'consumer': 'back-end'}}
+        specs = {'id': 'fakeqid1', 'name': 'fake_name1',
+                 'consumer': 'back-end', 'specs': {'key1': 'value1'}}
         _mock_get_qspecs.return_value = specs
         self._retype_volume_exec(202)
 
@@ -408,9 +409,11 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
     def _retype_volume_diff_qos(self, vol_status, consumer, expected_status,
                                 _mock_get_qspecs):
         def fake_get_qos(ctxt, qos_id):
-            d1 = {'qos_specs': {'id': 'fakeqid1', 'consumer': consumer}}
-            d2 = {'qos_specs': {'id': 'fakeqid2', 'consumer': consumer}}
-            return d1 if d1['qos_specs']['id'] == qos_id else d2
+            d1 = {'id': 'fakeqid1', 'name': 'fake_name1',
+                  'consumer': consumer, 'specs': {'key1': 'value1'}}
+            d2 = {'id': 'fakeqid2', 'name': 'fake_name2',
+                  'consumer': consumer, 'specs': {'key1': 'value1'}}
+            return d1 if d1['id'] == qos_id else d2
 
         self.mock_volume_get.return_value['status'] = vol_status
         _mock_get_qspecs.side_effect = fake_get_qos
@@ -669,7 +672,7 @@ class VolumeImageActionsTest(test.TestCase):
             mock_get_volume_image_metadata.side_effect = \
                 fake_get_volume_image_metadata
 
-            with mock.patch.object(GlanceImageService, "create") \
+            with mock.patch.object(glance.GlanceImageService, "create") \
                     as mock_create:
                 mock_create.side_effect = self.fake_image_service_create
 
@@ -725,7 +728,7 @@ class VolumeImageActionsTest(test.TestCase):
             mock_get_volume_image_metadata.side_effect = \
                 fake_get_volume_image_metadata_raise
 
-            with mock.patch.object(GlanceImageService, "create") \
+            with mock.patch.object(glance.GlanceImageService, "create") \
                     as mock_create:
                 mock_create.side_effect = self.fake_image_service_create
 
@@ -777,7 +780,7 @@ class VolumeImageActionsTest(test.TestCase):
             mock_get_volume_image_metadata.side_effect = \
                 fake_get_volume_image_metadata
 
-            with mock.patch.object(GlanceImageService, "create") \
+            with mock.patch.object(glance.GlanceImageService, "create") \
                     as mock_create:
                 mock_create.side_effect = self.fake_image_service_create
 
@@ -821,7 +824,7 @@ class VolumeImageActionsTest(test.TestCase):
         id = 1
 
         # Need to mock create, update, copy_volume_to_image
-        with mock.patch.object(GlanceImageService, "create") \
+        with mock.patch.object(glance.GlanceImageService, "create") \
                 as mock_create:
             mock_create.side_effect = self.fake_image_service_create
 
@@ -835,7 +838,7 @@ class VolumeImageActionsTest(test.TestCase):
                     mock_copy_volume_to_image.side_effect = \
                         self.fake_rpc_copy_volume_to_image
 
-                    CONF.set_override('glance_core_properties', [])
+                    self.override_config('glance_core_properties', [])
 
                     req = fakes.HTTPRequest.blank(
                         '/v2/tenant1/volumes/%s/action' % id)

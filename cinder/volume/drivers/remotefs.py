@@ -19,20 +19,24 @@ import json
 import os
 import re
 import tempfile
+import time
 
-from oslo.config import cfg
+from oslo_concurrency import processutils as putils
+from oslo_config import cfg
+from oslo_utils import units
 
+from cinder import compute
+from cinder import db
 from cinder import exception
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common.gettextutils import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
-from cinder.openstack.common import units
 from cinder.volume import driver
 
 LOG = logging.getLogger(__name__)
 
 nas_opts = [
+    # TODO(eharney): deprecate nas_ip and change this to nas_host
     cfg.StrOpt('nas_ip',
                default='',
                help='IP address or Hostname of NAS system.'),
@@ -49,6 +53,34 @@ nas_opts = [
     cfg.StrOpt('nas_private_key',
                default='',
                help='Filename of private key to use for SSH authentication.'),
+    cfg.StrOpt('nas_secure_file_operations',
+               default='auto',
+               help=('Allow network-attached storage systems to operate in a '
+                     'secure environment where root level access is not '
+                     'permitted. If set to False, access is as the root user '
+                     'and insecure. If set to True, access is not as root. '
+                     'If set to auto, a check is done to determine if this is '
+                     'a new installation: True is used if so, otherwise '
+                     'False. Default is auto.')),
+    cfg.StrOpt('nas_secure_file_permissions',
+               default='auto',
+               help=('Set more secure file permissions on network-attached '
+                     'storage volume files to restrict broad other/world '
+                     'access. If set to False, volumes are created with open '
+                     'permissions. If set to True, volumes are created with '
+                     'permissions for the cinder user and group (660). If '
+                     'set to auto, a check is done to determine if '
+                     'this is a new installation: True is used if so, '
+                     'otherwise False. Default is auto.')),
+    cfg.StrOpt('nas_share_path',
+               default='',
+               help=('Path to the share to use for storing Cinder volumes. '
+                     'For example:  "/srv/export1" for an NFS server export '
+                     'available at 10.0.5.10:/srv/export1 .')),
+    cfg.StrOpt('nas_mount_options',
+               default=None,
+               help=('Options used to mount the storage backend file system '
+                     'where Cinder volumes are stored.'))
 ]
 
 CONF = cfg.CONF
@@ -67,6 +99,11 @@ class RemoteFSDriver(driver.VolumeDriver):
         super(RemoteFSDriver, self).__init__(*args, **kwargs)
         self.shares = {}
         self._mounted_shares = []
+        self._execute_as_root = True
+        self._is_voldb_empty_at_startup = kwargs.pop('is_vol_db_empty', None)
+
+        if self.configuration:
+            self.configuration.append_config_values(nas_opts)
 
     def check_for_setup_error(self):
         """Just to override parent behavior."""
@@ -88,6 +125,28 @@ class RemoteFSDriver(driver.VolumeDriver):
             'mount_point_base': self._get_mount_point_base()
         }
 
+    def do_setup(self, context):
+        """Any initialization the volume driver does while starting."""
+        super(RemoteFSDriver, self).do_setup(context)
+
+        # Validate the settings for our secure file options.
+        self.configuration.nas_secure_file_permissions = \
+            self.configuration.nas_secure_file_permissions.lower()
+        self.configuration.nas_secure_file_operations = \
+            self.configuration.nas_secure_file_operations.lower()
+        valid_secure_opts = ['auto', 'true', 'false']
+        secure_options = {'nas_secure_file_permissions':
+                          self.configuration.nas_secure_file_permissions,
+                          'nas_secure_file_operations':
+                          self.configuration.nas_secure_file_operations}
+        for opt_name, opt_value in secure_options.iteritems():
+            if opt_value not in valid_secure_opts:
+                err_parms = {'name': opt_name, 'value': opt_value}
+                msg = _("NAS config '%(name)s=%(value)s' invalid. Must be "
+                        "'auto', 'true', or 'false'") % err_parms
+                LOG.error(msg)
+                raise exception.InvalidConfigurationValue(msg)
+
     def _get_mount_point_base(self):
         """Returns the mount point base for the remote fs.
 
@@ -107,12 +166,13 @@ class RemoteFSDriver(driver.VolumeDriver):
         """Creates a volume.
 
         :param volume: volume reference
+        :returns: provider_location update dict for database
         """
         self._ensure_shares_mounted()
 
         volume['provider_location'] = self._find_share(volume['size'])
 
-        LOG.info(_('casted to %s') % volume['provider_location'])
+        LOG.info(_LI('casted to %s') % volume['provider_location'])
 
         self._do_create_volume(volume)
 
@@ -132,7 +192,7 @@ class RemoteFSDriver(driver.VolumeDriver):
         else:
             self._create_regular_file(volume_path, volume_size)
 
-        self._set_rw_permissions_for_all(volume_path)
+        self._set_rw_permissions(volume_path)
 
     def _ensure_shares_mounted(self):
         """Look for remote shares in the flags and tries to mount them
@@ -149,7 +209,7 @@ class RemoteFSDriver(driver.VolumeDriver):
                 self._ensure_share_mounted(share)
                 mounted_shares.append(share)
             except Exception as exc:
-                LOG.error(_('Exception during mounting %s') % (exc,))
+                LOG.error(_LE('Exception during mounting %s') % (exc,))
 
         self._mounted_shares = mounted_shares
 
@@ -164,8 +224,9 @@ class RemoteFSDriver(driver.VolumeDriver):
         :param volume: volume reference
         """
         if not volume['provider_location']:
-            LOG.warn(_('Volume %s does not have provider_location specified, '
-                     'skipping'), volume['name'])
+            LOG.warn(_LW('Volume %s does not have '
+                         'provider_location specified, '
+                         'skipping'), volume['name'])
             return
 
         self._ensure_share_mounted(volume['provider_location'])
@@ -179,7 +240,9 @@ class RemoteFSDriver(driver.VolumeDriver):
         self._ensure_share_mounted(volume['provider_location'])
 
     def create_export(self, ctx, volume):
-        """Exports the volume. Can optionally return a Dictionary of changes
+        """Exports the volume.
+
+        Can optionally return a dictionary of changes
         to the volume object to be persisted.
         """
         pass
@@ -197,17 +260,15 @@ class RemoteFSDriver(driver.VolumeDriver):
     def _delete(self, path):
         # Note(lpetrut): this method is needed in order to provide
         # interoperability with Windows as it will be overridden.
-        self._execute('rm', '-f', path, run_as_root=True)
+        self._execute('rm', '-f', path, run_as_root=self._execute_as_root)
 
     def _create_sparsed_file(self, path, size):
-        """Creates file with 0 disk usage."""
+        """Creates a sparse file of a given size in GiB."""
         self._execute('truncate', '-s', '%sG' % size,
-                      path, run_as_root=True)
+                      path, run_as_root=self._execute_as_root)
 
     def _create_regular_file(self, path, size):
-        """Creates regular file of given size. Takes a lot of time for large
-        files.
-        """
+        """Creates a regular file of given size in GiB."""
 
         block_size_mb = 1
         block_count = size * units.Gi / (block_size_mb * units.Mi)
@@ -215,23 +276,47 @@ class RemoteFSDriver(driver.VolumeDriver):
         self._execute('dd', 'if=/dev/zero', 'of=%s' % path,
                       'bs=%dM' % block_size_mb,
                       'count=%d' % block_count,
-                      run_as_root=True)
+                      run_as_root=self._execute_as_root)
 
     def _create_qcow2_file(self, path, size_gb):
-        """Creates a QCOW2 file of a given size."""
+        """Creates a QCOW2 file of a given size in GiB."""
 
         self._execute('qemu-img', 'create', '-f', 'qcow2',
                       '-o', 'preallocation=metadata',
                       path, str(size_gb * units.Gi),
-                      run_as_root=True)
+                      run_as_root=self._execute_as_root)
+
+    def _set_rw_permissions(self, path):
+        """Sets access permissions for given NFS path.
+
+        Volume file permissions are set based upon the value of
+        secure_file_permissions: 'true' sets secure access permissions and
+        'false' sets more open (insecure) access permissions.
+
+        :param path: the volume file path.
+        """
+        if self.configuration.nas_secure_file_permissions == 'true':
+            permissions = '660'
+            LOG.debug('File path %s is being set with permissions: %s' %
+                      (path, permissions))
+        else:
+            permissions = 'ugo+rw'
+            parms = {'path': path, 'perm': permissions}
+            LOG.warn(_LW('%(path)s is being set with open permissions: '
+                         '%(perm)s') % parms)
+
+        self._execute('chmod', permissions, path,
+                      run_as_root=self._execute_as_root)
 
     def _set_rw_permissions_for_all(self, path):
         """Sets 666 permissions for the path."""
-        self._execute('chmod', 'ugo+rw', path, run_as_root=True)
+        self._execute('chmod', 'ugo+rw', path,
+                      run_as_root=self._execute_as_root)
 
     def _set_rw_permissions_for_owner(self, path):
         """Sets read-write permissions to the owner for the path."""
-        self._execute('chmod', 'u+rw', path, run_as_root=True)
+        self._execute('chmod', 'u+rw', path,
+                      run_as_root=self._execute_as_root)
 
     def local_path(self, volume):
         """Get volume path (mounted locally fs path) for given volume
@@ -243,12 +328,15 @@ class RemoteFSDriver(driver.VolumeDriver):
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
+        run_as_root = self._execute_as_root
+
         image_utils.fetch_to_raw(context,
                                  image_service,
                                  image_id,
                                  self.local_path(volume),
                                  self.configuration.volume_dd_blocksize,
-                                 size=volume['size'])
+                                 size=volume['size'],
+                                 run_as_root=run_as_root)
 
         # NOTE (leseb): Set the virtual size of the image
         # the raw conversion overwrote the destination file
@@ -257,9 +345,11 @@ class RemoteFSDriver(driver.VolumeDriver):
         # thus the initial 'size' parameter is not honored
         # this sets the size to the one asked in the first place by the user
         # and then verify the final virtual size
-        image_utils.resize_image(self.local_path(volume), volume['size'])
+        image_utils.resize_image(self.local_path(volume), volume['size'],
+                                 run_as_root=run_as_root)
 
-        data = image_utils.qemu_img_info(self.local_path(volume))
+        data = image_utils.qemu_img_info(self.local_path(volume),
+                                         run_as_root=run_as_root)
         virt_size = data.virtual_size / units.Gi
         if virt_size != volume['size']:
             raise exception.ImageUnacceptable(
@@ -279,33 +369,57 @@ class RemoteFSDriver(driver.VolumeDriver):
         with open(config_file) as f:
             return f.readlines()
 
-    def _load_shares_config(self, share_file):
+    def _load_shares_config(self, share_file=None):
         self.shares = {}
 
-        for share in self._read_config_file(share_file):
-            # A configuration line may be either:
-            #  host:/vol_name
-            # or
-            #  host:/vol_name -o options=123,rw --other
-            if not share.strip():
-                # Skip blank or whitespace-only lines
-                continue
-            if share.startswith('#'):
-                continue
+        if all((self.configuration.nas_ip,
+                self.configuration.nas_share_path)):
+            LOG.debug('Using nas_ip and nas_share_path configuration.')
 
-            share_info = share.split(' ', 1)
-            # results in share_info =
-            #  [ 'address:/vol', '-o options=123,rw --other' ]
+            nas_ip = self.configuration.nas_ip
+            nas_share_path = self.configuration.nas_share_path
 
-            share_address = share_info[0].strip().decode('unicode_escape')
-            share_opts = share_info[1].strip() if len(share_info) > 1 else None
+            share_address = '%s:%s' % (nas_ip, nas_share_path)
 
             if not re.match(self.SHARE_FORMAT_REGEX, share_address):
-                LOG.warn(_("Share %s ignored due to invalid format.  Must be "
-                           "of form address:/export.") % share_address)
-                continue
+                msg = (_("Share %s ignored due to invalid format. Must "
+                         "be of form address:/export. Please check the "
+                         "nas_ip and nas_share_path settings."),
+                       share_address)
+                raise exception.InvalidConfigurationValue(msg)
 
-            self.shares[share_address] = share_opts
+            self.shares[share_address] = self.configuration.nas_mount_options
+
+        elif share_file is not None:
+            LOG.debug('Loading shares from %s.' % share_file)
+
+            for share in self._read_config_file(share_file):
+                # A configuration line may be either:
+                #  host:/vol_name
+                # or
+                #  host:/vol_name -o options=123,rw --other
+                if not share.strip():
+                    # Skip blank or whitespace-only lines
+                    continue
+                if share.startswith('#'):
+                    continue
+
+                share_info = share.split(' ', 1)
+                # results in share_info =
+                #  [ 'address:/vol', '-o options=123,rw --other' ]
+
+                share_address = share_info[0].strip().decode('unicode_escape')
+                share_opts = None
+                if len(share_info) > 1:
+                    share_opts = share_info[1].strip()
+
+                if not re.match(self.SHARE_FORMAT_REGEX, share_address):
+                    LOG.error(_LE("Share %s ignored due to invalid format. "
+                                  "Must be of form address:/export."),
+                              share_address)
+                    continue
+
+                self.shares[share_address] = share_opts
 
         LOG.debug("shares loaded: %s", self.shares)
 
@@ -362,7 +476,7 @@ class RemoteFSDriver(driver.VolumeDriver):
             self._execute(*cmd, run_as_root=True)
         except putils.ProcessExecutionError as exc:
             if ensure and 'already mounted' in exc.stderr:
-                LOG.warn(_("%s is already mounted"), share)
+                LOG.warn(_LW("%s is already mounted"), share)
             else:
                 raise
 
@@ -375,6 +489,90 @@ class RemoteFSDriver(driver.VolumeDriver):
     def _ensure_share_mounted(self, share):
         raise NotImplementedError()
 
+    def secure_file_operations_enabled(self):
+        """Determine if driver is operating in Secure File Operations mode.
+
+        The Cinder Volume driver needs to query if this driver is operating
+        in a secure file mode; check our nas_secure_file_operations flag.
+        """
+        if self.configuration.nas_secure_file_operations == 'true':
+            return True
+        return False
+
+    def set_nas_security_options(self, is_new_cinder_install):
+        """Determine the setting to use for Secure NAS options.
+
+        This method must be overridden by child wishing to use secure
+        NAS file operations. This base method will set the NAS security
+        options to false.
+        """
+        doc_html = "http://docs.openstack.org/admin-guide-cloud/content" \
+                   "/nfs_backend.html"
+        self.configuration.nas_secure_file_operations = 'false'
+        LOG.warn(_LW("The NAS file operations will be run as root: allowing "
+                     "root level access at the storage backend. This is "
+                     "considered an insecure NAS environment. "
+                     "Please see %s for information on a secure NAS "
+                     "configuration.") %
+                 doc_html)
+        self.configuration.nas_secure_file_permissions = 'false'
+        LOG.warn(_LW("The NAS file permissions mode will be 666 (allowing "
+                     "other/world read & write access). This is considered an "
+                     "insecure NAS environment. Please see %s for information "
+                     "on a secure NFS configuration.") %
+                 doc_html)
+
+    def _determine_nas_security_option_setting(self, nas_option, mount_point,
+                                               is_new_cinder_install):
+        """Determine NAS security option setting when 'auto' is assigned.
+
+        This method determines the final 'true'/'false' setting of an NAS
+        security option when the default value of 'auto' has been detected.
+        If the nas option isn't 'auto' then its current value is used.
+
+        :param nas_option: The NAS security option value loaded from config.
+        :param mount_point: Mount where indicator file is written.
+        :param is_new_cinder_install: boolean for new Cinder installation.
+        :return string: 'true' or 'false' for new option setting.
+        """
+        if nas_option == 'auto':
+            # For auto detection, we first check to see if we have been
+            # through this process before by checking for the existence of
+            # the Cinder secure environment indicator file.
+            file_name = '.cinderSecureEnvIndicator'
+            file_path = os.path.join(mount_point, file_name)
+            if os.path.isfile(file_path):
+                nas_option = 'true'
+                LOG.info(_LI('Cinder secure environment '
+                             'indicator file exists.'))
+            else:
+                # The indicator file does not exist. If it is a new
+                # installation, set to 'true' and create the indicator file.
+                if is_new_cinder_install:
+                    nas_option = 'true'
+                    try:
+                        with open(file_path, 'w') as fh:
+                            fh.write('Detector file for Cinder secure '
+                                     'environment usage.\n')
+                            fh.write('Do not delete this file.\n')
+
+                        # Set the permissions on our special marker file to
+                        # protect from accidental removal (owner write only).
+                        self._execute('chmod', '640', file_path,
+                                      run_as_root=False)
+                        LOG.info(_LI('New Cinder secure environment indicator'
+                                     ' file created at path %s.') % file_path)
+                    except IOError as err:
+                        LOG.error(_LE('Failed to created Cinder secure '
+                                      'environment indicator file: %s') %
+                                  format(err))
+                else:
+                    # For existing installs, we default to 'false'. The
+                    # admin can always set the option at the driver config.
+                    nas_option = 'false'
+
+        return nas_option
+
 
 class RemoteFSSnapDriver(RemoteFSDriver):
     """Base class for remotefs drivers implementing qcow2 snapshots.
@@ -386,7 +584,13 @@ class RemoteFSSnapDriver(RemoteFSDriver):
     def __init__(self, *args, **kwargs):
         self._remotefsclient = None
         self.base = None
+        self._nova = None
         super(RemoteFSSnapDriver, self).__init__(*args, **kwargs)
+
+    def do_setup(self, context):
+        super(RemoteFSSnapDriver, self).do_setup(context)
+
+        self._nova = compute.API()
 
     def _local_volume_dir(self, volume):
         share = volume['provider_location']
@@ -455,12 +659,13 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         raise NotImplementedError()
 
     def _img_commit(self, path):
-        self._execute('qemu-img', 'commit', path, run_as_root=True)
+        self._execute('qemu-img', 'commit', path,
+                      run_as_root=self._execute_as_root)
         self._delete(path)
 
     def _rebase_img(self, image, backing_file, volume_format):
         self._execute('qemu-img', 'rebase', '-u', '-b', backing_file, image,
-                      '-F', volume_format, run_as_root=True)
+                      '-F', volume_format, run_as_root=self._execute_as_root)
 
     def _read_info_file(self, info_path, empty_if_missing=False):
         """Return dict of snapshot information.
@@ -530,7 +735,8 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         mount_point = self._get_mount_point_for_share(share)
 
         out, _ = self._execute('df', '--portability', '--block-size', '1',
-                               mount_point, run_as_root=True)
+                               mount_point,
+                               run_as_root=self._execute_as_root)
         out = out.splitlines()[1]
 
         size = int(out.split()[1])
@@ -613,7 +819,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         return snap_info['active']
 
     def _create_cloned_volume(self, volume, src_vref):
-        LOG.info(_('Cloning volume %(src)s to volume %(dst)s') %
+        LOG.info(_LI('Cloning volume %(src)s to volume %(dst)s') %
                  {'src': src_vref['id'],
                   'dst': volume['id']})
 
@@ -657,7 +863,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         if (snapshot_file == active_file):
             return
 
-        LOG.info(_('Deleting stale snapshot: %s') % snapshot['id'])
+        LOG.info(_LI('Deleting stale snapshot: %s') % snapshot['id'])
         self._delete(snapshot_path)
         del(snap_info[snapshot['id']])
         self._write_info_file(info_path, snap_info)
@@ -672,7 +878,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
         merge, and call to Nova to perform this operation.
 
         :raises: InvalidVolume if status not acceptable
-        :raises: RemotefsException(msg) if operation fails
+        :raises: RemoteFSException(msg) if operation fails
         :returns: None
 
         """
@@ -697,8 +903,8 @@ class RemoteFSSnapDriver(RemoteFSDriver):
             # exist, do not attempt to delete.
             # (This happens, for example, if snapshot_create failed due to lack
             # of permission to write to the share.)
-            LOG.info(_('Snapshot record for %s is not present, allowing '
-                       'snapshot_delete to proceed.') % snapshot['id'])
+            LOG.info(_LI('Snapshot record for %s is not present, allowing '
+                         'snapshot_delete to proceed.') % snapshot['id'])
             return
 
         snapshot_file = snap_info[snapshot['id']]
@@ -729,7 +935,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
                         'to be deleted.') % snapshot_path
                 LOG.warn(msg)
 
-                # Snapshot may be stale, so just delete it and update ther
+                # Snapshot may be stale, so just delete it and update the
                 # info file instead of blocking
                 return self._delete_stale_snapshot(snapshot)
 
@@ -885,7 +1091,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
 
         command = ['qemu-img', 'create', '-f', 'qcow2', '-o',
                    'backing_file=%s' % backing_path_full_path, new_snap_path]
-        self._execute(*command, run_as_root=True)
+        self._execute(*command, run_as_root=self._execute_as_root)
 
         info = self._qemu_img_info(backing_path_full_path,
                                    snapshot['volume']['name'])
@@ -895,9 +1101,9 @@ class RemoteFSSnapDriver(RemoteFSDriver):
                    '-b', backing_filename,
                    '-F', backing_fmt,
                    new_snap_path]
-        self._execute(*command, run_as_root=True)
+        self._execute(*command, run_as_root=self._execute_as_root)
 
-        self._set_rw_permissions_for_all(new_snap_path)
+        self._set_rw_permissions(new_snap_path)
 
     def _create_snapshot(self, snapshot):
         """Create a snapshot.
@@ -1006,7 +1212,159 @@ class RemoteFSSnapDriver(RemoteFSDriver):
 
     def _create_snapshot_online(self, snapshot, backing_filename,
                                 new_snap_path):
-        raise NotImplementedError()
+        # Perform online snapshot via Nova
+        context = snapshot['context']
+
+        self._do_create_snapshot(snapshot,
+                                 backing_filename,
+                                 new_snap_path)
+
+        connection_info = {
+            'type': 'qcow2',
+            'new_file': os.path.basename(new_snap_path),
+            'snapshot_id': snapshot['id']
+        }
+
+        try:
+            result = self._nova.create_volume_snapshot(
+                context,
+                snapshot['volume_id'],
+                connection_info)
+            LOG.debug('nova call result: %s' % result)
+        except Exception as e:
+            LOG.error(_LE('Call to Nova to create snapshot failed'))
+            LOG.exception(e)
+            raise e
+
+        # Loop and wait for result
+        # Nova will call Cinderclient to update the status in the database
+        # An update of progress = '90%' means that Nova is done
+        seconds_elapsed = 0
+        increment = 1
+        timeout = 600
+        while True:
+            s = db.snapshot_get(context, snapshot['id'])
+
+            if s['status'] == 'creating':
+                if s['progress'] == '90%':
+                    # Nova tasks completed successfully
+                    break
+
+                time.sleep(increment)
+                seconds_elapsed += increment
+            elif s['status'] == 'error':
+
+                msg = _('Nova returned "error" status '
+                        'while creating snapshot.')
+                raise exception.RemoteFSException(msg)
+
+            LOG.debug('Status of snapshot %(id)s is now %(status)s' % {
+                'id': snapshot['id'],
+                'status': s['status']
+            })
+
+            if 10 < seconds_elapsed <= 20:
+                increment = 2
+            elif 20 < seconds_elapsed <= 60:
+                increment = 5
+            elif 60 < seconds_elapsed:
+                increment = 10
+
+            if seconds_elapsed > timeout:
+                msg = _('Timed out while waiting for Nova update '
+                        'for creation of snapshot %s.') % snapshot['id']
+                raise exception.RemoteFSException(msg)
 
     def _delete_snapshot_online(self, context, snapshot, info):
-        raise NotImplementedError()
+        # Update info over the course of this method
+        # active file never changes
+        info_path = self._local_path_volume(snapshot['volume']) + '.info'
+        snap_info = self._read_info_file(info_path)
+
+        if info['active_file'] == info['snapshot_file']:
+            # blockRebase/Pull base into active
+            # info['base'] => snapshot_file
+
+            file_to_delete = info['base_file']
+            if info['base_id'] is None:
+                # Passing base=none to blockRebase ensures that
+                # libvirt blanks out the qcow2 backing file pointer
+                new_base = None
+            else:
+                new_base = info['new_base_file']
+                snap_info[info['base_id']] = info['snapshot_file']
+
+            delete_info = {'file_to_merge': new_base,
+                           'merge_target_file': None,  # current
+                           'type': 'qcow2',
+                           'volume_id': snapshot['volume']['id']}
+
+            del(snap_info[snapshot['id']])
+        else:
+            # blockCommit snapshot into base
+            # info['base'] <= snapshot_file
+            # delete record of snapshot
+            file_to_delete = info['snapshot_file']
+
+            delete_info = {'file_to_merge': info['snapshot_file'],
+                           'merge_target_file': info['base_file'],
+                           'type': 'qcow2',
+                           'volume_id': snapshot['volume']['id']}
+
+            del(snap_info[snapshot['id']])
+
+        try:
+            self._nova.delete_volume_snapshot(
+                context,
+                snapshot['id'],
+                delete_info)
+        except Exception as e:
+            LOG.error(_LE('Call to Nova delete snapshot failed'))
+            LOG.exception(e)
+            raise e
+
+        # Loop and wait for result
+        # Nova will call Cinderclient to update the status in the database
+        # An update of progress = '90%' means that Nova is done
+        seconds_elapsed = 0
+        increment = 1
+        timeout = 7200
+        while True:
+            s = db.snapshot_get(context, snapshot['id'])
+
+            if s['status'] == 'deleting':
+                if s['progress'] == '90%':
+                    # Nova tasks completed successfully
+                    break
+                else:
+                    msg = ('status of snapshot %s is '
+                           'still "deleting"... waiting') % snapshot['id']
+                    LOG.debug(msg)
+                    time.sleep(increment)
+                    seconds_elapsed += increment
+            else:
+                msg = _('Unable to delete snapshot %(id)s, '
+                        'status: %(status)s.') % {'id': snapshot['id'],
+                                                  'status': s['status']}
+                raise exception.RemoteFSException(msg)
+
+            if 10 < seconds_elapsed <= 20:
+                increment = 2
+            elif 20 < seconds_elapsed <= 60:
+                increment = 5
+            elif 60 < seconds_elapsed:
+                increment = 10
+
+            if seconds_elapsed > timeout:
+                msg = _('Timed out while waiting for Nova update '
+                        'for deletion of snapshot %(id)s.') %\
+                    {'id': snapshot['id']}
+                raise exception.RemoteFSException(msg)
+
+        # Write info file updated above
+        self._write_info_file(info_path, snap_info)
+
+        # Delete stale file
+        path_to_delete = os.path.join(
+            self._local_volume_dir(snapshot['volume']), file_to_delete)
+        self._execute('rm', '-f', path_to_delete, run_as_root=True)

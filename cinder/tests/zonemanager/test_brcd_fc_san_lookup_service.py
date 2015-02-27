@@ -20,7 +20,7 @@
 """Unit tests for brcd fc san lookup service."""
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 import paramiko
 
 from cinder import exception

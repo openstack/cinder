@@ -36,10 +36,15 @@ translated_log = re.compile(
     "\(\s*_\(\s*('|\")")
 string_translation = re.compile(r"(.)*_\(\s*('|\")")
 vi_header_re = re.compile(r"^#\s+vim?:.+")
-underscore_import_check = re.compile(r"(.)*import _(.)*")
+underscore_import_check = re.compile(r"(.)*i18n\s+import\s+_(.)*")
 # We need this for cases where they have created their own _ function.
 custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
 no_audit_log = re.compile(r"(.)*LOG\.audit(.)*")
+
+# NOTE(jsbryant): When other oslo libraries switch over non-namespaced
+# imports, we will need to add them to the regex below.
+oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](concurrency|db"
+                                    "|config|utils|serialization)")
 
 
 def no_vi_headers(physical_line, line_number, lines):
@@ -113,9 +118,30 @@ def check_no_log_audit(logical_line):
         yield(0, "N324: Found LOG.audit.  Use LOG.info instead.")
 
 
+def check_assert_called_once(logical_line, filename):
+    msg = ("N327: assert_called_once is a no-op. please use assert_called_"
+           "once_with to test with explicit parameters or an assertEqual with"
+           " call_count.")
+
+    if 'cinder/tests/' in filename:
+        pos = logical_line.find('.assert_called_once(')
+        if pos != -1:
+            yield (pos, msg)
+
+
+def check_oslo_namespace_imports(logical_line):
+    if re.match(oslo_namespace_imports, logical_line):
+        msg = ("N333: '%s' must be used instead of '%s'.") % (
+            logical_line.replace('oslo.', 'oslo_'),
+            logical_line)
+        yield(0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
     register(no_mutable_default_args)
     register(check_explicit_underscore_import)
     register(check_no_log_audit)
+    register(check_assert_called_once)
+    register(check_oslo_namespace_imports)

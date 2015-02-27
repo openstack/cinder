@@ -17,8 +17,6 @@
 
 """Defines interface for DB access.
 
-The underlying driver is loaded as a :class:`LazyPluggable`.
-
 Functions in this module are imported into the cinder.db namespace. Call these
 functions from cinder.db namespace, not the cinder.db.api namespace.
 
@@ -30,9 +28,6 @@ these objects be simple dictionaries.
 
 **Related Flags**
 
-:backend:  string to lookup in the list of LazyPluggable backends.
-           `sqlalchemy` is the only supported backend right now.
-
 :connection:  string specifying the sqlalchemy connection to use, like:
               `sqlite:///var/lib/cinder/cinder.sqlite`.
 
@@ -41,20 +36,12 @@ these objects be simple dictionaries.
 
 """
 
-from oslo.config import cfg
-from oslo.db import concurrency as db_concurrency
-from oslo.db import options as db_options
+from oslo_config import cfg
+from oslo_db import concurrency as db_concurrency
+from oslo_db import options as db_options
 
 
 db_opts = [
-    # TODO(rpodolyaka): this option is deprecated but still passed to
-    #                   LazyPluggable class which doesn't support retrieving
-    #                   of options put into groups. Nova's version of this
-    #                   class supports this. Perhaps, we should put it to Oslo
-    #                   and then reuse here.
-    cfg.StrOpt('db_backend',
-               default='sqlalchemy',
-               help='The backend to use for db'),
     cfg.BoolOpt('enable_new_services',
                 default=True,
                 help='Services to be added to the available pool on create'),
@@ -108,20 +95,6 @@ def service_get_all_by_topic(context, topic, disabled=None):
     return IMPL.service_get_all_by_topic(context, topic, disabled=disabled)
 
 
-def service_get_all_by_host(context, host):
-    """Get all services for a given host."""
-    return IMPL.service_get_all_by_host(context, host)
-
-
-def service_get_all_volume_sorted(context):
-    """Get all volume services sorted by volume count.
-
-    :returns: a list of (Service, volume_count) tuples.
-
-    """
-    return IMPL.service_get_all_volume_sorted(context)
-
-
 def service_get_by_args(context, host, binary):
     """Get the state of an service by node name and binary."""
     return IMPL.service_get_by_args(context, host, binary)
@@ -161,10 +134,6 @@ def iscsi_target_create_safe(context, values):
 
 
 ###############
-
-def volume_allocate_iscsi_target(context, volume_id, host):
-    """Atomically allocate a free iscsi_target from the pool."""
-    return IMPL.volume_allocate_iscsi_target(context, volume_id, host)
 
 
 def volume_attached(context, volume_id, instance_id, host_name, mountpoint):
@@ -217,14 +186,14 @@ def volume_get_all(context, marker, limit, sort_key, sort_dir,
                                filters=filters)
 
 
-def volume_get_all_by_host(context, host):
+def volume_get_all_by_host(context, host, filters=None):
     """Get all volumes belonging to a host."""
-    return IMPL.volume_get_all_by_host(context, host)
+    return IMPL.volume_get_all_by_host(context, host, filters=filters)
 
 
-def volume_get_all_by_group(context, group_id):
+def volume_get_all_by_group(context, group_id, filters=None):
     """Get all volumes belonging to a consistency group."""
-    return IMPL.volume_get_all_by_group(context, group_id)
+    return IMPL.volume_get_all_by_group(context, group_id, filters=filters)
 
 
 def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
@@ -369,19 +338,45 @@ def volume_admin_metadata_update(context, volume_id, metadata, delete):
 ##################
 
 
-def volume_type_create(context, values):
+def volume_type_create(context, values, projects=None):
     """Create a new volume type."""
-    return IMPL.volume_type_create(context, values)
+    return IMPL.volume_type_create(context, values, projects)
 
 
-def volume_type_get_all(context, inactive=False):
-    """Get all volume types."""
-    return IMPL.volume_type_get_all(context, inactive)
+def volume_type_update(context, volume_type_id, values):
+    return IMPL.volume_type_update(context, volume_type_id, values)
 
 
-def volume_type_get(context, id, inactive=False):
-    """Get volume type by id."""
-    return IMPL.volume_type_get(context, id, inactive)
+def volume_type_get_all(context, inactive=False, filters=None):
+    """Get all volume types.
+
+    :param context: context to query under
+    :param inactive: Include inactive volume types to the result set
+    :param filters: Filters for the query in the form of key/value.
+
+        :is_public: Filter volume types based on visibility:
+
+            * **True**: List public volume types only
+            * **False**: List private volume types only
+            * **None**: List both public and private volume types
+
+    :returns: list of matching volume types
+    """
+
+    return IMPL.volume_type_get_all(context, inactive, filters)
+
+
+def volume_type_get(context, id, inactive=False, expected_fields=None):
+    """Get volume type by id.
+
+    :param context: context to query under
+    :param id: Volume type id to get.
+    :param inactive: Consider inactive volume types when searching
+    :param expected_fields: Return those additional fields.
+                            Supported fields are: projects.
+    :returns: volume type
+    """
+    return IMPL.volume_type_get(context, id, inactive, expected_fields)
 
 
 def volume_type_get_by_name(context, name):
@@ -433,6 +428,21 @@ def volume_get_active_by_window(context, begin, end=None, project_id=None):
     Specifying a project_id will filter for a certain project.
     """
     return IMPL.volume_get_active_by_window(context, begin, end, project_id)
+
+
+def volume_type_access_get_all(context, type_id):
+    """Get all volume type access of a volume type."""
+    return IMPL.volume_type_access_get_all(context, type_id)
+
+
+def volume_type_access_add(context, type_id, project_id):
+    """Add volume type access for project."""
+    return IMPL.volume_type_access_add(context, type_id, project_id)
+
+
+def volume_type_access_remove(context, type_id, project_id):
+    """Remove volume type access for project."""
+    return IMPL.volume_type_access_remove(context, type_id, project_id)
 
 
 ####################
@@ -822,11 +832,6 @@ def consistencygroup_get_all(context):
     return IMPL.consistencygroup_get_all(context)
 
 
-def consistencygroup_get_all_by_host(context, host):
-    """Get all consistencygroups belonging to a host."""
-    return IMPL.consistencygroup_get_all_by_host(context, host)
-
-
 def consistencygroup_create(context, values):
     """Create a consistencygroup from the values dictionary."""
     return IMPL.consistencygroup_create(context, values)
@@ -863,11 +868,6 @@ def cgsnapshot_get_all(context):
     return IMPL.cgsnapshot_get_all(context)
 
 
-def cgsnapshot_get_all_by_host(context, host):
-    """Get all cgsnapshots belonging to a host."""
-    return IMPL.cgsnapshot_get_all_by_host(context, host)
-
-
 def cgsnapshot_create(context, values):
     """Create a cgsnapshot from the values dictionary."""
     return IMPL.cgsnapshot_create(context, values)
@@ -894,3 +894,12 @@ def cgsnapshot_update(context, cgsnapshot_id, values):
 def cgsnapshot_destroy(context, cgsnapshot_id):
     """Destroy the cgsnapshot or raise if it does not exist."""
     return IMPL.cgsnapshot_destroy(context, cgsnapshot_id)
+
+
+def purge_deleted_rows(context, age_in_days):
+    """Purge deleted rows older than given age from cinder tables
+
+    Raises InvalidParameterValue if age_in_days is incorrect.
+    :returns: number of deleted rows
+    """
+    return IMPL.purge_deleted_rows(context, age_in_days=age_in_days)

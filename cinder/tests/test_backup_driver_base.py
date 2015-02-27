@@ -17,12 +17,12 @@
 import uuid
 
 import mock
+from oslo_serialization import jsonutils
 
 from cinder.backup import driver
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.backup import fake_service
 
@@ -59,7 +59,7 @@ class BackupBaseDriverTestCase(test.TestCase):
     def test_get_metadata(self):
         json_metadata = self.driver.get_metadata(self.volume_id)
         metadata = jsonutils.loads(json_metadata)
-        self.assertEqual(metadata['version'], 1)
+        self.assertEqual(metadata['version'], 2)
 
     def test_put_metadata(self):
         metadata = {'version': 1}
@@ -88,15 +88,22 @@ class BackupBaseDriverTestCase(test.TestCase):
 
 class BackupMetadataAPITestCase(test.TestCase):
 
-    def _create_volume_db_entry(self, id, size):
-        vol = {'id': id, 'size': size, 'status': 'available'}
+    def _create_volume_db_entry(self, id, size, display_name,
+                                display_description):
+        vol = {'id': id, 'size': size, 'status': 'available',
+               'display_name': display_name,
+               'display_description': display_description}
         return db.volume_create(self.ctxt, vol)['id']
 
     def setUp(self):
         super(BackupMetadataAPITestCase, self).setUp()
         self.ctxt = context.get_admin_context()
         self.volume_id = str(uuid.uuid4())
-        self._create_volume_db_entry(self.volume_id, 1)
+        self.volume_display_name = 'vol-1'
+        self.volume_display_description = 'test vol'
+        self._create_volume_db_entry(self.volume_id, 1,
+                                     self.volume_display_name,
+                                     self.volume_display_description)
         self.bak_meta_api = driver.BackupMetadataAPI(self.ctxt)
 
     def _add_metadata(self, vol_meta=False, vol_glance_meta=False):
@@ -151,12 +158,36 @@ class BackupMetadataAPITestCase(test.TestCase):
         self.bak_meta_api.put(self.volume_id, meta)
 
     def test_put_invalid_version(self):
-        container = jsonutils.dumps({'version': 2})
+        container = jsonutils.dumps({'version': 3})
         self.assertRaises(exception.BackupMetadataUnsupportedVersion,
                           self.bak_meta_api.put, self.volume_id, container)
 
     def test_v1_restore_factory(self):
         fact = self.bak_meta_api._v1_restore_factory()
+
+        keys = [self.bak_meta_api.TYPE_TAG_VOL_META,
+                self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META]
+
+        self.assertEqual(set(keys).symmetric_difference(set(fact.keys())),
+                         set([]))
+
+        meta_container = {self.bak_meta_api.TYPE_TAG_VOL_BASE_META:
+                          {'display_name': 'vol-2',
+                           'display_description': 'description'},
+                          self.bak_meta_api.TYPE_TAG_VOL_META: {},
+                          self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META: {}}
+        for f in fact:
+            func = fact[f][0]
+            fields = fact[f][1]
+            func(meta_container[f], self.volume_id, fields)
+
+        vol = db.volume_get(self.ctxt, self.volume_id)
+        self.assertEqual(self.volume_display_name, vol['display_name'])
+        self.assertEqual(self.volume_display_description,
+                         vol['display_description'])
+
+    def test_v2_restore_factory(self):
+        fact = self.bak_meta_api._v2_restore_factory()
 
         keys = [self.bak_meta_api.TYPE_TAG_VOL_BASE_META,
                 self.bak_meta_api.TYPE_TAG_VOL_META,
@@ -197,6 +228,111 @@ class BackupMetadataAPITestCase(test.TestCase):
         self.bak_meta_api._restore_vol_base_meta(container, self.volume_id,
                                                  fields)
 
+    def _create_encrypted_volume_db_entry(self, id, type_id, encrypted):
+        if encrypted:
+            vol = {'id': id, 'size': 1, 'status': 'available',
+                   'volume_type_id': type_id, 'encryption_key_id': 'fake_id'}
+        else:
+            vol = {'id': id, 'size': 1, 'status': 'available',
+                   'volume_type_id': type_id, 'encryption_key_id': None}
+        return db.volume_create(self.ctxt, vol)['id']
+
+    def test_restore_encrypted_vol_to_different_volume_type(self):
+        fields = ['encryption_key_id']
+        container = {}
+
+        # Create an encrypted volume
+        enc_vol1_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+                                                             'enc_vol_type',
+                                                             True)
+
+        # Create a second encrypted volume, of a different volume type
+        enc_vol2_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+                                                             'enc_vol_type2',
+                                                             True)
+
+        # Backup the first volume and attempt to restore to the second
+        self.bak_meta_api._save_vol_base_meta(container, enc_vol1_id)
+        self.assertRaises(exception.EncryptedBackupOperationFailed,
+                          self.bak_meta_api._restore_vol_base_meta,
+                          container[self.bak_meta_api.TYPE_TAG_VOL_BASE_META],
+                          enc_vol2_id, fields)
+
+    def test_restore_unencrypted_vol_to_different_volume_type(self):
+        fields = ['encryption_key_id']
+        container = {}
+
+        # Create an unencrypted volume
+        vol1_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+                                                         'vol_type1',
+                                                         False)
+
+        # Create a second unencrypted volume, of a different volume type
+        vol2_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+                                                         'vol_type2',
+                                                         False)
+
+        # Backup the first volume and restore to the second
+        self.bak_meta_api._save_vol_base_meta(container, vol1_id)
+        self.bak_meta_api._restore_vol_base_meta(
+            container[self.bak_meta_api.TYPE_TAG_VOL_BASE_META], vol2_id,
+            fields)
+        self.assertNotEqual(
+            db.volume_get(self.ctxt, vol1_id)['volume_type_id'],
+            db.volume_get(self.ctxt, vol2_id)['volume_type_id'])
+
+    def test_restore_encrypted_vol_to_same_volume_type(self):
+        fields = ['encryption_key_id']
+        container = {}
+
+        # Create an encrypted volume
+        enc_vol1_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+                                                             'enc_vol_type',
+                                                             True)
+
+        # Create an encrypted volume of the same type
+        enc_vol2_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+                                                             'enc_vol_type',
+                                                             True)
+
+        # Backup the first volume and restore to the second
+        self.bak_meta_api._save_vol_base_meta(container, enc_vol1_id)
+        self.bak_meta_api._restore_vol_base_meta(
+            container[self.bak_meta_api.TYPE_TAG_VOL_BASE_META], enc_vol2_id,
+            fields)
+
+    def test_restore_encrypted_vol_to_none_type_source_type_unavailable(self):
+        fields = ['encryption_key_id']
+        container = {}
+        enc_vol_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+                                                            'enc_vol_type',
+                                                            True)
+        undef_vol_id = self._create_encrypted_volume_db_entry(
+            str(uuid.uuid4()), None, False)
+        self.bak_meta_api._save_vol_base_meta(container, enc_vol_id)
+        self.assertRaises(exception.EncryptedBackupOperationFailed,
+                          self.bak_meta_api._restore_vol_base_meta,
+                          container[self.bak_meta_api.TYPE_TAG_VOL_BASE_META],
+                          undef_vol_id, fields)
+
+    def test_restore_encrypted_vol_to_none_type_source_type_available(self):
+        fields = ['encryption_key_id']
+        container = {}
+        db.volume_type_create(self.ctxt, {'id': 'enc_vol_type_id',
+                                          'name': 'enc_vol_type'})
+        enc_vol_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+                                                            'enc_vol_type_id',
+                                                            True)
+        undef_vol_id = self._create_encrypted_volume_db_entry(
+            str(uuid.uuid4()), None, False)
+        self.bak_meta_api._save_vol_base_meta(container, enc_vol_id)
+        self.bak_meta_api._restore_vol_base_meta(
+            container[self.bak_meta_api.TYPE_TAG_VOL_BASE_META], undef_vol_id,
+            fields)
+        self.assertEqual(
+            db.volume_get(self.ctxt, undef_vol_id)['volume_type_id'],
+            db.volume_get(self.ctxt, enc_vol_id)['volume_type_id'])
+
     def test_filter(self):
         metadata = {'a': 1, 'b': 2, 'c': 3}
         self.assertEqual(metadata, self.bak_meta_api._filter(metadata, []))
@@ -227,4 +363,4 @@ class BackupMetadataAPITestCase(test.TestCase):
         with mock.patch.object(jsonutils, 'dumps') as mock_dumps:
             mock_dumps.side_effect = TypeError
             self.assertFalse(self.bak_meta_api._is_serializable(data))
-            mock_dumps.assert_called_once()
+            mock_dumps.assert_called_once_with(data)

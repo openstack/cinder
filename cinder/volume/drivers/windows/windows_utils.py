@@ -19,10 +19,10 @@ Utility class for Windows Storage Server 2012 volume related operations.
 import ctypes
 import os
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.windows import constants
 
@@ -270,8 +270,8 @@ class WindowsUtils(object):
                 LOG.error(err_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
             else:
-                LOG.info(_('Ignored target creation error "%s"'
-                           ' while ensuring export'), exc)
+                LOG.info(_LI('Ignored target creation error "%s"'
+                             ' while ensuring export'), exc)
 
     def remove_iscsi_target(self, target_name):
         """Removes ISCSI target."""

@@ -1,4 +1,4 @@
-# Copyright (c) 2012 - 2014 EMC Corporation, Inc.
+# Copyright (c) 2012 - 2015 EMC Corporation, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,8 +20,7 @@ Fibre Channel Driver for EMC VNX array based on CLI.
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vnx_cli
-from cinder.zonemanager.utils import AddFCZone
-from cinder.zonemanager.utils import RemoveFCZone
+from cinder.zonemanager import utils as zm_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -47,6 +46,12 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                 External Volume Management, Read-only Volume,
                 FC Auto Zoning
         4.1.0 - Consistency group support
+        5.0.0 - Performance enhancement, LUN Number Threshold Support,
+                Initiator Auto Deregistration,
+                Force Deleting LUN in Storage Groups,
+                robust enhancement
+        5.1.0 - iSCSI multipath enhancement
+        5.2.0 - Pool-aware scheduler support
     """
 
     def __init__(self, *args, **kwargs):
@@ -112,7 +117,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         """Make sure volume is exported."""
         pass
 
-    @AddFCZone
+    @zm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
@@ -123,7 +128,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         The target_wwn can be a single entry or a list of wwns that
         correspond to the list of remote wwn(s) that will export the volume.
         The initiator_target_map is a map that represents the remote wwn(s)
-        and a list of wwns which are visiable to the remote wwn(s).
+        and a list of wwns which are visible to the remote wwn(s).
         Example return values:
 
             {
@@ -158,25 +163,18 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         """
         conn_info = self.cli.initialize_connection(volume,
                                                    connector)
-        conn_info = self.cli.adjust_fc_conn_info(conn_info, connector)
         LOG.debug("Exit initialize_connection"
                   " - Returning FC connection info: %(conn_info)s."
                   % {'conn_info': conn_info})
-
         return conn_info
 
-    @RemoveFCZone
+    @zm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
-        remove_zone = self.cli.terminate_connection(volume, connector)
-        conn_info = {'driver_volume_type': 'fibre_channel',
-                     'data': {}}
-        conn_info = self.cli.adjust_fc_conn_info(conn_info, connector,
-                                                 remove_zone)
+        conn_info = self.cli.terminate_connection(volume, connector)
         LOG.debug("Exit terminate_connection"
                   " - Returning FC connection info: %(conn_info)s."
                   % {'conn_info': conn_info})
-
         return conn_info
 
     def get_volume_stats(self, refresh=False):
@@ -236,3 +234,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
     def delete_cgsnapshot(self, context, cgsnapshot):
         """Deletes a cgsnapshot."""
         return self.cli.delete_cgsnapshot(self, context, cgsnapshot)
+
+    def get_pool(self, volume):
+        """Returns the pool name of a volume."""
+        return self.cli.get_pool(volume)

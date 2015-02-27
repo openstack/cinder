@@ -23,7 +23,7 @@ import shutil
 import socket
 import tempfile
 import time
-from xml.dom.minidom import Document
+from xml.dom import minidom
 from xml.etree import ElementTree as ET
 
 import mox
@@ -33,8 +33,8 @@ from cinder import exception
 from cinder import ssh_utils
 from cinder import test
 from cinder.volume import configuration as conf
+from cinder.volume.drivers import huawei
 from cinder.volume.drivers.huawei import huawei_utils
-from cinder.volume.drivers.huawei import HuaweiVolumeDriver
 from cinder.volume.drivers.huawei import ssh_common
 from cinder.volume import volume_types
 
@@ -247,7 +247,7 @@ def Fake_change_file_mode(obj, filepath):
 
 
 def create_fake_conf_file(filename):
-    doc = Document()
+    doc = minidom.Document()
 
     config = doc.createElement('config')
     doc.appendChild(config)
@@ -1086,7 +1086,8 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
 
     def _init_driver(self):
         Curr_test[0] = 'T'
-        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver = huawei.HuaweiVolumeDriver(
+            configuration=self.configuration)
         self.driver.do_setup(None)
 
     def test_conf_invalid(self):
@@ -1096,14 +1097,14 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         tmp_configuration.cinder_huawei_conf_file = tmp_fonf_file
         tmp_configuration.append_config_values(mox.IgnoreArg())
         self.assertRaises(IOError,
-                          HuaweiVolumeDriver,
+                          huawei.HuaweiVolumeDriver,
                           configuration=tmp_configuration)
         # Test Product and Protocol invalid
         tmp_dict = {'Storage/Product': 'T', 'Storage/Protocol': 'iSCSI'}
         for k, v in tmp_dict.items():
             modify_conf(self.fake_conf_file, k, 'xx')
             self.assertRaises(exception.InvalidInput,
-                              HuaweiVolumeDriver,
+                              huawei.HuaweiVolumeDriver,
                               configuration=self.configuration)
             modify_conf(self.fake_conf_file, k, v)
         # Test ctr ip, UserName and password unspecified
@@ -1113,20 +1114,23 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
                     'Storage/UserPassword': '123456'}
         for k, v in tmp_dict.items():
             modify_conf(self.fake_conf_file, k, '')
-            tmp_driver = HuaweiVolumeDriver(configuration=self.configuration)
+            tmp_driver = huawei.HuaweiVolumeDriver(
+                configuration=self.configuration)
             self.assertRaises(exception.InvalidInput,
                               tmp_driver.do_setup, None)
             modify_conf(self.fake_conf_file, k, v)
         # Test StoragePool unspecified
         modify_conf(self.fake_conf_file, 'LUN/StoragePool', '', attrib='Name')
-        tmp_driver = HuaweiVolumeDriver(configuration=self.configuration)
+        tmp_driver = huawei. HuaweiVolumeDriver(
+            configuration=self.configuration)
         self.assertRaises(exception.InvalidInput,
                           tmp_driver.do_setup, None)
         modify_conf(self.fake_conf_file, 'LUN/StoragePool', 'RAID_001',
                     attrib='Name')
         # Test LUN type invalid
         modify_conf(self.fake_conf_file, 'LUN/LUNType', 'thick')
-        tmp_driver = HuaweiVolumeDriver(configuration=self.configuration)
+        tmp_driver = huawei.HuaweiVolumeDriver(
+            configuration=self.configuration)
         tmp_driver.do_setup(None)
         self.assertRaises(exception.InvalidInput,
                           tmp_driver.create_volume, FAKE_VOLUME)
@@ -1134,14 +1138,16 @@ class HuaweiTISCSIDriverTestCase(test.TestCase):
         # Test OSType invalid
         modify_conf(self.fake_conf_file, 'Host', 'invalid_type',
                     attrib='OSType')
-        tmp_driver = HuaweiVolumeDriver(configuration=self.configuration)
+        tmp_driver = huawei.HuaweiVolumeDriver(
+            configuration=self.configuration)
         self.assertRaises(exception.InvalidInput,
                           tmp_driver.do_setup, None)
         modify_conf(self.fake_conf_file, 'Host', 'Linux', attrib='OSType')
         # Test TargetIP not found
         modify_conf(self.fake_conf_file, 'iSCSI/DefaultTargetIP', '')
         modify_conf(self.fake_conf_file, 'iSCSI/Initiator', '', attrib='Name')
-        tmp_driver = HuaweiVolumeDriver(configuration=self.configuration)
+        tmp_driver = huawei.HuaweiVolumeDriver(
+            configuration=self.configuration)
         tmp_driver.do_setup(None)
         tmp_driver.create_volume(FAKE_VOLUME)
         self.assertRaises(exception.InvalidInput,
@@ -1480,12 +1486,13 @@ class HuaweiTFCDriverTestCase(test.TestCase):
 
     def _init_driver(self):
         Curr_test[0] = 'T'
-        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver = huawei.HuaweiVolumeDriver(
+            configuration=self.configuration)
         self.driver.do_setup(None)
 
     def test_validate_connector_failed(self):
         invalid_connector = {'host': 'testhost'}
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.InvalidConnectorException,
                           self.driver.validate_connector,
                           invalid_connector)
 
@@ -1557,7 +1564,8 @@ class HuaweiDorado5100FCDriverTestCase(HuaweiTFCDriverTestCase):
     def _init_driver(self):
         Curr_test[0] = 'Dorado5100'
         modify_conf(self.fake_conf_file, 'Storage/Product', 'Dorado')
-        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver = huawei.HuaweiVolumeDriver(
+            configuration=self.configuration)
         self.driver.do_setup(None)
 
     def test_create_cloned_volume(self):
@@ -1582,7 +1590,8 @@ class HuaweiDorado2100G2FCDriverTestCase(HuaweiTFCDriverTestCase):
     def _init_driver(self):
         Curr_test[0] = 'Dorado2100G2'
         modify_conf(self.fake_conf_file, 'Storage/Product', 'Dorado')
-        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver = huawei.HuaweiVolumeDriver(
+            configuration=self.configuration)
         self.driver.do_setup(None)
 
     def test_create_cloned_volume(self):
@@ -1617,7 +1626,8 @@ class HuaweiDorado5100ISCSIDriverTestCase(HuaweiTISCSIDriverTestCase):
     def _init_driver(self):
         Curr_test[0] = 'Dorado5100'
         modify_conf(self.fake_conf_file, 'Storage/Product', 'Dorado')
-        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver = huawei.HuaweiVolumeDriver(
+            configuration=self.configuration)
         self.driver.do_setup(None)
 
     def test_create_delete_cloned_volume(self):
@@ -1645,7 +1655,8 @@ class HuaweiDorado2100G2ISCSIDriverTestCase(HuaweiTISCSIDriverTestCase):
     def _init_driver(self):
         Curr_test[0] = 'Dorado2100G2'
         modify_conf(self.fake_conf_file, 'Storage/Product', 'Dorado')
-        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver = huawei.HuaweiVolumeDriver(
+            configuration=self.configuration)
         self.driver.do_setup(None)
 
     def test_conf_invalid(self):
@@ -1709,7 +1720,8 @@ class SSHMethodTestCase(test.TestCase):
         self.stubs.Set(ssh_common.TseriesCommon, '_change_file_mode',
                        Fake_change_file_mode)
         Curr_test[0] = 'T'
-        self.driver = HuaweiVolumeDriver(configuration=self.configuration)
+        self.driver = huawei.HuaweiVolumeDriver(
+            configuration=self.configuration)
         self.driver.do_setup(None)
 
     def test_reach_max_connection_limit(self):

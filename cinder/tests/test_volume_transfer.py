@@ -123,17 +123,17 @@ class VolumeTransferTestCase(test.TestCase):
         self.assertEqual(len(ts), 0, 'Unexpected transfers listed.')
 
     def test_delete_transfer_with_deleted_volume(self):
-        #create a volume
+        # create a volume
         volume = utils.create_volume(self.ctxt, id='1',
                                      updated_at=self.updated_at)
-        #create a transfer
+        # create a transfer
         tx_api = transfer_api.API()
         transfer = tx_api.create(self.ctxt, volume['id'], 'Description')
         t = tx_api.get(self.ctxt, transfer['id'])
         self.assertEqual(t['id'], transfer['id'], 'Unexpected transfer id')
-        #force delete volume
+        # force delete volume
         db.volume_destroy(context.get_admin_context(), volume['id'])
-        #Make sure transfer has been deleted.
+        # Make sure transfer has been deleted.
         self.assertRaises(exception.TransferNotFound,
                           tx_api.get,
                           self.ctxt,

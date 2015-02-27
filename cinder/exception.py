@@ -24,11 +24,11 @@ SHOULD include dedicated exception logging.
 
 import sys
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 import webob.exc
 
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
 
 
@@ -71,6 +71,7 @@ class CinderException(Exception):
 
     def __init__(self, message=None, **kwargs):
         self.kwargs = kwargs
+        self.kwargs['message'] = message
 
         if 'code' not in self.kwargs:
             try:
@@ -82,7 +83,7 @@ class CinderException(Exception):
             if isinstance(v, Exception):
                 self.kwargs[k] = six.text_type(v)
 
-        if not message:
+        if self._should_format():
             try:
                 message = self.message % kwargs
 
@@ -90,7 +91,7 @@ class CinderException(Exception):
                 exc_info = sys.exc_info()
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                LOG.exception(_('Exception in string format operation'))
+                LOG.exception(_LE('Exception in string format operation'))
                 for name, value in kwargs.iteritems():
                     LOG.error("%s: %s" % (name, value))
                 if CONF.fatal_exception_format_errors:
@@ -105,6 +106,9 @@ class CinderException(Exception):
         # overshadowed by the class' message attribute
         self.msg = message
         super(CinderException, self).__init__(message)
+
+    def _should_format(self):
+        return self.kwargs['message'] is None or '%(message)' in self.message
 
     def __unicode__(self):
         return unicode(self.msg)
@@ -225,6 +229,19 @@ class InvalidUUID(Invalid):
     message = _("Expected a uuid but received %(uuid)s.")
 
 
+class APIException(CinderException):
+    message = _("Error while requesting %(service)s API.")
+
+    def __init__(self, message=None, **kwargs):
+        if 'service' not in kwargs:
+            kwargs['service'] = 'unknown'
+        super(APIException, self).__init__(message, **kwargs)
+
+
+class APITimeout(APIException):
+    message = _("Timeout while requesting %(service)s API.")
+
+
 class NotFound(CinderException):
     message = _("Resource could not be found.")
     code = 404
@@ -267,6 +284,11 @@ class VolumeTypeNotFoundByName(VolumeTypeNotFound):
                 "could not be found.")
 
 
+class VolumeTypeAccessNotFound(NotFound):
+    message = _("Volume type access not found for %(volume_type_id)s / "
+                "%(project_id)s combination.")
+
+
 class VolumeTypeExtraSpecsNotFound(NotFound):
     message = _("Volume Type %(volume_type_id)s has no extra specs with "
                 "key %(extra_specs_key)s.")
@@ -279,6 +301,10 @@ class VolumeTypeInUse(CinderException):
 
 class SnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
+
+
+class ServerNotFound(NotFound):
+    message = _("Instance %(uuid)s could not be found.")
 
 
 class VolumeIsBusy(CinderException):
@@ -363,13 +389,17 @@ class FileNotFound(NotFound):
     message = _("File %(file_path)s could not be found.")
 
 
-#TODO(bcwaldon): EOL this exception!
 class Duplicate(CinderException):
     pass
 
 
 class VolumeTypeExists(Duplicate):
     message = _("Volume Type %(id)s already exists.")
+
+
+class VolumeTypeAccessExists(Duplicate):
+    message = _("Volume type access for %(volume_type_id)s / "
+                "%(project_id)s combination already exists.")
 
 
 class VolumeTypeEncryptionExists(Invalid):
@@ -413,13 +443,13 @@ class QuotaError(CinderException):
 
 
 class VolumeSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested volume or snapshot exceeds allowed Gigabytes "
+    message = _("Requested volume or snapshot exceeds allowed gigabytes "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
                 "%(consumed)sG has been consumed.")
 
 
 class VolumeBackupSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested backup exceeds allowed Backup Gigabytes "
+    message = _("Requested backup exceeds allowed Backup gigabytes "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
                 "%(consumed)sG has been consumed.")
 
@@ -445,6 +475,10 @@ class VolumeTypeCreateFailed(CinderException):
                 "name %(name)s and specs %(extra_specs)s")
 
 
+class VolumeTypeUpdateFailed(CinderException):
+    message = _("Cannot update volume_type %(id)s")
+
+
 class UnknownCmd(VolumeDriverException):
     message = _("Unknown or unsupported command %(cmd)s")
 
@@ -455,6 +489,10 @@ class MalformedResponse(VolumeDriverException):
 
 class FailedCmdWithDump(VolumeDriverException):
     message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
+
+
+class InvalidConnectorException(VolumeDriverException):
+    message = _("Connector doesn't have required information: %(missing)s")
 
 
 class GlanceMetadataExists(Invalid):
@@ -512,6 +550,10 @@ class VolumeMetadataBackupExists(BackupDriverException):
 
 class BackupRBDOperationFailed(BackupDriverException):
     message = _("Backup RBD operation failed")
+
+
+class EncryptedBackupOperationFailed(BackupDriverException):
+    message = _("Backup operation of an encrypted volume failed.")
 
 
 class BackupNotFound(NotFound):
@@ -611,6 +653,10 @@ class ExtendVolumeError(CinderException):
     message = _("Error extending volume: %(reason)s")
 
 
+class EvaluatorParseException(Exception):
+    message = _("Error during evaluator parsing: %(reason)s")
+
+
 # Driver specific exceptions
 # Coraid
 class CoraidException(VolumeDriverException):
@@ -646,10 +692,6 @@ class PureDriverException(VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")
 
 
-class PureAPIException(VolumeBackendAPIException):
-    message = _("Bad response from Pure Storage REST API: %(reason)s")
-
-
 # Zadara
 class ZadaraException(VolumeDriverException):
     message = _('Zadara Cinder Driver exception.')
@@ -679,7 +721,7 @@ class BadHTTPResponseStatus(ZadaraException):
     message = _("Bad HTTP response status %(status)s")
 
 
-#SolidFire
+# SolidFire
 class SolidFireAPIException(VolumeBackendAPIException):
     message = _("Bad response from SolidFire API")
 
@@ -695,6 +737,10 @@ class SolidFireAPIDataException(SolidFireAPIException):
 class SolidFireAccountNotFound(SolidFireDriverException):
     message = _("Unable to locate account %(account_name)s on "
                 "Solidfire device")
+
+
+class SolidFireRetryableException(VolumeBackendAPIException):
+    message = _("Retryable SolidFire Exception encountered")
 
 
 # HP 3Par
@@ -797,23 +843,8 @@ class NetAppDriverException(VolumeDriverException):
 
 
 class EMCVnxCLICmdError(VolumeBackendAPIException):
-    def __init__(self, cmd=None, rc=None, out='',
-                 log_as_error=True, **kwargs):
-        self.cmd = cmd
-        self.rc = rc
-        self.out = out
-        msg = _("EMCVnxCLICmdError : %(cmd)s "
-                "(Return Code: %(rc)s) "
-                "(Output: %(out)s) ") % \
-            {'cmd': cmd,
-             'rc': rc,
-             'out': out.split('\n')}
-        kwargs["data"] = msg
-        super(EMCVnxCLICmdError, self).__init__(**kwargs)
-        if log_as_error:
-            LOG.error(msg)
-        else:
-            LOG.warn(msg)
+    message = _("EMC VNX Cinder Driver CLI exception: %(cmd)s "
+                "(Return Code: %(rc)s) (Output: %(out)s).")
 
 
 # ConsistencyGroup
@@ -856,6 +887,69 @@ class HBSDNotFound(NotFound):
     message = _("Storage resource could not be found.")
 
 
+class HBSDVolumeIsBusy(VolumeIsBusy):
+    message = _("Volume %(volume_name)s is busy.")
+
+
 # Datera driver
 class DateraAPIException(VolumeBackendAPIException):
     message = _("Bad response from Datera API")
+
+
+# Target drivers
+class ISCSITargetCreateFailed(CinderException):
+    message = _("Failed to create iscsi target for volume %(volume_id)s.")
+
+
+class ISCSITargetRemoveFailed(CinderException):
+    message = _("Failed to remove iscsi target for volume %(volume_id)s.")
+
+
+class ISCSITargetAttachFailed(CinderException):
+    message = _("Failed to attach iSCSI target for volume %(volume_id)s.")
+
+
+class ISCSITargetDetachFailed(CinderException):
+    message = _("Failed to detach iSCSI target for volume %(volume_id)s.")
+
+
+class ISCSITargetHelperCommandFailed(CinderException):
+    message = _("%(error_message)s")
+
+
+# X-IO driver exception.
+class XIODriverException(VolumeDriverException):
+    message = _("X-IO Volume Driver exception!")
+
+
+# Violin Memory drivers
+class ViolinInvalidBackendConfig(CinderException):
+    message = _("Volume backend config is invalid: %(reason)s")
+
+
+class ViolinRequestRetryTimeout(CinderException):
+    message = _("Backend service retry timeout hit: %(timeout)s sec")
+
+
+class ViolinBackendErr(CinderException):
+    message = _("Backend reports: %(message)s")
+
+
+class ViolinBackendErrExists(CinderException):
+    message = _("Backend reports: item already exists")
+
+
+class ViolinBackendErrNotFound(CinderException):
+    message = _("Backend reports: item not found")
+
+
+# ZFSSA NFS driver exception.
+class WebDAVClientError(CinderException):
+        message = _("The WebDAV request failed. Reason: %(msg)s, "
+                    "Return code/reason: %(code)s, Source Volume: %(src)s, "
+                    "Destination Volume: %(dst)s, Method: %(method)s.")
+
+
+# XtremIO Drivers
+class XtremIOAlreadyMappedError(CinderException):
+    message = _("Volume to Initiator Group mapping already exists")

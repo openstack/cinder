@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.openstack.common.gettextutils import _  # noqa
-from cinder.openstack.common import log as logging
+import logging
+
 from cinder.openstack.common.scheduler import filters
 
 LOG = logging.getLogger(__name__)
@@ -26,21 +26,22 @@ class IgnoreAttemptedHostsFilter(filters.BaseHostFilter):
     A host passes this filter if it has not already been attempted for
     scheduling. The scheduler needs to add previously attempted hosts
     to the 'retry' key of filter_properties in order for this to work
-    correctly.  For example:
-    {
-        'retry': {
+    correctly. For example::
+
+     {
+      'retry': {
                 'hosts': ['host1', 'host2'],
                 'num_attempts': 3,
-            }
-    }
+               }
+     }
     """
 
     def host_passes(self, host_state, filter_properties):
         """Skip nodes that have already been attempted."""
-        attempted = filter_properties.get('retry', None)
+        attempted = filter_properties.get('retry')
         if not attempted:
             # Re-scheduling is disabled
-            LOG.debug(_("Re-scheduling is disabled."))
+            LOG.debug("Re-scheduling is disabled.")
             return True
 
         hosts = attempted.get('hosts', [])
@@ -49,8 +50,8 @@ class IgnoreAttemptedHostsFilter(filters.BaseHostFilter):
         passes = host not in hosts
         pass_msg = "passes" if passes else "fails"
 
-        LOG.debug(_("Host %(host)s %(pass_msg)s.  Previously tried hosts: "
-                    "%(hosts)s") % {'host': host,
-                                    'pass_msg': pass_msg,
-                                    'hosts': hosts})
+        LOG.debug("Host %(host)s %(pass_msg)s.  Previously tried hosts: "
+                  "%(hosts)s" % {'host': host,
+                                 'pass_msg': pass_msg,
+                                 'hosts': hosts})
         return passes

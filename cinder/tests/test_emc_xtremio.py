@@ -15,12 +15,12 @@
 
 
 import mock
+import six
 
 from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
-from cinder.volume.drivers.emc.xtremio import XtremIOFibreChannelDriver
-from cinder.volume.drivers.emc.xtremio import XtremIOISCSIDriver
+from cinder.volume.drivers.emc import xtremio
 
 
 LOG = logging.getLogger(__name__)
@@ -31,7 +31,11 @@ typ2id = {'volumes': 'vol-id',
           'initiator-groups': 'ig-id',
           'lun-maps': 'mapping-id'}
 
-xms_data = {'clusters': {1: {'sys-sw-version': "2.4.0-devel_ba23ee5381eeab73",
+xms_data = {'xms': {1: {'version': '4.0.0'}},
+            'clusters': {1: {'sys-sw-version': "3.0.0-devel_ba23ee5381eeab73",
+                             'ud-ssd-space': '8146708710',
+                             'ud-ssd-space-in-use': '708710',
+                             'vol-size': '29884416',
                              'chap-authentication-mode': 'disabled',
                              'chap-discovery-mode': 'disabled',
                              "index": 1}},
@@ -96,7 +100,10 @@ def xms_request(object_type='volumes', request_typ='GET', data=None,
 
     obj_key = name if name else idx
     if request_typ == 'GET':
-        res = xms_data[object_type]
+        try:
+            res = xms_data[object_type]
+        except KeyError:
+            raise exception.VolumeDriverException
         if name or idx:
             if obj_key not in res:
                 raise exception.NotFound()
@@ -129,14 +136,19 @@ def xms_request(object_type='volumes', request_typ='GET', data=None,
             del xms_data[object_type][data['index']]
             del xms_data[object_type][data[typ2id[object_type]][1]]
         else:
-            LOG.error('trying to delete a missing object %s', str(obj_key))
+            LOG.error('Trying to delete a missing object %s',
+                      six.text_type(obj_key))
             raise exception.NotFound()
     elif request_typ == 'PUT':
         if obj_key in xms_data[object_type]:
             obj = xms_data[object_type][obj_key]
             obj.update(data)
+            key = get_xms_obj_key(data)
+            if key:
+                xms_data[object_type][data[key]] = obj
         else:
-            LOG.error('trying to update a missing object %s', str(obj_key))
+            LOG.error('Trying to update a missing object %s',
+                      six.text_type(obj_key))
             raise exception.NotFound()
 
 
@@ -145,7 +157,7 @@ def xms_bad_request(object_type='volumes', request_typ='GET', data=None,
     if request_typ == 'GET':
         raise exception.NotFound()
     elif request_typ == 'POST':
-        raise exception.VolumeBackendAPIException('failed to create ig')
+        raise exception.VolumeBackendAPIException('Failed to create ig')
 
 
 class D(dict):
@@ -196,9 +208,12 @@ class CommonData():
                   'display_name': 'clone1',
                   'display_description': 'volume created from snapshot',
                   'volume_type_id': None}
+    unmanaged1 = {'id': 'unmanaged1',
+                  'name': 'unmanaged1',
+                  'size': 3}
 
 
-@mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOISCSIDriver.req')
+@mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOClient.req')
 class EMCXIODriverISCSITestCase(test.TestCase):
     def setUp(self):
         super(EMCXIODriverISCSITestCase, self).setUp()
@@ -207,9 +222,24 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         configuration.san_login = ''
         configuration.san_password = ''
         configuration.san_ip = ''
-        self.driver = XtremIOISCSIDriver(configuration=configuration)
+        configuration.xtremio_cluster_name = ''
+        configuration.xtremio_provisioning_factor = 20.0
+
+        def safe_get(key):
+            getattr(configuration, key)
+
+        configuration.safe_get = safe_get
+        self.driver = xtremio.XtremIOISCSIDriver(configuration=configuration)
 
         self.data = CommonData()
+
+    def test_check_for_setup_error(self, req):
+        req.side_effect = xms_request
+        xms = xms_data['xms']
+        del xms_data['xms']
+        self.driver.check_for_setup_error()
+        xms_data['xms'] = xms
+        self.driver.check_for_setup_error()
 
     def test_create_extend_delete_volume(self, req):
         req.side_effect = xms_request
@@ -281,8 +311,28 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.assertEqual(stats['volume_backend_name'],
                          self.driver.backend_name)
 
+    def test_manage_unmanage(self, req):
+        req.side_effect = xms_request
+        clean_xms_data()
+        xms_data['volumes'] = {'unmanaged1': {'vol-name': 'unmanaged1',
+                                              'index': 'unmanaged1',
+                                              'vol-size': '3'}}
+        ref_vol = {"source-name": "unmanaged1"}
+        invalid_ref = {"source-name": "invalid"}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          self.data.test_volume, invalid_ref)
+        self.driver.manage_existing_get_size(self.data.test_volume, ref_vol)
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing,
+                          self.data.test_volume, invalid_ref)
+        self.driver.manage_existing(self.data.test_volume, ref_vol)
+        self.assertRaises(exception.VolumeNotFound, self.driver.unmanage,
+                          self.data.test_volume2)
+        self.driver.unmanage(self.data.test_volume)
 
-@mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOFibreChannelDriver.req')
+
+@mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOClient.req')
 class EMCXIODriverFibreChannelTestCase(test.TestCase):
     def setUp(self):
         super(EMCXIODriverFibreChannelTestCase, self).setUp()
@@ -291,7 +341,10 @@ class EMCXIODriverFibreChannelTestCase(test.TestCase):
         configuration.san_login = ''
         configuration.san_password = ''
         configuration.san_ip = ''
-        self.driver = XtremIOFibreChannelDriver(configuration=configuration)
+        configuration.xtremio_cluster_name = ''
+        configuration.xtremio_provisioning_factor = 20.0
+        self.driver = xtremio.XtremIOFibreChannelDriver(
+            configuration=configuration)
 
         self.data = CommonData()
 

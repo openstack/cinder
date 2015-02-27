@@ -20,14 +20,13 @@
 """Unit tests for brcd fc zone client cli."""
 
 import mock
-from mock import patch
+from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import test
-from cinder.zonemanager.drivers.brocade.brcd_fc_zone_client_cli \
-    import BrcdFCZoneClientCLI
+from cinder.zonemanager.drivers.brocade \
+    import brcd_fc_zone_client_cli as client_cli
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
 
 LOG = logging.getLogger(__name__)
@@ -64,7 +63,7 @@ supported_firmware = ['Kernel: 2.6', 'Fabric OS:  v7.0.1']
 unsupported_firmware = ['Fabric OS:  v6.2.1']
 
 
-class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
+class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
 
     def setUp(self):
         super(TestBrcdFCZoneClientCLI, self).setUp()
@@ -73,7 +72,7 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
     def __init__(self, *args, **kwargs):
         test.TestCase.__init__(self, *args, **kwargs)
 
-    @patch.object(BrcdFCZoneClientCLI, '_get_switch_info')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_get_switch_info')
     def test_get_active_zone_set(self, get_switch_info_mock):
         cmd_list = [ZoneConstant.GET_ACTIVE_ZONE_CFG]
         get_switch_info_mock.return_value = cfgactvshow
@@ -81,72 +80,73 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
         get_switch_info_mock.assert_called_once_with(cmd_list)
         self.assertDictMatch(active_zoneset_returned, active_zoneset)
 
-    @patch.object(BrcdFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test_get_active_zone_set_ssh_error(self, run_ssh_mock):
         run_ssh_mock.side_effect = processutils.ProcessExecutionError
         self.assertRaises(exception.BrocadeZoningCliException,
                           self.get_active_zone_set)
 
-    @mock.patch.object(BrcdFCZoneClientCLI, 'get_active_zone_set')
-    @mock.patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
-    @mock.patch.object(BrcdFCZoneClientCLI, '_cfg_save')
-    def test_add_zones_new_zone_no_activate(self, get_active_zs_mock,
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'get_active_zone_set')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'apply_zone_change')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_cfg_save')
+    def test_add_zones_new_zone_no_activate(self, cfg_save_mock,
                                             apply_zone_change_mock,
-                                            cfg_save_mock):
+                                            get_active_zs_mock):
         get_active_zs_mock.return_value = active_zoneset
         self.add_zones(new_zones, False, None)
-        get_active_zs_mock.assert_called_once()
-        apply_zone_change_mock.assert_called_twice()
-        cfg_save_mock.assert_called_once()
+        get_active_zs_mock.assert_called_once_with()
+        self.assertEqual(3, apply_zone_change_mock.call_count)
+        cfg_save_mock.assert_called_once_with()
 
-    @mock.patch.object(BrcdFCZoneClientCLI, 'get_active_zone_set')
-    @mock.patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
-    @mock.patch.object(BrcdFCZoneClientCLI, 'activate_zoneset')
-    def test_add_zones_new_zone_activate(self, get_active_zs_mock,
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'get_active_zone_set')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'apply_zone_change')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'activate_zoneset')
+    def test_add_zones_new_zone_activate(self, activate_zoneset_mock,
                                          apply_zone_change_mock,
-                                         activate_zoneset_mock):
+                                         get_active_zs_mock):
         get_active_zs_mock.return_value = active_zoneset
         self.add_zones(new_zone, True, active_zoneset)
-        apply_zone_change_mock.assert_called_once()
-        activate_zoneset_mock.assert_called_once()
+        self.assertEqual(2, apply_zone_change_mock.call_count)
+        activate_zoneset_mock.assert_called_once_with(
+            active_zoneset['active_zone_config'])
 
-    @mock.patch.object(BrcdFCZoneClientCLI, '_ssh_execute')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_ssh_execute')
     def test_activate_zoneset(self, ssh_execute_mock):
         ssh_execute_mock.return_value = True
         return_value = self.activate_zoneset('zoneset1')
         self.assertTrue(return_value)
 
-    @mock.patch.object(BrcdFCZoneClientCLI, '_ssh_execute')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_ssh_execute')
     def test_deactivate_zoneset(self, ssh_execute_mock):
         ssh_execute_mock.return_value = True
         return_value = self.deactivate_zoneset()
         self.assertTrue(return_value)
 
-    @mock.patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
-    @mock.patch.object(BrcdFCZoneClientCLI, '_cfg_save')
-    def test_delete_zones_activate_false(self, apply_zone_change_mock,
-                                         cfg_save_mock):
-        with mock.patch.object(self, '_zone_delete') \
-                as zone_delete_mock:
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'apply_zone_change')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_cfg_save')
+    def test_delete_zones_activate_false(self, cfg_save_mock,
+                                         apply_zone_change_mock):
+        with mock.patch.object(self, '_zone_delete') as zone_delete_mock:
             self.delete_zones(zone_names_to_delete, False,
                               active_zoneset_multiple_zones)
-            apply_zone_change_mock.assert_called_once()
+            self.assertEqual(1, apply_zone_change_mock.call_count)
             zone_delete_mock.assert_called_once_with(zone_names_to_delete)
-            cfg_save_mock.assert_called_once()
+            cfg_save_mock.assert_called_once_with()
 
-    @patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
-    @patch.object(BrcdFCZoneClientCLI, 'activate_zoneset')
-    def test_delete_zones_activate_true(self, apply_zone_change_mock,
-                                        activate_zs_mock):
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'apply_zone_change')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'activate_zoneset')
+    def test_delete_zones_activate_true(self, activate_zs_mock,
+                                        apply_zone_change_mock):
         with mock.patch.object(self, '_zone_delete') \
                 as zone_delete_mock:
             self.delete_zones(zone_names_to_delete, True,
                               active_zoneset_multiple_zones)
-            apply_zone_change_mock.assert_called_once()
+            self.assertEqual(1, apply_zone_change_mock.call_count)
             zone_delete_mock.assert_called_once_with(zone_names_to_delete)
-            activate_zs_mock.assert_called_once()
+            activate_zs_mock.assert_called_once_with(
+                active_zoneset['active_zone_config'])
 
-    @patch.object(BrcdFCZoneClientCLI, '_get_switch_info')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_get_switch_info')
     def test_get_nameserver_info(self, get_switch_info_mock):
         ns_info_list = []
         ns_info_list_expected = ['20:1a:00:05:1e:e8:e3:29']
@@ -154,36 +154,36 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
         ns_info_list = self.get_nameserver_info()
         self.assertEqual(ns_info_list, ns_info_list_expected)
 
-    @patch.object(BrcdFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test_get_nameserver_info_ssh_error(self, run_ssh_mock):
         run_ssh_mock.side_effect = processutils.ProcessExecutionError
         self.assertRaises(exception.BrocadeZoningCliException,
                           self.get_nameserver_info)
 
-    @patch.object(BrcdFCZoneClientCLI, '_ssh_execute')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_ssh_execute')
     def test__cfg_save(self, ssh_execute_mock):
         cmd_list = [ZoneConstant.CFG_SAVE]
         self._cfg_save()
         ssh_execute_mock.assert_called_once_with(cmd_list, True, 1)
 
-    @patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'apply_zone_change')
     def test__zone_delete(self, apply_zone_change_mock):
         zone_name = 'testzone'
         cmd_list = ['zonedelete', '"testzone"']
         self._zone_delete(zone_name)
         apply_zone_change_mock.assert_called_once_with(cmd_list)
 
-    @patch.object(BrcdFCZoneClientCLI, 'apply_zone_change')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'apply_zone_change')
     def test__cfg_trans_abort(self, apply_zone_change_mock):
         cmd_list = [ZoneConstant.CFG_ZONE_TRANS_ABORT]
         with mock.patch.object(self, '_is_trans_abortable') \
                 as is_trans_abortable_mock:
             is_trans_abortable_mock.return_value = True
             self._cfg_trans_abort()
-            is_trans_abortable_mock.assert_called_once()
+            is_trans_abortable_mock.assert_called_once_with()
             apply_zone_change_mock.assert_called_once_with(cmd_list)
 
-    @patch.object(BrcdFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test__is_trans_abortable_true(self, run_ssh_mock):
         cmd_list = [ZoneConstant.CFG_SHOW_TRANS]
         run_ssh_mock.return_value = (Stream(ZoneConstant.TRANS_ABORTABLE),
@@ -192,13 +192,13 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
         self.assertTrue(data)
         run_ssh_mock.assert_called_once_with(cmd_list, True, 1)
 
-    @patch.object(BrcdFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test__is_trans_abortable_ssh_error(self, run_ssh_mock):
         run_ssh_mock.return_value = (Stream(), Stream())
         self.assertRaises(exception.BrocadeZoningCliException,
                           self._is_trans_abortable)
 
-    @patch.object(BrcdFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test__is_trans_abortable_false(self, run_ssh_mock):
         cmd_list = [ZoneConstant.CFG_SHOW_TRANS]
         cfgtransshow = 'There is no outstanding zoning transaction'
@@ -207,14 +207,14 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
         self.assertFalse(data)
         run_ssh_mock.assert_called_once_with(cmd_list, True, 1)
 
-    @patch.object(BrcdFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test_apply_zone_change(self, run_ssh_mock):
         cmd_list = [ZoneConstant.CFG_SAVE]
         run_ssh_mock.return_value = (None, None)
         self.apply_zone_change(cmd_list)
         run_ssh_mock.assert_called_once_with(cmd_list, True, 1)
 
-    @patch.object(BrcdFCZoneClientCLI, '_run_ssh')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test__get_switch_info(self, run_ssh_mock):
         cmd_list = [ZoneConstant.NS_SHOW]
         nsshow_list = [nsshow]
@@ -232,22 +232,22 @@ class TestBrcdFCZoneClientCLI(BrcdFCZoneClientCLI, test.TestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           self._parse_ns_output, invalid_switch_data)
 
-    @patch.object(BrcdFCZoneClientCLI, '_execute_shell_cmd')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_execute_shell_cmd')
     def test_is_supported_firmware(self, exec_shell_cmd_mock):
         exec_shell_cmd_mock.return_value = (supported_firmware, None)
         self.assertTrue(self.is_supported_firmware())
 
-    @patch.object(BrcdFCZoneClientCLI, '_execute_shell_cmd')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_execute_shell_cmd')
     def test_is_supported_firmware_invalid(self, exec_shell_cmd_mock):
         exec_shell_cmd_mock.return_value = (unsupported_firmware, None)
         self.assertFalse(self.is_supported_firmware())
 
-    @patch.object(BrcdFCZoneClientCLI, '_execute_shell_cmd')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_execute_shell_cmd')
     def test_is_supported_firmware_no_ssh_response(self, exec_shell_cmd_mock):
         exec_shell_cmd_mock.return_value = (None, Stream())
         self.assertFalse(self.is_supported_firmware())
 
-    @patch.object(BrcdFCZoneClientCLI, '_execute_shell_cmd')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_execute_shell_cmd')
     def test_is_supported_firmware_ssh_error(self, exec_shell_cmd_mock):
         exec_shell_cmd_mock.side_effect = processutils.ProcessExecutionError
         self.assertRaises(exception.BrocadeZoningCliException,

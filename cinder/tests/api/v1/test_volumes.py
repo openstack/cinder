@@ -16,7 +16,8 @@
 import datetime
 
 from lxml import etree
-from oslo.config import cfg
+import mock
+from oslo_config import cfg
 import webob
 
 from cinder.api import extensions
@@ -29,7 +30,6 @@ from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.tests import fake_notifier
 from cinder.tests.image import fake as fake_image
-from cinder import utils
 from cinder.volume import api as volume_api
 
 
@@ -96,7 +96,7 @@ class VolumeApiTest(test.TestCase):
                                'source_volid': None,
                                'metadata': {},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': 100,
                                'encrypted': False}}
@@ -188,7 +188,7 @@ class VolumeApiTest(test.TestCase):
                                'source_volid': None,
                                'metadata': {},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': '1'}}
         body = {"volume": vol}
@@ -272,7 +272,7 @@ class VolumeApiTest(test.TestCase):
             'metadata': {'attached_mode': 'rw',
                          'readonly': 'False'},
             'id': '1',
-            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1}}
         self.assertEqual(res_dict, expected)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
@@ -309,7 +309,7 @@ class VolumeApiTest(test.TestCase):
                          "readonly": "False",
                          "attached_mode": "rw"},
             'id': '1',
-            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1
         }}
         self.assertEqual(res_dict, expected)
@@ -352,13 +352,13 @@ class VolumeApiTest(test.TestCase):
                 'device': '/'
             }],
             'bootable': 'false',
-            'volume_type': 'None',
+            'volume_type': None,
             'snapshot_id': None,
             'source_volid': None,
             'metadata': {'key': 'value',
                          'readonly': 'True'},
             'id': '1',
-            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1}}
         self.assertEqual(res_dict, expected)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
@@ -412,7 +412,7 @@ class VolumeApiTest(test.TestCase):
                                  'metadata': {'attached_mode': 'rw',
                                               'readonly': 'False'},
                                  'id': '1',
-                                 'created_at': datetime.datetime(1, 1, 1,
+                                 'created_at': datetime.datetime(1900, 1, 1,
                                                                  1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
@@ -446,13 +446,13 @@ class VolumeApiTest(test.TestCase):
                                                   'id': '1',
                                                   'volume_id': '1'}],
                                  'bootable': 'false',
-                                 'volume_type': 'None',
+                                 'volume_type': None,
                                  'snapshot_id': None,
                                  'source_volid': None,
                                  'metadata': {'key': 'value',
                                               'readonly': 'True'},
                                  'id': '1',
-                                 'created_at': datetime.datetime(1, 1, 1,
+                                 'created_at': datetime.datetime(1900, 1, 1,
                                                                  1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
@@ -481,7 +481,7 @@ class VolumeApiTest(test.TestCase):
                                  'metadata': {'attached_mode': 'rw',
                                               'readonly': 'False'},
                                  'id': '1',
-                                 'created_at': datetime.datetime(1, 1, 1,
+                                 'created_at': datetime.datetime(1900, 1, 1,
                                                                  1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
@@ -515,13 +515,13 @@ class VolumeApiTest(test.TestCase):
                                                   'id': '1',
                                                   'volume_id': '1'}],
                                  'bootable': 'false',
-                                 'volume_type': 'None',
+                                 'volume_type': None,
                                  'snapshot_id': None,
                                  'source_volid': None,
                                  'metadata': {'key': 'value',
                                               'readonly': 'True'},
                                  'id': '1',
-                                 'created_at': datetime.datetime(1, 1, 1,
+                                 'created_at': datetime.datetime(1900, 1, 1,
                                                                  1, 1, 1),
                                  'size': 1}]}
         self.assertEqual(res_dict, expected)
@@ -548,7 +548,7 @@ class VolumeApiTest(test.TestCase):
                                'metadata': {'attached_mode': 'rw',
                                             'readonly': 'False'},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
@@ -575,7 +575,7 @@ class VolumeApiTest(test.TestCase):
                                'source_volid': None,
                                'metadata': {'readonly': 'False'},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
@@ -606,7 +606,7 @@ class VolumeApiTest(test.TestCase):
                                'metadata': {'attached_mode': 'rw',
                                             'readonly': 'False'},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
@@ -645,9 +645,9 @@ class VolumeApiTest(test.TestCase):
             self.assertEqual(len(volumes), 1)
             self.assertEqual(volumes[0]['id'], 2)
 
-        #admin case
+        # admin case
         volume_detail_limit_offset(is_admin=True)
-        #non_admin case
+        # non_admin case
         volume_detail_limit_offset(is_admin=False)
 
     def test_volume_show_with_admin_metadata(self):
@@ -677,13 +677,13 @@ class VolumeApiTest(test.TestCase):
                                                 'id': '1',
                                                 'volume_id': '1'}],
                                'bootable': 'false',
-                               'volume_type': 'None',
+                               'volume_type': None,
                                'snapshot_id': None,
                                'source_volid': None,
                                'metadata': {'key': 'value',
                                             'readonly': 'True'},
                                'id': '1',
-                               'created_at': datetime.datetime(1, 1, 1,
+                               'created_at': datetime.datetime(1900, 1, 1,
                                                                1, 1, 1),
                                'size': 1}}
         self.assertEqual(res_dict, expected)
@@ -762,30 +762,41 @@ class VolumeApiTest(test.TestCase):
         self.assertIn('volumes', res)
         self.assertEqual(1, len(res['volumes']))
 
-    def test_add_visible_admin_metadata_visible_key_only(self):
-        admin_metadata = [{"key": "invisible_key", "value": "invisible_value"},
-                          {"key": "readonly", "value": "visible"},
-                          {"key": "attached_mode", "value": "visible"}]
-        metadata = [{"key": "key", "value": "value"}]
-        volume = dict(volume_admin_metadata=admin_metadata,
-                      volume_metadata=metadata)
-        utils.add_visible_admin_metadata(volume)
-        self.assertEqual(volume['volume_metadata'],
-                         [{"key": "key", "value": "value"},
-                          {"key": "readonly", "value": "visible"},
-                          {"key": "attached_mode", "value": "visible"}])
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_string(self, get_all):
+        req = mock.MagicMock()
+        req.GET.copy.return_value = {'display_name': 'Volume-573108026'}
+        context = mock.Mock()
+        req.environ = {'cinder.context': context}
+        self.controller._items(req, mock.Mock)
+        get_all.assert_called_once_with(
+            context, sort_dir='desc', viewable_admin_meta=True,
+            sort_key='created_at', limit=None,
+            filters={'display_name': 'Volume-573108026'}, marker=None)
 
-        admin_metadata = {"invisible_key": "invisible_value",
-                          "readonly": "visible",
-                          "attached_mode": "visible"}
-        metadata = {"key": "value"}
-        volume = dict(admin_metadata=admin_metadata,
-                      metadata=metadata)
-        utils.add_visible_admin_metadata(volume)
-        self.assertEqual(volume['metadata'],
-                         {'key': 'value',
-                          'attached_mode': 'visible',
-                          'readonly': 'visible'})
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_list(self, get_all):
+        req = mock.MagicMock()
+        req.GET.copy.return_value = {'id': "['1', '2', '3']"}
+        context = mock.Mock()
+        req.environ = {'cinder.context': context}
+        self.controller._items(req, mock.Mock)
+        get_all.assert_called_once_with(
+            context, sort_dir='desc', viewable_admin_meta=True,
+            sort_key='created_at', limit=None,
+            filters={'id': ['1', '2', '3']}, marker=None)
+
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_expression(self, get_all):
+        req = mock.MagicMock()
+        req.GET.copy.return_value = {'id': "d+"}
+        context = mock.Mock()
+        req.environ = {'cinder.context': context}
+        self.controller._items(req, mock.Mock)
+        get_all.assert_called_once_with(
+            context, sort_dir='desc', viewable_admin_meta=True,
+            sort_key='created_at', limit=None, filters={'id': 'd+'},
+            marker=None)
 
 
 class VolumeSerializerTest(test.TestCase):

@@ -15,10 +15,9 @@
 
 import errno
 
-import six
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import dplcommon
@@ -56,9 +55,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                     if fcInfo['type'] == 'fc':
                         fcInfos[fcUuid] = fcInfo
         except Exception as e:
-            msg = _("Failed to get fiber channel info from storage due "
-                    "to %(stat)s") % {'stat': six.string_types(e)}
-            LOG.error(msg)
+            LOG.error(_LE("Failed to get fiber channel info from storage "
+                          "due to %(stat)s"), {'stat': e})
         return fcInfos
 
     def _get_targets(self):
@@ -80,10 +78,10 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                     targetI['targetAddr'] = targetInfo[2]
                     targetInfos[str(targetInfo[0])] = targetI
         except Exception as e:
-            msg = _("Failed to get fiber channel target from storage server"
-                    " due to %(stat)s") % {'stat': six.text_type(e)}
             targetInfos = {}
-            LOG.error(msg)
+            LOG.error(_LE("Failed to get fiber channel target from "
+                          "storage server due to %(stat)s"),
+                      {'stat': e})
         return targetInfos
 
     def _get_targetwpns(self, volumeid, initiatorWwpns):
@@ -99,9 +97,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                             targetWwpns = fc_info.get('target_identifier', '')
                             lstargetWwpns.append(targetWwpns)
         except Exception as e:
-            msg = _("Failed to get target wwpns from storage due "
-                    "to %(stat)s") % {'stat': six.text_type(e)}
-            LOG.error(msg)
+            LOG.error(_LE("Failed to get target wwpns from storage due "
+                          "to %(stat)s"), {'stat': e})
             lstargetWwpns = []
         return lstargetWwpns
 
@@ -118,7 +115,7 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                         fActive = True
                         break
         except Exception:
-            LOG.error(_('Failed to get sns table'))
+            LOG.error(_LE('Failed to get sns table'))
         return fActive
 
     def _convertHex2String(self, wwpns):
@@ -147,10 +144,16 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                 self._conver_uuid2hex(volumeid), targetwwpns,
                 initiatorwwpns, volumename)
         except Exception:
+<<<<<<< HEAD
             msg = _('Volume %(volumeid)s failed to send assign command, '
                     'ret: %(status)s output: %(output)s') % \
                 {'volumeid': volumeid, 'status': ret, 'output': output}
             LOG.error(msg)
+=======
+            LOG.error(_LE('Volume %(volumeid)s failed to send assign command, '
+                          'ret: %(status)s output: %(output)s'),
+                      {'volumeid': volumeid, 'status': ret, 'output': output})
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
             ret = errno.EFAULT
 
         if ret == errno.EAGAIN:
@@ -165,19 +168,16 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                     msg = _('Flexvisor failed to assign volume %(id)s: '
                             '%(status)s.') % {'id': volumeid,
                                               'status': status}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
             else:
                 ret = errno.EFAULT
                 msg = _('Flexvisor failed to assign volume %(id)s due to '
                         'unable to query status by event '
                         'id.') % {'id': volumeid}
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret != 0:
             msg = _('Flexvisor assign volume failed:%(id)s:'
                     '%(status)s.') % {'id': volumeid, 'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
         return ret
@@ -198,22 +198,18 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                     msg = _('Flexvisor failed to unassign volume %(id)s:'
                             ' %(status)s.') % {'id': volumeid,
                                                'status': status}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
             else:
                 msg = _('Flexvisor failed to unassign volume (get event) '
                         '%(id)s.') % {'id': volumeid}
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret != 0:
             msg = _('Flexvisor unassign volume failed:%(id)s:'
                     '%(status)s.') % {'id': volumeid, 'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         else:
-            msg = _('Flexvisor succeed to unassign volume '
-                    '%(id)s.') % {'id': volumeid}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor succeeded to unassign volume %(id)s.'),
+                     {'id': volumeid})
 
         return ret
 
@@ -246,15 +242,17 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         ret = 0
         targetIdentifier = []
         szwwpns = []
-        LOG.info('initialize_connection volume: %s,'
-                 ' connector: %s' % (volume, connector))
+        LOG.info(_LI('initialize_connection volume: %(volume)s, connector:'
+                     ' %(connector)s'),
+                 {"volume": volume, "connector": connector})
         # Get Storage Fiber channel controller
         dc_fc = self._get_fc_channel()
 
         # Get existed FC target list to decide target wwpn
         dc_target = self._get_targets()
         if len(dc_target) == 0:
-            msg = _('Backend storage did not configure fiber channel target.')
+            msg = _('Backend storage did not configure fiber channel '
+                    'target.')
             raise exception.VolumeBackendAPIException(data=msg)
 
         for keyFc in dc_fc.keys():
@@ -271,7 +269,6 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                 msg = _('Invalid wwpns format %(wwpns)s') % \
                     {'wwpns': connector['wwpns']}
                 raise exception.VolumeBackendAPIException(data=msg)
-                LOG.error(msg)
             szwwpns.append(szwwpn)
 
         if len(szwwpns):
@@ -281,8 +278,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                                                {}).get('targetAddr', '')
                 lsTargetWwpn.append(targetWwpn)
         # Use wwpns to assign volume.
-        msg = _('Prefer use target wwpn %(wwpn)s') % {'wwpn': lsTargetWwpn}
-        LOG.info(msg)
+        LOG.info(_LI('Prefer use target wwpn %(wwpn)s'),
+                 {'wwpn': lsTargetWwpn})
         # Start to create export in all FC target node.
         assignedTarget = []
         for pTarget in lsTargetWwpn:
@@ -294,9 +291,8 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                 else:
                     assignedTarget.append(pTarget)
             except Exception as e:
-                msg = _('Failed to export fiber channel target '
-                        'due to %s') % (six.text_type(e))
-                LOG.error(msg)
+                LOG.error(_LE('Failed to export fiber channel target '
+                              'due to %s'), e)
                 ret = errno.EFAULT
                 break
         if ret == 0:
@@ -334,19 +330,16 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
             properties['target_lun'] = int(nLun)
             properties['volume_id'] = volume['id']
             properties['initiator_target_map'] = init_targ_map
-            msg = _('%(volume)s assign type fibre_channel, properties '
-                    '%(properties)s') % {'volume': volume['id'],
-                                         'properties': properties}
-            LOG.info(msg)
+            LOG.info(_LI('%(volume)s assign type fibre_channel, properties '
+                         '%(properties)s'),
+                     {'volume': volume['id'], 'properties': properties})
         else:
             msg = _('Invalid connection initialization response of '
                     'volume %(name)s') % {'name': volume['name']}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
-        msg = _('Connect initialization info: '
-                '{driver_volume_type: fibre_channel, '
-                'data: %(properties)s') % {'properties': properties}
-        LOG.info(msg)
+        LOG.info(_LI('Connect initialization info: '
+                     '{driver_volume_type: fibre_channel, '
+                     'data: %(properties)s'), {'properties': properties})
         return {'driver_volume_type': 'fibre_channel',
                 'data': properties}
 
@@ -365,9 +358,9 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         szwwpns = []
         ret = 0
         info = {'driver_volume_type': 'fibre_channel', 'data': {}}
-        msg = _('terminate_connection volume: %(volume)s, '
-                'connector: %(con)s') % {'volume': volume, 'con': connector}
-        LOG.info(msg)
+        LOG.info(_LI('terminate_connection volume: %(volume)s, '
+                     'connector: %(con)s'),
+                 {'volume': volume, 'con': connector})
         # Query targetwwpns.
         # Get all target list of volume.
         for dwwpn in connector['wwpns']:
@@ -376,14 +369,12 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                 msg = _('Invalid wwpns format %(wwpns)s') % \
                     {'wwpns': connector['wwpns']}
                 raise exception.VolumeBackendAPIException(data=msg)
-                LOG.error(msg)
             szwwpns.append(szwwpn)
 
         if len(szwwpns) == 0:
             ret = errno.EFAULT
             msg = _('Invalid wwpns format %(wwpns)s') % \
                 {'wwpns': connector['wwpns']}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         else:
             for szwwpn in szwwpns:
@@ -402,7 +393,6 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         finally:
             if ret:
                 msg = _('Faield to unassign %(volume)s') % (volume['id'])
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
         # Failed to delete export with fibre channel

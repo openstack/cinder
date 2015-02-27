@@ -18,24 +18,24 @@
 import random
 
 from eventlet import greenthread
+from oslo_concurrency import processutils
+from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import excutils
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import ssh_utils
 from cinder import utils
 from cinder.zonemanager.drivers.cisco import cisco_fabric_opts as fabric_opts
-import cinder.zonemanager.drivers.cisco.fc_zone_constants as ZoneConstant
-from cinder.zonemanager.fc_san_lookup_service import FCSanLookupService
-from cinder.zonemanager.utils import get_formatted_wwn
+import cinder.zonemanager.drivers.cisco.fc_zone_constants as zone_constant
+from cinder.zonemanager import fc_san_lookup_service as fc_service
+from cinder.zonemanager import utils as zm_utils
 
 LOG = logging.getLogger(__name__)
 
 
-class CiscoFCSanLookupService(FCSanLookupService):
+class CiscoFCSanLookupService(fc_service.FCSanLookupService):
     """The SAN lookup service that talks to Cisco switches.
 
     Version History:
@@ -47,7 +47,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
 
     def __init__(self, **kwargs):
         """Initializing the client."""
-        super(CiscoFCSanLookupService, self).__init__(self, **kwargs)
+        super(CiscoFCSanLookupService, self).__init__(**kwargs)
         self.configuration = kwargs.get('configuration', None)
         self.create_configuration()
 
@@ -56,8 +56,6 @@ class CiscoFCSanLookupService(FCSanLookupService):
         self.switch_pwd = ""
         self.switch_ip = ""
         self.sshpool = None
-
-        self.fabric_configs = ""
 
     def create_configuration(self):
         """Configuration specific to SAN context values."""
@@ -111,10 +109,10 @@ class CiscoFCSanLookupService(FCSanLookupService):
         LOG.debug("FC Fabric List: %s", fabrics)
         if fabrics:
             for t in target_wwn_list:
-                formatted_target_list.append(get_formatted_wwn(t))
+                formatted_target_list.append(zm_utils.get_formatted_wwn(t))
 
             for i in initiator_wwn_list:
-                formatted_initiator_list.append(get_formatted_wwn(i))
+                formatted_initiator_list.append(zm_utils.get_formatted_wwn(i))
 
             for fabric_name in fabrics:
                 self.switch_ip = self.fabric_configs[fabric_name].safe_get(
@@ -179,12 +177,12 @@ class CiscoFCSanLookupService(FCSanLookupService):
         cli_output = None
         nsinfo_list = []
         try:
-            cmd = ZoneConstant.FCNS_SHOW + fabric_vsan + ' | no-more'
+            cmd = ([zone_constant.FCNS_SHOW, fabric_vsan, ' | no-more'])
             cli_output = self._get_switch_info(cmd)
         except exception.FCSanLookupServiceException:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Failed collecting show fcns database for"
-                            " fabric"))
+                LOG.error(_LE("Failed collecting show fcns database for"
+                              " fabric"))
         if cli_output:
             nsinfo_list = self._parse_ns_output(cli_output)
 
@@ -268,7 +266,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
                         cmd=command)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error running SSH command: %s") % command)
+                LOG.error(_LE("Error running SSH command: %s") % command)
 
     def _ssh_execute(self, cmd_list, check_exit_code=True, attempts=1):
         """Execute cli with status update.

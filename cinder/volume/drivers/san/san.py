@@ -22,13 +22,13 @@ controller on the SAN hardware.  We expect to access it over SSH or some API.
 import random
 
 from eventlet import greenthread
-from oslo.config import cfg
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import excutils
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import ssh_utils
 from cinder import utils
 from cinder.volume import driver
@@ -148,7 +148,7 @@ class SanDriver(driver.VolumeDriver):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error running SSH command: %s") % command)
+                LOG.error(_LE("Error running SSH command: %s") % command)
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""

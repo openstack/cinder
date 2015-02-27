@@ -22,12 +22,12 @@ import hashlib
 import hmac
 import os
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import excutils
 
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import excutils
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder import quota
 from cinder.volume import api as volume_api
@@ -121,7 +121,8 @@ class API(base.Base):
         try:
             transfer = self.db.transfer_create(context, transfer_rec)
         except Exception:
-            LOG.error(_("Failed to create transfer record for %s") % volume_id)
+            LOG.error(_LE("Failed to create transfer record "
+                          "for %s") % volume_id)
             raise
         return {'id': transfer['id'],
                 'volume_id': transfer['volume_id'],
@@ -184,8 +185,8 @@ class API(base.Base):
                                                 gigabytes=-vol_ref['size'])
         except Exception:
             donor_reservations = None
-            LOG.exception(_("Failed to update quota donating volume"
-                            " transfer id %s") % transfer_id)
+            LOG.exception(_LE("Failed to update quota donating volume"
+                              " transfer id %s") % transfer_id)
 
         try:
             # Transfer ownership of the volume now, must use an elevated
@@ -201,7 +202,7 @@ class API(base.Base):
             QUOTAS.commit(context, reservations)
             if donor_reservations:
                 QUOTAS.commit(context, donor_reservations, project_id=donor_id)
-            LOG.info(_("Volume %s has been transferred.") % volume_id)
+            LOG.info(_LI("Volume %s has been transferred.") % volume_id)
         except Exception:
             with excutils.save_and_reraise_exception():
                 QUOTAS.rollback(context, reservations)

@@ -18,14 +18,15 @@
 """Unit tests for Cisco fc san lookup service."""
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 import cinder.zonemanager.drivers.cisco.cisco_fc_san_lookup_service \
     as cisco_lookup
-from cinder.zonemanager.utils import get_formatted_wwn
+import cinder.zonemanager.drivers.cisco.fc_zone_constants as ZoneConstant
+from cinder.zonemanager import utils as zm_utils
 
 nsshow = '20:1a:00:05:1e:e8:e3:29'
 switch_data = ['VSAN 304\n',
@@ -54,6 +55,7 @@ class TestCiscoFCSanLookupService(cisco_lookup.CiscoFCSanLookupService,
                                        'fc-zone-manager')
         self.configuration.fc_fabric_names = 'CISCO_FAB_2'
         self.create_configuration()
+        self.fabric_vsan = '304'
 
     # override some of the functions
     def __init__(self, *args, **kwargs):
@@ -109,8 +111,19 @@ class TestCiscoFCSanLookupService(cisco_lookup.CiscoFCSanLookupService,
         wwn_list = ['10008c7cff523b01']
         return_wwn_list = []
         expected_wwn_list = ['10:00:8c:7c:ff:52:3b:01']
-        return_wwn_list.append(get_formatted_wwn(wwn_list[0]))
+        return_wwn_list.append(zm_utils.get_formatted_wwn(wwn_list[0]))
         self.assertEqual(return_wwn_list, expected_wwn_list)
+
+    @mock.patch.object(cisco_lookup.CiscoFCSanLookupService,
+                       '_run_ssh')
+    def test__get_switch_info(self, run_ssh_mock):
+        cmd_list = [ZoneConstant.FCNS_SHOW, self.fabric_vsan,
+                    ' | no-more']
+        nsshow_list = [nsshow]
+        run_ssh_mock.return_value = (Stream(nsshow), Stream())
+        switch_data = self._get_switch_info(cmd_list)
+        self.assertEqual(switch_data, nsshow_list)
+        run_ssh_mock.assert_called_once_with(cmd_list, True, 1)
 
 
 class Channel(object):
@@ -125,6 +138,9 @@ class Stream(object):
 
     def readlines(self):
         return self.buffer
+
+    def splitlines(self):
+        return self.buffer.splitlines()
 
     def close(self):
         pass

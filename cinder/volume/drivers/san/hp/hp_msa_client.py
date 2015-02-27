@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-from hashlib import md5
+import hashlib
 import urllib2
 
 from lxml import etree
@@ -49,7 +49,7 @@ class HPMSAClient(object):
 
     def login(self):
         """Authenticates the service on the device."""
-        hash = md5("%s_%s" % (self._login, self._password))
+        hash = hashlib.md5("%s_%s" % (self._login, self._password))
         digest = hash.hexdigest()
 
         url = self._base_url + "/login/" + digest

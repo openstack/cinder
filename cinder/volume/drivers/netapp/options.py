@@ -1,6 +1,6 @@
-# Copyright (c) 2012 NetApp, Inc.
-# Copyright (c) 2012 OpenStack Foundation
-# All Rights Reserved.
+# Copyright (c) 2012 NetApp, Inc.  All rights reserved.
+# Copyright (c) 2014 Navneet Singh.  All rights reserved.
+# Copyright (c) 2014 Bob Callaway.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -24,19 +24,21 @@ individual modules. It is recommended to Keep options at a single
 place to ensure re usability and better management of configuration options.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 netapp_proxy_opts = [
     cfg.StrOpt('netapp_storage_family',
                default='ontap_cluster',
+               choices=['ontap_7mode', 'ontap_cluster', 'eseries'],
                help=('The storage family type used on the storage system; '
                      'valid values are ontap_7mode for using Data ONTAP '
                      'operating in 7-Mode, ontap_cluster for using '
                      'clustered Data ONTAP, or eseries for using E-Series.')),
     cfg.StrOpt('netapp_storage_protocol',
-               default=None,
+               default='iscsi',
+               choices=['iscsi', 'fc', 'nfs'],
                help=('The storage protocol to be used on the data path with '
-                     'the storage system; valid values are iscsi or nfs.')), ]
+                     'the storage system.')), ]
 
 netapp_connection_opts = [
     cfg.StrOpt('netapp_server_hostname',
@@ -53,9 +55,9 @@ netapp_connection_opts = [
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',
                default='http',
+               choices=['http', 'https'],
                help=('The transport protocol used when communicating with '
-                     'the storage system or proxy server. Valid values are '
-                     'http or https.')), ]
+                     'the storage system or proxy server.')), ]
 
 netapp_basicauth_opts = [
     cfg.StrOpt('netapp_login',
@@ -78,8 +80,8 @@ netapp_provisioning_opts = [
     cfg.StrOpt('netapp_volume_list',
                default=None,
                help=('This option is only utilized when the storage protocol '
-                     'is configured to use iSCSI. This option is used to '
-                     'restrict provisioning to the specified controller '
+                     'is configured to use iSCSI or FC. This option is used '
+                     'to restrict provisioning to the specified controller '
                      'volumes. Specify the value of this option to be a '
                      'comma separated list of NetApp controller volume names '
                      'to be used for provisioning.')), ]
@@ -89,15 +91,7 @@ netapp_cluster_opts = [
                default=None,
                help=('This option specifies the virtual storage server '
                      '(Vserver) name on the storage cluster on which '
-                     'provisioning of block storage volumes should occur. If '
-                     'using the NFS storage protocol, this parameter is '
-                     'mandatory for storage service catalog support (utilized'
-                     ' by Cinder volume type extra_specs support). If this '
-                     'option is specified, the exports belonging to the '
-                     'Vserver will only be used for provisioning in the '
-                     'future. Block storage volumes on exports not belonging '
-                     'to the Vserver specified by this option will continue '
-                     'to function normally.')), ]
+                     'provisioning of block storage volumes should occur.')), ]
 
 netapp_7mode_opts = [
     cfg.StrOpt('netapp_vfiler',
@@ -107,7 +101,14 @@ netapp_7mode_opts = [
                      'driver when connecting to an instance with a storage '
                      'family of Data ONTAP operating in 7-Mode. Only use this '
                      'option when utilizing the MultiStore feature on the '
-                     'NetApp storage system.')), ]
+                     'NetApp storage system.')),
+    cfg.StrOpt('netapp_partner_backend_name',
+               default=None,
+               help=('The name of the config.conf stanza for a Data ONTAP '
+                     '(7-mode) HA partner.  This option is only used by the '
+                     'driver when connecting to an instance with a storage '
+                     'family of Data ONTAP operating in 7-Mode, and it is '
+                     'required if the storage protocol selected is FC.')), ]
 
 netapp_img_cache_opts = [
     cfg.IntOpt('thres_avl_size_perc_start',

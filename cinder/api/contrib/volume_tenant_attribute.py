@@ -15,7 +15,6 @@
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
-from cinder import volume
 
 
 authorize = extensions.soft_extension_authorizer('volume',
@@ -23,12 +22,8 @@ authorize = extensions.soft_extension_authorizer('volume',
 
 
 class VolumeTenantAttributeController(wsgi.Controller):
-    def __init__(self, *args, **kwargs):
-        super(VolumeTenantAttributeController, self).__init__(*args, **kwargs)
-        self.volume_api = volume.API()
-
     def _add_volume_tenant_attribute(self, context, req, resp_volume):
-        db_volume = req.cached_resource_by_id(resp_volume['id'])
+        db_volume = req.get_db_volume(resp_volume['id'])
         key = "%s:tenant_id" % Volume_tenant_attribute.alias
         resp_volume[key] = db_volume['project_id']
 

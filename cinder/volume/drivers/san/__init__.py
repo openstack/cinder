@@ -23,4 +23,3 @@
 
 # Adding imports for backwards compatibility in loading volume_driver.
 from san import SanISCSIDriver      # noqa
-from solaris import SolarisISCSIDriver      # noqa

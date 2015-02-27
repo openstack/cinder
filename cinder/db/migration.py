@@ -16,23 +16,46 @@
 
 """Database setup and migration commands."""
 
-from cinder import utils
+import os
+import threading
+
+from oslo_config import cfg
+from oslo_db import options
+from stevedore import driver
+
+from cinder.db.sqlalchemy import api as db_api
+
+INIT_VERSION = 000
+
+_IMPL = None
+_LOCK = threading.Lock()
+
+options.set_defaults(cfg.CONF)
+
+MIGRATE_REPO_PATH = os.path.join(
+    os.path.abspath(os.path.dirname(__file__)),
+    'sqlalchemy',
+    'migrate_repo',
+)
 
 
-IMPL = utils.LazyPluggable('db_backend',
-                           sqlalchemy='cinder.db.sqlalchemy.migration')
+def get_backend():
+    global _IMPL
+    if _IMPL is None:
+        with _LOCK:
+            if _IMPL is None:
+                _IMPL = driver.DriverManager(
+                    "cinder.database.migration_backend",
+                    cfg.CONF.database.backend).driver
+    return _IMPL
 
 
-def db_sync(version=None):
+def db_sync(version=None, init_version=INIT_VERSION, engine=None):
     """Migrate the database to `version` or the most recent version."""
-    return IMPL.db_sync(version=version)
 
-
-def db_version():
-    """Display the current database version."""
-    return IMPL.db_version()
-
-
-def db_initial_version():
-    """The starting version for the database."""
-    return IMPL.db_initial_version()
+    if engine is None:
+        engine = db_api.get_engine()
+    return get_backend().db_sync(engine=engine,
+                                 abs_path=MIGRATE_REPO_PATH,
+                                 version=version,
+                                 init_version=init_version)

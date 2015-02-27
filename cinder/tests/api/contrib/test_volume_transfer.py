@@ -29,7 +29,7 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.api import fakes
-from cinder.transfer import API
+from cinder import transfer
 import cinder.volume
 
 
@@ -41,7 +41,7 @@ class VolumeTransferAPITestCase(test.TestCase):
 
     def setUp(self):
         super(VolumeTransferAPITestCase, self).setUp()
-        self.volume_transfer_api = API()
+        self.volume_transfer_api = transfer.API()
         self.controller = volume_transfer.VolumeTransferController()
 
     def _create_transfer(self, volume_id=1,
@@ -568,7 +568,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(res_dict['overLimit']['code'], 413)
         self.assertEqual(res_dict['overLimit']['message'],
                          'Requested volume or snapshot exceeds allowed '
-                         'Gigabytes quota. Requested 2G, quota is 3G and '
+                         'gigabytes quota. Requested 2G, quota is 3G and '
                          '2G has been consumed.')
 
     def test_accept_transfer_with_VolumeLimitExceeded(self):

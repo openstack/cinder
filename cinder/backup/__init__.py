@@ -16,11 +16,11 @@
 # Importing full names to not pollute the namespace and cause possible
 # collisions with use of 'from cinder.backup import <foo>' elsewhere.
 
+from oslo_utils import importutils
 
 from cinder.common import config
-import cinder.openstack.common.importutils
 
 
 CONF = config.CONF
 
-API = cinder.openstack.common.importutils.import_class(CONF.backup_api_class)
+API = importutils.import_class(CONF.backup_api_class)

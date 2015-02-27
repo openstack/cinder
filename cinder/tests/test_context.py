@@ -54,6 +54,16 @@ class ContextTestCase(test.TestCase):
                           'read_deleted',
                           True)
 
+    def test_request_context_elevated(self):
+        user_context = context.RequestContext(
+            'fake_user', 'fake_project', admin=False)
+        self.assertFalse(user_context.is_admin)
+        admin_context = user_context.elevated()
+        self.assertFalse(user_context.is_admin)
+        self.assertTrue(admin_context.is_admin)
+        self.assertFalse('admin' in user_context.roles)
+        self.assertTrue('admin' in admin_context.roles)
+
     def test_service_catalog_nova_and_swift(self):
         service_catalog = [
             {u'type': u'compute', u'name': u'nova'},
@@ -70,7 +80,7 @@ class ContextTestCase(test.TestCase):
         object_catalog = [{u'name': u'swift', u'type': u'object-store'}]
         ctxt = context.RequestContext('111', '222',
                                       service_catalog=service_catalog)
-        self.assertEqual(len(ctxt.service_catalog), 2)
+        self.assertEqual(len(ctxt.service_catalog), 3)
         return_compute = [v for v in ctxt.service_catalog if
                           v['type'] == u'compute']
         return_object = [v for v in ctxt.service_catalog if

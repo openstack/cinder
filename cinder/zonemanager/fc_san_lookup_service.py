@@ -23,9 +23,10 @@ defined in this class.
 
 """
 
+from oslo_utils import importutils
+
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.volume import configuration as config
 from cinder.zonemanager import fc_common
@@ -47,8 +48,6 @@ class FCSanLookupService(fc_common.FCCommon):
 
     def __init__(self, **kwargs):
         super(FCSanLookupService, self).__init__(**kwargs)
-
-        self.configuration = kwargs.get('configuration', None)
 
         opts = fc_zone_manager.zone_manager_opts
         self.configuration = config.Configuration(opts, 'fc-zone-manager')
@@ -81,8 +80,8 @@ class FCSanLookupService(fc_common.FCCommon):
                 lookup_service, configuration=self.configuration)
         else:
             msg = _("Lookup service not configured. Config option for "
-                    "fc_san_lookup_service need to specify a concrete "
-                    "implementation of lookup service")
+                    "fc_san_lookup_service needs to specify a concrete "
+                    "implementation of the lookup service.")
             LOG.error(msg)
             raise exception.FCSanLookupServiceException(msg)
         try:

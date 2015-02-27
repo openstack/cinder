@@ -20,7 +20,7 @@ Unit Tests for cinder.scheduler.rpcapi
 import copy
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import context
 from cinder.scheduler import rpcapi as scheduler_rpcapi

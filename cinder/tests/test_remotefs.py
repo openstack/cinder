@@ -225,7 +225,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             self._FAKE_VOLUME_NAME)
 
         self._driver._execute = mock.Mock()
-        self._driver._set_rw_permissions_for_all = mock.Mock()
+        self._driver._set_rw_permissions = mock.Mock()
         self._driver._qemu_img_info = mock.Mock(
             return_value=mock.Mock(file_format=mock.sentinel.backing_fmt))
 

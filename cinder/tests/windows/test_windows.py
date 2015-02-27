@@ -23,7 +23,7 @@ import shutil
 import tempfile
 
 import mox
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
@@ -261,7 +261,6 @@ class TestWindowsDriver(test.TestCase):
         self.stubs.Set(windows_utils.WindowsUtils, 'get_supported_vhd_type',
                        fake_get_supported_type)
 
-        self.mox.StubOutWithMock(os, 'makedirs')
         self.mox.StubOutWithMock(os, 'unlink')
         self.mox.StubOutWithMock(image_utils, 'create_temporary_file')
         self.mox.StubOutWithMock(image_utils, 'fetch_to_vhd')

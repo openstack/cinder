@@ -15,13 +15,13 @@
 
 import json
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import units
 import requests
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder.volume.drivers.san import san
 
 LOG = logging.getLogger(__name__)
@@ -178,7 +178,7 @@ class DateraDriver(san.SanISCSIDriver):
         results = self._issue_api_request('cluster')
 
         if 'uuid' not in results:
-            LOG.error(_('Failed to get updated stats from Datera Cluster.'))
+            LOG.error(_LE('Failed to get updated stats from Datera Cluster.'))
 
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats = {

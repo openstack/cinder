@@ -15,7 +15,7 @@
 
 import operator
 
-from cinder.openstack.common import strutils
+from oslo.utils import strutils
 
 # 1. The following operations are supported:
 #   =, s==, s!=, s>=, s>, s<=, s<, <in>, <is>, <or>, ==, !=, >=, <=

@@ -31,7 +31,7 @@ of filters and weighers.
   scheduler_default_weighers = 'ChanceWeigher'
 
 If one prefers the scheduler to pick up the back-end has most available
-space that scheudler can see (like SimpleScheduler did), use following
+space that scheduler can see (like SimpleScheduler did), use following
 combination of filters and weighers with FilterScheduler.
 
   scheduler_driver = cinder.scheduler.filter_scheduler.FilterScheduler
@@ -50,7 +50,7 @@ With that, FilterScheduler behaves mostly the same as Chance/SimpleScheduler,
 with additional benefits of supporting volume types, volume encryption, QoS.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 simple_scheduler_opts = [
     cfg.IntOpt("max_gigabytes",

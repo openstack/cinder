@@ -21,6 +21,7 @@ import json
 from xml.dom import minidom
 
 import mock
+from oslo_utils import timeutils
 import webob
 
 # needed for stubs to work
@@ -30,7 +31,6 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests import utils
@@ -548,26 +548,26 @@ class BackupsAPITestCase(test.TestCase):
         test_host = 'test_host'
         alt_host = 'strange_host'
         empty_service = []
-        #service host not match with volume's host
+        # service host not match with volume's host
         host_not_match = [{'availability_zone': "fake_az", 'host': alt_host,
                            'disabled': 0, 'updated_at': timeutils.utcnow()}]
-        #service az not match with volume's az
+        # service az not match with volume's az
         az_not_match = [{'availability_zone': "strange_az", 'host': test_host,
                          'disabled': 0, 'updated_at': timeutils.utcnow()}]
-        #service disabled
+        # service disabled
         disabled_service = []
 
-        #dead service that last reported at 20th century
+        # dead service that last reported at 20th century
         dead_service = [{'availability_zone': "fake_az", 'host': alt_host,
                          'disabled': 0, 'updated_at': '1989-04-16 02:55:44'}]
 
-        #first service's host not match but second one works.
+        # first service's host not match but second one works.
         multi_services = [{'availability_zone': "fake_az", 'host': alt_host,
                            'disabled': 0, 'updated_at': timeutils.utcnow()},
                           {'availability_zone': "fake_az", 'host': test_host,
                            'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
-        #Setup mock to run through the following service cases
+        # Setup mock to run through the following service cases
         _mock_service_get_all_by_topic.side_effect = [empty_service,
                                                       host_not_match,
                                                       az_not_match,
@@ -579,32 +579,32 @@ class BackupsAPITestCase(test.TestCase):
                                         host=test_host)['id']
         volume = self.volume_api.get(context.get_admin_context(), volume_id)
 
-        #test empty service
+        # test empty service
         self.assertEqual(self.backup_api._is_backup_service_enabled(volume,
                                                                     test_host),
                          False)
 
-        #test host not match service
+        # test host not match service
         self.assertEqual(self.backup_api._is_backup_service_enabled(volume,
                                                                     test_host),
                          False)
 
-        #test az not match service
+        # test az not match service
         self.assertEqual(self.backup_api._is_backup_service_enabled(volume,
                                                                     test_host),
                          False)
 
-        #test disabled service
+        # test disabled service
         self.assertEqual(self.backup_api._is_backup_service_enabled(volume,
                                                                     test_host),
                          False)
 
-        #test dead service
+        # test dead service
         self.assertEqual(self.backup_api._is_backup_service_enabled(volume,
                                                                     test_host),
                          False)
 
-        #test multi services and the last service matches
+        # test multi services and the last service matches
         self.assertEqual(self.backup_api._is_backup_service_enabled(volume,
                                                                     test_host),
                          True)
@@ -908,7 +908,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res_dict['overLimit']['code'], 413)
         self.assertEqual(res_dict['overLimit']['message'],
                          'Requested volume or snapshot exceeds allowed '
-                         'Gigabytes quota. Requested 2G, quota is 3G and '
+                         'gigabytes quota. Requested 2G, quota is 3G and '
                          '2G has been consumed.')
 
     @mock.patch('cinder.backup.API.restore')
@@ -1071,7 +1071,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(export.item(0).getAttribute('backup_url'),
                          backup_url)
 
-        #db.backup_destroy(context.get_admin_context(), backup_id)
+        # db.backup_destroy(context.get_admin_context(), backup_id)
 
     def test_export_record_with_bad_backup_id(self):
 
@@ -1266,7 +1266,7 @@ class BackupsAPITestCase(test.TestCase):
         backup_service = 'fake'
         backup_url = 'fake'
 
-        #test with no backup_service
+        # test with no backup_service
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_url': backup_url}}
         req.body = json.dumps(body)
@@ -1279,7 +1279,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res_dict['badRequest']['message'],
                          'Incorrect request body format.')
 
-        #test with no backup_url
+        # test with no backup_url
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_service': backup_service}}
         req.body = json.dumps(body)
@@ -1293,7 +1293,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res_dict['badRequest']['message'],
                          'Incorrect request body format.')
 
-        #test with no backup_url and backup_url
+        # test with no backup_url and backup_url
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {}}
         req.body = json.dumps(body)

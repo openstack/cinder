@@ -19,15 +19,15 @@ Manage hosts in the current zone.
 
 import UserDict
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import timeutils
 
 from cinder import db
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common.scheduler import weights
-from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder.volume import utils as vol_utils
 
@@ -51,6 +51,7 @@ host_manager_opts = [
 CONF = cfg.CONF
 CONF.register_opts(host_manager_opts)
 CONF.import_opt('scheduler_driver', 'cinder.scheduler.manager')
+CONF.import_opt('max_over_subscription_ratio', 'cinder.volume.driver')
 
 LOG = logging.getLogger(__name__)
 
@@ -109,6 +110,14 @@ class HostState(object):
         self.allocated_capacity_gb = 0
         self.free_capacity_gb = None
         self.reserved_percentage = 0
+        # The apparent allocated space indicating how much capacity
+        # has been provisioned. This could be the sum of sizes of
+        # all volumes on a backend, which could be greater than or
+        # equal to the allocated_capacity_gb.
+        self.provisioned_capacity_gb = 0
+        self.max_over_subscription_ratio = 1.0
+        self.thin_provisioning_support = False
+        self.thick_provisioning_support = False
 
         # PoolState for all pools
         self.pools = {}
@@ -266,6 +275,7 @@ class HostState(object):
         """Incrementally update host state from an volume."""
         volume_gb = volume['size']
         self.allocated_capacity_gb += volume_gb
+        self.provisioned_capacity_gb += volume_gb
         if self.free_capacity_gb == 'infinite':
             # There's virtually infinite space on back-end
             pass
@@ -300,12 +310,27 @@ class PoolState(HostState):
                 return
             self.update_backend(capability)
 
-            self.total_capacity_gb = capability['total_capacity_gb']
-            self.free_capacity_gb = capability['free_capacity_gb']
+            self.total_capacity_gb = capability.get('total_capacity_gb', 0)
+            self.free_capacity_gb = capability.get('free_capacity_gb', 0)
             self.allocated_capacity_gb = capability.get(
                 'allocated_capacity_gb', 0)
             self.QoS_support = capability.get('QoS_support', False)
-            self.reserved_percentage = capability['reserved_percentage']
+            self.reserved_percentage = capability.get('reserved_percentage', 0)
+            # provisioned_capacity_gb is the apparent total capacity of
+            # all the volumes created on a backend, which is greater than
+            # or equal to allocated_capacity_gb, which is the apparent
+            # total capacity of all the volumes created on a backend
+            # in Cinder. Using allocated_capacity_gb as the default of
+            # provisioned_capacity_gb if it is not set.
+            self.provisioned_capacity_gb = capability.get(
+                'provisioned_capacity_gb', self.allocated_capacity_gb)
+            self.max_over_subscription_ratio = capability.get(
+                'max_over_subscription_ratio',
+                CONF.max_over_subscription_ratio)
+            self.thin_provisioning_support = capability.get(
+                'thin_provisioning_support', False)
+            self.thick_provisioning_support = capability.get(
+                'thick_provisioning_support', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
@@ -433,15 +458,7 @@ class HostManager(object):
                   {'service_name': service_name, 'host': host,
                    'cap': capabilities})
 
-    def get_all_host_states(self, context):
-        """Returns a dict of all the hosts the HostManager knows about.
-
-        Each of the consumable resources in HostState are
-        populated with capabilities scheduler received from RPC.
-
-        For example:
-          {'192.168.1.100': HostState(), ...}
-        """
+    def _update_host_state_map(self, context):
 
         # Get resource usage across the available volume nodes:
         topic = CONF.volume_topic
@@ -452,7 +469,7 @@ class HostManager(object):
         for service in volume_services:
             host = service['host']
             if not utils.service_is_up(service):
-                LOG.warn(_("volume service is down. (host: %s)") % host)
+                LOG.warn(_LW("volume service is down. (host: %s)") % host)
                 continue
             capabilities = self.service_states.get(host, None)
             host_state = self.host_state_map.get(host)
@@ -471,14 +488,25 @@ class HostManager(object):
         # remove non-active hosts from host_state_map
         nonactive_hosts = set(self.host_state_map.keys()) - active_hosts
         for host in nonactive_hosts:
-            LOG.info(_("Removing non-active host: %(host)s from "
-                       "scheduler cache.") % {'host': host})
+            LOG.info(_LI("Removing non-active host: %(host)s from "
+                         "scheduler cache.") % {'host': host})
             del self.host_state_map[host]
+
+    def get_all_host_states(self, context):
+        """Returns a dict of all the hosts the HostManager knows about.
+
+        Each of the consumable resources in HostState are
+        populated with capabilities scheduler received from RPC.
+
+        For example:
+          {'192.168.1.100': HostState(), ...}
+        """
+
+        self._update_host_state_map(context)
 
         # build a pool_state map and return that map instead of host_state_map
         all_pools = {}
-        for host in active_hosts:
-            state = self.host_state_map[host]
+        for host, state in self.host_state_map.items():
             for key in state.pools:
                 pool = state.pools[key]
                 # use host.pool_name to make sure key is unique
@@ -489,6 +517,8 @@ class HostManager(object):
 
     def get_pools(self, context):
         """Returns a dict of all pools on all hosts HostManager knows about."""
+
+        self._update_host_state_map(context)
 
         all_pools = []
         for host, state in self.host_state_map.items():

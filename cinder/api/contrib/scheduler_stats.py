@@ -43,7 +43,7 @@ class SchedulerStatsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context, 'get_pools')
 
-        #TODO(zhiteng) Add filters support
+        # TODO(zhiteng) Add filters support
         detail = req.params.get('detail', False)
         pools = self.scheduler_api.get_pools(context, filters=None)
 

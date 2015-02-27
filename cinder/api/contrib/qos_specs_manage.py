@@ -15,6 +15,7 @@
 
 """The QoS specs extension"""
 
+from oslo_utils import strutils
 import six
 import webob
 
@@ -23,9 +24,8 @@ from cinder.api.openstack import wsgi
 from cinder.api.views import qos_specs as view_qos_specs
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
 from cinder import rpc
 from cinder import utils
 from cinder.volume import qos_specs
@@ -76,7 +76,7 @@ class QoSSpecsKeyDeserializer(wsgi.XMLDeserializer):
         dom = utils.safe_minidom_parse_string(string)
         key_node = self.find_first_child_named(dom, 'keys')
         if not key_node:
-            LOG.info(_("Unable to parse XML input."))
+            LOG.info(_LI("Unable to parse XML input."))
             msg = _("Unable to parse XML request. "
                     "Please provide XML in correct format.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
@@ -217,7 +217,7 @@ class QoSSpecsController(wsgi.Controller):
 
         force = req.params.get('force', None)
 
-        #convert string to bool type in strict manner
+        # Convert string to bool type in strict manner
         force = strutils.bool_from_string(force)
         LOG.debug("Delete qos_spec: %(id)s, force: %(force)s" %
                   {'id': id, 'force': force})

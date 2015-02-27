@@ -18,18 +18,16 @@
 SheepDog Volume Driver.
 
 """
-import os
 import re
-import tempfile
 
-from oslo.config import cfg
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
-from cinder.openstack.common import units
 from cinder.volume import driver
 
 
@@ -52,10 +50,10 @@ class SheepdogDriver(driver.VolumeDriver):
     def check_for_setup_error(self):
         """Return error if prerequisites aren't met."""
         try:
-            #NOTE(francois-charlier) Since 0.24 'collie cluster info -r'
-            #  gives short output, but for compatibility reason we won't
-            #  use it and just check if 'running' is in the output.
-            (out, err) = self._execute('collie', 'cluster', 'info')
+            # NOTE(francois-charlier) Since 0.24 'collie cluster info -r'
+            # gives short output, but for compatibility reason we won't
+            # use it and just check if 'running' is in the output.
+            (out, _err) = self._execute('collie', 'cluster', 'info')
             if 'status: running' not in out:
                 exception_message = (_("Sheepdog is not working: %s") % out)
                 raise exception.VolumeBackendAPIException(
@@ -79,15 +77,12 @@ class SheepdogDriver(driver.VolumeDriver):
         self._try_execute('qemu-img', 'create', '-b',
                           "sheepdog:%s:%s" % (snapshot['volume_name'],
                                               snapshot['name']),
-                          "sheepdog:%s" % volume['name'])
+                          "sheepdog:%s" % volume['name'],
+                          '%sG' % volume['size'])
 
     def delete_volume(self, volume):
         """Delete a logical volume."""
         self._delete(volume)
-
-    def _ensure_dir_exists(self, tmp_dir):
-        if tmp_dir and not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
 
     def _resize(self, volume, size=None):
         if not size:
@@ -101,19 +96,16 @@ class SheepdogDriver(driver.VolumeDriver):
                           volume['name'])
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        # use the image_conversion_dir as a temporary place to save the image
-        conversion_dir = CONF.image_conversion_dir
-        self._ensure_dir_exists(conversion_dir)
-        with tempfile.NamedTemporaryFile(dir=conversion_dir) as tmp:
+        with image_utils.temporary_file() as tmp:
             # (wenhao): we don't need to convert to raw for sheepdog.
             image_utils.fetch_verify_image(context, image_service,
-                                           image_id, tmp.name)
+                                           image_id, tmp)
 
             # remove the image created by import before this function.
             # see volume/drivers/manager.py:_create_volume
             self._delete(volume)
             # convert and store into sheepdog
-            image_utils.convert_image(tmp.name, 'sheepdog:%s' % volume['name'],
+            image_utils.convert_image(tmp, 'sheepdog:%s' % volume['name'],
                                       'raw')
             self._resize(volume)
 
@@ -176,7 +168,7 @@ class SheepdogDriver(driver.VolumeDriver):
             stats['total_capacity_gb'] = total / units.Gi
             stats['free_capacity_gb'] = (total - used) / units.Gi
         except processutils.ProcessExecutionError:
-            LOG.exception(_('error refreshing volume stats'))
+            LOG.exception(_LE('error refreshing volume stats'))
 
         self._stats = stats
 

@@ -16,15 +16,14 @@ iSCSI Cinder volume driver for Hitachi storage.
 
 """
 
-from contextlib import nested
 import os
 import threading
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LE
 from cinder.openstack.common import log as logging
 from cinder import utils
 import cinder.volume.driver
@@ -186,7 +185,7 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
                                   % {'port': port, 'gid': gid})
                         break
             if gid is None:
-                LOG.error(_('Failed to add target(port: %s)') % port)
+                LOG.error(_LE('Failed to add target(port: %s)') % port)
                 continue
             try:
                 if added_hostgroup:
@@ -348,8 +347,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
             msg = basic_lib.output_err(619, volume_id=volume['id'])
             raise exception.HBSDError(message=msg)
         self.common.add_volinfo(ldev, volume['id'])
-        with nested(self.common.volume_info[ldev]['lock'],
-                    self.common.volume_info[ldev]['in_use']):
+        with self.common.volume_info[ldev]['lock'],\
+                self.common.volume_info[ldev]['in_use']:
             hostgroups = self._initialize_connection(ldev, connector)
             protocol = 'iscsi'
             properties = self._get_properties(volume, hostgroups)
@@ -390,8 +389,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
             raise exception.HBSDError(message=msg)
 
         self.common.add_volinfo(ldev, volume['id'])
-        with nested(self.common.volume_info[ldev]['lock'],
-                    self.common.volume_info[ldev]['in_use']):
+        with self.common.volume_info[ldev]['lock'],\
+                self.common.volume_info[ldev]['in_use']:
             self._terminate_connection(ldev, connector, hostgroups)
 
     def create_export(self, context, volume):
@@ -418,3 +417,14 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
         super(HBSDISCSIDriver, self).copy_volume_to_image(context, volume,
                                                           image_service,
                                                           image_meta)
+
+    def manage_existing(self, volume, existing_ref):
+        return self.common.manage_existing(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        self.do_setup_status.wait()
+        return self.common.manage_existing_get_size(volume, existing_ref)
+
+    def unmanage(self, volume):
+        self.do_setup_status.wait()
+        self.common.unmanage(volume)

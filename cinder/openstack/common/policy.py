@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (c) 2012 OpenStack Foundation.
 # All Rights Reserved.
 #
@@ -22,22 +24,43 @@ string written in the new policy language.
 In the list-of-lists representation, each check inside the innermost
 list is combined as with an "and" conjunction--for that check to pass,
 all the specified checks must pass.  These innermost lists are then
-combined as with an "or" conjunction.  This is the original way of
-expressing policies, but there now exists a new way: the policy
-language.
-
-In the policy language, each check is specified the same way as in the
-list-of-lists representation: a simple "a:b" pair that is matched to
-the correct code to perform that check.  However, conjunction
-operators are available, allowing for more expressiveness in crafting
-policies.
-
-As an example, take the following rule, expressed in the list-of-lists
-representation::
+combined as with an "or" conjunction. As an example, take the following
+rule, expressed in the list-of-lists representation::
 
     [["role:admin"], ["project_id:%(project_id)s", "role:projectadmin"]]
 
-In the policy language, this becomes::
+This is the original way of expressing policies, but there now exists a
+new way: the policy language.
+
+In the policy language, each check is specified the same way as in the
+list-of-lists representation: a simple "a:b" pair that is matched to
+the correct class to perform that check::
+
+ +===========================================================================+
+ |            TYPE                |                SYNTAX                    |
+ +===========================================================================+
+ |User's Role                     |              role:admin                  |
+ +---------------------------------------------------------------------------+
+ |Rules already defined on policy |          rule:admin_required             |
+ +---------------------------------------------------------------------------+
+ |Against URL's¹                  |         http://my-url.org/check          |
+ +---------------------------------------------------------------------------+
+ |User attributes²                |    project_id:%(target.project.id)s      |
+ +---------------------------------------------------------------------------+
+ |Strings                         |        <variable>:'xpto2035abc'          |
+ |                                |         'myproject':<variable>           |
+ +---------------------------------------------------------------------------+
+ |                                |         project_id:xpto2035abc           |
+ |Literals                        |         domain_id:20                     |
+ |                                |         True:%(user.enabled)s            |
+ +===========================================================================+
+
+¹URL checking must return 'True' to be valid
+²User attributes (obtained through the token): user_id, domain_id or project_id
+
+Conjunction operators are available, allowing for more expressiveness
+in crafting policies. So, in the policy language, the previous check in
+list-of-lists becomes::
 
     role:admin or (project_id:%(project_id)s and role:projectadmin)
 
@@ -46,26 +69,16 @@ policy rule::
 
     project_id:%(project_id)s and not role:dunce
 
-It is possible to perform policy checks on the following user
-attributes (obtained through the token): user_id, domain_id or
-project_id::
-
-    domain_id:<some_value>
-
 Attributes sent along with API calls can be used by the policy engine
 (on the right side of the expression), by using the following syntax::
 
-    <some_value>:user.id
+    <some_value>:%(user.id)s
 
 Contextual attributes of objects identified by their IDs are loaded
 from the database. They are also available to the policy engine and
 can be checked through the `target` keyword::
 
-    <some_value>:target.role.name
-
-All these attributes (related to users, API calls, and context) can be
-checked against each other or against constants, be it literals (True,
-<a_number>) or strings.
+    <some_value>:%(target.role.name)s
 
 Finally, two special policy checks should be mentioned; the policy
 check "@" will always accept an access, and the policy check "!" will
@@ -77,17 +90,19 @@ as it allows particular rules to be explicitly disabled.
 
 import abc
 import ast
+import copy
+import logging
+import os
 import re
 
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 import six
 import six.moves.urllib.parse as urlparse
 import six.moves.urllib.request as urlrequest
 
 from cinder.openstack.common import fileutils
-from cinder.openstack.common.gettextutils import _, _LE
-from cinder.openstack.common import jsonutils
-from cinder.openstack.common import log as logging
+from cinder.openstack.common._i18n import _, _LE, _LI
 
 
 policy_opts = [
@@ -98,6 +113,14 @@ policy_opts = [
                default='default',
                help=_('Default rule. Enforced when a requested rule is not '
                       'found.')),
+    cfg.MultiStrOpt('policy_dirs',
+                    default=['policy.d'],
+                    help=_('Directories where policy configuration files are '
+                           'stored. They can be relative to any directory '
+                           'in the search path defined by the config_dir '
+                           'option, or absolute paths. The file defined by '
+                           'policy_file must exist for these directories to '
+                           'be searched.')),
 ]
 
 CONF = cfg.CONF
@@ -106,6 +129,11 @@ CONF.register_opts(policy_opts)
 LOG = logging.getLogger(__name__)
 
 _checks = {}
+
+
+def list_opts():
+    """Entry point for oslo.config-generator."""
+    return [(None, copy.deepcopy(policy_opts))]
 
 
 class PolicyNotAuthorized(Exception):
@@ -184,16 +212,19 @@ class Enforcer(object):
     :param default_rule: Default rule to use, CONF.default_rule will
                          be used if none is specified.
     :param use_conf: Whether to load rules from cache or config file.
+    :param overwrite: Whether to overwrite existing rules when reload rules
+                      from config file.
     """
 
     def __init__(self, policy_file=None, rules=None,
-                 default_rule=None, use_conf=True):
-        self.rules = Rules(rules, default_rule)
+                 default_rule=None, use_conf=True, overwrite=True):
         self.default_rule = default_rule or CONF.policy_default_rule
+        self.rules = Rules(rules, self.default_rule)
 
         self.policy_path = None
         self.policy_file = policy_file or CONF.policy_file
         self.use_conf = use_conf
+        self.overwrite = overwrite
 
     def set_rules(self, rules, overwrite=True, use_conf=False):
         """Create a new Rules object based on the provided dict of rules.
@@ -225,7 +256,7 @@ class Enforcer(object):
 
         Policy file is cached and will be reloaded if modified.
 
-        :param force_reload: Whether to overwrite current rules.
+        :param force_reload: Whether to reload rules from config file.
         """
 
         if force_reload:
@@ -233,31 +264,55 @@ class Enforcer(object):
 
         if self.use_conf:
             if not self.policy_path:
-                self.policy_path = self._get_policy_path()
+                self.policy_path = self._get_policy_path(self.policy_file)
 
+            self._load_policy_file(self.policy_path, force_reload,
+                                   overwrite=self.overwrite)
+            for path in CONF.policy_dirs:
+                try:
+                    path = self._get_policy_path(path)
+                except cfg.ConfigFilesNotFoundError:
+                    LOG.info(_LI("Can not find policy directory: %s"), path)
+                    continue
+                self._walk_through_policy_directory(path,
+                                                    self._load_policy_file,
+                                                    force_reload, False)
+
+    @staticmethod
+    def _walk_through_policy_directory(path, func, *args):
+        # We do not iterate over sub-directories.
+        policy_files = next(os.walk(path))[2]
+        policy_files.sort()
+        for policy_file in [p for p in policy_files if not p.startswith('.')]:
+            func(os.path.join(path, policy_file), *args)
+
+    def _load_policy_file(self, path, force_reload, overwrite=True):
             reloaded, data = fileutils.read_cached_file(
-                self.policy_path, force_reload=force_reload)
-            if reloaded or not self.rules:
+                path, force_reload=force_reload)
+            if reloaded or not self.rules or not overwrite:
                 rules = Rules.load_json(data, self.default_rule)
-                self.set_rules(rules)
+                self.set_rules(rules, overwrite=overwrite, use_conf=True)
                 LOG.debug("Rules successfully reloaded")
 
-    def _get_policy_path(self):
-        """Locate the policy json data file.
+    def _get_policy_path(self, path):
+        """Locate the policy json data file/path.
 
-        :param policy_file: Custom policy file to locate.
+        :param path: It's value can be a full path or related path. When
+                     full path specified, this function just returns the full
+                     path. When related path specified, this function will
+                     search configuration directories to find one that exists.
 
         :returns: The policy path
 
-        :raises: ConfigFilesNotFoundError if the file couldn't
+        :raises: ConfigFilesNotFoundError if the file/path couldn't
                  be located.
         """
-        policy_file = CONF.find_file(self.policy_file)
+        policy_path = CONF.find_file(path)
 
-        if policy_file:
-            return policy_file
+        if policy_path:
+            return policy_path
 
-        raise cfg.ConfigFilesNotFoundError((self.policy_file,))
+        raise cfg.ConfigFilesNotFoundError((path,))
 
     def enforce(self, rule, target, creds, do_raise=False,
                 exc=None, *args, **kwargs):
@@ -272,7 +327,7 @@ class Enforcer(object):
         :param do_raise: Whether to raise an exception or not if check
                         fails.
         :param exc: Class of the exception to raise if the check fails.
-                    Any remaining arguments passed to check() (both
+                    Any remaining arguments passed to enforce() (both
                     positional and keyword arguments) will be passed to
                     the exception class. If not specified, PolicyNotAuthorized
                     will be used.
@@ -785,7 +840,7 @@ def _parse_text_rule(rule):
         return state.result
     except ValueError:
         # Couldn't parse the rule
-        LOG.exception(_LE("Failed to understand rule %r") % rule)
+        LOG.exception(_LE("Failed to understand rule %s") % rule)
 
         # Fail closed
         return FalseCheck()
@@ -856,7 +911,17 @@ class HttpCheck(Check):
         """
 
         url = ('http:' + self.match) % target
-        data = {'target': jsonutils.dumps(target),
+
+        # Convert instances of object() in target temporarily to
+        # empty dict to avoid circular reference detection
+        # errors in jsonutils.dumps().
+        temp_target = copy.deepcopy(target)
+        for key in target.keys():
+            element = target.get(key)
+            if type(element) is object:
+                temp_target[key] = {}
+
+        data = {'target': jsonutils.dumps(temp_target),
                 'credentials': jsonutils.dumps(creds)}
         post_data = urlparse.urlencode(data)
         f = urlrequest.urlopen(url, post_data)
@@ -876,7 +941,6 @@ class GenericCheck(Check):
             'Member':%(role.name)s
         """
 
-        # TODO(termie): do dict inspection via dot syntax
         try:
             match = self.match % target
         except KeyError:
@@ -889,7 +953,10 @@ class GenericCheck(Check):
             leftval = ast.literal_eval(self.kind)
         except ValueError:
             try:
-                leftval = creds[self.kind]
+                kind_parts = self.kind.split('.')
+                leftval = creds
+                for kind_part in kind_parts:
+                    leftval = leftval[kind_part]
             except KeyError:
                 return False
         return match == six.text_type(leftval)

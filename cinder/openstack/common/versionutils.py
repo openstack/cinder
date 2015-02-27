@@ -18,13 +18,25 @@ Helpers for comparing version strings.
 """
 
 import functools
-import pkg_resources
+import inspect
+import logging
 
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import log as logging
+from oslo.config import cfg
+import pkg_resources
+import six
+
+from cinder.openstack.common._i18n import _
 
 
 LOG = logging.getLogger(__name__)
+CONF = cfg.CONF
+
+
+opts = [
+    cfg.BoolOpt('fatal_deprecations',
+                default=False,
+                help='Enables or disables fatal status of deprecations.'),
+]
 
 
 class deprecated(object):
@@ -52,18 +64,36 @@ class deprecated(object):
     >>> @deprecated(as_of=deprecated.ICEHOUSE, remove_in=+1)
     ... def c(): pass
 
+    4. Specifying the deprecated functionality will not be removed:
+    >>> @deprecated(as_of=deprecated.ICEHOUSE, remove_in=0)
+    ... def d(): pass
+
+    5. Specifying a replacement, deprecated functionality will not be removed:
+    >>> @deprecated(as_of=deprecated.ICEHOUSE, in_favor_of='f()', remove_in=0)
+    ... def e(): pass
+
     """
 
+    # NOTE(morganfainberg): Bexar is used for unit test purposes, it is
+    # expected we maintain a gap between Bexar and Folsom in this list.
+    BEXAR = 'B'
     FOLSOM = 'F'
     GRIZZLY = 'G'
     HAVANA = 'H'
     ICEHOUSE = 'I'
+    JUNO = 'J'
+    KILO = 'K'
 
     _RELEASES = {
+        # NOTE(morganfainberg): Bexar is used for unit test purposes, it is
+        # expected we maintain a gap between Bexar and Folsom in this list.
+        'B': 'Bexar',
         'F': 'Folsom',
         'G': 'Grizzly',
         'H': 'Havana',
         'I': 'Icehouse',
+        'J': 'Juno',
+        'K': 'Kilo',
     }
 
     _deprecated_msg_with_alternative = _(
@@ -73,6 +103,12 @@ class deprecated(object):
     _deprecated_msg_no_alternative = _(
         '%(what)s is deprecated as of %(as_of)s and may be '
         'removed in %(remove_in)s. It will not be superseded.')
+
+    _deprecated_msg_with_alternative_no_removal = _(
+        '%(what)s is deprecated as of %(as_of)s in favor of %(in_favor_of)s.')
+
+    _deprecated_msg_with_no_alternative_no_removal = _(
+        '%(what)s is deprecated as of %(as_of)s. It will not be superseded.')
 
     def __init__(self, as_of, in_favor_of=None, remove_in=2, what=None):
         """Initialize decorator
@@ -91,16 +127,34 @@ class deprecated(object):
         self.remove_in = remove_in
         self.what = what
 
-    def __call__(self, func):
+    def __call__(self, func_or_cls):
         if not self.what:
-            self.what = func.__name__ + '()'
+            self.what = func_or_cls.__name__ + '()'
+        msg, details = self._build_message()
 
-        @functools.wraps(func)
-        def wrapped(*args, **kwargs):
-            msg, details = self._build_message()
-            LOG.deprecated(msg, details)
-            return func(*args, **kwargs)
-        return wrapped
+        if inspect.isfunction(func_or_cls):
+
+            @six.wraps(func_or_cls)
+            def wrapped(*args, **kwargs):
+                report_deprecated_feature(LOG, msg, details)
+                return func_or_cls(*args, **kwargs)
+            return wrapped
+        elif inspect.isclass(func_or_cls):
+            orig_init = func_or_cls.__init__
+
+            # TODO(tsufiev): change `functools` module to `six` as
+            # soon as six 1.7.4 (with fix for passing `assigned`
+            # argument to underlying `functools.wraps`) is released
+            # and added to the oslo-incubator requrements
+            @functools.wraps(orig_init, assigned=('__name__', '__doc__'))
+            def new_init(self, *args, **kwargs):
+                report_deprecated_feature(LOG, msg, details)
+                orig_init(self, *args, **kwargs)
+            func_or_cls.__init__ = new_init
+            return func_or_cls
+        else:
+            raise TypeError('deprecated can be used only with functions or '
+                            'classes')
 
     def _get_safe_to_remove_release(self, release):
         # TODO(dstanek): this method will have to be reimplemented once
@@ -119,9 +173,19 @@ class deprecated(object):
 
         if self.in_favor_of:
             details['in_favor_of'] = self.in_favor_of
-            msg = self._deprecated_msg_with_alternative
+            if self.remove_in > 0:
+                msg = self._deprecated_msg_with_alternative
+            else:
+                # There are no plans to remove this function, but it is
+                # now deprecated.
+                msg = self._deprecated_msg_with_alternative_no_removal
         else:
-            msg = self._deprecated_msg_no_alternative
+            if self.remove_in > 0:
+                msg = self._deprecated_msg_no_alternative
+            else:
+                # There are no plans to remove this function, but it is
+                # now deprecated.
+                msg = self._deprecated_msg_with_no_alternative_no_removal
         return msg, details
 
 
@@ -146,3 +210,44 @@ def is_compatible(requested_version, current_version, same_major=True):
         return False
 
     return current_parts >= requested_parts
+
+
+# Track the messages we have sent already. See
+# report_deprecated_feature().
+_deprecated_messages_sent = {}
+
+
+def report_deprecated_feature(logger, msg, *args, **kwargs):
+    """Call this function when a deprecated feature is used.
+
+    If the system is configured for fatal deprecations then the message
+    is logged at the 'critical' level and :class:`DeprecatedConfig` will
+    be raised.
+
+    Otherwise, the message will be logged (once) at the 'warn' level.
+
+    :raises: :class:`DeprecatedConfig` if the system is configured for
+             fatal deprecations.
+    """
+    stdmsg = _("Deprecated: %s") % msg
+    CONF.register_opts(opts)
+    if CONF.fatal_deprecations:
+        logger.critical(stdmsg, *args, **kwargs)
+        raise DeprecatedConfig(msg=stdmsg)
+
+    # Using a list because a tuple with dict can't be stored in a set.
+    sent_args = _deprecated_messages_sent.setdefault(msg, list())
+
+    if args in sent_args:
+        # Already logged this message, so don't log it again.
+        return
+
+    sent_args.append(args)
+    logger.warn(stdmsg, *args, **kwargs)
+
+
+class DeprecatedConfig(Exception):
+    message = _("Fatal call to deprecated config: %(msg)s")
+
+    def __init__(self, msg):
+        super(Exception, self).__init__(self.message % dict(msg=msg))

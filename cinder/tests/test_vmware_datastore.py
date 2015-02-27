@@ -18,11 +18,12 @@ Unit tests for datastore module.
 """
 
 import mock
+from oslo_utils import units
+from oslo_vmware import exceptions
 
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume.drivers.vmware import datastore as ds_sel
-from cinder.volume.drivers.vmware import error_util
+from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 
 
 class DatastoreTest(test.TestCase):
@@ -34,22 +35,26 @@ class DatastoreTest(test.TestCase):
         self._vops = mock.Mock()
         self._ds_sel = ds_sel.DatastoreSelector(self._vops, self._session)
 
-    def test_get_profile_id(self):
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_get_profile_id(self, get_profile_id_by_name):
         profile_id = mock.sentinel.profile_id
-        self._vops.retrieve_profile_id.return_value = profile_id
+        get_profile_id_by_name.return_value = profile_id
         profile_name = mock.sentinel.profile_name
 
         self.assertEqual(profile_id, self._ds_sel.get_profile_id(profile_name))
-        self._vops.retrieve_profile_id.assert_called_once_with(profile_name)
+        get_profile_id_by_name.assert_called_once_with(self._session,
+                                                       profile_name)
 
-    def test_get_profile_id_with_invalid_profile(self):
-        self._vops.retrieve_profile_id.return_value = None
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_get_profile_id_with_invalid_profile(self, get_profile_id_by_name):
+        get_profile_id_by_name.return_value = None
         profile_name = mock.sentinel.profile_name
 
-        self.assertRaises(error_util.ProfileNotFoundException,
+        self.assertRaises(vmdk_exceptions.ProfileNotFoundException,
                           self._ds_sel.get_profile_id,
                           profile_name)
-        self._vops.retrieve_profile_id.assert_called_once_with(profile_name)
+        get_profile_id_by_name.assert_called_once_with(self._session,
+                                                       profile_name)
 
     def _create_datastore(self, moref):
         return mock.Mock(value=moref)
@@ -59,6 +64,12 @@ class DatastoreTest(test.TestCase):
             capacity=2 * units.Mi):
         return mock.Mock(datastore=ds, freeSpace=free_space, type=_type,
                          capacity=capacity)
+
+    def _create_host(self, value):
+        host = mock.Mock(spec=['_type', 'value'])
+        host._type = 'HostSystem'
+        host.value = value
+        return host
 
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_filter_by_profile')
@@ -181,13 +192,14 @@ class DatastoreTest(test.TestCase):
                                          free_space=units.Mi,
                                          capacity=4 * units.Mi)
 
-        host_1 = mock.sentinel.host_1
-        host_2 = mock.sentinel.host_3
-        host_3 = mock.sentinel.host_3
+        host_1 = self._create_host('host-1')
+        host_2 = self._create_host('host-2')
+        host_3 = self._create_host('host-3')
 
-        connected_hosts = {mock.sentinel.ds_1: [host_1],
-                           mock.sentinel.ds_2: [host_1, host_2],
-                           mock.sentinel.ds_3: [host_1, host_2, host_3]}
+        connected_hosts = {mock.sentinel.ds_1: [host_1.value],
+                           mock.sentinel.ds_2: [host_1.value, host_2.value],
+                           mock.sentinel.ds_3: [host_1.value, host_2.value,
+                                                host_3.value]}
         self._vops.get_connected_hosts.side_effect = (
             lambda summary: connected_hosts[summary])
 
@@ -228,11 +240,11 @@ class DatastoreTest(test.TestCase):
         self._vops.get_hosts.assert_called_once_with()
 
         # Test with single host with no valid datastores.
-        host_1 = mock.sentinel.host_1
+        host_1 = self._create_host('host-1')
         self._vops.get_hosts.return_value = mock.Mock(
             objects=[mock.Mock(obj=host_1)])
         self._vops.continue_retrieval.return_value = None
-        self._vops.get_dss_rp.side_effect = error_util.VimException('error')
+        self._vops.get_dss_rp.side_effect = exceptions.VimException('error')
 
         self.assertEqual((), self._ds_sel.select_datastore(req))
         self._vops.get_dss_rp.assert_called_once_with(host_1)
@@ -240,17 +252,17 @@ class DatastoreTest(test.TestCase):
         # Test with three hosts and vCenter connection problem while fetching
         # datastores for the second host.
         self._vops.get_dss_rp.reset_mock()
-        host_2 = mock.sentinel.host_2
-        host_3 = mock.sentinel.host_3
+        host_2 = self._create_host('host-2')
+        host_3 = self._create_host('host-3')
         self._vops.get_hosts.return_value = mock.Mock(
             objects=[mock.Mock(obj=host_1),
                      mock.Mock(obj=host_2),
                      mock.Mock(obj=host_3)])
         self._vops.get_dss_rp.side_effect = [
-            error_util.VimException('no valid datastores'),
-            error_util.VimConnectionException('connection error')]
+            exceptions.VimException('no valid datastores'),
+            exceptions.VimConnectionException('connection error')]
 
-        self.assertRaises(error_util.VimConnectionException,
+        self.assertRaises(exceptions.VimConnectionException,
                           self._ds_sel.select_datastore,
                           req)
         get_dss_rp_exp_calls = [mock.call(host_1), mock.call(host_2)]
@@ -281,7 +293,7 @@ class DatastoreTest(test.TestCase):
         rp_2 = mock.sentinel.rp_2
         rp_3 = mock.sentinel.rp_3
         self._vops.get_dss_rp.side_effect = [
-            error_util.VimException('no valid datastores'),
+            exceptions.VimException('no valid datastores'),
             ([ds_2a, ds_2b], rp_2),
             ([ds_3a], rp_3)]
 
@@ -303,7 +315,7 @@ class DatastoreTest(test.TestCase):
         # Modify previous case to have a non-empty summary list after filtering
         # with preferred utilization threshold unset.
         self._vops.get_dss_rp.side_effect = [
-            error_util.VimException('no valid datastores'),
+            exceptions.VimException('no valid datastores'),
             ([ds_2a, ds_2b], rp_2),
             ([ds_3a], rp_3)]
 
@@ -318,7 +330,7 @@ class DatastoreTest(test.TestCase):
         # Modify previous case to have a preferred utilization threshold
         # satsified by one datastore.
         self._vops.get_dss_rp.side_effect = [
-            error_util.VimException('no valid datastores'),
+            exceptions.VimException('no valid datastores'),
             ([ds_2a, ds_2b], rp_2),
             ([ds_3a], rp_3)]
 
@@ -333,7 +345,7 @@ class DatastoreTest(test.TestCase):
         # Modify previous case to have a preferred utilization threshold
         # which cannot be satisfied.
         self._vops.get_dss_rp.side_effect = [
-            error_util.VimException('no valid datastores'),
+            exceptions.VimException('no valid datastores'),
             ([ds_2a, ds_2b], rp_2),
             ([ds_3a], rp_3)]
         filter_datastores.side_effect = [[summary_2b], [summary_3a]]
@@ -348,8 +360,34 @@ class DatastoreTest(test.TestCase):
         self._vops.get_dss_rp.side_effect = None
 
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
+                '_filter_datastores')
+    def test_select_datastore_with_single_host(self, filter_datastores):
+        host = self._create_host('host-1')
+        req = {self._ds_sel.SIZE_BYTES: units.Gi}
+
+        ds = mock.sentinel.ds
+        rp = mock.sentinel.rp
+        self._vops.get_dss_rp.return_value = ([ds], rp)
+
+        summary = self._create_summary(ds, free_space=2 * units.Gi,
+                                       capacity=3 * units.Gi)
+        filter_datastores.return_value = [summary]
+        self._vops.get_connected_hosts.return_value = [host.value]
+
+        self.assertEqual((host, rp, summary),
+                         self._ds_sel.select_datastore(req, [host]))
+
+        # reset mocks
+        self._vops.get_dss_rp.reset_mock()
+        self._vops.get_dss_rp.return_value = None
+        self._vops.get_connected_hosts.reset_mock()
+        self._vops.get_connected_hosts.return_value = None
+
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_filter_by_profile')
-    def test_is_datastore_compliant(self, filter_by_profile):
+    def test_is_datastore_compliant(self, filter_by_profile,
+                                    get_profile_id_by_name):
         # Test with empty profile.
         profile_name = None
         datastore = mock.sentinel.datastore
@@ -358,28 +396,31 @@ class DatastoreTest(test.TestCase):
 
         # Test with invalid profile.
         profile_name = mock.sentinel.profile_name
-        self._vops.retrieve_profile_id.return_value = None
-        self.assertRaises(error_util.ProfileNotFoundException,
+        get_profile_id_by_name.return_value = None
+        self.assertRaises(vmdk_exceptions.ProfileNotFoundException,
                           self._ds_sel.is_datastore_compliant,
                           datastore,
                           profile_name)
-        self._vops.retrieve_profile_id.assert_called_once_with(profile_name)
+        get_profile_id_by_name.assert_called_once_with(self._session,
+                                                       profile_name)
 
         # Test with valid profile and non-compliant datastore.
-        self._vops.retrieve_profile_id.reset_mock()
+        get_profile_id_by_name.reset_mock()
         profile_id = mock.sentinel.profile_id
-        self._vops.retrieve_profile_id.return_value = profile_id
+        get_profile_id_by_name.return_value = profile_id
         filter_by_profile.return_value = []
         self.assertFalse(self._ds_sel.is_datastore_compliant(datastore,
                                                              profile_name))
-        self._vops.retrieve_profile_id.assert_called_once_with(profile_name)
+        get_profile_id_by_name.assert_called_once_with(self._session,
+                                                       profile_name)
         filter_by_profile.assert_called_once_with([datastore], profile_id)
 
         # Test with valid profile and compliant datastore.
-        self._vops.retrieve_profile_id.reset_mock()
+        get_profile_id_by_name.reset_mock()
         filter_by_profile.reset_mock()
         filter_by_profile.return_value = [datastore]
         self.assertTrue(self._ds_sel.is_datastore_compliant(datastore,
                                                             profile_name))
-        self._vops.retrieve_profile_id.assert_called_once_with(profile_name)
+        get_profile_id_by_name.assert_called_once_with(self._session,
+                                                       profile_name)
         filter_by_profile.assert_called_once_with([datastore], profile_id)

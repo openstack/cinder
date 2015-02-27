@@ -15,7 +15,8 @@
 
 import uuid
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_serialization import jsonutils
 import webob
 
 from cinder.api import extensions
@@ -23,7 +24,6 @@ from cinder.api.v2 import snapshot_metadata
 from cinder.api.v2 import snapshots
 import cinder.db
 from cinder import exception
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
 
@@ -126,7 +126,7 @@ def return_volume(context, volume_id):
 
 
 def return_snapshot_nonexistent(context, snapshot_id):
-    raise exception.SnapshotNotFound('bogus test message')
+    raise exception.SnapshotNotFound(snapshot_id=snapshot_id)
 
 
 def fake_update_snapshot_metadata(self, context, snapshot, diff):
@@ -534,19 +534,19 @@ class SnapshotMetaDataTest(test.TestCase):
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
 
-        #test for long key
+        # test for long key
         data = {"metadata": {"a" * 260: "value1"}}
         req.body = jsonutils.dumps(data)
         self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
                           self.controller.create, req, self.req_id, data)
 
-        #test for long value
+        # test for long value
         data = {"metadata": {"key": "v" * 260}}
         req.body = jsonutils.dumps(data)
         self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
                           self.controller.create, req, self.req_id, data)
 
-        #test for empty key.
+        # test for empty key.
         data = {"metadata": {"": "value1"}}
         req.body = jsonutils.dumps(data)
         self.assertRaises(webob.exc.HTTPBadRequest,

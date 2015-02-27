@@ -20,14 +20,14 @@ Handles all requests relating to consistency groups.
 
 import functools
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import timeutils
 
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import excutils
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
 import cinder.policy
 from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi
@@ -136,8 +136,8 @@ class API(base.Base):
             group = self.db.consistencygroup_create(context, options)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error occurred when creating consistency group"
-                            " %s."), name)
+                LOG.error(_LE("Error occurred when creating consistency group"
+                              " %s."), name)
 
         request_spec_list = []
         filter_properties_list = []
@@ -199,9 +199,9 @@ class API(base.Base):
                 try:
                     self.db.consistencygroup_destroy(context, group_id)
                 finally:
-                    LOG.error(_("Error occurred when building "
-                                "request spec list for consistency group "
-                                "%s."), group_id)
+                    LOG.error(_LE("Error occurred when building "
+                                  "request spec list for consistency group "
+                                  "%s."), group_id)
 
         # Cast to the scheduler and let it handle whatever is needed
         # to select the target host for this group.
@@ -226,8 +226,8 @@ class API(base.Base):
                     self.db.consistencygroup_destroy(context.elevated(),
                                                      group_id)
                 finally:
-                    LOG.error(_("Failed to update quota for "
-                                "consistency group %s."), group_id)
+                    LOG.error(_LE("Failed to update quota for "
+                                  "consistency group %s."), group_id)
 
     @wrap_check_policy
     def delete(self, context, group, force=False):
@@ -368,8 +368,8 @@ class API(base.Base):
                 try:
                     self.db.cgsnapshot_destroy(context, cgsnapshot_id)
                 finally:
-                    LOG.error(_("Error occurred when creating cgsnapshot"
-                                " %s."), cgsnapshot_id)
+                    LOG.error(_LE("Error occurred when creating cgsnapshot"
+                                  " %s."), cgsnapshot_id)
 
         self.volume_rpcapi.create_cgsnapshot(context, group, cgsnapshot)
 

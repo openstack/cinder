@@ -16,13 +16,13 @@
 
 import datetime
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import uuidutils
 
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import uuidutils
-from cinder.quota import ReservableResource
+from cinder import quota
 from cinder import test
 
 
@@ -48,8 +48,8 @@ def _quota_reserve(context, project_id):
     for i, resource in enumerate(('volumes', 'gigabytes')):
         quotas[resource] = db.quota_create(context, project_id,
                                            resource, i + 1)
-        resources[resource] = ReservableResource(resource,
-                                                 '_sync_%s' % resource)
+        resources[resource] = quota.ReservableResource(resource,
+                                                       '_sync_%s' % resource)
         deltas[resource] = i + 1
     return db.quota_reserve(
         context, resources, quotas, deltas,
@@ -196,19 +196,6 @@ class DBAPIServiceTestCase(BaseTest):
         real = db.service_get_all_by_topic(self.ctxt, 't1')
         self._assertEqualListsOfObjects(expected, real)
 
-    def test_service_get_all_by_host(self):
-        values = [
-            {'host': 'host1', 'topic': 't1'},
-            {'host': 'host1', 'topic': 't1'},
-            {'host': 'host2', 'topic': 't1'},
-            {'host': 'host3', 'topic': 't2'}
-        ]
-        services = [self._create_service(vals) for vals in values]
-
-        expected = services[:2]
-        real = db.service_get_all_by_host(self.ctxt, 'host1')
-        self._assertEqualListsOfObjects(expected, real)
-
     def test_service_get_by_args(self):
         values = [
             {'host': 'host1', 'binary': 'a'},
@@ -227,22 +214,6 @@ class DBAPIServiceTestCase(BaseTest):
                           db.service_get_by_args,
                           self.ctxt, 'non-exists-host', 'a')
 
-    def test_service_get_all_volume_sorted(self):
-        values = [
-            ({'host': 'h1', 'binary': 'a', 'topic': CONF.volume_topic},
-             100),
-            ({'host': 'h2', 'binary': 'b', 'topic': CONF.volume_topic},
-             200),
-            ({'host': 'h3', 'binary': 'b', 'topic': CONF.volume_topic},
-             300)]
-        services = []
-        for vals, size in values:
-            services.append(self._create_service(vals))
-            db.volume_create(self.ctxt, {'host': vals['host'], 'size': size})
-        for service, size in db.service_get_all_volume_sorted(self.ctxt):
-            self._assertEqualObjects(services.pop(0), service)
-            self.assertEqual(values.pop(0)[1], size)
-
 
 class DBAPIVolumeTestCase(BaseTest):
 
@@ -252,20 +223,6 @@ class DBAPIVolumeTestCase(BaseTest):
         volume = db.volume_create(self.ctxt, {'host': 'host1'})
         self.assertTrue(uuidutils.is_uuid_like(volume['id']))
         self.assertEqual(volume.host, 'host1')
-
-    def test_volume_allocate_iscsi_target_no_more_targets(self):
-        self.assertRaises(exception.NoMoreTargets,
-                          db.volume_allocate_iscsi_target,
-                          self.ctxt, 42, 'host1')
-
-    def test_volume_allocate_iscsi_target(self):
-        host = 'host1'
-        volume = db.volume_create(self.ctxt, {'host': host})
-        db.iscsi_target_create_safe(self.ctxt, {'host': host,
-                                                'target_num': 42})
-        target_num = db.volume_allocate_iscsi_target(self.ctxt, volume['id'],
-                                                     host)
-        self.assertEqual(target_num, 42)
 
     def test_volume_attached_invalid_uuid(self):
         self.assertRaises(exception.InvalidUUID, db.volume_attached, self.ctxt,
@@ -394,6 +351,77 @@ class DBAPIVolumeTestCase(BaseTest):
         self._assertEqualListsOfObjects(volumes[0],
                                         db.volume_get_all_by_host(
                                         self.ctxt, 'foo'))
+
+    def test_volume_get_all_by_host_with_filters(self):
+        v1 = db.volume_create(self.ctxt, {'host': 'h1', 'display_name': 'v1',
+                                          'status': 'available'})
+        v2 = db.volume_create(self.ctxt, {'host': 'h1', 'display_name': 'v2',
+                                          'status': 'available'})
+        v3 = db.volume_create(self.ctxt, {'host': 'h2', 'display_name': 'v1',
+                                          'status': 'available'})
+        self._assertEqualListsOfObjects(
+            [v1],
+            db.volume_get_all_by_host(self.ctxt, 'h1',
+                                      filters={'display_name': 'v1'}))
+        self._assertEqualListsOfObjects(
+            [v1, v2],
+            db.volume_get_all_by_host(
+                self.ctxt, 'h1',
+                filters={'display_name': ['v1', 'v2', 'foo']}))
+        self._assertEqualListsOfObjects(
+            [v1, v2],
+            db.volume_get_all_by_host(self.ctxt, 'h1',
+                                      filters={'status': 'available'}))
+        self._assertEqualListsOfObjects(
+            [v3],
+            db.volume_get_all_by_host(self.ctxt, 'h2',
+                                      filters={'display_name': 'v1'}))
+        # No match
+        vols = db.volume_get_all_by_host(self.ctxt, 'h1',
+                                         filters={'status': 'foo'})
+        self.assertEqual([], vols)
+        # Bogus filter, should return empty list
+        vols = db.volume_get_all_by_host(self.ctxt, 'h1',
+                                         filters={'foo': 'bar'})
+        self.assertEqual([], vols)
+
+    def test_volume_get_all_by_group(self):
+        volumes = []
+        for i in xrange(3):
+            volumes.append([db.volume_create(self.ctxt, {
+                'consistencygroup_id': 'g%d' % i}) for j in xrange(3)])
+        for i in xrange(3):
+            self._assertEqualListsOfObjects(volumes[i],
+                                            db.volume_get_all_by_group(
+                                            self.ctxt, 'g%d' % i))
+
+    def test_volume_get_all_by_group_with_filters(self):
+        v1 = db.volume_create(self.ctxt, {'consistencygroup_id': 'g1',
+                                          'display_name': 'v1'})
+        v2 = db.volume_create(self.ctxt, {'consistencygroup_id': 'g1',
+                                          'display_name': 'v2'})
+        v3 = db.volume_create(self.ctxt, {'consistencygroup_id': 'g2',
+                                          'display_name': 'v1'})
+        self._assertEqualListsOfObjects(
+            [v1],
+            db.volume_get_all_by_group(self.ctxt, 'g1',
+                                       filters={'display_name': 'v1'}))
+        self._assertEqualListsOfObjects(
+            [v1, v2],
+            db.volume_get_all_by_group(self.ctxt, 'g1',
+                                       filters={'display_name': ['v1', 'v2']}))
+        self._assertEqualListsOfObjects(
+            [v3],
+            db.volume_get_all_by_group(self.ctxt, 'g2',
+                                       filters={'display_name': 'v1'}))
+        # No match
+        vols = db.volume_get_all_by_group(self.ctxt, 'g1',
+                                          filters={'display_name': 'foo'})
+        self.assertEqual([], vols)
+        # Bogus filter, should return empty list
+        vols = db.volume_get_all_by_group(self.ctxt, 'g1',
+                                          filters={'foo': 'bar'})
+        self.assertEqual([], vols)
 
     def test_volume_get_all_by_project(self):
         volumes = []
@@ -814,6 +842,7 @@ class DBAPIEncryptionTestCase(BaseTest):
         'deleted_at',
         'created_at',
         'updated_at',
+        'encryption_id',
     ]
 
     def setUp(self):

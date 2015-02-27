@@ -17,23 +17,29 @@ Handles all requests to Nova.
 """
 
 
+from novaclient import exceptions as nova_exceptions
+from novaclient import extension
 from novaclient import service_catalog
 from novaclient.v1_1 import client as nova_client
 from novaclient.v1_1.contrib import assisted_volume_snapshots
-from oslo.config import cfg
+from novaclient.v1_1.contrib import list_extensions
+from oslo_config import cfg
+from requests import exceptions as request_exceptions
 
+from cinder import context as ctx
 from cinder.db import base
+from cinder import exception
 from cinder.openstack.common import log as logging
 
 nova_opts = [
     cfg.StrOpt('nova_catalog_info',
-               default='compute:nova:publicURL',
+               default='compute:Compute Service:publicURL',
                help='Match this value when searching for nova in the '
                     'service catalog. Format is: separated values of '
                     'the form: '
                     '<service_type>:<service_name>:<endpoint_type>'),
     cfg.StrOpt('nova_catalog_admin_info',
-               default='compute:nova:adminURL',
+               default='compute:Compute Service:adminURL',
                help='Same as nova_catalog_info, but for admin endpoint.'),
     cfg.StrOpt('nova_endpoint_template',
                default=None,
@@ -59,8 +65,22 @@ CONF.register_opts(nova_opts)
 
 LOG = logging.getLogger(__name__)
 
+nova_extensions = (assisted_volume_snapshots,
+                   extension.Extension('list_extensions', list_extensions))
 
-def novaclient(context, admin=False):
+
+def novaclient(context, admin_endpoint=False, privileged_user=False,
+               timeout=None):
+    """Returns a Nova client
+
+    @param admin_endpoint: If True, use the admin endpoint template from
+        configuration ('nova_endpoint_admin_template' and 'nova_catalog_info')
+    @param privileged_user: If True, use the account from configuration
+        (requires 'os_privileged_user_name', 'os_privileged_user_password' and
+        'os_privileged_user_tenant' to be set)
+    @param timeout: Number of seconds to wait for an answer before raising a
+        Timeout exception (None to disable)
+    """
     # FIXME: the novaclient ServiceCatalog object is mis-named.
     #        It actually contains the entire access blob.
     # Only needed parts of the service catalog are passed in, see
@@ -73,48 +93,78 @@ def novaclient(context, admin=False):
     nova_endpoint_template = CONF.nova_endpoint_template
     nova_catalog_info = CONF.nova_catalog_info
 
-    if admin:
+    if admin_endpoint:
         nova_endpoint_template = CONF.nova_endpoint_admin_template
         nova_catalog_info = CONF.nova_catalog_admin_info
+    service_type, service_name, endpoint_type = nova_catalog_info.split(':')
 
-    if nova_endpoint_template:
-        url = nova_endpoint_template % context.to_dict()
+    # Extract the region if set in configuration
+    if CONF.os_region_name:
+        region_filter = {'attr': 'region', 'filter_value': CONF.os_region_name}
     else:
-        info = nova_catalog_info
-        service_type, service_name, endpoint_type = info.split(':')
-        # extract the region if set in configuration
-        if CONF.os_region_name:
-            attr = 'region'
-            filter_value = CONF.os_region_name
+        region_filter = {}
+
+    if privileged_user and CONF.os_privileged_user_name:
+        context = ctx.RequestContext(
+            CONF.os_privileged_user_name, None,
+            auth_token=CONF.os_privileged_user_password,
+            project_name=CONF.os_privileged_user_tenant,
+            service_catalog=context.service_catalog)
+
+        # When privileged_user is used, it needs to authenticate to Keystone
+        # before querying Nova, so we set auth_url to the identity service
+        # endpoint. We then pass region_name, endpoint_type, etc. to the
+        # Client() constructor so that the final endpoint is chosen correctly.
+        url = sc.url_for(service_type='identity',
+                         endpoint_type=endpoint_type,
+                         **region_filter)
+
+        LOG.debug('Creating a Nova client using "%s" user' %
+                  CONF.os_privileged_user_name)
+    else:
+        if nova_endpoint_template:
+            url = nova_endpoint_template % context.to_dict()
         else:
-            attr = None
-            filter_value = None
-        url = sc.url_for(attr=attr,
-                         filter_value=filter_value,
-                         service_type=service_type,
-                         service_name=service_name,
-                         endpoint_type=endpoint_type)
+            url = sc.url_for(service_type=service_type,
+                             service_name=service_name,
+                             endpoint_type=endpoint_type,
+                             **region_filter)
 
-    LOG.debug('Novaclient connection created using URL: %s' % url)
-
-    extensions = [assisted_volume_snapshots]
+        LOG.debug('Nova client connection created using URL: %s' % url)
 
     c = nova_client.Client(context.user_id,
                            context.auth_token,
-                           context.project_id,
+                           context.project_name,
                            auth_url=url,
                            insecure=CONF.nova_api_insecure,
+                           timeout=timeout,
+                           region_name=CONF.os_region_name,
+                           endpoint_type=endpoint_type,
                            cacert=CONF.nova_ca_certificates_file,
-                           extensions=extensions)
-    # noauth extracts user_id:project_id from auth_token
-    c.client.auth_token = context.auth_token or '%s:%s' % (context.user_id,
-                                                           context.project_id)
-    c.client.management_url = url
+                           extensions=nova_extensions)
+
+    if not privileged_user:
+        # noauth extracts user_id:project_id from auth_token
+        c.client.auth_token = (context.auth_token or '%s:%s'
+                               % (context.user_id, context.project_id))
+        c.client.management_url = url
     return c
 
 
 class API(base.Base):
     """API for interacting with novaclient."""
+
+    def has_extension(self, context, extension, timeout=None):
+        try:
+            client = novaclient(context, timeout=timeout)
+
+            # Pylint gives a false positive here because the 'list_extensions'
+            # method is not explicitly declared. Overriding the error.
+            # pylint: disable-msg=E1101
+            nova_exts = client.list_extensions.show_all()
+        except request_exceptions.Timeout:
+            raise exception.APITimeout(service='Nova')
+        return extension in [e.name for e in nova_exts]
 
     def update_server_volume(self, context, server_id, attachment_id,
                              new_volume_id):
@@ -123,15 +173,25 @@ class API(base.Base):
                                                          new_volume_id)
 
     def create_volume_snapshot(self, context, volume_id, create_info):
-        nova = novaclient(context, admin=True)
+        nova = novaclient(context, admin_endpoint=True)
 
         nova.assisted_volume_snapshots.create(
             volume_id,
             create_info=create_info)
 
     def delete_volume_snapshot(self, context, snapshot_id, delete_info):
-        nova = novaclient(context, admin=True)
+        nova = novaclient(context, admin_endpoint=True)
 
         nova.assisted_volume_snapshots.delete(
             snapshot_id,
             delete_info=delete_info)
+
+    def get_server(self, context, server_id, privileged_user=False,
+                   timeout=None):
+        try:
+            return novaclient(context, privileged_user=privileged_user,
+                              timeout=timeout).servers.get(server_id)
+        except nova_exceptions.NotFound:
+            raise exception.ServerNotFound(uuid=server_id)
+        except request_exceptions.Timeout:
+            raise exception.APITimeout(service='Nova')

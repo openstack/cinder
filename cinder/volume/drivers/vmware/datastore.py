@@ -17,11 +17,13 @@
 Classes and utility methods for datastore selection.
 """
 
-from cinder.openstack.common import excutils
-from cinder.openstack.common.gettextutils import _
+from oslo_utils import excutils
+from oslo_vmware import exceptions
+from oslo_vmware import pbm
+
+from cinder.i18n import _LE, _LW
 from cinder.openstack.common import log as logging
-from cinder.volume.drivers.vmware import error_util
-from cinder.volume.drivers.vmware import vim_util
+from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 
 
 LOG = logging.getLogger(__name__)
@@ -44,7 +46,7 @@ class DatastoreSelector(object):
     SIZE_BYTES = "sizeBytes"
     PROFILE_NAME = "storageProfileName"
 
-    # TODO(vbala) Remove dependency on volumeops and vim_util.
+    # TODO(vbala) Remove dependency on volumeops.
     def __init__(self, vops, session):
         self._vops = vops
         self._session = session
@@ -56,11 +58,11 @@ class DatastoreSelector(object):
         :return: vCenter profile ID
         :raises: ProfileNotFoundException
         """
-        profile_id = self._vops.retrieve_profile_id(profile_name)
+        profile_id = pbm.get_profile_id_by_name(self._session, profile_name)
         if profile_id is None:
-            LOG.error(_("Storage profile: %s cannot be found in vCenter."),
+            LOG.error(_LE("Storage profile: %s cannot be found in vCenter."),
                       profile_name)
-            raise error_util.ProfileNotFoundException(
+            raise vmdk_exceptions.ProfileNotFoundException(
                 storage_profile=profile_name)
         LOG.debug("Storage profile: %(name)s resolved to vCenter profile ID: "
                   "%(id)s.",
@@ -71,9 +73,10 @@ class DatastoreSelector(object):
     def _filter_by_profile(self, datastores, profile_id):
         """Filter out input datastores that do not match the given profile."""
         cf = self._session.pbm.client.factory
-        hubs = vim_util.convert_datastores_to_hubs(cf, datastores)
-        filtered_hubs = self._vops.filter_matching_hubs(hubs, profile_id)
-        return vim_util.convert_hubs_to_datastores(filtered_hubs, datastores)
+        hubs = pbm.convert_datastores_to_hubs(cf, datastores)
+        filtered_hubs = pbm.filter_hubs_by_profile(self._session, hubs,
+                                                   profile_id)
+        return pbm.filter_datastores_by_hubs(filtered_hubs, datastores)
 
     def _filter_datastores(self, datastores, size_bytes, profile_id,
                            hard_anti_affinity_datastores,
@@ -121,7 +124,8 @@ class DatastoreSelector(object):
             if not hosts:
                 break
 
-            all_hosts.extend(hosts)
+            for host in hosts:
+                all_hosts.append(host.obj)
             retrieve_result = self._vops.continue_retrieval(
                 retrieve_result)
         return all_hosts
@@ -202,21 +206,19 @@ class DatastoreSelector(object):
                   "requirements: %(req)s.",
                   {'hosts': hosts,
                    'req': req})
-        for host in hosts:
-            host_ref = host.obj
+        for host_ref in hosts:
             try:
                 (datastores, rp) = self._vops.get_dss_rp(host_ref)
-            except error_util.VimConnectionException:
+            except exceptions.VimConnectionException:
                 # No need to try other hosts when there is a connection problem
                 with excutils.save_and_reraise_exception():
-                    LOG.exception(_("Error occurred while selecting datastore."
-                                    ))
-            except error_util.VimException:
+                    LOG.exception(_LE("Error occurred while "
+                                      "selecting datastore."))
+            except exceptions.VimException:
                 # TODO(vbala) volumeops.get_dss_rp shouldn't throw VimException
                 # for empty datastore list.
-                LOG.warn(_("Unable to fetch datastores connected to host %s."),
-                         host_ref,
-                         exc_info=True)
+                LOG.warn(_LW("Unable to fetch datastores connected "
+                             "to host %s."), host_ref, exc_info=True)
                 continue
 
             if not datastores:

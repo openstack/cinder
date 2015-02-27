@@ -21,10 +21,10 @@ import base64
 import urllib2
 
 import mox as mox_lib
+from oslo_utils import units
 
 from cinder import context
 from cinder import db
-from cinder.openstack.common import units
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nexenta
@@ -110,7 +110,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.nms_mock.scsidisk.create_lu('cinder/volume1', {})
         self.nms_mock.scsidisk.lu_shared('cinder/volume1')
         self.nms_mock.scsidisk.add_lun_mapping_entry(
-            'cinder/volume1', {'target_group': 'cinder/volume1', 'lun': '0'})
+            'cinder/volume1', {'target_group': 'cinder/volume1'})
         self.mox.ReplayAll()
         self.drv.create_volume(self.TEST_VOLUME_REF)
 
@@ -247,7 +247,7 @@ class TestNexentaISCSIDriver(test.TestCase):
             True, ),
         ('scsidisk', 'lu_shared', ('cinder/volume1', ), 0, False, ),
         ('scsidisk', 'add_lun_mapping_entry', ('cinder/volume1', {
-            'target_group': 'cinder/volume1', 'lun': '0'}),
+            'target_group': 'cinder/volume1'}),
             u"Unable to add view to zvol 'cinder/volume1' (LUNs in use: ):\n"
             u" stmfadm: view entry exists\n", True, ),
     ]
@@ -472,6 +472,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.configuration.nexenta_volume_compression = 'on'
         self.configuration.nfs_mount_point_base = '/mnt/test'
         self.configuration.nfs_mount_options = None
+        self.configuration.nas_mount_options = None
         self.configuration.nexenta_nms_cache_volroot = False
         self.nms_mock = self.mox.CreateMockAnything()
         for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc',

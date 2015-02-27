@@ -349,9 +349,9 @@ class SnapshotApiTest(test.TestCase):
             self.assertEqual(1, len(res['snapshots']))
             self.assertEqual(2, res['snapshots'][0]['id'])
 
-        #admin case
+        # admin case
         list_snapshots_with_limit_and_offset(is_admin=True)
-        #non_admin case
+        # non_admin case
         list_snapshots_with_limit_and_offset(is_admin=False)
 
     def test_admin_list_snapshots_all_tenants(self):

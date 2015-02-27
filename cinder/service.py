@@ -22,8 +22,11 @@ import inspect
 import os
 import random
 
-from oslo.config import cfg
 from oslo import messaging
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_db import exception as db_exc
+from oslo_utils import importutils
 import osprofiler.notifier
 from osprofiler import profiler
 import osprofiler.web
@@ -32,10 +35,8 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import processutils
 from cinder.openstack.common import service
 from cinder import rpc
 from cinder import version
@@ -304,8 +305,7 @@ class Service(service.Service):
                 self.model_disconnected = False
                 LOG.error(_('Recovered model server connection!'))
 
-        # TODO(vish): this should probably only catch connection errors
-        except Exception:  # pylint: disable=W0702
+        except db_exc.DBConnectionError:
             if not getattr(self, 'model_disconnected', False):
                 self.model_disconnected = True
                 LOG.exception(_('model server went away'))

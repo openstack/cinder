@@ -13,9 +13,9 @@
 #    under the License.
 #
 
-
 from cinder import context
 from cinder import db
+from cinder.openstack.common import loopingcall
 
 
 def get_test_admin_context():
@@ -65,6 +65,7 @@ def create_snapshot(ctxt,
                     volume_id,
                     display_name='test_snapshot',
                     display_description='this is a test snapshot',
+                    cgsnapshot_id = None,
                     status='creating'):
     vol = db.volume_get(ctxt, volume_id)
     snap = {}
@@ -75,6 +76,7 @@ def create_snapshot(ctxt,
     snap['volume_size'] = vol['size']
     snap['display_name'] = display_name
     snap['display_description'] = display_description
+    snap['cgsnapshot_id'] = cgsnapshot_id
     return db.snapshot_create(ctxt, snap)
 
 
@@ -119,3 +121,9 @@ def create_cgsnapshot(ctxt,
     for key in kwargs:
         cgsnap[key] = kwargs[key]
     return db.cgsnapshot_create(ctxt, cgsnap)
+
+
+class ZeroIntervalLoopingCall(loopingcall.FixedIntervalLoopingCall):
+    def start(self, interval, **kwargs):
+        kwargs['initial_delay'] = 0
+        return super(ZeroIntervalLoopingCall, self).start(0, **kwargs)

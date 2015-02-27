@@ -6,6 +6,8 @@
     "admin_api": "is_admin:True",
 
     "volume:create": "",
+    "volume:delete": "",
+    "volume:get": "",
     "volume:get_all": "",
     "volume:get_volume_metadata": "",
     "volume:get_volume_admin_metadata": "rule:admin_api",
@@ -19,6 +21,9 @@
 
     "volume_extension:types_manage": "rule:admin_api",
     "volume_extension:types_extra_specs": "rule:admin_api",
+    "volume_extension:volume_type_access": "",
+    "volume_extension:volume_type_access:addProjectAccess": "rule:admin_api",
+    "volume_extension:volume_type_access:removeProjectAccess": "rule:admin_api",
     "volume_extension:volume_type_encryption": "rule:admin_api",
     "volume_extension:volume_encryption_metadata": "rule:admin_or_owner",
     "volume_extension:extended_snapshot_attributes": "",
@@ -71,10 +76,10 @@
     "consistencygroup:get": "group:nobody",
     "consistencygroup:get_all": "group:nobody",
 
-    "consistencygroup:create_cgsnapshot" : "",
-    "consistencygroup:delete_cgsnapshot": "",
-    "consistencygroup:get_cgsnapshot": "",
-    "consistencygroup:get_all_cgsnapshots": "",
+    "consistencygroup:create_cgsnapshot" : "group:nobody",
+    "consistencygroup:delete_cgsnapshot": "group:nobody",
+    "consistencygroup:get_cgsnapshot": "group:nobody",
+    "consistencygroup:get_all_cgsnapshots": "group:nobody",
 
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api"
 }

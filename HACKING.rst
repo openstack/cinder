@@ -12,6 +12,8 @@ Cinder Specific Commandments
 - [N322] Ensure default arguments are not mutable.
 - [N323] Add check for explicit import of _() to ensure proper translation.
 - [N324] Enforce no use of LOG.audit messages.  LOG.info should be used instead.
+- [N327] assert_called_once is not a valid Mock method.
+- [N333] Ensure that oslo namespaces are used for namespaced libraries.
 
 
 General

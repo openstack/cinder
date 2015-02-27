@@ -12,16 +12,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from contextlib import nested
 import re
 import shlex
 import threading
 import time
 
+from oslo_utils import excutils
+from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import utils
@@ -64,7 +65,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
 
     def _wait_for_exec_hsnm(self, args, printflag, noretry, timeout, start):
         lock = basic_lib.get_process_lock(self.hsnm_lock_file)
-        with nested(self.hsnm_lock, lock):
+        with self.hsnm_lock, lock:
             ret, stdout, stderr = self.exec_command('env', args=args,
                                                     printflag=printflag)
 
@@ -72,7 +73,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         if time.time() - start >= timeout:
-            LOG.error(_("snm2 command timeout."))
+            LOG.error(_LE("snm2 command timeout."))
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         if (re.search('DMEC002047', stderr)
@@ -86,7 +87,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                 or re.search('DMER0800CF', stderr)
                 or re.search('DMER0800D[0-6D]', stderr)
                 or re.search('DMES052602', stderr)):
-            LOG.error(_("Unexpected error occurs in snm2."))
+            LOG.error(_LE("Unexpected error occurs in snm2."))
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
     def exec_hsnm(self, command, args, printflag=True, noretry=False,
@@ -98,6 +99,21 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
             noretry, timeout, time.time())
 
         return loop.start(interval=interval).wait()
+
+    def _execute_with_exception(self, cmd, args, **kwargs):
+        ret, stdout, stderr = self.exec_hsnm(cmd, args, **kwargs)
+        if ret:
+            cmds = '%(cmd)s %(args)s' % {'cmd': cmd, 'args': args}
+            msg = basic_lib.output_err(
+                600, cmd=cmds, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDError(data=msg)
+
+        return ret, stdout, stderr
+
+    def _execute_and_return_stdout(self, cmd, args, **kwargs):
+        result = self._execute_with_exception(cmd, args, **kwargs)
+
+        return result[1]
 
     def get_comm_version(self):
         ret, stdout, stderr = self.exec_hsnm('auman', '-help')
@@ -126,11 +142,20 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                     used_list.append(int(line[2]))
                 if int(line[3]) == ldev:
                     hlu = int(line[2])
-                    LOG.warning(_('ldev(%(ldev)d) is already mapped '
-                                  '(hlun: %(hlu)d)')
+                    LOG.warning(_LW('ldev(%(ldev)d) is already mapped '
+                                    '(hlun: %(hlu)d)')
                                 % {'ldev': ldev, 'hlu': hlu})
                     return hlu
         return None
+
+    def _get_lu(self, lu=None):
+        # When 'lu' is 0, it should be true. So, it cannot remove 'is None'.
+        if lu is None:
+            args = '-unit %s' % self.unit_name
+        else:
+            args = '-unit %s -lu %s' % (self.unit_name, lu)
+
+        return self._execute_and_return_stdout('auluref', args)
 
     def get_unused_ldev(self, ldev_range):
         start = ldev_range[0]
@@ -586,12 +611,12 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
 
     def _wait_for_add_chap_user(self, cmd, auth_username,
                                 auth_password, start):
-        # Don't move 'import pexpect' to the begining of the file so that
+        # Don't move 'import pexpect' to the beginning of the file so that
         # a tempest can work.
         import pexpect
 
         lock = basic_lib.get_process_lock(self.hsnm_lock_file)
-        with nested(self.hsnm_lock, lock):
+        with self.hsnm_lock, lock:
             try:
                 child = pexpect.spawn(cmd)
                 child.expect('Secret: ', timeout=CHAP_TIMEOUT)
@@ -1084,3 +1109,48 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
         self.add_used_hlun('auhgmap', port, gid, list, DUMMY_LU)
 
         return list
+
+    def get_ldev_size_in_gigabyte(self, ldev, existing_ref):
+        param = 'unit_name'
+        if param not in existing_ref:
+            msg = basic_lib.output_err(700, param=param)
+            raise exception.HBSDError(data=msg)
+        storage = existing_ref.get(param)
+        if storage != self.conf.hitachi_unit_name:
+            msg = basic_lib.output_err(648, resource=param)
+            raise exception.HBSDError(data=msg)
+
+        try:
+            stdout = self._get_lu(ldev)
+        except exception.HBSDError:
+            with excutils.save_and_reraise_exception():
+                basic_lib.output_err(648, resource='LDEV')
+
+        lines = stdout.splitlines()
+        line = lines[2]
+
+        splits = shlex.split(line)
+
+        vol_type = splits[len(splits) - 1]
+        if basic_lib.NORMAL_VOLUME_TYPE != vol_type:
+            msg = basic_lib.output_err(702, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        dppool = splits[5]
+        if 'N/A' == dppool:
+            msg = basic_lib.output_err(702, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        # Hitachi storage calculates volume sizes in a block unit, 512 bytes.
+        # So, units.Gi is divided by 512.
+        size = int(splits[1])
+        if size % (units.Gi / 512):
+            msg = basic_lib.output_err(703, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        num_port = int(splits[len(splits) - 2])
+        if num_port:
+            msg = basic_lib.output_err(704, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        return size / (units.Gi / 512)

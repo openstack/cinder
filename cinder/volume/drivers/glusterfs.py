@@ -16,20 +16,17 @@
 import errno
 import os
 import stat
-import time
 
-from oslo.config import cfg
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_utils import units
 
 from cinder.brick.remotefs import remotefs as remotefs_brick
-from cinder import compute
-from cinder import db
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
-from cinder.openstack.common import units
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
@@ -54,7 +51,48 @@ volume_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
-CONF.import_opt('volume_name_template', 'cinder.db')
+
+lock_tag = 'glusterfs'
+
+
+def locked_volume_id_operation(f, external=False):
+    """Lock decorator for volume operations.
+
+       Takes a named lock prior to executing the operation. The lock is named
+       with the id of the volume. This lock can then be used
+       by other operations to avoid operation conflicts on shared volumes.
+
+       May be applied to methods of signature:
+          method(<self>, volume, *, **)
+    """
+
+    def lvo_inner1(inst, volume, *args, **kwargs):
+        @utils.synchronized('%s-%s' % (lock_tag, volume['id']),
+                            external=external)
+        def lvo_inner2(*_args, **_kwargs):
+            return f(*_args, **_kwargs)
+        return lvo_inner2(inst, volume, *args, **kwargs)
+    return lvo_inner1
+
+
+def locked_volume_id_snapshot_operation(f, external=False):
+    """Lock decorator for volume operations that use snapshot objects.
+
+       Takes a named lock prior to executing the operation. The lock is named
+       with the id of the volume. This lock can then be used
+       by other operations to avoid operation conflicts on shared volumes.
+
+       May be applied to methods of signature:
+          method(<self>, snapshot, *, **)
+    """
+
+    def lso_inner1(inst, snapshot, *args, **kwargs):
+        @utils.synchronized('%s-%s' % (lock_tag, snapshot['volume']['id']),
+                            external=external)
+        def lso_inner2(*_args, **_kwargs):
+            return f(*_args, **_kwargs)
+        return lso_inner2(inst, snapshot, *args, **kwargs)
+    return lso_inner1
 
 
 class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
@@ -75,7 +113,6 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         self._remotefsclient = None
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
-        self._nova = None
         self.base = getattr(self.configuration,
                             'glusterfs_mount_point_base',
                             CONF.glusterfs_mount_point_base)
@@ -92,8 +129,6 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(GlusterfsDriver, self).do_setup(context)
-
-        self._nova = compute.API()
 
         config = self.configuration.glusterfs_shares_config
         if not config:
@@ -126,7 +161,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
             try:
                 self._do_umount(True, share)
             except Exception as exc:
-                LOG.warning(_('Exception during unmounting %s') % (exc))
+                LOG.warning(_LE('Exception during unmounting %s') % (exc))
 
     def _do_umount(self, ignore_not_mounted, share):
         mount_path = self._get_mount_point_for_share(share)
@@ -135,9 +170,9 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
             self._execute(*command, run_as_root=True)
         except processutils.ProcessExecutionError as exc:
             if ignore_not_mounted and 'not mounted' in exc.stderr:
-                LOG.info(_("%s is already umounted"), share)
+                LOG.info(_LI("%s is already umounted"), share)
             else:
-                LOG.error(_("Failed to umount %(share)s, reason=%(stderr)s"),
+                LOG.error(_LE("Failed to umount %(share)s, reason=%(stderr)s"),
                           {'share': share, 'stderr': exc.stderr})
                 raise
 
@@ -146,7 +181,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
             self._unmount_shares()
         except processutils.ProcessExecutionError as exc:
             if 'target is busy' in exc.stderr:
-                LOG.warn(_("Failed to refresh mounts, reason=%s") %
+                LOG.warn(_LW("Failed to refresh mounts, reason=%s") %
                          exc.stderr)
             else:
                 raise
@@ -167,12 +202,12 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                           hashed)
         return path
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_operation
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         self._create_cloned_volume(volume, src_vref)
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_operation
     def create_volume(self, volume):
         """Creates a volume."""
 
@@ -180,13 +215,13 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         volume['provider_location'] = self._find_share(volume['size'])
 
-        LOG.info(_('casted to %s') % volume['provider_location'])
+        LOG.info(_LI('casted to %s') % volume['provider_location'])
 
         self._do_create_volume(volume)
 
         return {'provider_location': volume['provider_location']}
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_operation
     def create_volume_from_snapshot(self, volume, snapshot):
         self._create_volume_from_snapshot(volume, snapshot)
 
@@ -230,13 +265,14 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         self._set_rw_permissions_for_all(path_to_new_vol)
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_operation
     def delete_volume(self, volume):
         """Deletes a logical volume."""
 
         if not volume['provider_location']:
-            LOG.warn(_('Volume %s does not have provider_location specified, '
-                     'skipping'), volume['name'])
+            LOG.warn(_LW('Volume %s does not have '
+                         'provider_location specified, '
+                         'skipping'), volume['name'])
             return
 
         self._ensure_share_mounted(volume['provider_location'])
@@ -255,7 +291,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         info_path = self._local_path_volume_info(volume)
         fileutils.delete_if_exists(info_path)
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_snapshot_operation
     def create_snapshot(self, snapshot):
         """Apply locking to the create snapshot operation."""
 
@@ -265,104 +301,10 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         return next(f for f in backing_chain
                     if f.get('backing-filename', '') == snapshot_file)
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_snapshot_operation
     def delete_snapshot(self, snapshot):
         """Apply locking to the delete snapshot operation."""
         self._delete_snapshot(snapshot)
-
-    def _delete_snapshot_online(self, context, snapshot, info):
-        # Update info over the course of this method
-        # active file never changes
-        info_path = self._local_path_volume(snapshot['volume']) + '.info'
-        snap_info = self._read_info_file(info_path)
-
-        if info['active_file'] == info['snapshot_file']:
-            # blockRebase/Pull base into active
-            # info['base'] => snapshot_file
-
-            file_to_delete = info['base_file']
-            if info['base_id'] is None:
-                # Passing base=none to blockRebase ensures that
-                # libvirt blanks out the qcow2 backing file pointer
-                new_base = None
-            else:
-                new_base = info['new_base_file']
-                snap_info[info['base_id']] = info['snapshot_file']
-
-            delete_info = {'file_to_merge': new_base,
-                           'merge_target_file': None,  # current
-                           'type': 'qcow2',
-                           'volume_id': snapshot['volume']['id']}
-
-            del(snap_info[snapshot['id']])
-        else:
-            # blockCommit snapshot into base
-            # info['base'] <= snapshot_file
-            # delete record of snapshot
-            file_to_delete = info['snapshot_file']
-
-            delete_info = {'file_to_merge': info['snapshot_file'],
-                           'merge_target_file': info['base_file'],
-                           'type': 'qcow2',
-                           'volume_id': snapshot['volume']['id']}
-
-            del(snap_info[snapshot['id']])
-
-        try:
-            self._nova.delete_volume_snapshot(
-                context,
-                snapshot['id'],
-                delete_info)
-        except Exception as e:
-            LOG.error(_('Call to Nova delete snapshot failed'))
-            LOG.exception(e)
-            raise e
-
-        # Loop and wait for result
-        # Nova will call Cinderclient to update the status in the database
-        # An update of progress = '90%' means that Nova is done
-        seconds_elapsed = 0
-        increment = 1
-        timeout = 7200
-        while True:
-            s = db.snapshot_get(context, snapshot['id'])
-
-            if s['status'] == 'deleting':
-                if s['progress'] == '90%':
-                    # Nova tasks completed successfully
-                    break
-                else:
-                    msg = ('status of snapshot %s is '
-                           'still "deleting"... waiting') % snapshot['id']
-                    LOG.debug(msg)
-                    time.sleep(increment)
-                    seconds_elapsed += increment
-            else:
-                msg = _('Unable to delete snapshot %(id)s, '
-                        'status: %(status)s.') % {'id': snapshot['id'],
-                                                  'status': s['status']}
-                raise exception.GlusterfsException(msg)
-
-            if 10 < seconds_elapsed <= 20:
-                increment = 2
-            elif 20 < seconds_elapsed <= 60:
-                increment = 5
-            elif 60 < seconds_elapsed:
-                increment = 10
-
-            if seconds_elapsed > timeout:
-                msg = _('Timed out while waiting for Nova update '
-                        'for deletion of snapshot %(id)s.') %\
-                    {'id': snapshot['id']}
-                raise exception.GlusterfsException(msg)
-
-        # Write info file updated above
-        self._write_info_file(info_path, snap_info)
-
-        # Delete stale file
-        path_to_delete = os.path.join(
-            self._local_volume_dir(snapshot['volume']), file_to_delete)
-        self._execute('rm', '-f', path_to_delete, run_as_root=True)
 
     def ensure_export(self, ctx, volume):
         """Synchronously recreates an export for a logical volume."""
@@ -381,7 +323,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def validate_connector(self, connector):
         pass
 
-    @utils.synchronized('glusterfs', external=False)
+    @locked_volume_id_operation
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
 
@@ -413,12 +355,29 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         """Disallow connection from connector."""
         pass
 
-    @utils.synchronized('glusterfs', external=False)
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        self._copy_volume_to_image(context, volume, image_service,
-                                   image_meta)
+        """Copy the volume to the specified image.
 
-    @utils.synchronized('glusterfs', external=False)
+           Warning: parameter order is non-standard to assist with locking
+           decorators.
+        """
+
+        return self._copy_volume_to_image_with_lock(volume,
+                                                    context,
+                                                    image_service,
+                                                    image_meta)
+
+    @locked_volume_id_operation
+    def _copy_volume_to_image_with_lock(self, volume, context,
+                                        image_service, image_meta):
+        """Call private method for this, which handles per-volume locking."""
+
+        return self._copy_volume_to_image(context,
+                                          volume,
+                                          image_service,
+                                          image_meta)
+
+    @locked_volume_id_operation
     def extend_volume(self, volume, size_gb):
         volume_path = self.local_path(volume)
         volume_filename = os.path.basename(volume_path)
@@ -478,7 +437,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                 self._ensure_share_mounted(share)
                 self._mounted_shares.append(share)
             except Exception as exc:
-                LOG.error(_('Exception during mounting %s') % (exc,))
+                LOG.error(_LE('Exception during mounting %s') % (exc,))
 
         LOG.debug('Available shares: %s' % self._mounted_shares)
 
@@ -579,68 +538,3 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         return super(GlusterfsDriver, self).backup_volume(
             context, backup, backup_service)
-
-    def _create_snapshot_online(self, snapshot, backing_filename,
-                                new_snap_path):
-        # Perform online snapshot via Nova
-        context = snapshot['context']
-
-        self._do_create_snapshot(snapshot,
-                                 backing_filename,
-                                 new_snap_path)
-
-        connection_info = {
-            'type': 'qcow2',
-            'new_file': os.path.basename(new_snap_path),
-            'snapshot_id': snapshot['id']
-        }
-
-        try:
-            result = self._nova.create_volume_snapshot(
-                context,
-                snapshot['volume_id'],
-                connection_info)
-            LOG.debug('nova call result: %s' % result)
-        except Exception as e:
-            LOG.error(_('Call to Nova to create snapshot failed'))
-            LOG.exception(e)
-            raise e
-
-        # Loop and wait for result
-        # Nova will call Cinderclient to update the status in the database
-        # An update of progress = '90%' means that Nova is done
-        seconds_elapsed = 0
-        increment = 1
-        timeout = 600
-        while True:
-            s = db.snapshot_get(context, snapshot['id'])
-
-            if s['status'] == 'creating':
-                if s['progress'] == '90%':
-                    # Nova tasks completed successfully
-                    break
-
-                time.sleep(increment)
-                seconds_elapsed += increment
-            elif s['status'] == 'error':
-
-                msg = _('Nova returned "error" status '
-                        'while creating snapshot.')
-                raise exception.RemoteFSException(msg)
-
-            LOG.debug('Status of snapshot %(id)s is now %(status)s' % {
-                'id': snapshot['id'],
-                'status': s['status']
-            })
-
-            if 10 < seconds_elapsed <= 20:
-                increment = 2
-            elif 20 < seconds_elapsed <= 60:
-                increment = 5
-            elif 60 < seconds_elapsed:
-                increment = 10
-
-            if seconds_elapsed > timeout:
-                msg = _('Timed out while waiting for Nova update '
-                        'for creation of snapshot %s.') % snapshot['id']
-                raise exception.RemoteFSException(msg)

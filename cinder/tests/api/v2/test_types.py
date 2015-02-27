@@ -13,13 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import uuid
+
 from lxml import etree
+from oslo_utils import timeutils
+import six
 import webob
 
 from cinder.api.v2 import types
 from cinder.api.views import types as views_types
 from cinder import exception
-from cinder.openstack.common import timeutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.volume import volume_types
@@ -35,12 +38,13 @@ def stub_volume_type(id):
     }
     return dict(
         id=id,
-        name='vol_type_%s' % str(id),
+        name='vol_type_%s' % six.text_type(id),
+        description='vol_type_desc_%s' % six.text_type(id),
         extra_specs=specs,
     )
 
 
-def return_volume_types_get_all_types(context):
+def return_volume_types_get_all_types(context, search_opts=None):
     return dict(
         vol_type_1=stub_volume_type(1),
         vol_type_2=stub_volume_type(2),
@@ -48,20 +52,28 @@ def return_volume_types_get_all_types(context):
     )
 
 
-def return_empty_volume_types_get_all_types(context):
+def return_empty_volume_types_get_all_types(context, search_opts=None):
     return {}
 
 
 def return_volume_types_get_volume_type(context, id):
     if id == "777":
         raise exception.VolumeTypeNotFound(volume_type_id=id)
-    return stub_volume_type(int(id))
+    return stub_volume_type(id)
 
 
 def return_volume_types_get_by_name(context, name):
     if name == "777":
         raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
     return stub_volume_type(int(name.split("_")[2]))
+
+
+def return_volume_types_get_default():
+    return stub_volume_type(1)
+
+
+def return_volume_types_get_default_not_found():
+    return {}
 
 
 class VolumeTypesApiTest(test.TestCase):
@@ -97,12 +109,14 @@ class VolumeTypesApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_volume_type',
                        return_volume_types_get_volume_type)
 
-        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
-        res_dict = self.controller.show(req, 1)
+        type_id = str(uuid.uuid4())
+        req = fakes.HTTPRequest.blank('/v2/fake/types/' + type_id)
+        res_dict = self.controller.show(req, type_id)
 
         self.assertEqual(1, len(res_dict))
-        self.assertEqual('1', res_dict['volume_type']['id'])
-        self.assertEqual('vol_type_1', res_dict['volume_type']['name'])
+        self.assertEqual(type_id, res_dict['volume_type']['id'])
+        type_name = 'vol_type_' + type_id
+        self.assertEqual(type_name, res_dict['volume_type']['name'])
 
     def test_volume_types_show_not_found(self):
         self.stubs.Set(volume_types, 'get_volume_type',
@@ -112,12 +126,33 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
                           req, '777')
 
+    def test_get_default(self):
+        self.stubs.Set(volume_types, 'get_default_volume_type',
+                       return_volume_types_get_default)
+        req = fakes.HTTPRequest.blank('/v2/fake/types/default')
+        req.method = 'GET'
+        res_dict = self.controller.show(req, 'default')
+        self.assertEqual(1, len(res_dict))
+        self.assertEqual('vol_type_1', res_dict['volume_type']['name'])
+        self.assertEqual('vol_type_desc_1',
+                         res_dict['volume_type']['description'])
+
+    def test_get_default_not_found(self):
+        self.stubs.Set(volume_types, 'get_default_volume_type',
+                       return_volume_types_get_default_not_found)
+        req = fakes.HTTPRequest.blank('/v2/fake/types/default')
+        req.method = 'GET'
+
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.show, req, 'default')
+
     def test_view_builder_show(self):
         view_builder = views_types.ViewBuilder()
 
         now = timeutils.isotime()
         raw_volume_type = dict(
             name='new_type',
+            description='new_type_desc',
             deleted=False,
             created_at=now,
             updated_at=now,
@@ -132,6 +167,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertIn('volume_type', output)
         expected_volume_type = dict(
             name='new_type',
+            description='new_type_desc',
             extra_specs={},
             id=42,
         )
@@ -146,6 +182,7 @@ class VolumeTypesApiTest(test.TestCase):
             raw_volume_types.append(
                 dict(
                     name='new_type',
+                    description='new_type_desc',
                     deleted=False,
                     created_at=now,
                     updated_at=now,
@@ -162,6 +199,7 @@ class VolumeTypesApiTest(test.TestCase):
         for i in range(0, 10):
             expected_volume_type = dict(
                 name='new_type',
+                description='new_type_desc',
                 extra_specs={},
                 id=42 + i
             )
@@ -173,6 +211,7 @@ class VolumeTypesSerializerTest(test.TestCase):
     def _verify_volume_type(self, vtype, tree):
         self.assertEqual('volume_type', tree.tag)
         self.assertEqual(vtype['name'], tree.get('name'))
+        self.assertEqual(vtype['description'], tree.get('description'))
         self.assertEqual(str(vtype['id']), tree.get('id'))
         self.assertEqual(1, len(tree))
         extra_specs = tree[0]

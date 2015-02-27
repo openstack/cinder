@@ -18,7 +18,7 @@ Tests For Chance Weigher.
 import mock
 
 from cinder.scheduler import host_manager
-from cinder.scheduler.weights.chance import ChanceWeigher
+from cinder.scheduler.weights import chance
 from cinder import test
 
 
@@ -38,7 +38,7 @@ class ChanceWeigherTestCase(test.TestCase):
         # stub random.random() to verify the ChanceWeigher
         # is using random.random() (repeated calls to weigh should
         # return incrementing weights)
-        weigher = ChanceWeigher()
+        weigher = chance.ChanceWeigher()
         _mock_random.side_effect = self.fake_random
         self.fake_random(reset=True)
         host_state = {'host': 'host.example.com', 'free_capacity_gb': 99999}
@@ -55,7 +55,7 @@ class ChanceWeigherTestCase(test.TestCase):
         hm = host_manager.HostManager()
         weighers = hm._choose_host_weighers('ChanceWeigher')
         self.assertEqual(1, len(weighers))
-        self.assertEqual(weighers[0], ChanceWeigher)
+        self.assertEqual(weighers[0], chance.ChanceWeigher)
 
     def test_use_of_chance_weigher_via_host_manager(self):
         # ensure we don't lose any hosts when weighing with

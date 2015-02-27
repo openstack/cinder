@@ -14,7 +14,7 @@
 #    under the License.
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import exception
 from cinder.openstack.common import log as logging
@@ -215,7 +215,9 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
             'provider_location': '172.18.108.21:3260 iqn.test 0',
             'provider_auth': None},
             self.driver.create_volume({'name': 'testvolume',
-                                       'size': 1}))
+                                       'size': 1,
+                                       'display_name': '',
+                                       'display_description': ''}))
         self.mock_client_service.service.createVol.assert_called_once_with(
             request={
                 'attr': {'snap-quota': 1073741824, 'warn-level': 858993459,
@@ -236,7 +238,9 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
             exception.VolumeBackendAPIException,
             self.driver.create_volume,
             {'name': 'testvolume',
-             'size': 1})
+             'size': 1,
+             'display_name': '',
+             'display_description': ''})
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -277,11 +281,11 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                      'name': 'testvolume',
                      'sid': 'a9b9aba7'})
 
-    @mock.patch(NIMBLE_RANDOM)
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*', False))
+    @mock.patch(NIMBLE_RANDOM)
     def test_create_cloned_volume(self, mock_random):
         mock_random.sample.return_value = 'abcdefghijkl'
         self.mock_client_service.service.snapVol.return_value = \
@@ -352,7 +356,9 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
             FAKE_GENERIC_POSITIVE_RESPONSE
         self.driver.create_snapshot(
             {'volume_name': 'testvolume',
-             'name': 'testvolume-snap1'})
+             'name': 'testvolume-snap1',
+             'display_name': '',
+             'display_description': ''})
         self.mock_client_service.service.snapVol.assert_called_once_with(
             request={'vol': 'testvolume',
                      'snapAttr': {'name': 'testvolume-snap1',
@@ -471,11 +477,11 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             self.mock_client_service.method_calls,
             expected_call_list)
 
-    @mock.patch(NIMBLE_RANDOM)
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    @mock.patch(NIMBLE_RANDOM)
     def test_initialize_connection_igroup_not_exist(self, mock_random):
         mock_random.sample.return_value = 'abcdefghijkl'
         self.mock_client_service.service.getInitiatorGrpList.return_value = \

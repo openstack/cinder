@@ -22,10 +22,10 @@
 Unified Volume driver for IBM XIV and DS8K Storage Systems.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import importutils
 
 from cinder import exception
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san import san
 
@@ -37,11 +37,12 @@ xiv_ds8k_opts = [
     cfg.StrOpt(
         'xiv_ds8k_connection_type',
         default='iscsi',
-        help='Connection type to the IBM Storage Array'
-        ' (fibre_channel|iscsi)'),
+        choices=['fibre_channel', 'iscsi'],
+        help='Connection type to the IBM Storage Array'),
     cfg.StrOpt(
         'xiv_chap',
         default='disabled',
+        choices=['disabled', 'enabled'],
         help='CHAP authentication mode, effective only for iscsi'
         ' (disabled|enabled)'),
 ]

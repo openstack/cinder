@@ -1,4 +1,4 @@
-# Copyright (c) 2012 - 2014 EMC Corporation.
+# Copyright (c) 2012 - 2015 EMC Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,16 +16,21 @@
 ISCSI Drivers for EMC VMAX arrays based on SMI-S.
 
 """
+import os
+
 import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vmax_common
 
+
 LOG = logging.getLogger(__name__)
+
+CINDER_CONF = '/etc/cinder/cinder.conf'
 
 
 class EMCVMAXISCSIDriver(driver.ISCSIDriver):
@@ -36,9 +41,10 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         1.1.0 - Multiple pools and thick/thin provisioning,
                 performance enhancement.
         2.0.0 - Add driver requirement functions
+        2.1.0 - Add consistency group functions
     """
 
-    VERSION = "2.0.0"
+    VERSION = "2.1.0"
 
     def __init__(self, *args, **kwargs):
 
@@ -48,9 +54,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                                           configuration=self.configuration)
 
     def check_for_setup_error(self):
-        if not self.configuration.iscsi_ip_address:
-            raise exception.InvalidInput(
-                reason=_('iscsi_ip_address is not set.'))
+        pass
 
     def create_volume(self, volume):
         """Creates a EMC(VMAX/VNX) volume."""
@@ -140,29 +144,32 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                 }
             }
         """
-        self.common.initialize_connection(volume, connector)
+        self.common.initialize_connection(
+            volume, connector)
 
         iscsi_properties = self.smis_get_iscsi_properties(
             volume, connector)
 
-        LOG.info(_("Leaving initialize_connection: %s") % (iscsi_properties))
+        LOG.info(_LI("Leaving initialize_connection: %s"), (iscsi_properties))
         return {
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties
         }
 
     def smis_do_iscsi_discovery(self, volume):
-
-        LOG.info(_("ISCSI provider_location not stored, using discovery."))
+        LOG.info(_LI("ISCSI provider_location not stored, using discovery."))
+        if not self._check_for_iscsi_ip_address():
+            LOG.error(_LE(
+                "You must set your iscsi_ip_address in cinder.conf."))
 
         (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
                                     '-t', 'sendtargets', '-p',
                                     self.configuration.iscsi_ip_address,
                                     run_as_root=True)
 
-        LOG.info(_(
-            "smis_do_iscsi_discovery is: %(out)s")
-            % {'out': out})
+        LOG.info(_LI(
+            "smis_do_iscsi_discovery is: %(out)s."),
+            {'out': out})
         targets = []
         for target in out.splitlines():
             targets.append(target)
@@ -190,24 +197,24 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         location = self.smis_do_iscsi_discovery(volume)
         if not location:
             raise exception.InvalidVolume(_("Could not find iSCSI export "
-                                          " for volume %(volumeName)s")
+                                          " for volume %(volumeName)s.")
                                           % {'volumeName': volume['name']})
 
-        LOG.debug("ISCSI Discovery: Found %s" % (location))
+        LOG.debug("ISCSI Discovery: Found %s", (location))
         properties['target_discovered'] = True
 
-        device_info = self.common.find_device_number(volume, connector)
+        device_info = self.common.find_device_number(volume)
 
         if device_info is None or device_info['hostlunid'] is None:
             exception_message = (_("Cannot find device number for volume "
-                                 "%(volumeName)s")
+                                 "%(volumeName)s.")
                                  % {'volumeName': volume['name']})
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         device_number = device_info['hostlunid']
 
-        LOG.info(_(
-            "location is: %(location)s") % {'location': location})
+        LOG.info(_LI(
+            "location is: %(location)s"), {'location': location})
 
         for loc in location:
             results = loc.split(" ")
@@ -218,15 +225,15 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
 
         properties['volume_id'] = volume['id']
 
-        LOG.info(_("ISCSI properties: %(properties)s")
-                 % {'properties': properties})
-        LOG.info(_("ISCSI volume is: %(volume)s")
-                 % {'volume': volume})
+        LOG.info(_LI(
+            "ISCSI properties: %(properties)s"), {'properties': properties})
+        LOG.info(_LI(
+            "ISCSI volume is: %(volume)s"), {'volume': volume})
 
         if 'provider_auth' in volume:
             auth = volume['provider_auth']
-            LOG.info(_("AUTH properties: %(authProps)s")
-                     % {'authProps': auth})
+            LOG.info(_LI(
+                "AUTH properties: %(authProps)s"), {'authProps': auth})
 
             if auth is not None:
                 (auth_method, auth_username, auth_secret) = auth.split()
@@ -235,7 +242,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                 properties['auth_username'] = auth_username
                 properties['auth_password'] = auth_secret
 
-                LOG.info(_("AUTH properties: %s") % (properties))
+                LOG.info(_LI("AUTH properties: %s."), (properties))
 
         return properties
 
@@ -267,26 +274,52 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
 
     def migrate_volume(self, ctxt, volume, host):
         """Migrate a volume from one Volume Backend to another.
-        :param self: reference to class
-        :param ctxt:
+
+        :param ctxt: context
         :param volume: the volume object including the volume_type_id
-        :param host: the host dict holding the relevant target(destination)
-                     information
-        :returns: moved
-        :returns: list
+        :param host: the host dict holding the relevant target information
+        :returns: boolean -- Always returns True
+        :returns: dict -- Empty dict {}
         """
         return self.common.migrate_volume(ctxt, volume, host)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Migrate volume to another host using retype.
 
-        :param self: reference to class
-        :param ctxt:
+        :param ctxt: context
         :param volume: the volume object including the volume_type_id
         :param new_type: the new volume type.
-        :param host: the host dict holding the relevant target(destination)
-                     information
-        :returns: moved
-        {}
+        :param diff: Unused parameter in common.retype
+        :param host: the host dict holding the relevant target information
+        :returns: boolean -- True if retype succeeded, Fasle if error
         """
         return self.common.retype(ctxt, volume, new_type, diff, host)
+
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+        self.common.create_consistencygroup(context, group)
+
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group."""
+        volumes = self.db.volume_get_all_by_group(context, group['id'])
+        return self.common.delete_consistencygroup(
+            context, group, volumes)
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Creates a cgsnapshot."""
+        return self.common.create_cgsnapshot(context, cgsnapshot, self.db)
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+        return self.common.delete_cgsnapshot(context, cgsnapshot, self.db)
+
+    def _check_for_iscsi_ip_address(self):
+        """Check to see if iscsi_ip_address is set in cinder.conf
+
+        :returns: boolean -- True if iscsi_ip_address id defined in config.
+        """
+        bExists = os.path.exists(CINDER_CONF)
+        if bExists:
+            if 'iscsi_ip_address' in open(CINDER_CONF).read():
+                return True
+        return False

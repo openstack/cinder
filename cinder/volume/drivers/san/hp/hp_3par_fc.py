@@ -34,9 +34,9 @@ try:
 except ImportError:
     hpexceptions = None
 
-from cinder.i18n import _
+from cinder import exception
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
-from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san import san
@@ -69,14 +69,19 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.7 - Only one FC port is used when a single FC path
                 is present.  bug #1360001
         2.0.8 - Fixing missing login/logout around attach/detach bug #1367429
+        2.0.9 - Add support for pools with model update
+        2.0.10 - Migrate without losing type settings bug #1356608
+        2.0.11 - Removing locks bug #1381190
+        2.0.12 - Fix queryHost call to specify wwns bug #1398206
+        2.0.13 - Fix missing host name during attach bug #1398206
+        2.0.14 - Removed usage of host name cache #1398914
 
     """
 
-    VERSION = "2.0.8"
+    VERSION = "2.0.14"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
-        self.common = None
         self.configuration.append_config_values(hpcommon.hp3par_opts)
         self.configuration.append_config_values(san.san_opts)
         self.lookup_service = fczm_utils.create_lookup_service()
@@ -84,18 +89,26 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
     def _init_common(self):
         return hpcommon.HP3PARCommon(self.configuration)
 
-    def _check_flags(self):
+    def _login(self):
+        common = self._init_common()
+        common.do_setup(None)
+        common.client_login()
+        return common
+
+    def _logout(self, common):
+        common.client_logout()
+
+    def _check_flags(self, common):
         """Sanity check to ensure we have required options set."""
         required_flags = ['hp3par_api_url', 'hp3par_username',
                           'hp3par_password',
                           'san_ip', 'san_login', 'san_password']
-        self.common.check_flags(self.configuration, required_flags)
+        common.check_flags(self.configuration, required_flags)
 
-    @utils.synchronized('3par', external=True)
-    def get_volume_stats(self, refresh):
-        self.common.client_login()
+    def get_volume_stats(self, refresh=False):
+        common = self._login()
         try:
-            stats = self.common.get_volume_stats(refresh)
+            stats = common.get_volume_stats(refresh)
             stats['storage_protocol'] = 'FC'
             stats['driver_version'] = self.VERSION
             backend_name = self.configuration.safe_get('volume_backend_name')
@@ -103,75 +116,65 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                                             self.__class__.__name__)
             return stats
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
     def do_setup(self, context):
-        self.common = self._init_common()
-        self._check_flags()
-        self.common.do_setup(context)
+        common = self._init_common()
+        common.do_setup(context)
+        self._check_flags(common)
+        common.check_for_setup_error()
 
     def check_for_setup_error(self):
-        """Returns an error if prerequisites aren't met."""
-        self._check_flags()
+        """Setup errors are already checked for in do_setup so return pass."""
+        pass
 
-    @utils.synchronized('3par', external=True)
     def create_volume(self, volume):
-        self.common.client_login()
+        common = self._login()
         try:
-            metadata = self.common.create_volume(volume)
-            return {'metadata': metadata}
+            return common.create_volume(volume)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def create_cloned_volume(self, volume, src_vref):
-        self.common.client_login()
+        common = self._login()
         try:
-            new_vol = self.common.create_cloned_volume(volume, src_vref)
-            return {'metadata': new_vol}
+            return common.create_cloned_volume(volume, src_vref)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def delete_volume(self, volume):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.delete_volume(volume)
+            common.delete_volume(volume)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot.
 
         TODO: support using the size from the user.
         """
-        self.common.client_login()
+        common = self._login()
         try:
-            metadata = self.common.create_volume_from_snapshot(volume,
-                                                               snapshot)
-            return {'metadata': metadata}
+            return common.create_volume_from_snapshot(volume, snapshot)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def create_snapshot(self, snapshot):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.create_snapshot(snapshot)
+            common.create_snapshot(snapshot)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def delete_snapshot(self, snapshot):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.delete_snapshot(snapshot)
+            common.delete_snapshot(snapshot)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
     @fczm_utils.AddFCZone
-    @utils.synchronized('3par', external=True)
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
 
@@ -209,25 +212,25 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
           * Create a VLUN for that HOST with the volume we want to export.
 
         """
-        self.common.client_login()
+        common = self._login()
         try:
             # we have to make sure we have a host
-            host = self._create_host(volume, connector)
+            host = self._create_host(common, volume, connector)
 
             target_wwns, init_targ_map, numPaths = \
-                self._build_initiator_target_map(connector)
+                self._build_initiator_target_map(common, connector)
 
             # now that we have a host, create the VLUN
             if self.lookup_service is not None and numPaths == 1:
                 nsp = None
-                active_fc_port_list = self.common.get_active_fc_target_ports()
+                active_fc_port_list = common.get_active_fc_target_ports()
                 for port in active_fc_port_list:
                     if port['portWWN'].lower() == target_wwns[0].lower():
                         nsp = port['nsp']
                         break
-                vlun = self.common.create_vlun(volume, host, nsp)
+                vlun = common.create_vlun(volume, host, nsp)
             else:
-                vlun = self.common.create_vlun(volume, host)
+                vlun = common.create_vlun(volume, host)
 
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {'target_lun': vlun['lun'],
@@ -236,42 +239,41 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                              'initiator_target_map': init_targ_map}}
             return info
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
     @fczm_utils.RemoveFCZone
-    @utils.synchronized('3par', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
-        self.common.client_login()
+        common = self._login()
         try:
-            hostname = self.common._safe_hostname(connector['host'])
-            self.common.terminate_connection(volume, hostname,
-                                             wwn=connector['wwpns'])
+            hostname = common._safe_hostname(connector['host'])
+            common.terminate_connection(volume, hostname,
+                                        wwn=connector['wwpns'])
 
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {}}
 
             try:
-                self.common.client.getHostVLUNs(hostname)
+                common.client.getHostVLUNs(hostname)
             except hpexceptions.HTTPNotFound:
                 # No more exports for this host.
-                LOG.info(_("Need to remove FC Zone, building initiator "
-                         "target map"))
+                LOG.info(_LI("Need to remove FC Zone, building initiator "
+                             "target map"))
 
-                target_wwns, init_targ_map, numPaths = \
-                    self._build_initiator_target_map(connector)
+                target_wwns, init_targ_map, _numPaths = \
+                    self._build_initiator_target_map(common, connector)
 
                 info['data'] = {'target_wwn': target_wwns,
                                 'initiator_target_map': init_targ_map}
             return info
 
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    def _build_initiator_target_map(self, connector):
+    def _build_initiator_target_map(self, common, connector):
         """Build the target_wwns and the initiator target map."""
 
-        fc_ports = self.common.get_active_fc_target_ports()
+        fc_ports = common.get_active_fc_target_ports()
         all_target_wwns = []
         target_wwns = []
         init_targ_map = {}
@@ -296,7 +298,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                     init_targ_map[initiator] += fabric['target_port_wwn_list']
                     init_targ_map[initiator] = list(set(
                         init_targ_map[initiator]))
-                    for target in init_targ_map[initiator]:
+                    for _target in init_targ_map[initiator]:
                         numPaths += 1
             target_wwns = list(set(target_wwns))
         else:
@@ -308,7 +310,8 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
 
         return target_wwns, init_targ_map, numPaths
 
-    def _create_3par_fibrechan_host(self, hostname, wwns, domain, persona_id):
+    def _create_3par_fibrechan_host(self, common, hostname, wwns,
+                                    domain, persona_id):
         """Create a 3PAR host.
 
         Create a 3PAR host, if there is already a host on the 3par using
@@ -317,48 +320,48 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         """
         # first search for an existing host
         host_found = None
-        for wwn in wwns:
-            host_found = self.common.client.findHost(wwn=wwn)
-            if host_found is not None:
-                break
+        hosts = common.client.queryHost(wwns=wwns)
+
+        if hosts and hosts['members'] and 'name' in hosts['members'][0]:
+            host_found = hosts['members'][0]['name']
 
         if host_found is not None:
-            self.common.hosts_naming_dict[hostname] = host_found
             return host_found
         else:
             persona_id = int(persona_id)
-            self.common.client.createHost(hostname, FCWwns=wwns,
-                                          optional={'domain': domain,
-                                                    'persona': persona_id})
+            common.client.createHost(hostname, FCWwns=wwns,
+                                     optional={'domain': domain,
+                                               'persona': persona_id})
             return hostname
 
-    def _modify_3par_fibrechan_host(self, hostname, wwn):
-        mod_request = {'pathOperation': self.common.client.HOST_EDIT_ADD,
+    def _modify_3par_fibrechan_host(self, common, hostname, wwn):
+        mod_request = {'pathOperation': common.client.HOST_EDIT_ADD,
                        'FCWWNs': wwn}
 
-        self.common.client.modifyHost(hostname, mod_request)
+        common.client.modifyHost(hostname, mod_request)
 
-    def _create_host(self, volume, connector):
+    def _create_host(self, common, volume, connector):
         """Creates or modifies existing 3PAR host."""
         host = None
-        hostname = self.common._safe_hostname(connector['host'])
-        cpg = self.common.get_cpg(volume, allowSnap=True)
-        domain = self.common.get_domain(cpg)
+        hostname = common._safe_hostname(connector['host'])
+        cpg = common.get_cpg(volume, allowSnap=True)
+        domain = common.get_domain(cpg)
         try:
-            host = self.common._get_3par_host(hostname)
+            host = common._get_3par_host(hostname)
         except hpexceptions.HTTPNotFound:
             # get persona from the volume type extra specs
-            persona_id = self.common.get_persona_type(volume)
+            persona_id = common.get_persona_type(volume)
             # host doesn't exist, we have to create it
-            hostname = self._create_3par_fibrechan_host(hostname,
+            hostname = self._create_3par_fibrechan_host(common,
+                                                        hostname,
                                                         connector['wwpns'],
                                                         domain,
                                                         persona_id)
-            host = self.common._get_3par_host(hostname)
+            host = common._get_3par_host(hostname)
 
-        return self._add_new_wwn_to_host(host, connector['wwpns'])
+        return self._add_new_wwn_to_host(common, host, connector['wwpns'])
 
-    def _add_new_wwn_to_host(self, host, wwns):
+    def _add_new_wwn_to_host(self, common, host, wwns):
         """Add wwns to a host if one or more don't exist.
 
         Identify if argument wwns contains any world wide names
@@ -383,86 +386,91 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         # if any wwns found that were not in host list,
         # add them to the host
         if (len(new_wwns) > 0):
-            self._modify_3par_fibrechan_host(host['name'], new_wwns)
-            host = self.common._get_3par_host(host['name'])
+            self._modify_3par_fibrechan_host(common, host['name'], new_wwns)
+            host = common._get_3par_host(host['name'])
         return host
 
-    @utils.synchronized('3par', external=True)
     def create_export(self, context, volume):
         pass
 
-    @utils.synchronized('3par', external=True)
     def ensure_export(self, context, volume):
         pass
 
-    @utils.synchronized('3par', external=True)
     def remove_export(self, context, volume):
         pass
 
-    @utils.synchronized('3par', external=True)
     def extend_volume(self, volume, new_size):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.extend_volume(volume, new_size)
+            common.extend_volume(volume, new_size)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def manage_existing(self, volume, existing_ref):
-        self.common.client_login()
+        common = self._login()
         try:
-            return self.common.manage_existing(volume, existing_ref)
+            return common.manage_existing(volume, existing_ref)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def manage_existing_get_size(self, volume, existing_ref):
-        self.common.client_login()
+        common = self._login()
         try:
-            size = self.common.manage_existing_get_size(volume, existing_ref)
+            return common.manage_existing_get_size(volume, existing_ref)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-        return size
-
-    @utils.synchronized('3par', external=True)
     def unmanage(self, volume):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.unmanage(volume)
+            common.unmanage(volume)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def attach_volume(self, context, volume, instance_uuid, host_name,
                       mountpoint):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.attach_volume(volume, instance_uuid)
+            common.attach_volume(volume, instance_uuid)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def detach_volume(self, context, volume):
-        self.common.client_login()
+        common = self._login()
         try:
-            self.common.detach_volume(volume)
+            common.detach_volume(volume)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
-        self.common.client_login()
+        common = self._login()
         try:
-            return self.common.retype(volume, new_type, diff, host)
+            return common.retype(volume, new_type, diff, host)
         finally:
-            self.common.client_logout()
+            self._logout(common)
 
-    @utils.synchronized('3par', external=True)
     def migrate_volume(self, context, volume, host):
-        self.common.client_login()
+        if volume['status'] == 'in-use':
+            protocol = host['capabilities']['storage_protocol']
+            if protocol != 'FC':
+                LOG.debug("3PAR FC driver cannot migrate in-use volume "
+                          "to a host with storage_protocol=%s." % protocol)
+                return False, None
+
+        common = self._login()
         try:
-            return self.common.migrate_volume(volume, host)
+            return common.migrate_volume(volume, host)
         finally:
-            self.common.client_logout()
+            self._logout(common)
+
+    def get_pool(self, volume):
+        common = self._login()
+        try:
+            return common.get_cpg(volume)
+        except hpexceptions.HTTPNotFound:
+            reason = (_("Volume %s doesn't exist on array.") % volume)
+            LOG.error(reason)
+            raise exception.InvalidVolume(reason)
+        finally:
+            self._logout(common)

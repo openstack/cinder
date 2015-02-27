@@ -27,32 +27,13 @@ stepping stone.
 
 import socket
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import netutils
 
 from cinder.i18n import _
 
 
 CONF = cfg.CONF
-
-
-def _get_my_ip():
-    """
-    Returns the actual ip of the local machine.
-
-    This code figures out what source address would be used if some traffic
-    were to be sent out to some well known address on the Internet. In this
-    case, a Google DNS server is used, but the specific address does not
-    matter much.  No traffic is actually sent.
-    """
-    try:
-        csock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        csock.connect(('8.8.8.8', 80))
-        (addr, port) = csock.getsockname()
-        csock.close()
-        return addr
-    except socket.error:
-        return "127.0.0.1"
-
 
 core_opts = [
     cfg.StrOpt('api_paste_config',
@@ -71,7 +52,7 @@ CONF.register_cli_opts(debug_opts)
 
 global_opts = [
     cfg.StrOpt('my_ip',
-               default=_get_my_ip(),
+               default=netutils.get_my_ipv4(),
                help='IP address of this host'),
     cfg.StrOpt('glance_host',
                default='$my_ip',
@@ -185,6 +166,7 @@ global_opts = [
                help='The full class name of the volume backup API class'),
     cfg.StrOpt('auth_strategy',
                default='noauth',
+               choices=['noauth', 'keystone', 'deprecated'],
                help='The strategy to use for auth. Supports noauth, keystone, '
                     'and deprecated.'),
     cfg.ListOpt('enabled_backends',
@@ -194,7 +176,7 @@ global_opts = [
                      'with its options'),
     cfg.BoolOpt('no_snapshot_gb_quota',
                 default=False,
-                help='Whether snapshots count against GigaByte quota'),
+                help='Whether snapshots count against gigabyte quota'),
     cfg.StrOpt('transfer_api_class',
                default='cinder.transfer.api.API',
                help='The full class name of the volume transfer API class'),
@@ -203,6 +185,20 @@ global_opts = [
                help='The full class name of the volume replication API class'),
     cfg.StrOpt('consistencygroup_api_class',
                default='cinder.consistencygroup.api.API',
-               help='The full class name of the consistencygroup API class'), ]
+               help='The full class name of the consistencygroup API class'),
+    cfg.StrOpt('os_privileged_user_name',
+               default=None,
+               help='OpenStack privileged account username. Used for requests '
+                    'to other services (such as Nova) that require an account '
+                    'with special rights.'),
+    cfg.StrOpt('os_privileged_user_password',
+               default=None,
+               help='Password associated with the OpenStack privileged '
+                    'account.'),
+    cfg.StrOpt('os_privileged_user_tenant',
+               default=None,
+               help='Tenant name associated with the OpenStack privileged '
+                    'account.'),
+]
 
 CONF.register_opts(global_opts)

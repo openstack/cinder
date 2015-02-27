@@ -1,6 +1,6 @@
-# Copyright (c) 2012 NetApp, Inc.
-# Copyright (c) 2012 OpenStack Foundation
-# All Rights Reserved.
+# Copyright (c) 2012 NetApp, Inc.  All rights reserved.
+# Copyright (c) 2014 Navneet Singh.  All rights reserved.
+# Copyright (c) 2014 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -20,20 +20,19 @@ This module contains common utilities to be used by one or more
 NetApp drivers to achieve the desired functionality.
 """
 
-import base64
-import binascii
-import copy
+
 import decimal
 import platform
 import socket
-import uuid
 
+from oslo_concurrency import processutils as putils
 import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW, _LI
 from cinder.openstack.common import log as logging
+<<<<<<< HEAD
 from cinder.openstack.common import processutils as putils
 from cinder.openstack.common import timeutils
 from cinder import utils
@@ -42,6 +41,10 @@ from cinder.volume.drivers.netapp.api import NaApiError
 from cinder.volume.drivers.netapp.api import NaElement
 from cinder.volume.drivers.netapp.api import NaErrors
 from cinder.volume.drivers.netapp.api import NaServer
+=======
+from cinder import utils
+from cinder import version
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 from cinder.volume import volume_types
 
 
@@ -54,6 +57,7 @@ DEPRECATED_SSC_SPECS = {'netapp_unmirrored': 'netapp_mirrored',
                         'netapp_nodedup': 'netapp_dedup',
                         'netapp_nocompression': 'netapp_compression',
                         'netapp_thick_provisioned': 'netapp_thin_provisioned'}
+<<<<<<< HEAD
 
 
 def provide_ems(requester, server, netapp_backend, app_version,
@@ -143,6 +147,8 @@ def provide_ems(requester, server, netapp_backend, app_version,
             LOG.warn(_("Failed to invoke ems. Message : %s") % e)
         finally:
             requester.last_ems = timeutils.utcnow()
+=======
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
 
 def validate_instantiation(**kwargs):
@@ -153,94 +159,22 @@ def validate_instantiation(**kwargs):
     """
     if kwargs and kwargs.get('netapp_mode') == 'proxy':
         return
-    LOG.warn(_("It is not the recommended way to use drivers by NetApp. "
-               "Please use NetAppDriver to achieve the functionality."))
+    LOG.warning(_LW("It is not the recommended way to use drivers by NetApp. "
+                    "Please use NetAppDriver to achieve the functionality."))
 
 
-def invoke_api(na_server, api_name, api_family='cm', query=None,
-               des_result=None, additional_elems=None,
-               is_iter=False, records=0, tag=None,
-               timeout=0, tunnel=None):
-    """Invokes any given api call to a NetApp server.
-
-        :param na_server: na_server instance
-        :param api_name: api name string
-        :param api_family: cm or 7m
-        :param query: api query as dict
-        :param des_result: desired result as dict
-        :param additional_elems: dict other than query and des_result
-        :param is_iter: is iterator api
-        :param records: limit for records, 0 for infinite
-        :param timeout: timeout seconds
-        :param tunnel: tunnel entity, vserver or vfiler name
-    """
-    record_step = 50
-    if not (na_server or isinstance(na_server, NaServer)):
-        msg = _("Requires an NaServer instance.")
-        raise exception.InvalidInput(reason=msg)
-    server = copy.copy(na_server)
-    if api_family == 'cm':
-        server.set_vserver(tunnel)
-    else:
-        server.set_vfiler(tunnel)
-    if timeout > 0:
-        server.set_timeout(timeout)
-    iter_records = 0
-    cond = True
-    while cond:
-        na_element = create_api_request(
-            api_name, query, des_result, additional_elems,
-            is_iter, record_step, tag)
-        result = server.invoke_successfully(na_element, True)
-        if is_iter:
-            if records > 0:
-                iter_records = iter_records + record_step
-                if iter_records >= records:
-                    cond = False
-            tag_el = result.get_child_by_name('next-tag')
-            tag = tag_el.get_content() if tag_el else None
-            if not tag:
-                cond = False
-        else:
-            cond = False
-        yield result
-
-
-def create_api_request(api_name, query=None, des_result=None,
-                       additional_elems=None, is_iter=False,
-                       record_step=50, tag=None):
-    """Creates a NetApp api request.
-
-        :param api_name: api name string
-        :param query: api query as dict
-        :param des_result: desired result as dict
-        :param additional_elems: dict other than query and des_result
-        :param is_iter: is iterator api
-        :param record_step: records at a time for iter api
-        :param tag: next tag for iter api
-    """
-    api_el = NaElement(api_name)
-    if query:
-        query_el = NaElement('query')
-        query_el.translate_struct(query)
-        api_el.add_child_elem(query_el)
-    if des_result:
-        res_el = NaElement('desired-attributes')
-        res_el.translate_struct(des_result)
-        api_el.add_child_elem(res_el)
-    if additional_elems:
-        api_el.translate_struct(additional_elems)
-    if is_iter:
-        api_el.add_new_child('max-records', str(record_step))
-    if tag:
-        api_el.add_new_child('tag', tag, True)
-    return api_el
+def check_flags(required_flags, configuration):
+    """Ensure that the flags we care about are set."""
+    for flag in required_flags:
+        if not getattr(configuration, flag, None):
+            msg = _('Configuration value %s is not set.') % flag
+            raise exception.InvalidInput(reason=msg)
 
 
 def to_bool(val):
     """Converts true, yes, y, 1 to True, False otherwise."""
     if val:
-        strg = str(val).lower()
+        strg = six.text_type(val).lower()
         if (strg == 'true' or strg == 'y'
             or strg == 'yes' or strg == 'enabled'
                 or strg == '1'):
@@ -282,66 +216,6 @@ def get_volume_extra_specs(volume):
     return specs
 
 
-def check_apis_on_cluster(na_server, api_list=None):
-    """Checks api availability and permissions on cluster.
-
-    Checks api availability and permissions for executing user.
-    Returns a list of failed apis.
-    """
-    api_list = api_list or []
-    failed_apis = []
-    if api_list:
-        api_version = na_server.get_api_version()
-        if api_version:
-            major, minor = api_version
-            if major == 1 and minor < 20:
-                for api_name in api_list:
-                    na_el = NaElement(api_name)
-                    try:
-                        na_server.invoke_successfully(na_el)
-                    except Exception as e:
-                        if isinstance(e, NaApiError):
-                            if (e.code == NaErrors['API_NOT_FOUND'].code or
-                                    e.code ==
-                                    NaErrors['INSUFFICIENT_PRIVS'].code):
-                                failed_apis.append(api_name)
-            elif major == 1 and minor >= 20:
-                failed_apis = copy.copy(api_list)
-                result = invoke_api(
-                    na_server,
-                    api_name='system-user-capability-get-iter',
-                    api_family='cm',
-                    additional_elems=None,
-                    is_iter=True)
-                for res in result:
-                    attr_list = res.get_child_by_name('attributes-list')
-                    if attr_list:
-                        capabilities = attr_list.get_children()
-                        for capability in capabilities:
-                            op_list = capability.get_child_by_name(
-                                'operation-list')
-                            if op_list:
-                                ops = op_list.get_children()
-                                for op in ops:
-                                    apis = op.get_child_content('api-name')
-                                    if apis:
-                                        api_list = apis.split(',')
-                                        for api_name in api_list:
-                                            if (api_name and
-                                                    api_name.strip()
-                                                    in failed_apis):
-                                                failed_apis.remove(api_name)
-                                    else:
-                                        continue
-            else:
-                msg = _("Unsupported Clustered Data ONTAP version.")
-                raise exception.VolumeBackendAPIException(data=msg)
-        else:
-            msg = _("Api version could not be determined.")
-            raise exception.VolumeBackendAPIException(data=msg)
-    return failed_apis
-
-
 def resolve_hostname(hostname):
     """Resolves host name to IP address."""
     res = socket.getaddrinfo(hostname, None)[0]
@@ -349,30 +223,85 @@ def resolve_hostname(hostname):
     return sockaddr[0]
 
 
-def encode_hex_to_base32(hex_string):
-    """Encodes hex to base32 bit as per RFC4648."""
-    bin_form = binascii.unhexlify(hex_string)
-    return base64.b32encode(bin_form)
+def round_down(value, precision):
+    return float(decimal.Decimal(six.text_type(value)).quantize(
+        decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))
 
 
-def decode_base32_to_hex(base32_string):
-    """Decodes base32 string to hex string."""
-    bin_form = base64.b32decode(base32_string)
-    return binascii.hexlify(bin_form)
+def log_extra_spec_warnings(extra_specs):
+    for spec in (set(extra_specs.keys() if extra_specs else []) &
+                 set(OBSOLETE_SSC_SPECS.keys())):
+            msg = _LW('Extra spec %(old)s is obsolete.  Use %(new)s instead.')
+            args = {'old': spec, 'new': OBSOLETE_SSC_SPECS[spec]}
+            LOG.warning(msg % args)
+    for spec in (set(extra_specs.keys() if extra_specs else []) &
+                 set(DEPRECATED_SSC_SPECS.keys())):
+            msg = _LW('Extra spec %(old)s is deprecated.  Use %(new)s '
+                      'instead.')
+            args = {'old': spec, 'new': DEPRECATED_SSC_SPECS[spec]}
+            LOG.warning(msg % args)
 
 
-def convert_uuid_to_es_fmt(uuid_str):
-    """Converts uuid to e-series compatible name format."""
-    uuid_base32 = encode_hex_to_base32(uuid.UUID(str(uuid_str)).hex)
-    return uuid_base32.strip('=')
+def get_iscsi_connection_properties(lun_id, volume, iqn,
+                                    address, port):
+
+        properties = {}
+        properties['target_discovered'] = False
+        properties['target_portal'] = '%s:%s' % (address, port)
+        properties['target_iqn'] = iqn
+        properties['target_lun'] = int(lun_id)
+        properties['volume_id'] = volume['id']
+        auth = volume['provider_auth']
+        if auth:
+            (auth_method, auth_username, auth_secret) = auth.split()
+            properties['auth_method'] = auth_method
+            properties['auth_username'] = auth_username
+            properties['auth_password'] = auth_secret
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': properties,
+        }
 
 
-def convert_es_fmt_to_uuid(es_label):
-    """Converts e-series name format to uuid."""
-    es_label_b32 = es_label.ljust(32, '=')
-    return uuid.UUID(binascii.hexlify(base64.b32decode(es_label_b32)))
+class hashabledict(dict):
+    """A hashable dictionary that is comparable (i.e. in unit tests, etc.)"""
+    def __hash__(self):
+        return hash(tuple(sorted(self.items())))
 
 
+class OpenStackInfo(object):
+    """OS/distribution, release, and version.
+
+    NetApp uses these fields as content for EMS log entry.
+    """
+
+    PACKAGE_NAME = 'python-cinder'
+
+    def __init__(self):
+        self._version = 'unknown version'
+        self._release = 'unknown release'
+        self._vendor = 'unknown vendor'
+        self._platform = 'unknown platform'
+
+    def _update_version_from_version_string(self):
+        try:
+            self._version = version.version_info.version_string()
+        except Exception:
+            pass
+
+    def _update_release_from_release_string(self):
+        try:
+            self._release = version.version_info.release_string()
+        except Exception:
+            pass
+
+    def _update_platform(self):
+        try:
+            self._platform = platform.platform()
+        except Exception:
+            pass
+
+<<<<<<< HEAD
 def round_down(value, precision):
     return float(decimal.Decimal(six.text_type(value)).quantize(
         decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))
@@ -442,6 +371,8 @@ class OpenStackInfo(object):
         except Exception:
             pass
 
+=======
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
     @staticmethod
     def _get_version_info_version():
         return version.version_info.version
@@ -472,7 +403,11 @@ class OpenStackInfo(object):
                                       "'%{version}\t%{release}\t%{vendor}'",
                                       self.PACKAGE_NAME)
             if not out:
+<<<<<<< HEAD
                 LOG.info(_('No rpm info found for %(pkg)s package.') % {
+=======
+                LOG.info(_LI('No rpm info found for %(pkg)s package.') % {
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
                     'pkg': self.PACKAGE_NAME})
                 return False
             parts = out.split()
@@ -481,8 +416,12 @@ class OpenStackInfo(object):
             self._vendor = ' '.join(parts[2::])
             return True
         except Exception as e:
+<<<<<<< HEAD
             LOG.info(_('Could not run rpm command: %(msg)s.') % {
                 'msg': e})
+=======
+            LOG.info(_LI('Could not run rpm command: %(msg)s.') % {'msg': e})
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
             return False
 
     # ubuntu, mirantis on ubuntu
@@ -493,8 +432,13 @@ class OpenStackInfo(object):
             out, err = putils.execute("dpkg-query", "-W", "-f='${Version}'",
                                       self.PACKAGE_NAME)
             if not out:
+<<<<<<< HEAD
                 LOG.info(_('No dpkg-query info found for %(pkg)s package.') % {
                     'pkg': self.PACKAGE_NAME})
+=======
+                LOG.info(_LI('No dpkg-query info found for %(pkg)s package.')
+                         % {'pkg': self.PACKAGE_NAME})
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
                 return False
             # debian format: [epoch:]upstream_version[-debian_revision]
             deb_version = out
@@ -511,7 +455,11 @@ class OpenStackInfo(object):
                 self._vendor = _vendor
             return True
         except Exception as e:
+<<<<<<< HEAD
             LOG.info(_('Could not run dpkg-query command: %(msg)s.') % {
+=======
+            LOG.info(_LI('Could not run dpkg-query command: %(msg)s.') % {
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
                 'msg': e})
             return False
 

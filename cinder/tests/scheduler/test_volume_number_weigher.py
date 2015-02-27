@@ -17,12 +17,12 @@ Tests For Volume Number Weigher.
 """
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import context
 from cinder.db.sqlalchemy import api
-from cinder.openstack.common.scheduler.weights import HostWeightHandler
-from cinder.scheduler.weights.volume_number import VolumeNumberWeigher
+from cinder.openstack.common.scheduler import weights
+from cinder.scheduler.weights import volume_number
 from cinder import test
 from cinder.tests.scheduler import fakes
 from cinder.volume import utils
@@ -51,14 +51,16 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         super(VolumeNumberWeigherTestCase, self).setUp()
         self.context = context.get_admin_context()
         self.host_manager = fakes.FakeHostManager()
-        self.weight_handler = HostWeightHandler('cinder.scheduler.weights')
+        self.weight_handler = weights.HostWeightHandler(
+            'cinder.scheduler.weights')
 
     def _get_weighed_host(self, hosts, weight_properties=None):
         if weight_properties is None:
             weight_properties = {'context': self.context}
-        return self.weight_handler.get_weighed_objects([VolumeNumberWeigher],
-                                                       hosts,
-                                                       weight_properties)[0]
+        return self.weight_handler.get_weighed_objects(
+            [volume_number.VolumeNumberWeigher],
+            hosts,
+            weight_properties)[0]
 
     @mock.patch('cinder.db.sqlalchemy.api.service_get_all_by_topic')
     def _get_all_hosts(self, _mock_service_get_all_by_topic, disabled=False):

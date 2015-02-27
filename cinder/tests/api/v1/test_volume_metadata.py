@@ -15,7 +15,8 @@
 
 import uuid
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_serialization import jsonutils
 import webob
 
 from cinder.api import extensions
@@ -23,7 +24,6 @@ from cinder.api.v1 import volume_metadata
 from cinder.api.v1 import volumes
 import cinder.db
 from cinder import exception
-from cinder.openstack.common import jsonutils
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v1 import stubs
@@ -110,7 +110,7 @@ def return_volume(context, volume_id):
             'project_id': context.project_id}
 
 
-def return_volume_nonexistent(context, volume_id):
+def return_volume_nonexistent(*args, **kwargs):
     raise exception.VolumeNotFound('bogus test message')
 
 
@@ -208,7 +208,9 @@ class volumeMetaDataTest(test.TestCase):
         self.assertEqual(200, res.status_int)
 
     def test_delete_nonexistent_volume(self):
-        self.stubs.Set(cinder.db, 'volume_get',
+        self.stubs.Set(cinder.db, 'volume_metadata_get',
+                       return_volume_metadata)
+        self.stubs.Set(cinder.db, 'volume_metadata_delete',
                        return_volume_nonexistent)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'DELETE'
@@ -517,19 +519,19 @@ class volumeMetaDataTest(test.TestCase):
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
 
-        #test for long key
+        # test for long key
         data = {"metadata": {"a" * 260: "value1"}}
         req.body = jsonutils.dumps(data)
         self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
                           self.controller.create, req, self.req_id, data)
 
-        #test for long value
+        # test for long value
         data = {"metadata": {"key": "v" * 260}}
         req.body = jsonutils.dumps(data)
         self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
                           self.controller.create, req, self.req_id, data)
 
-        #test for empty key.
+        # test for empty key.
         data = {"metadata": {"": "value1"}}
         req.body = jsonutils.dumps(data)
         self.assertRaises(webob.exc.HTTPBadRequest,

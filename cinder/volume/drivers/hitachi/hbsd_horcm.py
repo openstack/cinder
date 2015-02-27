@@ -12,23 +12,23 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from contextlib import nested
-from functools import wraps
+import functools
 import os
 import re
 import shlex
 import threading
 import time
 
-from oslo.config import cfg
+from oslo_concurrency import processutils as putils
+from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import excutils
+from cinder.i18n import _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import processutils as putils
 from cinder import utils
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
 
@@ -46,6 +46,8 @@ LUN_DELETE_INTERVAL = 3
 EXEC_MAX_WAITTIME = 30
 EXEC_RETRY_INTERVAL = 5
 HORCM_WAITTIME = 1
+PAIR_TYPE = ('HORC', 'MRCF', 'QS')
+PERMITTED_TYPE = ('CVS', 'HDP', 'HDT')
 
 RAIDCOM_LOCK_FILE = basic_lib.LOCK_DIR + 'raidcom_'
 HORCMGR_LOCK_FILE = basic_lib.LOCK_DIR + 'horcmgr_'
@@ -116,7 +118,7 @@ CONF.register_opts(volume_opts)
 
 
 def horcm_synchronized(function):
-    @wraps(function)
+    @functools.wraps(function)
     def wrapper(*args, **kargs):
         if len(args) == 1:
             inst = args[0].conf.hitachi_horcm_numbers[0]
@@ -126,19 +128,19 @@ def horcm_synchronized(function):
             raidcom_obj_lock = args[0].raidcom_pair_lock
         raidcom_lock_file = '%s%d' % (RAIDCOM_LOCK_FILE, inst)
         lock = basic_lib.get_process_lock(raidcom_lock_file)
-        with nested(raidcom_obj_lock, lock):
+        with raidcom_obj_lock, lock:
             return function(*args, **kargs)
     return wrapper
 
 
 def storage_synchronized(function):
-    @wraps(function)
+    @functools.wraps(function)
     def wrapper(*args, **kargs):
         serial = args[0].conf.hitachi_serial_number
         resource_lock = args[0].resource_lock
         resource_lock_file = '%s%s' % (RESOURCE_LOCK_FILE, serial)
         lock = basic_lib.get_process_lock(resource_lock_file)
-        with nested(resource_lock, lock):
+        with resource_lock, lock:
             return function(*args, **kargs)
     return wrapper
 
@@ -214,7 +216,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
             raise loopingcall.LoopingCallDone()
 
         if self.shutdown_horcm(inst):
-            LOG.error(_("Failed to shutdown horcm."))
+            LOG.error(_LE("Failed to shutdown horcm."))
             raise loopingcall.LoopingCallDone()
 
     @horcm_synchronized
@@ -267,7 +269,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
         raidcom_lock_file = '%s%d' % (RAIDCOM_LOCK_FILE, inst)
         lock = basic_lib.get_process_lock(raidcom_lock_file)
 
-        with nested(raidcom_obj_lock, lock):
+        with raidcom_obj_lock, lock:
             ret, stdout, stderr = self.exec_command(cmd, args=args,
                                                     printflag=printflag)
 
@@ -275,27 +277,27 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         if time.time() - start >= EXEC_MAX_WAITTIME:
-            LOG.error(_("horcm command timeout."))
+            LOG.error(_LE("horcm command timeout."))
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         if (ret == EX_ENAUTH and
                 not re.search("-login %s %s" % (user, passwd), args)):
             _ret, _stdout, _stderr = self.comm_login()
             if _ret:
-                LOG.error(_("Failed to authenticate user."))
+                LOG.error(_LE("Failed to authenticate user."))
                 raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         elif ret in HORCM_ERROR:
             _ret = 0
-            with nested(raidcom_obj_lock, lock):
+            with raidcom_obj_lock, lock:
                 if self.check_horcm(inst) != HORCM_RUNNING:
                     _ret, _stdout, _stderr = self.start_horcm(inst)
             if _ret and _ret != HORCM_RUNNING:
-                LOG.error(_("Failed to start horcm."))
+                LOG.error(_LE("Failed to start horcm."))
                 raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
         elif ret not in COMMAND_IO_TO_RAID:
-            LOG.error(_("Unexpected error occurs in horcm."))
+            LOG.error(_LE("Unexpected error occurs in horcm."))
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
     def exec_raidcom(self, cmd, args, printflag=True):
@@ -894,7 +896,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
         try:
             self.comm_modify_ldev(ldev)
         except Exception as e:
-            LOG.warning(_('Failed to discard zero page: %s') %
+            LOG.warning(_LW('Failed to discard zero page: %s') %
                         six.text_type(e))
 
     @storage_synchronized
@@ -1393,7 +1395,7 @@ HORCM_CMD
                                            [basic_lib.PSUS], timeout,
                                            interval, check_svol=True)
                         except Exception as ex:
-                            LOG.warning(_('Failed to create pair: %s') %
+                            LOG.warning(_LW('Failed to create pair: %s') %
                                         six.text_type(ex))
 
                         try:
@@ -1403,7 +1405,7 @@ HORCM_CMD
                                 [basic_lib.SMPL], timeout,
                                 self.conf.hitachi_async_copy_check_interval)
                         except Exception as ex:
-                            LOG.warning(_('Failed to create pair: %s') %
+                            LOG.warning(_LW('Failed to create pair: %s') %
                                         six.text_type(ex))
 
                     if self.is_smpl(copy_group, ldev_name):
@@ -1411,14 +1413,14 @@ HORCM_CMD
                             self.delete_pair_config(pvol, svol, copy_group,
                                                     ldev_name)
                         except Exception as ex:
-                            LOG.warning(_('Failed to create pair: %s') %
+                            LOG.warning(_LW('Failed to create pair: %s') %
                                         six.text_type(ex))
 
                     if restart:
                         try:
                             self.restart_pair_horcm()
                         except Exception as ex:
-                            LOG.warning(_('Failed to restart horcm: %s') %
+                            LOG.warning(_LW('Failed to restart horcm: %s') %
                                         six.text_type(ex))
 
         else:
@@ -1437,7 +1439,7 @@ HORCM_CMD
                             pvol, svol, [basic_lib.SMPL], timeout,
                             self.conf.hitachi_async_copy_check_interval)
                     except Exception as ex:
-                        LOG.warning(_('Failed to create pair: %s') %
+                        LOG.warning(_LW('Failed to create pair: %s') %
                                     six.text_type(ex))
 
     def delete_pair(self, pvol, svol, is_vvol):
@@ -1507,3 +1509,78 @@ HORCM_CMD
         self.add_used_hlun(port, gid, list)
 
         return list
+
+    def get_ldev_size_in_gigabyte(self, ldev, existing_ref):
+        param = 'serial_number'
+
+        if param not in existing_ref:
+            msg = basic_lib.output_err(700, param=param)
+            raise exception.HBSDError(data=msg)
+
+        storage = existing_ref.get(param)
+        if storage != self.conf.hitachi_serial_number:
+            msg = basic_lib.output_err(648, resource=param)
+            raise exception.HBSDError(data=msg)
+
+        stdout = self.comm_get_ldev(ldev)
+        if not stdout:
+            msg = basic_lib.output_err(648, resource='LDEV')
+            raise exception.HBSDError(data=msg)
+
+        sts_line = vol_type = ""
+        vol_attrs = []
+        size = num_port = 1
+
+        lines = stdout.splitlines()
+        for line in lines:
+            if line.startswith("STS :"):
+                sts_line = line
+
+            elif line.startswith("VOL_TYPE :"):
+                vol_type = shlex.split(line)[2]
+
+            elif line.startswith("VOL_ATTR :"):
+                vol_attrs = shlex.split(line)[2:]
+
+            elif line.startswith("VOL_Capacity(BLK) :"):
+                size = int(shlex.split(line)[2])
+
+            elif line.startswith("NUM_PORT :"):
+                num_port = int(shlex.split(line)[2])
+
+        if 'NML' not in sts_line:
+            msg = basic_lib.output_err(648, resource='LDEV')
+
+            raise exception.HBSDError(data=msg)
+
+        if 'OPEN-V' not in vol_type:
+            msg = basic_lib.output_err(702, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        if 'HDP' not in vol_attrs:
+            msg = basic_lib.output_err(702, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        for vol_attr in vol_attrs:
+            if vol_attr == ':':
+                continue
+
+            if vol_attr in PAIR_TYPE:
+                msg = basic_lib.output_err(705, ldev=ldev)
+                raise exception.HBSDError(data=msg)
+
+            if vol_attr not in PERMITTED_TYPE:
+                msg = basic_lib.output_err(702, ldev=ldev)
+                raise exception.HBSDError(data=msg)
+
+        # Hitachi storage calculates volume sizes in a block unit, 512 bytes.
+        # So, units.Gi is divided by 512.
+        if size % (units.Gi / 512):
+            msg = basic_lib.output_err(703, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        if num_port:
+            msg = basic_lib.output_err(704, ldev=ldev)
+            raise exception.HBSDError(data=msg)
+
+        return size / (units.Gi / 512)

@@ -12,7 +12,8 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import uuidutils
 from webob import exc
 
 from cinder.api import extensions
@@ -22,7 +23,6 @@ from cinder.api.v2 import volumes
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import uuidutils
 from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import volume_types

@@ -16,7 +16,7 @@
 import errno
 
 from cinder import exception
-from cinder.openstack.common.gettextutils import _
+from cinder.i18n import _, _LI, _LW
 from cinder.openstack.common import log as logging
 import cinder.volume.driver
 from cinder.volume.drivers.prophetstor import dplcommon
@@ -57,19 +57,16 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
                     msg = _('Flexvisor failed to assign volume %(id)s: '
                             '%(status)s.') % {'id': volume['id'],
                                               'status': status}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
             else:
                 ret = errno.EFAULT
                 msg = _('Flexvisor failed to assign volume %(id)s due to '
                         'unable to query status by event '
                         'id.') % {'id': volume['id']}
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret != 0:
             msg = _('Flexvisor assign volume failed.:%(id)s:'
                     '%(status)s.') % {'id': volume['id'], 'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
         if ret == 0:
@@ -105,9 +102,10 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
                         break
 
         if not (ret == 0 or properties['target_portal']):
-            raise exception.VolumeBackendAPIException(
-                data='Flexvisor failed to assign volume %s iqn %s.'
-                     % (volume['id'], connector['initiator']))
+            msg = _('Flexvisor failed to assign volume %(volume)s '
+                    'iqn %(iqn)s.') % {'volume': volume['id'],
+                                       'iqn': connector['initiator']}
+            raise exception.VolumeBackendAPIException(data=msg)
 
         return {'driver_volume_type': 'iscsi', 'data': properties}
 
@@ -127,21 +125,17 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
                     msg = _('Flexvisor failed to unassign volume %(id)s:'
                             ' %(status)s.') % {'id': volume['id'],
                                                'status': status}
-                    LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
             else:
                 msg = _('Flexvisor failed to unassign volume (get event) '
                         '%(id)s.') % {'id': volume['id']}
-                LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret == errno.ENODATA:
-            msg = _('Flexvisor already unassigned volume '
-                    '%(id)s.') % {'id': volume['id']}
-            LOG.info(msg)
+            LOG.info(_LI('Flexvisor already unassigned volume '
+                         '%(id)s.'), {'id': volume['id']})
         elif ret != 0:
             msg = _('Flexvisor failed to unassign volume:%(id)s:'
                     '%(status)s.') % {'id': volume['id'], 'status': ret}
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
     def get_volume_stats(self, refresh=False):
@@ -156,6 +150,6 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
                         (backend_name or 'DPLISCSIDriver')
                     self._stats = data
             except Exception as exc:
-                LOG.warning(_('Cannot get volume status '
-                              '%(exc)%s.') % {'exc': exc})
+                LOG.warning(_LW('Cannot get volume status '
+                                '%(exc)s.'), {'exc': exc})
         return self._stats

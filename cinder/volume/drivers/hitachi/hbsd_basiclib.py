@@ -16,14 +16,14 @@ import inspect
 import os
 import shlex
 
+from oslo_concurrency import lockutils
+from oslo_concurrency import processutils as putils
+from oslo_utils import excutils
 import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import excutils
-from cinder.openstack.common import lockutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils as putils
 from cinder import utils
 
 SMPL = 1
@@ -48,6 +48,8 @@ DEFAULT_GROUP_RANGE = [0, 65535]
 
 NAME_PREFIX = 'HBSD-'
 
+NORMAL_VOLUME_TYPE = 'Normal'
+
 LOCK_DIR = '/var/lock/hbsd/'
 
 LOG = logging.getLogger(__name__)
@@ -56,6 +58,9 @@ HBSD_INFO_MSG = {
     1: _('The parameter of the storage backend. '
          '(config_group: %(config_group)s)'),
     3: _('The storage backend can be used. (config_group: %(config_group)s)'),
+    4: _('The volume %(volume_id)s is managed successfully. (LDEV: %(ldev)s)'),
+    5: _('The volume %(volume_id)s is unmanaged successfully. '
+         '(LDEV: %(ldev)s)'),
 }
 
 HBSD_WARN_MSG = {
@@ -131,6 +136,20 @@ HBSD_ERR_MSG = {
     655: _('A snapshot status is invalid. (status: %(status)s)'),
     659: _('A host group is invalid. (host group: %(gid)s)'),
     660: _('The specified %(desc)s is busy.'),
+    700: _('There is no designation of the %(param)s. '
+           'The specified storage is essential to manage the volume.'),
+    701: _('There is no designation of the ldev. '
+           'The specified ldev is essential to manage the volume.'),
+    702: _('The specified ldev %(ldev)s could not be managed. '
+           'The volume type must be DP-VOL.'),
+    703: _('The specified ldev %(ldev)s could not be managed. '
+           'The ldev size must be in multiples of gigabyte.'),
+    704: _('The specified ldev %(ldev)s could not be managed. '
+           'The ldev must not be mapping.'),
+    705: _('The specified ldev %(ldev)s could not be managed. '
+           'The ldev must not be paired.'),
+    706: _('The volume %(volume_id)s could not be unmanaged. '
+           'The volume type must be %(volume_type)s.'),
 }
 
 
@@ -247,6 +266,9 @@ class HBSDBasicLib(object):
         return ret, stdout, stderr
 
     def set_pair_flock(self):
+        return NopLock()
+
+    def set_horcmgr_flock(self):
         return NopLock()
 
     def discard_zero_page(self, ldev):

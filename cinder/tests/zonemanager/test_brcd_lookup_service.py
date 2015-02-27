@@ -23,7 +23,7 @@ from cinder import exception
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.zonemanager.fc_san_lookup_service import FCSanLookupService
+from cinder.zonemanager import fc_san_lookup_service as san_service
 
 LOG = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ _device_map_to_verify = {
 _fabric_wwn = '100000051e55a100'
 
 
-class TestFCSanLookupService(FCSanLookupService, test.TestCase):
+class TestFCSanLookupService(san_service.FCSanLookupService, test.TestCase):
 
     def setUp(self):
         super(TestFCSanLookupService, self).setUp()

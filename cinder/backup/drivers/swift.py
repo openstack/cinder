@@ -37,17 +37,19 @@ import os
 import socket
 
 import eventlet
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import timeutils
+from oslo_utils import units
 import six
 from swiftclient import client as swift
 
-from cinder.backup.driver import BackupDriver
+from cinder.backup import driver
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import excutils
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
-from cinder.openstack.common import units
+from cinder.openstack.common import loopingcall
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -94,13 +96,19 @@ swiftbackup_service_opts = [
     cfg.StrOpt('backup_compression_algorithm',
                default='zlib',
                help='Compression algorithm (None to disable)'),
+    cfg.BoolOpt('backup_swift_enable_progress_timer',
+                default=True,
+                help='Enable or Disable the timer to send the periodic '
+                     'progress notifications to Ceilometer when backing '
+                     'up the volume to the Swift backend storage. The '
+                     'default value is True to enable the timer.'),
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(swiftbackup_service_opts)
 
 
-class SwiftBackupDriver(BackupDriver):
+class SwiftBackupDriver(driver.BackupDriver):
     """Provides backup, restore and delete of backup objects within Swift."""
 
     DRIVER_VERSION = '1.0.0'
@@ -149,6 +157,9 @@ class SwiftBackupDriver(BackupDriver):
         LOG.debug("Using swift URL %s", self.swift_url)
         self.az = CONF.storage_availability_zone
         self.data_block_size_bytes = CONF.backup_swift_object_size
+        self.backup_timer_interval = CONF.backup_timer_interval
+        self.data_block_num = CONF.backup_object_number_per_notification
+        self.enable_progress_timer = CONF.backup_swift_enable_progress_timer
         self.swift_attempts = CONF.backup_swift_retry_attempts
         self.swift_backoff = CONF.backup_swift_retry_backoff
         self.compressor = \
@@ -157,8 +168,8 @@ class SwiftBackupDriver(BackupDriver):
                                                   CONF.backup_swift_auth))
         if CONF.backup_swift_auth == 'single_user':
             if CONF.backup_swift_user is None:
-                LOG.error(_("single_user auth mode enabled, "
-                            "but %(param)s not set")
+                LOG.error(_LE("single_user auth mode enabled, "
+                              "but %(param)s not set")
                           % {'param': 'backup_swift_user'})
                 raise exception.ParameterNotFound(param='backup_swift_user')
             self.conn = swift.Connection(
@@ -248,7 +259,7 @@ class SwiftBackupDriver(BackupDriver):
         LOG.debug('_read_metadata started, container name: %(container)s, '
                   'metadata filename: %(filename)s' %
                   {'container': container, 'filename': filename})
-        (resp, body) = self.conn.get_object(container, filename)
+        (_resp, body) = self.conn.get_object(container, filename)
         metadata = json.loads(body)
         LOG.debug('_read_metadata finished (%s)' % metadata)
         return metadata
@@ -286,7 +297,7 @@ class SwiftBackupDriver(BackupDriver):
                   })
         object_meta = {'id': 1, 'list': [], 'prefix': object_prefix,
                        'volume_meta': None}
-        return object_meta, container
+        return object_meta, container, volume_size_bytes
 
     def _backup_chunk(self, backup, container, data, data_offset, object_meta):
         """Backup data chunk based on the object metadata and offset."""
@@ -374,10 +385,46 @@ class SwiftBackupDriver(BackupDriver):
 
         object_meta["volume_meta"] = json_meta
 
+    def _send_progress_end(self, context, backup, object_meta):
+        object_meta['backup_percent'] = 100
+        volume_utils.notify_about_backup_usage(context,
+                                               backup,
+                                               "createprogress",
+                                               extra_usage_info=
+                                               object_meta)
+
+    def _send_progress_notification(self, context, backup, object_meta,
+                                    total_block_sent_num, total_volume_size):
+        backup_percent = total_block_sent_num * 100 / total_volume_size
+        object_meta['backup_percent'] = backup_percent
+        volume_utils.notify_about_backup_usage(context,
+                                               backup,
+                                               "createprogress",
+                                               extra_usage_info=
+                                               object_meta)
+
     def backup(self, backup, volume_file, backup_metadata=True):
         """Backup the given volume to Swift."""
+        (object_meta, container,
+            volume_size_bytes) = self._prepare_backup(backup)
+        counter = 0
+        total_block_sent_num = 0
 
-        object_meta, container = self._prepare_backup(backup)
+        # There are two mechanisms to send the progress notification.
+        # 1. The notifications are periodically sent in a certain interval.
+        # 2. The notifications are sent after a certain number of chunks.
+        # Both of them are working simultaneously during the volume backup,
+        # when swift is taken as the backup backend.
+        def _notify_progress():
+            self._send_progress_notification(self.context, backup,
+                                             object_meta,
+                                             total_block_sent_num,
+                                             volume_size_bytes)
+        timer = loopingcall.FixedIntervalLoopingCall(
+            _notify_progress)
+        if self.enable_progress_timer:
+            timer.start(interval=self.backup_timer_interval)
+
         while True:
             data = volume_file.read(self.data_block_size_bytes)
             data_offset = volume_file.tell()
@@ -385,6 +432,23 @@ class SwiftBackupDriver(BackupDriver):
                 break
             self._backup_chunk(backup, container, data,
                                data_offset, object_meta)
+            total_block_sent_num += self.data_block_num
+            counter += 1
+            if counter == self.data_block_num:
+                # Send the notification to Ceilometer when the chunk
+                # number reaches the data_block_num. The backup percentage
+                # is put in the metadata as the extra information.
+                self._send_progress_notification(self.context, backup,
+                                                 object_meta,
+                                                 total_block_sent_num,
+                                                 volume_size_bytes)
+                # reset the counter
+                counter = 0
+
+        # Stop the timer.
+        timer.stop()
+        # All the data have been sent, the backup_percent reaches 100.
+        self._send_progress_end(self.context, backup, object_meta)
 
         if backup_metadata:
             try:
@@ -392,7 +456,7 @@ class SwiftBackupDriver(BackupDriver):
             except Exception as err:
                 with excutils.save_and_reraise_exception():
                     LOG.exception(
-                        _("Backup volume metadata to swift failed: %s") %
+                        _LE("Backup volume metadata to swift failed: %s") %
                         six.text_type(err))
                     self.delete(backup)
 
@@ -428,7 +492,7 @@ class SwiftBackupDriver(BackupDriver):
                           'volume_id': volume_id,
                       })
             try:
-                (resp, body) = self.conn.get_object(container, object_name)
+                (_resp, body) = self.conn.get_object(container, object_name)
             except socket.error as err:
                 raise exception.SwiftConnectionFailed(reason=err)
             compression_algorithm = metadata_object[object_name]['compression']
@@ -448,8 +512,9 @@ class SwiftBackupDriver(BackupDriver):
             try:
                 fileno = volume_file.fileno()
             except IOError:
-                LOG.info("volume_file does not support fileno() so skipping "
-                         "fsync()")
+                LOG.info(_LI("volume_file does not support "
+                             "fileno() so skipping"
+                             "fsync()"))
             else:
                 os.fsync(fileno)
 
@@ -514,8 +579,8 @@ class SwiftBackupDriver(BackupDriver):
             try:
                 swift_object_names = self._generate_object_names(backup)
             except Exception:
-                LOG.warn(_('swift error while listing objects, continuing'
-                           ' with delete'))
+                LOG.warn(_LW('swift error while listing objects, continuing'
+                             ' with delete'))
 
             for swift_object_name in swift_object_names:
                 try:
@@ -523,8 +588,9 @@ class SwiftBackupDriver(BackupDriver):
                 except socket.error as err:
                     raise exception.SwiftConnectionFailed(reason=err)
                 except Exception:
-                    LOG.warn(_('swift error while deleting object %s, '
-                               'continuing with delete') % swift_object_name)
+                    LOG.warn(_LW('swift error while deleting object %s, '
+                                 'continuing with delete')
+                             % swift_object_name)
                 else:
                     LOG.debug('deleted swift object: %(swift_object_name)s'
                               ' in container: %(container)s' %

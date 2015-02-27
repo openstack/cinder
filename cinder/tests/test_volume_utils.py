@@ -15,21 +15,15 @@
 
 """Tests For miscellaneous util methods used with volume."""
 
-import os
-import re
-
 import mock
-from oslo.config import cfg
+from oslo_concurrency import processutils
+from oslo_config import cfg
 
-from cinder import context
-from cinder import db
 from cinder import exception
-from cinder.openstack.common import importutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import test
-from cinder.tests import fake_notifier
 from cinder import utils
+from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
 
 
@@ -38,39 +32,282 @@ LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 
 
-class UsageInfoTestCase(test.TestCase):
+class NotifyUsageTestCase(test.TestCase):
+    @mock.patch('cinder.volume.utils._usage_from_volume')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_volume_usage(self, mock_rpc, mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_volume_usage(mock.sentinel.context,
+                                                        mock.sentinel.volume,
+                                                        'test_suffix')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume)
+        mock_rpc.get_notifier.assert_called_once_with('volume', 'host1')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'volume.test_suffix',
+            mock_usage.return_value)
 
-    QUEUE_NAME = 'cinder-volume'
-    HOSTNAME = 'my-host.com'
-    HOSTIP = '10.0.0.1'
-    BACKEND = 'test_backend'
-    MULTI_AT_BACKEND = 'test_b@ckend'
+    @mock.patch('cinder.volume.utils._usage_from_volume')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_volume_usage_with_kwargs(self, mock_rpc, mock_conf,
+                                                   mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_volume_usage(
+            mock.sentinel.context,
+            mock.sentinel.volume,
+            'test_suffix',
+            extra_usage_info={'a': 'b', 'c': 'd'},
+            host='host2')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume, a='b', c='d')
+        mock_rpc.get_notifier.assert_called_once_with('volume', 'host2')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'volume.test_suffix',
+            mock_usage.return_value)
 
-    def setUp(self):
-        super(UsageInfoTestCase, self).setUp()
-        self.addCleanup(fake_notifier.reset)
-        self.flags(host='fake', notification_driver=["test"])
-        self.volume = importutils.import_object(CONF.volume_manager)
-        self.user_id = 'fake'
-        self.project_id = 'fake'
-        self.snapshot_id = 'fake'
-        self.volume_size = 0
-        self.context = context.RequestContext(self.user_id, self.project_id)
+    @mock.patch('cinder.volume.utils._usage_from_volume')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_replication_usage(self, mock_rpc,
+                                            mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_replication_usage(
+            mock.sentinel.context,
+            mock.sentinel.volume,
+            'test_suffix')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume)
+        mock_rpc.get_notifier.assert_called_once_with('replication', 'host1')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'replication.test_suffix',
+            mock_usage.return_value)
 
-    def _create_volume(self, params=None):
-        """Create a test volume."""
-        params = params or {}
-        vol = {}
-        vol['snapshot_id'] = self.snapshot_id
-        vol['user_id'] = self.user_id
-        vol['project_id'] = self.project_id
-        vol['host'] = CONF.host
-        vol['availability_zone'] = CONF.storage_availability_zone
-        vol['status'] = "creating"
-        vol['attach_status'] = "detached"
-        vol['size'] = self.volume_size
-        vol.update(params)
-        return db.volume_create(self.context, vol)['id']
+    @mock.patch('cinder.volume.utils._usage_from_volume')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_replication_usage_with_kwargs(self, mock_rpc,
+                                                        mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_replication_usage(
+            mock.sentinel.context,
+            mock.sentinel.volume,
+            'test_suffix',
+            extra_usage_info={'a': 'b', 'c': 'd'},
+            host='host2')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume,
+                                           a='b', c='d')
+        mock_rpc.get_notifier.assert_called_once_with('replication', 'host2')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'replication.test_suffix',
+            mock_usage.return_value)
+
+    @mock.patch('cinder.volume.utils._usage_from_volume')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_replication_error(self, mock_rpc,
+                                            mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_replication_error(
+            mock.sentinel.context,
+            mock.sentinel.volume,
+            'test_suffix')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume)
+        mock_rpc.get_notifier.assert_called_once_with('replication', 'host1')
+        mock_rpc.get_notifier.return_value.error.assert_called_once_with(
+            mock.sentinel.context,
+            'replication.test_suffix',
+            mock_usage.return_value)
+
+    @mock.patch('cinder.volume.utils._usage_from_volume')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_replication_error_with_kwargs(self, mock_rpc,
+                                                        mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_replication_error(
+            mock.sentinel.context,
+            mock.sentinel.volume,
+            'test_suffix',
+            extra_error_info={'a': 'b', 'c': 'd'},
+            host='host2')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume,
+                                           a='b', c='d')
+        mock_rpc.get_notifier.assert_called_once_with('replication', 'host2')
+        mock_rpc.get_notifier.return_value.error.assert_called_once_with(
+            mock.sentinel.context,
+            'replication.test_suffix',
+            mock_usage.return_value)
+
+    @mock.patch('cinder.volume.utils._usage_from_snapshot')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_snapshot_usage(self, mock_rpc,
+                                         mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_snapshot_usage(
+            mock.sentinel.context,
+            mock.sentinel.snapshot,
+            'test_suffix')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.snapshot)
+        mock_rpc.get_notifier.assert_called_once_with('snapshot', 'host1')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'snapshot.test_suffix',
+            mock_usage.return_value)
+
+    @mock.patch('cinder.volume.utils._usage_from_snapshot')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_snapshot_usage_with_kwargs(self, mock_rpc, mock_conf,
+                                                     mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_snapshot_usage(
+            mock.sentinel.context,
+            mock.sentinel.snapshot,
+            'test_suffix',
+            extra_usage_info={'a': 'b', 'c': 'd'},
+            host='host2')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.snapshot,
+                                           a='b', c='d')
+        mock_rpc.get_notifier.assert_called_once_with('snapshot', 'host2')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'snapshot.test_suffix',
+            mock_usage.return_value)
+
+    def test_usage_from_snapshot(self):
+        raw_snapshot = {
+            'project_id': '12b0330ec2584a',
+            'user_id': '158cba1b8c2bb6008e',
+            'volume': {'availability_zone': 'nova'},
+            'volume_id': '55614621',
+            'volume_size': 1,
+            'id': '343434a2',
+            'display_name': '11',
+            'created_at': '2014-12-11T10:10:00',
+            'status': 'pause',
+            'deleted': '',
+        }
+        usage_info = volume_utils._usage_from_snapshot(
+            mock.sentinel.context,
+            raw_snapshot)
+        expected_snapshot = {
+            'tenant_id': '12b0330ec2584a',
+            'user_id': '158cba1b8c2bb6008e',
+            'availability_zone': 'nova',
+            'volume_id': '55614621',
+            'volume_size': 1,
+            'snapshot_id': '343434a2',
+            'display_name': '11',
+            'created_at': '2014-12-11T10:10:00',
+            'status': 'pause',
+            'deleted': '',
+        }
+        self.assertEqual(expected_snapshot, usage_info)
+
+    @mock.patch('cinder.volume.utils._usage_from_consistencygroup')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_consistencygroup_usage(self, mock_rpc,
+                                                 mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_consistencygroup_usage(
+            mock.sentinel.context,
+            mock.sentinel.consistencygroup,
+            'test_suffix')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.consistencygroup)
+        mock_rpc.get_notifier.assert_called_once_with('consistencygroup',
+                                                      'host1')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'consistencygroup.test_suffix',
+            mock_usage.return_value)
+
+    @mock.patch('cinder.volume.utils._usage_from_consistencygroup')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_consistencygroup_usage_with_kwargs(self, mock_rpc,
+                                                             mock_conf,
+                                                             mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_consistencygroup_usage(
+            mock.sentinel.context,
+            mock.sentinel.consistencygroup,
+            'test_suffix',
+            extra_usage_info={'a': 'b', 'c': 'd'},
+            host='host2')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.consistencygroup,
+                                           a='b', c='d')
+        mock_rpc.get_notifier.assert_called_once_with('consistencygroup',
+                                                      'host2')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'consistencygroup.test_suffix',
+            mock_usage.return_value)
+
+    @mock.patch('cinder.volume.utils._usage_from_cgsnapshot')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_cgsnapshot_usage(self, mock_rpc,
+                                           mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_cgsnapshot_usage(
+            mock.sentinel.context,
+            mock.sentinel.cgsnapshot,
+            'test_suffix')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.cgsnapshot)
+        mock_rpc.get_notifier.assert_called_once_with('cgsnapshot', 'host1')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'cgsnapshot.test_suffix',
+            mock_usage.return_value)
+
+    @mock.patch('cinder.volume.utils._usage_from_cgsnapshot')
+    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.utils.rpc')
+    def test_notify_about_cgsnapshot_usage_with_kwargs(self, mock_rpc,
+                                                       mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = volume_utils.notify_about_cgsnapshot_usage(
+            mock.sentinel.context,
+            mock.sentinel.cgsnapshot,
+            'test_suffix',
+            extra_usage_info={'a': 'b', 'c': 'd'},
+            host='host2')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.cgsnapshot,
+                                           a='b', c='d')
+        mock_rpc.get_notifier.assert_called_once_with('cgsnapshot', 'host2')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'cgsnapshot.test_suffix',
+            mock_usage.return_value)
 
 
 class LVMVolumeDriverTestCase(test.TestCase):
@@ -105,104 +342,97 @@ class LVMVolumeDriverTestCase(test.TestCase):
         self.assertEqual(count, 1024)
 
 
+class OdirectSupportTestCase(test.TestCase):
+    @mock.patch('cinder.utils.execute')
+    def test_check_for_odirect_support(self, mock_exec):
+        output = volume_utils.check_for_odirect_support('/dev/abc', '/dev/def')
+        self.assertTrue(output)
+        mock_exec.assert_called_once_with('dd', 'count=0', 'if=/dev/abc',
+                                          'of=/dev/def', 'oflag=direct',
+                                          run_as_root=True)
+        mock_exec.reset_mock()
+
+        output = volume_utils.check_for_odirect_support('/dev/abc', '/dev/def',
+                                                        'iflag=direct')
+        self.assertTrue(output)
+        mock_exec.assert_called_once_with('dd', 'count=0', 'if=/dev/abc',
+                                          'of=/dev/def', 'iflag=direct',
+                                          run_as_root=True)
+
+    @mock.patch('cinder.utils.execute',
+                side_effect=processutils.ProcessExecutionError)
+    def test_check_for_odirect_support_error(self, mock_exec):
+        output = volume_utils.check_for_odirect_support('/dev/abc', '/dev/def')
+        self.assertFalse(output)
+        mock_exec.assert_called_once_with('dd', 'count=0', 'if=/dev/abc',
+                                          'of=/dev/def', 'oflag=direct',
+                                          run_as_root=True)
+
+
 class ClearVolumeTestCase(test.TestCase):
+    @mock.patch('cinder.volume.utils.copy_volume', return_value=None)
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_clear_volume_conf(self, mock_conf, mock_copy):
+        mock_conf.volume_clear = 'zero'
+        mock_conf.volume_clear_size = 0
+        mock_conf.volume_dd_blocksize = '1M'
+        mock_conf.volume_clear_ionice = '-c3'
+        output = volume_utils.clear_volume(1024, 'volume_path')
+        self.assertIsNone(output)
+        mock_copy.assert_called_once_with('/dev/zero', 'volume_path', 1024,
+                                          '1M', sync=True,
+                                          execute=utils.execute, ionice='-c3',
+                                          throttle=None)
 
-    def test_clear_volume(self):
-        CONF.volume_clear = 'zero'
-        CONF.volume_clear_size = 0
-        CONF.volume_dd_blocksize = '1M'
-        CONF.volume_clear_ionice = None
-        self.mox.StubOutWithMock(volume_utils, 'copy_volume')
-        volume_utils.copy_volume("/dev/zero", "volume_path", 1024,
-                                 CONF.volume_dd_blocksize, sync=True,
-                                 ionice=None, execute=utils.execute)
-        self.mox.ReplayAll()
-        volume_utils.clear_volume(1024, "volume_path")
+    @mock.patch('cinder.volume.utils.copy_volume', return_value=None)
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_clear_volume_args(self, mock_conf, mock_copy):
+        mock_conf.volume_clear = 'shred'
+        mock_conf.volume_clear_size = 0
+        mock_conf.volume_dd_blocksize = '1M'
+        mock_conf.volume_clear_ionice = '-c3'
+        output = volume_utils.clear_volume(1024, 'volume_path', 'zero', 1,
+                                           '-c0')
+        self.assertIsNone(output)
+        mock_copy.assert_called_once_with('/dev/zero', 'volume_path', 1,
+                                          '1M', sync=True,
+                                          execute=utils.execute, ionice='-c0',
+                                          throttle=None)
 
-    def test_clear_volume_zero(self):
-        CONF.volume_clear = 'zero'
-        CONF.volume_clear_size = 1
-        CONF.volume_clear_ionice = None
-        self.mox.StubOutWithMock(volume_utils, 'copy_volume')
-        volume_utils.copy_volume("/dev/zero", "volume_path", 1,
-                                 CONF.volume_dd_blocksize, sync=True,
-                                 ionice=None, execute=utils.execute)
-        self.mox.ReplayAll()
-        volume_utils.clear_volume(1024, "volume_path")
+    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_clear_volume_shred(self, mock_conf, mock_exec):
+        mock_conf.volume_clear = 'shred'
+        mock_conf.volume_clear_size = 1
+        mock_conf.volume_clear_ionice = None
+        output = volume_utils.clear_volume(1024, 'volume_path')
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with(
+            'shred', '-n3', '-s1MiB', "volume_path", run_as_root=True)
 
-    def test_clear_volume_ionice(self):
-        CONF.volume_clear = 'zero'
-        CONF.volume_clear_size = 0
-        CONF.volume_dd_blocksize = '1M'
-        CONF.volume_clear_ionice = '-c3'
-        self.mox.StubOutWithMock(volume_utils, 'copy_volume')
-        volume_utils.copy_volume("/dev/zero", "volume_path", 1024,
-                                 CONF.volume_dd_blocksize, sync=True,
-                                 ionice=CONF.volume_clear_ionice,
-                                 execute=utils.execute)
-        self.mox.ReplayAll()
-        volume_utils.clear_volume(1024, "volume_path")
+    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_clear_volume_shred_not_clear_size(self, mock_conf, mock_exec):
+        mock_conf.volume_clear = 'shred'
+        mock_conf.volume_clear_size = None
+        mock_conf.volume_clear_ionice = None
+        output = volume_utils.clear_volume(1024, 'volume_path')
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with(
+            'shred', '-n3', "volume_path", run_as_root=True)
 
-    def test_clear_volume_zero_ionice(self):
-        CONF.volume_clear = 'zero'
-        CONF.volume_clear_size = 1
-        CONF.volume_clear_ionice = '-c3'
-        self.mox.StubOutWithMock(volume_utils, 'copy_volume')
-        volume_utils.copy_volume("/dev/zero", "volume_path", 1,
-                                 CONF.volume_dd_blocksize, sync=True,
-                                 ionice=CONF.volume_clear_ionice,
-                                 execute=utils.execute)
-        self.mox.ReplayAll()
-        volume_utils.clear_volume(1024, "volume_path")
-
-    def test_clear_volume_shred(self):
-        CONF.volume_clear = 'shred'
-        CONF.volume_clear_size = 1
-        clear_cmd = ['shred', '-n3', '-s1MiB', "volume_path"]
-        self.mox.StubOutWithMock(utils, "execute")
-        utils.execute(*clear_cmd, run_as_root=True)
-        self.mox.ReplayAll()
-        volume_utils.clear_volume(1024, "volume_path")
-
-    def test_clear_volume_shred_not_clear_size(self):
-        CONF.volume_clear = 'shred'
-        CONF.volume_clear_size = None
-        clear_cmd = ['shred', '-n3', "volume_path"]
-        self.mox.StubOutWithMock(utils, "execute")
-        utils.execute(*clear_cmd, run_as_root=True)
-        self.mox.ReplayAll()
-        volume_utils.clear_volume(1024, "volume_path")
-
-    def test_clear_volume_invalid_opt(self):
-        CONF.volume_clear = 'non_existent_volume_clearer'
-        CONF.volume_clear_size = 0
-        self.mox.StubOutWithMock(volume_utils, 'copy_volume')
-
-        self.mox.ReplayAll()
-
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_clear_volume_invalid_opt(self, mock_conf):
+        mock_conf.volume_clear = 'non_existent_volume_clearer'
+        mock_conf.volume_clear_size = 0
+        mock_conf.volume_clear_ionice = None
         self.assertRaises(exception.InvalidConfigurationValue,
                           volume_utils.clear_volume,
                           1024, "volume_path")
 
-    def test_clear_volume_lvm_snap(self):
-        self.stubs.Set(os.path, 'exists', lambda x: True)
-        CONF.volume_clear = 'zero'
-        CONF.volume_clear_size = 0
-
-        uuid = '00000000-0000-0000-0000-90ed32cdeed3'
-        name = 'snapshot-' + uuid
-        mangle_name = '_' + re.sub(r'-', r'--', name)
-        vol_path = '/dev/mapper/cinder--volumes-%s-cow' % mangle_name
-
-        def fake_copy_volume(srcstr, deststr, size, blocksize, **kwargs):
-            self.assertEqual(deststr, vol_path)
-            return True
-
-        self.stubs.Set(volume_utils, 'copy_volume', fake_copy_volume)
-        volume_utils.clear_volume(123, vol_path)
-
 
 class CopyVolumeTestCase(test.TestCase):
+<<<<<<< HEAD
 
     def test_copy_volume_dd_iflag_and_oflag(self):
         def fake_utils_execute(*cmd, **kwargs):
@@ -253,16 +483,148 @@ class BlkioCgroupTestCase(test.TestCase):
                                               execute=fake_utils_execute)
         self.assertEqual(['cgexec', '-g',
                           'blkio:' + CONF.volume_copy_blkio_cgroup_name], cmd)
+=======
+    @mock.patch('cinder.volume.utils._calculate_count',
+                return_value=(1234, 5678))
+    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+                return_value=True)
+    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_copy_volume_dd_iflag_and_oflag(self, mock_conf, mock_exec,
+                                            mock_support, mock_count):
+        fake_throttle = throttling.Throttle(['fake_throttle'])
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+                                          sync=True, execute=utils.execute,
+                                          ionice=None, throttle=fake_throttle)
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('fake_throttle', 'dd',
+                                          'if=/dev/zero',
+                                          'of=/dev/null', 'count=5678',
+                                          'bs=1234', 'iflag=direct',
+                                          'oflag=direct', run_as_root=True)
+
+        mock_exec.reset_mock()
+
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+                                          sync=False, execute=utils.execute,
+                                          ionice=None, throttle=fake_throttle)
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('fake_throttle', 'dd',
+                                          'if=/dev/zero',
+                                          'of=/dev/null', 'count=5678',
+                                          'bs=1234', 'iflag=direct',
+                                          'oflag=direct', run_as_root=True)
+
+    @mock.patch('cinder.volume.utils._calculate_count',
+                return_value=(1234, 5678))
+    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+                return_value=False)
+    @mock.patch('cinder.utils.execute')
+    def test_copy_volume_dd_no_iflag_or_oflag(self, mock_exec,
+                                              mock_support, mock_count):
+        fake_throttle = throttling.Throttle(['fake_throttle'])
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+                                          sync=True, execute=utils.execute,
+                                          ionice=None, throttle=fake_throttle)
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('fake_throttle', 'dd',
+                                          'if=/dev/zero',
+                                          'of=/dev/null', 'count=5678',
+                                          'bs=1234', 'conv=fdatasync',
+                                          run_as_root=True)
+
+        mock_exec.reset_mock()
+
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+                                          sync=False, execute=utils.execute,
+                                          ionice=None, throttle=fake_throttle)
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('fake_throttle', 'dd',
+                                          'if=/dev/zero',
+                                          'of=/dev/null', 'count=5678',
+                                          'bs=1234', run_as_root=True)
+
+    @mock.patch('cinder.volume.utils._calculate_count',
+                return_value=(1234, 5678))
+    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+                return_value=False)
+    @mock.patch('cinder.utils.execute')
+    def test_copy_volume_dd_no_throttle(self, mock_exec, mock_support,
+                                        mock_count):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+                                          sync=True, execute=utils.execute,
+                                          ionice=None)
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('dd', 'if=/dev/zero', 'of=/dev/null',
+                                          'count=5678', 'bs=1234',
+                                          'conv=fdatasync', run_as_root=True)
+
+    @mock.patch('cinder.volume.utils._calculate_count',
+                return_value=(1234, 5678))
+    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+                return_value=False)
+    @mock.patch('cinder.utils.execute')
+    def test_copy_volume_dd_with_ionice(self, mock_exec,
+                                        mock_support, mock_count):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+                                          sync=True, execute=utils.execute,
+                                          ionice='-c3')
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('ionice', '-c3', 'dd',
+                                          'if=/dev/zero', 'of=/dev/null',
+                                          'count=5678', 'bs=1234',
+                                          'conv=fdatasync', run_as_root=True)
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
 
 class VolumeUtilsTestCase(test.TestCase):
+    def test_null_safe_str(self):
+        self.assertEqual('', volume_utils.null_safe_str(None))
+        self.assertEqual('', volume_utils.null_safe_str(False))
+        self.assertEqual('', volume_utils.null_safe_str(0))
+        self.assertEqual('', volume_utils.null_safe_str([]))
+        self.assertEqual('', volume_utils.null_safe_str(()))
+        self.assertEqual('', volume_utils.null_safe_str({}))
+        self.assertEqual('', volume_utils.null_safe_str(set()))
+        self.assertEqual('a', volume_utils.null_safe_str('a'))
+        self.assertEqual('1', volume_utils.null_safe_str(1))
+        self.assertEqual('True', volume_utils.null_safe_str(True))
+
+    @mock.patch('cinder.utils.get_root_helper')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning')
+    def test_supports_thin_provisioning(self, mock_supports_thin, mock_helper):
+        self.assertEqual(mock_supports_thin.return_value,
+                         volume_utils.supports_thin_provisioning())
+        mock_helper.assert_called_once_with()
+
+    @mock.patch('cinder.utils.get_root_helper')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
+    def test_get_all_physical_volumes(self, mock_get_vols, mock_helper):
+        self.assertEqual(mock_get_vols.return_value,
+                         volume_utils.get_all_physical_volumes())
+        mock_helper.assert_called_once_with()
+
+    @mock.patch('cinder.utils.get_root_helper')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_volume_groups')
+    def test_get_all_volume_groups(self, mock_get_groups, mock_helper):
+        self.assertEqual(mock_get_groups.return_value,
+                         volume_utils.get_all_volume_groups())
+        mock_helper.assert_called_once_with()
+
     def test_generate_password(self):
         password = volume_utils.generate_password()
-        self.assertTrue([c for c in password if c in '0123456789'])
-        self.assertTrue([c for c in password
-                         if c in 'abcdefghijklmnopqrstuvwxyz'])
-        self.assertTrue([c for c in password
-                         if c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'])
+        self.assertTrue(any(c for c in password if c in '23456789'))
+        self.assertTrue(any(c for c in password
+                            if c in 'abcdefghijkmnopqrstuvwxyz'))
+        self.assertTrue(any(c for c in password
+                            if c in 'ABCDEFGHJKLMNPQRSTUVWXYZ'))
+        self.assertEqual(16, len(password))
+        self.assertEqual(10, len(volume_utils.generate_password(10)))
+
+    @mock.patch('cinder.volume.utils.generate_password')
+    def test_generate_username(self, mock_gen_pass):
+        output = volume_utils.generate_username()
+        self.assertEqual(mock_gen_pass.return_value, output)
 
     def test_extract_host(self):
         host = 'Host'

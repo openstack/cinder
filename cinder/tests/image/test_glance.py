@@ -18,7 +18,7 @@ import datetime
 
 import glanceclient.exc
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder import context
 from cinder import exception
@@ -79,7 +79,7 @@ class TestGlanceImageService(test.TestCase):
     At a high level, the translations involved are:
 
         1. Glance -> ImageService - This is needed so we can support
-           multple ImageServices (Glance, Local, etc)
+           multiple ImageServices (Glance, Local, etc)
 
         2. ImageService -> API - This is needed so we can support multple
            APIs (OpenStack, EC2)
@@ -97,7 +97,6 @@ class TestGlanceImageService(test.TestCase):
 
     def setUp(self):
         super(TestGlanceImageService, self).setUp()
-        #fakes.stub_out_compute_api_snapshot(self.stubs)
 
         client = glance_stubs.StubGlanceClient()
         self.service = self._create_image_service(client)
@@ -522,8 +521,8 @@ class TestGlanceImageService(test.TestCase):
     def test_glance_client_image_id(self):
         fixture = self._make_fixture(name='test image')
         image_id = self.service.create(self.context, fixture)['id']
-        (service, same_id) = glance.get_remote_image_service(self.context,
-                                                             image_id)
+        (_service, same_id) = glance.get_remote_image_service(self.context,
+                                                              image_id)
         self.assertEqual(same_id, image_id)
 
     def test_glance_client_image_ref(self):

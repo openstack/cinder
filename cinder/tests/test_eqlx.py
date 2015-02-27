@@ -15,17 +15,20 @@
 
 import time
 
+from eventlet import greenthread
+import mock
 import mox
+from oslo_concurrency import processutils
 import paramiko
 
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
+from cinder import ssh_utils
 from cinder import test
+from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import eqlx
-
 
 LOG = logging.getLogger(__name__)
 
@@ -42,14 +45,20 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.configuration.san_password = "bar"
         self.configuration.san_ssh_port = 16022
         self.configuration.san_thin_provision = True
+        self.configuration.san_private_key = 'foo'
+        self.configuration.ssh_min_pool_conn = 1
+        self.configuration.ssh_max_pool_conn = 5
+        self.configuration.ssh_conn_timeout = 30
         self.configuration.eqlx_pool = 'non-default'
-        self.configuration.eqlx_use_chap = True
         self.configuration.eqlx_group_name = 'group-0'
         self.configuration.eqlx_cli_timeout = 30
         self.configuration.eqlx_cli_max_retries = 5
-        self.configuration.eqlx_chap_login = 'admin'
-        self.configuration.eqlx_chap_password = 'password'
-        self.configuration.volume_name_template = 'volume_%s'
+
+        self.configuration.eqlx_use_chap = False
+        self.configuration.use_chap_auth = True
+        self.configuration.chap_username = 'admin'
+        self.configuration.chap_password = 'password'
+
         self._context = context.get_admin_context()
         self.driver = eqlx.DellEQLSanISCSIDriver(
             configuration=self.configuration)
@@ -76,8 +85,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
             'provider_location': "%s:3260,1 %s 0" % (self.driver._group_ip,
                                                      self.fake_iqn),
             'provider_auth': 'CHAP %s %s' % (
-                self.configuration.eqlx_chap_login,
-                self.configuration.eqlx_chap_password)
+                self.configuration.chap_username,
+                self.configuration.chap_password)
         }
 
     def _fake_get_iscsi_properties(self, volume):
@@ -159,11 +168,9 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
     def test_create_cloned_volume(self):
         self.driver._eql_execute = self.mox.\
             CreateMock(self.driver._eql_execute)
-        src_vref = {'id': 'fake_uuid'}
+        src_vref = {'name': 'fake_uuid'}
         volume = {'name': self.volume_name}
-        src_volume_name = self.configuration.\
-            volume_name_template % src_vref['id']
-        self.driver._eql_execute('volume', 'select', src_volume_name, 'clone',
+        self.driver._eql_execute('volume', 'select', src_vref['name'], 'clone',
                                  volume['name']).\
             AndReturn(['iSCSI target name is %s.' % self.fake_iqn])
         self.driver._eql_execute('volume', 'select', volume['name'],
@@ -202,7 +209,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                                  self.connector['initiator'],
                                  'authmethod', 'chap',
                                  'username',
-                                 self.configuration.eqlx_chap_login)
+                                 self.configuration.chap_username)
         self.mox.ReplayAll()
         iscsi_properties = self.driver.initialize_connection(volume,
                                                              self.connector)
@@ -319,6 +326,60 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.mox.ReplayAll()
         self.assertRaises(processutils.ProcessExecutionError,
                           self.driver._ssh_execute, ssh, cmd)
+
+    @mock.patch.object(greenthread, 'sleep')
+    def test_ensure_retries(self, _gt_sleep):
+        num_attempts = 3
+        self.driver.configuration.eqlx_cli_max_retries = num_attempts
+
+        self.mock_object(self.driver, '_ssh_execute',
+                         mock.Mock(side_effect=exception.
+                                   VolumeBackendAPIException("some error")))
+        # mocks for calls in _run_ssh
+        self.mock_object(utils, 'check_ssh_injection')
+        self.mock_object(ssh_utils, 'SSHPool')
+
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
+        self.driver.sshpool = mock.Mock(return_value=sshpool)
+        ssh = mock.Mock(paramiko.SSHClient)
+        self.driver.sshpool.item().__enter__ = mock.Mock(return_value=ssh)
+        self.driver.sshpool.item().__exit__ = mock.Mock(return_value=False)
+        # now call the execute
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._eql_execute, "fake command")
+        self.assertEqual(num_attempts + 1,
+                         self.driver._ssh_execute.call_count)
+
+    @mock.patch.object(greenthread, 'sleep')
+    def test_ensure_retries_on_channel_timeout(self, _gt_sleep):
+        num_attempts = 3
+        self.driver.configuration.eqlx_cli_max_retries = num_attempts
+
+        # mocks for calls and objects in _run_ssh
+        self.mock_object(utils, 'check_ssh_injection')
+        self.mock_object(ssh_utils, 'SSHPool')
+
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
+        self.driver.sshpool = mock.Mock(return_value=sshpool)
+        ssh = mock.Mock(paramiko.SSHClient)
+        self.driver.sshpool.item().__enter__ = mock.Mock(return_value=ssh)
+        self.driver.sshpool.item().__exit__ = mock.Mock(return_value=False)
+        # mocks for _ssh_execute and _get_output
+        self.mock_object(self.driver, '_get_output',
+                         mock.Mock(side_effect=exception.
+                                   VolumeBackendAPIException("some error")))
+        # now call the execute
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._eql_execute, "fake command")
+        self.assertEqual(num_attempts + 1, self.driver._get_output.call_count)
 
     def test_with_timeout(self):
         @eqlx.with_timeout

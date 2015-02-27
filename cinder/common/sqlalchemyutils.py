@@ -21,7 +21,7 @@
 import sqlalchemy
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
 
 
@@ -64,7 +64,7 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
     if 'id' not in sort_keys:
         # TODO(justinsb): If this ever gives a false-positive, check
         # the actual primary key, rather than assuming its id
-        LOG.warn(_('Id not in sort_keys; is sort_keys unique?'))
+        LOG.warn(_LW('Id not in sort_keys; is sort_keys unique?'))
 
     assert(not (sort_dir and sort_dirs))
 

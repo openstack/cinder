@@ -16,18 +16,17 @@ Common class for Hitachi storage drivers.
 
 """
 
-from contextlib import nested
 import re
 import threading
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import excutils
 import six
 
 from cinder.db.sqlalchemy import api
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import excutils
+from cinder.i18n import _LE, _LW
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
@@ -35,8 +34,12 @@ from cinder.volume.drivers.hitachi import hbsd_horcm as horcm
 from cinder.volume.drivers.hitachi import hbsd_snm2 as snm2
 from cinder.volume import utils as volume_utils
 
-
-VERSION = '1.0.0'
+"""
+Version history:
+    1.0.0 - Initial driver
+    1.1.0 - Add manage_existing/manage_existing_get_size/unmanage methods
+"""
+VERSION = '1.1.0'
 
 PARAM_RANGE = {
     'hitachi_copy_check_interval': {'min': 1, 'max': 600},
@@ -152,6 +155,10 @@ class HBSDCommon(object):
     def get_snapshot_metadata(self, snapshot_id):
         return self.db.snapshot_metadata_get(self.context, snapshot_id)
 
+    def _update_volume_metadata(self, volume_id, volume_metadata):
+        self.db.volume_metadata_update(self.context, volume_id,
+                                       volume_metadata, False)
+
     def get_ldev(self, obj):
         if not obj:
             return None
@@ -194,6 +201,21 @@ class HBSDCommon(object):
         else:
             method = self.configuration.hitachi_default_copy_method
         return method
+
+    def _string2int(self, num):
+        if not num:
+            return None
+        if num.isdigit():
+            return int(num, 10)
+        if not re.match(r'\w\w:\w\w:\w\w', num):
+            return None
+
+        try:
+            num = int(num.replace(':', ''), 16)
+        except ValueError:
+            return None
+
+        return num
 
     def _range2list(self, conf, param):
         str = getattr(conf, param)
@@ -305,6 +327,7 @@ class HBSDCommon(object):
             self.command = horcm.HBSDHORCM(conf)
             self.command.check_param()
         self.pair_flock = self.command.set_pair_flock()
+        self.horcmgr_flock = self.command.set_horcmgr_flock()
 
     def create_lock_file(self):
         basic_lib.create_empty_file(self.system_lock_file)
@@ -389,14 +412,14 @@ class HBSDCommon(object):
                     try:
                         self.command.restart_pair_horcm()
                     except Exception as e:
-                        LOG.warning(_('Failed to restart horcm: %s') %
+                        LOG.warning(_LW('Failed to restart horcm: %s') %
                                     six.text_type(e))
         else:
             if (all_split or is_vvol) and restart:
                 try:
                     self.command.restart_pair_horcm()
                 except Exception as e:
-                    LOG.warning(_('Failed to restart horcm: %s') %
+                    LOG.warning(_LW('Failed to restart horcm: %s') %
                                 six.text_type(e))
 
     def copy_async_data(self, pvol, svol, is_vvol):
@@ -504,7 +527,7 @@ class HBSDCommon(object):
         pool_id = self.configuration.hitachi_pool_id
 
         lock = basic_lib.get_process_lock(self.storage_lock_file)
-        with nested(self.storage_obj_lock, lock):
+        with self.storage_obj_lock, lock:
             ldev = self.create_ldev(size, ldev_range, pool_id, is_vvol)
         return ldev
 
@@ -718,7 +741,7 @@ class HBSDCommon(object):
             total_gb, free_gb = self.command.comm_get_dp_pool(
                 self.configuration.hitachi_pool_id)
         except Exception as ex:
-            LOG.error(_('Failed to update volume status: %s') %
+            LOG.error(_LE('Failed to update volume status: %s') %
                       six.text_type(ex))
             return None
 
@@ -734,3 +757,85 @@ class HBSDCommon(object):
 
     def init_volinfo(self, vol_info, ldev):
         vol_info[ldev] = {'in_use': TryLock(), 'lock': threading.Lock()}
+
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing Hitachi storage volume.
+
+        existing_ref is a dictionary of the form:
+
+        For HUS 100 Family,
+        {'ldev': <logical device number on storage>,
+         'unit_name': <storage device name>}
+
+        For VSP G1000/VSP/HUS VM,
+        {'ldev': <logical device number on storage>,
+          'serial_number': <product number of storage system>}
+        """
+
+        ldev = self._string2int(existing_ref.get('ldev'))
+
+        msg = basic_lib.set_msg(4, volume_id=volume['id'], ldev=ldev)
+        LOG.info(msg)
+
+        return {'provider_location': ldev}
+
+    def _manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume for manage_existing."""
+
+        ldev = self._string2int(existing_ref.get('ldev'))
+        if ldev is None:
+            msg = basic_lib.output_err(701)
+            raise exception.HBSDError(data=msg)
+
+        size = self.command.get_ldev_size_in_gigabyte(ldev, existing_ref)
+
+        metadata = {'type': basic_lib.NORMAL_VOLUME_TYPE, 'ldev': ldev}
+        self._update_volume_metadata(volume['id'], metadata)
+
+        return size
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        try:
+            return self._manage_existing_get_size(volume, existing_ref)
+        except exception.HBSDError as ex:
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=six.text_type(ex))
+
+    def _unmanage(self, volume, ldev):
+        with self.horcmgr_flock:
+            self.delete_pair(ldev)
+
+        with self.volinfo_lock:
+            if ldev in self.volume_info:
+                self.volume_info.pop(ldev)
+
+    def unmanage(self, volume):
+        """Remove the specified volume from Cinder management."""
+
+        ldev = self.get_ldev(volume)
+
+        if ldev is None:
+            return
+
+        self.add_volinfo(ldev, volume['id'])
+        if not self.volume_info[ldev]['in_use'].lock.acquire(False):
+            desc = self.volume_info[ldev]['in_use'].desc
+            basic_lib.output_err(660, desc=desc)
+            raise exception.HBSDVolumeIsBusy(volume_name=volume['name'])
+
+        is_vvol = self.get_volume_is_vvol(volume)
+        if is_vvol:
+            basic_lib.output_err(706, volume_id=volume['id'],
+                                 volume_type=basic_lib.NORMAL_VOLUME_TYPE)
+            raise exception.HBSDVolumeIsBusy(volume_name=volume['name'])
+        try:
+            self._unmanage(volume, ldev)
+        except exception.HBSDBusy:
+            raise exception.HBSDVolumeIsBusy(volume_name=volume['name'])
+        else:
+            msg = basic_lib.set_msg(5, volume_id=volume['id'], ldev=ldev)
+            LOG.info(msg)
+        finally:
+            if ldev in self.volume_info:
+                self.volume_info[ldev]['in_use'].lock.release()

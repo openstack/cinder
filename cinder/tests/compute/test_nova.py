@@ -12,9 +12,70 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
+
+import mock
+
 from cinder.compute import nova
 from cinder import context
 from cinder import test
+
+
+class NovaClientTestCase(test.TestCase):
+    def setUp(self):
+        super(NovaClientTestCase, self).setUp()
+
+        self.ctx = context.RequestContext('regularuser', 'e3f0833dc08b4cea',
+                                          auth_token='token', is_admin=False)
+        self.ctx.service_catalog = \
+            [{'type': 'compute', 'name': 'nova', 'endpoints':
+              [{'publicURL': 'http://novahost:8774/v2/e3f0833dc08b4cea'}]},
+             {'type': 'identity', 'name': 'keystone', 'endpoints':
+              [{'publicURL': 'http://keystonehost:5000/v2.0'}]}]
+
+        self.override_config('nova_endpoint_template',
+                             'http://novahost:8774/v2/%(project_id)s')
+        self.override_config('nova_endpoint_admin_template',
+                             'http://novaadmhost:4778/v2/%(project_id)s')
+        self.override_config('os_privileged_user_name', 'adminuser')
+        self.override_config('os_privileged_user_password', 'strongpassword')
+
+    @mock.patch('novaclient.v1_1.client.Client')
+    def test_nova_client_regular(self, p_client):
+        nova.novaclient(self.ctx)
+        p_client.assert_called_once_with(
+            'regularuser', 'token', None, region_name=None,
+            auth_url='http://novahost:8774/v2/e3f0833dc08b4cea',
+            insecure=False, endpoint_type='publicURL', cacert=None,
+            timeout=None, extensions=nova.nova_extensions)
+
+    @mock.patch('novaclient.v1_1.client.Client')
+    def test_nova_client_admin_endpoint(self, p_client):
+        nova.novaclient(self.ctx, admin_endpoint=True)
+        p_client.assert_called_once_with(
+            'regularuser', 'token', None, region_name=None,
+            auth_url='http://novaadmhost:4778/v2/e3f0833dc08b4cea',
+            insecure=False, endpoint_type='adminURL', cacert=None,
+            timeout=None, extensions=nova.nova_extensions)
+
+    @mock.patch('novaclient.v1_1.client.Client')
+    def test_nova_client_privileged_user(self, p_client):
+        nova.novaclient(self.ctx, privileged_user=True)
+        p_client.assert_called_once_with(
+            'adminuser', 'strongpassword', None, region_name=None,
+            auth_url='http://keystonehost:5000/v2.0',
+            insecure=False, endpoint_type='publicURL', cacert=None,
+            timeout=None, extensions=nova.nova_extensions)
+
+    @mock.patch('novaclient.v1_1.client.Client')
+    def test_nova_client_custom_region(self, p_client):
+        self.override_config('os_region_name', 'farfaraway')
+        nova.novaclient(self.ctx)
+        p_client.assert_called_once_with(
+            'regularuser', 'token', None, region_name='farfaraway',
+            auth_url='http://novahost:8774/v2/e3f0833dc08b4cea',
+            insecure=False, endpoint_type='publicURL', cacert=None,
+            timeout=None, extensions=nova.nova_extensions)
 
 
 class FakeNovaClient(object):
@@ -39,14 +100,21 @@ class NovaApiTestCase(test.TestCase):
         self.api = nova.API()
         self.novaclient = FakeNovaClient()
         self.ctx = context.get_admin_context()
-        self.mox.StubOutWithMock(nova, 'novaclient')
 
     def test_update_server_volume(self):
-        nova.novaclient(self.ctx).AndReturn(self.novaclient)
-        self.mox.StubOutWithMock(self.novaclient.volumes,
-                                 'update_server_volume')
-        self.novaclient.volumes.update_server_volume('server_id', 'attach_id',
-                                                     'new_volume_id')
-        self.mox.ReplayAll()
-        self.api.update_server_volume(self.ctx, 'server_id', 'attach_id',
-                                      'new_volume_id')
+        with contextlib.nested(
+                mock.patch.object(nova, 'novaclient'),
+                mock.patch.object(self.novaclient.volumes,
+                                  'update_server_volume')
+        ) as (mock_novaclient, mock_update_server_volume):
+            mock_novaclient.return_value = self.novaclient
+
+            self.api.update_server_volume(self.ctx, 'server_id',
+                                          'attach_id', 'new_volume_id')
+
+        mock_novaclient.assert_called_once_with(self.ctx)
+        mock_update_server_volume.assert_called_once_with(
+            'server_id',
+            'attach_id',
+            'new_volume_id'
+        )

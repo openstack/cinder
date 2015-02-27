@@ -17,11 +17,11 @@
 
 """Unit tests for Cisco FC zone driver."""
 
-from oslo.config import cfg
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_utils import importutils
 
 from cinder import exception
-from cinder.openstack.common import importutils
-from cinder.openstack.common import processutils
 from cinder import test
 from cinder.volume import configuration as conf
 

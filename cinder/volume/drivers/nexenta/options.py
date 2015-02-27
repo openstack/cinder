@@ -21,7 +21,7 @@
 .. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 
 NEXENTA_CONNECTION_OPTIONS = [
@@ -33,6 +33,7 @@ NEXENTA_CONNECTION_OPTIONS = [
                help='HTTP port to connect to Nexenta REST API server'),
     cfg.StrOpt('nexenta_rest_protocol',
                default='auto',
+               choices=['http', 'https', 'auto'],
                help='Use http or https for REST connection (default auto)'),
     cfg.StrOpt('nexenta_user',
                default='admin',
@@ -73,6 +74,7 @@ NEXENTA_NFS_OPTIONS = [
                      'which takes a long time.'),
     cfg.StrOpt('nexenta_volume_compression',
                default='on',
+               choices=['on', 'off'],
                help='Default compression value for new ZFS folders.'),
     cfg.BoolOpt('nexenta_nms_cache_volroot',
                 default=True,

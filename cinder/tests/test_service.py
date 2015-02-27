@@ -22,13 +22,14 @@ Unit Tests for remote procedure calls using queue
 
 import mock
 import mox
-from oslo.config import cfg
+from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_db import exception as db_exc
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import manager
-from cinder.openstack.common import processutils
 from cinder import service
 from cinder import test
 from cinder import wsgi
@@ -148,8 +149,9 @@ class ServiceTestCase(test.TestCase):
                                        binary).AndRaise(exception.NotFound())
         service.db.service_create(mox.IgnoreArg(),
                                   service_create).AndReturn(service_ref)
-        service.db.service_get(mox.IgnoreArg(),
-                               mox.IgnoreArg()).AndRaise(Exception())
+        service.db.service_get(
+            mox.IgnoreArg(),
+            mox.IgnoreArg()).AndRaise(db_exc.DBConnectionError())
 
         self.mox.ReplayAll()
         serv = service.Service(host,
@@ -198,8 +200,8 @@ class ServiceTestCase(test.TestCase):
         self.assertFalse(serv.model_disconnected)
 
     def test_service_with_long_report_interval(self):
-        CONF.set_override('service_down_time', 10)
-        CONF.set_override('report_interval', 10)
+        self.override_config('service_down_time', 10)
+        self.override_config('report_interval', 10)
         service.Service.create(binary="test_service",
                                manager="cinder.tests.test_service.FakeManager")
         self.assertEqual(CONF.service_down_time, 25)
@@ -218,40 +220,31 @@ class TestWSGIService(test.TestCase):
         self.assertNotEqual(0, test_service.port)
         test_service.stop()
 
-    def test_reset_pool_size_to_default(self):
-        test_service = service.WSGIService("test_service")
-        test_service.start()
-
-        # Stopping the service, which in turn sets pool size to 0
-        test_service.stop()
-        self.assertEqual(test_service.server._pool.size, 0)
-
-        # Resetting pool size to default
-        test_service.reset()
-        test_service.start()
-        self.assertEqual(test_service.server._pool.size,
-                         1000)
-
-    def test_workers_set_default(self):
+    @mock.patch('cinder.wsgi.Server')
+    def test_workers_set_default(self, wsgi_server):
         test_service = service.WSGIService("osapi_volume")
         self.assertEqual(test_service.workers, processutils.get_worker_count())
 
-    def test_workers_set_good_user_setting(self):
-        CONF.set_override('osapi_volume_workers', 8)
+    @mock.patch('cinder.wsgi.Server')
+    def test_workers_set_good_user_setting(self, wsgi_server):
+        self.override_config('osapi_volume_workers', 8)
         test_service = service.WSGIService("osapi_volume")
         self.assertEqual(test_service.workers, 8)
 
-    def test_workers_set_zero_user_setting(self):
-        CONF.set_override('osapi_volume_workers', 0)
+    @mock.patch('cinder.wsgi.Server')
+    def test_workers_set_zero_user_setting(self, wsgi_server):
+        self.override_config('osapi_volume_workers', 0)
         test_service = service.WSGIService("osapi_volume")
         # If a value less than 1 is used, defaults to number of procs available
         self.assertEqual(test_service.workers, processutils.get_worker_count())
 
-    def test_workers_set_negative_user_setting(self):
-        CONF.set_override('osapi_volume_workers', -1)
+    @mock.patch('cinder.wsgi.Server')
+    def test_workers_set_negative_user_setting(self, wsgi_server):
+        self.override_config('osapi_volume_workers', -1)
         self.assertRaises(exception.InvalidInput,
                           service.WSGIService,
                           "osapi_volume")
+        self.assertFalse(wsgi_server.called)
 
 
 class OSCompatibilityTestCase(test.TestCase):

@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+
 import six
 
-from cinder.openstack.common.gettextutils import _  # noqa
-from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common.scheduler.filters import extra_specs_ops
 
@@ -45,14 +45,15 @@ class CapabilitiesFilter(filters.BaseHostFilter):
             cap = capabilities
             for index in range(len(scope)):
                 try:
-                    cap = cap.get(scope[index], None)
+                    cap = cap.get(scope[index])
                 except AttributeError:
                     return False
                 if cap is None:
                     return False
             if not extra_specs_ops.match(cap, req):
-                LOG.debug(_("extra_spec requirement '%(req)s' does not match "
-                          "'%(cap)s'"), {'req': req, 'cap': cap})
+                LOG.debug("extra_spec requirement '%(req)s' "
+                          "does not match '%(cap)s'",
+                          {'req': req, 'cap': cap})
                 return False
         return True
 
@@ -64,7 +65,7 @@ class CapabilitiesFilter(filters.BaseHostFilter):
         resource_type = filter_properties.get('resource_type')
         if not self._satisfies_extra_specs(host_state.capabilities,
                                            resource_type):
-            LOG.debug(_("%(host_state)s fails resource_type extra_specs "
-                      "requirements"), {'host_state': host_state})
+            LOG.debug("%(host_state)s fails resource_type extra_specs "
+                      "requirements", {'host_state': host_state})
             return False
         return True

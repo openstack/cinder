@@ -27,14 +27,15 @@ import sys
 import time
 
 import glanceclient.exc
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_serialization import jsonutils
+from oslo_utils import timeutils
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import jsonutils
+from cinder.i18n import _, _LW
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import timeutils
+
 
 glance_opts = [
     cfg.ListOpt('allowed_direct_url_schemes',
@@ -127,6 +128,13 @@ class GlanceClientWrapper(object):
             self.client = None
         self.api_servers = None
         self.version = version
+
+        if CONF.glance_num_retries < 0:
+            LOG.warning(_LW(
+                "glance_num_retries shouldn't be a negative value. "
+                "The number of retries will be set to 0 until this is"
+                "corrected in the cinder.conf."))
+            CONF.set_override('glance_num_retries', 0)
 
     def _create_static_client(self, context, netloc, use_ssl, version):
         """Create a client that we'll use for every call."""
@@ -301,16 +309,16 @@ class GlanceImageService(object):
                image_meta, data=None, purge_props=True):
         """Modify the given image with the new data."""
         image_meta = self._translate_to_glance(image_meta)
-        #NOTE(dosaboy): see comment in bug 1210467
+        # NOTE(dosaboy): see comment in bug 1210467
         if CONF.glance_api_version == 1:
             image_meta['purge_props'] = purge_props
-        #NOTE(bcwaldon): id is not an editable field, but it is likely to be
+        # NOTE(bcwaldon): id is not an editable field, but it is likely to be
         # passed in by calling code. Let's be nice and ignore it.
         image_meta.pop('id', None)
         if data:
             image_meta['data'] = data
         try:
-            #NOTE(dosaboy): the v2 api separates update from upload
+            # NOTE(dosaboy): the v2 api separates update from upload
             if data and CONF.glance_api_version > 1:
                 image_meta = self._client.call(context, 'upload', image_id,
                                                image_meta['data'])
@@ -423,7 +431,7 @@ def _convert_to_string(metadata):
 
 
 def _extract_attributes(image):
-    #NOTE(hdd): If a key is not found, base.Resource.__getattr__() may perform
+    # NOTE(hdd): If a key is not found, base.Resource.__getattr__() may perform
     # a get(), resulting in a useless request back to glance. This list is
     # therefore sorted, with dependent attributes as the end
     # 'deleted_at' depends on 'deleted'
@@ -459,14 +467,14 @@ def _remove_read_only(image_meta):
 
 def _reraise_translated_image_exception(image_id):
     """Transform the exception for the image but keep its traceback intact."""
-    exc_type, exc_value, exc_trace = sys.exc_info()
+    _exc_type, exc_value, exc_trace = sys.exc_info()
     new_exc = _translate_image_exception(image_id, exc_value)
     raise new_exc, None, exc_trace
 
 
 def _reraise_translated_exception():
     """Transform the exception but keep its traceback intact."""
-    exc_type, exc_value, exc_trace = sys.exc_info()
+    _exc_type, exc_value, exc_trace = sys.exc_info()
     new_exc = _translate_plain_exception(exc_value)
     raise new_exc, None, exc_trace
 
@@ -505,7 +513,7 @@ def get_remote_image_service(context, image_href):
     :returns: a tuple of the form (image_service, image_id)
 
     """
-    #NOTE(bcwaldon): If image_href doesn't look like a URI, assume its a
+    # NOTE(bcwaldon): If image_href doesn't look like a URI, assume its a
     # standalone image ID
     if '/' not in str(image_href):
         image_service = get_default_image_service()

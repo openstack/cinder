@@ -145,10 +145,7 @@ class QoSSpecManageApiTest(test.TestCase):
         self.flags(host='fake')
         self.controller = qos_specs_manage.QoSSpecsController()
 
-        #reset notifier drivers left over from other api/contrib tests
-        # NOTE(flaper87) WTF? ^^^^ Cleanups should happen in each test,
-        # not the purpose of this patch, though.
-        fake_notifier.reset()
+        # Reset notifications for each test
         self.addCleanup(fake_notifier.reset)
 
     def test_index(self):

@@ -16,14 +16,15 @@ Tests for Volume replication code.
 """
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import importutils
 
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import importutils
 from cinder import test
 from cinder.tests import utils as test_utils
+from cinder.volume import driver
 
 
 CONF = cfg.CONF
@@ -37,7 +38,8 @@ class VolumeReplicationTestCase(test.TestCase):
         self.manager = importutils.import_object(CONF.volume_manager)
         self.manager.host = 'test_host'
         self.manager.stats = {'allocated_capacity_gb': 0}
-        self.driver_patcher = mock.patch.object(self.manager, 'driver')
+        self.driver_patcher = mock.patch.object(self.manager, 'driver',
+                                                spec=driver.VolumeDriver)
         self.driver = self.driver_patcher.start()
 
     @mock.patch('cinder.utils.require_driver_initialized')

@@ -21,19 +21,19 @@ operations on the SAN.
 """
 
 from lxml import etree
+from oslo_concurrency import processutils
+from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
-from cinder.openstack.common import units
-from cinder.volume.drivers.san.san import SanISCSIDriver
+from cinder.volume.drivers.san import san
 
 
 LOG = logging.getLogger(__name__)
 
 
-class HPLeftHandCLIQProxy(SanISCSIDriver):
+class HPLeftHandCLIQProxy(san.SanISCSIDriver):
     """Executes commands relating to HP/LeftHand SAN ISCSI volumes.
 
     We use the CLIQ interface, over SSH.
@@ -274,10 +274,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
             cliq_args['thinProvision'] = '0'
 
         cliq_args['volumeName'] = volume['name']
-        if int(volume['size']) == 0:
-            cliq_args['size'] = '100MB'
-        else:
-            cliq_args['size'] = '%sGB' % volume['size']
+        cliq_args['size'] = '%sGB' % volume['size']
 
         self._cliq_run_xml("createVolume", cliq_args)
 
@@ -317,7 +314,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         try:
             self._cliq_get_volume_info(volume['name'])
         except processutils.ProcessExecutionError:
-            LOG.error(_("Volume did not exist. It will not be deleted"))
+            LOG.error(_LE("Volume did not exist. It will not be deleted"))
             return
         self._cliq_run_xml("deleteVolume", cliq_args)
 
@@ -329,7 +326,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         try:
             self._cliq_get_snapshot_info(snapshot['name'])
         except processutils.ProcessExecutionError:
-            LOG.error(_("Snapshot did not exist. It will not be deleted"))
+            LOG.error(_LE("Snapshot did not exist. It will not be deleted"))
             return
         try:
             self._cliq_run_xml("deleteSnapshot", cliq_args)
@@ -418,7 +415,7 @@ class HPLeftHandCLIQProxy(SanISCSIDriver):
         cliq_args['serverName'] = connector['host']
         self._cliq_run_xml("unassignVolumeToServer", cliq_args)
 
-    def get_volume_stats(self, refresh):
+    def get_volume_stats(self, refresh=False):
         if refresh:
             self._update_backend_status()
 

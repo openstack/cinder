@@ -24,24 +24,25 @@ inline callbacks.
 import logging
 import os
 import shutil
-import tempfile
 import uuid
 
 import fixtures
 import mock
 import mox
-from oslo.config import cfg
 from oslo.messaging import conffixture as messaging_conffixture
+from oslo_concurrency import lockutils
+from oslo_config import cfg
+from oslo_config import fixture as config_fixture
+from oslo_utils import strutils
+from oslo_utils import timeutils
 import stubout
 import testtools
-from testtools import matchers
 
 from cinder.common import config  # noqa Need to register global_opts
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
+from cinder import i18n
 from cinder.openstack.common import log as oslo_logging
-from cinder.openstack.common import strutils
-from cinder.openstack.common import timeutils
 from cinder import rpc
 from cinder import service
 from cinder.tests import conf_fixture
@@ -75,21 +76,14 @@ class Database(fixtures.Fixture):
         self.engine = db_api.get_engine()
         self.engine.dispose()
         conn = self.engine.connect()
-        if sql_connection == "sqlite://":
-            if db_migrate.db_version() > db_migrate.db_initial_version():
-                return
-        else:
-            testdb = os.path.join(CONF.state_path, sqlite_db)
-            if os.path.exists(testdb):
-                return
         db_migrate.db_sync()
-#        self.post_migrations()
         if sql_connection == "sqlite://":
             conn = self.engine.connect()
             self._DB = "".join(line for line in conn.connection.iterdump())
             self.engine.dispose()
         else:
             cleandb = os.path.join(CONF.state_path, sqlite_clean_db)
+            testdb = os.path.join(CONF.state_path, sqlite_db)
             shutil.copyfile(testdb, cleandb)
 
     def setUp(self):
@@ -111,6 +105,9 @@ class TestCase(testtools.TestCase):
     def setUp(self):
         """Run before each test method to initialize test environment."""
         super(TestCase, self).setUp()
+
+        # Unit tests do not need to use lazy gettext
+        i18n.enable_lazy(False)
 
         test_timeout = os.environ.get('OS_TEST_TIMEOUT', 0)
         try:
@@ -185,18 +182,23 @@ class TestCase(testtools.TestCase):
 
         fake_notifier.stub_notifier(self.stubs)
 
-        CONF.set_override('fatal_exception_format_errors', True)
+        self.override_config('fatal_exception_format_errors', True)
         # This will be cleaned up by the NestedTempfile fixture
-        CONF.set_override('lock_path', tempfile.mkdtemp())
-        CONF.set_override('policy_file',
-                          os.path.join(
-                              os.path.abspath(
-                                  os.path.join(
-                                      os.path.dirname(__file__),
-                                      '..',
-                                  )
-                              ),
-                              'cinder/tests/policy.json'))
+        lock_path = self.useFixture(fixtures.TempDir()).path
+        self.fixture = self.useFixture(
+            config_fixture.Config(lockutils.CONF))
+        self.fixture.config(lock_path=lock_path,
+                            group='oslo_concurrency')
+        lockutils.set_defaults(lock_path)
+        self.override_config('policy_file',
+                             os.path.join(
+                                 os.path.abspath(
+                                     os.path.join(
+                                         os.path.dirname(__file__),
+                                         '..',
+                                     )
+                                 ),
+                                 'cinder/tests/policy.json'))
 
     def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""
@@ -221,10 +223,15 @@ class TestCase(testtools.TestCase):
         for key in [k for k in self.__dict__.keys() if k[0] != '_']:
             del self.__dict__[key]
 
+    def override_config(self, name, override, group=None):
+        """Cleanly override CONF variables."""
+        CONF.set_override(name, override, group)
+        self.addCleanup(CONF.clear_override, name, group)
+
     def flags(self, **kw):
         """Override CONF variables for a test."""
         for k, v in kw.iteritems():
-            CONF.set_override(k, v)
+            self.override_config(k, v)
 
     def log_level(self, level):
         """Set logging level to the specified value."""
@@ -252,6 +259,7 @@ class TestCase(testtools.TestCase):
         patcher = mock.patch.object(obj, attr_name, new_attr, **kwargs)
         patcher.start()
         self.addCleanup(patcher.stop)
+        return new_attr
 
     # Useful assertions
     def assertDictMatch(self, d1, d2, approx_equal=False, tolerance=0.001):
@@ -310,25 +318,3 @@ class TestCase(testtools.TestCase):
                                     'd1value': d1value,
                                     'd2value': d2value,
                                 })
-
-    def assertGreater(self, first, second, msg=None):
-        """Python < v2.7 compatibility.  Assert 'first' > 'second'."""
-        try:
-            f = super(TestCase, self).assertGreater
-        except AttributeError:
-            self.assertThat(first,
-                            matchers.GreaterThan(second),
-                            message=msg or '')
-        else:
-            f(first, second, msg=msg)
-
-    def assertGreaterEqual(self, first, second, msg=None):
-        """Python < v2.7 compatibility.  Assert 'first' >= 'second'."""
-        try:
-            f = super(TestCase, self).assertGreaterEqual
-        except AttributeError:
-            self.assertThat(first,
-                            matchers.Not(matchers.LessThan(second)),
-                            message=msg or '')
-        else:
-            f(first, second, msg=msg)

@@ -21,8 +21,9 @@ Helper methods to deal with images.
 
 import re
 
-from cinder.openstack.common.gettextutils import _
-from cinder.openstack.common import strutils
+from oslo.utils import strutils
+
+from cinder.openstack.common._i18n import _
 
 
 class QemuImgInfo(object):
@@ -62,7 +63,7 @@ class QemuImgInfo(object):
         # Standardize on underscores/lc/no dash and no spaces
         # since qemu seems to have mixed outputs here... and
         # this format allows for better integration with python
-        # - ie for usage in kwargs and such...
+        # - i.e. for usage in kwargs and such...
         field = field.lower().strip()
         for c in (" ", "-"):
             field = field.replace(c, '_')
@@ -100,10 +101,9 @@ class QemuImgInfo(object):
             real_details = real_details.strip().lower()
         elif root_cmd == 'snapshot_list':
             # Next line should be a header, starting with 'ID'
-            if not lines_after or not lines_after[0].startswith("ID"):
+            if not lines_after or not lines_after.pop(0).startswith("ID"):
                 msg = _("Snapshot list encountered but no header found!")
                 raise ValueError(msg)
-            del lines_after[0]
             real_details = []
             # This is the sprintf pattern we will try to match
             # "%-10s%-20s%7s%20s%15s"
@@ -118,6 +118,7 @@ class QemuImgInfo(object):
                 date_pieces = line_pieces[5].split(":")
                 if len(date_pieces) != 3:
                     break
+                lines_after.pop(0)
                 real_details.append({
                     'id': line_pieces[0],
                     'tag': line_pieces[1],
@@ -125,7 +126,6 @@ class QemuImgInfo(object):
                     'date': line_pieces[3],
                     'vm_clock': line_pieces[4] + " " + line_pieces[5],
                 })
-                del lines_after[0]
         return real_details
 
     def _parse(self, cmd_output):

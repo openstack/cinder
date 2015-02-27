@@ -16,7 +16,8 @@
 
 import os
 
-from oslo.config import cfg
+from oslo_config import cfg
+from oslo_utils import importutils
 import webob.dec
 import webob.exc
 
@@ -24,8 +25,7 @@ import cinder.api.openstack
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import importutils
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 import cinder.policy
 
@@ -181,7 +181,7 @@ class ExtensionManager(object):
     """
 
     def __init__(self):
-        LOG.info(_('Initializing extension manager.'))
+        LOG.info(_LI('Initializing extension manager.'))
 
         self.cls_list = CONF.osapi_volume_extension
         self.extensions = {}
@@ -196,7 +196,7 @@ class ExtensionManager(object):
             return
 
         alias = ext.alias
-        LOG.info(_('Loaded extension: %s'), alias)
+        LOG.info(_LI('Loaded extension: %s'), alias)
 
         if alias in self.extensions:
             raise exception.Error("Found duplicate extension: %s" % alias)
@@ -241,7 +241,7 @@ class ExtensionManager(object):
             LOG.debug('Ext namespace: %s', extension.namespace)
             LOG.debug('Ext updated: %s', extension.updated)
         except AttributeError as ex:
-            LOG.exception(_("Exception loading extension: %s"), unicode(ex))
+            LOG.exception(_LE("Exception loading extension: %s"), unicode(ex))
             return False
 
         return True
@@ -269,25 +269,12 @@ class ExtensionManager(object):
 
         extensions = list(self.cls_list)
 
-        # NOTE(thingee): Backwards compat for the old extension loader path.
-        # We can drop this post-grizzly in the H release.
-        old_contrib_path = ('cinder.api.openstack.volume.contrib.'
-                            'standard_extensions')
-        new_contrib_path = 'cinder.api.contrib.standard_extensions'
-        if old_contrib_path in extensions:
-            LOG.warn(_('osapi_volume_extension is set to deprecated path: %s'),
-                     old_contrib_path)
-            LOG.warn(_('Please set your flag or cinder.conf settings for '
-                       'osapi_volume_extension to: %s'), new_contrib_path)
-            extensions = [e.replace(old_contrib_path, new_contrib_path)
-                          for e in extensions]
-
         for ext_factory in extensions:
             try:
                 self.load_extension(ext_factory)
             except Exception as exc:
-                LOG.warn(_('Failed to load extension %(ext_factory)s: '
-                           '%(exc)s'),
+                LOG.warn(_LW('Failed to load extension %(ext_factory)s: '
+                             '%(exc)s'),
                          {'ext_factory': ext_factory, 'exc': exc})
 
 
@@ -389,12 +376,15 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
 
 
 def extension_authorizer(api_name, extension_name):
-    def authorize(context, target=None):
+    def authorize(context, target=None, action=None):
         if target is None:
             target = {'project_id': context.project_id,
                       'user_id': context.user_id}
-        action = '%s_extension:%s' % (api_name, extension_name)
-        cinder.policy.enforce(context, action, target)
+        if action is None:
+            act = '%s_extension:%s' % (api_name, extension_name)
+        else:
+            act = '%s_extension:%s:%s' % (api_name, extension_name, action)
+        cinder.policy.enforce(context, act, target)
     return authorize
 
 

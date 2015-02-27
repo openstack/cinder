@@ -21,15 +21,21 @@ import errno
 import os
 import urllib2
 
-from oslo.config import cfg
+from oslo_concurrency import lockutils
+from oslo_config import cfg
+from oslo_utils import units
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.image import image_utils
+<<<<<<< HEAD
 from cinder.openstack.common import lockutils
+=======
+from cinder.openstack.common import fileutils
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
+from cinder import utils
 from cinder.volume import driver
 
 
@@ -60,11 +66,15 @@ class ScalityDriver(driver.VolumeDriver):
 
     VERSION = '1.0.0'
 
+    def __init__(self, *args, **kwargs):
+        super(ScalityDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(volume_opts)
+
     def _check_prerequisites(self):
         """Sanity checks before attempting to mount SOFS."""
 
         # config is mandatory
-        config = CONF.scality_sofs_config
+        config = self.configuration.scality_sofs_config
         if not config:
             msg = _("Value required for 'scality_sofs_config'")
             LOG.warn(msg)
@@ -96,8 +106,8 @@ class ScalityDriver(driver.VolumeDriver):
 
     @lockutils.synchronized('mount-sofs', 'cinder-sofs', external=True)
     def _mount_sofs(self):
-        config = CONF.scality_sofs_config
-        mount_path = CONF.scality_sofs_mount_point
+        config = self.configuration.scality_sofs_config
+        mount_path = self.configuration.scality_sofs_mount_point
         sysdir = os.path.join(mount_path, 'sys')
 
         self._makedirs(mount_path)
@@ -110,8 +120,6 @@ class ScalityDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=msg)
 
     def _size_bytes(self, size_in_g):
-        if int(size_in_g) == 0:
-            return 100 * units.Mi
         return int(size_in_g) * units.Gi
 
     def _create_file(self, path, size):
@@ -128,16 +136,16 @@ class ScalityDriver(driver.VolumeDriver):
         """Any initialization the volume driver does while starting."""
         self._check_prerequisites()
         self._mount_sofs()
-        voldir = os.path.join(CONF.scality_sofs_mount_point,
-                              CONF.scality_sofs_volume_dir)
+        voldir = os.path.join(self.configuration.scality_sofs_mount_point,
+                              self.configuration.scality_sofs_volume_dir)
         if not os.path.isdir(voldir):
             self._makedirs(voldir)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
         self._check_prerequisites()
-        voldir = os.path.join(CONF.scality_sofs_mount_point,
-                              CONF.scality_sofs_volume_dir)
+        voldir = os.path.join(self.configuration.scality_sofs_mount_point,
+                              self.configuration.scality_sofs_volume_dir)
         if not os.path.isdir(voldir):
             msg = _("Cannot find volume dir for Scality SOFS at '%s'") % voldir
             LOG.warn(msg)
@@ -167,8 +175,8 @@ class ScalityDriver(driver.VolumeDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        volume_path = os.path.join(CONF.scality_sofs_mount_point,
-                                   CONF.scality_sofs_volume_dir,
+        volume_path = os.path.join(self.configuration.scality_sofs_mount_point,
+                                   self.configuration.scality_sofs_volume_dir,
                                    snapshot['volume_name'])
         snapshot_path = self.local_path(snapshot)
         self._create_file(snapshot_path,
@@ -180,11 +188,11 @@ class ScalityDriver(driver.VolumeDriver):
         os.remove(self.local_path(snapshot))
 
     def _sofs_path(self, volume):
-        return os.path.join(CONF.scality_sofs_volume_dir,
+        return os.path.join(self.configuration.scality_sofs_volume_dir,
                             volume['name'])
 
     def local_path(self, volume):
-        return os.path.join(CONF.scality_sofs_mount_point,
+        return os.path.join(self.configuration.scality_sofs_mount_point,
                             self._sofs_path(volume))
 
     def ensure_export(self, context, volume):
@@ -243,7 +251,7 @@ class ScalityDriver(driver.VolumeDriver):
                                  image_service,
                                  image_id,
                                  self.local_path(volume),
-                                 CONF.volume_dd_blocksize,
+                                 self.configuration.volume_dd_blocksize,
                                  size=volume['size'])
         self.create_volume(volume)
 
@@ -254,16 +262,22 @@ class ScalityDriver(driver.VolumeDriver):
                                   image_meta,
                                   self.local_path(volume))
 
-    def clone_image(self, volume, image_location, image_id, image_meta):
+    def clone_image(self, context, volume,
+                    image_location, image_meta,
+                    image_service):
         """Create a volume efficiently from an existing image.
 
         image_location is a string whose format depends on the
         image service backend in use. The driver should use it
         to determine whether cloning is possible.
 
-        image_id is a string which represents id of the image.
-        It can be used by the driver to introspect internal
-        stores or registry to do an efficient image clone.
+        image_meta is the metadata associated with the image and
+        includes properties like the image id, size, virtual-size
+        etc.
+
+        image_service is the reference of the image_service to use.
+        Note that this is needed to be passed here for drivers that
+        will want to fetch images from the image service directly.
 
         Returns a dict of volume properties eg. provider_location,
         boolean indicating whether cloning occurred
@@ -281,8 +295,30 @@ class ScalityDriver(driver.VolumeDriver):
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
-        raise NotImplementedError()
+        volume = self.db.volume_get(context, backup['volume_id'])
+        volume_local_path = self.local_path(volume)
+        LOG.info(_LI('Begin backup of volume %s.') % volume['name'])
+
+        qemu_img_info = image_utils.qemu_img_info(volume_local_path)
+        if qemu_img_info.file_format != 'raw':
+            msg = _('Backup is only supported for raw-formatted '
+                    'SOFS volumes.')
+            raise exception.InvalidVolume(msg)
+
+        if qemu_img_info.backing_file is not None:
+            msg = _('Backup is only supported for SOFS volumes '
+                    'without backing file.')
+            raise exception.InvalidVolume(msg)
+
+        with utils.temporary_chown(volume_local_path):
+            with fileutils.file_open(volume_local_path) as volume_file:
+                backup_service.backup(backup, volume_file)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
-        raise NotImplementedError()
+        LOG.info(_LI('Restoring backup %(backup)s to volume %(volume)s.') %
+                 {'backup': backup['id'], 'volume': volume['name']})
+        volume_local_path = self.local_path(volume)
+        with utils.temporary_chown(volume_local_path):
+            with fileutils.file_open(volume_local_path, 'wb') as volume_file:
+                backup_service.restore(backup, volume['id'], volume_file)

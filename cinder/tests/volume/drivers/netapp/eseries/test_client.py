@@ -1,5 +1,8 @@
 # Copyright (c) 2014 Alex Meade
+<<<<<<< HEAD
 # Copyright (c) 2014 Rushil Chugh
+=======
+>>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may

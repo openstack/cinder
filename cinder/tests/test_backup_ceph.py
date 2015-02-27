@@ -21,6 +21,8 @@ import tempfile
 import uuid
 
 import mock
+from oslo_concurrency import processutils
+from oslo_serialization import jsonutils
 import six
 
 from cinder.backup import driver
@@ -29,9 +31,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import jsonutils
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import processutils
 from cinder import test
 from cinder.volume.drivers import rbd as rbddriver
 
@@ -77,8 +77,8 @@ def common_mocks(f):
         @mock.patch('time.time', spec=True)
         # NOTE(dosaboy): set spec to empty object so that hasattr calls return
         #                False by default.
-        @mock.patch('cinder.backup.drivers.ceph.rbd', spec=object)
-        @mock.patch('cinder.backup.drivers.ceph.rados', spec=object)
+        @mock.patch('cinder.backup.drivers.ceph.rbd')
+        @mock.patch('cinder.backup.drivers.ceph.rados')
         def _common_inner_inner2(mock_rados, mock_rbd, mock_time, mock_sleep,
                                  mock_popen):
             mock_time.side_effect = inst.time_inc
@@ -86,11 +86,6 @@ def common_mocks(f):
 
             inst.mock_rados = mock_rados
             inst.mock_rbd = mock_rbd
-            inst.mock_rados.Rados = mock.Mock
-            inst.mock_rados.Rados.ioctx = mock.Mock()
-            inst.mock_rbd.RBD = mock.Mock
-            inst.mock_rbd.Image = mock.Mock
-            inst.mock_rbd.Image.close = mock.Mock()
             inst.mock_rbd.ImageBusy = MockImageBusyException
             inst.mock_rbd.ImageNotFound = MockImageNotFoundException
 
@@ -177,7 +172,7 @@ class BackupCephTestCase(test.TestCase):
         # Create a file with some data in it.
         self.volume_file = tempfile.NamedTemporaryFile()
         self.addCleanup(self.volume_file.close)
-        for i in xrange(0, self.num_chunks):
+        for _i in xrange(0, self.num_chunks):
             data = os.urandom(self.chunk_size)
             self.checksum.update(data)
             self.volume_file.write(data)
@@ -201,6 +196,8 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_get_rbd_support(self):
+        del self.service.rbd.RBD_FEATURE_LAYERING
+        del self.service.rbd.RBD_FEATURE_STRIPINGV2
         self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_LAYERING'))
         self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_STRIPINGV2'))
 
@@ -224,14 +221,14 @@ class BackupCephTestCase(test.TestCase):
     def test_get_most_recent_snap(self):
         last = 'backup.%s.snap.9824923.1212' % (uuid.uuid4())
 
-        self.mock_rbd.Image.list_snaps = mock.Mock()
-        self.mock_rbd.Image.list_snaps.return_value = \
+        image = self.mock_rbd.Image.return_value
+        image.list_snaps.return_value = \
             [{'name': 'backup.%s.snap.6423868.2342' % (uuid.uuid4())},
              {'name': 'backup.%s.snap.1321319.3235' % (uuid.uuid4())},
              {'name': last},
              {'name': 'backup.%s.snap.3824923.1412' % (uuid.uuid4())}]
 
-        snap = self.service._get_most_recent_snap(self.service.rbd.Image())
+        snap = self.service._get_most_recent_snap(image)
         self.assertEqual(last, snap)
 
     @common_mocks
@@ -261,21 +258,24 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_get_backup_snaps(self):
-        self.mock_rbd.Image.list_snaps = mock.Mock()
-        self.mock_rbd.Image.list_snaps.return_value = \
-            [{'name': 'backup.%s.snap.6423868.2342' % (uuid.uuid4())},
-             {'name': 'backup.%s.wambam.6423868.2342' % (uuid.uuid4())},
-             {'name': 'backup.%s.snap.1321319.3235' % (uuid.uuid4())},
-             {'name': 'bbbackup.%s.snap.1321319.3235' % (uuid.uuid4())},
-             {'name': 'backup.%s.snap.3824923.1412' % (uuid.uuid4())}]
-        snaps = self.service.get_backup_snaps(self.service.rbd.Image())
+        image = self.mock_rbd.Image.return_value
+        image.list_snaps.return_value = [
+            {'name': 'backup.%s.snap.6423868.2342' % (uuid.uuid4())},
+            {'name': 'backup.%s.wambam.6423868.2342' % (uuid.uuid4())},
+            {'name': 'backup.%s.snap.1321319.3235' % (uuid.uuid4())},
+            {'name': 'bbbackup.%s.snap.1321319.3235' % (uuid.uuid4())},
+            {'name': 'backup.%s.snap.3824923.1412' % (uuid.uuid4())}]
+        snaps = self.service.get_backup_snaps(image)
         self.assertEqual(len(snaps), 3)
 
     @common_mocks
     def test_transfer_data_from_rbd_to_file(self):
-        self.mock_rbd.Image.read = mock.Mock()
-        self.mock_rbd.Image.read.return_value = \
-            self.volume_file.read(self.data_length)
+        def fake_read(offset, length):
+            self.volume_file.seek(offset)
+            return self.volume_file.read(length)
+
+        self.mock_rbd.Image.return_value.read.side_effect = fake_read
+        self.mock_rbd.Image.return_value.size.return_value = self.data_length
 
         with tempfile.NamedTemporaryFile() as test_file:
             self.volume_file.seek(0)
@@ -286,7 +286,7 @@ class BackupCephTestCase(test.TestCase):
 
             checksum = hashlib.sha256()
             test_file.seek(0)
-            for c in xrange(0, self.num_chunks):
+            for _c in xrange(0, self.num_chunks):
                 checksum.update(test_file.read(self.chunk_size))
 
             # Ensure the files are equal
@@ -294,28 +294,23 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_transfer_data_from_rbd_to_rbd(self):
+        def fake_read(offset, length):
+            self.volume_file.seek(offset)
+            return self.volume_file.read(length)
 
         def mock_write_data(data, offset):
             checksum.update(data)
             test_file.write(data)
 
-        self.mock_rbd.Image.read = mock.Mock()
-        self.mock_rbd.Image.read.return_value = \
-            self.volume_file.read(self.data_length)
+        rbd1 = mock.Mock()
+        rbd1.read.side_effect = fake_read
 
-        self.mock_rbd.Image.size = mock.Mock()
-        self.mock_rbd.Image.size.return_value = \
-            self.chunk_size * self.num_chunks
-
-        self.mock_rbd.Image.write = mock.Mock()
-        self.mock_rbd.Image.write.side_effect = mock_write_data
+        rbd2 = mock.Mock()
+        rbd2.write.side_effect = mock_write_data
 
         with tempfile.NamedTemporaryFile() as test_file:
             self.volume_file.seek(0)
             checksum = hashlib.sha256()
-
-            rbd1 = self.service.rbd.Image()
-            rbd2 = self.service.rbd.Image()
 
             src_rbd_io = self._get_wrapped_rbd_io(rbd1)
             dest_rbd_io = self._get_wrapped_rbd_io(rbd2)
@@ -332,8 +327,7 @@ class BackupCephTestCase(test.TestCase):
             checksum.update(data)
             test_file.write(data)
 
-        self.mock_rbd.Image.write = mock.Mock()
-        self.mock_rbd.Image.write.side_effect = mock_write_data
+        self.mock_rbd.Image.return_value.write.side_effect = mock_write_data
 
         with tempfile.NamedTemporaryFile() as test_file:
             self.volume_file.seek(0)
@@ -357,7 +351,7 @@ class BackupCephTestCase(test.TestCase):
 
             checksum = hashlib.sha256()
             test_file.seek(0)
-            for c in xrange(0, self.num_chunks):
+            for _c in xrange(0, self.num_chunks):
                 checksum.update(test_file.read(self.chunk_size))
 
             # Ensure the files are equal
@@ -371,8 +365,7 @@ class BackupCephTestCase(test.TestCase):
             checksum.update(data)
             test_file.write(data)
 
-        self.service.rbd.Image.write = mock.Mock()
-        self.service.rbd.Image.write.side_effect = mock_write_data
+        self.service.rbd.Image.return_value.write.side_effect = mock_write_data
 
         with mock.patch.object(self.service, '_backup_metadata'):
             with mock.patch.object(self.service, '_discard_bytes'):
@@ -382,7 +375,7 @@ class BackupCephTestCase(test.TestCase):
                     # Ensure the files are equal
                     self.assertEqual(checksum.digest(), self.checksum.digest())
 
-        self.assertTrue(self.service.rbd.Image.write.called)
+        self.assertTrue(self.service.rbd.Image.return_value.write.called)
 
     @common_mocks
     def test_get_backup_base_name(self):
@@ -614,17 +607,14 @@ class BackupCephTestCase(test.TestCase):
         backup_name = self.service._get_backup_base_name(self.backup_id,
                                                          diff_format=True)
 
-        self.mock_rbd.RBD.list = mock.Mock()
-        self.mock_rbd.RBD.list.return_value = [backup_name]
+        self.mock_rbd.RBD.return_value.list.return_value = [backup_name]
 
         def mock_read_data(offset, length):
             return self.volume_file.read(self.data_length)
 
-        self.mock_rbd.Image.read = mock.Mock()
-        self.mock_rbd.Image.read.side_effect = mock_read_data
+        self.mock_rbd.Image.return_value.read.side_effect = mock_read_data
 
-        self.mock_rbd.Image.size = mock.Mock()
-        self.mock_rbd.Image.size.return_value = \
+        self.mock_rbd.Image.return_value.size.return_value = \
             self.chunk_size * self.num_chunks
 
         with mock.patch.object(self.service, '_restore_metadata') as \
@@ -639,7 +629,7 @@ class BackupCephTestCase(test.TestCase):
 
                     checksum = hashlib.sha256()
                     test_file.seek(0)
-                    for c in xrange(0, self.num_chunks):
+                    for _c in xrange(0, self.num_chunks):
                         checksum.update(test_file.read(self.chunk_size))
 
                     # Ensure the files are equal
@@ -649,22 +639,21 @@ class BackupCephTestCase(test.TestCase):
                     self.assertTrue(mock_discard_bytes.called)
                     self.assertTrue(mock_discard_bytes.called)
 
-        self.assertTrue(self.service.rbd.Image.read.called)
+        self.assertTrue(self.service.rbd.Image.return_value.read.called)
 
     @common_mocks
     def test_discard_bytes(self):
-        self.mock_rbd.Image.discard = mock.Mock()
-        wrapped_rbd = self._get_wrapped_rbd_io(self.mock_rbd.Image())
+        # Lower the chunksize to a memory managable number
+        self.service.chunk_size = 1024
+        image = self.mock_rbd.Image.return_value
+        wrapped_rbd = self._get_wrapped_rbd_io(image)
 
         self.service._discard_bytes(wrapped_rbd, 0, 0)
-        self.assertEqual(self.mock_rbd.Image.discard.call_count, 0)
+        self.assertEqual(image.discard.call_count, 0)
 
         self.service._discard_bytes(wrapped_rbd, 0, 1234)
-        self.assertEqual(self.mock_rbd.Image.discard.call_count, 1)
-        self.mock_rbd.Image.discard.reset_mock()
-
-        self.mock_rbd.Image.write = mock.Mock()
-        self.mock_rbd.Image.flush = mock.Mock()
+        self.assertEqual(image.discard.call_count, 1)
+        image.reset_mock()
 
         # Test discard with no remainder
         with mock.patch.object(self.service, '_file_is_rbd') as \
@@ -674,13 +663,11 @@ class BackupCephTestCase(test.TestCase):
             self.service._discard_bytes(wrapped_rbd, 0,
                                         self.service.chunk_size * 2)
 
-            self.assertEqual(self.mock_rbd.Image.write.call_count, 2)
-            self.assertEqual(self.mock_rbd.Image.flush.call_count, 2)
-            self.assertFalse(self.mock_rbd.Image.discard.called)
+            self.assertEqual(image.write.call_count, 2)
+            self.assertEqual(image.flush.call_count, 2)
+            self.assertFalse(image.discard.called)
 
-        self.mock_rbd.Image.write.reset_mock()
-        self.mock_rbd.Image.flush.reset_mock()
-        self.mock_rbd.Image.discard.reset_mock()
+        image.reset_mock()
 
         # Now test with a remainder.
         with mock.patch.object(self.service, '_file_is_rbd') as \
@@ -690,9 +677,9 @@ class BackupCephTestCase(test.TestCase):
             self.service._discard_bytes(wrapped_rbd, 0,
                                         (self.service.chunk_size * 2) + 1)
 
-            self.assertEqual(self.mock_rbd.Image.write.call_count, 3)
-            self.assertEqual(self.mock_rbd.Image.flush.call_count, 3)
-            self.assertFalse(self.mock_rbd.Image.discard.called)
+            self.assertEqual(image.write.call_count, 3)
+            self.assertEqual(image.flush.call_count, 3)
+            self.assertFalse(image.discard.called)
 
     @common_mocks
     def test_delete_backup_snapshot(self):
@@ -721,9 +708,7 @@ class BackupCephTestCase(test.TestCase):
         backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          diff_format=True)
 
-        self.mock_rbd.RBD.list = mock.Mock()
-        self.mock_rbd.RBD.list.return_value = [backup_name]
-        self.mock_rbd.RBD.remove = mock.Mock()
+        self.mock_rbd.RBD.return_value.list.return_value = [backup_name]
 
         with mock.patch.object(self.service, '_delete_backup_snapshot') as \
                 mock_del_backup_snap:
@@ -733,9 +718,8 @@ class BackupCephTestCase(test.TestCase):
             self.service.delete(self.backup)
             self.assertTrue(mock_del_backup_snap.called)
 
-        #self.assertFalse(self.mock_rbd.ImageNotFound.called)
-        self.assertTrue(self.mock_rbd.RBD.list.called)
-        self.assertTrue(self.mock_rbd.RBD.remove.called)
+        self.assertTrue(self.mock_rbd.RBD.return_value.list.called)
+        self.assertTrue(self.mock_rbd.RBD.return_value.remove.called)
 
     @common_mocks
     @mock.patch('cinder.backup.drivers.ceph.VolumeMetadataBackup', spec=True)
@@ -743,13 +727,11 @@ class BackupCephTestCase(test.TestCase):
         backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          self.backup_id)
 
-        self.mock_rbd.RBD.list = mock.Mock()
-        self.mock_rbd.RBD.list.return_value = [backup_name]
-        self.mock_rbd.RBD.remove = mock.Mock()
+        self.mock_rbd.RBD.return_value.list.return_value = [backup_name]
 
         with mock.patch.object(self.service, 'get_backup_snaps'):
             self.service.delete(self.backup)
-            self.assertTrue(self.mock_rbd.RBD.remove.called)
+            self.assertTrue(self.mock_rbd.RBD.return_value.remove.called)
 
     @common_mocks
     def test_try_delete_base_image_busy(self):
@@ -757,10 +739,9 @@ class BackupCephTestCase(test.TestCase):
         backup_name = self.service._get_backup_base_name(self.volume_id,
                                                          self.backup_id)
 
-        self.mock_rbd.RBD.list = mock.Mock()
-        self.mock_rbd.RBD.list.return_value = [backup_name]
-        self.mock_rbd.RBD.remove = mock.Mock()
-        self.mock_rbd.RBD.remove.side_effect = self.mock_rbd.ImageBusy
+        rbd = self.mock_rbd.RBD.return_value
+        rbd.list.return_value = [backup_name]
+        rbd.remove.side_effect = self.mock_rbd.ImageBusy
 
         with mock.patch.object(self.service, 'get_backup_snaps') as \
                 mock_get_backup_snaps:
@@ -769,8 +750,8 @@ class BackupCephTestCase(test.TestCase):
                               self.backup['id'], self.backup['volume_id'])
             self.assertTrue(mock_get_backup_snaps.called)
 
-        self.assertTrue(self.mock_rbd.RBD.list.called)
-        self.assertTrue(self.mock_rbd.RBD.remove.called)
+        self.assertTrue(rbd.list.called)
+        self.assertTrue(rbd.remove.called)
         self.assertTrue(MockImageBusyException in RAISED_EXCEPTIONS)
 
     @common_mocks
@@ -931,7 +912,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_restore_metdata(self):
-        version = 1
+        version = 2
 
         def mock_read(*args):
             base_tag = driver.BackupMetadataAPI.TYPE_TAG_VOL_BASE_META
@@ -940,17 +921,14 @@ class BackupCephTestCase(test.TestCase):
                                     glance_tag: {'image_name': 'image.glance'},
                                     'version': version})
 
-        self.mock_rados.Object = mock.Mock
-        self.mock_rados.Object.read = mock.Mock()
-        self.mock_rados.Object.read.side_effect = mock_read
-        self.mock_rados.Object.stat = mock.Mock()
+        self.mock_rados.Object.return_value.read.side_effect = mock_read
 
         self.service._restore_metadata(self.backup, self.volume_id)
 
-        self.assertTrue(self.mock_rados.Object.stat.called)
-        self.assertTrue(self.mock_rados.Object.read.called)
+        self.assertTrue(self.mock_rados.Object.return_value.stat.called)
+        self.assertTrue(self.mock_rados.Object.return_value.read.called)
 
-        version = 2
+        version = 3
         try:
             self.service._restore_metadata(self.backup, self.volume_id)
         except exception.BackupOperationError as exc:
@@ -962,7 +940,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     @mock.patch('cinder.backup.drivers.ceph.VolumeMetadataBackup', spec=True)
-    def test_backup_metata_already_exists(self, mock_meta_backup):
+    def test_backup_metadata_already_exists(self, mock_meta_backup):
 
         def mock_set(json_meta):
             msg = (_("Metadata backup object '%s' already exists") %
@@ -1017,11 +995,9 @@ class BackupCephTestCase(test.TestCase):
             glance_tag = driver.BackupMetadataAPI.TYPE_TAG_VOL_GLANCE_META
             return jsonutils.dumps({base_tag: {'image_name': 'image.base'},
                                     glance_tag: {'image_name': 'image.glance'},
-                                    'version': 2})
+                                    'version': 3})
 
-        self.mock_rados.Object = mock.Mock
-        self.mock_rados.Object.read = mock.Mock()
-        self.mock_rados.Object.read.side_effect = mock_read
+        self.mock_rados.Object.return_value.read.side_effect = mock_read
         with mock.patch.object(ceph.VolumeMetadataBackup, '_exists') as \
                 mock_exists:
             mock_exists.return_value = True
@@ -1032,7 +1008,7 @@ class BackupCephTestCase(test.TestCase):
 
             self.assertTrue(mock_exists.called)
 
-        self.assertTrue(self.mock_rados.Object.read.called)
+        self.assertTrue(self.mock_rados.Object.return_value.read.called)
 
 
 def common_meta_backup_mocks(f):
@@ -1042,12 +1018,11 @@ def common_meta_backup_mocks(f):
     mocks that can't/don't get unset.
     """
     def _common_inner_inner1(inst, *args, **kwargs):
-        @mock.patch('cinder.backup.drivers.ceph.rbd', spec=object)
-        @mock.patch('cinder.backup.drivers.ceph.rados', spec=object)
+        @mock.patch('cinder.backup.drivers.ceph.rbd')
+        @mock.patch('cinder.backup.drivers.ceph.rados')
         def _common_inner_inner2(mock_rados, mock_rbd):
             inst.mock_rados = mock_rados
             inst.mock_rbd = mock_rbd
-            inst.mock_rados.Object = mock.Mock
             inst.mock_rados.ObjectNotFound = MockObjectNotFoundException
             return f(inst, *args, **kwargs)
 
@@ -1071,16 +1046,16 @@ class VolumeMetadataBackupTestCase(test.TestCase):
     @common_meta_backup_mocks
     def test_exists(self):
         # True
-        with mock.patch.object(self.mock_rados.Object, 'stat') as mock_stat:
-            self.assertTrue(self.mb.exists)
-            self.assertTrue(mock_stat.called)
+        self.assertTrue(self.mb.exists)
+        self.assertTrue(self.mock_rados.Object.return_value.stat.called)
+        self.mock_rados.Object.return_value.reset_mock()
 
         # False
-        with mock.patch.object(self.mock_rados.Object, 'stat') as mock_stat:
-            mock_stat.side_effect = self.mock_rados.ObjectNotFound
-            self.assertFalse(self.mb.exists)
-            self.assertTrue(mock_stat.called)
-            self.assertEqual(RAISED_EXCEPTIONS, [MockObjectNotFoundException])
+        self.mock_rados.Object.return_value.stat.side_effect = (
+            self.mock_rados.ObjectNotFound)
+        self.assertFalse(self.mb.exists)
+        self.assertTrue(self.mock_rados.Object.return_value.stat.called)
+        self.assertEqual(RAISED_EXCEPTIONS, [MockObjectNotFoundException])
 
     @common_meta_backup_mocks
     def test_set(self):
@@ -1120,14 +1095,12 @@ class VolumeMetadataBackupTestCase(test.TestCase):
 
     @common_meta_backup_mocks
     def test_get(self):
-        with mock.patch.object(self.mock_rados.Object, 'stat') as mock_stat:
-            mock_stat.side_effect = self.mock_rados.ObjectNotFound
-            with mock.patch.object(self.mock_rados.Object, 'read') as \
-                    mock_read:
-                mock_read.return_value = 'meta'
-                self.assertIsNone(self.mb.get())
-                mock_stat.side_effect = None
-                self.assertEqual(self.mb.get(), 'meta')
+        self.mock_rados.Object.return_value.stat.side_effect = (
+            self.mock_rados.ObjectNotFound)
+        self.mock_rados.Object.return_value.read.return_value = 'meta'
+        self.assertIsNone(self.mb.get())
+        self.mock_rados.Object.return_value.stat.side_effect = None
+        self.assertEqual(self.mb.get(), 'meta')
 
     @common_meta_backup_mocks
     def remove_if_exists(self):

@@ -15,6 +15,7 @@
 
 """The volumes snapshots api."""
 
+from oslo_utils import strutils
 import webob
 from webob import exc
 
@@ -22,9 +23,8 @@ from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
 from cinder import utils
 from cinder import volume
 
@@ -107,7 +107,7 @@ class SnapshotsController(wsgi.Controller):
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
-            req.cache_resource(snapshot)
+            req.cache_db_snapshot(snapshot)
         except exception.NotFound:
             msg = _("Snapshot could not be found")
             raise exc.HTTPNotFound(explanation=msg)
@@ -118,7 +118,7 @@ class SnapshotsController(wsgi.Controller):
         """Delete a snapshot."""
         context = req.environ['cinder.context']
 
-        LOG.info(_("Delete snapshot with id: %s"), id, context=context)
+        LOG.info(_LI("Delete snapshot with id: %s"), id, context=context)
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
@@ -143,12 +143,12 @@ class SnapshotsController(wsgi.Controller):
         """Returns a list of snapshots, transformed through entity_maker."""
         context = req.environ['cinder.context']
 
-        #pop out limit and offset , they are not search_opts
+        # pop out limit and offset , they are not search_opts
         search_opts = req.GET.copy()
         search_opts.pop('limit', None)
         search_opts.pop('offset', None)
 
-        #filter out invalid option
+        # filter out invalid option
         allowed_search_options = ('status', 'volume_id', 'name')
         utils.remove_invalid_filter_options(context, search_opts,
                                             allowed_search_options)
@@ -161,7 +161,7 @@ class SnapshotsController(wsgi.Controller):
         snapshots = self.volume_api.get_all_snapshots(context,
                                                       search_opts=search_opts)
         limited_list = common.limited(snapshots, req)
-        req.cache_resource(limited_list)
+        req.cache_db_snapshots(limited_list)
         res = [entity_maker(context, snapshot) for snapshot in limited_list]
         return {'snapshots': res}
 
@@ -218,6 +218,7 @@ class SnapshotsController(wsgi.Controller):
                 snapshot.get('display_name'),
                 snapshot.get('description'),
                 **kwargs)
+        req.cache_db_snapshot(new_snapshot)
 
         retval = _translate_snapshot_detail_view(context, new_snapshot)
 
@@ -270,6 +271,7 @@ class SnapshotsController(wsgi.Controller):
             raise exc.HTTPNotFound(explanation=msg)
 
         snapshot.update(update_dict)
+        req.cache_db_snapshot(snapshot)
 
         return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
 
