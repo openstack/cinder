@@ -147,6 +147,16 @@ def check_no_contextlib_nested(logical_line):
         yield(0, msg)
 
 
+def check_datetime_now(logical_line, noqa):
+    if noqa:
+        return
+
+    msg = ("C301: Found datetime.now(). "
+           "Please use timeutils.utcnow() from oslo_utils.")
+    if 'datetime.now' in logical_line:
+        yield(0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
@@ -156,3 +166,4 @@ def factory(register):
     register(check_assert_called_once)
     register(check_oslo_namespace_imports)
     register(check_no_contextlib_nested)
+    register(check_datetime_now)

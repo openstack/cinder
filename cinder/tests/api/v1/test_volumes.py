@@ -18,6 +18,7 @@ import datetime
 from lxml import etree
 import mock
 from oslo_config import cfg
+from oslo_utils import timeutils
 import webob
 
 from cinder.api import extensions
@@ -835,7 +836,7 @@ class VolumeSerializerTest(test.TestCase):
             size=1024,
             availability_zone='vol_availability',
             bootable='false',
-            created_at=datetime.datetime.now(),
+            created_at=timeutils.utcnow(),
             attachments=[dict(id='vol_id',
                               volume_id='vol_id',
                               server_id='instance_uuid',
@@ -860,7 +861,7 @@ class VolumeSerializerTest(test.TestCase):
                             size=1024,
                             availability_zone='vol1_availability',
                             bootable='true',
-                            created_at=datetime.datetime.now(),
+                            created_at=timeutils.utcnow(),
                             attachments=[dict(id='vol1_id',
                                               volume_id='vol1_id',
                                               server_id='instance_uuid',
@@ -877,7 +878,7 @@ class VolumeSerializerTest(test.TestCase):
                             size=1024,
                             availability_zone='vol2_availability',
                             bootable='true',
-                            created_at=datetime.datetime.now(),
+                            created_at=timeutils.utcnow(),
                             attachments=[dict(id='vol2_id',
                                               volume_id='vol2_id',
                                               server_id='instance_uuid',

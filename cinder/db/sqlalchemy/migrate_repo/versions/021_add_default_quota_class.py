@@ -31,7 +31,7 @@ CONF.import_opt('quota_gigabytes', 'cinder.quota')
 LOG = logging.getLogger(__name__)
 
 CLASS_NAME = 'default'
-CREATED_AT = datetime.datetime.now()
+CREATED_AT = datetime.datetime.now()  # noqa
 
 
 def upgrade(migrate_engine):

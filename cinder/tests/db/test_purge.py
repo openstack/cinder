@@ -19,6 +19,7 @@ import datetime
 import uuid
 
 from oslo_log import log as logging
+from oslo_utils import timeutils
 
 from cinder import context
 from cinder import db
@@ -55,8 +56,8 @@ class PurgeDeletedTest(test.TestCase):
             ins_stmt = self.vm.insert().values(volume_id=uuidstr)
             self.conn.execute(ins_stmt)
         # Set 4 of them deleted, 2 are 60 days ago, 2 are 20 days ago
-        old = datetime.datetime.now() - datetime.timedelta(days=20)
-        older = datetime.datetime.now() - datetime.timedelta(days=60)
+        old = timeutils.utcnow() - datetime.timedelta(days=20)
+        older = timeutils.utcnow() - datetime.timedelta(days=60)
         make_old = self.volumes.update().\
             where(self.volumes.c.id.in_(self.uuidstrs[1:3]))\
             .values(deleted_at=old)

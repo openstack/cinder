@@ -25,7 +25,7 @@ from cinder.i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
-CREATED_AT = datetime.datetime.now()
+CREATED_AT = datetime.datetime.now()  # noqa
 
 
 def upgrade(migrate_engine):
