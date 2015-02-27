@@ -40,6 +40,7 @@ from cinder.openstack.common import fileutils
 from cinder.openstack.common import imageutils
 from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
@@ -62,11 +63,11 @@ def qemu_img_info(path, run_as_root=True):
     return imageutils.QemuImgInfo(out)
 
 
-def convert_image(source, dest, out_format, bps_limit=None, run_as_root=True):
+def _convert_image(prefix, source, dest, out_format, run_as_root=True):
     """Convert image to other format."""
 
-    cmd = ('qemu-img', 'convert',
-           '-O', out_format, source, dest)
+    cmd = prefix + ('qemu-img', 'convert',
+                    '-O', out_format, source, dest)
 
     # Check whether O_DIRECT is supported and set '-t none' if it is
     # This is needed to ensure that all data hit the device before
@@ -81,16 +82,12 @@ def convert_image(source, dest, out_format, bps_limit=None, run_as_root=True):
             volume_utils.check_for_odirect_support(source,
                                                    dest,
                                                    'oflag=direct')):
-        cmd = ('qemu-img', 'convert',
-               '-t', 'none',
-               '-O', out_format, source, dest)
+        cmd = prefix + ('qemu-img', 'convert',
+                        '-t', 'none',
+                        '-O', out_format, source, dest)
 
     start_time = timeutils.utcnow()
-    cgcmd = volume_utils.setup_blkio_cgroup(source, dest, bps_limit)
-    if cgcmd:
-        cmd = tuple(cgcmd) + cmd
     utils.execute(*cmd, run_as_root=run_as_root)
-
     duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
 
     # NOTE(jdg): use a default of 1, mostly for unit test, but in
@@ -108,6 +105,15 @@ def convert_image(source, dest, out_format, bps_limit=None, run_as_root=True):
 
     msg = _("Converted %(sz).2f MB image at %(mbps).2f MB/s")
     LOG.info(msg % {"sz": fsz_mb, "mbps": mbps})
+
+
+def convert_image(source, dest, out_format, run_as_root=True, throttle=None):
+    if not throttle:
+        throttle = throttling.Throttle.get_default()
+    with throttle.subcommand(source, dest) as throttle_cmd:
+        _convert_image(tuple(throttle_cmd['prefix']),
+                       source, dest,
+                       out_format, run_as_root=run_as_root)
 
 
 def resize_image(source, size, run_as_root=False):
@@ -278,7 +284,6 @@ def fetch_to_volume_format(context, image_service,
         LOG.debug("%s was %s, converting to %s " % (image_id, fmt,
                                                     volume_format))
         convert_image(tmp, dest, volume_format,
-                      bps_limit=CONF.volume_copy_bps_limit,
                       run_as_root=run_as_root)
 
         data = qemu_img_info(dest, run_as_root=run_as_root)
@@ -310,7 +315,6 @@ def upload_volume(context, image_service, image_meta, volume_path,
         LOG.debug("%s was %s, converting to %s" %
                   (image_id, volume_format, image_meta['disk_format']))
         convert_image(volume_path, tmp, image_meta['disk_format'],
-                      bps_limit=CONF.volume_copy_bps_limit,
                       run_as_root=run_as_root)
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)

@@ -238,7 +238,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.stubs.Set(volutils, 'clear_volume',
                        lambda a, b, volume_clear=mox.IgnoreArg(),
                        volume_clear_size=mox.IgnoreArg(),
-                       lvm_type=mox.IgnoreArg(): None)
+                       lvm_type=mox.IgnoreArg(),
+                       throttle=mox.IgnoreArg(): None)
         self.stubs.Set(tgt.TgtAdm,
                        'create_iscsi_target',
                        self._fake_create_iscsi_target)
@@ -2488,7 +2489,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             pass
 
         def fake_fetch_to_raw(ctx, image_service, image_id, path, blocksize,
-                              size=None):
+                              size=None, throttle=None):
             pass
 
         def fake_clone_image(ctx, volume_ref,
