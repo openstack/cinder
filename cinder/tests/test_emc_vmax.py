@@ -601,7 +601,7 @@ class FakeEcomConnection():
         result = None
         if ResultClass == 'EMC_StorageHardwareID':
             result = self._assoc_hdwid()
-        elif ResultClass == 'EMC_iSHEADCSIProtocolEndpoint':
+        elif ResultClass == 'EMC_iSCSIProtocolEndpoint':
             result = self._assoc_endpoint()
         elif ResultClass == 'EMC_StorageVolume':
             result = self._assoc_storagevolume(objectpath)

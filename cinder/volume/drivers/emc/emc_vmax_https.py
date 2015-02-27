@@ -80,7 +80,7 @@ class OpenSSLConnectionDelegator(object):
     a delegator must be used.
     """
     def __init__(self, *args, **kwargs):
-        self.connection = SSL.Connection(*args, **kwargs)
+        self.connection = SSL.GreenConnection(*args, **kwargs)
 
     def __getattr__(self, name):
         return getattr(self.connection, name)
