@@ -433,6 +433,9 @@ def service_update(context, service_id, values):
     session = get_session()
     with session.begin():
         service_ref = _service_get(context, service_id, session=session)
+        if ('disabled' in values):
+            service_ref['modified_at'] = timeutils.utcnow()
+            service_ref['updated_at'] = literal_column('updated_at')
         service_ref.update(values)
         return service_ref
 
