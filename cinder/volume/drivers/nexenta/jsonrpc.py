@@ -149,6 +149,7 @@ class NexentaEdgeResourceProxy(object):
 
         LOG.debug('Sending JSON data: %s', self.url)
 
+        response_data = False
         try:
             request = urllib2.Request(self.url, data, headers)
             if self.method == 'get':
@@ -183,14 +184,16 @@ class NexentaEdgeResourceProxy(object):
 
             response_data = response_obj.read()
             rsp = jsonutils.loads(response_data)
-        except urllib2.HTTPError, e:
+        except urllib2.HTTPError as e:
             response_data = e.read()
             rsp = jsonutils.loads(response_data)
-        except urllib2.URLError, e:
+        except urllib2.URLError as e:
             rsp = {'code': str(e.reason), 'message': str(e)}
-        except Exception, e:
+        except Exception as e:
+            if response_data:
+                LOG.error('Error Response: ' + response_data)
             rsp = {'code': 'UNKNOWN_ERROR',
-                   "message": (_("Received Unknown Error: %s"), str(e))}
+                   "message": (_("Error: %s"), str(e))}
 
         LOG.debug('Got response: %s', rsp)
 
