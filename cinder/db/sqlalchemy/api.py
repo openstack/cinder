@@ -1183,16 +1183,22 @@ def volume_get(context, volume_id):
 
 
 @require_admin_context
-def volume_get_all(context, marker, limit, sort_key, sort_dir,
+def volume_get_all(context, marker, limit, sort_keys=None, sort_dirs=None,
                    filters=None):
     """Retrieves all volumes.
+
+    If no sort parameters are specified then the returned volumes are sorted
+    first by the 'created_at' key and then by the 'id' key in descending
+    order.
 
     :param context: context to query under
     :param marker: the last item of the previous page, used to determine the
                    next page of results to return
     :param limit: maximum number of items to return
-    :param sort_key: single attributes by which results should be sorted
-    :param sort_dir: direction in which results should be sorted (asc, desc)
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
     :param filters: dictionary of filters; values that are in lists, tuples,
                     or sets cause an 'IN' operation, while exact matching
                     is used for other values, see _process_volume_filters
@@ -1203,7 +1209,7 @@ def volume_get_all(context, marker, limit, sort_key, sort_dir,
     with session.begin():
         # Generate the query
         query = _generate_paginate_query(context, session, marker, limit,
-                                         sort_key, sort_dir, filters)
+                                         sort_keys, sort_dirs, filters)
         # No volumes would match, return empty list
         if query is None:
             return []
@@ -1267,17 +1273,23 @@ def volume_get_all_by_group(context, group_id, filters=None):
 
 
 @require_context
-def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
-                              sort_dir, filters=None):
+def volume_get_all_by_project(context, project_id, marker, limit,
+                              sort_keys=None, sort_dirs=None, filters=None):
     """"Retrieves all volumes in a project.
+
+    If no sort parameters are specified then the returned volumes are sorted
+    first by the 'created_at' key and then by the 'id' key in descending
+    order.
 
     :param context: context to query under
     :param project_id: project for all volumes being retrieved
     :param marker: the last item of the previous page, used to determine the
                    next page of results to return
     :param limit: maximum number of items to return
-    :param sort_key: single attributes by which results should be sorted
-    :param sort_dir: direction in which results should be sorted (asc, desc)
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
     :param filters: dictionary of filters; values that are in lists, tuples,
                     or sets cause an 'IN' operation, while exact matching
                     is used for other values, see _process_volume_filters
@@ -1292,15 +1304,15 @@ def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
         filters['project_id'] = project_id
         # Generate the query
         query = _generate_paginate_query(context, session, marker, limit,
-                                         sort_key, sort_dir, filters)
+                                         sort_keys, sort_dirs, filters)
         # No volumes would match, return empty list
         if query is None:
             return []
         return query.all()
 
 
-def _generate_paginate_query(context, session, marker, limit, sort_key,
-                             sort_dir, filters):
+def _generate_paginate_query(context, session, marker, limit, sort_keys,
+                             sort_dirs, filters):
     """Generate the query to include the filters and the paginate options.
 
     Returns a query with sorting / pagination criteria added or None
@@ -1311,14 +1323,19 @@ def _generate_paginate_query(context, session, marker, limit, sort_key,
     :param marker: the last item of the previous page; we returns the next
                     results after this value.
     :param limit: maximum number of items to return
-    :param sort_key: single attributes by which results should be sorted
-    :param sort_dir: direction in which results should be sorted (asc, desc)
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
     :param filters: dictionary of filters; values that are in lists, tuples,
                     or sets cause an 'IN' operation, while exact matching
                     is used for other values, see _process_volume_filters
                     function for more information
     :returns: updated query or None
     """
+    sort_keys, sort_dirs = process_sort_params(sort_keys,
+                                               sort_dirs,
+                                               default_dir='desc')
     query = _volume_get_query(context, session=session)
 
     if filters:
@@ -1331,9 +1348,9 @@ def _generate_paginate_query(context, session, marker, limit, sort_key,
         marker_volume = _volume_get(context, marker, session)
 
     return sqlalchemyutils.paginate_query(query, models.Volume, limit,
-                                          [sort_key, 'created_at', 'id'],
+                                          sort_keys,
                                           marker=marker_volume,
-                                          sort_dir=sort_dir)
+                                          sort_dirs=sort_dirs)
 
 
 def _process_volume_filters(query, filters):

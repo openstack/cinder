@@ -375,8 +375,8 @@ class API(base.Base):
 
         return b
 
-    def get_all(self, context, marker=None, limit=None, sort_key='created_at',
-                sort_dir='desc', filters=None, viewable_admin_meta=False):
+    def get_all(self, context, marker=None, limit=None, sort_keys=None,
+                sort_dirs=None, filters=None, viewable_admin_meta=False):
         check_policy(context, 'get_all')
 
         if filters is None:
@@ -407,15 +407,18 @@ class API(base.Base):
         if context.is_admin and allTenants:
             # Need to remove all_tenants to pass the filtering below.
             del filters['all_tenants']
-            volumes = self.db.volume_get_all(context, marker, limit, sort_key,
-                                             sort_dir, filters=filters)
+            volumes = self.db.volume_get_all(context, marker, limit,
+                                             sort_keys=sort_keys,
+                                             sort_dirs=sort_dirs,
+                                             filters=filters)
         else:
             if viewable_admin_meta:
                 context = context.elevated()
             volumes = self.db.volume_get_all_by_project(context,
                                                         context.project_id,
                                                         marker, limit,
-                                                        sort_key, sort_dir,
+                                                        sort_keys=sort_keys,
+                                                        sort_dirs=sort_dirs,
                                                         filters=filters)
 
         return volumes

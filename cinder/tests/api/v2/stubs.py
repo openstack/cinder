@@ -124,15 +124,16 @@ def stub_volume_get_db(context, volume_id):
 
 
 def stub_volume_get_all(context, search_opts=None, marker=None, limit=None,
-                        sort_key='created_at', sort_dir='desc', filters=None,
+                        sort_keys=None, sort_dirs=None, filters=None,
                         viewable_admin_meta=False):
     return [stub_volume(100, project_id='fake'),
             stub_volume(101, project_id='superfake'),
             stub_volume(102, project_id='superduperfake')]
 
 
-def stub_volume_get_all_by_project(self, context, marker, limit, sort_key,
-                                   sort_dir, filters=None,
+def stub_volume_get_all_by_project(self, context, marker, limit,
+                                   sort_keys=None, sort_dirs=None,
+                                   filters=None,
                                    viewable_admin_meta=False):
     filters = filters or {}
     return [stub_volume_get(self, context, '1')]

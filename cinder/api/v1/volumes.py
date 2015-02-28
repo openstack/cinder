@@ -282,8 +282,9 @@ class VolumeController(wsgi.Controller):
                                             self._get_volume_search_options())
 
         volumes = self.volume_api.get_all(context, marker=None, limit=None,
-                                          sort_key='created_at',
-                                          sort_dir='desc', filters=search_opts,
+                                          sort_keys=['created_at'],
+                                          sort_dirs=['desc'],
+                                          filters=search_opts,
                                           viewable_admin_meta=True)
 
         volumes = [dict(vol.iteritems()) for vol in volumes]
