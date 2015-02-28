@@ -1,4 +1,4 @@
-# Copyright 2014 Datera
+# Copyright 2015 Datera
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -37,6 +37,8 @@ class DateraVolumeTestCase(test.TestCase):
         self.cfg.datera_api_port = '7717'
         self.cfg.datera_api_version = '1'
         self.cfg.datera_num_replicas = '2'
+        self.cfg.san_login = 'user'
+        self.cfg.san_password = 'pass'
 
         mock_exec = mock.Mock()
         mock_exec.return_value = ('', '')
@@ -244,6 +246,17 @@ class DateraVolumeTestCase(test.TestCase):
         self.assertRaises(exception.DateraAPIException,
                           self.driver.extend_volume, volume, 2)
 
+    def test_login_successful(self):
+        self.mock_api.return_value = {
+            'key': 'dd2469de081346c28ac100e071709403'
+        }
+        self.assertIsNone(self.driver._login())
+        self.assertEqual(1, self.mock_api.call_count)
+
+    def test_login_unsuccessful(self):
+        self.mock_api.side_effect = exception.NotAuthorized
+        self.assertRaises(exception.NotAuthorized, self.driver._login)
+        self.assertEqual(1, self.mock_api.call_count)
 
 stub_export = {
     u'_ipColl': [u'172.28.121.10', u'172.28.120.10'],
