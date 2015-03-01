@@ -643,12 +643,12 @@ class VolumeManager(manager.SchedulerDependentManager):
             model_update = self.driver.create_snapshot(snapshot)
             if model_update:
                 snapshot.update(model_update)
-                snapshot.save(context)
+                snapshot.save()
 
         except Exception:
             with excutils.save_and_reraise_exception():
                 snapshot.status = 'error'
-                snapshot.save(context)
+                snapshot.save()
 
         vol_ref = self.db.volume_get(context, volume_id)
         if vol_ref.bootable:
@@ -666,12 +666,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                                   " %(volume_id)s metadata"),
                               {'volume_id': volume_id}, resource=snapshot)
                 snapshot.status = 'error'
-                snapshot.save(context)
+                snapshot.save()
                 raise exception.MetadataCopyFailure(reason=six.text_type(ex))
 
         snapshot.status = 'available'
         snapshot.progress = '100%'
-        snapshot.save(context)
+        snapshot.save()
 
         self._notify_about_snapshot_usage(context, snapshot, "create.end")
         LOG.info(_LI("Create snapshot completed successfully"),
@@ -682,6 +682,7 @@ class VolumeManager(manager.SchedulerDependentManager):
     def delete_snapshot(self, context, snapshot):
         """Deletes and unexports snapshot."""
         context = context.elevated()
+        snapshot._context = context
         project_id = snapshot.project_id
 
         self._notify_about_snapshot_usage(
@@ -731,7 +732,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.exception(_LE("Update snapshot usages failed."),
                           resource=snapshot)
         self.db.volume_glance_metadata_delete_by_snapshot(context, snapshot.id)
-        snapshot.destroy(context)
+        snapshot.destroy()
         self._notify_about_snapshot_usage(context, snapshot, "delete.end")
 
         # Commit the reservations

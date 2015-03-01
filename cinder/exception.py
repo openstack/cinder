@@ -26,6 +26,7 @@ import sys
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_versionedobjects import exception as obj_exc
 import six
 import webob.exc
 
@@ -663,28 +664,12 @@ class EvaluatorParseException(Exception):
     message = _("Error during evaluator parsing: %(reason)s")
 
 
-class ObjectActionError(CinderException):
-    msg_fmt = _('Object action %(action)s failed because: %(reason)s')
-
-
-class ObjectFieldInvalid(CinderException):
-    msg_fmt = _('Field %(field)s of %(objname)s is not an instance of Field')
-
-
-class UnsupportedObjectError(CinderException):
-    msg_fmt = _('Unsupported object type %(objtype)s')
-
-
-class OrphanedObjectError(CinderException):
-    msg_fmt = _('Cannot call %(method)s on orphaned %(objtype)s object')
-
-
-class IncompatibleObjectVersion(CinderException):
-    msg_fmt = _('Version %(objver)s of %(objname)s is not supported')
-
-
-class ReadOnlyFieldError(CinderException):
-    msg_fmt = _('Cannot modify readonly field %(field)s')
+UnsupportedObjectError = obj_exc.UnsupportedObjectError
+OrphanedObjectError = obj_exc.OrphanedObjectError
+IncompatibleObjectVersion = obj_exc.IncompatibleObjectVersion
+ReadOnlyFieldError = obj_exc.ReadOnlyFieldError
+ObjectActionError = obj_exc.ObjectActionError
+ObjectFieldInvalid = obj_exc.ObjectFieldInvalid
 
 
 class VolumeGroupNotFound(CinderException):

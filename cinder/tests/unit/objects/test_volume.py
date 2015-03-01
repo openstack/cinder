@@ -13,10 +13,10 @@
 #    under the License.
 
 import mock
+from oslo_versionedobjects.tests import test_objects
 
 from cinder import objects
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.objects import test_objects
 
 
 class TestVolume(test_objects._LocalTest):
