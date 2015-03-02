@@ -381,9 +381,6 @@ class RBDDriver(driver.VolumeDriver):
             self._update_volume_stats()
         return self._stats
 
-    def _supports_layering(self):
-        return hasattr(self.rbd, 'RBD_FEATURE_LAYERING')
-
     def _get_clone_depth(self, client, volume_name, depth=0):
         """Returns the number of ancestral clones (if any) of the given volume.
         """
@@ -497,20 +494,16 @@ class RBDDriver(driver.VolumeDriver):
 
         LOG.debug("creating volume '%s'" % (volume['name']))
 
-        old_format = True
-        features = 0
         chunk_size = CONF.rbd_store_chunk_size * units.Mi
         order = int(math.log(chunk_size, 2))
-        if self._supports_layering():
-            old_format = False
-            features = self.rbd.RBD_FEATURE_LAYERING
+        features = self.rbd.RBD_FEATURE_LAYERING
 
         with RADOSClient(self) as client:
             self.rbd.RBD().create(client.ioctx,
                                   encodeutils.safe_encode(volume['name']),
                                   size,
                                   order,
-                                  old_format=old_format,
+                                  old_format=False,
                                   features=features)
 
     def _flatten(self, pool, volume_name):
@@ -689,8 +682,7 @@ class RBDDriver(driver.VolumeDriver):
         with RBDVolumeProxy(self, snapshot['volume_name']) as volume:
             snap = encodeutils.safe_encode(snapshot['name'])
             volume.create_snap(snap)
-            if self._supports_layering():
-                volume.protect_snap(snap)
+            volume.protect_snap(snap)
 
     def delete_snapshot(self, snapshot):
         """Deletes an rbd snapshot."""
@@ -699,11 +691,10 @@ class RBDDriver(driver.VolumeDriver):
         volume_name = encodeutils.safe_encode(snapshot['volume_name'])
         snap_name = encodeutils.safe_encode(snapshot['name'])
         with RBDVolumeProxy(self, volume_name) as volume:
-            if self._supports_layering():
-                try:
-                    volume.unprotect_snap(snap_name)
-                except self.rbd.ImageBusy:
-                    raise exception.SnapshotIsBusy(snapshot_name=snap_name)
+            try:
+                volume.unprotect_snap(snap_name)
+            except self.rbd.ImageBusy:
+                raise exception.SnapshotIsBusy(snapshot_name=snap_name)
             volume.remove_snap(snap_name)
 
     def retype(self, context, volume, new_type, diff, host):
@@ -858,9 +849,8 @@ class RBDDriver(driver.VolumeDriver):
             args = ['rbd', 'import',
                     '--pool', self.configuration.rbd_pool,
                     '--order', order,
-                    tmp.name, volume['name']]
-            if self._supports_layering():
-                args.append('--new-format')
+                    tmp.name, volume['name'],
+                    '--new-format']
             args.extend(self._ceph_args())
             self._try_execute(*args)
         self._resize(volume)
