@@ -172,7 +172,19 @@ def usage():
     print(sys.argv[0] + " get-targets")
     print(sys.argv[0] + " delete [iqn]")
     print(sys.argv[0] + " verify")
+    print(sys.argv[0] + " save [path_to_file]")
     sys.exit(1)
+
+
+def save_to_file(destination_file):
+    rtsroot = rtslib.root.RTSRoot()
+    try:
+        rtsroot.save_to_file(destination_file)
+    except OSError:
+        if not destination_file:
+            destination_file = 'default location'
+        raise RtstoolError(_('Could not save configuration to %(file_path)s'),
+                           {'file_path': destination_file})
 
 
 def main(argv=None):
@@ -236,6 +248,14 @@ def main(argv=None):
         # This is used to verify that this script can be called by cinder,
         # and that rtslib is new enough to work.
         verify_rtslib()
+        return 0
+
+    elif argv[1] == 'save':
+        if len(argv) > 3:
+            usage()
+
+        destination_file = argv[2] if len(argv) > 2 else None
+        save_to_file(destination_file)
         return 0
 
     else:

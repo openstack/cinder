@@ -908,6 +908,14 @@ class TestCinderRtstoolCmd(test.TestCase):
         target.delete.assert_called_once_with()
         storage_object.delete.assert_called_once_with()
 
+    @mock.patch.object(cinder_rtstool, 'rtslib', autospec=True)
+    def test_save(self, mock_rtslib):
+        filename = mock.sentinel.filename
+        cinder_rtstool.save_to_file(filename)
+        rtsroot = mock_rtslib.root.RTSRoot
+        rtsroot.assert_called_once_with()
+        rtsroot.return_value.save_to_file.assert_called_once_with(filename)
+
     def test_usage(self):
         exit = self.assertRaises(SystemExit, cinder_rtstool.usage)
 
@@ -953,6 +961,23 @@ class TestCinderRtstoolCmd(test.TestCase):
 
             self.assertTrue(usage.called)
             self.assertEqual(exit.code, 1)
+
+    @mock.patch('cinder.cmd.rtstool.save_to_file')
+    def test_main_save(self, mock_save):
+        sys.argv = ['cinder-rtstool',
+                    'save']
+        rc = cinder_rtstool.main()
+        mock_save.assert_called_once_with(None)
+        self.assertEqual(0, rc)
+
+    @mock.patch('cinder.cmd.rtstool.save_to_file')
+    def test_main_save_with_file(self, mock_save):
+        sys.argv = ['cinder-rtstool',
+                    'save',
+                    mock.sentinel.filename]
+        rc = cinder_rtstool.main()
+        mock_save.assert_called_once_with(mock.sentinel.filename)
+        self.assertEqual(0, rc)
 
     def test_main_create(self):
         with mock.patch('cinder.cmd.rtstool.create') as create:

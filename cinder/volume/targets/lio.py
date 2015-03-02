@@ -77,6 +77,17 @@ class LioAdm(iscsi.ISCSITarget):
         iscsi_target = 0  # NOTE: Not used by lio.
         return iscsi_target, lun
 
+    def _persist_configuration(self, vol_id):
+        try:
+            utils.execute('cinder-rtstool', 'save', run_as_root=True)
+
+        # On persistence failure we don't raise an exception, as target has
+        # been successfully created.
+        except putils.ProcessExecutionError:
+            LOG.warning(_LW("Failed to save iscsi LIO configuration when "
+                            "modifying volume id: %(vol_id)s."),
+                        {'vol_id': vol_id})
+
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
         # tid and lun are not used
@@ -113,6 +124,9 @@ class LioAdm(iscsi.ISCSITarget):
                           "id:%s.") % vol_id)
             raise exception.NotFound()
 
+        # We make changes persistent
+        self._persist_configuration(vol_id)
+
         return tid
 
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
@@ -130,6 +144,9 @@ class LioAdm(iscsi.ISCSITarget):
                           "id:%s.") % vol_id)
             LOG.error(_LE("%s") % e)
             raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
+
+        # We make changes persistent
+        self._persist_configuration(vol_id)
 
     def initialize_connection(self, volume, connector):
         volume_iqn = volume['provider_location'].split(' ')[1]
@@ -150,6 +167,9 @@ class LioAdm(iscsi.ISCSITarget):
                       connector['initiator'])
             raise exception.ISCSITargetAttachFailed(
                 volume_id=volume['id'])
+
+        # We make changes persistent
+        self._persist_configuration(volume['id'])
 
         iscsi_properties = self._get_iscsi_properties(volume,
                                                       connector.get(
@@ -173,3 +193,6 @@ class LioAdm(iscsi.ISCSITarget):
             LOG.error(_LE("Failed to delete initiator iqn %s to target.") %
                       connector['initiator'])
             raise exception.ISCSITargetDetachFailed(volume_id=volume['id'])
+
+        # We make changes persistent
+        self._persist_configuration(volume['id'])
