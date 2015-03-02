@@ -75,7 +75,6 @@ CGQUOTAS = quota.CGQUOTAS
 CONF = cfg.CONF
 
 ENCRYPTION_PROVIDER = 'nova.volume.encryptors.cryptsetup.CryptsetupEncryptor'
-PLATFORM = sys.platform
 
 fake_opt = [
     cfg.StrOpt('fake_opt1', default='fake', help='fake opts')
