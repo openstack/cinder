@@ -42,6 +42,7 @@ from cinder.common import config  # noqa Need to register global_opts
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder import i18n
+from cinder import objects
 from cinder.openstack.common import log as oslo_logging
 from cinder import rpc
 from cinder import service
@@ -105,6 +106,9 @@ class TestCase(testtools.TestCase):
     def setUp(self):
         """Run before each test method to initialize test environment."""
         super(TestCase, self).setUp()
+
+        # Import cinder objects for test cases
+        objects.register_all()
 
         # Unit tests do not need to use lazy gettext
         i18n.enable_lazy(False)

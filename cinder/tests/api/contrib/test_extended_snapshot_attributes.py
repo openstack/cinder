@@ -15,13 +15,16 @@
 
 
 from lxml import etree
+import mock
 from oslo_serialization import jsonutils
 import webob
 
 from cinder.api.contrib import extended_snapshot_attributes
+from cinder import context
 from cinder import test
 from cinder.tests.api import fakes
-from cinder import volume
+from cinder.tests import fake_snapshot
+from cinder.tests import fake_volume
 
 
 UUID1 = '00000000-0000-0000-0000-000000000001'
@@ -37,7 +40,8 @@ def _get_default_snapshot_param():
             'display_name': 'Default name',
             'display_description': 'Default description',
             'project_id': 'fake',
-            'progress': '0%'}
+            'progress': '0%',
+            'expected_attrs': ['metadata']}
 
 
 def fake_snapshot_get(self, context, snapshot_id):
@@ -56,9 +60,6 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
 
     def setUp(self):
         super(ExtendedSnapshotAttributesTest, self).setUp()
-        self.stubs.Set(volume.api.API, 'get_snapshot', fake_snapshot_get)
-        self.stubs.Set(volume.api.API, 'get_all_snapshots',
-                       fake_snapshot_get_all)
 
     def _make_request(self, url):
         req = webob.Request.blank(url)
@@ -77,7 +78,18 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
                          project_id)
         self.assertEqual(snapshot.get('%sprogress' % self.prefix), progress)
 
-    def test_show(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_show(self, snapshot_get_by_id, volume_get_by_id,
+                  snapshot_metadata_get):
+        ctx = context.RequestContext('fake', 'fake', auth_token=True)
+        snapshot = _get_default_snapshot_param()
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_get_by_id.return_value = snapshot_obj
+        volume_get_by_id.return_value = fake_volume_obj
+
         url = '/v2/fake/snapshots/%s' % UUID1
         res = self._make_request(url)
 

@@ -53,12 +53,8 @@ def _translate_snapshot_summary_view(context, snapshot):
     d['status'] = snapshot['status']
     d['size'] = snapshot['volume_size']
 
-    if snapshot.get('snapshot_metadata'):
-        metadata = snapshot.get('snapshot_metadata')
-        d['metadata'] = dict((item['key'], item['value']) for item in metadata)
-    # avoid circular ref when vol is a Volume instance
-    elif snapshot.get('metadata') and isinstance(snapshot.get('metadata'),
-                                                 dict):
+    if snapshot.get('metadata') and isinstance(snapshot.get('metadata'),
+                                               dict):
         d['metadata'] = snapshot['metadata']
     else:
         d['metadata'] = {}

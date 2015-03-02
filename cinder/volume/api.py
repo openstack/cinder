@@ -36,6 +36,8 @@ from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import glance
 from cinder import keymgr
+from cinder import objects
+from cinder.objects import base as objects_base
 from cinder.openstack.common import log as logging
 import cinder.policy
 from cinder import quota
@@ -94,7 +96,13 @@ def check_policy(context, action, target_obj=None):
         'project_id': context.project_id,
         'user_id': context.user_id,
     }
-    target.update(target_obj or {})
+
+    if isinstance(target_obj, objects_base.CinderObject):
+        # Turn object into dict so target.update can work
+        target.update(objects_base.obj_to_primitive(target_obj) or {})
+    else:
+        target.update(target_obj or {})
+
     _action = 'volume:%s' % action
     cinder.policy.enforce(context, _action, target)
 
@@ -424,9 +432,7 @@ class API(base.Base):
         return volumes
 
     def get_snapshot(self, context, snapshot_id):
-        check_policy(context, 'get_snapshot')
-        rv = self.db.snapshot_get(context, snapshot_id)
-        return dict(rv.iteritems())
+        return objects.Snapshot.get_by_id(context, snapshot_id)
 
     def get_volume(self, context, volume_id):
         check_policy(context, 'get_volume')
@@ -627,28 +633,32 @@ class API(base.Base):
                         allowed=quotas[over])
 
         self._check_metadata_properties(metadata)
-        options = {'volume_id': volume['id'],
-                   'cgsnapshot_id': cgsnapshot_id,
-                   'user_id': context.user_id,
-                   'project_id': context.project_id,
-                   'status': "creating",
-                   'progress': '0%',
-                   'volume_size': volume['size'],
-                   'display_name': name,
-                   'display_description': description,
-                   'volume_type_id': volume['volume_type_id'],
-                   'encryption_key_id': volume['encryption_key_id'],
-                   'metadata': metadata}
 
         snapshot = None
         try:
-            snapshot = self.db.snapshot_create(context, options)
+            kwargs = {
+                'volume_id': volume['id'],
+                'cgsnapshot_id': cgsnapshot_id,
+                'user_id': context.user_id,
+                'project_id': context.project_id,
+                'status': 'creating',
+                'progress': '0%',
+                'volume_size': volume['size'],
+                'display_name': name,
+                'display_description': description,
+                'volume_type_id': volume['volume_type_id'],
+                'encryption_key_id': volume['encryption_key_id'],
+                'metadata': metadata or {}
+            }
+            snapshot = objects.Snapshot(context=context, **kwargs)
+            snapshot.create()
+
             QUOTAS.commit(context, reservations)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    if snapshot:
-                        self.db.snapshot_destroy(context, snapshot['id'])
+                    if hasattr(snapshot, 'id'):
+                        snapshot.destroy()
                 finally:
                     QUOTAS.rollback(context, reservations)
 
@@ -803,16 +813,21 @@ class API(base.Base):
                     'consistency group.') % snapshot['id']
             LOG.error(msg)
             raise exception.InvalidSnapshot(reason=msg)
-        self.db.snapshot_update(context, snapshot['id'],
-                                {'status': 'deleting'})
-        volume = self.db.volume_get(context, snapshot['volume_id'])
-        self.volume_rpcapi.delete_snapshot(context, snapshot, volume['host'])
+
+        snapshot_obj = self.get_snapshot(context, snapshot['id'])
+        snapshot_obj.status = 'deleting'
+        snapshot_obj.save(context)
+
+        volume = self.db.volume_get(context, snapshot_obj.volume_id)
+        self.volume_rpcapi.delete_snapshot(context, snapshot_obj,
+                                           volume['host'])
         LOG.info(_LI('Succesfully issued request to '
-                     'delete snapshot: %s.'), snapshot['id'])
+                     'delete snapshot: %s'), snapshot_obj.id)
 
     @wrap_check_policy
     def update_snapshot(self, context, snapshot, fields):
-        self.db.snapshot_update(context, snapshot['id'], fields)
+        snapshot.update(fields)
+        snapshot.save(context)
 
     @wrap_check_policy
     def get_volume_metadata(self, context, volume):
@@ -914,12 +929,13 @@ class API(base.Base):
 
     def get_snapshot_metadata(self, context, snapshot):
         """Get all metadata associated with a snapshot."""
-        rv = self.db.snapshot_metadata_get(context, snapshot['id'])
-        return dict(rv.iteritems())
+        snapshot_obj = self.get_snapshot(context, snapshot['id'])
+        return snapshot_obj.metadata
 
     def delete_snapshot_metadata(self, context, snapshot, key):
         """Delete the given metadata item from a snapshot."""
-        self.db.snapshot_metadata_delete(context, snapshot['id'], key)
+        snapshot_obj = self.get_snapshot(context, snapshot['id'])
+        snapshot_obj.delete_metadata_key(context, key)
 
     def update_snapshot_metadata(self, context,
                                  snapshot, metadata,
@@ -933,20 +949,18 @@ class API(base.Base):
         if delete:
             _metadata = metadata
         else:
-            orig_meta = self.get_snapshot_metadata(context, snapshot)
+            orig_meta = snapshot.metadata
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
         self._check_metadata_properties(_metadata)
 
-        db_meta = self.db.snapshot_metadata_update(context,
-                                                   snapshot['id'],
-                                                   _metadata,
-                                                   True)
+        snapshot.metadata = _metadata
+        snapshot.save(context)
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
-        return db_meta
+        return snapshot.metadata
 
     def get_snapshot_metadata_value(self, snapshot, key):
         pass
