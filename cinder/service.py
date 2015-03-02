@@ -35,6 +35,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import base as objects_base
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import service
@@ -154,7 +155,8 @@ class Service(service.Service):
         target = messaging.Target(topic=self.topic, server=self.host)
         endpoints = [self.manager]
         endpoints.extend(self.manager.additional_endpoints)
-        self.rpcserver = rpc.get_server(target, endpoints)
+        serializer = objects_base.CinderObjectSerializer()
+        self.rpcserver = rpc.get_server(target, endpoints, serializer)
         self.rpcserver.start()
 
         if self.report_interval:
