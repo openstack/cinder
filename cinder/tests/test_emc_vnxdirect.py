@@ -313,6 +313,13 @@ class EMCVNXCLIDriverTestData():
                'name': 'group_name',
                'status': 'deleting'}
 
+    test_cg_with_type = {'id': 'consistencygroup_id',
+                         'name': 'group_name',
+                         'status': 'creating',
+                         'volume_type_id':
+                         'abc1-2320-9013-8813-8941-1374-8112-1231,'
+                         '19fdd0dd-03b3-4d7c-b541-f4df46f308c8'}
+
     test_cgsnapshot = {
         'consistencygroup_id': 'consistencygroup_id',
         'id': 'cgsnapshot_id',
@@ -2727,6 +2734,21 @@ Time Remaining:  0 second(s)
                 *self.testData.CREATE_CONSISTENCYGROUP_CMD(
                     cg_name))]
         fake_cli.assert_has_calls(expect_cmd)
+
+    @mock.patch(
+        "cinder.volume.volume_types.get_volume_type_extra_specs",
+        mock.Mock(side_effect=[{'storagetype:provisioning': 'thin'},
+                               {'storagetype:provisioning': 'compressed'}]))
+    def test_create_consistency_group_failed_with_compression(self):
+        self.driverSetup([], [])
+        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
+                                "Failed to create consistency group "
+                                "consistencygroup_id "
+                                "because VNX consistency group cannot "
+                                "accept compressed LUNs as members.",
+                                self.driver.create_consistencygroup,
+                                None,
+                                self.testData.test_cg_with_type)
 
     def test_delete_consistency_group(self):
         cg_name = self.testData.test_cg['id']

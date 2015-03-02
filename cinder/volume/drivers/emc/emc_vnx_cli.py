@@ -2158,11 +2158,26 @@ class EMCVnxCliBase(object):
             if len(fields) == 2 and fields[0] == key:
                 return fields[1]
 
+    def _consistencygroup_creation_check(self, group):
+        """Check extra spec for consistency group."""
+
+        if group.get('volume_type_id') is not None:
+            for id in group['volume_type_id'].split(","):
+                provisioning, tiering = self._get_extra_spec_value(
+                    volume_types.get_volume_type_extra_specs(id))
+                if provisioning == 'compressed':
+                    msg = _("Failed to create consistency group %s "
+                            "because VNX consistency group cannot "
+                            "accept compressed LUNs as members.") % group['id']
+                    raise exception.VolumeBackendAPIException(data=msg)
+
     def create_consistencygroup(self, context, group):
         """Creates a consistency group."""
         LOG.info(_LI('Start to create consistency group: %(group_name)s '
                      'id: %(id)s'),
                  {'group_name': group['name'], 'id': group['id']})
+
+        self._consistencygroup_creation_check(group)
 
         model_update = {'status': 'available'}
         try:
