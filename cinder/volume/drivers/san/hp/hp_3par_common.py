@@ -70,6 +70,7 @@ LOG = logging.getLogger(__name__)
 
 MIN_CLIENT_VERSION = '3.1.2'
 DEDUP_API_VERSION = 30201120
+FLASH_CACHE_API_VERSION = 30201200
 
 hp3par_opts = [
     cfg.StrOpt('hp3par_api_url',
@@ -166,10 +167,11 @@ class HP3PARCommon(object):
         2.0.34 - Fix log messages to match guidelines. bug #1411370
         2.0.35 - Fix default snapCPG for manage_existing bug #1393609
         2.0.36 - Added support for dedup provisioning
+        2.0.37 - Added support for enabling Flash Cache
 
     """
 
-    VERSION = "2.0.36"
+    VERSION = "2.0.37"
 
     stats = {}
 
@@ -203,7 +205,8 @@ class HP3PARCommon(object):
     hp_qos_keys = ['minIOPS', 'maxIOPS', 'minBWS', 'maxBWS', 'latency',
                    'priority']
     qos_priority_level = {'low': 1, 'normal': 2, 'high': 3}
-    hp3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs']
+    hp3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs',
+                         'flash_cache']
 
     def __init__(self, config):
         self.config = config
@@ -888,8 +891,42 @@ class HP3PARCommon(object):
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Error creating QOS rule %s"), qosRule)
 
+    def get_flash_cache_policy(self, hp3par_keys):
+        if hp3par_keys is not None:
+            # First check list of extra spec keys
+            val = self._get_key_value(hp3par_keys, 'flash_cache', None)
+            if val is not None:
+                # If requested, see if supported on back end
+                if self.API_VERSION < FLASH_CACHE_API_VERSION:
+                    err = (_("Flash Cache Policy requires "
+                             "WSAPI version '%(fcache_version)s' "
+                             "version '%(version)s' is installed.") %
+                           {'fcache_version': FLASH_CACHE_API_VERSION,
+                            'version': self.API_VERSION})
+                    LOG.error(err)
+                    raise exception.InvalidInput(reason=err)
+                else:
+                    if val.lower() == 'true':
+                        return self.client.FLASH_CACHE_ENABLED
+                    else:
+                        return self.client.FLASH_CACHE_DISABLED
+
+        return None
+
+    def _set_flash_cache_policy_in_vvs(self, flash_cache, vvs_name):
+        # Update virtual volume set
+        if flash_cache:
+            try:
+                self.client.modifyVolumeSet(vvs_name,
+                                            flashCachePolicy=flash_cache)
+                LOG.info(_LI("Flash Cache policy set to %s"), flash_cache)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE("Error setting Flash Cache policy "
+                                  "to %s - exception"), flash_cache)
+
     def _add_volume_to_volume_set(self, volume, volume_name,
-                                  cpg, vvs_name, qos):
+                                  cpg, vvs_name, qos, flash_cache):
         if vvs_name is not None:
             # Admin has set a volume set name to add the volume to
             try:
@@ -904,10 +941,11 @@ class HP3PARCommon(object):
             self.client.createVolumeSet(vvs_name, domain)
             try:
                 self._set_qos_rule(qos, vvs_name)
+                self._set_flash_cache_policy_in_vvs(flash_cache, vvs_name)
                 self.client.addVolumeToVolumeSet(vvs_name, volume_name)
             except Exception as ex:
                 # Cleanup the volume set if unable to create the qos rule
-                # or add the volume to the volume set
+                # or flash cache policy or add the volume to the volume set
                 self.client.deleteVolumeSet(vvs_name)
                 raise exception.CinderException(ex)
 
@@ -1103,6 +1141,7 @@ class HP3PARCommon(object):
             snap_cpg = type_info['snap_cpg']
             tpvv = type_info['tpvv']
             tdvv = type_info['tdvv']
+            flash_cache = self.get_flash_cache_policy(type_info['hp3par_keys'])
 
             type_id = volume.get('volume_type_id', None)
             if type_id is not None:
@@ -1124,10 +1163,11 @@ class HP3PARCommon(object):
             capacity = self._capacity_from_size(volume['size'])
             volume_name = self._get_3par_vol_name(volume['id'])
             self.client.createVolume(volume_name, cpg, capacity, extras)
-            if qos or vvs_name is not None:
+            if qos or vvs_name or flash_cache is not None:
                 try:
                     self._add_volume_to_volume_set(volume, volume_name,
-                                                   cpg, vvs_name, qos)
+                                                   cpg, vvs_name, qos,
+                                                   flash_cache)
                 except exception.InvalidInput as ex:
                     # Delete the volume if unable to add it to the volume set
                     self.client.deleteVolume(volume_name)
@@ -1364,12 +1404,16 @@ class HP3PARCommon(object):
                     self.client.deleteVolume(volume_name)
                     raise exception.CinderException(ex)
 
-            if qos or vvs_name is not None:
+            # Check for flash cache setting in extra specs
+            flash_cache = self.get_flash_cache_policy(hp3par_keys)
+
+            if qos or vvs_name or flash_cache is not None:
                 cpg_names = self._get_key_value(hp3par_keys, 'cpg',
                                                 self.config.hp3par_cpg)
                 try:
                     self._add_volume_to_volume_set(volume, volume_name,
-                                                   cpg_names[0], vvs_name, qos)
+                                                   cpg_names[0], vvs_name,
+                                                   qos, flash_cache)
                 except Exception as ex:
                     # Delete the volume if unable to add it to the volume set
                     self.client.deleteVolume(volume_name)
@@ -1807,8 +1851,10 @@ class HP3PARCommon(object):
 
     def _retype(self, volume, volume_name, new_type_name, new_type_id, host,
                 new_persona, old_cpg, new_cpg, old_snap_cpg, new_snap_cpg,
-                old_tpvv, new_tpvv, old_tdvv, new_tdvv, old_vvs, new_vvs,
-                old_qos, new_qos, old_comment):
+                old_tpvv, new_tpvv, old_tdvv, new_tdvv,
+                old_vvs, new_vvs, old_qos, new_qos,
+                old_flash_cache, new_flash_cache,
+                old_comment):
 
         action = "volume:retype"
 
@@ -1836,6 +1882,8 @@ class HP3PARCommon(object):
                    'old_snap_cpg': old_snap_cpg, 'new_snap_cpg': new_snap_cpg,
                    'old_vvs': old_vvs, 'new_vvs': new_vvs,
                    'old_qos': old_qos, 'new_qos': new_qos,
+                   'old_flash_cache': old_flash_cache,
+                   'new_flash_cache': new_flash_cache,
                    'new_type_name': new_type_name, 'new_type_id': new_type_id,
                    'old_comment': old_comment
                    })
@@ -1879,8 +1927,12 @@ class HP3PARCommon(object):
         new_hp3par_keys = new_volume_settings['hp3par_keys']
         if 'persona' in new_hp3par_keys:
             new_persona = new_hp3par_keys['persona']
+        new_flash_cache = self.get_flash_cache_policy(new_hp3par_keys)
+
         old_qos = old_volume_settings['qos']
         old_vvs = old_volume_settings['vvs_name']
+        old_hp3par_keys = old_volume_settings['hp3par_keys']
+        old_flash_cache = self.get_flash_cache_policy(old_hp3par_keys)
 
         # Get the current volume info because we can get in a bad state
         # if we trust that all the volume type settings are still the
@@ -1901,8 +1953,9 @@ class HP3PARCommon(object):
         self._retype(volume, volume_name, new_type_name, new_type_id,
                      host, new_persona, old_cpg, new_cpg,
                      old_snap_cpg, new_snap_cpg, old_tpvv, new_tpvv,
-                     old_tdvv, new_tdvv, old_vvs, new_vvs, old_qos,
-                     new_qos, old_comment)
+                     old_tdvv, new_tdvv, old_vvs, new_vvs,
+                     old_qos, new_qos, old_flash_cache, new_flash_cache,
+                     old_comment)
 
         if host:
             return True, self._get_model_update(host['host'], new_cpg)
@@ -2109,9 +2162,12 @@ class ModifySpecsTask(flow_utils.CinderTask):
         super(ModifySpecsTask, self).__init__(addons=[action])
 
     def execute(self, common, volume_name, volume, old_cpg, new_cpg,
-                old_vvs, new_vvs, old_qos, new_qos):
+                old_vvs, new_vvs, old_qos, new_qos,
+                old_flash_cache, new_flash_cache):
 
-        if old_vvs != new_vvs or old_qos != new_qos:
+        if (old_vvs != new_vvs or
+                old_qos != new_qos or
+                old_flash_cache != new_flash_cache):
 
             # Remove VV from old VV Set.
             if old_vvs is not None and old_vvs != new_vvs:
@@ -2133,9 +2189,10 @@ class ModifySpecsTask(flow_utils.CinderTask):
                                   "deleteVolumeSet(%s)"), vvs_name)
                     raise ex
 
-            if new_vvs or new_qos:
+            if new_vvs or new_qos or new_flash_cache:
                 common._add_volume_to_volume_set(
-                    volume, volume_name, new_cpg, new_vvs, new_qos)
+                    volume, volume_name, new_cpg, new_vvs, new_qos,
+                    new_flash_cache)
                 self.needs_revert = True
 
     def revert(self, common, volume_name, volume, old_vvs, new_vvs, old_qos,

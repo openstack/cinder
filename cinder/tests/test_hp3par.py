@@ -54,6 +54,9 @@ HP3PAR_SAN_SSH_PRIVATE = 'foobar'
 CHAP_USER_KEY = "HPQ-cinder-CHAP-name"
 CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
 
+FLASH_CACHE_ENABLED = 1
+FLASH_CACHE_DISABLED = 2
+
 
 class HP3PARBaseDriver(object):
 
@@ -70,6 +73,7 @@ class HP3PARBaseDriver(object):
     VOLUME_ID = 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'
     CLONE_ID = 'd03338a9-9115-48a3-8dfc-000000000000'
     VOLUME_TYPE_ID_DEDUP = 'd03338a9-9115-48a3-8dfc-11111111111'
+    VOLUME_TYPE_ID_FLASH_CACHE = 'd03338a9-9115-48a3-8dfc-22222222222'
     VOLUME_NAME = 'volume-' + VOLUME_ID
     VOLUME_NAME_3PAR = 'osv-0DM4qZEVSKON-DXN-NwVpw'
     SNAPSHOT_ID = '2f823bdc-e36e-4dc8-bd15-de1c7a28ff31'
@@ -137,6 +141,14 @@ class HP3PARBaseDriver(object):
                   'volume_type': None,
                   'volume_type_id': 'gold'}
 
+    volume_flash_cache = {'name': VOLUME_NAME,
+                          'id': VOLUME_ID,
+                          'display_name': 'Foo Volume',
+                          'size': 2,
+                          'host': FAKE_HOST,
+                          'volume_type': None,
+                          'volume_type_id': VOLUME_TYPE_ID_FLASH_CACHE}
+
     snapshot = {'name': SNAPSHOT_NAME,
                 'id': SNAPSHOT_ID,
                 'user_id': USER_ID,
@@ -177,6 +189,16 @@ class HP3PARBaseDriver(object):
                                          'provisioning': 'dedup'},
                          'deleted_at': None,
                          'id': VOLUME_TYPE_ID_DEDUP}
+
+    volume_type_flash_cache = {'name': 'flash-cache-on',
+                               'deleted': False,
+                               'updated_at': None,
+                               'extra_specs': {'cpg': HP3PAR_CPG2,
+                                               'hp3par:flash_cache': 'true'},
+                               'deleted_at': None,
+                               'id': VOLUME_TYPE_ID_FLASH_CACHE}
+
+    flash_cache_3par_keys = {'flash_cache': 'true'}
 
     cpgs = [
         {'SAGrowth': {'LDLayout': {'diskPatterns': [{'diskType': 2}]},
@@ -411,15 +433,23 @@ class HP3PARBaseDriver(object):
     # intentionally removed to make _retype more usable for other use cases.
     RETYPE_DIFF = None
 
-    wsapi_version = {'major': 1,
-                     'build': 30201120,
-                     'minor': 4,
-                     'revision': 1}
-
     wsapi_version_312 = {'major': 1,
                          'build': 30102422,
                          'minor': 3,
                          'revision': 1}
+
+    wsapi_version_for_dedup = {'major': 1,
+                               'build': 30201120,
+                               'minor': 4,
+                               'revision': 1}
+
+    wsapi_version_for_flash_cache = {'major': 1,
+                                     'build': 30201200,
+                                     'minor': 4,
+                                     'revision': 2}
+
+    # Use this to point to latest version of wsapi
+    wsapi_version_latest = wsapi_version_for_flash_cache
 
     standard_login = [
         mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
@@ -635,7 +665,7 @@ class HP3PARBaseDriver(object):
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_unsupported_dedup_volume_type(self, _mock_volume_types):
 
-        mock_client = self.setup_driver_312()
+        mock_client = self.setup_driver(wsapi_version=self.wsapi_version_312)
         _mock_volume_types.return_value = {
             'name': 'dedup',
             'extra_specs': {
@@ -828,7 +858,6 @@ class HP3PARBaseDriver(object):
                         'tpvv': False,
                         'tdvv': True,
                         'snapCPG': HP3PAR_CPG_SNAP})]
-
             mock_client.assert_has_calls(
                 self.standard_login +
                 expected +
@@ -837,6 +866,97 @@ class HP3PARBaseDriver(object):
                              {'host': volume_utils.append_host(
                                  self.FAKE_HOST,
                                  HP3PAR_CPG_QOS)})
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_volume_flash_cache(self, _mock_volume_types):
+        # Setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+
+        _mock_volume_types.return_value = {
+            'name': 'flash-cache-on',
+            'extra_specs': {
+                'cpg': HP3PAR_CPG2,
+                'snap_cpg': HP3PAR_CPG_SNAP,
+                'vvs_name': self.VVS_NAME,
+                'qos': self.QOS,
+                'tpvv': True,
+                'tdvv': False,
+                'hp3par:flash_cache': 'true',
+                'volume_type': self.volume_type_flash_cache}}
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.getCPG.return_value = {'domain': None}
+            mock_client.FLASH_CACHE_ENABLED = FLASH_CACHE_ENABLED
+            mock_client.FLASH_CACHE_DISABLED = FLASH_CACHE_DISABLED
+
+            return_model = self.driver.create_volume(self.volume_flash_cache)
+            comment = (
+                '{"volume_type_name": "flash-cache-on", '
+                '"display_name": "Foo Volume", '
+                '"name": "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7", '
+                '"volume_type_id": "d03338a9-9115-48a3-8dfc-22222222222", '
+                '"volume_id": "d03338a9-9115-48a3-8dfc-35cdfcdc15a7", '
+                '"qos": {}, "type": "OpenStack"}')
+
+            expected = [
+                mock.call.getCPG(HP3PAR_CPG2),
+                mock.call.createVolume(
+                    self.VOLUME_3PAR_NAME,
+                    HP3PAR_CPG2,
+                    1907, {
+                        'comment': comment,
+                        'tpvv': True,
+                        'tdvv': False,
+                        'snapCPG': HP3PAR_CPG_SNAP}),
+                mock.call.getCPG(HP3PAR_CPG2),
+                mock.call.createVolumeSet('vvs-0DM4qZEVSKON-DXN-NwVpw', None),
+                mock.call.createQoSRules(
+                    'vvs-0DM4qZEVSKON-DXN-NwVpw',
+                    {'priority': 2}
+                ),
+                mock.call.modifyVolumeSet(
+                    'vvs-0DM4qZEVSKON-DXN-NwVpw', flashCachePolicy=1),
+                mock.call.addVolumeToVolumeSet(
+                    'vvs-0DM4qZEVSKON-DXN-NwVpw',
+                    'osv-0DM4qZEVSKON-DXN-NwVpw')]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual(return_model,
+                             {'host': volume_utils.append_host(
+                                 self.FAKE_HOST,
+                                 HP3PAR_CPG2)})
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_unsupported_flash_cache_volume(self, _mock_volume_types):
+
+        mock_client = self.setup_driver(wsapi_version=self.wsapi_version_312)
+        _mock_volume_types.return_value = {
+            'name': 'flash-cache-on',
+            'extra_specs': {
+                'cpg': HP3PAR_CPG2,
+                'snap_cpg': HP3PAR_CPG_SNAP,
+                'vvs_name': self.VVS_NAME,
+                'qos': self.QOS,
+                'tpvv': True,
+                'tdvv': False,
+                'hp3par:flash_cache': 'true',
+                'volume_type': self.volume_type_flash_cache}}
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+
+            self.assertRaises(exception.InvalidInput,
+                              common.get_flash_cache_policy,
+                              self.flash_cache_3par_keys)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_retype_not_3par(self, _mock_volume_types):
@@ -1160,6 +1280,7 @@ class HP3PARBaseDriver(object):
                            None, cpg, cpg, snap_cpg, snap_cpg,
                            True, False, False, True, None, None,
                            self.QOS_SPECS, self.RETYPE_QOS_SPECS,
+                           None, None,
                            "{}")
 
             expected = [
@@ -1194,6 +1315,7 @@ class HP3PARBaseDriver(object):
                            None, cpg, cpg, snap_cpg, snap_cpg,
                            True, False, False, True, None, None,
                            self.QOS_SPECS, self.RETYPE_QOS_SPECS,
+                           None, None,
                            "{}")
 
             expected = [
@@ -2845,7 +2967,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                                      ['0987654321234', '123456789000987'],
                                      }}}
 
-    def setup_driver(self, config=None, mock_conf=None):
+    def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
 
         self.ctxt = context.get_admin_context()
         mock_client = self.setup_mock_client(
@@ -2853,27 +2975,12 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             m_conf=mock_conf,
             driver=hpfcdriver.HP3PARFCDriver)
 
-        mock_client.getWsApiVersion.return_value = self.wsapi_version
-
-        expected = [
-            mock.call.getCPG(HP3PAR_CPG),
-            mock.call.getCPG(HP3PAR_CPG2)]
-        mock_client.assert_has_calls(
-            self.standard_login +
-            expected +
-            self.standard_logout)
-        mock_client.reset_mock()
-        return mock_client
-
-    def setup_driver_312(self, config=None, mock_conf=None):
-
-        self.ctxt = context.get_admin_context()
-        mock_client = self.setup_mock_client(
-            conf=config,
-            m_conf=mock_conf,
-            driver=hpfcdriver.HP3PARFCDriver)
-
-        mock_client.getWsApiVersion.return_value = self.wsapi_version_312
+        if wsapi_version:
+            mock_client.getWsApiVersion.return_value = (
+                wsapi_version)
+        else:
+            mock_client.getWsApiVersion.return_value = (
+                self.wsapi_version_latest)
 
         expected = [
             mock.call.getCPG(HP3PAR_CPG),
@@ -3509,7 +3616,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             'target_lun': TARGET_LUN,
             'target_portal': '1.1.1.2:1234'}}
 
-    def setup_driver(self, config=None, mock_conf=None):
+    def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
 
         self.ctxt = context.get_admin_context()
 
@@ -3518,33 +3625,12 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             m_conf=mock_conf,
             driver=hpdriver.HP3PARISCSIDriver)
 
-        mock_client.getWsApiVersion.return_value = self.wsapi_version
-
-        expected_get_cpgs = [
-            mock.call.getCPG(HP3PAR_CPG),
-            mock.call.getCPG(HP3PAR_CPG2)]
-        expected_get_ports = [mock.call.getPorts()]
-        mock_client.assert_has_calls(
-            self.standard_login +
-            expected_get_cpgs +
-            self.standard_logout +
-            self.standard_login +
-            expected_get_ports +
-            self.standard_logout)
-        mock_client.reset_mock()
-
-        return mock_client
-
-    def setup_driver_312(self, config=None, mock_conf=None):
-
-        self.ctxt = context.get_admin_context()
-
-        mock_client = self.setup_mock_client(
-            conf=config,
-            m_conf=mock_conf,
-            driver=hpdriver.HP3PARISCSIDriver)
-
-        mock_client.getWsApiVersion.return_value = self.wsapi_version_312
+        if wsapi_version:
+            mock_client.getWsApiVersion.return_value = (
+                wsapi_version)
+        else:
+            mock_client.getWsApiVersion.return_value = (
+                self.wsapi_version_latest)
 
         expected_get_cpgs = [
             mock.call.getCPG(HP3PAR_CPG),
