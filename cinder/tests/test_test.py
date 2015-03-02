@@ -17,6 +17,7 @@
 
 """Tests for the testing base code."""
 
+import mock
 from oslo_config import cfg
 import oslo_messaging as messaging
 
@@ -44,3 +45,35 @@ class IsolationTestCase(test.TestCase):
                                                  server=cfg.CONF.host),
                                 endpoints=[NeverCalled()])
         server.start()
+
+
+class MockAssertTestCase(test.TestCase):
+    """Ensure that valid mock assert methods are used."""
+    def test_assert_has_calls(self):
+        mock_call = mock.MagicMock(return_value=None)
+        mock_call(1)
+        mock_call(2)
+        mock_call.assert_has_calls([mock.call(1), mock.call(2)])
+
+    def test_assert_any_calls(self):
+        mock_call = mock.MagicMock(return_value=None)
+        mock_call(1)
+        mock_call(2)
+        mock_call(3)
+        mock_call.assert_any_calls([mock.call(1)])
+
+    def test_assert_called_with(self):
+        mock_call = mock.MagicMock(return_value=None)
+        mock_call(1, 'foo', a='123')
+        mock_call.assert_called_with(1, 'foo', a='123')
+
+    def test_assert_called_once_with(self):
+        mock_call = mock.MagicMock(return_value=None)
+        mock_call(1, 'foobar', a='123')
+        mock_call.assert_called_once_with(1, 'foobar', a='123')
+
+    def test_invalid_assert_calls(self):
+        mock_call = mock.MagicMock()
+        self.assertRaises(AttributeError, lambda: mock_call.assert_called)
+        self.assertRaises(AttributeError,
+                          lambda: mock_call.assert_once_called_with)

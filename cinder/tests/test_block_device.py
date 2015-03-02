@@ -110,8 +110,8 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                 lp_mocked.assert_called_once_with(TEST_VOLUME1)
                 gds_mocked.assert_called_once_with('/dev/loop1')
 
-        _exists.assert_called_anytime()
-        _clear_volume.assert_called_anytime()
+        self.assertTrue(_exists.called)
+        self.assertTrue(_clear_volume.called)
 
     def test_delete_path_is_not_in_list_of_available_devices(self):
         TEST_VOLUME2 = {'provider_location': '1 2 3 /dev/loop0'}
@@ -209,7 +209,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                               TEST_IMAGE_SERVICE,
                                               TEST_IMAGE_META)
 
-                _local_path.assert_called()
+                self.assertTrue(_local_path.called)
                 _upload_volume.assert_called_once_with(context,
                                                        TEST_IMAGE_SERVICE,
                                                        TEST_IMAGE_META,
