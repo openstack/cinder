@@ -33,6 +33,7 @@ from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi as volume_rpcapi
+from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
 
@@ -40,6 +41,7 @@ CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 CGQUOTAS = quota.CGQUOTAS
+VALID_REMOVE_VOL_FROM_CG_STATUS = ('available', 'in-use',)
 
 
 def wrap_check_policy(func):
@@ -285,9 +287,187 @@ class API(base.Base):
 
         self.volume_rpcapi.delete_consistencygroup(context, group)
 
-    @wrap_check_policy
-    def update(self, context, group, fields):
+    def update(self, context, group, name, description,
+               add_volumes, remove_volumes):
+        """Update consistency group."""
+        if group['status'] not in ["available"]:
+            msg = _("Consistency group status must be available, "
+                    "but current status is: %s.") % group['status']
+            raise exception.InvalidConsistencyGroup(reason=msg)
+
+        add_volumes_list = []
+        remove_volumes_list = []
+        if add_volumes:
+            add_volumes = add_volumes.strip(',')
+            add_volumes_list = add_volumes.split(',')
+        if remove_volumes:
+            remove_volumes = remove_volumes.strip(',')
+            remove_volumes_list = remove_volumes.split(',')
+
+        invalid_uuids = []
+        for uuid in add_volumes_list:
+            if uuid in remove_volumes_list:
+                invalid_uuids.append(uuid)
+        if invalid_uuids:
+            msg = _("UUIDs %s are in both add and remove volume "
+                    "list.") % invalid_uuids
+            raise exception.InvalidVolume(reason=msg)
+
+        volumes = self.db.volume_get_all_by_group(context, group['id'])
+
+        # Validate name.
+        if not name or name == group['name']:
+            name = None
+
+        # Validate description.
+        if not description or description == group['description']:
+            description = None
+
+        # Validate volumes in add_volumes and remove_volumes.
+        add_volumes_new = ""
+        remove_volumes_new = ""
+        if add_volumes_list:
+            add_volumes_new = self._validate_add_volumes(
+                context, volumes, add_volumes_list, group)
+        if remove_volumes_list:
+            remove_volumes_new = self._validate_remove_volumes(
+                volumes, remove_volumes_list, group)
+
+        if (not name and not description and not add_volumes_new and
+                not remove_volumes_new):
+                msg = (_("Cannot update consistency group %(group_id)s "
+                         "because no valid name, description, add_volumes, "
+                         "or remove_volumes were provided.") %
+                       {'group_id': group['id']})
+                raise exception.InvalidConsistencyGroup(reason=msg)
+
+        now = timeutils.utcnow()
+        fields = {'updated_at': now}
+
+        # Update name and description in db now. No need to
+        # to send them over thru an RPC call.
+        if name:
+            fields['name'] = name
+        if description:
+            fields['description'] = description
+        if not add_volumes_new and not remove_volumes_new:
+            # Only update name or description. Set status to available.
+            fields['status'] = 'available'
+        else:
+            fields['status'] = 'updating'
+
         self.db.consistencygroup_update(context, group['id'], fields)
+
+        # Do an RPC call only if the update request includes
+        # adding/removing volumes. add_volumes_new and remove_volumes_new
+        # are strings of volume UUIDs separated by commas with no spaces
+        # in between.
+        if add_volumes_new or remove_volumes_new:
+            self.volume_rpcapi.update_consistencygroup(
+                context, group,
+                add_volumes=add_volumes_new,
+                remove_volumes=remove_volumes_new)
+
+    def _validate_remove_volumes(self, volumes, remove_volumes_list, group):
+        # Validate volumes in remove_volumes.
+        remove_volumes_new = ""
+        for volume in volumes:
+            if volume['id'] in remove_volumes_list:
+                if volume['status'] not in VALID_REMOVE_VOL_FROM_CG_STATUS:
+                    msg = (_("Cannot remove volume %(volume_id)s from "
+                             "consistency group %(group_id)s because volume "
+                             "is in an invalid state: %(status)s. Valid "
+                             "states are: %(valid)s.") %
+                           {'volume_id': volume['id'],
+                            'group_id': group['id'],
+                            'status': volume['status'],
+                            'valid': VALID_REMOVE_VOL_FROM_CG_STATUS})
+                    raise exception.InvalidVolume(reason=msg)
+                # Volume currently in CG. It will be removed from CG.
+                if remove_volumes_new:
+                    remove_volumes_new += ","
+                remove_volumes_new += volume['id']
+
+        for rem_vol in remove_volumes_list:
+            if rem_vol not in remove_volumes_new:
+                msg = (_("Cannot remove volume %(volume_id)s from "
+                         "consistency group %(group_id)s because it "
+                         "is not in the group.") %
+                       {'volume_id': rem_vol,
+                        'group_id': group['id']})
+                raise exception.InvalidVolume(reason=msg)
+
+        return remove_volumes_new
+
+    def _validate_add_volumes(self, context, volumes, add_volumes_list, group):
+        add_volumes_new = ""
+        for volume in volumes:
+            if volume['id'] in add_volumes_list:
+                # Volume already in CG. Remove from add_volumes.
+                add_volumes_list.remove(volume['id'])
+
+        for add_vol in add_volumes_list:
+            try:
+                add_vol_ref = self.db.volume_get(context, add_vol)
+            except exception.VolumeNotFound:
+                msg = (_("Cannot add volume %(volume_id)s to consistency "
+                         "group %(group_id)s because volume cannot be "
+                         "found.") %
+                       {'volume_id': add_vol,
+                        'group_id': group['id']})
+                raise exception.InvalidVolume(reason=msg)
+            if add_vol_ref:
+                add_vol_type_id = add_vol_ref.get('volume_type_id', None)
+                if not add_vol_type_id:
+                    msg = (_("Cannot add volume %(volume_id)s to consistency "
+                             "group %(group_id)s because it has no volume "
+                             "type.") %
+                           {'volume_id': add_vol_ref['id'],
+                            'group_id': group['id']})
+                    raise exception.InvalidVolume(reason=msg)
+                if add_vol_type_id not in group['volume_type_id']:
+                    msg = (_("Cannot add volume %(volume_id)s to consistency "
+                             "group %(group_id)s because volume type "
+                             "%(volume_type)s is not supported by the "
+                             "group.") %
+                           {'volume_id': add_vol_ref['id'],
+                            'group_id': group['id'],
+                            'volume_type': add_vol_type_id})
+                    raise exception.InvalidVolume(reason=msg)
+                if (add_vol_ref['status'] not in
+                        VALID_REMOVE_VOL_FROM_CG_STATUS):
+                    msg = (_("Cannot add volume %(volume_id)s to consistency "
+                             "group %(group_id)s because volume is in an "
+                             "invalid state: %(status)s. Valid states are: "
+                             "%(valid)s.") %
+                           {'volume_id': add_vol_ref['id'],
+                            'group_id': group['id'],
+                            'status': add_vol_ref['status'],
+                            'valid': VALID_REMOVE_VOL_FROM_CG_STATUS})
+                    raise exception.InvalidVolume(reason=msg)
+
+                # group['host'] and add_vol_ref['host'] are in this format:
+                # 'host@backend#pool'. Extract host (host@backend) before
+                # doing comparison.
+                vol_host = vol_utils.extract_host(add_vol_ref['host'])
+                group_host = vol_utils.extract_host(group['host'])
+                if group_host != vol_host:
+                    raise exception.InvalidVolume(
+                        reason=_("Volume is not local to this node."))
+
+                # Volume exists. It will be added to CG.
+                if add_volumes_new:
+                    add_volumes_new += ","
+                add_volumes_new += add_vol_ref['id']
+
+            else:
+                msg = (_("Cannot add volume %(volume_id)s to consistency "
+                         "group %(group_id)s because volume does not exist.") %
+                       {'volume_id': add_vol_ref['id'],
+                        'group_id': group['id']})
+                raise exception.InvalidVolume(reason=msg)
+
+        return add_volumes_new
 
     def get(self, context, group_id):
         rv = self.db.consistencygroup_get(context, group_id)
@@ -324,11 +504,6 @@ class API(base.Base):
                 context.project_id)
 
         return groups
-
-    def get_group(self, context, group_id):
-        check_policy(context, 'get_group')
-        rv = self.db.consistencygroup_get(context, group_id)
-        return dict(rv.iteritems())
 
     def create_cgsnapshot(self, context,
                           group, name,

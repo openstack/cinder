@@ -1251,7 +1251,7 @@ def volume_get_all_by_host(context, host, filters=None):
         return []
 
 
-@require_admin_context
+@require_context
 def volume_get_all_by_group(context, group_id, filters=None):
     """Retrieves all volumes associated with the group_id.
 

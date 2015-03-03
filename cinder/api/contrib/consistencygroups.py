@@ -201,6 +201,65 @@ class ConsistencyGroupsController(wsgi.Controller):
             dict(new_consistencygroup.iteritems()))
         return retval
 
+    @wsgi.serializers(xml=ConsistencyGroupTemplate)
+    def update(self, req, id, body):
+        """Update the consistency group.
+
+        Expected format of the input parameter 'body':
+        {
+            "consistencygroup":
+            {
+                "name": "my_cg",
+                "description": "My consistency group",
+                "add_volumes": "volume-uuid-1,volume-uuid-2,..."
+                "remove_volumes": "volume-uuid-8,volume-uuid-9,..."
+            }
+        }
+        """
+        LOG.debug('Update called for consistency group %s.', id)
+
+        if not body:
+            msg = _("Missing request body.")
+            raise exc.HTTPBadRequest(explanation=msg)
+        if not self.is_valid_body(body, 'consistencygroup'):
+            msg = _("Incorrect request body format.")
+            raise exc.HTTPBadRequest(explanation=msg)
+        context = req.environ['cinder.context']
+
+        consistencygroup = body.get('consistencygroup', None)
+        name = consistencygroup.get('name', None)
+        description = consistencygroup.get('description', None)
+        add_volumes = consistencygroup.get('add_volumes', None)
+        remove_volumes = consistencygroup.get('remove_volumes', None)
+
+        if (not name and not description and not add_volumes
+                and not remove_volumes):
+            msg = _("Name, description, add_volumes, and remove_volumes "
+                    "can not be all empty in the request body.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        LOG.info(_LI("Updating consistency group %(id)s with name %(name)s "
+                     "description: %(description)s add_volumes: "
+                     "%(add_volumes)s remove_volumes: %(remove_volumes)s."),
+                 {'id': id, 'name': name,
+                  'description': description,
+                  'add_volumes': add_volumes,
+                  'remove_volumes': remove_volumes},
+                 context=context)
+
+        try:
+            group = self.consistencygroup_api.get(context, id)
+            self.consistencygroup_api.update(
+                context, group, name, description,
+                add_volumes, remove_volumes)
+        except exception.ConsistencyGroupNotFound:
+            msg = _("Consistency group %s could not be found.") % id
+            raise exc.HTTPNotFound(explanation=msg)
+        except exception.InvalidConsistencyGroup as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+
+        return webob.Response(status_int=202)
+
 
 class Consistencygroups(extensions.ExtensionDescriptor):
     """consistency groups support."""
@@ -215,6 +274,6 @@ class Consistencygroups(extensions.ExtensionDescriptor):
         res = extensions.ResourceExtension(
             Consistencygroups.alias, ConsistencyGroupsController(),
             collection_actions={'detail': 'GET'},
-            member_actions={'delete': 'POST'})
+            member_actions={'delete': 'POST', 'update': 'PUT'})
         resources.append(res)
         return resources

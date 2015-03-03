@@ -3528,30 +3528,20 @@ class VolumeTestCase(BaseVolumeTestCase):
         # clean up
         self.volume.delete_volume(self.context, volume['id'])
 
-    def test_create_delete_consistencygroup(self):
+    @mock.patch.object(CGQUOTAS, "reserve",
+                       return_value=["RESERVATION"])
+    @mock.patch.object(CGQUOTAS, "commit")
+    @mock.patch.object(CGQUOTAS, "rollback")
+    @mock.patch.object(driver.VolumeDriver,
+                       "create_consistencygroup",
+                       return_value={'status': 'available'})
+    @mock.patch.object(driver.VolumeDriver,
+                       "delete_consistencygroup",
+                       return_value=({'status': 'deleted'}, []))
+    def test_create_delete_consistencygroup(self, fake_delete_cg,
+                                            fake_create_cg, fake_rollback,
+                                            fake_commit, fake_reserve):
         """Test consistencygroup can be created and deleted."""
-        # Need to stub out reserve, commit, and rollback
-        def fake_reserve(context, expire=None, project_id=None, **deltas):
-            return ["RESERVATION"]
-
-        def fake_commit(context, reservations, project_id=None):
-            pass
-
-        def fake_rollback(context, reservations, project_id=None):
-            pass
-
-        self.stubs.Set(CGQUOTAS, "reserve", fake_reserve)
-        self.stubs.Set(CGQUOTAS, "commit", fake_commit)
-        self.stubs.Set(CGQUOTAS, "rollback", fake_rollback)
-
-        rval = {'status': 'available'}
-        driver.VolumeDriver.create_consistencygroup = \
-            mock.Mock(return_value=rval)
-
-        rval = {'status': 'deleted'}, []
-        driver.VolumeDriver.delete_consistencygroup = \
-            mock.Mock(return_value=rval)
-
         group = tests_utils.create_consistencygroup(
             self.context,
             availability_zone=CONF.storage_availability_zone,
@@ -3597,6 +3587,96 @@ class VolumeTestCase(BaseVolumeTestCase):
                           db.consistencygroup_get,
                           self.context,
                           group_id)
+
+    @mock.patch.object(CGQUOTAS, "reserve",
+                       return_value=["RESERVATION"])
+    @mock.patch.object(CGQUOTAS, "commit")
+    @mock.patch.object(CGQUOTAS, "rollback")
+    @mock.patch.object(driver.VolumeDriver,
+                       "create_consistencygroup",
+                       return_value={'status': 'available'})
+    @mock.patch.object(driver.VolumeDriver,
+                       "update_consistencygroup")
+    def test_update_consistencygroup(self, fake_update_cg,
+                                     fake_create_cg, fake_rollback,
+                                     fake_commit, fake_reserve):
+        """Test consistencygroup can be updated."""
+        group = tests_utils.create_consistencygroup(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2')
+        group_id = group['id']
+        self.volume.create_consistencygroup(self.context, group_id)
+
+        volume = tests_utils.create_volume(
+            self.context,
+            consistencygroup_id=group_id,
+            **self.volume_params)
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+
+        volume2 = tests_utils.create_volume(
+            self.context,
+            consistencygroup_id=None,
+            **self.volume_params)
+        volume_id2 = volume2['id']
+        self.volume.create_volume(self.context, volume_id2)
+
+        fake_update_cg.return_value = (
+            {'status': 'available'},
+            [{'id': volume_id2, 'status': 'available'}],
+            [{'id': volume_id, 'status': 'available'}])
+
+        self.volume.update_consistencygroup(self.context, group_id,
+                                            add_volumes=volume_id2,
+                                            remove_volumes=volume_id)
+        cg = db.consistencygroup_get(
+            self.context,
+            group_id)
+        expected = {
+            'status': 'available',
+            'name': 'test_cg',
+            'availability_zone': 'nova',
+            'tenant_id': 'fake',
+            'created_at': 'DONTCARE',
+            'user_id': 'fake',
+            'consistencygroup_id': group_id
+        }
+        self.assertEqual('available', cg['status'])
+        self.assertEqual(10, len(fake_notifier.NOTIFICATIONS))
+        msg = fake_notifier.NOTIFICATIONS[6]
+        self.assertEqual('consistencygroup.update.start', msg['event_type'])
+        self.assertDictMatch(expected, msg['payload'])
+        msg = fake_notifier.NOTIFICATIONS[8]
+        self.assertEqual('consistencygroup.update.end', msg['event_type'])
+        self.assertDictMatch(expected, msg['payload'])
+        cgvolumes = db.volume_get_all_by_group(self.context, group_id)
+        cgvol_ids = [cgvol['id'] for cgvol in cgvolumes]
+        # Verify volume is removed.
+        self.assertNotIn(volume_id, cgvol_ids)
+        # Verify volume is added.
+        self.assertIn(volume_id2, cgvol_ids)
+
+        self.volume_params['status'] = 'wrong-status'
+        volume3 = tests_utils.create_volume(
+            self.context,
+            consistencygroup_id=None,
+            **self.volume_params)
+        volume_id3 = volume3['id']
+
+        volume_get_orig = self.volume.db.volume_get
+        self.volume.db.volume_get = mock.Mock(
+            return_value={'status': 'wrong_status',
+                          'id': volume_id3})
+        # Try to add a volume in wrong status
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume.update_consistencygroup,
+                          self.context,
+                          group_id,
+                          add_volumes=volume_id3,
+                          remove_volumes=None)
+        self.volume.db.volume_get.reset_mock()
+        self.volume.db.volume_get = volume_get_orig
 
     @staticmethod
     def _create_cgsnapshot(group_id, volume_id, size='0'):

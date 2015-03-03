@@ -86,6 +86,7 @@
 
     "consistencygroup:create" : "",
     "consistencygroup:delete": "",
+    "consistencygroup:update": "",
     "consistencygroup:get": "",
     "consistencygroup:get_all": "",
 

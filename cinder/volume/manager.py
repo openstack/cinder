@@ -72,6 +72,7 @@ LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
 CGQUOTAS = quota.CGQUOTAS
+VALID_REMOVE_VOL_FROM_CG_STATUS = ('available', 'in-use',)
 
 volume_manager_opts = [
     cfg.StrOpt('volume_driver',
@@ -160,7 +161,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.19'
+    RPC_API_VERSION = '1.21'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -1362,12 +1363,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                                              context,
                                              group,
                                              event_suffix,
+                                             volumes=None,
                                              extra_usage_info=None):
         vol_utils.notify_about_consistencygroup_usage(
             context, group, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
-        volumes = self.db.volume_get_all_by_group(context, group['id'])
+        if not volumes:
+            volumes = self.db.volume_get_all_by_group(context, group['id'])
         if volumes:
             for volume in volumes:
                 vol_utils.notify_about_volume_usage(
@@ -1378,13 +1381,15 @@ class VolumeManager(manager.SchedulerDependentManager):
                                        context,
                                        cgsnapshot,
                                        event_suffix,
+                                       snapshots=None,
                                        extra_usage_info=None):
         vol_utils.notify_about_cgsnapshot_usage(
             context, cgsnapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
-        snapshots = self.db.snapshot_get_all_for_cgsnapshot(context,
-                                                            cgsnapshot['id'])
+        if not snapshots:
+            snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+                context, cgsnapshot['id'])
         if snapshots:
             for snapshot in snapshots:
                 vol_utils.notify_about_snapshot_usage(
@@ -1857,8 +1862,145 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Consistency group %s: deleted successfully."),
                  group_id)
         self._notify_about_consistencygroup_usage(
-            context, group_ref, "delete.end")
+            context, group_ref, "delete.end", volumes)
         self.publish_service_capabilities(context)
+
+        return True
+
+    def update_consistencygroup(self, context, group_id,
+                                add_volumes=None, remove_volumes=None):
+        """Updates consistency group.
+
+        Update consistency group by adding volumes to the group,
+        or removing volumes from the group.
+        """
+        LOG.info(_LI("Consistency group %s: updating"), group_id)
+        group = self.db.consistencygroup_get(context, group_id)
+
+        add_volumes_ref = []
+        remove_volumes_ref = []
+        add_volumes_list = []
+        remove_volumes_list = []
+        if add_volumes:
+            add_volumes_list = add_volumes.split(',')
+        if remove_volumes:
+            remove_volumes_list = remove_volumes.split(',')
+        for add_vol in add_volumes_list:
+            try:
+                add_vol_ref = self.db.volume_get(context, add_vol)
+            except exception.VolumeNotFound:
+                LOG.error(_LE("Cannot add volume %(volume_id)s to consistency "
+                              "group %(group_id)s because volume cannot be "
+                              "found."),
+                          {'volume_id': add_vol_ref['id'],
+                           'group_id': group_id})
+                raise
+            if add_vol_ref['status'] not in ['in-use', 'available']:
+                msg = (_("Cannot add volume %(volume_id)s to consistency "
+                         "group %(group_id)s because volume is in an invalid "
+                         "state: %(status)s. Valid states are: %(valid)s.") %
+                       {'volume_id': add_vol_ref['id'],
+                        'group_id': group_id,
+                        'status': add_vol_ref['status'],
+                        'valid': VALID_REMOVE_VOL_FROM_CG_STATUS})
+                raise exception.InvalidVolume(reason=msg)
+            # self.host is 'host@backend'
+            # volume_ref['host'] is 'host@backend#pool'
+            # Extract host before doing comparison
+            new_host = vol_utils.extract_host(add_vol_ref['host'])
+            if new_host != self.host:
+                raise exception.InvalidVolume(
+                    reason=_("Volume is not local to this node."))
+            add_volumes_ref.append(add_vol_ref)
+
+        for remove_vol in remove_volumes_list:
+            try:
+                remove_vol_ref = self.db.volume_get(context, remove_vol)
+            except exception.VolumeNotFound:
+                LOG.error(_LE("Cannot remove volume %(volume_id)s from "
+                              "consistency group %(group_id)s because volume "
+                              "cannot be found."),
+                          {'volume_id': remove_vol_ref['id'],
+                           'group_id': group_id})
+                raise
+            remove_volumes_ref.append(remove_vol_ref)
+
+        self._notify_about_consistencygroup_usage(
+            context, group, "update.start")
+
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            LOG.debug("Consistency group %(group_id)s: updating",
+                      {'group_id': group['id']})
+
+            model_update, add_volumes_update, remove_volumes_update = (
+                self.driver.update_consistencygroup(
+                    context, group,
+                    add_volumes=add_volumes_ref,
+                    remove_volumes=remove_volumes_ref))
+
+            if add_volumes_update:
+                for update in add_volumes_update:
+                    self.db.volume_update(context, update['id'], update)
+
+            if remove_volumes_update:
+                for update in remove_volumes_update:
+                    self.db.volume_update(context, update['id'], update)
+
+            if model_update:
+                if model_update['status'] in ['error']:
+                    msg = (_('Error occurred when updating consistency group '
+                             '%s.') % group_id)
+                    LOG.exception(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                self.db.consistencygroup_update(context, group_id,
+                                                model_update)
+
+        except exception.VolumeDriverException:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Error occurred in the volume driver when "
+                              "updating consistency group %(group_id)s."),
+                          {'group_id': group_id})
+                self.db.consistencygroup_update(context, group_id,
+                                                {'status': 'error'})
+                for add_vol in add_volumes_ref:
+                    self.db.volume_update(context, add_vol['id'],
+                                          {'status': 'error'})
+                for rem_vol in remove_volumes_ref:
+                    self.db.volume_update(context, rem_vol['id'],
+                                          {'status': 'error'})
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Error occurred when updating consistency "
+                              "group %(group_id)s."),
+                          {'group_id': group['id']})
+                self.db.consistencygroup_update(context, group_id,
+                                                {'status': 'error'})
+                for add_vol in add_volumes_ref:
+                    self.db.volume_update(context, add_vol['id'],
+                                          {'status': 'error'})
+                for rem_vol in remove_volumes_ref:
+                    self.db.volume_update(context, rem_vol['id'],
+                                          {'status': 'error'})
+
+        now = timeutils.utcnow()
+        self.db.consistencygroup_update(context, group_id,
+                                        {'status': 'available',
+                                         'updated_at': now})
+        for add_vol in add_volumes_ref:
+            self.db.volume_update(context, add_vol['id'],
+                                  {'consistencygroup_id': group_id,
+                                   'updated_at': now})
+        for rem_vol in remove_volumes_ref:
+            self.db.volume_update(context, rem_vol['id'],
+                                  {'consistencygroup_id': None,
+                                   'updated_at': now})
+
+        LOG.info(_LI("Consistency group %s: updated successfully."),
+                 group_id)
+        self._notify_about_consistencygroup_usage(
+            context, group, "update.end")
 
         return True
 
@@ -2038,7 +2180,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("cgsnapshot %s: deleted successfully"),
                  cgsnapshot_ref['id'])
         self._notify_about_cgsnapshot_usage(
-            context, cgsnapshot_ref, "delete.end")
+            context, cgsnapshot_ref, "delete.end", snapshots)
 
         return True
 
