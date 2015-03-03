@@ -4534,7 +4534,10 @@ class ISCSITestCase(DriverTestCase):
                   "attached_mode": "rw"}
         iscsi_driver = \
             cinder.volume.targets.tgt.TgtAdm(configuration=self.configuration)
-        result = iscsi_driver._get_iscsi_properties(volume, multipath=True)
+        result = iscsi_driver._get_iscsi_properties(volume)
+        self.assertEqual(result["target_portal"], "1.1.1.1:3260")
+        self.assertEqual(result["target_iqn"], "iqn:iqn")
+        self.assertEqual(result["target_lun"], 0)
         self.assertEqual(["1.1.1.1:3260", "2.2.2.2:3261"],
                          result["target_portals"])
         self.assertEqual(["iqn:iqn", "iqn:iqn"], result["target_iqns"])

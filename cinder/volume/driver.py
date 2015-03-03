@@ -1235,10 +1235,15 @@ class ISCSIDriver(VolumeDriver):
         :access_mode:    the volume access mode allow client used
                          ('rw' or 'ro' currently supported)
 
-        In some of drivers, When multipath=True is specified, :target_iqn,
-        :target_portal, :target_lun may be replaced with :target_iqns,
-        :target_portals, :target_luns, which contain lists of multiple values.
-        In this case, the initiator should establish sessions to all the path.
+        In some of drivers that support multiple connections (for multipath
+        and for single path with failover on connection failure), it returns
+        :target_iqns, :target_portals, :target_luns, which contain lists of
+        multiple values. The main portal information is also returned in
+        :target_iqn, :target_portal, :target_lun for backward compatibility.
+
+        Note that some of drivers don't return :target_portals even if they
+        support multipath. Then the connector should use sendtargets discovery
+        to find the other portals if it supports multipath.
         """
 
         properties = {}
@@ -1276,14 +1281,13 @@ class ISCSIDriver(VolumeDriver):
             else:
                 lun = 0
 
-        if multipath:
+        if nr_portals > 1:
             properties['target_portals'] = portals
             properties['target_iqns'] = [iqn] * nr_portals
             properties['target_luns'] = [lun] * nr_portals
-        else:
-            properties['target_portal'] = portals[0]
-            properties['target_iqn'] = iqn
-            properties['target_lun'] = lun
+        properties['target_portal'] = portals[0]
+        properties['target_iqn'] = iqn
+        properties['target_lun'] = lun
 
         properties['volume_id'] = volume['id']
 
@@ -1351,14 +1355,31 @@ class ISCSIDriver(VolumeDriver):
                 }
             }
 
+        If the backend driver supports multiple connections for multipath and
+        for single path with failover, "target_portals", "target_iqns",
+        "target_luns" are also populated::
+
+            {
+                'driver_volume_type': 'iscsi'
+                'data': {
+                    'target_discovered': False,
+                    'target_iqn': 'iqn.2010-10.org.openstack:volume1',
+                    'target_iqns': ['iqn.2010-10.org.openstack:volume1',
+                                    'iqn.2010-10.org.openstack:volume1-2'],
+                    'target_portal': '10.0.0.1:3260',
+                    'target_portals': ['10.0.0.1:3260', '10.0.1.1:3260']
+                    'target_lun': 1,
+                    'target_luns': [1, 1],
+                    'volume_id': 1,
+                    'access_mode': 'rw'
+                }
+            }
         """
         # NOTE(jdg): Yes, this is duplicated in the volume/target
         # drivers, for now leaving it as there are 3'rd party
         # drivers that don't use target drivers, but inherit from
         # this base class and use this init data
-        iscsi_properties = self._get_iscsi_properties(volume,
-                                                      connector.get(
-                                                          'multipath'))
+        iscsi_properties = self._get_iscsi_properties(volume)
         return {
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties
