@@ -722,6 +722,15 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         snapshots = db_utils.get_table(engine, 'snapshots')
         self.assertNotIn('provider_id', snapshots.c)
 
+    def _check_037(self, engine, data):
+        consistencygroups = db_utils.get_table(engine, 'consistencygroups')
+        self.assertIsInstance(consistencygroups.c.cgsnapshot_id.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_037(self, engine):
+        consistencygroups = db_utils.get_table(engine, 'consistencygroups')
+        self.assertNotIn('cgsnapshot_id', consistencygroups.c)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 

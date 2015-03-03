@@ -73,6 +73,7 @@ LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
 CGQUOTAS = quota.CGQUOTAS
 VALID_REMOVE_VOL_FROM_CG_STATUS = ('available', 'in-use',)
+VALID_CREATE_CG_SRC_SNAP_STATUS = ('available',)
 
 volume_manager_opts = [
     cfg.StrOpt('volume_driver',
@@ -161,7 +162,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.21'
+    RPC_API_VERSION = '1.22'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -362,7 +363,8 @@ class VolumeManager(manager.SchedulerDependentManager):
     def create_volume(self, context, volume_id, request_spec=None,
                       filter_properties=None, allow_reschedule=True,
                       snapshot_id=None, image_id=None, source_volid=None,
-                      source_replicaid=None, consistencygroup_id=None):
+                      source_replicaid=None, consistencygroup_id=None,
+                      cgsnapshot_id=None):
 
         """Creates the volume."""
         context_elevated = context.elevated()
@@ -387,7 +389,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                 image_id=image_id,
                 source_volid=source_volid,
                 source_replicaid=source_replicaid,
-                consistencygroup_id=consistencygroup_id)
+                consistencygroup_id=consistencygroup_id,
+                cgsnapshot_id=cgsnapshot_id)
         except Exception:
             LOG.exception(_LE("Failed to create manager volume flow"))
             raise exception.CinderException(
@@ -425,19 +428,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Fetch created volume from storage
         vol_ref = flow_engine.storage.fetch('volume')
         # Update volume stats
-        pool = vol_utils.extract_host(vol_ref['host'], 'pool')
-        if pool is None:
-            # Legacy volume, put them into default pool
-            pool = self.driver.configuration.safe_get(
-                'volume_backend_name') or vol_utils.extract_host(
-                    vol_ref['host'], 'pool', True)
-
-        try:
-            self.stats['pools'][pool]['allocated_capacity_gb'] \
-                += vol_ref['size']
-        except KeyError:
-            self.stats['pools'][pool] = dict(
-                allocated_capacity_gb=vol_ref['size'])
+        self._update_allocated_capacity(vol_ref)
 
         return vol_ref['id']
 
@@ -1747,6 +1738,163 @@ class VolumeManager(manager.SchedulerDependentManager):
             context, group_ref, "create.end")
 
         return group_ref['id']
+
+    def create_consistencygroup_from_src(self, context, group_id,
+                                         cgsnapshot_id=None):
+        """Creates the consistency group from source.
+
+        Currently the source can only be a cgsnapshot.
+        """
+        group_ref = self.db.consistencygroup_get(context, group_id)
+
+        try:
+            volumes = self.db.volume_get_all_by_group(
+                context, group_id)
+
+            cgsnapshot = None
+            snapshots = None
+            if cgsnapshot_id:
+                try:
+                    cgsnapshot = self.db.cgsnapshot_get(context, cgsnapshot_id)
+                except exception.CgSnapshotNotFound:
+                    LOG.error(_LE("Cannot create consistency group %(group)s "
+                                  "because cgsnapshot %(snap)s cannot be "
+                                  "found."),
+                              {'group': group_id,
+                               'snap': cgsnapshot_id})
+                    raise
+                if cgsnapshot:
+                    snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+                        context, cgsnapshot_id)
+                    for snap in snapshots:
+                        if (snap['status'] not in
+                                VALID_CREATE_CG_SRC_SNAP_STATUS):
+                            msg = (_("Cannot create consistency group "
+                                     "%(group)s because snapshot %(snap)s is "
+                                     "not in a valid state. Valid states are: "
+                                     "%(valid)s.") %
+                                   {'group': group_id,
+                                    'snap': snap['id'],
+                                    'valid': VALID_CREATE_CG_SRC_SNAP_STATUS})
+                            raise exception.InvalidConsistencyGroup(reason=msg)
+
+            self._notify_about_consistencygroup_usage(
+                context, group_ref, "create.start")
+
+            utils.require_driver_initialized(self.driver)
+
+            LOG.info(_LI("Consistency group %(group)s: creating from source "
+                         "cgsnapshot %(snap)s."),
+                     {'group': group_id,
+                      'snap': cgsnapshot_id})
+            model_update, volumes_model_update = (
+                self.driver.create_consistencygroup_from_src(
+                    context, group_ref, volumes, cgsnapshot, snapshots))
+
+            if volumes_model_update:
+                for update in volumes_model_update:
+                    self.db.volume_update(context, update['id'], update)
+
+            if model_update:
+                group_ref = self.db.consistencygroup_update(
+                    context, group_id, model_update)
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.db.consistencygroup_update(
+                    context,
+                    group_id,
+                    {'status': 'error'})
+                LOG.error(_LE("Consistency group %(group)s: create from "
+                              "source cgsnapshot %(snap)s failed."),
+                          {'group': group_id,
+                           'snap': cgsnapshot_id})
+                # Update volume status to 'error' as well.
+                for vol in volumes:
+                    self.db.volume_update(
+                        context, vol['id'], {'status': 'error'})
+
+        now = timeutils.utcnow()
+        status = 'available'
+        for vol in volumes:
+            update = {'status': status, 'created_at': now}
+            self._update_volume_from_src(context, vol, update,
+                                         group_id=group_id)
+            self._update_allocated_capacity(vol)
+
+        self.db.consistencygroup_update(context,
+                                        group_id,
+                                        {'status': status,
+                                         'created_at': now})
+        LOG.info(_LI("Consistency group %(group)s: created successfully "
+                     "from source cgsnapshot %(snap)s."),
+                 {'group': group_id,
+                  'snap': cgsnapshot_id})
+
+        self._notify_about_consistencygroup_usage(
+            context, group_ref, "create.end")
+
+        return group_ref['id']
+
+    def _update_volume_from_src(self, context, vol, update, group_id=None):
+        try:
+            snapshot_ref = self.db.snapshot_get(context,
+                                                vol['snapshot_id'])
+            orig_vref = self.db.volume_get(context,
+                                           snapshot_ref['volume_id'])
+            if orig_vref.bootable:
+                update['bootable'] = True
+                self.db.volume_glance_metadata_copy_to_volume(
+                    context, vol['id'], vol['snapshot_id'])
+        except exception.SnapshotNotFound:
+            LOG.error(_LE("Source snapshot %(snapshot_id)s cannot be found."),
+                      {'snapshot_id': vol['snapshot_id']})
+            self.db.volume_update(context, vol['id'],
+                                  {'status': 'error'})
+            if group_id:
+                self.db.consistencygroup_update(
+                    context, group_id, {'status': 'error'})
+            raise
+        except exception.VolumeNotFound:
+            LOG.error(_LE("The source volume %(volume_id)s "
+                          "cannot be found."),
+                      {'volume_id': snapshot_ref['volume_id']})
+            self.db.volume_update(context, vol['id'],
+                                  {'status': 'error'})
+            if group_id:
+                self.db.consistencygroup_update(
+                    context, group_id, {'status': 'error'})
+            raise
+        except exception.CinderException as ex:
+            LOG.error(_LE("Failed to update %(volume_id)s"
+                          " metadata using the provided snapshot"
+                          " %(snapshot_id)s metadata.") %
+                      {'volume_id': vol['id'],
+                       'snapshot_id': vol['snapshot_id']})
+            self.db.volume_update(context, vol['id'],
+                                  {'status': 'error'})
+            if group_id:
+                self.db.consistencygroup_update(
+                    context, group_id, {'status': 'error'})
+            raise exception.MetadataCopyFailure(reason=ex)
+
+        self.db.volume_update(context, vol['id'], update)
+
+    def _update_allocated_capacity(self, vol):
+        # Update allocated capacity in volume stats
+        pool = vol_utils.extract_host(vol['host'], 'pool')
+        if pool is None:
+            # Legacy volume, put them into default pool
+            pool = self.driver.configuration.safe_get(
+                'volume_backend_name') or vol_utils.extract_host(
+                    vol['host'], 'pool', True)
+
+        try:
+            self.stats['pools'][pool]['allocated_capacity_gb'] += (
+                vol['size'])
+        except KeyError:
+            self.stats['pools'][pool] = dict(
+                allocated_capacity_gb=vol['size'])
 
     def delete_consistencygroup(self, context, group_id):
         """Deletes consistency group and the volumes in the group."""

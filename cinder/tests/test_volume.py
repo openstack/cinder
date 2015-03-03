@@ -3678,6 +3678,99 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.db.volume_get.reset_mock()
         self.volume.db.volume_get = volume_get_orig
 
+    @mock.patch.object(driver.VolumeDriver,
+                       "create_consistencygroup",
+                       return_value={'status': 'available'})
+    @mock.patch.object(driver.VolumeDriver,
+                       "delete_consistencygroup",
+                       return_value=({'status': 'deleted'}, []))
+    @mock.patch.object(driver.VolumeDriver,
+                       "create_cgsnapshot",
+                       return_value={'status': 'available'})
+    @mock.patch.object(driver.VolumeDriver,
+                       "delete_cgsnapshot",
+                       return_value=({'status': 'deleted'}, []))
+    @mock.patch.object(driver.VolumeDriver,
+                       "create_consistencygroup_from_src",
+                       return_value=(None, None))
+    def test_create_consistencygroup_from_src(self, mock_create_from_src,
+                                              mock_delete_cgsnap,
+                                              mock_create_cgsnap,
+                                              mock_delete_cg, mock_create_cg):
+        """Test consistencygroup can be created and deleted."""
+        group = tests_utils.create_consistencygroup(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2')
+        group_id = group['id']
+        volume = tests_utils.create_volume(
+            self.context,
+            consistencygroup_id=group_id,
+            **self.volume_params)
+        volume_id = volume['id']
+        cgsnapshot_returns = self._create_cgsnapshot(group_id, volume_id)
+        cgsnapshot_id = cgsnapshot_returns[0]['id']
+        snapshot_id = cgsnapshot_returns[1]['id']
+
+        group2 = tests_utils.create_consistencygroup(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2',
+            cgsnapshot_id=cgsnapshot_id)
+        group2_id = group2['id']
+        volume2 = tests_utils.create_volume(
+            self.context,
+            consistencygroup_id=group2_id,
+            snapshot_id=snapshot_id,
+            **self.volume_params)
+        volume2_id = volume2['id']
+        self.volume.create_volume(self.context, volume2_id)
+        self.volume.create_consistencygroup_from_src(
+            self.context, group2_id, cgsnapshot_id=cgsnapshot_id)
+
+        cg2 = db.consistencygroup_get(
+            self.context,
+            group2_id)
+        expected = {
+            'status': 'available',
+            'name': 'test_cg',
+            'availability_zone': 'nova',
+            'tenant_id': 'fake',
+            'created_at': 'DONTCARE',
+            'user_id': 'fake',
+            'consistencygroup_id': group2_id
+        }
+        self.assertEqual('available', cg2['status'])
+        self.assertEqual(6, len(fake_notifier.NOTIFICATIONS))
+        msg = fake_notifier.NOTIFICATIONS[2]
+        self.assertEqual('consistencygroup.create.start', msg['event_type'])
+        self.assertDictMatch(expected, msg['payload'])
+        msg = fake_notifier.NOTIFICATIONS[4]
+        self.assertEqual('consistencygroup.create.end', msg['event_type'])
+        self.assertDictMatch(expected, msg['payload'])
+
+        self.volume.delete_consistencygroup(self.context, group2_id)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 10)
+        msg = fake_notifier.NOTIFICATIONS[6]
+        self.assertEqual(msg['event_type'], 'consistencygroup.delete.start')
+        expected['status'] = 'available'
+        self.assertDictMatch(expected, msg['payload'])
+        msg = fake_notifier.NOTIFICATIONS[8]
+        self.assertEqual(msg['event_type'], 'consistencygroup.delete.end')
+        self.assertDictMatch(expected, msg['payload'])
+
+        cg2 = db.consistencygroup_get(
+            context.get_admin_context(read_deleted='yes'),
+            group2_id)
+        self.assertEqual('deleted', cg2['status'])
+        self.assertRaises(exception.NotFound,
+                          db.consistencygroup_get,
+                          self.context,
+                          group2_id)
+
+        self.volume.delete_cgsnapshot(self.context, cgsnapshot_id)
+        self.volume.delete_consistencygroup(self.context, group_id)
+
     @staticmethod
     def _create_cgsnapshot(group_id, volume_id, size='0'):
         """Create a cgsnapshot object."""

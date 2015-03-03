@@ -42,6 +42,15 @@ def make_consistencygroup(elem):
     elem.set('description')
 
 
+def make_consistencygroup_from_src(elem):
+    elem.set('id')
+    elem.set('status')
+    elem.set('created_at')
+    elem.set('name')
+    elem.set('description')
+    elem.set('cgsnapshot_id')
+
+
 class ConsistencyGroupTemplate(xmlutil.TemplateBuilder):
     def construct(self):
         root = xmlutil.TemplateElement('consistencygroup',
@@ -58,6 +67,16 @@ class ConsistencyGroupsTemplate(xmlutil.TemplateBuilder):
         elem = xmlutil.SubTemplateElement(root, 'consistencygroup',
                                           selector='consistencygroups')
         make_consistencygroup(elem)
+        alias = Consistencygroups.alias
+        namespace = Consistencygroups.namespace
+        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
+
+
+class ConsistencyGroupFromSrcTemplate(xmlutil.TemplateBuilder):
+    def construct(self):
+        root = xmlutil.TemplateElement('consistencygroup-from-src',
+                                       selector='consistencygroup-from-src')
+        make_consistencygroup_from_src(root)
         alias = Consistencygroups.alias
         namespace = Consistencygroups.namespace
         return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
@@ -82,6 +101,27 @@ class CreateDeserializer(wsgi.MetadataXMLDeserializer):
             if consistencygroup_node.getAttribute(attr):
                 consistencygroup[attr] = consistencygroup_node.\
                     getAttribute(attr)
+        return consistencygroup
+
+
+class CreateFromSrcDeserializer(wsgi.MetadataXMLDeserializer):
+    def default(self, string):
+        dom = utils.safe_minidom_parse_string(string)
+        consistencygroup = self._extract_consistencygroup(dom)
+        retval = {'body': {'consistencygroup-from-src': consistencygroup}}
+        return retval
+
+    def _extract_consistencygroup(self, node):
+        consistencygroup = {}
+        consistencygroup_node = self.find_first_child_named(
+            node, 'consistencygroup-from-src')
+
+        attributes = ['cgsnapshot', 'name', 'description']
+
+        for attr in attributes:
+            if consistencygroup_node.getAttribute(attr):
+                consistencygroup[attr] = (
+                    consistencygroup_node.getAttribute(attr))
         return consistencygroup
 
 
@@ -201,6 +241,58 @@ class ConsistencyGroupsController(wsgi.Controller):
             dict(new_consistencygroup.iteritems()))
         return retval
 
+    @wsgi.response(202)
+    @wsgi.serializers(xml=ConsistencyGroupFromSrcTemplate)
+    @wsgi.deserializers(xml=CreateFromSrcDeserializer)
+    def create_from_src(self, req, body):
+        """Create a new consistency group from a source.
+
+        The source can be a snapshot. It could be extended
+        in the future to support other sources. Note that
+        this does not require volume_types as the "create"
+        API above.
+        """
+        LOG.debug('Creating new consistency group %s.', body)
+        if not self.is_valid_body(body, 'consistencygroup-from-src'):
+            raise exc.HTTPBadRequest()
+
+        context = req.environ['cinder.context']
+
+        try:
+            consistencygroup = body['consistencygroup-from-src']
+        except KeyError:
+            msg = _("Incorrect request body format.")
+            raise exc.HTTPBadRequest(explanation=msg)
+        name = consistencygroup.get('name', None)
+        description = consistencygroup.get('description', None)
+        cgsnapshot_id = consistencygroup.get('cgsnapshot_id', None)
+        if not cgsnapshot_id:
+            msg = _("Cgsnapshot id must be provided to create "
+                    "consistency group %(name)s from source.") % {'name': name}
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        LOG.info(_LI("Creating consistency group %(name)s from cgsnapshot "
+                     "%(snap)s."),
+                 {'name': name, 'snap': cgsnapshot_id},
+                 context=context)
+
+        try:
+            new_consistencygroup = self.consistencygroup_api.create_from_src(
+                context, name, description, cgsnapshot_id)
+        except exception.InvalidConsistencyGroup as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+        except exception.CgSnapshotNotFound as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+        except exception.ConsistencyGroupNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
+        except exception.CinderException as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+
+        retval = self._view_builder.summary(
+            req,
+            dict(new_consistencygroup.iteritems()))
+        return retval
+
     @wsgi.serializers(xml=ConsistencyGroupTemplate)
     def update(self, req, id, body):
         """Update the consistency group.
@@ -273,7 +365,7 @@ class Consistencygroups(extensions.ExtensionDescriptor):
         resources = []
         res = extensions.ResourceExtension(
             Consistencygroups.alias, ConsistencyGroupsController(),
-            collection_actions={'detail': 'GET'},
+            collection_actions={'detail': 'GET', 'create_from_src': 'POST'},
             member_actions={'delete': 'POST', 'update': 'PUT'})
         resources.append(res)
         return resources
