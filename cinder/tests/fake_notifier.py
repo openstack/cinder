@@ -16,7 +16,7 @@ import collections
 import functools
 
 import anyjson
-from oslo import messaging
+import oslo_messaging as messaging
 
 from cinder import rpc
 

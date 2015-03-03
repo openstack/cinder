@@ -61,9 +61,9 @@ import warnings
 
 warnings.simplefilter('once', DeprecationWarning)
 
-from oslo import messaging
 from oslo_config import cfg
 from oslo_db.sqlalchemy import migration
+import oslo_messaging as messaging
 from oslo_utils import uuidutils
 
 from cinder import i18n

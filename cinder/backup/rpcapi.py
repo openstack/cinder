@@ -18,8 +18,8 @@ Client side of the volume backup RPC API.
 """
 
 
-from oslo import messaging
 from oslo_config import cfg
+import oslo_messaging as messaging
 
 from cinder.openstack.common import log as logging
 from cinder import rpc

@@ -17,8 +17,8 @@ import json
 import uuid
 
 import mock
-from oslo import messaging
 from oslo_config import cfg
+import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 import webob
 
