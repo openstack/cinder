@@ -19,8 +19,8 @@
 Scheduler Service
 """
 
-from oslo import messaging
 from oslo_config import cfg
+import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
 

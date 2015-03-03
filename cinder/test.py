@@ -29,10 +29,10 @@ import uuid
 import fixtures
 import mock
 import mox
-from oslo.messaging import conffixture as messaging_conffixture
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
+from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import strutils
 from oslo_utils import timeutils
 import stubout

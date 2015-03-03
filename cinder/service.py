@@ -22,10 +22,10 @@ import inspect
 import os
 import random
 
-from oslo import messaging
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_db import exception as db_exc
+import oslo_messaging as messaging
 from oslo_utils import importutils
 import osprofiler.notifier
 from osprofiler import profiler

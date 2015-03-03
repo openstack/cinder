@@ -17,8 +17,8 @@
 
 """Tests for the testing base code."""
 
-from oslo import messaging
 from oslo_config import cfg
+import oslo_messaging as messaging
 
 from cinder import rpc
 from cinder import test

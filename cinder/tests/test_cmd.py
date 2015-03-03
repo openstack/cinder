@@ -402,7 +402,7 @@ class TestCinderManageCmd(test.TestCase):
     @mock.patch('cinder.rpc.get_client')
     @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.rpc.initialized', return_value=False)
-    @mock.patch('oslo.messaging.Target')
+    @mock.patch('oslo_messaging.Target')
     def test_volume_commands_init(self, messaging_target, rpc_initialized,
                                   rpc_init, get_client, object_serializer):
         CONF.set_override('volume_topic', 'fake-topic')
