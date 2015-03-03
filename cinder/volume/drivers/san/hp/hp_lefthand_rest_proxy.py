@@ -104,9 +104,10 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
                 Lefthand backend after the last volume was detached.
         1.0.8 - Fixed bug #1418201, A cloned volume fails to attach.
         1.0.9 - Adding support for manage/unmanage.
+        1.0.10 - Add stats for goodness_function and filter_function
     """
 
-    VERSION = "1.0.9"
+    VERSION = "1.0.10"
 
     device_stats = {}
 
@@ -311,6 +312,24 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         # convert to GB
         data['total_capacity_gb'] = int(total_capacity) / units.Gi
         data['free_capacity_gb'] = int(free_capacity) / units.Gi
+
+        # Collect some stats
+        capacity_utilization = (
+            (float(total_capacity - free_capacity) /
+             float(total_capacity)) * 100)
+        # Don't have a better way to get the total number volumes
+        # so try to limit the size of data for now. Once new lefthand API is
+        # available, replace this call.
+        total_volumes = 0
+        volumes = client.getVolumes(
+            cluster=self.configuration.hplefthand_clustername,
+            fields=['members[id]', 'members[clusterName]'])
+        if volumes:
+            total_volumes = volumes['total']
+        data['capacity_utilization'] = capacity_utilization
+        data['total_volumes'] = total_volumes
+        data['filter_function'] = self.get_filter_function()
+        data['goodness_function'] = self.get_goodness_function()
 
         self.device_stats = data
 
