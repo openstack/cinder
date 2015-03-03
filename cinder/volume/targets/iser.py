@@ -39,8 +39,6 @@ class ISERTgtAdm(tgt.TgtAdm):
         # backwards compatibility mess
         self.configuration.num_volume_device_scan_tries = \
             self.configuration.num_iser_scan_tries
-        self.configuration.iscsi_num_targets = \
-            self.configuration.iser_num_targets
         self.configuration.iscsi_target_prefix = \
             self.configuration.iser_target_prefix
         self.configuration.iscsi_ip_address = \

@@ -50,8 +50,9 @@ volume_opts = [
                default=0,
                help='The percentage of backend capacity is reserved'),
     cfg.IntOpt('iscsi_num_targets',
-               default=100,
-               help='The maximum number of iSCSI target IDs per host'),
+               default=None,
+               help='This option is deprecated and unused. '
+                    'It will be removed in the Liberty release.'),
     cfg.StrOpt('iscsi_target_prefix',
                default='iqn.2010-10.org.openstack:',
                help='Prefix for iSCSI volumes'),
@@ -219,8 +220,9 @@ iser_opts = [
                help='The maximum number of times to rescan iSER target'
                     'to find volume'),
     cfg.IntOpt('iser_num_targets',
-               default=100,
-               help='The maximum number of iSER target IDs per host'),
+               default=None,
+               help='This option is deprecated and unused. '
+                    'It will be removed in the Liberty release.'),
     cfg.StrOpt('iser_target_prefix',
                default='iqn.2010-10.org.openstack:',
                help='Prefix for iSER volumes'),
@@ -1697,8 +1699,6 @@ class ISERDriver(ISCSIDriver):
         # for backward compatibility
         self.configuration.num_volume_device_scan_tries = \
             self.configuration.num_iser_scan_tries
-        self.configuration.iscsi_num_targets = \
-            self.configuration.iser_num_targets
         self.configuration.iscsi_target_prefix = \
             self.configuration.iser_target_prefix
         self.configuration.iscsi_ip_address = \

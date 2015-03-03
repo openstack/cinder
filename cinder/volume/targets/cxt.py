@@ -87,22 +87,6 @@ class CxtAdm(iscsi.ISCSITarget):
         iscsi_target = 1
         return iscsi_target, lun
 
-    def _ensure_iscsi_targets(self, context, host):
-        """Ensure that target ids have been created in datastore."""
-        # NOTE : This is probably not required for chiscsi
-        # TODO(jdg): In the future move all of the dependent stuff into the
-        # cooresponding target admin class
-        host_iscsi_targets = self.db.iscsi_target_count_by_host(context,
-                                                                host)
-        if host_iscsi_targets >= self.configuration.iscsi_num_targets:
-            return
-
-        # NOTE Chiscsi target ids start at 1.
-        target_end = self.configuration.iscsi_num_targets + 1
-        for target_num in xrange(1, target_end):
-            target = {'host': host, 'target_num': target_num}
-            self.db.iscsi_target_create_safe(context, target)
-
     def _get_target_chap_auth(self, context, name):
         volumes_dir = self._get_volumes_dir()
         vol_id = name.split(':')[1]
