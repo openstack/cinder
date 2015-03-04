@@ -28,6 +28,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder.image import image_utils
+from cinder.openstack.common import fileutils
 from cinder.volume import driver
 
 
@@ -180,6 +181,25 @@ class SheepdogDriver(driver.VolumeDriver):
             image_utils.convert_image(tmp, 'sheepdog:%s' % volume['name'],
                                       'raw')
             self._resize(volume)
+
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        """Copy the volume to the specified image."""
+        image_id = image_meta['id']
+        with image_utils.temporary_file() as tmp:
+            # image_utils.convert_image doesn't support "sheepdog:" source,
+            # so we use the qemu-img directly.
+            # Sheepdog volume is always raw-formatted.
+            cmd = ('qemu-img',
+                   'convert',
+                   '-f', 'raw',
+                   '-t', 'none',
+                   '-O', 'raw',
+                   'sheepdog:%s' % volume['name'],
+                   tmp)
+            self._try_execute(*cmd)
+
+            with fileutils.file_open(tmp, 'rb') as image_file:
+                image_service.update(context, image_id, {}, image_file)
 
     def create_snapshot(self, snapshot):
         """Create a sheepdog snapshot."""
