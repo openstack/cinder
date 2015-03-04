@@ -941,8 +941,6 @@ class StorageCenterApi(object):
             payload = {}
             payload['description'] = replayid
             payload['expireTime'] = expire
-            if expire == 0:
-                payload['doNotExpire'] = True
             r = self.client.post('StorageCenter/ScVolume/%s/CreateReplay'
                                  % self._get_id(scvolume),
                                  payload)
