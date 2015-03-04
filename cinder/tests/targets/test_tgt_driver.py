@@ -515,4 +515,6 @@ class TestTgtAdmDriver(test.TestCase):
             test_vol,
             0, 1, self.fake_volumes_dir, ('foo', 'bar'),
             check_exit_code=False,
-            old_name=None)
+            old_name=None,
+            portals_ips=[self.configuration.iscsi_ip_address],
+            portals_port=self.configuration.iscsi_port)

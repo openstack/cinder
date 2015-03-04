@@ -119,6 +119,73 @@ class TestLioAdmDriver(test.TestCase):
                 0,
                 self.fake_volumes_dir))
         mpersist_cfg.assert_called_once_with(volume_name)
+        mexecute.assert_called_once_with(
+            'cinder-rtstool',
+            'create',
+            self.fake_volumes_dir,
+            test_vol,
+            '',
+            '',
+            self.target.iscsi_protocol == 'iser',
+            run_as_root=True)
+
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(lio.LioAdm, '_get_target', return_value=1)
+    def test_create_iscsi_target_port_ip(self, mget_target, mexecute):
+        test_vol = 'iqn.2010-10.org.openstack:'\
+                   'volume-83c2e877-feed-46be-8435-77884fe55b45'
+        ip = '10.0.0.15'
+        port = 3261
+
+        self.assertEqual(
+            1,
+            self.target.create_iscsi_target(
+                name=test_vol,
+                tid=1,
+                lun=0,
+                path=self.fake_volumes_dir,
+                **{'portals_port': port, 'portals_ips': [ip]}))
+
+        mexecute.assert_any_call(
+            'cinder-rtstool',
+            'create',
+            self.fake_volumes_dir,
+            test_vol,
+            '',
+            '',
+            self.target.iscsi_protocol == 'iser',
+            '-p%s' % port,
+            '-a' + ip,
+            run_as_root=True)
+
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(lio.LioAdm, '_get_target', return_value=1)
+    def test_create_iscsi_target_port_ips(self, mget_target, mexecute):
+        test_vol = 'iqn.2010-10.org.openstack:'\
+                   'volume-83c2e877-feed-46be-8435-77884fe55b45'
+        ips = ['10.0.0.15', '127.0.0.1']
+        port = 3261
+
+        self.assertEqual(
+            1,
+            self.target.create_iscsi_target(
+                name=test_vol,
+                tid=1,
+                lun=0,
+                path=self.fake_volumes_dir,
+                **{'portals_port': port, 'portals_ips': ips}))
+
+        mexecute.assert_any_call(
+            'cinder-rtstool',
+            'create',
+            self.fake_volumes_dir,
+            test_vol,
+            '',
+            '',
+            self.target.iscsi_protocol == 'iser',
+            '-p%s' % port,
+            '-a' + ','.join(ips),
+            run_as_root=True)
 
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch.object(utils, 'execute')
@@ -185,7 +252,9 @@ class TestLioAdmDriver(test.TestCase):
             test_vol,
             0, 0, self.fake_volumes_dir, ('foo', 'bar'),
             check_exit_code=False,
-            old_name=None)
+            old_name=None,
+            portals_ips=[self.configuration.iscsi_ip_address],
+            portals_port=self.configuration.iscsi_port)
 
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch.object(utils, 'execute')
@@ -250,3 +319,34 @@ class TestLioAdmDriver(test.TestCase):
 
     def test_iscsi_protocol(self):
         self.assertEqual(self.target.iscsi_protocol, 'iscsi')
+
+    @mock.patch.object(lio.LioAdm, '_get_target_and_lun', return_value=(1, 2))
+    @mock.patch.object(lio.LioAdm, 'create_iscsi_target', return_value=3)
+    @mock.patch.object(lio.LioAdm, '_get_target_chap_auth',
+                       return_value=(mock.sentinel.user, mock.sentinel.pwd))
+    def test_create_export(self, mock_chap, mock_create, mock_get_target):
+        ctxt = context.get_admin_context()
+        result = self.target.create_export(ctxt, self.testvol,
+                                           self.fake_volumes_dir)
+
+        loc = (u'%(ip)s:%(port)d,3 %(prefix)s%(name)s 2' %
+               {'ip': self.configuration.iscsi_ip_address,
+                'port': self.configuration.iscsi_port,
+                'prefix': self.iscsi_target_prefix,
+                'name': self.testvol['name']})
+
+        expected_result = {
+            'location': loc,
+            'auth': 'CHAP %s %s' % (mock.sentinel.user, mock.sentinel.pwd),
+        }
+
+        self.assertEqual(expected_result, result)
+
+        mock_create.assert_called_once_with(
+            self.iscsi_target_prefix + self.testvol['name'],
+            1,
+            2,
+            self.fake_volumes_dir,
+            (mock.sentinel.user, mock.sentinel.pwd),
+            portals_ips=[self.configuration.iscsi_ip_address],
+            portals_port=self.configuration.iscsi_port)

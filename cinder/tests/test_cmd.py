@@ -816,6 +816,38 @@ class TestCinderRtstoolCmd(test.TestCase):
     def test_create_ipv6(self):
         self._test_create('::0')
 
+    @mock.patch.object(cinder_rtstool, 'rtslib', autospec=True)
+    def test_create_ips_and_port(self, mock_rtslib):
+        port = 3261
+        ips = ['ip1', 'ip2', 'ip3']
+
+        mock_rtslib.BlockStorageObject.return_value = mock.sentinel.bso
+        mock_rtslib.Target.return_value = mock.sentinel.target_new
+        mock_rtslib.FabricModule.return_value = mock.sentinel.iscsi_fabric
+        tpg_new = mock_rtslib.TPG.return_value
+
+        cinder_rtstool.create(mock.sentinel.backing_device,
+                              mock.sentinel.name,
+                              mock.sentinel.userid,
+                              mock.sentinel.password,
+                              mock.sentinel.iser_enabled,
+                              portals_ips=ips,
+                              portals_port=port)
+
+        mock_rtslib.Target.assert_called_once_with(mock.sentinel.iscsi_fabric,
+                                                   mock.sentinel.name,
+                                                   'create')
+        mock_rtslib.TPG.assert_called_once_with(mock.sentinel.target_new,
+                                                mode='create')
+        mock_rtslib.LUN.assert_called_once_with(
+            tpg_new,
+            storage_object=mock.sentinel.bso)
+
+        mock_rtslib.NetworkPortal.assert_has_calls(
+            map(lambda ip: mock.call(tpg_new, ip, port, mode='any'), ips),
+            any_order=True
+        )
+
     @mock.patch('rtslib.root.RTSRoot')
     def test_add_initiator_rtslib_error(self, rtsroot):
         rtsroot.side_effect = rtslib.utils.RTSLibError()
@@ -987,18 +1019,45 @@ class TestCinderRtstoolCmd(test.TestCase):
                         mock.sentinel.name,
                         mock.sentinel.userid,
                         mock.sentinel.password,
-                        mock.sentinel.initiator_iqns,
-                        mock.sentinel.iser_enabled]
+                        mock.sentinel.iser_enabled,
+                        str(mock.sentinel.initiator_iqns)]
 
             rc = cinder_rtstool.main()
 
-            create.assert_called_once_with(mock.sentinel.backing_device,
-                                           mock.sentinel.name,
-                                           mock.sentinel.userid,
-                                           mock.sentinel.password,
-                                           mock.sentinel.initiator_iqns,
-                                           mock.sentinel.iser_enabled)
+            create.assert_called_once_with(
+                mock.sentinel.backing_device,
+                mock.sentinel.name,
+                mock.sentinel.userid,
+                mock.sentinel.password,
+                mock.sentinel.iser_enabled,
+                initiator_iqns=str(mock.sentinel.initiator_iqns))
             self.assertEqual(0, rc)
+
+    @mock.patch('cinder.cmd.rtstool.create')
+    def test_main_create_ips_and_port(self, mock_create):
+        sys.argv = ['cinder-rtstool',
+                    'create',
+                    mock.sentinel.backing_device,
+                    mock.sentinel.name,
+                    mock.sentinel.userid,
+                    mock.sentinel.password,
+                    mock.sentinel.iser_enabled,
+                    str(mock.sentinel.initiator_iqns),
+                    '-p3261',
+                    '-aip1,ip2,ip3']
+
+        rc = cinder_rtstool.main()
+
+        mock_create.assert_called_once_with(
+            mock.sentinel.backing_device,
+            mock.sentinel.name,
+            mock.sentinel.userid,
+            mock.sentinel.password,
+            mock.sentinel.iser_enabled,
+            initiator_iqns=str(mock.sentinel.initiator_iqns),
+            portals_ips=['ip1', 'ip2', 'ip3'],
+            portals_port=3261)
+        self.assertEqual(0, rc)
 
     def test_main_add_initiator(self):
         with mock.patch('cinder.cmd.rtstool.add_initiator') as add_initiator:

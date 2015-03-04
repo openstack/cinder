@@ -101,6 +101,13 @@ class LioAdm(iscsi.ISCSITarget):
         if chap_auth is not None:
             (chap_auth_userid, chap_auth_password) = chap_auth
 
+        optional_args = []
+        if 'portals_port' in kwargs:
+            optional_args.append('-p%s' % kwargs['portals_port'])
+
+        if 'portals_ips' in kwargs:
+            optional_args.append('-a' + ','.join(kwargs['portals_ips']))
+
         try:
             command_args = ['cinder-rtstool',
                             'create',
@@ -108,7 +115,7 @@ class LioAdm(iscsi.ISCSITarget):
                             name,
                             chap_auth_userid,
                             chap_auth_password,
-                            self.iscsi_protocol == 'iser']
+                            self.iscsi_protocol == 'iser'] + optional_args
             utils.execute(*command_args, run_as_root=True)
         except putils.ProcessExecutionError as e:
             LOG.error(_LE("Failed to create iscsi target for volume "
