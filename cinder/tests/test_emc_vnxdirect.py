@@ -318,7 +318,7 @@ class EMCVNXCLIDriverTestData():
                          'status': 'creating',
                          'volume_type_id':
                          'abc1-2320-9013-8813-8941-1374-8112-1231,'
-                         '19fdd0dd-03b3-4d7c-b541-f4df46f308c8'}
+                         '19fdd0dd-03b3-4d7c-b541-f4df46f308c8,'}
 
     test_cgsnapshot = {
         'consistencygroup_id': 'consistencygroup_id',
