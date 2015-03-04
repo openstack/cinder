@@ -190,10 +190,8 @@ class NexentaEdgeResourceProxy(object):
         except urllib2.URLError as e:
             rsp = {'code': str(e.reason), 'message': str(e)}
         except Exception as e:
-            if response_data:
-                LOG.error('Error Response: ' + response_data)
             rsp = {'code': 'UNKNOWN_ERROR',
-                   "message": (_("Error: %s"), str(e))}
+                   "message": _("Error: %s") % str(e)}
 
         LOG.debug('Got response: %s', rsp)
 

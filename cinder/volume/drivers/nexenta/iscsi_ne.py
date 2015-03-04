@@ -290,8 +290,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             raise
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        namemap = self._get_bucket_name_map()
-        lunNumber = self._allocate_lun_number(namemap)
+        lunNumber = self._get_lun_from_name(volume['name'])
         with tempfile.NamedTemporaryFile(dir='/tmp') as tmp:
             image_utils.fetch_to_raw(context,
                                      image_service,
@@ -319,9 +318,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 'objectPath': self.bucket_path + '/' + str(lunNumber),
                 'newSizeMB': int(volume['size']) * 1024,
             })
-
-            namemap[volume['name']] = lunNumber
-            self._set_bucket_name_map(namemap)
 
         except nexenta.NexentaException as e:
             LOG.error(_('Error while creating Volume from Image: %s'), str(e))
