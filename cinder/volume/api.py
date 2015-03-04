@@ -510,9 +510,9 @@ class API(base.Base):
         if (context.is_admin and 'all_tenants' in search_opts):
             # Need to remove all_tenants to pass the filtering below.
             del search_opts['all_tenants']
-            snapshots = self.db.snapshot_get_all(context)
+            snapshots = objects.SnapshotList.get_all(context)
         else:
-            snapshots = self.db.snapshot_get_all_by_project(
+            snapshots = objects.SnapshotList.get_all_by_project(
                 context, context.project_id)
 
         if search_opts:
@@ -526,7 +526,7 @@ class API(base.Base):
                         break
                 else:
                     results.append(snapshot)
-            snapshots = results
+            snapshots.objects = results
         LOG.info(_LI("Get all snaphsots completed successfully."))
         return snapshots
 
