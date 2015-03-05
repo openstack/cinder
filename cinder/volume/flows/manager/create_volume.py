@@ -23,6 +23,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI
 from cinder.image import glance
+from cinder import objects
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.flows import common
@@ -408,16 +409,16 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
     def _create_from_snapshot(self, context, volume_ref, snapshot_id,
                               **kwargs):
         volume_id = volume_ref['id']
-        snapshot_ref = self.db.snapshot_get(context, snapshot_id)
+        snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
         model_update = self.driver.create_volume_from_snapshot(volume_ref,
-                                                               snapshot_ref)
+                                                               snapshot)
         # NOTE(harlowja): Subtasks would be useful here since after this
         # point the volume has already been created and further failures
         # will not destroy the volume (although they could in the future).
         make_bootable = False
         try:
             originating_vref = self.db.volume_get(context,
-                                                  snapshot_ref['volume_id'])
+                                                  snapshot.volume_id)
             make_bootable = originating_vref.bootable
         except exception.CinderException as ex:
             LOG.exception(_LE("Failed fetching snapshot %(snapshot_id)s "
@@ -425,7 +426,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                               " flag using the provided glance snapshot "
                               "%(snapshot_ref_id)s volume reference") %
                           {'snapshot_id': snapshot_id,
-                           'snapshot_ref_id': snapshot_ref['volume_id']})
+                           'snapshot_ref_id': snapshot.volume_id})
             raise exception.MetadataUpdateFailure(reason=ex)
         if make_bootable:
             self._handle_bootable_volume_glance_meta(context, volume_id,

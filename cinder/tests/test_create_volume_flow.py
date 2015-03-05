@@ -16,9 +16,15 @@
 
 import time
 
+import mock
+
 from cinder import context
+from cinder import exception
 from cinder import test
+from cinder.tests import fake_snapshot
+from cinder.tests import fake_volume
 from cinder.volume.flows.api import create_volume
+from cinder.volume.flows.manager import create_volume as create_volume_manager
 
 
 class fake_scheduler_rpc_api(object):
@@ -116,3 +122,51 @@ class CreateVolumeFlowTestCase(test.TestCase):
             fake_db())
 
         task._cast_create_volume(self.ctxt, spec, props)
+
+
+class CreateVolumeFlowManagerTestCase(test.TestCase):
+
+    def setUp(self):
+        super(CreateVolumeFlowManagerTestCase, self).setUp()
+        self.ctxt = context.get_admin_context()
+
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
+                '_handle_bootable_volume_glance_meta')
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_create_from_snapshot(self, snapshot_get_by_id, handle_bootable):
+        fake_db = mock.MagicMock()
+        fake_driver = mock.MagicMock()
+        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
+            fake_db, fake_driver)
+        volume = fake_volume.fake_db_volume()
+        orig_volume_db = mock.MagicMock(id=10, bootable=True)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctxt)
+        snapshot_get_by_id.return_value = snapshot_obj
+        fake_db.volume_get.return_value = orig_volume_db
+
+        fake_manager._create_from_snapshot(self.ctxt, volume,
+                                           snapshot_obj.id)
+        fake_driver.create_volume_from_snapshot.assert_called_once_with(
+            volume, snapshot_obj)
+        fake_db.volume_get.assert_called_once_with(self.ctxt,
+                                                   snapshot_obj.volume_id)
+        handle_bootable.assert_called_once_with(self.ctxt, volume['id'],
+                                                snapshot_id=snapshot_obj.id)
+
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    def test_create_from_snapshot_update_failure(self, snapshot_get_by_id):
+        fake_db = mock.MagicMock()
+        fake_driver = mock.MagicMock()
+        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
+            fake_db, fake_driver)
+        volume = fake_volume.fake_db_volume()
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctxt)
+        snapshot_get_by_id.return_value = snapshot_obj
+        fake_db.volume_get.side_effect = exception.CinderException
+
+        self.assertRaises(exception.MetadataUpdateFailure,
+                          fake_manager._create_from_snapshot, self.ctxt,
+                          volume, snapshot_obj.id)
+        fake_driver.create_volume_from_snapshot.assert_called_once_with(
+            volume, snapshot_obj)
