@@ -32,6 +32,7 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.drivers.san import san
+from cinder.volume import utils as volume_utils
 
 try:
     import purestorage
@@ -41,7 +42,8 @@ except ImportError:
 LOG = logging.getLogger(__name__)
 
 PURE_OPTS = [
-    cfg.StrOpt("pure_api_token", default=None,
+    cfg.StrOpt("pure_api_token",
+               default=None,
                help="REST API authorization token."),
 ]
 
@@ -50,6 +52,8 @@ CONF.register_opts(PURE_OPTS)
 
 INVALID_CHARACTERS = re.compile(r"[^-a-zA-Z0-9]")
 GENERATED_NAME = re.compile(r".*-[a-f0-9]{32}-cinder$")
+
+CHAP_SECRET_KEY = "PURE_TARGET_CHAP_SECRET"
 
 ERR_MSG_NOT_EXIST = "does not exist"
 ERR_MSG_PENDING_ERADICATION = "has been destroyed"
@@ -96,10 +100,14 @@ def _generate_purity_host_name(name):
     return "{name}-{uuid}-cinder".format(name=name, uuid=uuid.uuid4().hex)
 
 
+def _generate_chap_secret():
+    return volume_utils.generate_password()
+
+
 class PureISCSIDriver(san.SanISCSIDriver):
     """Performs volume management on Pure Storage FlashArray."""
 
-    VERSION = "2.0.4"
+    VERSION = "2.0.5"
 
     SUPPORTED_REST_API_VERSIONS = ['1.2', '1.3', '1.4']
 
@@ -231,11 +239,17 @@ class PureISCSIDriver(san.SanISCSIDriver):
                                   " %s"), err.text)
         LOG.debug("Leave PureISCSIDriver.delete_snapshot.")
 
-    def initialize_connection(self, volume, connector):
+    def ensure_export(self, context, volume):
+        pass
+
+    def create_export(self, context, volume):
+        pass
+
+    def initialize_connection(self, volume, connector, initiator_data=None):
         """Allow connection to connector and return connection info."""
         LOG.debug("Enter PureISCSIDriver.initialize_connection.")
         target_port = self._get_target_iscsi_port()
-        connection = self._connect(volume, connector)
+        connection = self._connect(volume, connector, initiator_data)
         properties = {
             "driver_volume_type": "iscsi",
             "data": {
@@ -246,6 +260,16 @@ class PureISCSIDriver(san.SanISCSIDriver):
                 "access_mode": "rw",
             },
         }
+
+        if self.configuration.use_chap_auth:
+            properties["data"]["auth_method"] = "CHAP"
+            properties["data"]["auth_username"] = connection["auth_username"]
+            properties["data"]["auth_password"] = connection["auth_password"]
+
+        initiator_update = connection.get("initiator_update", False)
+        if initiator_update:
+            properties["initiator_update"] = initiator_update
+
         LOG.debug("Leave PureISCSIDriver.initialize_connection. "
                   "Return value: %s", str(properties))
         return properties
@@ -288,21 +312,69 @@ class PureISCSIDriver(san.SanISCSIDriver):
         raise exception.PureDriverException(
             reason=_("No reachable iSCSI-enabled ports on target array."))
 
-    def _connect(self, volume, connector):
+    def _get_chap_credentials(self, host, data):
+        initiator_updates = None
+        username = host
+        password = None
+        if data:
+            for d in data:
+                if d["key"] == CHAP_SECRET_KEY:
+                    password = d["value"]
+                    break
+        if not password:
+            password = _generate_chap_secret()
+            initiator_updates = {
+                "set_values": {
+                    CHAP_SECRET_KEY: password
+                }
+            }
+        return username, password, initiator_updates
+
+    def _connect(self, volume, connector, initiator_data):
         """Connect the host and volume; return dict describing connection."""
         connection = None
+        iqn = connector["initiator"]
+
+        if self.configuration.use_chap_auth:
+            (chap_username, chap_password, initiator_update) = \
+                self._get_chap_credentials(connector['host'], initiator_data)
+
         vol_name = _get_vol_name(volume)
         host = self._get_host(connector)
+
         if host:
             host_name = host["name"]
             LOG.info(_LI("Re-using existing purity host %(host_name)r"),
                      {"host_name": host_name})
+            if self.configuration.use_chap_auth:
+                if not GENERATED_NAME.match(host_name):
+                    LOG.error(_LE("Purity host %(host_name)s is not managed "
+                                  "by Cinder and can't have CHAP credentials "
+                                  "modified. Remove IQN %(iqn)s from the host "
+                                  "to resolve this issue."),
+                              {"host_name": host_name,
+                               "iqn": connector["initiator"]})
+                    raise exception.PureDriverException(
+                        reason=_("Unable to re-use a host that is not "
+                                 "managed by Cinder with use_chap_auth=True,"))
+                elif chap_username is None or chap_password is None:
+                    LOG.error(_LE("Purity host %(host_name)s is managed by "
+                                  "Cinder but CHAP credentials could not be "
+                                  "retrieved from the Cinder database."),
+                              {"host_name": host_name})
+                    raise exception.PureDriverException(
+                        reason=_("Unable to re-use host with unknown CHAP "
+                                 "credentials configured."))
         else:
             host_name = _generate_purity_host_name(connector["host"])
-            iqn = connector["initiator"]
             LOG.info(_LI("Creating host object %(host_name)r with IQN:"
                          " %(iqn)s."), {"host_name": host_name, "iqn": iqn})
             self._array.create_host(host_name, iqnlist=[iqn])
+
+            if self.configuration.use_chap_auth:
+                self._array.set_host(host_name,
+                                     host_user=chap_username,
+                                     host_password=chap_password)
 
         try:
             connection = self._array.connect_host(host_name, vol_name)
@@ -324,6 +396,14 @@ class PureISCSIDriver(san.SanISCSIDriver):
         if not connection:
             raise exception.PureDriverException(
                 reason=_("Unable to connect or find connection to host"))
+
+        if self.configuration.use_chap_auth:
+            connection["auth_username"] = chap_username
+            connection["auth_password"] = chap_password
+
+            if initiator_update:
+                connection["initiator_update"] = initiator_update
+
         return connection
 
     def _get_host(self, connector):
