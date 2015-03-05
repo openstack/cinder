@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-:mod:`nexenta.jsonrpc` -- Nexenta-specific JSON RPC client
+:mod:`nexentaedge.jsonrpc` -- NexentaEdge-specific JSON RPC client
 =====================================================================
 
 .. automodule:: nexentaedge.jsonrpc
