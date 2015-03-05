@@ -149,7 +149,6 @@ class NexentaEdgeResourceProxy(object):
 
         LOG.debug('Sending JSON data: %s', self.url)
 
-        response_data = False
         try:
             request = urllib2.Request(self.url, data, headers)
             if self.method == 'get':

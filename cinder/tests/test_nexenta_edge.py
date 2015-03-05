@@ -97,6 +97,10 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         setattr(mockResponse, '__getitem__', lambda s: 'Target 1: iqn...')
         self.restapi_mock.get('sysconfig/iscsi/status'
                               ).AndReturn(mockResponse)
+        self.restapi_mock.get(self.BUCKET_URL).AndReturn({
+            'bucketMetadata': {
+                'X-Name-Map': jsonutils.dumps(self._mock_name_map())}
+        })
         self.mox.ReplayAll()
         self.drv.do_setup({})
         self.mox.ResetAll()
@@ -113,31 +117,12 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.assertRaises(nexenta.NexentaException,
                           self.drv.check_for_setup_error)
 
-    def test_create_volume(self):
-        self.restapi_mock.get(self.BUCKET_URL).AndReturn({
-            'bucketMetadata': {}
-        })
-        self.restapi_mock.post('iscsi', self.TEST_VOLUME1_NEDGE).AndReturn(
-           {'response': 'CREATED'})
-        namemap = {}
-        namemap[self.TEST_VOLUME1['name']] = self.TEST_VOLUME1_NEDGE['number']
-        self.restapi_mock.put(self.BUCKET_URL, {
-            'optionsObject': {'X-Name-Map': jsonutils.dumps(namemap)}
-        }).AndReturn({'response': 'OK'})
-        self.mox.ReplayAll()
-        self.drv.create_volume(self.TEST_VOLUME1)
-
     def _mock_name_map(self):
         namemap = {}
         namemap[self.TEST_VOLUME1['name']] = self.TEST_VOLUME1_NEDGE['number']
-        self.restapi_mock.get(self.BUCKET_URL).AndReturn({
-            'bucketMetadata': {
-                'X-Name-Map': jsonutils.dumps(namemap)
-            }
-        })
         return namemap
 
-    def test_create_volume_2(self):
+    def test_create_volume(self):
         namemap = self._mock_name_map()
         self.restapi_mock.post('iscsi', self.TEST_VOLUME2_NEDGE).AndReturn(
            {'response': 'CREATED'})
@@ -216,8 +201,8 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
     def test_create_cloned_volume(self):
         namemap = self._mock_name_map()
         self.restapi_mock.post(
-            self.BUCKET_PATH + '/objects/' +
-            str(namemap[self.TEST_VOLUME1['name']]), {
+            self.BUCKET_URL + '/objects/' +
+            str(namemap[self.TEST_VOLUME1['name']]) + '/clone', {
                 'tenant_name': self.TENANT,
                 'bucket_name': self.BUCKET,
                 'object_name': str(self.TEST_VOLUME2_NEDGE['number'])}
