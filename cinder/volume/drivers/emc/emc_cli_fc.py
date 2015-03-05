@@ -52,6 +52,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                 robust enhancement
         5.1.0 - iSCSI multipath enhancement
         5.2.0 - Pool-aware scheduler support
+        5.3.0 - Consistency group modification support
     """
 
     def __init__(self, *args, **kwargs):
@@ -238,3 +239,11 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
     def get_pool(self, volume):
         """Returns the pool name of a volume."""
         return self.cli.get_pool(volume)
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes,
+                                remove_volumes):
+        """Updates LUNs in consistency group."""
+        return self.cli.update_consistencygroup(context, group,
+                                                add_volumes,
+                                                remove_volumes)

@@ -43,7 +43,7 @@ class EMCVNXCLIDriverTestData():
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'provider_location': 'system^FNM11111|type^lun|id^1|version^05.02.00',
+        'provider_location': 'system^FNM11111|type^lun|id^1|version^05.03.00',
         'display_name': 'vol1',
         'display_description': 'test volume',
         'volume_type_id': None,
@@ -111,7 +111,7 @@ class EMCVNXCLIDriverTestData():
         'consistencygroup_id': None,
         'volume_admin_metadata': [{'key': 'attached_mode', 'value': 'rw'},
                                   {'key': 'readonly', 'value': 'False'}],
-        'provider_location': 'system^FNM11111|type^lun|id^1|version^05.02.00',
+        'provider_location': 'system^FNM11111|type^lun|id^1|version^05.03.00',
     }
 
     test_volume2 = {
@@ -135,8 +135,22 @@ class EMCVNXCLIDriverTestData():
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'display_name': 'vol2',
-        'consistencygroup_id': None,
+        'display_name': 'vol1_in_cg',
+        'provider_location': 'system^FNM11111|type^lun|id^1',
+        'consistencygroup_id': 'consistencygroup_id',
+        'display_description': 'test volume',
+        'volume_type_id': None}
+
+    volume2_in_cg = {
+        'name': 'vol2',
+        'size': 1,
+        'volume_name': 'vol2',
+        'id': '3',
+        'provider_auth': None,
+        'project_id': 'project',
+        'display_name': 'vol2_in_cg',
+        'provider_location': 'system^FNM11111|type^lun|id^3',
+        'consistencygroup_id': 'consistencygroup_id',
         'display_description': 'test volume',
         'volume_type_id': None}
 
@@ -177,7 +191,7 @@ class EMCVNXCLIDriverTestData():
         'display_name': 'failed_vol',
         'display_description': 'Volume 1 in SG',
         'volume_type_id': None,
-        'provider_location': 'system^fakesn|type^lun|id^4|version^05.02.00'}
+        'provider_location': 'system^fakesn|type^lun|id^4|version^05.03.00'}
 
     test_volume2_in_sg = {
         'name': 'vol2_in_sg',
@@ -190,7 +204,7 @@ class EMCVNXCLIDriverTestData():
         'display_name': 'failed_vol',
         'display_description': 'Volume 2 in SG',
         'volume_type_id': None,
-        'provider_location': 'system^fakesn|type^lun|id^3|version^05.02.00'}
+        'provider_location': 'system^fakesn|type^lun|id^3|version^05.03.00'}
 
     test_snapshot = {
         'name': 'snapshot1',
@@ -257,7 +271,7 @@ class EMCVNXCLIDriverTestData():
         'volume_type': [],
         'attached_host': None,
         'provider_location':
-        'system^FNM11111|type^lun|id^1|version^05.02.00',
+        'system^FNM11111|type^lun|id^1|version^05.03.00',
         '_name_id': None, 'volume_metadata': []}
 
     test_new_type = {'name': 'voltype0', 'qos_specs_id': None,
@@ -275,6 +289,23 @@ class EMCVNXCLIDriverTestData():
                   'location_info': 'POOL_SAS1|FNM00124500890',
                   'volume_backend_name': 'pool_backend_1',
                   'storage_protocol': 'iSCSI'}}
+
+    test_volume4 = {'migration_status': None, 'availability_zone': 'nova',
+                    'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce24',
+                    'name': 'vol4',
+                    'size': 2L,
+                    'volume_admin_metadata': [],
+                    'status': 'available',
+                    'volume_type_id':
+                    '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
+                    'deleted': False, 'provider_location':
+                    'system^FNM11111|type^lun|id^4',
+                    'host': 'ubuntu-server12@array_backend_1',
+                    'source_volid': None, 'provider_auth': None,
+                    'display_name': 'vol-test02', 'instance_uuid': None,
+                    'attach_status': 'detached',
+                    'volume_type': [],
+                    '_name_id': None, 'volume_metadata': []}
 
     test_volume5 = {'migration_status': None, 'availability_zone': 'nova',
                     'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce25',
@@ -528,11 +559,8 @@ class EMCVNXCLIDriverTestData():
         return ('-np', 'snap', '-group', '-destroy',
                 '-id', cg_name)
 
-    def GET_CONSISTENCYGROUP_BY_NAME(self, cg_name):
-        return ('snap', '-group', '-list', '-id', cg_name)
-
     def ADD_LUN_TO_CG_CMD(self, cg_name, lun_id):
-        return ('-np', 'snap', '-group',
+        return ('snap', '-group',
                 '-addmember', '-id', cg_name, '-res', lun_id)
 
     def CREATE_CG_SNAPSHOT(self, cg_name, snap_name):
@@ -546,6 +574,14 @@ class EMCVNXCLIDriverTestData():
     def GET_CG_BY_NAME_CMD(self, cg_name):
         return ('snap', '-group', '-list', '-id', cg_name)
 
+    def REMOVE_LUNS_FROM_CG_CMD(self, cg_name, remove_ids):
+        return ('snap', '-group', '-rmmember', '-id', cg_name, '-res',
+                ','.join(remove_ids))
+
+    def REPLACE_LUNS_IN_CG_CMD(self, cg_name, new_ids):
+        return ('snap', '-group', '-replmember', '-id', cg_name, '-res',
+                ','.join(new_ids))
+
     def CONSISTENCY_GROUP_VOLUMES(self):
         volumes = []
         volumes.append(self.test_volume)
@@ -558,6 +594,18 @@ class EMCVNXCLIDriverTestData():
         snaps.append(self.test_snapshot)
         return snaps
 
+    def VOLUMES_NOT_IN_CG(self):
+        add_volumes = []
+        add_volumes.append(self.test_volume4)
+        add_volumes.append(self.test_volume5)
+        return add_volumes
+
+    def VOLUMES_IN_CG(self):
+        remove_volumes = []
+        remove_volumes.append(self.volume_in_cg)
+        remove_volumes.append(self.volume2_in_cg)
+        return remove_volumes
+
     def CG_PROPERTY(self, cg_name):
         return """
 Name:  %(cg_name)s
@@ -565,7 +613,13 @@ Description:
 Allow auto delete:  No
 Member LUN ID(s):  1, 3
 State:  Ready
-""" % {'cg_name': cg_name}
+""" % {'cg_name': cg_name}, 0
+
+    def CG_REPL_ERROR(self):
+        return """
+        The specified LUN is already a member
+        of another consistency group. (0x716d8045)
+        """, 71
 
     POOL_PROPERTY = ("""\
 Pool Name:  unit_test_pool
@@ -2824,7 +2878,7 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
                       poll=False),
             mock.call(*self.testData.ADD_LUN_TO_CG_CMD(
-                'cg_id', 1))]
+                'cg_id', 1), poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
 
     def test_create_cloned_volume_from_consistnecy_group(self):
@@ -2909,6 +2963,75 @@ Time Remaining:  0 second(s)
                       poll=True),
             mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
                       poll=True)]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    def test_update_consistencygroup(self):
+        cg_name = self.testData.test_cg['id']
+        commands = [self.testData.GET_CG_BY_NAME_CMD(cg_name)]
+        results = [self.testData.CG_PROPERTY(cg_name)]
+        fake_cli = self.driverSetup(commands, results)
+
+        (model_update, add_vols, remove_vols) = (
+            self.driver.update_consistencygroup(None, self.testData.test_cg,
+                                                self.testData.
+                                                VOLUMES_NOT_IN_CG(),
+                                                self.testData.VOLUMES_IN_CG()))
+        expect_cmd = [
+            mock.call(*self.testData.REPLACE_LUNS_IN_CG_CMD(
+                cg_name, ['4', '5']), poll=False)]
+        fake_cli.assert_has_calls(expect_cmd)
+        self.assertEqual('available', model_update['status'])
+
+    def test_update_consistencygroup_remove_all(self):
+        cg_name = self.testData.test_cg['id']
+        commands = [self.testData.GET_CG_BY_NAME_CMD(cg_name)]
+        results = [self.testData.CG_PROPERTY(cg_name)]
+        fake_cli = self.driverSetup(commands, results)
+
+        (model_update, add_vols, remove_vols) = (
+            self.driver.update_consistencygroup(None, self.testData.test_cg,
+                                                None,
+                                                self.testData.VOLUMES_IN_CG()))
+        expect_cmd = [
+            mock.call(*self.testData.REMOVE_LUNS_FROM_CG_CMD(
+                cg_name, ['1', '3']), poll=False)]
+        fake_cli.assert_has_calls(expect_cmd)
+        self.assertEqual('available', model_update['status'])
+
+    def test_update_consistencygroup_remove_not_in_cg(self):
+        cg_name = self.testData.test_cg['id']
+        commands = [self.testData.GET_CG_BY_NAME_CMD(cg_name)]
+        results = [self.testData.CG_PROPERTY(cg_name)]
+        fake_cli = self.driverSetup(commands, results)
+
+        (model_update, add_vols, remove_vols) = (
+            self.driver.update_consistencygroup(None, self.testData.test_cg,
+                                                None,
+                                                self.testData.
+                                                VOLUMES_NOT_IN_CG()))
+        expect_cmd = [
+            mock.call(*self.testData.REPLACE_LUNS_IN_CG_CMD(
+                cg_name, ['1', '3']), poll=False)]
+        fake_cli.assert_has_calls(expect_cmd)
+        self.assertEqual('available', model_update['status'])
+
+    def test_update_consistencygroup_error(self):
+        cg_name = self.testData.test_cg['id']
+        commands = [self.testData.GET_CG_BY_NAME_CMD(cg_name),
+                    self.testData.REPLACE_LUNS_IN_CG_CMD(
+                    cg_name, ['1', '3'])]
+        results = [self.testData.CG_PROPERTY(cg_name),
+                   self.testData.CG_REPL_ERROR()]
+        fake_cli = self.driverSetup(commands, results)
+        self.assertRaises(exception.EMCVnxCLICmdError,
+                          self.driver.update_consistencygroup,
+                          None,
+                          self.testData.test_cg,
+                          [],
+                          self.testData.VOLUMES_NOT_IN_CG())
+        expect_cmd = [
+            mock.call(*self.testData.REPLACE_LUNS_IN_CG_CMD(
+                cg_name, ['1', '3']), poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
 
     def test_deregister_initiator(self):
