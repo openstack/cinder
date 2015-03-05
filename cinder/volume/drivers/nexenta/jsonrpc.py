@@ -100,4 +100,3 @@ class NexentaJSONProxy(object):
         if response.get('error') is not None:
             raise NexentaJSONException(response['error'].get('message', ''))
         return response.get('result')
-

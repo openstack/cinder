@@ -20,8 +20,8 @@
 """
 
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder.image import image_utils
+from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc_ne as jsonrpc
@@ -29,8 +29,8 @@ from cinder.volume.drivers.nexenta import options
 
 from oslo_serialization import jsonutils
 
-import os
 import base64
+import os
 import tempfile
 
 LOG = logging.getLogger(__name__)
@@ -294,10 +294,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def initialize_connection(self, volume, connector):
         lunNumber = self._get_lun_from_name(volume['name'])
-        try:
-            rsp = self.restapi.get('iscsi?number=' + str(lunNumber))
-        except nexenta.NexentaException as e:
-            raise
+        rsp = self.restapi.get('iscsi?number=' + str(lunNumber))
 
         target_portal = self.restapi_host + ':' + \
             str(self.configuration.nexenta_iscsi_target_portal_port)

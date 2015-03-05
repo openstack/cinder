@@ -17,7 +17,6 @@
 Unit tests for OpenStack Cinder volume driver
 """
 
-import base64
 import urllib2
 
 import mox as mox_lib
@@ -217,7 +216,6 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.drv.create_cloned_volume(self.TEST_VOLUME2, self.TEST_VOLUME1)
 
     def test_local_path(self):
-        namemap = self._mock_name_map()
         self.mox.ReplayAll()
         result = self.drv.local_path(self.TEST_VOLUME1)
         self.assertEqual(self.BUCKET_PATH + '/' +
