@@ -731,6 +731,38 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         consistencygroups = db_utils.get_table(engine, 'consistencygroups')
         self.assertNotIn('cgsnapshot_id', consistencygroups.c)
 
+    def _check_038(self, engine, data):
+        """Test adding and removing driver_initiator_data table."""
+
+        has_table = engine.dialect.has_table(engine.connect(),
+                                             "driver_initiator_data")
+        self.assertTrue(has_table)
+
+        private_data = db_utils.get_table(
+            engine,
+            'driver_initiator_data'
+        )
+
+        self.assertIsInstance(private_data.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(private_data.c.updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(private_data.c.id.type,
+                              sqlalchemy.types.INTEGER)
+        self.assertIsInstance(private_data.c.initiator.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(private_data.c.namespace.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(private_data.c.key.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(private_data.c.value.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_038(self, engine):
+        has_table = engine.dialect.has_table(engine.connect(),
+                                             "driver_initiator_data")
+        self.assertFalse(has_table)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 

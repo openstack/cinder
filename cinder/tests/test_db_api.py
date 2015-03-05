@@ -1540,3 +1540,64 @@ class DBAPIProcessSortParamTestCase(test.TestCase):
                               sqlalchemy_api.process_sort_params,
                               ['key'],
                               dirs)
+
+
+class DBAPIDriverInitiatorDataTestCase(BaseTest):
+    initiator = 'iqn.1993-08.org.debian:01:222'
+    namespace = 'test_ns'
+
+    def test_driver_initiator_data_set_and_remove(self):
+        data_key = 'key1'
+        data_value = 'value1'
+        update = {
+            'set_values': {
+                data_key: data_value
+            }
+        }
+
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, update)
+        data = db.driver_initiator_data_get(self.ctxt, self.initiator,
+                                            self.namespace)
+
+        self.assertIsNotNone(data)
+        self.assertEqual(data_key, data[0]['key'])
+        self.assertEqual(data_value, data[0]['value'])
+
+        update = {'remove_values': [data_key]}
+
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, update)
+        data = db.driver_initiator_data_get(self.ctxt, self.initiator,
+                                            self.namespace)
+
+        self.assertIsNotNone(data)
+        self.assertEqual([], data)
+
+    def test_driver_initiator_data_no_changes(self):
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, {})
+        data = db.driver_initiator_data_get(self.ctxt, self.initiator,
+                                            self.namespace)
+
+        self.assertIsNotNone(data)
+        self.assertEqual([], data)
+
+    def test_driver_initiator_data_update_existing_values(self):
+        data_key = 'key1'
+        data_value = 'value1'
+        update = {'set_values': {data_key: data_value}}
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, update)
+        data_value = 'value2'
+        update = {'set_values': {data_key: data_value}}
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, update)
+        data = db.driver_initiator_data_get(self.ctxt, self.initiator,
+                                            self.namespace)
+        self.assertEqual(data_value, data[0]['value'])
+
+    def test_driver_initiator_data_remove_not_existing(self):
+        update = {'remove_values': ['key_that_doesnt_exist']}
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, update)

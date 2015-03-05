@@ -3386,7 +3386,8 @@ def purge_deleted_rows(context, age_in_days):
     tables = []
 
     for model_class in models.__dict__.itervalues():
-        if hasattr(model_class, "__tablename__"):
+        if hasattr(model_class, "__tablename__") \
+                and hasattr(model_class, "deleted"):
             tables.append(model_class.__tablename__)
 
     # Reorder the list so the volumes table is last to avoid FK constraints
@@ -3411,3 +3412,48 @@ def purge_deleted_rows(context, age_in_days):
         rows_purged = result.rowcount
         LOG.info(_LI("Deleted %(row)d rows from table=%(table)s"),
                  {'row': rows_purged, 'table': table})
+
+
+###############################
+
+
+@require_context
+def driver_initiator_data_update(context, initiator, namespace, updates):
+    session = get_session()
+    with session.begin():
+        set_values = updates.get('set_values', {})
+        for key, value in set_values.items():
+            data = session.query(models.DriverInitiatorData).\
+                filter_by(initiator=initiator).\
+                filter_by(namespace=namespace).\
+                filter_by(key=key).\
+                first()
+
+            if data:
+                data.update({'value': value})
+                data.save(session=session)
+            else:
+                data = models.DriverInitiatorData()
+                data.initiator = initiator
+                data.namespace = namespace
+                data.key = key
+                data.value = value
+                session.add(data)
+
+        remove_values = updates.get('remove_values', [])
+        for key in remove_values:
+            session.query(models.DriverInitiatorData).\
+                filter_by(initiator=initiator).\
+                filter_by(namespace=namespace).\
+                filter_by(key=key).\
+                delete()
+
+
+@require_context
+def driver_initiator_data_get(context, initiator, namespace):
+    session = get_session()
+    with session.begin():
+        return session.query(models.DriverInitiatorData).\
+            filter_by(initiator=initiator).\
+            filter_by(namespace=namespace).\
+            all()

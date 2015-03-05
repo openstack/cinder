@@ -905,3 +905,17 @@ def purge_deleted_rows(context, age_in_days):
     :returns: number of deleted rows
     """
     return IMPL.purge_deleted_rows(context, age_in_days=age_in_days)
+
+
+###################
+
+
+def driver_initiator_data_update(context, initiator, namespace, updates):
+    """Create DriverPrivateData from the values dictionary."""
+    return IMPL.driver_initiator_data_update(context, initiator,
+                                             namespace, updates)
+
+
+def driver_initiator_data_get(context, initiator, namespace):
+    """Query for an DriverPrivateData that has the specified key"""
+    return IMPL.driver_initiator_data_get(context, initiator, namespace)

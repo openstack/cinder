@@ -195,6 +195,9 @@ volume_opts = [
                help='Password for specified CHAP account name.',
                deprecated_opts=deprecated_chap_password_opts,
                secret=True),
+    cfg.StrOpt('driver_data_namespace',
+               default=None,
+               help='Namespace for driver private data values to be saved in.')
 ]
 
 # for backward compatibility
@@ -703,8 +706,24 @@ class BaseVD(object):
         return
 
     @abc.abstractmethod
-    def initialize_connection(self, volume, connector):
-        """Allow connection to connector and return connection info."""
+    def initialize_connection(self, volume, connector, initiator_data=None):
+        """Allow connection to connector and return connection info.
+
+        :param volume: The volume to be attached
+        :param connector: Dictionary containing information about what is being
+        connected to.
+        :param initiator_data (optional): A dictionary of driver_initiator_data
+        objects with key-value pairs that have been saved for this initiator by
+        a driver in previous initialize_connection calls.
+        :returns conn_info: A dictionary of connection information. This can
+        optionally include a "initiator_updates" field.
+
+        The "initiator_updates" field must be a dictionary containing a
+        "set_values" and/or "remove_values" field. The "set_values" field must
+        be a dictionary of key-value pairs to be set/updated in the db. The
+        "remove_values" field must be a list of keys, previously set with
+        "set_values", that will be deleted from the db.
+        """
         return
 
     @abc.abstractmethod
