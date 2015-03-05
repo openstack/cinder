@@ -29,8 +29,10 @@ from cinder.volume.drivers import nfs
 class NetAppNfsDriverTestCase(test.TestCase):
     def setUp(self):
         super(NetAppNfsDriverTestCase, self).setUp()
+        configuration = mock.Mock()
+        configuration.nfs_mount_point_base = '/mnt/test'
 
-        kwargs = {'configuration': mock.Mock()}
+        kwargs = {'configuration': configuration}
 
         with mock.patch.object(utils, 'get_root_helper',
                                return_value=mock.Mock()):
