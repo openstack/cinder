@@ -39,6 +39,7 @@ class HPLeftHandBaseDriver():
     volume_id = 1
     volume = {
         'name': volume_name,
+        'display_name': 'Foo Volume',
         'provider_location': ('10.0.1.6 iqn.2003-10.com.lefthandnetworks:'
                               'group01:25366:fakev 0'),
         'id': volume_id,
@@ -66,6 +67,15 @@ class HPLeftHandBaseDriver():
 
     volume_type_id = 4
     init_iqn = 'iqn.1993-08.org.debian:01:222'
+
+    volume_type = {'name': 'gold',
+                   'deleted': False,
+                   'updated_at': None,
+                   'extra_specs': {'hplh:provisioning': 'thin',
+                                   'hplh:ao': 'true',
+                                   'hplh:data_pl': 'r-0'},
+                   'deleted_at': None,
+                   'id': 'gold'}
 
     connector = {
         'ip': '10.0.0.2',
@@ -1641,3 +1651,276 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 mock.call.logout()]
 
             mock_client.assert_has_calls(expected)
+
+    def test__get_existing_volume_ref_name(self):
+        self.setup_driver()
+
+        existing_ref = {'source-name': self.volume_name}
+        result = self.driver.proxy._get_existing_volume_ref_name(
+            existing_ref)
+        self.assertEqual(self.volume_name, result)
+
+        existing_ref = {'bad-key': 'foo'}
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.proxy._get_existing_volume_ref_name,
+            existing_ref)
+
+    def test_manage_existing(self):
+        mock_client = self.setup_driver()
+
+        self.driver.proxy.api_version = "1.1"
+
+        volume = {'display_name': 'Foo Volume',
+                  'volume_type': None,
+                  'volume_type_id': None,
+                  'id': '12345'}
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+            existing_ref = {'source-name': self.volume_name}
+
+            expected_obj = {'display_name': 'Foo Volume'}
+
+            obj = self.driver.manage_existing(volume, existing_ref)
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack + [
+                    mock.call.getVolumeByName(self.volume_name),
+                    mock.call.logout()] +
+                self.driver_startup_call_stack + [
+                    mock.call.modifyVolume(self.volume_id,
+                                           {'name': 'volume-12345'}),
+                    mock.call.logout()])
+            self.assertEqual(expected_obj, obj)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_manage_existing_retype(self, _mock_volume_types):
+        mock_client = self.setup_driver()
+
+        _mock_volume_types.return_value = {
+            'name': 'gold',
+            'id': 'gold-id',
+            'extra_specs': {
+                'hplh:provisioning': 'thin',
+                'hplh:ao': 'true',
+                'hplh:data_pl': 'r-0',
+                'volume_type': self.volume_type}}
+
+        self.driver.proxy.api_version = "1.1"
+
+        volume = {'display_name': 'Foo Volume',
+                  'host': 'stack@lefthand#lefthand',
+                  'volume_type': 'gold',
+                  'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': '12345'}
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+            existing_ref = {'source-name': self.volume_name}
+
+            expected_obj = {'display_name': 'Foo Volume'}
+
+            obj = self.driver.manage_existing(volume, existing_ref)
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack + [
+                    mock.call.getVolumeByName(self.volume_name),
+                    mock.call.logout()] +
+                self.driver_startup_call_stack + [
+                    mock.call.modifyVolume(self.volume_id,
+                                           {'name': 'volume-12345'}),
+                    mock.call.logout()])
+            self.assertEqual(expected_obj, obj)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_manage_existing_retype_exception(self, _mock_volume_types):
+        mock_client = self.setup_driver()
+
+        _mock_volume_types.return_value = {
+            'name': 'gold',
+            'id': 'gold-id',
+            'extra_specs': {
+                'hplh:provisioning': 'thin',
+                'hplh:ao': 'true',
+                'hplh:data_pl': 'r-0',
+                'volume_type': self.volume_type}}
+
+        self.driver.proxy.retype = mock.Mock(
+            side_effect=exception.VolumeNotFound(volume_id="fake"))
+
+        self.driver.proxy.api_version = "1.1"
+
+        volume = {'display_name': 'Foo Volume',
+                  'host': 'stack@lefthand#lefthand',
+                  'volume_type': 'gold',
+                  'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': '12345'}
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+            existing_ref = {'source-name': self.volume_name}
+
+            self.assertRaises(exception.VolumeNotFound,
+                              self.driver.manage_existing,
+                              volume,
+                              existing_ref)
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack + [
+                    mock.call.getVolumeByName(self.volume_name),
+                    mock.call.logout()] +
+                self.driver_startup_call_stack + [
+                    mock.call.modifyVolume(self.volume_id,
+                                           {'name': 'volume-12345'}),
+                    mock.call.logout()] +
+                self.driver_startup_call_stack + [
+                    mock.call.modifyVolume(self.volume_id,
+                                           {'name': 'fakevolume'}),
+                    mock.call.logout()])
+
+    def test_manage_existing_volume_type_exception(self):
+        mock_client = self.setup_driver()
+
+        self.driver.proxy.api_version = "1.1"
+
+        volume = {'display_name': 'Foo Volume',
+                  'volume_type': 'gold',
+                  'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': '12345'}
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+            existing_ref = {'source-name': self.volume_name}
+
+            self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                              self.driver.manage_existing,
+                              volume=volume,
+                              existing_ref=existing_ref)
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack + [
+                    mock.call.getVolumeByName(self.volume_name),
+                    mock.call.logout()])
+
+    def test_manage_existing_get_size(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.return_value = {'size': 2147483648}
+
+        self.driver.proxy.api_version = "1.1"
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            volume = {}
+            existing_ref = {'source-name': self.volume_name}
+
+            size = self.driver.manage_existing_get_size(volume, existing_ref)
+
+            expected_size = 2
+            expected = [mock.call.getVolumeByName(existing_ref['source-name']),
+                        mock.call.logout()]
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack +
+                expected)
+            self.assertEqual(expected_size, size)
+
+    def test_manage_existing_get_size_invalid_reference(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.return_value = {'size': 2147483648}
+
+        self.driver.proxy.api_version = "1.1"
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            volume = {}
+            existing_ref = {'source-name': "volume-12345"}
+
+            self.assertRaises(exception.ManageExistingInvalidReference,
+                              self.driver.manage_existing_get_size,
+                              volume=volume,
+                              existing_ref=existing_ref)
+
+            mock_client.assert_has_calls([])
+
+            existing_ref = {}
+
+            self.assertRaises(exception.ManageExistingInvalidReference,
+                              self.driver.manage_existing_get_size,
+                              volume=volume,
+                              existing_ref=existing_ref)
+
+            mock_client.assert_has_calls([])
+
+    def test_manage_existing_get_size_invalid_input(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.side_effect = (
+            hpexceptions.HTTPNotFound('fake'))
+
+        self.driver.proxy.api_version = "1.1"
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            volume = {}
+            existing_ref = {'source-name': self.volume_name}
+
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.manage_existing_get_size,
+                              volume=volume,
+                              existing_ref=existing_ref)
+
+            expected = [mock.call.getVolumeByName(existing_ref['source-name'])]
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack +
+                expected)
+
+    def test_unmanage(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+        self.driver.proxy.api_version = "1.1"
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            self.driver.unmanage(self.volume)
+
+            new_name = 'unm-' + str(self.volume['id'])
+
+            expected = [
+                mock.call.getVolumeByName(self.volume['name']),
+                mock.call.modifyVolume(self.volume['id'], {'name': new_name}),
+                mock.call.logout()
+            ]
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack +
+                expected)
+
+    def test_api_version(self):
+        self.setup_driver()
+        self.driver.proxy.api_version = "1.1"
+        self.driver.proxy._check_api_version()
+
+        self.driver.proxy.api_version = "1.0"
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.proxy._check_api_version)
