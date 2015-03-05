@@ -125,7 +125,7 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
     def test_create_volume(self):
         namemap = self._mock_name_map()
         self.restapi_mock.post('iscsi', self.TEST_VOLUME2_NEDGE).AndReturn(
-           {'response': 'CREATED'})
+            {'response': 'CREATED'})
         namemap[self.TEST_VOLUME2['name']] = self.TEST_VOLUME2_NEDGE['number']
         self.restapi_mock.put(self.BUCKET_URL, {
             'optionsObject': {'X-Name-Map': jsonutils.dumps(namemap)}
@@ -235,8 +235,8 @@ class TestNexentaEdgeJSONRPC(test.TestCase):
     PASSWORD = 'password'
     HEADERS = {
         'Content-Type': 'application/json',
-        'Authorization':
-            'Basic %s' % ('%s:%s' % (USER, PASSWORD)).encode('base64')[:-1]
+        'Authorization': 'Basic %s' %
+                         ('%s:%s' % (USER, PASSWORD)).encode('base64')[:-1]
     }
 
     def setUp(self):
