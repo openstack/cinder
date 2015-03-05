@@ -23,8 +23,6 @@ from oslo_config import cfg
 from oslo_utils import excutils
 import six
 
-from cinder.db.sqlalchemy import api
-from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _LE, _LW
 from cinder.openstack.common import log as logging
@@ -174,9 +172,12 @@ class HBSDCommon(object):
             return None
 
         if obj.get(name):
-            for i in obj[name]:
-                if i['key'] == key:
-                    return i['value']
+            if isinstance(obj[name], dict):
+                return obj[name].get(key)
+            else:
+                for i in obj[name]:
+                    if i['key'] == key:
+                        return i['value']
         return None
 
     def get_is_vvol(self, obj, name):
@@ -186,7 +187,7 @@ class HBSDCommon(object):
         return self.get_is_vvol(volume, 'volume_metadata')
 
     def get_snapshot_is_vvol(self, snapshot):
-        return self.get_is_vvol(snapshot, 'snapshot_metadata')
+        return self.get_is_vvol(snapshot, 'metadata')
 
     def get_copy_method(self, volume):
         method = self.get_value(volume, 'volume_metadata', 'copy_method')
@@ -605,7 +606,7 @@ class HBSDCommon(object):
             is_vvol = self.get_volume_is_vvol(src_ref)
             self.check_volume_status(src_ref, is_vvol)
             size = snapshot['volume_size']
-            snap_metadata = self.get_snapshot_metadata(snapshot['id'])
+            snap_metadata = snapshot.get('metadata')
             method = None if is_vvol else self.get_copy_method(src_ref)
 
             svol, type = self.copy_data(pvol, size, is_vvol, method)
@@ -614,10 +615,8 @@ class HBSDCommon(object):
             snap_metadata['type'] = type
             snap_metadata['ldev'] = svol
 
-        snapshot_metadata = api._metadata_refs(snap_metadata,
-                                               models.SnapshotMetadata)
         return {'provider_location': svol,
-                'snapshot_metadata': snapshot_metadata}
+                'metadata': snap_metadata}
 
     def delete_snapshot(self, snapshot):
         ldev = self.get_ldev(snapshot)
