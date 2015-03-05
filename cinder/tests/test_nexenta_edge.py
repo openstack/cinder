@@ -25,8 +25,8 @@ import mox as mox_lib
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nexenta
-from cinder.volume.drivers.nexenta import iscsi_ne
-from cinder.volume.drivers.nexenta import jsonrpc
+from cinder.volume.drivers.nexenta.nexentaedge import iscsi_ne
+from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc_ne as jsonrpc
 
 from oslo_serialization import jsonutils
 
@@ -89,7 +89,7 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.restapi_mock = self.mox.CreateMockAnything()
         for mod in ['get', 'post', 'put', 'delete']:
             setattr(self.restapi_mock, mod, self.mox.CreateMockAnything())
-        self.stubs.Set(jsonrpc, 'NexentaEdgeResourceProxy',
+        self.stubs.Set(jsonrpc, 'NexentaEdgeJSONProxy',
                        lambda *_, **__: self.restapi_mock)
         self.drv = iscsi_ne.NexentaEdgeISCSIDriver(
             configuration=self.configuration)
@@ -227,7 +227,7 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         pass
 
 
-class TestNexentaEdgeResourceRPC(test.TestCase):
+class TestNexentaEdgeJSONRPC(test.TestCase):
     HOST = 'example.com'
     URL = 'http://%s/' % HOST
     URL_S = 'https://%s/' % HOST
@@ -240,8 +240,8 @@ class TestNexentaEdgeResourceRPC(test.TestCase):
     }
 
     def setUp(self):
-        super(TestNexentaEdgeResourceRPC, self).setUp()
-        self.proxy = jsonrpc.NexentaEdgeResourceProxy(
+        super(TestNexentaEdgeJSONRPC, self).setUp()
+        self.proxy = jsonrpc.NexentaEdgeJSONProxy(
             'http', self.HOST, 8080, '/', self.USER, self.PASSWORD, auto=True)
         self.mox.StubOutWithMock(urllib2, 'Request', True)
         self.mox.StubOutWithMock(urllib2, 'urlopen')

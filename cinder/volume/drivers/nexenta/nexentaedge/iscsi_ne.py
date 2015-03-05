@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-:mod:`nexenta.iscsi` -- Driver to store volumes on Nexenta Appliance
+:mod:`nexenta.iscsi` -- Driver to store volumes on NexentaEdge
 =====================================================================
 .. automodule:: nexenta.volume
 .. moduleauthor:: Zohar Mamedov <zohar.mamedov@nexenta.com>
@@ -24,7 +24,7 @@ from cinder.openstack.common import log as logging
 from cinder.image import image_utils
 from cinder.volume import driver
 from cinder.volume.drivers import nexenta
-from cinder.volume.drivers.nexenta import jsonrpc
+from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc_ne as jsonrpc
 from cinder.volume.drivers.nexenta import options
 
 from oslo_serialization import jsonutils
@@ -37,7 +37,7 @@ LOG = logging.getLogger(__name__)
 
 
 class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
-    """Executes volume driver commands on Nexenta Edge cluster.
+    """Executes volume driver commands on NexentaEdge cluster.
     Version history:
         1.0.0 - Initial driver version.
     """
@@ -82,7 +82,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             protocol, auto = 'http', True
         else:
             protocol, auto = self.restapi_protocol, False
-        self.restapi = jsonrpc.NexentaEdgeResourceProxy(
+        self.restapi = jsonrpc.NexentaEdgeJSONProxy(
             protocol, self.restapi_host, self.restapi_port, '/',
             self.restapi_user, self.restapi_password, auto=auto)
         rsp = self.restapi.get('sysconfig/iscsi/status')
@@ -279,7 +279,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 try:
                     self.restapi.post(url, payload)
                 except nexenta.NexentaException as e:
-                    LOG.error(_('Error copying Image to Volume: %s'), unicode(e))
+                    LOG.error(_('Error copying Image to Volume: %s'),
+                              unicode(e))
                     pass
 
     def create_export(self, context, volume):
