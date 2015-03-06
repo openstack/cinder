@@ -17,6 +17,7 @@
 =====================================================================
 .. automodule:: nexenta.volume
 .. moduleauthor:: Zohar Mamedov <zohar.mamedov@nexenta.com>
+.. moduleauthor:: Kyle Schochenmaier <kyle.schochenmaier@nexenta.com>
 """
 
 from cinder.i18n import _

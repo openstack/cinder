@@ -15,9 +15,9 @@
 """
 :mod:`nexentaedge.jsonrpc` -- NexentaEdge-specific JSON RPC client
 =====================================================================
-
 .. automodule:: nexentaedge.jsonrpc
 .. moduleauthor:: Zohar Mamedov <zohar.mamedov@nexenta.com>
+.. moduleauthor:: Kyle Schochenmaier <kyle.schochenmaier@nexenta.com>
 """
 
 import urllib2
