@@ -20,7 +20,7 @@
 .. moduleauthor:: Kyle Schochenmaier <kyle.schochenmaier@nexenta.com>
 """
 
-from cinder.i18n import _, _LE
+from cinder.i18n import _LE
 from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
@@ -29,10 +29,6 @@ from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc_ne as jsonrpc
 from cinder.volume.drivers.nexenta import options
 
 from oslo_serialization import jsonutils
-
-import base64
-import os
-import tempfile
 
 LOG = logging.getLogger(__name__)
 
