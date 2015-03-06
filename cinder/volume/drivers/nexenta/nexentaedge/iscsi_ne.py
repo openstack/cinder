@@ -259,31 +259,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             LOG.error(_LE('Error creating cloned volume: %s'), unicode(e))
             raise
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        lunNumber = self._get_lun_from_name(volume['name'])
-        with tempfile.NamedTemporaryFile(dir='/tmp') as tmp:
-            image_utils.fetch_to_raw(context,
-                                     image_service,
-                                     image_id,
-                                     tmp.name,
-                                     self.configuration.volume_dd_blocksize,
-                                     size=volume['size'])
-            obj_f = open(tmp.name, "rb")
-            for x in range(0, os.path.getsize(tmp.name) /
-                           (self.LUN_CHUNKSIZE)):
-                obj_data = obj_f.read(self.LUN_CHUNKSIZE)
-                data64 = base64.b64encode(obj_data, None)
-                payload = {'data': data64}
-                url = self.bucket_url + '/objects/' + str(lunNumber) + \
-                    '?offsetSize=' + str(x * self.LUN_CHUNKSIZE) + \
-                    '?bufferSize=' + str(len(data64))
-                try:
-                    self.restapi.post(url, payload)
-                except nexenta.NexentaException as e:
-                    LOG.error(_LE('Error copying Image to Volume: %s'),
-                              unicode(e))
-                    pass
-
     def create_export(self, context, volume):
         return {'provider_location': self._get_provider_location(volume)}
 
