@@ -1347,12 +1347,15 @@ class DBAPIBackupTestCase(BaseTest):
             'fail_reason': 'test',
             'service_metadata': 'metadata',
             'service': 'service',
+            'parent_id': "parent_id",
             'size': 1000,
             'object_count': 100}
         if one:
             return base_values
 
         def compose(val, step):
+            if isinstance(val, bool):
+                return val
             if isinstance(val, str):
                 step = str(step)
             return val + step

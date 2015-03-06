@@ -1,4 +1,6 @@
 # Copyright (C) 2012 Hewlett-Packard Development Company, L.P.
+# Copyright (c) 2014 TrilioData, Inc
+# Copyright (c) 2015 EMC Corporation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -87,6 +89,11 @@ swiftbackup_service_opts = [
     cfg.IntOpt('backup_swift_object_size',
                default=52428800,
                help='The size in bytes of Swift backup objects'),
+    cfg.IntOpt('backup_swift_block_size',
+               default=32768,
+               help='The size in bytes that changes are tracked '
+                    'for incremental backups. backup_swift_object_size '
+                    'has to be multiple of backup_swift_block_size.'),
     cfg.IntOpt('backup_swift_retry_attempts',
                default=3,
                help='The number of retries to make for Swift operations'),
@@ -225,6 +232,11 @@ class SwiftBackupDriver(driver.BackupDriver):
         filename = '%s_metadata' % swift_object_name
         return filename
 
+    def _sha256_filename(self, backup):
+        swift_object_name = backup['service_metadata']
+        filename = '%s_sha256file' % swift_object_name
+        return filename
+
     def _write_metadata(self, backup, volume_id, container, object_list,
                         volume_meta):
         filename = self._metadata_filename(backup)
@@ -239,6 +251,7 @@ class SwiftBackupDriver(driver.BackupDriver):
         metadata['backup_description'] = backup['display_description']
         metadata['created_at'] = str(backup['created_at'])
         metadata['objects'] = object_list
+        metadata['parent_id'] = backup['parent_id']
         metadata['volume_meta'] = volume_meta
         metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
         reader = six.StringIO(metadata_json)
@@ -253,16 +266,54 @@ class SwiftBackupDriver(driver.BackupDriver):
             raise exception.InvalidBackup(reason=err)
         LOG.debug('_write_metadata finished')
 
+    def _write_sha256file(self, backup, volume_id, container, sha256_list):
+        filename = self._sha256_filename(backup)
+        LOG.debug('_write_sha256file started, container name: %(container)s,'
+                  ' sha256file filename: %(filename)s',
+                  {'container': container, 'filename': filename})
+        sha256file = {}
+        sha256file['version'] = self.DRIVER_VERSION
+        sha256file['backup_id'] = backup['id']
+        sha256file['volume_id'] = volume_id
+        sha256file['backup_name'] = backup['display_name']
+        sha256file['backup_description'] = backup['display_description']
+        sha256file['created_at'] = six.text_type(backup['created_at'])
+        sha256file['chunk_size'] = CONF.backup_swift_block_size
+        sha256file['sha256s'] = sha256_list
+        sha256file_json = json.dumps(sha256file, sort_keys=True, indent=2)
+        reader = six.StringIO(sha256file_json)
+        etag = self.conn.put_object(container, filename, reader,
+                                    content_length=reader.len)
+        md5 = hashlib.md5(sha256file_json).hexdigest()
+        if etag != md5:
+            err = (_('Error writing sha256file file to swift. MD5 of metadata'
+                     ' file in swift [%(etag)s] is not the same as MD5 of '
+                     'sha256file file sent to swift [%(md5)s].')
+                   % {'etag': etag, 'md5': md5})
+            raise exception.InvalidBackup(reason=err)
+        LOG.debug('_write_sha256file finished')
+
     def _read_metadata(self, backup):
         container = backup['container']
         filename = self._metadata_filename(backup)
         LOG.debug('_read_metadata started, container name: %(container)s, '
-                  'metadata filename: %(filename)s' %
+                  'metadata filename: %(filename)s.',
                   {'container': container, 'filename': filename})
         (_resp, body) = self.conn.get_object(container, filename)
         metadata = json.loads(body)
-        LOG.debug('_read_metadata finished (%s)' % metadata)
+        LOG.debug('_read_metadata finished (%s).', metadata)
         return metadata
+
+    def _read_sha256file(self, backup):
+        container = backup['container']
+        filename = self._sha256_filename(backup)
+        LOG.debug('_read_metadata started, container name: %(container)s, '
+                  'sha256 filename: %(filename)s.',
+                  {'container': container, 'filename': filename})
+        (resp, body) = self.conn.get_object(container, filename)
+        sha256file = json.loads(body)
+        LOG.debug('_read_sha256file finished (%s).', sha256file)
+        return sha256file
 
     def _prepare_backup(self, backup):
         """Prepare the backup process and return the backup metadata."""
@@ -297,12 +348,16 @@ class SwiftBackupDriver(driver.BackupDriver):
                   })
         object_meta = {'id': 1, 'list': [], 'prefix': object_prefix,
                        'volume_meta': None}
-        return object_meta, container, volume_size_bytes
+        object_sha256 = {'id': 1, 'sha256s': [], 'prefix': object_prefix}
+
+        return object_meta, object_sha256, container, volume_size_bytes
 
     def _backup_chunk(self, backup, container, data, data_offset, object_meta):
+
         """Backup data chunk based on the object metadata and offset."""
         object_prefix = object_meta['prefix']
         object_list = object_meta['list']
+
         object_id = object_meta['id']
         object_name = '%s-%05d' % (object_prefix, object_id)
         obj = {}
@@ -350,14 +405,26 @@ class SwiftBackupDriver(driver.BackupDriver):
         object_id += 1
         object_meta['list'] = object_list
         object_meta['id'] = object_id
+
         LOG.debug('Calling eventlet.sleep(0)')
         eventlet.sleep(0)
 
-    def _finalize_backup(self, backup, container, object_meta):
+    def _finalize_backup(self, backup, container, object_meta, object_sha256):
         """Finalize the backup by updating its metadata on Swift."""
         object_list = object_meta['list']
         object_id = object_meta['id']
         volume_meta = object_meta['volume_meta']
+        sha256_list = object_sha256['sha256s']
+        try:
+            self._write_sha256file(backup,
+                                   backup['volume_id'],
+                                   container,
+                                   sha256_list)
+        except socket.error as err:
+            msg = _("Exception: %s") % err
+            LOG.error(msg)
+            raise exception.SwiftConnectionFailed(reason=msg)
+
         try:
             self._write_metadata(backup,
                                  backup['volume_id'],
@@ -365,7 +432,10 @@ class SwiftBackupDriver(driver.BackupDriver):
                                  object_list,
                                  volume_meta)
         except socket.error as err:
-            raise exception.SwiftConnectionFailed(reason=err)
+            msg = _("Exception: %s") % err
+            LOG.error(msg)
+            raise exception.SwiftConnectionFailed(reason=msg)
+
         self.db.backup_update(self.context, backup['id'],
                               {'object_count': object_id})
         LOG.debug('backup %s finished.' % backup['id'])
@@ -404,9 +474,43 @@ class SwiftBackupDriver(driver.BackupDriver):
                                                object_meta)
 
     def backup(self, backup, volume_file, backup_metadata=True):
-        """Backup the given volume to Swift."""
-        (object_meta, container,
-            volume_size_bytes) = self._prepare_backup(backup)
+        """Backup the given volume to Swift.
+
+           If backup['parent_id'] is given, then an incremental backup
+           is performed.
+        """
+        if self.data_block_size_bytes % CONF.backup_swift_block_size:
+            err = _('Swift object size is not multiple of '
+                    'block size for creating hash.')
+            raise exception.InvalidBackup(reason=err)
+
+        # Read the shafile of the parent backup if backup['parent_id']
+        # is given.
+        parent_backup_shafile = None
+        parent_backup = None
+        if backup['parent_id']:
+            parent_backup = self.db.backup_get(self.context,
+                                               backup['parent_id'])
+            parent_backup_shafile = self._read_sha256file(parent_backup)
+            parent_backup_shalist = parent_backup_shafile['sha256s']
+            if (parent_backup_shafile['chunk_size'] !=
+                    CONF.backup_swift_block_size):
+                err = (_('Swift block size has changed since the last '
+                         'backup. New block size: %(new)s. Old block '
+                         'size: %(old)s. Do a full backup.')
+                       % {'old': parent_backup_shafile['chunk_size'],
+                          'new': CONF.backup_swift_block_size})
+                raise exception.InvalidBackup(reason=err)
+            # If the volume size increased since the last backup, fail
+            # the incremental backup and ask user to do a full backup.
+            if backup['size'] > parent_backup['size']:
+                err = _('Volume size increased since the last '
+                        'backup. Do a full backup.')
+                raise exception.InvalidBackup(reason=err)
+
+        (object_meta, object_sha256, container,
+         volume_size_bytes) = self._prepare_backup(backup)
+
         counter = 0
         total_block_sent_num = 0
 
@@ -425,13 +529,62 @@ class SwiftBackupDriver(driver.BackupDriver):
         if self.enable_progress_timer:
             timer.start(interval=self.backup_timer_interval)
 
+        sha256_list = object_sha256['sha256s']
+        shaindex = 0
         while True:
-            data = volume_file.read(self.data_block_size_bytes)
             data_offset = volume_file.tell()
+            data = volume_file.read(self.data_block_size_bytes)
             if data == '':
                 break
-            self._backup_chunk(backup, container, data,
-                               data_offset, object_meta)
+
+            # Calculate new shas with the datablock.
+            shalist = []
+            off = 0
+            datalen = len(data)
+            while off < datalen:
+                chunk_start = off
+                chunk_end = chunk_start + CONF.backup_swift_block_size
+                if chunk_end > datalen:
+                    chunk_end = datalen
+                chunk = data[chunk_start:chunk_end]
+                sha = hashlib.sha256(chunk).hexdigest()
+                shalist.append(sha)
+                off += CONF.backup_swift_block_size
+            sha256_list.extend(shalist)
+
+            # If parent_backup is not None, that means an incremental
+            # backup will be performed.
+            if parent_backup:
+                # Find the extent that needs to be backed up.
+                extent_off = -1
+                for idx, sha in enumerate(shalist):
+                    if sha != parent_backup_shalist[shaindex]:
+                        if extent_off == -1:
+                            # Start of new extent.
+                            extent_off = idx * CONF.backup_swift_block_size
+                    else:
+                        if extent_off != -1:
+                            # We've reached the end of extent.
+                            extent_end = idx * CONF.backup_swift_block_size
+                            segment = data[extent_off:extent_end]
+                            self._backup_chunk(backup, container, segment,
+                                               data_offset + extent_off,
+                                               object_meta)
+                            extent_off = -1
+                    shaindex += 1
+
+                # The last extent extends to the end of data buffer.
+                if extent_off != -1:
+                    extent_end = datalen
+                    segment = data[extent_off:extent_end]
+                    self._backup_chunk(backup, container, segment,
+                                       data_offset + extent_off, object_meta)
+                    extent_off = -1
+            else:  # Do a full backup.
+                self._backup_chunk(backup, container, data,
+                                   data_offset, object_meta)
+
+            # Notifications
             total_block_sent_num += self.data_block_num
             counter += 1
             if counter == self.data_block_num:
@@ -442,7 +595,7 @@ class SwiftBackupDriver(driver.BackupDriver):
                                                  object_meta,
                                                  total_block_sent_num,
                                                  volume_size_bytes)
-                # reset the counter
+                # Reset the counter
                 counter = 0
 
         # Stop the timer.
@@ -450,17 +603,18 @@ class SwiftBackupDriver(driver.BackupDriver):
         # All the data have been sent, the backup_percent reaches 100.
         self._send_progress_end(self.context, backup, object_meta)
 
+        object_sha256['sha256s'] = sha256_list
         if backup_metadata:
             try:
                 self._backup_metadata(backup, object_meta)
             except Exception as err:
                 with excutils.save_and_reraise_exception():
                     LOG.exception(
-                        _LE("Backup volume metadata to swift failed: %s") %
-                        six.text_type(err))
+                        _LE("Backup volume metadata to swift failed: %s."),
+                        err)
                     self.delete(backup)
 
-        self._finalize_backup(backup, container, object_meta)
+        self._finalize_backup(backup, container, object_meta, object_sha256)
 
     def _restore_v1(self, backup, volume_id, metadata, volume_file):
         """Restore a v1 swift volume backup from swift."""
@@ -471,7 +625,8 @@ class SwiftBackupDriver(driver.BackupDriver):
         metadata_object_names = sum((obj.keys() for obj in metadata_objects),
                                     [])
         LOG.debug('metadata_object_names = %s' % metadata_object_names)
-        prune_list = [self._metadata_filename(backup)]
+        prune_list = [self._metadata_filename(backup),
+                      self._sha256_filename(backup)]
         swift_object_names = [swift_object_name for swift_object_name in
                               self._generate_object_names(backup)
                               if swift_object_name not in prune_list]
@@ -497,6 +652,7 @@ class SwiftBackupDriver(driver.BackupDriver):
                 raise exception.SwiftConnectionFailed(reason=err)
             compression_algorithm = metadata_object[object_name]['compression']
             decompressor = self._get_compressor(compression_algorithm)
+            volume_file.seek(metadata_object.values()[0]['offset'])
             if decompressor is not None:
                 LOG.debug('decompressing data using %s algorithm' %
                           compression_algorithm)
@@ -552,18 +708,37 @@ class SwiftBackupDriver(driver.BackupDriver):
             err = (_('No support to restore swift backup version %s')
                    % metadata_version)
             raise exception.InvalidBackup(reason=err)
-        restore_func(backup, volume_id, metadata, volume_file)
 
-        volume_meta = metadata.get('volume_meta', None)
-        try:
-            if volume_meta:
-                self.put_metadata(volume_id, volume_meta)
-            else:
-                LOG.debug("No volume metadata in this backup")
-        except exception.BackupMetadataUnsupportedVersion:
-            msg = _("Metadata restore failed due to incompatible version")
-            LOG.error(msg)
-            raise exception.BackupOperationError(msg)
+        # Build a list of backups based on parent_id. A full backup
+        # will be the last one in the list.
+        backup_list = []
+        backup_list.append(backup)
+        current_backup = backup
+        while current_backup['parent_id']:
+            prev_backup = (self.db.backup_get(
+                self.context, current_backup['parent_id']))
+            backup_list.append(prev_backup)
+            current_backup = prev_backup
+
+        # Do a full restore first, then layer the incremental backups
+        # on top of it in order.
+        index = len(backup_list) - 1
+        while index >= 0:
+            backup1 = backup_list[index]
+            index = index - 1
+            metadata = self._read_metadata(backup1)
+            restore_func(backup1, volume_id, metadata, volume_file)
+
+            volume_meta = metadata.get('volume_meta', None)
+            try:
+                if volume_meta:
+                    self.put_metadata(volume_id, volume_meta)
+                else:
+                    LOG.debug("No volume metadata in this backup.")
+            except exception.BackupMetadataUnsupportedVersion:
+                msg = _("Metadata restore failed due to incompatible version.")
+                LOG.error(msg)
+                raise exception.BackupOperationError(msg)
 
         LOG.debug('restore %(backup_id)s to %(volume_id)s finished.' %
                   {'backup_id': backup_id, 'volume_id': volume_id})

@@ -3009,6 +3009,20 @@ def backup_get_all_by_project(context, project_id, filters=None):
 
 
 @require_context
+def backup_get_all_by_volume(context, volume_id, filters=None):
+
+    authorize_project_context(context, volume_id)
+    if not filters:
+        filters = {}
+    else:
+        filters = filters.copy()
+
+    filters['volume_id'] = volume_id
+
+    return _backup_get_all(context, filters)
+
+
+@require_context
 def backup_create(context, values):
     backup = models.Backup()
     if not values.get('id'):

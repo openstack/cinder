@@ -1,4 +1,6 @@
 # Copyright (C) 2012 Hewlett-Packard Development Company, L.P.
+# Copyright (c) 2014 TrilioData, Inc
+# Copyright (c) 2015 EMC Corporation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -69,6 +71,13 @@ class API(base.Base):
             msg = _('Backup status must be available or error')
             raise exception.InvalidBackup(reason=msg)
 
+        # Don't allow backup to be deleted if there are incremental
+        # backups dependent on it.
+        deltas = self.get_all(context, {'parent_id': backup['id']})
+        if deltas and len(deltas):
+            msg = _('Incremental backups exist for this backup.')
+            raise exception.InvalidBackup(reason=msg)
+
         self.db.backup_update(context, backup_id, {'status': 'deleting'})
         self.backup_rpcapi.delete_backup(context,
                                          backup['host'],
@@ -112,13 +121,15 @@ class API(base.Base):
         return [srv['host'] for srv in services if not srv['disabled']]
 
     def create(self, context, name, description, volume_id,
-               container, availability_zone=None):
+               container, incremental=False, availability_zone=None):
         """Make the RPC call to create a volume backup."""
         check_policy(context, 'create')
         volume = self.volume_api.get(context, volume_id)
+
         if volume['status'] != "available":
             msg = _('Volume to be backed up must be available')
             raise exception.InvalidVolume(reason=msg)
+
         volume_host = volume_utils.extract_host(volume['host'], 'host')
         if not self._is_backup_service_enabled(volume, volume_host):
             raise exception.ServiceNotFound(service_id='cinder-backup')
@@ -160,6 +171,26 @@ class API(base.Base):
                     raise exception.BackupLimitExceeded(
                         allowed=quotas[over])
 
+        # Find the latest backup of the volume and use it as the parent
+        # backup to do an incremental backup.
+        latest_backup = None
+        if incremental:
+            backups = self.db.backup_get_all_by_volume(context.elevated(),
+                                                       volume_id)
+            if backups:
+                latest_backup = max(backups, key=lambda x: x['created_at'])
+            else:
+                msg = _('No backups available to do an incremental backup.')
+                raise exception.InvalidBackup(reason=msg)
+
+        parent_id = None
+        if latest_backup:
+            parent_id = latest_backup['id']
+            if latest_backup['status'] != "available":
+                msg = _('The parent backup must be available for '
+                        'incremental backup.')
+                raise exception.InvalidBackup(reason=msg)
+
         self.db.volume_update(context, volume_id, {'status': 'backing-up'})
         options = {'user_id': context.user_id,
                    'project_id': context.project_id,
@@ -168,6 +199,7 @@ class API(base.Base):
                    'volume_id': volume_id,
                    'status': 'creating',
                    'container': container,
+                   'parent_id': parent_id,
                    'size': volume['size'],
                    'host': volume_host, }
         try:

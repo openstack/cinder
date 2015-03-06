@@ -1,4 +1,6 @@
 # Copyright (C) 2012 Hewlett-Packard Development Company, L.P.
+# Copyright (c) 2014 TrilioData, Inc
+# Copyright (c) 2015 EMC Corporation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -38,6 +40,7 @@ def make_backup(elem):
     elem.set('status')
     elem.set('size')
     elem.set('container')
+    elem.set('parent_id')
     elem.set('volume_id')
     elem.set('object_count')
     elem.set('availability_zone')
@@ -106,7 +109,8 @@ class CreateDeserializer(wsgi.MetadataXMLDeserializer):
         backup_node = self.find_first_child_named(node, 'backup')
 
         attributes = ['container', 'display_name',
-                      'display_description', 'volume_id']
+                      'display_description', 'volume_id',
+                      'parent_id']
 
         for attr in attributes:
             if backup_node.getAttribute(attr):
@@ -248,6 +252,7 @@ class BackupsController(wsgi.Controller):
         container = backup.get('container', None)
         name = backup.get('name', None)
         description = backup.get('description', None)
+        incremental = backup.get('incremental', False)
 
         LOG.info(_LI("Creating backup of volume %(volume_id)s in container"
                      " %(container)s"),
@@ -256,7 +261,8 @@ class BackupsController(wsgi.Controller):
 
         try:
             new_backup = self.backup_api.create(context, name, description,
-                                                volume_id, container)
+                                                volume_id, container,
+                                                incremental)
         except exception.InvalidVolume as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
         except exception.VolumeNotFound as error:

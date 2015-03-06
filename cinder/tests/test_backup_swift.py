@@ -18,8 +18,10 @@ Tests for Backup swift code.
 """
 
 import bz2
+import filecmp
 import hashlib
 import os
+import shutil
 import tempfile
 import zlib
 
@@ -35,6 +37,7 @@ from cinder.i18n import _
 from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.backup import fake_swift_client
+from cinder.tests.backup import fake_swift_client2
 
 
 LOG = logging.getLogger(__name__)
@@ -60,11 +63,13 @@ class BackupSwiftTestCase(test.TestCase):
                'status': 'available'}
         return db.volume_create(self.ctxt, vol)['id']
 
-    def _create_backup_db_entry(self, container='test-container'):
-        backup = {'id': 123,
+    def _create_backup_db_entry(self, container='test-container',
+                                backup_id=123, parent_id=None):
+        backup = {'id': backup_id,
                   'size': 1,
                   'container': container,
-                  'volume_id': '1234-5678-1234-8888'}
+                  'volume_id': '1234-5678-1234-8888',
+                  'parent_id': parent_id}
         return db.backup_create(self.ctxt, backup)['id']
 
     def setUp(self):
@@ -81,7 +86,10 @@ class BackupSwiftTestCase(test.TestCase):
 
         self._create_volume_db_entry()
         self.volume_file = tempfile.NamedTemporaryFile()
+        self.temp_dir = tempfile.mkdtemp()
         self.addCleanup(self.volume_file.close)
+        # Remove tempdir.
+        self.addCleanup(shutil.rmtree, self.temp_dir)
         for _i in xrange(0, 128):
             self.volume_file.write(os.urandom(1024))
 
@@ -200,6 +208,191 @@ class BackupSwiftTestCase(test.TestCase):
         backup = db.backup_get(self.ctxt, 123)
         self.assertEqual(backup['container'], container_name)
 
+    def test_backup_shafile(self):
+
+        def _fake_generate_swift_object_name_prefix(self, backup):
+            az = 'az_fake'
+            backup_name = '%s_backup_%s' % (az, backup['id'])
+            volume = 'volume_%s' % (backup['volume_id'])
+            prefix = volume + '_' + backup_name
+            LOG.debug('_generate_swift_object_name_prefix: %s', prefix)
+            return prefix
+
+        # Raise a pseudo exception.BackupDriverException.
+        self.stubs.Set(swift_dr.SwiftBackupDriver,
+                       '_generate_swift_object_name_prefix',
+                       _fake_generate_swift_object_name_prefix)
+
+        container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',
+                                               '', 1)
+        self._create_backup_db_entry(container=container_name)
+        self.stubs.Set(swift, 'Connection',
+                       fake_swift_client2.FakeSwiftClient2.Connection)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = db.backup_get(self.ctxt, 123)
+        service.backup(backup, self.volume_file)
+        backup = db.backup_get(self.ctxt, 123)
+        self.assertEqual(backup['container'], container_name)
+
+        # Verify sha contents
+        content1 = service._read_sha256file(backup)
+        self.assertEqual(128 * 1024 / content1['chunk_size'],
+                         len(content1['sha256s']))
+
+    def test_backup_cmp_shafiles(self):
+
+        def _fake_generate_swift_object_name_prefix(self, backup):
+            az = 'az_fake'
+            backup_name = '%s_backup_%s' % (az, backup['id'])
+            volume = 'volume_%s' % (backup['volume_id'])
+            prefix = volume + '_' + backup_name
+            LOG.debug('_generate_swift_object_name_prefix: %s', prefix)
+            return prefix
+
+        # Raise a pseudo exception.BackupDriverException.
+        self.stubs.Set(swift_dr.SwiftBackupDriver,
+                       '_generate_swift_object_name_prefix',
+                       _fake_generate_swift_object_name_prefix)
+
+        container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',
+                                               '', 1)
+        self._create_backup_db_entry(container=container_name, backup_id=123)
+        self.stubs.Set(swift, 'Connection',
+                       fake_swift_client2.FakeSwiftClient2.Connection)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = db.backup_get(self.ctxt, 123)
+        service.backup(backup, self.volume_file)
+        backup = db.backup_get(self.ctxt, 123)
+        self.assertEqual(backup['container'], container_name)
+
+        # Create incremental backup with no change to contents
+        self._create_backup_db_entry(container=container_name, backup_id=124,
+                                     parent_id=123)
+        self.stubs.Set(swift, 'Connection',
+                       fake_swift_client2.FakeSwiftClient2.Connection)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        deltabackup = db.backup_get(self.ctxt, 124)
+        service.backup(deltabackup, self.volume_file)
+        deltabackup = db.backup_get(self.ctxt, 124)
+        self.assertEqual(deltabackup['container'], container_name)
+
+        # Compare shas from both files
+        content1 = service._read_sha256file(backup)
+        content2 = service._read_sha256file(deltabackup)
+
+        self.assertEqual(len(content1['sha256s']), len(content2['sha256s']))
+        self.assertEqual(set(content1['sha256s']), set(content2['sha256s']))
+
+    def test_backup_delta_two_objects_change(self):
+
+        def _fake_generate_swift_object_name_prefix(self, backup):
+            az = 'az_fake'
+            backup_name = '%s_backup_%s' % (az, backup['id'])
+            volume = 'volume_%s' % (backup['volume_id'])
+            prefix = volume + '_' + backup_name
+            LOG.debug('_generate_swift_object_name_prefix: %s', prefix)
+            return prefix
+
+        # Raise a pseudo exception.BackupDriverException.
+        self.stubs.Set(swift_dr.SwiftBackupDriver,
+                       '_generate_swift_object_name_prefix',
+                       _fake_generate_swift_object_name_prefix)
+
+        self.flags(backup_swift_object_size=8 * 1024)
+        self.flags(backup_swift_block_size=1024)
+
+        container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',
+                                               '', 1)
+        self._create_backup_db_entry(container=container_name, backup_id=123)
+        self.stubs.Set(swift, 'Connection',
+                       fake_swift_client2.FakeSwiftClient2.Connection)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = db.backup_get(self.ctxt, 123)
+        service.backup(backup, self.volume_file)
+        backup = db.backup_get(self.ctxt, 123)
+        self.assertEqual(backup['container'], container_name)
+
+        # Create incremental backup with no change to contents
+        self.volume_file.seek(2 * 8 * 1024)
+        self.volume_file.write(os.urandom(1024))
+        self.volume_file.seek(4 * 8 * 1024)
+        self.volume_file.write(os.urandom(1024))
+
+        self._create_backup_db_entry(container=container_name, backup_id=124,
+                                     parent_id=123)
+        self.stubs.Set(swift, 'Connection',
+                       fake_swift_client2.FakeSwiftClient2.Connection)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        deltabackup = db.backup_get(self.ctxt, 124)
+        service.backup(deltabackup, self.volume_file)
+        deltabackup = db.backup_get(self.ctxt, 124)
+        self.assertEqual(deltabackup['container'], container_name)
+
+        content1 = service._read_sha256file(backup)
+        content2 = service._read_sha256file(deltabackup)
+
+        # Verify that two shas are changed at index 16 and 32
+        self.assertNotEqual(content1['sha256s'][16], content2['sha256s'][16])
+        self.assertNotEqual(content1['sha256s'][32], content2['sha256s'][32])
+
+    def test_backup_delta_two_blocks_in_object_change(self):
+
+        def _fake_generate_swift_object_name_prefix(self, backup):
+            az = 'az_fake'
+            backup_name = '%s_backup_%s' % (az, backup['id'])
+            volume = 'volume_%s' % (backup['volume_id'])
+            prefix = volume + '_' + backup_name
+            LOG.debug('_generate_swift_object_name_prefix: %s', prefix)
+            return prefix
+
+        # Raise a pseudo exception.BackupDriverException.
+        self.stubs.Set(swift_dr.SwiftBackupDriver,
+                       '_generate_swift_object_name_prefix',
+                       _fake_generate_swift_object_name_prefix)
+
+        self.flags(backup_swift_object_size=8 * 1024)
+        self.flags(backup_swift_block_size=1024)
+
+        container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',
+                                               '', 1)
+        self._create_backup_db_entry(container=container_name, backup_id=123)
+        self.stubs.Set(swift, 'Connection',
+                       fake_swift_client2.FakeSwiftClient2.Connection)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = db.backup_get(self.ctxt, 123)
+        service.backup(backup, self.volume_file)
+        backup = db.backup_get(self.ctxt, 123)
+        self.assertEqual(backup['container'], container_name)
+
+        # Create incremental backup with no change to contents
+        self.volume_file.seek(16 * 1024)
+        self.volume_file.write(os.urandom(1024))
+        self.volume_file.seek(20 * 1024)
+        self.volume_file.write(os.urandom(1024))
+
+        self._create_backup_db_entry(container=container_name, backup_id=124,
+                                     parent_id=123)
+        self.stubs.Set(swift, 'Connection',
+                       fake_swift_client2.FakeSwiftClient2.Connection)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        deltabackup = db.backup_get(self.ctxt, 124)
+        service.backup(deltabackup, self.volume_file)
+        deltabackup = db.backup_get(self.ctxt, 124)
+        self.assertEqual(deltabackup['container'], container_name)
+
+        # Verify that two shas are changed at index 16 and 20
+        content1 = service._read_sha256file(backup)
+        content2 = service._read_sha256file(deltabackup)
+        self.assertNotEqual(content1['sha256s'][16], content2['sha256s'][16])
+        self.assertNotEqual(content1['sha256s'][20], content2['sha256s'][20])
+
     def test_create_backup_put_object_wraps_socket_error(self):
         container_name = 'socket_error_on_put'
         self._create_backup_db_entry(container=container_name)
@@ -273,6 +466,54 @@ class BackupSwiftTestCase(test.TestCase):
         with tempfile.NamedTemporaryFile() as volume_file:
             backup = db.backup_get(self.ctxt, 123)
             service.restore(backup, '1234-5678-1234-8888', volume_file)
+
+    def test_restore_delta(self):
+
+        def _fake_generate_swift_object_name_prefix(self, backup):
+            az = 'az_fake'
+            backup_name = '%s_backup_%s' % (az, backup['id'])
+            volume = 'volume_%s' % (backup['volume_id'])
+            prefix = volume + '_' + backup_name
+            LOG.debug('_generate_swift_object_name_prefix: %s', prefix)
+            return prefix
+
+        # Raise a pseudo exception.BackupDriverException.
+        self.stubs.Set(swift_dr.SwiftBackupDriver,
+                       '_generate_swift_object_name_prefix',
+                       _fake_generate_swift_object_name_prefix)
+
+        self.flags(backup_swift_object_size=8 * 1024)
+        self.flags(backup_swift_block_size=1024)
+
+        container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',
+                                               '', 1)
+        self._create_backup_db_entry(container=container_name, backup_id=123)
+        self.stubs.Set(swift, 'Connection',
+                       fake_swift_client2.FakeSwiftClient2.Connection)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = db.backup_get(self.ctxt, 123)
+        service.backup(backup, self.volume_file)
+
+        # Create incremental backup with no change to contents
+        self.volume_file.seek(16 * 1024)
+        self.volume_file.write(os.urandom(1024))
+        self.volume_file.seek(20 * 1024)
+        self.volume_file.write(os.urandom(1024))
+
+        self._create_backup_db_entry(container=container_name, backup_id=124,
+                                     parent_id=123)
+        self.volume_file.seek(0)
+        deltabackup = db.backup_get(self.ctxt, 124)
+        service.backup(deltabackup, self.volume_file, True)
+        deltabackup = db.backup_get(self.ctxt, 124)
+
+        with tempfile.NamedTemporaryFile() as restored_file:
+            backup = db.backup_get(self.ctxt, 124)
+            service.restore(backup, '1234-5678-1234-8888',
+                            restored_file)
+            self.assertTrue(filecmp.cmp(self.volume_file.name,
+                            restored_file.name))
 
     def test_restore_wraps_socket_error(self):
         container_name = 'socket_error_on_get'

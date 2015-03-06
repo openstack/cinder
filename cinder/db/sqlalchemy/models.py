@@ -496,6 +496,7 @@ class Backup(BASE, CinderBase):
     display_name = Column(String(255))
     display_description = Column(String(255))
     container = Column(String(255))
+    parent_id = Column(String(36))
     status = Column(String(255))
     fail_reason = Column(String(255))
     service_metadata = Column(String(255))

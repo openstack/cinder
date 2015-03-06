@@ -158,7 +158,9 @@ class QuotaIntegrationTestCase(test.TestCase):
                               'name',
                               'description',
                               vol_ref['id'],
-                              'container')
+                              'container',
+                              False,
+                              None)
             db.backup_destroy(self.context, backup_ref['id'])
             db.volume_destroy(self.context, vol_ref['id'])
 
@@ -198,7 +200,8 @@ class QuotaIntegrationTestCase(test.TestCase):
                 name='name',
                 description='description',
                 volume_id=vol_ref['id'],
-                container='container')
+                container='container',
+                incremental=False)
             db.backup_destroy(self.context, backup_ref['id'])
             db.volume_destroy(self.context, vol_ref['id'])
 
@@ -239,7 +242,9 @@ class QuotaIntegrationTestCase(test.TestCase):
                                               'name',
                                               'description',
                                               vol_ref['id'],
-                                              'container')
+                                              'container',
+                                              False,
+                                              None)
 
             # Make sure the backup volume_size isn't included in usage.
             vol_ref2 = volume.API().create(self.context, 10, '', '')
