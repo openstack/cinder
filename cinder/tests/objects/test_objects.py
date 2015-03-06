@@ -613,10 +613,8 @@ class _TestObject(object):
         self.assertEqual('loaded!', obj.get('bar'))
         # Bar now has a default, but loaded value should be returned
         self.assertEqual('loaded!', obj.get('bar', 'not-loaded'))
-        # Invalid attribute should raise AttributeError
-        self.assertRaises(AttributeError, obj.get, 'nothing')
-        # ...even with a default
-        self.assertRaises(AttributeError, obj.get, 'nothing', 3)
+        # Invalid attribute should return None
+        self.assertEqual(None, obj.get('nothing'))
 
     def test_object_inheritance(self):
         base_fields = base.CinderPersistentObject.fields.keys()
