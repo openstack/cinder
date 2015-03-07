@@ -937,6 +937,10 @@ class ManageableVD(object):
         compare against the properties of the referenced backend storage
         object.  If they are incompatible, raise a
         ManageExistingVolumeTypeMismatch, specifying a reason for the failure.
+
+        :param volume:       Cinder volume to manage
+        :param existing_ref: Driver-specific information used to identify a
+        volume
         """
         return
 
@@ -945,6 +949,10 @@ class ManageableVD(object):
         """Return size of volume to be managed by manage_existing.
 
         When calculating the size, round up to the next GB.
+
+        :param volume:       Cinder volume to manage
+        :param existing_ref: Driver-specific information used to identify a
+        volume
         """
         return
 
@@ -958,6 +966,8 @@ class ManageableVD(object):
         drivers might use this call as an opportunity to clean up any
         Cinder-specific configuration that they have associated with the
         backend storage object.
+
+        :param volume: Cinder volume to unmanage
         """
         pass
 

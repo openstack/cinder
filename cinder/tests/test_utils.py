@@ -652,6 +652,19 @@ class GetDiskOfPartitionTestCase(test.TestCase):
 
 class GetBlkdevMajorMinorTestCase(test.TestCase):
     @mock.patch('os.stat')
+    def test_get_file_size(self, mock_stat):
+
+        class stat_result:
+            st_mode = 0o777
+            st_size = 1074253824
+
+        test_file = '/var/tmp/made_up_file'
+        mock_stat.return_value = stat_result
+        size = utils.get_file_size(test_file)
+        self.assertEqual(size, stat_result.st_size)
+        mock_stat.assert_called_once_with(test_file)
+
+    @mock.patch('os.stat')
     def test_get_blkdev_major_minor(self, mock_stat):
 
         class stat_result:
