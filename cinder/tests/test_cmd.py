@@ -695,7 +695,7 @@ class TestCinderRtstoolCmd(test.TestCase):
         super(TestCinderRtstoolCmd, self).tearDown()
 
     @mock.patch('rtslib.root.RTSRoot')
-    def test_create_rtsllib_error(self, rtsroot):
+    def test_create_rtslib_error(self, rtsroot):
         rtsroot.side_effect = rtslib.utils.RTSLibError()
 
         self.assertRaises(rtslib.utils.RTSLibError, cinder_rtstool.create,
@@ -705,7 +705,7 @@ class TestCinderRtstoolCmd(test.TestCase):
                           mock.sentinel.password,
                           mock.sentinel.iser_enabled)
 
-    def _test_create_rtsllib_error_network_portal(self, ip):
+    def _test_create_rtslib_error_network_portal(self, ip):
         with contextlib.nested(
             mock.patch('rtslib.NetworkPortal'),
             mock.patch('rtslib.LUN'),
@@ -759,11 +759,11 @@ class TestCinderRtstoolCmd(test.TestCase):
             if ip == '::0':
                 network_portal.assert_any_call(tpg_new, ip, 3260, mode='any')
 
-    def test_create_rtsllib_error_network_portal_ipv4(self):
-        self._test_create_rtsllib_error_network_portal('0.0.0.0')
+    def test_create_rtslib_error_network_portal_ipv4(self):
+        self._test_create_rtslib_error_network_portal('0.0.0.0')
 
-    def test_create_rtsllib_error_network_portal_ipv6(self):
-        self._test_create_rtsllib_error_network_portal('::0')
+    def test_create_rtslib_error_network_portal_ipv6(self):
+        self._test_create_rtslib_error_network_portal('::0')
 
     def _test_create(self, ip):
         with contextlib.nested(
