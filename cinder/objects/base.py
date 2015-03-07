@@ -28,7 +28,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE
 from cinder import objects
 from cinder.objects import fields
 from cinder.openstack.common import log as logging
@@ -616,10 +616,10 @@ class CinderObjectDictCompat(object):
             # The following preserves that compatability but in
             # the future we'll remove this shim altogether so don't
             # rely on it.
-            LOG.warning(_LW('Cinder object %(object_name)s has no '
-                            'attribute named: %(attribute_name)s'),
-                        {'object_name': self.__class__.__name__,
-                         'attribute_name': key})
+            LOG.debug('Cinder object %(object_name)s has no '
+                      'attribute named: %(attribute_name)s',
+                      {'object_name': self.__class__.__name__,
+                       'attribute_name': key})
             return None
         if value != NotSpecifiedSentinel and not self.obj_attr_is_set(key):
             return value
