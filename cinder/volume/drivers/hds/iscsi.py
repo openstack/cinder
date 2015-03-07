@@ -32,7 +32,7 @@ from cinder.volume.drivers.hds import hnas_backend
 from cinder.volume import utils
 
 
-HDS_HNAS_ISCSI_VERSION = '1.0.0'
+HDS_HNAS_ISCSI_VERSION = '2.2.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -44,11 +44,13 @@ iSCSI_OPTS = [
 CONF = cfg.CONF
 CONF.register_opts(iSCSI_OPTS)
 
-HNAS_DEFAULT_CONFIG = {'hnas_cmd': 'ssc', 'chap_enabled': 'True'}
+HNAS_DEFAULT_CONFIG = {'hnas_cmd': 'ssc',
+                       'chap_enabled': 'True',
+                       'ssh_port': '22'}
 
 
-def factory_bend(type):
-    return hnas_backend.HnasBackend()
+def factory_bend(drv_configs):
+    return hnas_backend.HnasBackend(drv_configs)
 
 
 def _loc_info(loc):
@@ -100,14 +102,31 @@ def _read_config(xml_config_file):
 
     # mandatory parameters
     config = {}
-    arg_prereqs = ['mgmt_ip0', 'username', 'password']
+    arg_prereqs = ['mgmt_ip0', 'username']
     for req in arg_prereqs:
         config[req] = _xml_read(root, req, 'check')
 
     # optional parameters
-    for opt in ['hnas_cmd', 'chap_enabled']:
-        config[opt] = _xml_read(root, opt) or\
-            HNAS_DEFAULT_CONFIG[opt]
+    opt_parameters = ['hnas_cmd', 'ssh_enabled', 'chap_enabled',
+                      'cluster_admin_ip0']
+    for req in opt_parameters:
+        config[req] = _xml_read(root, req)
+
+    if config['chap_enabled'] is None:
+        config['chap_enabled'] = HNAS_DEFAULT_CONFIG['chap_enabled']
+
+    if config['ssh_enabled'] == 'True':
+        config['ssh_private_key'] = _xml_read(root, 'ssh_private_key', 'check')
+        config['ssh_port'] = _xml_read(root, 'ssh_port')
+        config['password'] = _xml_read(root, 'password')
+        if config['ssh_port'] is None:
+            config['ssh_port'] = HNAS_DEFAULT_CONFIG['ssh_port']
+    else:
+        # password is mandatory when not using SSH
+        config['password'] = _xml_read(root, 'password', 'check')
+
+    if config['hnas_cmd'] is None:
+        config['hnas_cmd'] = HNAS_DEFAULT_CONFIG['hnas_cmd']
 
     config['hdp'] = {}
     config['services'] = {}
@@ -132,7 +151,11 @@ def _read_config(xml_config_file):
 
 
 class HDSISCSIDriver(driver.ISCSIDriver):
-    """HDS HNAS volume driver."""
+    """HDS HNAS volume driver.
+
+    Version 1.0.0: Initial driver version
+    Version 2.2.0:  Added support to SSH authentication
+    """
 
     def __init__(self, *args, **kwargs):
         """Initialize, read different config parameters."""
@@ -147,7 +170,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
         self.platform = self.type.lower()
         LOG.info(_LI("Backend type: %s"), self.type)
-        self.bend = factory_bend(self.type)
+        self.bend = factory_bend(self.config)
 
     def _array_info_get(self):
         """Get array parameters."""

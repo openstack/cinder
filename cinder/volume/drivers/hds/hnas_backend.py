@@ -20,16 +20,80 @@ Hitachi Unified Storage (HUS-HNAS) platform. Backend operations.
 
 import re
 
+from oslo_concurrency import processutils
 from oslo_utils import units
+import six
 
+from cinder.i18n import _LE, _LW, _LI
 from cinder.openstack.common import log as logging
+from cinder import ssh_utils
 from cinder import utils
 
 LOG = logging.getLogger("cinder.volume.driver")
 
 
-class HnasBackend():
+class HnasBackend(object):
     """Back end. Talks to HUS-HNAS."""
+    def __init__(self, drv_configs):
+        self.drv_configs = drv_configs
+        self.sshpool = None
+
+    def run_cmd(self, cmd, ip0, user, pw, *args, **kwargs):
+        """Run a command on SMU or using SSH
+
+        :param cmd: the command that will be run on SMU
+        :param ip0: string IP address of controller
+        :param user: string user authentication for array
+        :param pw: string password authentication for array
+        :returns: formated string with version information
+        """
+        LOG.debug('Enable ssh: %s',
+                  six.text_type(self.drv_configs['ssh_enabled']))
+
+        if self.drv_configs['ssh_enabled'] != 'True':
+            # Direct connection via ssc
+            args = (cmd, '-u', user, '-p', pw, ip0) + args
+            out, err = utils.execute(*args, **kwargs)
+            LOG.debug("command %(cmd)s result: out = %(out)s - err = "
+                      "%(err)s", {'cmd': cmd, 'out': out, 'err': err})
+            return out, err
+        else:
+            if self.drv_configs['cluster_admin_ip0'] is None:
+                # Connect to SMU through SSH and run ssc locally
+                args = (cmd, 'localhost') + args
+            else:
+                args = (cmd, '--smuauth',
+                        self.drv_configs['cluster_admin_ip0']) + args
+
+            utils.check_ssh_injection(args)
+            command = ' '.join(args)
+            command = command.replace('"', '\\"')
+
+            if not self.sshpool:
+                server = self.drv_configs['mgmt_ip0']
+                port = int(self.drv_configs['ssh_port'])
+                username = self.drv_configs['username']
+                # We only accept private/public key auth
+                password = ""
+                privatekey = self.drv_configs['ssh_private_key']
+                self.sshpool = ssh_utils.SSHPool(server,
+                                                 port,
+                                                 None,
+                                                 username,
+                                                 password=password,
+                                                 privatekey=privatekey)
+
+            with self.sshpool.item() as ssh:
+                try:
+                    out, err = processutils.ssh_execute(ssh, command,
+                                                        check_exit_code=True)
+                    LOG.debug("command %(cmd)s result: out = %(out)s - err = "
+                              "%(err)s", {'cmd': cmd, 'out': out, 'err': err})
+                    return out, err
+                except processutils.ProcessExecutionError:
+                    LOG.error(_LE("Error running SSH command."))
+                    raise
+
     def get_version(self, cmd, ver, ip0, user, pw):
         """Gets version information from the storage unit
 
@@ -39,19 +103,20 @@ class HnasBackend():
        :param pw: string password authentication for array
        :returns: formated string with version information
        """
-        out, err = utils.execute(cmd,
-                                 "-version",
-                                 check_exit_code=True)
-        util = out.split()[1]
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw, ip0,
-                                 "cluster-getmac",
-                                 check_exit_code=True)
+        if (self.drv_configs['ssh_enabled'] == 'True' and
+                self.drv_configs['cluster_admin_ip0'] is not None):
+                util = 'SMU ' + cmd
+        else:
+            out, err = utils.execute(cmd,
+                                     "-version",
+                                     check_exit_code=True)
+            util = out.split()[1]
+
+        out, err = self.run_cmd(cmd, ip0, user, pw, "cluster-getmac",
+                                check_exit_code=True)
         hardware = out.split()[2]
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, 'ver',
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "ver",
+                                check_exit_code=True)
         lines = out.split('\n')
 
         model = ""
@@ -64,7 +129,7 @@ class HnasBackend():
         out = "Array_ID: %s (%s) version: %s LU: 256 RG: 0 RG_LU: 0 \
                Utility_version: %s" % (hardware, model, ver, util)
 
-        LOG.debug('get_version: ' + out + ' -- ' + err)
+        LOG.debug('get_version: %(out)s -- %(err)s', {'out': out, 'err': err})
         return out
 
     def get_iscsi_info(self, cmd, ip0, user, pw):
@@ -76,10 +141,9 @@ class HnasBackend():
         :returns: formated string with iSCSI information
         """
 
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw, ip0,
-                                 'evsipaddr', '-l',
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw,
+                                'evsipaddr', '-l',
+                                check_exit_code=True)
         lines = out.split('\n')
 
         newout = ""
@@ -90,7 +154,8 @@ class HnasBackend():
                 newout += "CTL: %s Port: 0 IP: %s Port: 3260 Link: Up\n" \
                           % (evsnum, ip)
 
-        LOG.debug('get_iscsi_info: ' + out + ' -- ' + err)
+        LOG.debug('get_iscsi_info: %(out)s -- %(err)s',
+                  {'out': out, 'err': err})
         return newout
 
     def get_hdp_info(self, cmd, ip0, user, pw):
@@ -102,10 +167,8 @@ class HnasBackend():
         :returns: formated string with filesystems and fsids
         """
 
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, 'df', '-a',
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, 'df', '-a',
+                                check_exit_code=True)
         lines = out.split('\n')
         single_evs = True
 
@@ -145,17 +208,16 @@ class HnasBackend():
                              int(float(used) * usedmultiplier),
                              int(percent), fslabel)
 
-        LOG.debug('get_hdp_info: ' + newout + ' -- ' + err)
+        LOG.debug('get_hdp_info: %(out)s -- %(err)s',
+                  {'out': newout, 'err': err})
         return newout
 
     def _get_evs(self, cmd, ip0, user, pw, fsid):
         """Gets the EVSID for the named filesystem."""
 
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw, ip0,
-                                 "evsfs", "list",
-                                 check_exit_code=True)
-        LOG.debug('get_evs: out ' + out)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "evsfs", "list",
+                                check_exit_code=True)
+        LOG.debug('get_evs: out %s', out)
 
         lines = out.split('\n')
         for line in lines:
@@ -163,16 +225,16 @@ class HnasBackend():
             if fsid in line and (fsid == inf[0] or fsid == inf[1]):
                 return inf[3]
 
-        LOG.warn('get_evs: ' + out + ' -- ' + 'No info for ' + fsid)
+        LOG.warning(_LW('get_evs: %(out)s -- No find for %(fsid)s'),
+                    {'out': out, 'fsid': fsid})
         return 0
 
     def _get_evsips(self, cmd, ip0, user, pw, evsid):
         """Gets the EVS IPs for the named filesystem."""
 
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw, ip0,
-                                 'evsipaddr', '-e', evsid,
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw,
+                                'evsipaddr', '-e', evsid,
+                                check_exit_code=True)
 
         iplist = ""
         lines = out.split('\n')
@@ -181,26 +243,25 @@ class HnasBackend():
             if 'evs' in line:
                 iplist += inf[3] + ' '
 
-        LOG.debug('get_evsips: ' + iplist)
+        LOG.debug('get_evsips: %s', iplist)
         return iplist
 
     def _get_fsid(self, cmd, ip0, user, pw, fslabel):
         """Gets the FSID for the named filesystem."""
 
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, 'evsfs', 'list',
-                                 check_exit_code=True)
-        LOG.debug('get_fsid: out ' + out)
+        out, err = self.run_cmd(cmd, ip0, user, pw, 'evsfs', 'list',
+                                check_exit_code=True)
+        LOG.debug('get_fsid: out %s', out)
 
         lines = out.split('\n')
         for line in lines:
             inf = line.split()
             if fslabel in line and fslabel == inf[1]:
-                LOG.debug('get_fsid: ' + line)
+                LOG.debug('get_fsid: %s', line)
                 return inf[0]
 
-        LOG.warn('get_fsid: ' + out + ' -- ' + 'No infor for ' + fslabel)
+        LOG.warning(_LW('get_fsid: %(out)s -- No info for %(fslabel)s'),
+                    {'out': out, 'fslabel': fslabel})
         return 0
 
     def get_nfs_info(self, cmd, ip0, user, pw):
@@ -212,11 +273,10 @@ class HnasBackend():
         :returns: formated string
         """
 
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw, ip0,
-                                 'for-each-evs', '-q',
-                                 'nfs-export', 'list',
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw,
+                                'for-each-evs', '-q',
+                                'nfs-export', 'list',
+                                check_exit_code=True)
 
         lines = out.split('\n')
         newout = ""
@@ -241,7 +301,8 @@ class HnasBackend():
                            % (export, path, fs, fsid, evsid, ips)
                 fs = ""
 
-        LOG.debug('get_nfs_info: ' + newout + ' -- ' + err)
+        LOG.debug('get_nfs_info: %(out)s -- %(err)s',
+                  {'out': newout, 'err': err})
         return newout
 
     def create_lu(self, cmd, ip0, user, pw, hdp, size, name):
@@ -261,20 +322,18 @@ class HnasBackend():
         """
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", _evsid,
-                                 'iscsi-lu', 'add', "-e",
-                                 name, hdp,
-                                 '/.cinder/' + name + '.iscsi',
-                                 size + 'M',
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", _evsid,
+                                'iscsi-lu', 'add', "-e",
+                                name, hdp,
+                                '/.cinder/' + name + '.iscsi',
+                                size + 'M',
+                                check_exit_code=True)
 
         out = "LUN %s HDP: %s size: %s MB, is successfully created" \
               % (name, hdp, size)
 
-        LOG.debug('create_lu: ' + out)
+        LOG.debug('create_lu: %s', out)
         return out
 
     def delete_lu(self, cmd, ip0, user, pw, hdp, lun):
@@ -289,15 +348,13 @@ class HnasBackend():
         """
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", _evsid,
-                                 'iscsi-lu', 'del', '-d',
-                                 '-f', lun,
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", _evsid,
+                                'iscsi-lu', 'del', '-d',
+                                '-f', lun,
+                                check_exit_code=True)
 
-        LOG.debug('delete_lu: ' + out + ' -- ' + err)
+        LOG.debug('delete_lu: %(out)s -- %(err)s', {'out': out, 'err': err})
         return out
 
     def create_dup(self, cmd, ip0, user, pw, src_lun, hdp, size, name):
@@ -316,19 +373,17 @@ class HnasBackend():
         """
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", _evsid,
-                                 'iscsi-lu', 'clone', '-e',
-                                 src_lun, name,
-                                 '/.cinder/' + name + '.iscsi',
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", _evsid,
+                                'iscsi-lu', 'clone', '-e',
+                                src_lun, name,
+                                '/.cinder/' + name + '.iscsi',
+                                check_exit_code=True)
 
         out = "LUN %s HDP: %s size: %s MB, is successfully created" \
               % (name, hdp, size)
 
-        LOG.debug('create_dup: ' + out + ' -- ' + err)
+        LOG.debug('create_dup: %(out)s -- %(err)s', {'out': out, 'err': err})
         return out
 
     def file_clone(self, cmd, ip0, user, pw, fslabel, src, name):
@@ -347,17 +402,15 @@ class HnasBackend():
 
         _fsid = self._get_fsid(cmd, ip0, user, pw, fslabel)
         _evsid = self._get_evs(cmd, ip0, user, pw, _fsid)
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", _evsid,
-                                 'file-clone-create', '-f', fslabel,
-                                 src, name,
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", _evsid,
+                                'file-clone-create', '-f', fslabel,
+                                src, name,
+                                check_exit_code=True)
 
         out = "LUN %s HDP: %s Clone: %s -> %s" % (name, _fsid, src, name)
 
-        LOG.debug('file_clone: ' + out + ' -- ' + err)
+        LOG.debug('file_clone: %(out)s -- %(err)s', {'out': out, 'err': err})
         return out
 
     def extend_vol(self, cmd, ip0, user, pw, hdp, lun, new_size, name):
@@ -373,17 +426,15 @@ class HnasBackend():
         """
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", _evsid,
-                                 'iscsi-lu', 'expand',
-                                 name, new_size + 'M',
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", _evsid,
+                                'iscsi-lu', 'expand',
+                                name, new_size + 'M',
+                                check_exit_code=True)
 
         out = ("LUN: %s successfully extended to %s MB" % (name, new_size))
 
-        LOG.debug('extend_vol: ' + out)
+        LOG.debug('extend_vol: %s', out)
         return out
 
     def add_iscsi_conn(self, cmd, ip0, user, pw, lun, hdp,
@@ -401,12 +452,10 @@ class HnasBackend():
         """
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", _evsid,
-                                 'iscsi-target', 'list', iqn,
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", _evsid,
+                                'iscsi-target', 'list', iqn,
+                                check_exit_code=True)
 
         # even though ssc uses the target alias, need to return the full iqn
         fulliqn = ""
@@ -424,14 +473,15 @@ class HnasBackend():
                 if lunline[0].isdigit():
                     # see if already mounted
                     if vol[:29] == lun[:29]:
-                        LOG.info('lun: %s already mounted %s' % (lun, lunline))
+                        LOG.info(_LI('lun: %(lun)s already mounted (lline)%s'),
+                                 {'lun': lun, 'lline': lunline})
                         conn = (int(lunline), lun, initiator, hlun, fulliqn,
                                 hlun, hdp, port)
                         out = "H-LUN: %d alreadymapped LUN: %s, iSCSI \
                                Initiator: %s @ index: %d, and Target: %s \
                                @ index %d is successfully paired  @ CTL: \
                                %s, Port: %s" % conn
-                        LOG.debug('add_iscsi_conn: returns ' + out)
+                        LOG.debug('add_iscsi_conn: returns %s', out)
                         return out
 
                     if int(lunline) == hlun:
@@ -440,13 +490,11 @@ class HnasBackend():
                         # found a hole
                         break
 
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", _evsid,
-                                 'iscsi-target', 'addlu',
-                                 iqn, lun, hlun,
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", _evsid,
+                                'iscsi-target', 'addlu',
+                                iqn, lun, hlun,
+                                check_exit_code=True)
 
         conn = (int(hlun), lun, initiator, int(hlun), fulliqn, int(hlun),
                 hdp, port)
@@ -454,7 +502,7 @@ class HnasBackend():
                @ index: %d, and Target: %s @ index %d is \
                successfully paired  @ CTL: %s, Port: %s" % conn
 
-        LOG.debug('add_iscsi_conn: returns ' + out)
+        LOG.debug('add_iscsi_conn: returns %s', out)
         return out
 
     def del_iscsi_conn(self, cmd, ip0, user, pw, evsid, iqn, hlun):
@@ -469,12 +517,10 @@ class HnasBackend():
         :return: formated string
         """
 
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", evsid,
-                                 'iscsi-target', 'list', iqn,
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", evsid,
+                                'iscsi-target', 'list', iqn,
+                                check_exit_code=True)
 
         lines = out.split('\n')
         out = ("H-LUN: %d already deleted from target %s" % (int(hlun), iqn))
@@ -488,22 +534,20 @@ class HnasBackend():
 
         if out != "":
             # hlun wasn't found
-            LOG.info('del_iscsi_conn: hlun not found' + out)
+            LOG.info(_LI('del_iscsi_conn: hlun not found %s'), out)
             return out
 
         # remove the LU from the target
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", evsid,
-                                 'iscsi-target', 'dellu',
-                                 '-f', iqn, hlun,
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", evsid,
+                                'iscsi-target', 'dellu',
+                                '-f', iqn, hlun,
+                                check_exit_code=True)
 
         out = "H-LUN: %d successfully deleted from target %s" \
               % (int(hlun), iqn)
 
-        LOG.debug('del_iscsi_conn: ' + out + ' -- ')
+        LOG.debug('del_iscsi_conn: %s', out)
         return out
 
     def get_targetiqn(self, cmd, ip0, user, pw, targetalias, hdp, secret):
@@ -521,31 +565,25 @@ class HnasBackend():
         """
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", _evsid,
-                                 'iscsi-target', 'list', targetalias,
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", _evsid,
+                                'iscsi-target', 'list', targetalias,
+                                check_exit_code=True)
 
         if "does not exist" in out:
             if secret == "":
                 secret = '""'
-                out, err = utils.execute(cmd,
-                                         '-u', user, '-p', pw,
-                                         ip0, "console-context",
-                                         "--evs", _evsid,
-                                         'iscsi-target', 'add',
-                                         targetalias, secret,
-                                         check_exit_code=True)
+                out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                        "--evs", _evsid,
+                                        'iscsi-target', 'add',
+                                        targetalias, secret,
+                                        check_exit_code=True)
             else:
-                out, err = utils.execute(cmd,
-                                         '-u', user, '-p', pw,
-                                         ip0, "console-context",
-                                         "--evs", _evsid,
-                                         'iscsi-target', 'add',
-                                         targetalias, secret,
-                                         check_exit_code=True)
+                out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                        "--evs", _evsid,
+                                        'iscsi-target', 'add',
+                                        targetalias, secret,
+                                        check_exit_code=True)
 
         lines = out.split('\n')
         # returns the first iqn
@@ -565,32 +603,26 @@ class HnasBackend():
         """
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", _evsid,
-                                 'iscsi-target', 'list',
-                                 targetalias,
-                                 check_exit_code=False)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", _evsid,
+                                'iscsi-target', 'list',
+                                targetalias,
+                                check_exit_code=False)
 
         if "does not exist" in out:
-            out, err = utils.execute(cmd,
-                                     '-u', user, '-p', pw,
-                                     ip0, "console-context",
-                                     "--evs", _evsid,
-                                     'iscsi-target', 'add',
-                                     targetalias, secret,
-                                     check_exit_code=True)
+            out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                    "--evs", _evsid,
+                                    'iscsi-target', 'add',
+                                    targetalias, secret,
+                                    check_exit_code=True)
         else:
-            LOG.info('targetlist: ' + targetalias + ' -- ' + out)
-            out, err = utils.execute(cmd,
-                                     '-u', user, '-p', pw,
-                                     ip0, "console-context",
-                                     "--evs", _evsid,
-                                     'iscsi-target', 'mod',
-                                     '-s', secret, '-a', 'enable',
-                                     targetalias,
-                                     check_exit_code=True)
+            LOG.info(_LI('targetlist: %s'), targetalias)
+            out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                    "--evs", _evsid,
+                                    'iscsi-target', 'mod',
+                                    '-s', secret, '-a', 'enable',
+                                    targetalias,
+                                    check_exit_code=True)
 
     def get_targetsecret(self, cmd, ip0, user, pw, targetalias, hdp):
         """Returns the chap secret for the specified target.
@@ -603,12 +635,10 @@ class HnasBackend():
         """
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
-        out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
-                                 ip0, "console-context",
-                                 "--evs", _evsid,
-                                 'iscsi-target', 'list', targetalias,
-                                 check_exit_code=True)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
+                                "--evs", _evsid,
+                                'iscsi-target', 'list', targetalias,
+                                check_exit_code=True)
 
         enabled = ""
         secret = ""
