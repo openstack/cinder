@@ -301,9 +301,12 @@ class TgtAdm(iscsi.ISCSITarget):
                           iqn,
                           run_as_root=True)
         except putils.ProcessExecutionError as e:
-            if "can't find the target" in e.stderr:
-                LOG.warning(_LW("Failed target removal because target "
-                                "couldn't be found for iqn: %s."), iqn)
+            non_fatal_errors = ("can't find the target",
+                                "access control rule does not exist")
+
+            if any(error in e.stderr for error in non_fatal_errors):
+                LOG.warning(_LW("Failed target removal because target or "
+                                "ACL's couldn't be found for iqn: %s."), iqn)
             else:
                 LOG.error(_LE("Failed to remove iscsi target for volume "
                               "ID: %(vol_id)s: %(e)s"),
