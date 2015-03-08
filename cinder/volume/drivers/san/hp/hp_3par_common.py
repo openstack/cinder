@@ -168,10 +168,11 @@ class HP3PARCommon(object):
         2.0.35 - Fix default snapCPG for manage_existing bug #1393609
         2.0.36 - Added support for dedup provisioning
         2.0.37 - Added support for enabling Flash Cache
+        2.0.38 - Add stats for hp3par goodness_function and filter_function
 
     """
 
-    VERSION = "2.0.37"
+    VERSION = "2.0.38"
 
     stats = {}
 
@@ -661,13 +662,20 @@ class HP3PARCommon(object):
 
         return iscsi_ports
 
-    def get_volume_stats(self, refresh=False):
+    def get_volume_stats(self,
+                         refresh,
+                         filter_function=None,
+                         goodness_function=None):
         if refresh:
-            self._update_volume_stats()
+            self._update_volume_stats(
+                filter_function=filter_function,
+                goodness_function=goodness_function)
 
         return self.stats
 
-    def _update_volume_stats(self):
+    def _update_volume_stats(self,
+                             filter_function=None,
+                             goodness_function=None):
         # const to convert MiB to GB
         const = 0.0009765625
 
@@ -676,13 +684,23 @@ class HP3PARCommon(object):
 
         pools = []
         info = self.client.getStorageSystemInfo()
+
         for cpg_name in self.config.hp3par_cpg:
             try:
                 cpg = self.client.getCPG(cpg_name)
+                if 'numTDVVs' in cpg:
+                    total_volumes = int(
+                        cpg['numFPVVs'] + cpg['numTPVVs'] + cpg['numTDVVs']
+                    )
+                else:
+                    total_volumes = int(
+                        cpg['numFPVVs'] + cpg['numTPVVs']
+                    )
+
                 if 'limitMiB' not in cpg['SDGrowth']:
                     # cpg usable free space
-                    cpg_avail_space = \
-                        self.client.getCPGAvailableSpace(cpg_name)
+                    cpg_avail_space = (
+                        self.client.getCPGAvailableSpace(cpg_name))
                     free_capacity = int(
                         cpg_avail_space['usableFreeMiB'] * const)
                     # total_capacity is the best we can do for a limitless cpg
@@ -693,7 +711,11 @@ class HP3PARCommon(object):
                 else:
                     total_capacity = int(cpg['SDGrowth']['limitMiB'] * const)
                     free_capacity = int((cpg['SDGrowth']['limitMiB'] -
-                                         cpg['UsrUsage']['usedMiB']) * const)
+                                        (cpg['UsrUsage']['usedMiB'] +
+                                         cpg['SDUsage']['usedMiB'])) * const)
+                capacity_utilization = (
+                    (float(total_capacity - free_capacity) /
+                     float(total_capacity)) * 100)
 
             except hpexceptions.HTTPNotFound:
                 err = (_("CPG (%s) doesn't exist on array")
@@ -708,8 +730,13 @@ class HP3PARCommon(object):
                     'reserved_percentage': 0,
                     'location_info': ('HP3PARDriver:%(sys_id)s:%(dest_cpg)s' %
                                       {'sys_id': info['serialNumber'],
-                                       'dest_cpg': cpg_name})
+                                       'dest_cpg': cpg_name}),
+                    'total_volumes': total_volumes,
+                    'capacity_utilization': capacity_utilization,
+                    'filter_function': filter_function,
+                    'goodness_function': goodness_function
                     }
+
             pools.append(pool)
 
         self.stats = {'driver_version': '1.0',

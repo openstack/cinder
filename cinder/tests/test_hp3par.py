@@ -50,6 +50,10 @@ HP3PAR_SAN_IP = '2.2.2.2'
 HP3PAR_SAN_SSH_PORT = 999
 HP3PAR_SAN_SSH_CON_TIMEOUT = 44
 HP3PAR_SAN_SSH_PRIVATE = 'foobar'
+GOODNESS_FUNCTION = \
+    "stats.capacity_utilization < 0.6? 100:25"
+FILTER_FUNCTION = \
+    "stats.total_volumes < 400 && stats.capacity_utilization < 0.8"
 
 CHAP_USER_KEY = "HPQ-cinder-CHAP-name"
 CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
@@ -225,6 +229,7 @@ class HP3PARBaseDriver(object):
          'name': HP3PAR_CPG,
          'numFPVVs': 2,
          'numTPVVs': 0,
+         'numTDVVs': 1,
          'state': 1,
          'uuid': '29c214aa-62b9-41c8-b198-543f6cf24edf'}]
 
@@ -486,6 +491,8 @@ class HP3PARBaseDriver(object):
         configuration.hp3par_snapshot_retention = ""
         configuration.hp3par_iscsi_ips = []
         configuration.hp3par_iscsi_chap_enabled = False
+        configuration.goodness_function = GOODNESS_FUNCTION
+        configuration.filter_function = FILTER_FUNCTION
         return configuration
 
     @mock.patch(
@@ -3335,9 +3342,12 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             self.assertNotIn('initiator_target_map', conn_info['data'])
 
     def test_get_volume_stats(self):
-        # setup_mock_client drive with default configuration
+        # setup_mock_client drive with the configuration
         # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
+        config = self.setup_configuration()
+        config.filter_function = FILTER_FUNCTION
+        config.goodness_function = GOODNESS_FUNCTION
+        mock_client = self.setup_driver(config=config)
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
             'serialNumber': '1234'
@@ -3362,6 +3372,12 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             self.assertEqual(stats['free_capacity_gb'], 0)
             self.assertEqual(stats['pools'][0]['total_capacity_gb'], 24.0)
             self.assertEqual(stats['pools'][0]['free_capacity_gb'], 3.0)
+            self.assertEqual(stats['pools'][0]['capacity_utilization'], 87.5)
+            self.assertEqual(stats['pools'][0]['total_volumes'], 3)
+            self.assertEqual(stats['pools'][0]['goodness_function'],
+                             GOODNESS_FUNCTION)
+            self.assertEqual(stats['pools'][0]['filter_function'],
+                             FILTER_FUNCTION)
 
             expected = [
                 mock.call.getStorageSystemInfo(),
@@ -3380,6 +3396,12 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             self.assertEqual(stats['free_capacity_gb'], 0)
             self.assertEqual(stats['pools'][0]['total_capacity_gb'], 24.0)
             self.assertEqual(stats['pools'][0]['free_capacity_gb'], 3.0)
+            self.assertEqual(stats['pools'][0]['capacity_utilization'], 87.5)
+            self.assertEqual(stats['pools'][0]['total_volumes'], 3)
+            self.assertEqual(stats['pools'][0]['goodness_function'],
+                             GOODNESS_FUNCTION)
+            self.assertEqual(stats['pools'][0]['filter_function'],
+                             FILTER_FUNCTION)
 
             cpg2 = self.cpgs[0].copy()
             cpg2.update({'SDGrowth': {'limitMiB': 8192}})
@@ -3392,10 +3414,20 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             self.assertEqual(stats['pools'][0]['total_capacity_gb'],
                              total_capacity_gb)
             free_capacity_gb = int(
-                (8192 - self.cpgs[0]['UsrUsage']['usedMiB']) * const)
+                (8192 - (self.cpgs[0]['UsrUsage']['usedMiB'] +
+                         self.cpgs[0]['SDUsage']['usedMiB'])) * const)
             self.assertEqual(stats['free_capacity_gb'], 0)
             self.assertEqual(stats['pools'][0]['free_capacity_gb'],
                              free_capacity_gb)
+            cap_util = (float(total_capacity_gb - free_capacity_gb) /
+                        float(total_capacity_gb)) * 100
+            self.assertEqual(stats['pools'][0]['capacity_utilization'],
+                             cap_util)
+            self.assertEqual(stats['pools'][0]['total_volumes'], 3)
+            self.assertEqual(stats['pools'][0]['goodness_function'],
+                             GOODNESS_FUNCTION)
+            self.assertEqual(stats['pools'][0]['filter_function'],
+                             FILTER_FUNCTION)
             common.client.deleteCPG(HP3PAR_CPG)
             common.client.createCPG(HP3PAR_CPG, {})
 
@@ -3704,9 +3736,12 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             self.assertDictMatch(result, self.properties)
 
     def test_get_volume_stats(self):
-        # setup_mock_client drive with default configuration
+        # setup_mock_client drive with the configuration
         # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
+        config = self.setup_configuration()
+        config.filter_function = FILTER_FUNCTION
+        config.goodness_function = GOODNESS_FUNCTION
+        mock_client = self.setup_driver(config=config)
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
             'serialNumber': '1234'
@@ -3729,6 +3764,12 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             self.assertEqual(stats['free_capacity_gb'], 0)
             self.assertEqual(stats['pools'][0]['total_capacity_gb'], 24.0)
             self.assertEqual(stats['pools'][0]['free_capacity_gb'], 3.0)
+            self.assertEqual(stats['pools'][0]['capacity_utilization'], 87.5)
+            self.assertEqual(stats['pools'][0]['total_volumes'], 3)
+            self.assertEqual(stats['pools'][0]['goodness_function'],
+                             GOODNESS_FUNCTION)
+            self.assertEqual(stats['pools'][0]['filter_function'],
+                             FILTER_FUNCTION)
 
             expected = [
                 mock.call.getStorageSystemInfo(),
@@ -3753,10 +3794,20 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             self.assertEqual(stats['pools'][0]['total_capacity_gb'],
                              total_capacity_gb)
             free_capacity_gb = int(
-                (8192 - self.cpgs[0]['UsrUsage']['usedMiB']) * const)
+                (8192 - (self.cpgs[0]['UsrUsage']['usedMiB'] +
+                         self.cpgs[0]['SDUsage']['usedMiB'])) * const)
             self.assertEqual(stats['free_capacity_gb'], 0)
             self.assertEqual(stats['pools'][0]['free_capacity_gb'],
                              free_capacity_gb)
+            cap_util = (float(total_capacity_gb - free_capacity_gb) /
+                        float(total_capacity_gb)) * 100
+            self.assertEqual(stats['pools'][0]['capacity_utilization'],
+                             cap_util)
+            self.assertEqual(stats['pools'][0]['total_volumes'], 3)
+            self.assertEqual(stats['pools'][0]['goodness_function'],
+                             GOODNESS_FUNCTION)
+            self.assertEqual(stats['pools'][0]['filter_function'],
+                             FILTER_FUNCTION)
 
     def test_create_host(self):
         # setup_mock_client drive with default configuration

@@ -197,7 +197,19 @@ volume_opts = [
                secret=True),
     cfg.StrOpt('driver_data_namespace',
                default=None,
-               help='Namespace for driver private data values to be saved in.')
+               help='Namespace for driver private data values to be '
+                    'saved in.'),
+    cfg.StrOpt('filter_function',
+               default=None,
+               help='String representation for an equation that will be '
+                    'used to filter hosts. Only used when the driver '
+                    'filter is set to be used by the Cinder scheduler.'),
+    cfg.StrOpt('goodness_function',
+               default=None,
+               help='String representation for an equation that will be '
+                    'used to determine the goodness of a host. Only used '
+                    'when using the goodness weigher is set to be used by '
+                    'the Cinder scheduler.'),
 ]
 
 # for backward compatibility
@@ -430,6 +442,42 @@ class BaseVD(object):
         """
         return None
 
+    def _update_pools_and_stats(self, data):
+        """Updates data for pools and volume stats based on provided data."""
+        # provisioned_capacity_gb is set to None by default below, but
+        # None won't be used in calculation. It will be overridden by
+        # driver's provisioned_capacity_gb if reported, otherwise it
+        # defaults to allocated_capacity_gb in host_manager.py.
+        if self.pools:
+            for pool in self.pools:
+                new_pool = {}
+                new_pool.update(dict(
+                    pool_name=pool,
+                    total_capacity_gb=0,
+                    free_capacity_gb=0,
+                    provisioned_capacity_gb=None,
+                    reserved_percentage=100,
+                    QoS_support=False,
+                    filter_function=self.get_filter_function(),
+                    goodness_function=self.get_goodness_function()
+                ))
+                data["pools"].append(new_pool)
+        else:
+            # No pool configured, the whole backend will be treated as a pool
+            single_pool = {}
+            single_pool.update(dict(
+                pool_name=data["volume_backend_name"],
+                total_capacity_gb=0,
+                free_capacity_gb=0,
+                provisioned_capacity_gb=None,
+                reserved_percentage=100,
+                QoS_support=False,
+                filter_function=self.get_filter_function(),
+                goodness_function=self.get_goodness_function()
+            ))
+            data["pools"].append(single_pool)
+        self._stats = data
+
     def copy_volume_data(self, context, src_vol, dest_vol, remote=None):
         """Copy data from src_vol to dest_vol."""
         LOG.debug(('copy_data_between_volumes %(src)s -> %(dest)s.')
@@ -528,6 +576,60 @@ class BaseVD(object):
                                       attach_info['device']['path'])
         finally:
             self._detach_volume(context, attach_info, volume, properties)
+
+    def get_filter_function(self):
+        """Get filter_function string.
+
+        Returns either the string from the driver instance or global section
+        in cinder.conf. If nothing is specified in cinder.conf, then try to
+        find the default filter_function. When None is returned the scheduler
+        will always pass the driver instance.
+
+        :return a filter_function string or None
+        """
+        ret_function = self.configuration.filter_function
+        if not ret_function:
+            ret_function = CONF.filter_function
+        if not ret_function:
+            ret_function = self.get_default_filter_function()
+        return ret_function
+
+    def get_goodness_function(self):
+        """Get good_function string.
+
+        Returns either the string from the driver instance or global section
+        in cinder.conf. If nothing is specified in cinder.conf, then try to
+        find the default goodness_function. When None is returned the scheduler
+        will give the lowest score to the driver instance.
+
+        :return a goodness_function string or None
+        """
+        ret_function = self.configuration.goodness_function
+        if not ret_function:
+            ret_function = CONF.goodness_function
+        if not ret_function:
+            ret_function = self.get_default_goodness_function()
+        return ret_function
+
+    def get_default_filter_function(self):
+        """Get the default filter_function string.
+
+        Each driver could overwrite the method to return a well-known
+        default string if it is available.
+
+        :return: None
+        """
+        return None
+
+    def get_default_goodness_function(self):
+        """Get the default goodness_function string.
+
+        Each driver could overwrite the method to return a well-known
+        default string if it is available.
+
+        :return: None
+        """
+        return None
 
     def _attach_volume(self, context, volume, properties, remote=False):
         """Attach the volume."""
@@ -1497,7 +1599,7 @@ class ISCSIDriver(VolumeDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug("Updating volume stats")
+        LOG.debug("Updating volume stats...")
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'Generic_iSCSI'
@@ -1506,35 +1608,7 @@ class ISCSIDriver(VolumeDriver):
         data["storage_protocol"] = 'iSCSI'
         data["pools"] = []
 
-        # provisioned_capacity_gb is set to None by default below, but
-        # None won't be used in calculation. It will be overridden by
-        # driver's provisioned_capacity_gb if reported, otherwise it
-        # defaults to allocated_capacity_gb in host_manager.py.
-        if self.pools:
-            for pool in self.pools:
-                new_pool = {}
-                new_pool.update(dict(
-                    pool_name=pool,
-                    total_capacity_gb=0,
-                    free_capacity_gb=0,
-                    provisioned_capacity_gb=None,
-                    reserved_percentage=100,
-                    QoS_support=False
-                ))
-                data["pools"].append(new_pool)
-        else:
-            # No pool configured, the whole backend will be treated as a pool
-            single_pool = {}
-            single_pool.update(dict(
-                pool_name=data["volume_backend_name"],
-                total_capacity_gb=0,
-                free_capacity_gb=0,
-                provisioned_capacity_gb=None,
-                reserved_percentage=100,
-                QoS_support=False
-            ))
-            data["pools"].append(single_pool)
-        self._stats = data
+        self._update_pools_and_stats(data)
 
 
 class FakeISCSIDriver(ISCSIDriver):
@@ -1659,7 +1733,7 @@ class ISERDriver(ISCSIDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug("Updating volume stats")
+        LOG.debug("Updating volume stats...")
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'Generic_iSER'
@@ -1668,29 +1742,7 @@ class ISERDriver(ISCSIDriver):
         data["storage_protocol"] = 'iSER'
         data["pools"] = []
 
-        if self.pools:
-            for pool in self.pools:
-                new_pool = {}
-                new_pool.update(dict(
-                    pool_name=pool,
-                    total_capacity_gb=0,
-                    free_capacity_gb=0,
-                    reserved_percentage=100,
-                    QoS_support=False
-                ))
-                data["pools"].append(new_pool)
-        else:
-            # No pool configured, the whole backend will be treated as a pool
-            single_pool = {}
-            single_pool.update(dict(
-                pool_name=data["volume_backend_name"],
-                total_capacity_gb=0,
-                free_capacity_gb=0,
-                reserved_percentage=100,
-                QoS_support=False
-            ))
-            data["pools"].append(single_pool)
-        self._stats = data
+        self._update_pools_and_stats(data)
 
 
 class FakeISERDriver(FakeISCSIDriver):
@@ -1769,3 +1821,27 @@ class FibreChannelDriver(VolumeDriver):
                 {'setting': setting})
             LOG.error(*msg)
             raise exception.InvalidConnectorException(missing=setting)
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume stats.
+
+        If 'refresh' is True, run update the stats first.
+        """
+        if refresh:
+            self._update_volume_stats()
+
+        return self._stats
+
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+
+        LOG.debug("Updating volume stats...")
+        data = {}
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or 'Generic_FC'
+        data["vendor_name"] = 'Open Source'
+        data["driver_version"] = '1.0'
+        data["storage_protocol"] = 'FC'
+        data["pools"] = []
+
+        self._update_pools_and_stats(data)

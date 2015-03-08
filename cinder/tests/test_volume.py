@@ -4867,6 +4867,9 @@ class ISCSITestCase(DriverTestCase):
                      'lv_count': '2',
                      'uuid': 'vR1JU3-FAKE-C4A9-PQFh-Mctm-9FwA-Xwzc1m'}]
 
+        def _fake_get_volumes(obj, lv_name=None):
+            return [{'vg': 'fake_vg', 'name': 'fake_vol', 'size': '1000'}]
+
         self.stubs.Set(brick_lvm.LVM,
                        'get_all_volume_groups',
                        _fake_get_all_volume_groups)
@@ -4874,6 +4877,10 @@ class ISCSITestCase(DriverTestCase):
         self.stubs.Set(brick_lvm.LVM,
                        'get_all_physical_volumes',
                        _fake_get_all_physical_volumes)
+
+        self.stubs.Set(brick_lvm.LVM,
+                       'get_volumes',
+                       _fake_get_volumes)
 
         self.volume.driver.vg = brick_lvm.LVM('cinder-volumes', 'sudo')
 
@@ -4887,6 +4894,8 @@ class ISCSITestCase(DriverTestCase):
             stats['pools'][0]['free_capacity_gb'], float('0.52'))
         self.assertEqual(
             stats['pools'][0]['provisioned_capacity_gb'], float('5.0'))
+        self.assertEqual(
+            stats['pools'][0]['total_volumes'], int('1'))
 
     def test_validate_connector(self):
         iscsi_driver =\

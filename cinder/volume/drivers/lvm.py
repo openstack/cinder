@@ -219,6 +219,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         thin_enabled = self.configuration.lvm_type == 'thin'
 
+        # Calculate the total volumes used by the VG group.
+        # This includes volumes and snapshots.
+        total_volumes = len(self.vg.get_volumes())
+
         # Skip enabled_pools setting, treat the whole backend as one pool
         # XXX FIXME if multipool support is added to LVM driver.
         single_pool = {}
@@ -234,6 +238,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 self.configuration.max_over_subscription_ratio),
             thin_provisioning_support=thin_enabled,
             thick_provisioning_support=not thin_enabled,
+            total_volumes=total_volumes,
+            filter_function=self.get_filter_function(),
+            goodness_function=self.get_goodness_function()
         ))
         data["pools"].append(single_pool)
 
