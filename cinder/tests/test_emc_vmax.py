@@ -1447,6 +1447,34 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         doc.writexml(f)
         f.close()
 
+    def create_fake_config_file_no_fast_with_interval(self):
+
+        doc = minidom.Document()
+        emc = doc.createElement("EMC")
+        doc.appendChild(emc)
+        doc = self.add_array_info(doc, emc)
+        doc = self.add_interval_only(doc, emc)
+        filename = 'cinder_emc_config_ISCSINoFAST.xml'
+        self.config_file_path = self.tempdir + '/' + filename
+
+        f = open(self.config_file_path, 'w')
+        doc.writexml(f)
+        f.close()
+
+    def create_fake_config_file_no_fast_with_retries(self):
+
+        doc = minidom.Document()
+        emc = doc.createElement("EMC")
+        doc.appendChild(emc)
+        doc = self.add_array_info(doc, emc)
+        doc = self.add_retries_only(doc, emc)
+        filename = 'cinder_emc_config_ISCSINoFAST.xml'
+        self.config_file_path = self.tempdir + '/' + filename
+
+        f = open(self.config_file_path, 'w')
+        doc.writexml(f)
+        f.close()
+
     def add_array_info(self, doc, emc):
         array = doc.createElement("Array")
         arraytext = doc.createTextNode("1234567891011")
@@ -1505,6 +1533,20 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
         retries = doc.createElement("Retries")
         retriestext = doc.createTextNode("40")
+        emc.appendChild(retries)
+        retries.appendChild(retriestext)
+        return doc
+
+    def add_interval_only(self, doc, emc):
+        interval = doc.createElement("Interval")
+        intervaltext = doc.createTextNode("20")
+        emc.appendChild(interval)
+        interval.appendChild(intervaltext)
+        return doc
+
+    def add_retries_only(self, doc, emc):
+        retries = doc.createElement("Retries")
+        retriestext = doc.createTextNode("70")
         emc.appendChild(retries)
         retries.appendChild(retriestext)
         return doc
@@ -1701,7 +1743,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         volumeInstanceName = (
             conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
         volumeName = "1403160-Vol"
-        extraSpecs = self.driver.common.extraSpecs
+        extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
+        extraSpecs = (
+            self.driver.common._get_job_extra_specs(self.config_file_path,
+                                                    extraSpecs))
 
         # Deleting Storage Group failed
         self.assertRaises(
@@ -2013,34 +2058,50 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             'OS-PORTGROUP' in
             self.driver.utils.parse_file_to_get_port_group_name(
                 self.config_file_1364232))
-        bExists = os.path.exists(self.config_file_1364232)
-        if bExists:
-            os.remove(self.config_file_1364232)
 
-    @mock.patch.object(
-        emc_vmax_common.EMCVMAXCommon,
-        '_get_pool_and_storage_system',
-        return_value=(None, EMCVMAXCommonData.storage_system))
-    @mock.patch.object(
-        volume_types,
-        'get_volume_type_extra_specs',
-        return_value={'volume_backend_name': 'ISCSINoFAST'})
-    def test_intervals_and_retries(
-            self, _mock_volume_type, mock_storage_system):
-        save_config_path = self.config_file_path
+    def test_intervals_and_retries_override(
+            self):
         self.create_fake_config_file_no_fast_with_add_ons()
-        self.driver.create_volume(self.data.test_volume_v2)
-        extraSpecs = self.driver.common.extraSpecs
+        extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
+        extraSpecs = (
+            self.driver.common._get_job_extra_specs(self.config_file_path,
+                                                    extraSpecs))
         self.assertEqual(40,
                          self.driver.utils._get_max_job_retries(extraSpecs))
         self.assertEqual(5,
                          self.driver.utils._get_interval_in_secs(extraSpecs))
 
-        bExists = os.path.exists(self.config_file_path)
-        if bExists:
-            os.remove(self.config_file_path)
+    def test_intervals_and_retries_default(self):
+        extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
+        extraSpecs = (
+            self.driver.common._get_job_extra_specs(self.config_file_path,
+                                                    extraSpecs))
+        self.assertEqual(60,
+                         self.driver.utils._get_max_job_retries(extraSpecs))
+        self.assertEqual(10,
+                         self.driver.utils._get_interval_in_secs(extraSpecs))
 
-        self.config_file_path = save_config_path
+    def test_interval_only(self):
+        extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
+        self.create_fake_config_file_no_fast_with_interval()
+        extraSpecs = (
+            self.driver.common._get_job_extra_specs(self.config_file_path,
+                                                    extraSpecs))
+        self.assertEqual(60,
+                         self.driver.utils._get_max_job_retries(extraSpecs))
+        self.assertEqual(20,
+                         self.driver.utils._get_interval_in_secs(extraSpecs))
+
+    def test_retries_only(self):
+        extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
+        self.create_fake_config_file_no_fast_with_retries()
+        extraSpecs = (
+            self.driver.common._get_job_extra_specs(self.config_file_path,
+                                                    extraSpecs))
+        self.assertEqual(70,
+                         self.driver.utils._get_max_job_retries(extraSpecs))
+        self.assertEqual(10,
+                         self.driver.utils._get_interval_in_secs(extraSpecs))
 
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
@@ -2545,9 +2606,14 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             self.data.test_ctxt, self.data.test_CG_snapshot)
 
     def _cleanup(self):
-        bExists = os.path.exists(self.config_file_path)
-        if bExists:
-            os.remove(self.config_file_path)
+        if self.config_file_path:
+            bExists = os.path.exists(self.config_file_path)
+            if bExists:
+                os.remove(self.config_file_path)
+        if self.config_file_1364232:
+            bExists = os.path.exists(self.config_file_1364232)
+            if bExists:
+                os.remove(self.config_file_1364232)
         shutil.rmtree(self.tempdir)
 
 
