@@ -784,6 +784,46 @@ class PureISCSIDriverTestCase(test.TestCase):
             [self.array.create_pgroup],
             self.driver.create_consistencygroup, None, mock_cgroup)
 
+    @mock.patch(DRIVER_OBJ + ".create_volume_from_snapshot")
+    @mock.patch(DRIVER_OBJ + ".create_consistencygroup")
+    def test_create_consistencygroup_from_src(self, mock_create_cg,
+                                              mock_create_vol):
+        mock_context = mock.Mock()
+        mock_group = mock.Mock()
+        mock_cgsnapshot = mock.Mock()
+        mock_snapshots = [mock.Mock() for i in range(5)]
+        mock_volumes = [mock.Mock() for i in range(5)]
+        self.driver.create_consistencygroup_from_src(
+            mock_context,
+            mock_group,
+            mock_volumes,
+            cgsnapshot=mock_cgsnapshot,
+            snapshots=mock_snapshots
+        )
+        mock_create_cg.assert_called_with(mock_context, mock_group)
+        expected_calls = [mock.call(vol, snap)
+                          for vol, snap in zip(mock_volumes, mock_snapshots)]
+        mock_create_vol.assert_has_calls(expected_calls,
+                                         any_order=True)
+
+        self.assert_error_propagates(
+            [mock_create_vol, mock_create_cg],
+            self.driver.create_consistencygroup_from_src,
+            mock_context,
+            mock_group,
+            mock_volumes,
+            cgsnapshot=mock_cgsnapshot,
+            snapshots=mock_snapshots
+        )
+
+    def test_create_consistencygroup_from_src_no_snap(self):
+        # Expect an error when no cgsnapshot or snapshots are provided
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_consistencygroup_from_src,
+                          mock.Mock(),  # context
+                          mock.Mock(),  # group
+                          [mock.Mock()])  # volumes
+
     @mock.patch(DRIVER_OBJ + ".delete_volume", autospec=True)
     def test_delete_consistencygroup(self, mock_delete_volume):
         mock_cgroup = mock.MagicMock()
@@ -846,6 +886,77 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.assert_error_propagates(
             [self.array.destroy_pgroup],
             self.driver.delete_consistencygroup, mock_context, mock_cgroup)
+
+    def _create_mock_cg(self):
+        mock_group = mock.MagicMock()
+        mock_group.id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
+        mock_group.status = "Available"
+        mock_group.cg_name = "consisgroup-" + mock_group.id + "-cinder"
+        return mock_group
+
+    def test_update_consistencygroup(self):
+        mock_group = self._create_mock_cg()
+        add_vols = [
+            {'name': 'vol1'},
+            {'name': 'vol2'},
+            {'name': 'vol3'},
+        ]
+        expected_addvollist = [vol['name'] + '-cinder' for vol in add_vols]
+        remove_vols = [
+            {'name': 'vol4'},
+            {'name': 'vol5'}
+        ]
+        expected_remvollist = [vol['name'] + '-cinder' for vol in remove_vols]
+        self.driver.update_consistencygroup(mock.Mock(), mock_group,
+                                            add_vols, remove_vols)
+        self.array.set_pgroup.assert_called_with(
+            mock_group.cg_name,
+            addvollist=expected_addvollist,
+            remvollist=expected_remvollist
+        )
+
+    def test_update_consistencygroup_no_add_vols(self):
+        mock_group = self._create_mock_cg()
+        expected_addvollist = []
+        remove_vols = [
+            {'name': 'vol4'},
+            {'name': 'vol5'}
+        ]
+        expected_remvollist = [vol['name'] + '-cinder' for vol in remove_vols]
+        self.driver.update_consistencygroup(mock.Mock(), mock_group,
+                                            None, remove_vols)
+        self.array.set_pgroup.assert_called_with(
+            mock_group.cg_name,
+            addvollist=expected_addvollist,
+            remvollist=expected_remvollist
+        )
+
+    def test_update_consistencygroup_no_remove_vols(self):
+        mock_group = self._create_mock_cg()
+        add_vols = [
+            {'name': 'vol1'},
+            {'name': 'vol2'},
+            {'name': 'vol3'},
+        ]
+        expected_addvollist = [vol['name'] + '-cinder' for vol in add_vols]
+        expected_remvollist = []
+        self.driver.update_consistencygroup(mock.Mock(), mock_group,
+                                            add_vols, None)
+        self.array.set_pgroup.assert_called_with(
+            mock_group.cg_name,
+            addvollist=expected_addvollist,
+            remvollist=expected_remvollist
+        )
+
+    def test_update_consistencygroup_no_vols(self):
+        mock_group = self._create_mock_cg()
+        self.driver.update_consistencygroup(mock.Mock(), mock_group,
+                                            None, None)
+        self.array.set_pgroup.assert_called_with(
+            mock_group.cg_name,
+            addvollist=[],
+            remvollist=[]
+        )
 
     def test_create_cgsnapshot(self):
         mock_cgsnap = mock.Mock()

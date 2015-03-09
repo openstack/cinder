@@ -107,7 +107,7 @@ def _generate_chap_secret():
 class PureISCSIDriver(san.SanISCSIDriver):
     """Performs volume management on Pure Storage FlashArray."""
 
-    VERSION = "2.0.5"
+    VERSION = "2.0.6"
 
     SUPPORTED_REST_API_VERSIONS = ['1.2', '1.3', '1.4']
 
@@ -517,6 +517,22 @@ class PureISCSIDriver(san.SanISCSIDriver):
         LOG.debug("Leave PureISCSIDriver.create_consistencygroup")
         return model_update
 
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None):
+        LOG.debug("Enter PureISCSIDriver.create_consistencygroup_from_src")
+
+        if cgsnapshot and snapshots:
+            self.create_consistencygroup(context, group)
+            for volume, snapshot in zip(volumes, snapshots):
+                self.create_volume_from_snapshot(volume, snapshot)
+        else:
+            msg = _("create_consistencygroup_from_src only supports a"
+                    " cgsnapshot source, other sources cannot be used.")
+            raise exception.InvalidInput(msg)
+
+        LOG.debug("Leave PureISCSIDriver.create_consistencygroup_from_src")
+        return None, None
+
     def delete_consistencygroup(self, context, group):
         """Deletes a consistency group."""
         LOG.debug("Enter PureISCSIDriver.delete_consistencygroup")
@@ -544,6 +560,27 @@ class PureISCSIDriver(san.SanISCSIDriver):
 
         LOG.debug("Leave PureISCSIDriver.delete_consistencygroup")
         return model_update, volumes
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        LOG.debug("Enter PureISCSIDriver.update_consistencygroup")
+
+        pgroup_name = _get_pgroup_name_from_id(group.id)
+        if add_volumes:
+            addvollist = [_get_vol_name(volume) for volume in add_volumes]
+        else:
+            addvollist = []
+
+        if remove_volumes:
+            remvollist = [_get_vol_name(volume) for volume in remove_volumes]
+        else:
+            remvollist = []
+
+        self._array.set_pgroup(pgroup_name, addvollist=addvollist,
+                               remvollist=remvollist)
+
+        LOG.debug("Leave PureISCSIDriver.update_consistencygroup")
+        return None, None, None
 
     def create_cgsnapshot(self, context, cgsnapshot):
         """Creates a cgsnapshot."""
