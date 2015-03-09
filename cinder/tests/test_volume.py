@@ -602,6 +602,16 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(volume['volume_type_id'], db_vol_type.get('id'))
         self.assertIsNotNone(volume['encryption_key_id'])
 
+    def test_create_volume_with_provider_id(self):
+        volume_params_with_provider_id = dict(provider_id='1111-aaaa',
+                                              **self.volume_params)
+
+        volume = tests_utils.create_volume(self.context,
+                                           **volume_params_with_provider_id)
+
+        self.volume.create_volume(self.context, volume['id'])
+        self.assertEqual('1111-aaaa', volume['provider_id'])
+
     def test_create_delete_volume_with_encrypted_volume_type(self):
         self.stubs.Set(keymgr, "API", fake_keymgr.fake_api)
 
