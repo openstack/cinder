@@ -29,6 +29,10 @@ from cinder import test
 
 CONF = cfg.CONF
 
+THREE = 3
+THREE_HUNDREDS = 300
+ONE_HUNDREDS = 100
+
 
 def _quota_reserve(context, project_id):
     """Create sample Quota, QuotaUsage and Reservation objects.
@@ -264,23 +268,35 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertEqual(attachment['attached_host'], host_name)
 
     def test_volume_data_get_for_host(self):
-        for i in xrange(3):
-            for j in xrange(3):
-                db.volume_create(self.ctxt, {'host': 'h%d' % i, 'size': 100})
-        for i in xrange(3):
-            self.assertEqual((3, 300),
+        for i in xrange(THREE):
+            for j in xrange(THREE):
+                db.volume_create(self.ctxt, {'host': 'h%d' % i,
+                                             'size': ONE_HUNDREDS})
+        for i in xrange(THREE):
+            self.assertEqual((THREE, THREE_HUNDREDS),
                              db.volume_data_get_for_host(
                                  self.ctxt, 'h%d' % i))
 
+    def test_volume_data_get_for_host_for_multi_backend(self):
+        for i in xrange(THREE):
+            for j in xrange(THREE):
+                db.volume_create(self.ctxt, {'host':
+                                             'h%d@lvmdriver-1#lvmdriver-1' % i,
+                                             'size': ONE_HUNDREDS})
+        for i in xrange(THREE):
+            self.assertEqual((THREE, THREE_HUNDREDS),
+                             db.volume_data_get_for_host(
+                                 self.ctxt, 'h%d@lvmdriver-1' % i))
+
     def test_volume_data_get_for_project(self):
-        for i in xrange(3):
-            for j in xrange(3):
+        for i in xrange(THREE):
+            for j in xrange(THREE):
                 db.volume_create(self.ctxt, {'project_id': 'p%d' % i,
-                                             'size': 100,
+                                             'size': ONE_HUNDREDS,
                                              'host': 'h-%d-%d' % (i, j),
                                              })
-        for i in xrange(3):
-            self.assertEqual((3, 300),
+        for i in xrange(THREE):
+            self.assertEqual((THREE, THREE_HUNDREDS),
                              db.volume_data_get_for_project(
                                  self.ctxt, 'p%d' % i))
 
