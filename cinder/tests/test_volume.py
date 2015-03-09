@@ -721,7 +721,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                       volume_name='fake'))
         self.mox.ReplayAll()
         res = self.volume.delete_volume(self.context, volume_id)
-        self.assertEqual(True, res)
+        self.assertTrue(res)
         volume_ref = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual(volume_id, volume_ref.id)
         self.assertEqual("available", volume_ref.status)
@@ -4442,7 +4442,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
-        self.assertEqual(moved, False)
+        self.assertFalse(moved)
         self.assertIsNone(model_update)
 
     def test_lvm_migrate_volume_bad_loc_info(self):
@@ -4451,7 +4451,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
-        self.assertEqual(moved, False)
+        self.assertFalse(moved)
         self.assertIsNone(model_update)
 
     def test_lvm_migrate_volume_diff_driver(self):
@@ -4460,7 +4460,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
-        self.assertEqual(moved, False)
+        self.assertFalse(moved)
         self.assertIsNone(model_update)
 
     def test_lvm_migrate_volume_diff_host(self):
@@ -4469,7 +4469,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
-        self.assertEqual(moved, False)
+        self.assertFalse(moved)
         self.assertIsNone(model_update)
 
     def test_lvm_migrate_volume_in_use(self):
@@ -4479,7 +4479,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'in-use'}
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
-        self.assertEqual(moved, False)
+        self.assertFalse(moved)
         self.assertIsNone(model_update)
 
     @mock.patch.object(volutils, 'get_all_volume_groups',
@@ -4519,7 +4519,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
 
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
-        self.assertEqual(moved, False)
+        self.assertFalse(moved)
         self.assertIsNone(model_update)
 
     def test_lvm_migrate_volume_proceed(self):
@@ -4565,7 +4565,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
                                                       'default')
         moved, model_update = self.volume.driver.migrate_volume(self.context,
                                                                 vol, host)
-        self.assertEqual(moved, True)
+        self.assertTrue(moved)
         self.assertIsNone(model_update)
 
     @staticmethod

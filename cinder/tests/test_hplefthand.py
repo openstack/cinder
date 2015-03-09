@@ -886,7 +886,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # validate
             self.assertEqual('iscsi', result['driver_volume_type'])
-            self.assertEqual(False, result['data']['target_discovered'])
+            self.assertFalse(result['data']['target_discovered'])
             self.assertEqual(self.volume_id, result['data']['volume_id'])
             self.assertTrue('auth_method' not in result['data'])
 
@@ -939,7 +939,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # validate
             self.assertEqual('iscsi', result['driver_volume_type'])
-            self.assertEqual(False, result['data']['target_discovered'])
+            self.assertFalse(result['data']['target_discovered'])
             self.assertEqual(self.volume_id, result['data']['volume_id'])
             self.assertTrue('auth_method' not in result['data'])
 
@@ -986,7 +986,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # validate
             self.assertEqual('iscsi', result['driver_volume_type'])
-            self.assertEqual(False, result['data']['target_discovered'])
+            self.assertFalse(result['data']['target_discovered'])
             self.assertEqual(self.volume_id, result['data']['volume_id'])
             self.assertEqual('CHAP', result['data']['auth_method'])
 

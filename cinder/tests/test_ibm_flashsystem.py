@@ -1053,8 +1053,8 @@ class FlashSystemDriverTestCase(test.TestCase):
             vol1['name'], vol1['id'], vol2['name'], vol2['id'])
         (v1_mapped, lun) = self.driver._is_vdisk_map(vol1['name'], connector)
         (v2_mapped, lun) = self.driver._is_vdisk_map(vol2['name'], connector)
-        self.assertEqual(False, v1_mapped)
-        self.assertEqual(False, v2_mapped)
+        self.assertFalse(v1_mapped)
+        self.assertFalse(v2_mapped)
 
         # case 2: mapped before copy
         self.driver.initialize_connection(vol1, connector)
@@ -1063,8 +1063,8 @@ class FlashSystemDriverTestCase(test.TestCase):
             vol1['name'], vol1['id'], vol2['name'], vol2['id'])
         (v1_mapped, lun) = self.driver._is_vdisk_map(vol1['name'], connector)
         (v2_mapped, lun) = self.driver._is_vdisk_map(vol2['name'], connector)
-        self.assertEqual(True, v1_mapped)
-        self.assertEqual(True, v2_mapped)
+        self.assertTrue(v1_mapped)
+        self.assertTrue(v2_mapped)
         self.driver.terminate_connection(vol1, connector)
         self.driver.terminate_connection(vol2, connector)
 
@@ -1076,8 +1076,8 @@ class FlashSystemDriverTestCase(test.TestCase):
             vol1['name'], vol1['id'], vol2['name'], vol2['id'])
         (v1_mapped, lun) = self.driver._is_vdisk_map(vol1['name'], connector)
         (v2_mapped, lun) = self.driver._is_vdisk_map(vol2['name'], connector)
-        self.assertEqual(False, v1_mapped)
-        self.assertEqual(False, v2_mapped)
+        self.assertFalse(v1_mapped)
+        self.assertFalse(v2_mapped)
 
         # case 4: no mapped before copy, raise exception when copy
         copy_volume.side_effect = exception.VolumeBackendAPIException
@@ -1087,8 +1087,8 @@ class FlashSystemDriverTestCase(test.TestCase):
             vol1['name'], vol1['id'], vol2['name'], vol2['id'])
         (v1_mapped, lun) = self.driver._is_vdisk_map(vol1['name'], connector)
         (v2_mapped, lun) = self.driver._is_vdisk_map(vol2['name'], connector)
-        self.assertEqual(False, v1_mapped)
-        self.assertEqual(False, v2_mapped)
+        self.assertFalse(v1_mapped)
+        self.assertFalse(v2_mapped)
 
         # clear environment
         self.driver.delete_volume(vol1)

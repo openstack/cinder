@@ -214,7 +214,7 @@ class StorPoolTestCase(test.TestCase):
                                        'volume_type': None})
         except exception.VolumeBackendAPIException:
             caught = True
-        self.assertEqual(True, caught)
+        self.assertTrue(caught)
 
         self.driver.delete_volume({'id': '1'})
         self.assertVolumeNames([])

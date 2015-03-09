@@ -239,28 +239,28 @@ class SmbFsTestCase(test.TestCase):
         fake_volume_size = 2
         ret_value = self._test_is_share_eligible(fake_capacity_info,
                                                  fake_volume_size)
-        self.assertEqual(ret_value, False)
+        self.assertFalse(ret_value)
 
     def test_eligible_share(self):
         fake_capacity_info = (4, 4, 0)
         fake_volume_size = 1
         ret_value = self._test_is_share_eligible(fake_capacity_info,
                                                  fake_volume_size)
-        self.assertEqual(ret_value, True)
+        self.assertTrue(ret_value)
 
     def test_share_volume_above_oversub_ratio(self):
         fake_capacity_info = (4, 4, 7)
         fake_volume_size = 2
         ret_value = self._test_is_share_eligible(fake_capacity_info,
                                                  fake_volume_size)
-        self.assertEqual(ret_value, False)
+        self.assertFalse(ret_value)
 
     def test_share_reserved_above_oversub_ratio(self):
         fake_capacity_info = (4, 4, 10)
         fake_volume_size = 1
         ret_value = self._test_is_share_eligible(fake_capacity_info,
                                                  fake_volume_size)
-        self.assertEqual(ret_value, False)
+        self.assertFalse(ret_value)
 
     def test_parse_options(self):
         (opt_list,

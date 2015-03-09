@@ -985,10 +985,10 @@ class HuaweiStorHyperConnectorTestCase(ConnectorTestCase):
     def test_disconnect_volume(self):
         """Test the basic disconnect volume case."""
         self.connector.connect_volume(self.connection_properties)
-        self.assertEqual(True, HuaweiStorHyperConnectorTestCase.attached)
+        self.assertTrue(HuaweiStorHyperConnectorTestCase.attached)
         self.connector.disconnect_volume(self.connection_properties,
                                          self.device_info)
-        self.assertEqual(False, HuaweiStorHyperConnectorTestCase.attached)
+        self.assertFalse(HuaweiStorHyperConnectorTestCase.attached)
 
         expected_commands = [self.fake_sdscli_file + ' -c attach'
                              ' -v volume-b2911673-863c-4380-a5f2-e1729eecfe3f',
@@ -1005,14 +1005,14 @@ class HuaweiStorHyperConnectorTestCase(ConnectorTestCase):
     def test_is_volume_connected(self):
         """Test if volume connected to host case."""
         self.connector.connect_volume(self.connection_properties)
-        self.assertEqual(True, HuaweiStorHyperConnectorTestCase.attached)
+        self.assertTrue(HuaweiStorHyperConnectorTestCase.attached)
         is_connected = self.connector.is_volume_connected(
             'volume-b2911673-863c-4380-a5f2-e1729eecfe3f')
         self.assertEqual(HuaweiStorHyperConnectorTestCase.attached,
                          is_connected)
         self.connector.disconnect_volume(self.connection_properties,
                                          self.device_info)
-        self.assertEqual(False, HuaweiStorHyperConnectorTestCase.attached)
+        self.assertFalse(HuaweiStorHyperConnectorTestCase.attached)
         is_connected = self.connector.is_volume_connected(
             'volume-b2911673-863c-4380-a5f2-e1729eecfe3f')
         self.assertEqual(HuaweiStorHyperConnectorTestCase.attached,
@@ -1056,7 +1056,7 @@ class HuaweiStorHyperConnectorTestCase(ConnectorTestCase):
     def test_disconnect_volume_fail(self):
         """Test the fail disconnect volume case."""
         self.connector.connect_volume(self.connection_properties)
-        self.assertEqual(True, HuaweiStorHyperConnectorTestCase.attached)
+        self.assertTrue(HuaweiStorHyperConnectorTestCase.attached)
         self.assertRaises(exception.BrickException,
                           self.connector_fail.disconnect_volume,
                           self.connection_properties,
@@ -1083,7 +1083,7 @@ class HuaweiStorHyperConnectorTestCase(ConnectorTestCase):
     def test_disconnect_volume_nocli(self):
         """Test the fail disconnect volume case."""
         self.connector.connect_volume(self.connection_properties)
-        self.assertEqual(True, HuaweiStorHyperConnectorTestCase.attached)
+        self.assertTrue(HuaweiStorHyperConnectorTestCase.attached)
         self.assertRaises(exception.BrickException,
                           self.connector_nocli.disconnect_volume,
                           self.connection_properties,

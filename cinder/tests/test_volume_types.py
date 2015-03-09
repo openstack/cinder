@@ -293,11 +293,11 @@ class VolumeTypeTestCase(test.TestCase):
         # Check equality with only extra_specs
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
-        self.assertEqual(same, True)
+        self.assertTrue(same)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref3['id'])
-        self.assertEqual(same, False)
+        self.assertFalse(same)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val0'))
 
         # qos_ref 1 and 2 have the same specs, while 3 has different
@@ -314,7 +314,7 @@ class VolumeTypeTestCase(test.TestCase):
                                           type_ref2['id'])
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
-        self.assertEqual(same, True)
+        self.assertTrue(same)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
         self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v1'))
         qos_specs.disassociate_qos_specs(self.ctxt, qos_ref2['id'],
@@ -323,7 +323,7 @@ class VolumeTypeTestCase(test.TestCase):
                                           type_ref2['id'])
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
-        self.assertEqual(same, False)
+        self.assertFalse(same)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
         self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v0'))
         qos_specs.disassociate_qos_specs(self.ctxt, qos_ref3['id'],
@@ -344,7 +344,7 @@ class VolumeTypeTestCase(test.TestCase):
                                          enc_keyvals2)
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
-        self.assertEqual(same, False)
+        self.assertFalse(same)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
         self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v1'))
         self.assertEqual(diff['encryption']['key_size'], (256, 128))
@@ -352,7 +352,7 @@ class VolumeTypeTestCase(test.TestCase):
         # Check diff equals type specs when one type is None
         diff, same = volume_types.volume_types_diff(self.ctxt, None,
                                                     type_ref1['id'])
-        self.assertEqual(same, False)
+        self.assertFalse(same)
         self.assertEqual(diff['extra_specs'],
                          {'key1': (None, 'val1'), 'key2': (None, 'val2')})
         self.assertEqual(diff['qos_specs'],
