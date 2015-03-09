@@ -226,3 +226,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         return self.cli.update_consistencygroup(context, group,
                                                 add_volumes,
                                                 remove_volumes)
+
+    def unmanage(self, volume):
+        """Unmanages a volume."""
+        self.cli.unmanage(volume)
