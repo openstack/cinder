@@ -402,16 +402,15 @@ class DbQuotaDriver(object):
 
         db.reservation_rollback(context, reservations, project_id=project_id)
 
-    def destroy_all_by_project(self, context, project_id):
-        """Destroy all that is associated with a project.
+    def destroy_by_project(self, context, project_id):
+        """Destroy all limit quotas associated with a project.
 
-        This includes quotas, usages and reservations.
+        Leave usage and reservation quotas intact.
 
         :param context: The request context, for access checks.
         :param project_id: The ID of the project being deleted.
         """
-
-        db.quota_destroy_all_by_project(context, project_id)
+        db.quota_destroy_by_project(context, project_id)
 
     def expire(self, context):
         """Expire reservations.
@@ -806,15 +805,14 @@ class QuotaEngine(object):
             LOG.exception(_LE("Failed to roll back reservations "
                               "%s"), reservations)
 
-    def destroy_all_by_project(self, context, project_id):
-        """Destroy all quotas, usages, and reservations associated with a
-        project.
+    def destroy_by_project(self, context, project_id):
+        """Destroy all quota limits associated with a project.
 
         :param context: The request context, for access checks.
         :param project_id: The ID of the project being deleted.
         """
 
-        self._driver.destroy_all_by_project(context, project_id)
+        self._driver.destroy_by_project(context, project_id)
 
     def expire(self, context):
         """Expire reservations.

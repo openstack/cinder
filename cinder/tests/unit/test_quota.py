@@ -344,8 +344,8 @@ class FakeDriver(object):
     def rollback(self, context, reservations, project_id=None):
         self.called.append(('rollback', context, reservations, project_id))
 
-    def destroy_all_by_project(self, context, project_id):
-        self.called.append(('destroy_all_by_project', context, project_id))
+    def destroy_by_project(self, context, project_id):
+        self.called.append(('destroy_by_project', context, project_id))
 
     def expire(self, context):
         self.called.append(('expire', context))
@@ -730,14 +730,14 @@ class QuotaEngineTestCase(test.TestCase):
                             'resv-03'],
                            None), ])
 
-    def test_destroy_all_by_project(self):
+    def test_destroy_by_project(self):
         context = FakeContext(None, None)
         driver = FakeDriver()
         quota_obj = self._make_quota_obj(driver)
-        quota_obj.destroy_all_by_project(context, 'test_project')
+        quota_obj.destroy_by_project(context, 'test_project')
 
         self.assertEqual(driver.called,
-                         [('destroy_all_by_project',
+                         [('destroy_by_project',
                            context,
                            'test_project'), ])
 
@@ -1187,19 +1187,19 @@ class DbQuotaDriverTestCase(test.TestCase):
                                       ('quota_reserve', expire, 0, 86400), ])
         self.assertEqual(result, ['resv-1', 'resv-2', 'resv-3'])
 
-    def _stub_quota_destroy_all_by_project(self):
-        def fake_quota_destroy_all_by_project(context, project_id):
-            self.calls.append(('quota_destroy_all_by_project', project_id))
+    def _stub_quota_destroy_by_project(self):
+        def fake_quota_destroy_by_project(context, project_id):
+            self.calls.append(('quota_destroy_by_project', project_id))
             return None
-        self.stubs.Set(sqa_api, 'quota_destroy_all_by_project',
-                       fake_quota_destroy_all_by_project)
+        self.stubs.Set(sqa_api, 'quota_destroy_by_project',
+                       fake_quota_destroy_by_project)
 
-    def test_destroy_by_project(self):
-        self._stub_quota_destroy_all_by_project()
-        self.driver.destroy_all_by_project(FakeContext('test_project',
-                                                       'test_class'),
-                                           'test_project')
-        self.assertEqual(self.calls, [('quota_destroy_all_by_project',
+    def test_destroy_quota_by_project(self):
+        self._stub_quota_destroy_by_project()
+        self.driver.destroy_by_project(FakeContext('test_project',
+                                                   'test_class'),
+                                       'test_project')
+        self.assertEqual(self.calls, [('quota_destroy_by_project',
                                       ('test_project')), ])
 
 

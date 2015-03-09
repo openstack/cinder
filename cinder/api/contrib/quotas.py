@@ -155,7 +155,7 @@ class QuotaSetsController(wsgi.Controller):
         authorize_delete(context)
 
         try:
-            db.quota_destroy_all_by_project(context, id)
+            db.quota_destroy_by_project(context, id)
         except exception.AdminRequired:
             raise webob.exc.HTTPForbidden()
 

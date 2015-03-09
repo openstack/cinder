@@ -793,9 +793,9 @@ def reservation_rollback(context, reservations, project_id=None):
                                      project_id=project_id)
 
 
-def quota_destroy_all_by_project(context, project_id):
+def quota_destroy_by_project(context, project_id):
     """Destroy all quotas associated with a given project."""
-    return IMPL.quota_destroy_all_by_project(context, project_id)
+    return IMPL.quota_destroy_by_project(context, project_id)
 
 
 def reservation_expire(context):
