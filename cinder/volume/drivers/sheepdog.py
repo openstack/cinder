@@ -20,6 +20,7 @@ SheepDog Volume Driver.
 
 """
 import errno
+import io
 import re
 
 from oslo_concurrency import processutils
@@ -147,6 +148,87 @@ class SheepdogClient(object):
                 else:
                     LOG.error(_LE('Failed to delete volume. %s'),
                               volume['name'])
+
+
+class SheepdogIOWrapper(io.RawIOBase):
+    """File-like object with Sheepdog backend."""
+
+    def __init__(self, volume, snapshot_name=None):
+        self._vdiname = volume['name']
+        self._snapshot_name = snapshot_name
+        self._offset = 0
+
+    def _inc_offset(self, length):
+        self._offset += length
+
+    def _execute(self, cmd, data=None):
+        try:
+            # XXX(yamada-h):
+            # processutils.execute causes busy waiting under eventlet.
+            # To avoid wasting CPU resources, it should not be used for
+            # the command which takes long time to execute.
+            # For workaround, we replace a subprocess module with
+            # the original one while only executing a read/write command.
+            import eventlet
+            _processutils_subprocess = processutils.subprocess
+            processutils.subprocess = eventlet.patcher.original('subprocess')
+            return processutils.execute(*cmd, process_input=data)[0]
+        except (processutils.ProcessExecutionError, OSError):
+            msg = _('Sheepdog I/O Error, command was: "%s"') % ' '.join(cmd)
+            raise exception.VolumeDriverException(msg)
+        finally:
+            processutils.subprocess = _processutils_subprocess
+
+    def read(self, length=None):
+        cmd = ['dog', 'vdi', 'read']
+        if self._snapshot_name:
+            cmd.extend(('-s', self._snapshot_name))
+        cmd.extend((self._vdiname, self._offset))
+        if length:
+            cmd.append(length)
+        data = self._execute(cmd)
+        self._inc_offset(len(data))
+        return data
+
+    def write(self, data):
+        length = len(data)
+        cmd = ('dog', 'vdi', 'write', self._vdiname, self._offset, length)
+        self._execute(cmd, data)
+        self._inc_offset(length)
+        return length
+
+    def seek(self, offset, whence=0):
+        if whence == 0:
+            # SEEK_SET or 0 - start of the stream (the default);
+            #                 offset should be zero or positive
+            new_offset = offset
+        elif whence == 1:
+            # SEEK_CUR or 1 - current stream position; offset may be negative
+            new_offset = self._offset + offset
+        else:
+            # SEEK_END or 2 - end of the stream; offset is usually negative
+            # TODO(yamada-h): Support SEEK_END
+            raise IOError(_("Invalid argument - whence=%s not supported") %
+                          (whence))
+
+        if new_offset < 0:
+            raise IOError(_("Invalid argument - negative seek offset"))
+
+        self._offset = new_offset
+
+    def tell(self):
+        return self._offset
+
+    def flush(self):
+        pass
+
+    def fileno(self):
+        """Sheepdog does not have support for fileno so we raise IOError.
+
+        Raising IOError is recommended way to notify caller that interface is
+        not supported - see http://docs.python.org/2/library/io.html#io.IOBase
+        """
+        raise IOError(_("fileno is not supported by SheepdogIOWrapper"))
 
 
 class SheepdogDriver(driver.VolumeDriver):
@@ -381,8 +463,26 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
-        raise NotImplementedError()
+        volume = self.db.volume_get(context, backup['volume_id'])
+        temp_snapshot = {'volume_name': volume['name'],
+                         'name': 'tmp-snap-%s' % volume['name']}
+
+        try:
+            self.create_snapshot(temp_snapshot)
+        except (processutils.ProcessExecutionError, OSError) as exc:
+            msg = (_('Failed to create a temporary snapshot for '
+                     'volume %(volume_id)s, error message was: %(err_msg)s')
+                   % {'volume_id': volume['id'], 'err_msg': exc.message})
+            LOG.exception(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        try:
+            sheepdog_fd = SheepdogIOWrapper(volume, temp_snapshot['name'])
+            backup_service.backup(backup, sheepdog_fd)
+        finally:
+            self.delete_snapshot(temp_snapshot)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
-        raise NotImplementedError()
+        sheepdog_fd = SheepdogIOWrapper(volume)
+        backup_service.restore(backup, volume['id'], sheepdog_fd)
