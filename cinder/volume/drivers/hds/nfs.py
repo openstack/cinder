@@ -32,9 +32,11 @@ from cinder.image import image_utils
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers.hds import hnas_backend
 from cinder.volume.drivers import nfs
+from cinder.volume import utils
+from cinder.volume import volume_types
 
 
-HDS_HNAS_NFS_VERSION = '2.2.0'
+HDS_HNAS_NFS_VERSION = '3.0.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -194,13 +196,9 @@ class HDSNFSDriver(nfs.NfsDriver):
         :param volume: dictionary volume reference
         """
 
-        label = None
-        if volume['volume_type']:
-            label = volume['volume_type']['name']
-        label = label or 'default'
-        if label not in self.config['services'].keys():
-            # default works if no match is found
-            label = 'default'
+        LOG.debug("_get_service: volume: %s", volume)
+        label = utils.extract_host(volume['host'], level='pool')
+
         if label in self.config['services'].keys():
             svc = self.config['services'][label]
             LOG.info(_LI("Get service: %(lbl)s->%(svc)s"),
@@ -414,11 +412,21 @@ class HDSNFSDriver(nfs.NfsDriver):
         """
 
         _stats = super(HDSNFSDriver, self).get_volume_stats(refresh)
-        be_name = self.configuration.safe_get('volume_backend_name')
-        _stats["volume_backend_name"] = be_name or 'HDSNFSDriver'
         _stats["vendor_name"] = 'HDS'
         _stats["driver_version"] = HDS_HNAS_NFS_VERSION
         _stats["storage_protocol"] = 'NFS'
+
+        for pool in self.pools:
+            capacity, free, used = self._get_capacity_info(pool['hdp'])
+            pool['total_capacity_gb'] = capacity / float(units.Gi)
+            pool['free_capacity_gb'] = free / float(units.Gi)
+            pool['allocated_capacity_gb'] = used / float(units.Gi)
+            pool['QoS_support'] = 'False'
+            pool['reserved_percentage'] = 0
+
+        _stats['pools'] = self.pools
+
+        LOG.info(_LI('Driver stats: %s'), _stats)
 
         return _stats
 
@@ -460,6 +468,8 @@ class HDSNFSDriver(nfs.NfsDriver):
 
         nfs_info = self._get_nfs_info()
 
+        LOG.debug("nfs_info: %s", nfs_info)
+
         for share in self.shares:
             if share in nfs_info.keys():
                 LOG.info(_LI("share: %(share)s -> %(info)s"),
@@ -488,6 +498,20 @@ class HDSNFSDriver(nfs.NfsDriver):
             else:
                 LOG.info(_LI("share: %s incorrect entry"), share)
 
+        LOG.debug("self.config['services'] = %s", self.config['services'])
+
+        service_list = self.config['services'].keys()
+        for svc in service_list:
+            svc = self.config['services'][svc]
+            pool = {}
+            pool['pool_name'] = svc['volume_type']
+            pool['service_label'] = svc['volume_type']
+            pool['hdp'] = svc['hdp']
+
+            self.pools.append(pool)
+
+        LOG.info(_LI("Configured pools: %s"), self.pools)
+
     def _clone_volume(self, volume_name, clone_name, volume_id):
         """Clones mounted volume using the HNAS file_clone.
 
@@ -515,3 +539,38 @@ class HDSNFSDriver(nfs.NfsDriver):
                                    _fslabel, source_path, target_path)
 
         return out
+
+    def get_pool(self, volume):
+        if not volume['volume_type']:
+            return 'default'
+        else:
+            metadata = {}
+            type_id = volume['volume_type_id']
+            if type_id is not None:
+                metadata = volume_types.get_volume_type_extra_specs(type_id)
+            if not metadata.get('service_label'):
+                return 'default'
+            else:
+                if metadata['service_label'] not in \
+                        self.config['services'].keys():
+                    return 'default'
+                else:
+                    return metadata['service_label']
+
+    def create_volume(self, volume):
+        """Creates a volume.
+
+        :param volume: volume reference
+        """
+        self._ensure_shares_mounted()
+
+        (_hdp, _path, _fslabel) = self._get_service(volume)
+
+        volume['provider_location'] = _hdp
+
+        LOG.info(_LI("Volume service: %(label)s. Casted to: %(loc)s"),
+                 {'label': _fslabel, 'loc': volume['provider_location']})
+
+        self._do_create_volume(volume)
+
+        return {'provider_location': volume['provider_location']}

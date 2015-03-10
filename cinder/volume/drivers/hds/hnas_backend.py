@@ -158,19 +158,27 @@ class HnasBackend(object):
                   {'out': out, 'err': err})
         return newout
 
-    def get_hdp_info(self, cmd, ip0, user, pw):
+    def get_hdp_info(self, cmd, ip0, user, pw, fslabel=None):
         """Gets the list of filesystems and fsids.
 
         :param ip0: string IP address of controller
         :param user: string user authentication for array
         :param pw: string password authentication for array
+        :param fslabel: filesystem label we want to get info
         :returns: formated string with filesystems and fsids
         """
 
-        out, err = self.run_cmd(cmd, ip0, user, pw, 'df', '-a',
-                                check_exit_code=True)
+        if fslabel is None:
+            out, err = self.run_cmd(cmd, ip0, user, pw, 'df', '-a',
+                                    check_exit_code=True)
+        else:
+            out, err = self.run_cmd(cmd, ip0, user, pw, 'df', '-f', fslabel,
+                                    check_exit_code=True)
+
         lines = out.split('\n')
         single_evs = True
+
+        LOG.debug("Parsing output: %s", lines)
 
         newout = ""
         for line in lines:
@@ -179,6 +187,7 @@ class HnasBackend(object):
             if 'not' not in line and 'EVS' in line:
                 single_evs = False
             if 'GB' in line or 'TB' in line:
+                LOG.debug("Parsing output: %s", line)
                 inf = line.split()
 
                 if not single_evs:
