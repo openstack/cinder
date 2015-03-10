@@ -80,8 +80,9 @@ class DateraDriver(san.SanISCSIDriver):
 
     Version history:
         1.0 - Initial driver
+        1.1 - When doing an export, look for IQN in endpoint_idents.
     """
-    VERSION = '1.0'
+    VERSION = '1.1'
 
     def __init__(self, *args, **kwargs):
         super(DateraDriver, self).__init__(*args, **kwargs)
@@ -157,10 +158,9 @@ class DateraDriver(san.SanISCSIDriver):
             body={'ctype': 'TC_BLOCK_ISCSI'}, resource=volume['id'])
 
         # NOTE(thingee): Refer to the Datera test for a stub of what this looks
-        # like. We're just going to pull the first IP that the Datera cluster
-        # makes available for the portal.
+        # like. We take the first key, which is an IQN within endpoint_idents.
         iscsi_portal = export['_ipColl'][0] + ':3260'
-        iqn = export['targetIds'].itervalues().next()['ids'][0]['id']
+        iqn = export['endpoint_idents'].iterkeys().next()
 
         provider_location = '%s %s %s' % (iscsi_portal, iqn, 1)
         model_update = {'provider_location': provider_location}
