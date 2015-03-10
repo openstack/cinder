@@ -19,7 +19,6 @@ import re
 
 from oslo_concurrency import processutils as putils
 from oslo_utils import netutils
-import six
 
 from cinder import exception
 from cinder.openstack.common import fileutils
@@ -114,17 +113,15 @@ class CxtAdm(iscsi.ISCSITarget):
                 volume_conf = f.read()
         except IOError as e_fnf:
             LOG.debug('Failed to open config for %(vol_id)s: %(e)s',
-                      {'vol_id': vol_id, 'e':
-                       six.text_type(e_fnf)})
+                      {'vol_id': vol_id, 'e': e_fnf})
             # We don't run on anything non-linux
             if e_fnf.errno == 2:
                 return None
             else:
                 raise
         except Exception as e_vol:
-            LOG.debug('Failed to open config for %(vol_id)s: %(e)s',
-                      {'vol_id': vol_id, 'e':
-                       six.text_type(e_vol)})
+            LOG.error(_LE('Failed to open config for %(vol_id)s: %(e)s'),
+                      {'vol_id': vol_id, 'e': e_vol})
             raise
 
         m = re.search('Auth_CHAP_Initiator="(\w+)":"(\w+)"', volume_conf)

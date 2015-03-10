@@ -128,6 +128,23 @@ class TestCxtAdmDriver(test.TestCase):
                              self.target._get_target_chap_auth(ctx, test_vol))
             self.assertTrue(mock_open.called)
 
+    def test_get_target_chap_auth_negative(self):
+        test_vol =\
+            'iqn.2010-10.org.openstack:'\
+            'volume-83c2e877-feed-46be-8435-77884fe55b45'
+        with mock.patch('__builtin__.open') as mock_open:
+            e = IOError()
+            e.errno = 123
+            mock_open.side_effect = e
+            ctxt = context.get_admin_context()
+            self.assertRaises(IOError,
+                              self.target._get_target_chap_auth,
+                              ctxt, test_vol)
+            mock_open.side_effect = StandardError()
+            self.assertRaises(StandardError,
+                              self.target._get_target_chap_auth,
+                              ctxt, test_vol)
+
     @mock.patch('cinder.volume.targets.cxt.CxtAdm._get_target',
                 return_value=1)
     @mock.patch('cinder.utils.execute')
