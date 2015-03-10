@@ -224,7 +224,7 @@ class V6000FCPDriverTestCase(test.TestCase):
         self.driver._build_initiator_target_map.assert_called_with(
             CONNECTOR)
         self.assertEqual("fibre_channel", props['driver_volume_type'])
-        self.assertEqual(True, props['data']['target_discovered'])
+        self.assertTrue(props['data']['target_discovered'])
         self.assertEqual(target_wwns, props['data']['target_wwn'])
         self.assertEqual(lun_id, props['data']['target_lun'])
         self.assertEqual(init_targ_map, props['data']['initiator_target_map'])
@@ -249,7 +249,7 @@ class V6000FCPDriverTestCase(test.TestCase):
         self.driver._build_initiator_target_map.assert_called_with(
             CONNECTOR)
         self.assertEqual("fibre_channel", props['driver_volume_type'])
-        self.assertEqual(True, props['data']['target_discovered'])
+        self.assertTrue(props['data']['target_discovered'])
         self.assertEqual(target_wwns, props['data']['target_wwn'])
         self.assertEqual(lun_id, props['data']['target_lun'])
         self.assertEqual(init_targ_map, props['data']['initiator_target_map'])

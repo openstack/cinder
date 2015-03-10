@@ -634,7 +634,7 @@ class TestGlanceImageServiceClient(test.TestCase):
             def __init__(inst, version, *args, **kwargs):
                 self.assertEqual('1', version)
                 self.assertEqual("http://fake_host:9292", args[0])
-                self.assertEqual(True, kwargs['token'])
+                self.assertTrue(kwargs['token'])
                 self.assertEqual(60, kwargs['timeout'])
 
         self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)
@@ -666,7 +666,7 @@ class TestGlanceImageServiceClient(test.TestCase):
             def __init__(inst, version, *args, **kwargs):
                 self.assertEqual("1", version)
                 self.assertEqual("http://fake_host:9292", args[0])
-                self.assertEqual(True, kwargs['token'])
+                self.assertTrue(kwargs['token'])
                 self.assertNotIn('timeout', kwargs)
 
         self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)

@@ -268,8 +268,8 @@ class IBMNASDriverTestCase(test.TestCase):
         drv = self._driver
         mock_size.return_value = True
 
-        self.assertEqual(True, drv._resize_volume_file(self.TEST_LOCAL_PATH,
-                         self.TEST_EXTEND_SIZE_IN_GB))
+        self.assertTrue(drv._resize_volume_file(self.TEST_LOCAL_PATH,
+                                                self.TEST_EXTEND_SIZE_IN_GB))
 
     @mock.patch('cinder.image.image_utils.resize_image')
     def test_resize_volume_exception(self, mock_size):

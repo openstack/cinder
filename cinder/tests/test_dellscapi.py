@@ -1663,7 +1663,7 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_delete.assert_called()
         mock_find_volume.assert_called_once_with(12345, self.volume_name, None)
         mock_get_json.assert_called()
-        self.assertEqual(True, res, 'Expected True')
+        self.assertTrue(res, 'Expected True')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'delete',
@@ -1691,7 +1691,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where volume to be deleted does not exist
         res = self.scapi.delete_volume(12345,
                                        self.volume_name)
-        self.assertEqual(True, res, 'Expected True')
+        self.assertTrue(res, 'Expected True')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_create_folder_path',
@@ -1739,7 +1739,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                   self.IQN,
                                   False)
         mock_post.assert_called()
-        self.assertEqual(True, res, 'Expected True')
+        self.assertTrue(res, 'Expected True')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
@@ -1753,7 +1753,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                   self.WWN,
                                   True)
         mock_post.assert_called()
-        self.assertEqual(True, res, 'Expected True')
+        self.assertTrue(res, 'Expected True')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
@@ -1767,7 +1767,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                   self.IQN,
                                   False)
         mock_post.assert_called()
-        self.assertEqual(False, res, 'Expected False')
+        self.assertFalse(res, 'Expected False')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
@@ -2736,7 +2736,7 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_get.assert_called()
         mock_get_json.assert_called()
         mock_delete.assert_called()
-        self.assertEqual(True, res, 'Expected True')
+        self.assertTrue(res, 'Expected True')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'get',
@@ -2749,7 +2749,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.unmap_volume(self.VOLUME,
                                       self.SCSERVER)
         mock_get.assert_called()
-        self.assertEqual(False, res, 'Expected False')
+        self.assertFalse(res, 'Expected False')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'delete',
@@ -2772,7 +2772,7 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_get.assert_called()
         mock_get_json.assert_called()
         mock_delete.assert_called()
-        self.assertEqual(True, res, 'Expected True')
+        self.assertTrue(res, 'Expected True')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'delete',
@@ -2795,7 +2795,7 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_get.assert_called()
         mock_get_json.assert_called()
         mock_delete.assert_called()
-        self.assertEqual(False, res, 'Expected False')
+        self.assertFalse(res, 'Expected False')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
@@ -2999,7 +2999,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                        replayId)
         mock_post.assert_called()
         mock_find_replay.assert_called_once_with(self.VOLUME, replayId)
-        self.assertEqual(True, res, 'Expected True')
+        self.assertTrue(res, 'Expected True')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay',
@@ -3019,7 +3019,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                        replayId)
         mock_post.assert_called()
         mock_find_replay.assert_called_once_with(self.VOLUME, replayId)
-        self.assertEqual(True, res, 'Expected True')
+        self.assertTrue(res, 'Expected True')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay',
@@ -3039,7 +3039,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                        replayId)
         mock_post.assert_called()
         mock_find_replay.assert_called_once_with(self.VOLUME, replayId)
-        self.assertEqual(False, res, 'Expected False')
+        self.assertFalse(res, 'Expected False')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_first_result',
