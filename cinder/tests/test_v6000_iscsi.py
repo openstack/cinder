@@ -24,7 +24,7 @@ from cinder import context
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import test
-from cinder.tests import fake_vmem_xgtools_client as vxg
+from cinder.tests import fake_vmem_client as vmemclient
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.violin import v6000_common
 from cinder.volume.drivers.violin import v6000_iscsi
@@ -109,7 +109,7 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         """Create a fake VShare communication object."""
         _m_vshare = mock.Mock(name='VShare',
                               version='1.1.1',
-                              spec=vxg.mock_client_conf)
+                              spec=vmemclient.mock_client_conf)
 
         if m_conf:
             _m_vshare.configure_mock(**m_conf)

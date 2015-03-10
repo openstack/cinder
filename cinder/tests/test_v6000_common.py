@@ -21,7 +21,7 @@ import mock
 
 from cinder import exception
 from cinder import test
-from cinder.tests import fake_vmem_xgtools_client as vxg
+from cinder.tests import fake_vmem_client as vmemclient
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.violin import v6000_common
 
@@ -90,23 +90,23 @@ class V6000CommonTestCase(test.TestCase):
         config.container = 'myContainer'
         return config
 
-    @mock.patch('vxg.open')
+    @mock.patch('vmemclient.open')
     def setup_mock_client(self, _m_client, m_conf=None):
         """Create a fake backend communication factory.
 
-        The xg-tools creates a VShare connection object (for V6000
-        devices) and returns it for use on a call to vxg.open().
+        The vmemclient creates a VShare connection object (for V6000
+        devices) and returns it for use on a call to vmemclient.open().
         """
         # configure the vshare object mock with defaults
         _m_vshare = mock.Mock(name='VShare',
                               version='1.1.1',
-                              spec=vxg.mock_client_conf)
+                              spec=vmemclient.mock_client_conf)
 
         # if m_conf, clobber the defaults with it
         if m_conf:
             _m_vshare.configure_mock(**m_conf)
 
-        # set calls to vxg.open() to return this mocked vshare object
+        # set calls to vmemclient.open() to return this mocked vshare object
         _m_client.return_value = _m_vshare
 
         return _m_client
@@ -115,7 +115,7 @@ class V6000CommonTestCase(test.TestCase):
         """Create a fake VShare communication object."""
         _m_vshare = mock.Mock(name='VShare',
                               version='1.1.1',
-                              spec=vxg.mock_client_conf)
+                              spec=vmemclient.mock_client_conf)
 
         if m_conf:
             _m_vshare.configure_mock(**m_conf)
