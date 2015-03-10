@@ -3804,7 +3804,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             'consistencygroup_id': group2_id
         }
         self.assertEqual('available', cg2['status'])
-        self.assertEqual(6, len(fake_notifier.NOTIFICATIONS))
+
         msg = fake_notifier.NOTIFICATIONS[2]
         self.assertEqual('consistencygroup.create.start', msg['event_type'])
         self.assertDictMatch(expected, msg['payload'])
@@ -3812,8 +3812,16 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual('consistencygroup.create.end', msg['event_type'])
         self.assertDictMatch(expected, msg['payload'])
 
+        if len(fake_notifier.NOTIFICATIONS) > 6:
+            self.assertFalse(fake_notifier.NOTIFICATIONS[6])
+        self.assertEqual(6, len(fake_notifier.NOTIFICATIONS))
+
         self.volume.delete_consistencygroup(self.context, group2_id)
+
+        if len(fake_notifier.NOTIFICATIONS) > 10:
+            self.assertFalse(fake_notifier.NOTIFICATIONS[10])
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 10)
+
         msg = fake_notifier.NOTIFICATIONS[6]
         self.assertEqual(msg['event_type'], 'consistencygroup.delete.start')
         expected['status'] = 'available'
@@ -3890,14 +3898,21 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.context,
             consistencygroup_id=group_id)
         cgsnapshot_id = cgsnapshot['id']
+
+        if len(fake_notifier.NOTIFICATIONS) > 2:
+            self.assertFalse(fake_notifier.NOTIFICATIONS[2])
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
+
         cgsnapshot_returns = self._create_cgsnapshot(group_id, volume_id)
         cgsnapshot_id = cgsnapshot_returns[0]['id']
         self.volume.create_cgsnapshot(self.context, group_id, cgsnapshot_id)
         self.assertEqual(cgsnapshot_id,
                          db.cgsnapshot_get(context.get_admin_context(),
                                            cgsnapshot_id).id)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 6)
+
+        if len(fake_notifier.NOTIFICATIONS) > 6:
+            self.assertFalse(fake_notifier.NOTIFICATIONS[6])
+
         msg = fake_notifier.NOTIFICATIONS[2]
         self.assertEqual(msg['event_type'], 'cgsnapshot.create.start')
         expected = {
@@ -3918,8 +3933,13 @@ class VolumeTestCase(BaseVolumeTestCase):
         msg = fake_notifier.NOTIFICATIONS[5]
         self.assertEqual(msg['event_type'], 'snapshot.create.end')
 
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 6)
+
         self.volume.delete_cgsnapshot(self.context, cgsnapshot_id)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 10)
+
+        if len(fake_notifier.NOTIFICATIONS) > 10:
+            self.assertFalse(fake_notifier.NOTIFICATIONS[10])
+
         msg = fake_notifier.NOTIFICATIONS[6]
         self.assertEqual(msg['event_type'], 'cgsnapshot.delete.start')
         expected['status'] = 'available'
@@ -3927,6 +3947,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         msg = fake_notifier.NOTIFICATIONS[8]
         self.assertEqual(msg['event_type'], 'cgsnapshot.delete.end')
         self.assertDictMatch(msg['payload'], expected)
+
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 10)
 
         cgsnap = db.cgsnapshot_get(
             context.get_admin_context(read_deleted='yes'),
