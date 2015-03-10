@@ -280,13 +280,12 @@ class RBDDriver(driver.VolumeDriver):
         if rados is None:
             msg = _('rados and rbd python libraries not found')
             raise exception.VolumeBackendAPIException(data=msg)
-        try:
-            with RADOSClient(self):
-                pass
-        except self.rados.Error:
-            msg = _('error connecting to ceph cluster')
-            LOG.exception(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+
+        # NOTE: Checking connection to ceph
+        # RADOSClient __init__ method invokes _connect_to_rados
+        # so no need to check for self.rados.Error here.
+        with RADOSClient(self):
+            pass
 
     def _ceph_args(self):
         args = []
@@ -315,11 +314,12 @@ class RBDDriver(driver.VolumeDriver):
                 client.connect()
             ioctx = client.open_ioctx(pool)
             return client, ioctx
-        except self.rados.Error as exc:
-            LOG.error(_LE("error connecting to ceph cluster."))
+        except self.rados.Error:
+            msg = _("Error connecting to ceph cluster.")
+            LOG.exception(msg)
             # shutdown cannot raise an exception
             client.shutdown()
-            raise exception.VolumeBackendAPIException(data=str(exc))
+            raise exception.VolumeBackendAPIException(data=msg)
 
     def _disconnect_from_rados(self, client, ioctx):
         # closing an ioctx cannot raise an exception
