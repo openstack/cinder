@@ -258,6 +258,10 @@ class DateraDriver(san.SanISCSIDriver):
             'password': self.password
         }
 
+        # Unset token now, otherwise potential expired token will be sent
+        # along to be used for authorization when trying to login.
+        self.auth_token = None
+
         try:
             LOG.debug('Getting Datera auth token.')
             results = self._issue_api_request('login', 'post', body=data,
