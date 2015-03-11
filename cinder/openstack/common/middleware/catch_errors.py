@@ -12,12 +12,12 @@
 
 """Compatibility shim for Kilo, while operators migrate to oslo.middleware."""
 
-from oslo.middleware import catch_errors
+from oslo_middleware import catch_errors
 
 from cinder.openstack.common import versionutils
 
 
 @versionutils.deprecated(as_of=versionutils.deprecated.KILO,
-                         in_favor_of='oslo.middleware.CatchErrors')
+                         in_favor_of='oslo_middleware.CatchErrors')
 class CatchErrorsMiddleware(catch_errors.CatchErrors):
     pass
