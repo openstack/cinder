@@ -87,12 +87,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
-        ex = {'volume': {'attachments':
-                         [{'device': '/',
-                           'host_name': None,
-                           'id': '1',
-                           'server_id': 'fakeuuid',
-                           'volume_id': '1'}],
+        ex = {'volume': {'attachments': [],
                          'availability_zone': 'zone1:host1',
                          'bootable': 'false',
                          'consistencygroup_id': None,
@@ -107,6 +102,7 @@ class VolumeApiTest(test.TestCase):
                          'metadata': {},
                          'name': 'Volume Test Name',
                          'replication_status': 'disabled',
+                         'multiattach': False,
                          'size': 100,
                          'snapshot_id': None,
                          'source_volid': None,
@@ -222,11 +218,7 @@ class VolumeApiTest(test.TestCase):
                "description": "Volume Test Desc",
                "availability_zone": "nova",
                "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
-        ex = {'volume': {'attachments': [{'device': '/',
-                                          'host_name': None,
-                                          'id': '1',
-                                          'server_id': 'fakeuuid',
-                                          'volume_id': '1'}],
+        ex = {'volume': {'attachments': [],
                          'availability_zone': 'nova',
                          'bootable': 'false',
                          'consistencygroup_id': None,
@@ -242,6 +234,7 @@ class VolumeApiTest(test.TestCase):
                          'metadata': {},
                          'name': 'Volume Test Name',
                          'replication_status': 'disabled',
+                         'multiattach': False,
                          'size': '1',
                          'snapshot_id': None,
                          'source_volid': None,
@@ -312,11 +305,7 @@ class VolumeApiTest(test.TestCase):
                "description": "Volume Test Desc",
                "availability_zone": "nova",
                "image_id": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
-        ex = {'volume': {'attachments': [{'device': '/',
-                                          'host_name': None,
-                                          'id': '1',
-                                          'server_id': 'fakeuuid',
-                                          'volume_id': '1'}],
+        ex = {'volume': {'attachments': [],
                          'availability_zone': 'nova',
                          'bootable': 'false',
                          'consistencygroup_id': None,
@@ -332,6 +321,7 @@ class VolumeApiTest(test.TestCase):
                          'metadata': {},
                          'name': 'Volume Test Name',
                          'replication_status': 'disabled',
+                         'multiattach': False,
                          'size': '1',
                          'snapshot_id': None,
                          'source_volid': None,
@@ -406,11 +396,7 @@ class VolumeApiTest(test.TestCase):
                "description": "Volume Test Desc",
                "availability_zone": "nova",
                "imageRef": test_id}
-        ex = {'volume': {'attachments': [{'device': '/',
-                                          'host_name': None,
-                                          'id': '1',
-                                          'server_id': 'fakeuuid',
-                                          'volume_id': '1'}],
+        ex = {'volume': {'attachments': [],
                          'availability_zone': 'nova',
                          'bootable': 'false',
                          'consistencygroup_id': None,
@@ -426,6 +412,7 @@ class VolumeApiTest(test.TestCase):
                          'metadata': {},
                          'name': 'Volume Test Name',
                          'replication_status': 'disabled',
+                         'multiattach': False,
                          'size': '1',
                          'snapshot_id': None,
                          'source_volid': None,
@@ -500,15 +487,8 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'Updated Test Name',
                 'replication_status': 'disabled',
-                'attachments': [
-                    {
-                        'id': '1',
-                        'volume_id': '1',
-                        'server_id': 'fakeuuid',
-                        'host_name': None,
-                        'device': '/',
-                    }
-                ],
+                'multiattach': False,
+                'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
@@ -554,15 +534,8 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'Updated Test Name',
                 'replication_status': 'disabled',
-                'attachments': [
-                    {
-                        'id': '1',
-                        'volume_id': '1',
-                        'server_id': 'fakeuuid',
-                        'host_name': None,
-                        'device': '/',
-                    }
-                ],
+                'multiattach': False,
+                'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
@@ -611,15 +584,8 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'New Name',
                 'replication_status': 'disabled',
-                'attachments': [
-                    {
-                        'id': '1',
-                        'volume_id': '1',
-                        'server_id': 'fakeuuid',
-                        'host_name': None,
-                        'device': '/',
-                    }
-                ],
+                'multiattach': False,
+                'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
@@ -663,13 +629,8 @@ class VolumeApiTest(test.TestCase):
             'consistencygroup_id': None,
             'name': 'displayname',
             'replication_status': 'disabled',
-            'attachments': [{
-                'id': '1',
-                'volume_id': '1',
-                'server_id': 'fakeuuid',
-                'host_name': None,
-                'device': '/',
-            }],
+            'multiattach': False,
+            'attachments': [],
             'user_id': 'fakeuser',
             'volume_type': 'vol_type_name',
             'snapshot_id': None,
@@ -707,6 +668,10 @@ class VolumeApiTest(test.TestCase):
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
+        values = {'volume_id': '1', }
+        attachment = db.volume_attach(context.get_admin_context(), values)
+        db.volume_attached(context.get_admin_context(),
+                           attachment['id'], stubs.FAKE_UUID, None, '/')
 
         updates = {
             "name": "Updated Test Name",
@@ -718,7 +683,7 @@ class VolumeApiTest(test.TestCase):
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.update(req, '1', body)
         expected = {'volume': {
-            'status': 'fakestatus',
+            'status': 'in-use',
             'description': 'displaydesc',
             'encrypted': False,
             'availability_zone': 'fakeaz',
@@ -726,10 +691,12 @@ class VolumeApiTest(test.TestCase):
             'consistencygroup_id': None,
             'name': 'Updated Test Name',
             'replication_status': 'disabled',
+            'multiattach': False,
             'attachments': [{
                 'id': '1',
+                'attachment_id': attachment['id'],
                 'volume_id': '1',
-                'server_id': 'fakeuuid',
+                'server_id': stubs.FAKE_UUID,
                 'host_name': None,
                 'device': '/',
             }],
@@ -753,8 +720,8 @@ class VolumeApiTest(test.TestCase):
                 }
             ],
         }}
-        self.assertEqual(res_dict, expected)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
+        self.assertEqual(expected, res_dict)
+        self.assertEqual(2, len(fake_notifier.NOTIFICATIONS))
 
     def test_update_empty_body(self):
         body = {}
@@ -831,15 +798,8 @@ class VolumeApiTest(test.TestCase):
                     'consistencygroup_id': None,
                     'name': 'displayname',
                     'replication_status': 'disabled',
-                    'attachments': [
-                        {
-                            'device': '/',
-                            'server_id': 'fakeuuid',
-                            'host_name': None,
-                            'id': '1',
-                            'volume_id': '1'
-                        }
-                    ],
+                    'multiattach': False,
+                    'attachments': [],
                     'user_id': 'fakeuser',
                     'volume_type': 'vol_type_name',
                     'snapshot_id': None,
@@ -877,6 +837,10 @@ class VolumeApiTest(test.TestCase):
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
+        values = {'volume_id': '1', }
+        attachment = db.volume_attach(context.get_admin_context(), values)
+        db.volume_attached(context.get_admin_context(),
+                           attachment['id'], stubs.FAKE_UUID, None, '/')
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail')
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
@@ -885,7 +849,7 @@ class VolumeApiTest(test.TestCase):
         expected = {
             'volumes': [
                 {
-                    'status': 'fakestatus',
+                    'status': 'in-use',
                     'description': 'displaydesc',
                     'encrypted': False,
                     'availability_zone': 'fakeaz',
@@ -893,10 +857,12 @@ class VolumeApiTest(test.TestCase):
                     'consistencygroup_id': None,
                     'name': 'displayname',
                     'replication_status': 'disabled',
+                    'multiattach': False,
                     'attachments': [
                         {
+                            'attachment_id': attachment['id'],
                             'device': '/',
-                            'server_id': 'fakeuuid',
+                            'server_id': stubs.FAKE_UUID,
                             'host_name': None,
                             'id': '1',
                             'volume_id': '1'
@@ -1311,15 +1277,8 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'displayname',
                 'replication_status': 'disabled',
-                'attachments': [
-                    {
-                        'device': '/',
-                        'server_id': 'fakeuuid',
-                        'host_name': None,
-                        'id': '1',
-                        'volume_id': '1'
-                    }
-                ],
+                'multiattach': False,
+                'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
@@ -1362,6 +1321,7 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'displayname',
                 'replication_status': 'disabled',
+                'multiattach': False,
                 'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
@@ -1406,6 +1366,10 @@ class VolumeApiTest(test.TestCase):
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
+        values = {'volume_id': '1', }
+        attachment = db.volume_attach(context.get_admin_context(), values)
+        db.volume_attached(context.get_admin_context(),
+                           attachment['id'], stubs.FAKE_UUID, None, '/')
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
@@ -1413,7 +1377,7 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.show(req, '1')
         expected = {
             'volume': {
-                'status': 'fakestatus',
+                'status': 'in-use',
                 'description': 'displaydesc',
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
@@ -1421,10 +1385,12 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'displayname',
                 'replication_status': 'disabled',
+                'multiattach': False,
                 'attachments': [
                     {
+                        'attachment_id': attachment['id'],
                         'device': '/',
-                        'server_id': 'fakeuuid',
+                        'server_id': stubs.FAKE_UUID,
                         'host_name': None,
                         'id': '1',
                         'volume_id': '1'

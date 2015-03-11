@@ -771,7 +771,7 @@ class BaseVD(object):
         """Callback for volume attached to instance or host."""
         pass
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
         """Callback for volume detached."""
         pass
 

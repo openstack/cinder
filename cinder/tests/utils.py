@@ -17,6 +17,8 @@ from cinder import context
 from cinder import db
 from cinder.openstack.common import loopingcall
 
+from oslo_utils import timeutils
+
 
 def get_test_admin_context():
     return context.get_admin_context()
@@ -59,6 +61,21 @@ def create_volume(ctxt,
     vol['replication_driver_data'] = replication_driver_data
 
     return db.volume_create(ctxt, vol)
+
+
+def attach_volume(ctxt, volume_id, instance_uuid, attached_host,
+                  mountpoint, mode='rw'):
+
+    now = timeutils.utcnow()
+    values = {}
+    values['volume_id'] = volume_id
+    values['attached_host'] = attached_host
+    values['mountpoint'] = mountpoint
+    values['attach_time'] = now
+
+    attachment = db.volume_attach(ctxt, values)
+    return db.volume_attached(ctxt, attachment['id'], instance_uuid,
+                              attached_host, mountpoint, mode)
 
 
 def create_snapshot(ctxt,

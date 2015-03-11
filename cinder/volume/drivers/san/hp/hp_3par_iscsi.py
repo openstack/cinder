@@ -82,10 +82,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.13 - Update LOG usage to fix translations.  bug #1384312
         2.0.14 - Do not allow a different iSCSI IP (hp3par_iscsi_ips) to be
                  used during live-migration.  bug #1423958
+        2.0.15 - Added support for updated detach_volume attachment.
 
     """
 
-    VERSION = "2.0.14"
+    VERSION = "2.0.15"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -691,10 +692,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         finally:
             self._logout(common)
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
         common = self._login()
         try:
-            common.detach_volume(volume)
+            common.detach_volume(volume, attachment)
         finally:
             self._logout(common)
 

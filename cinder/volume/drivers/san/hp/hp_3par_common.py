@@ -169,10 +169,11 @@ class HP3PARCommon(object):
         2.0.36 - Added support for dedup provisioning
         2.0.37 - Added support for enabling Flash Cache
         2.0.38 - Add stats for hp3par goodness_function and filter_function
+        2.0.39 - Added support for updated detach_volume attachment.
 
     """
 
-    VERSION = "2.0.38"
+    VERSION = "2.0.39"
 
     stats = {}
 
@@ -1537,6 +1538,11 @@ class HP3PARCommon(object):
             raise exception.VolumeBackendAPIException(data=msg)
 
     def attach_volume(self, volume, instance_uuid):
+        """Save the instance UUID in the volume.
+
+           TODO: add support for multi-attach
+
+        """
         LOG.debug("Attach Volume\n%s", pprint.pformat(volume))
         try:
             self.update_volume_key_value_pair(volume,
@@ -1546,7 +1552,12 @@ class HP3PARCommon(object):
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Error attaching volume %s"), volume)
 
-    def detach_volume(self, volume):
+    def detach_volume(self, volume, attachment=None):
+        """Remove the instance uuid from the volume.
+
+           TODO: add support for multi-attach.
+
+        """
         LOG.debug("Detach Volume\n%s", pprint.pformat(volume))
         try:
             self.clear_volume_key_value_pair(volume, 'HPQ-CS-instance_uuid')

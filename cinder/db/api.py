@@ -136,10 +136,16 @@ def iscsi_target_create_safe(context, values):
 ###############
 
 
-def volume_attached(context, volume_id, instance_id, host_name, mountpoint):
+def volume_attach(context, values):
+    """Attach a volume."""
+    return IMPL.volume_attach(context, values)
+
+
+def volume_attached(context, volume_id, instance_id, host_name, mountpoint,
+                    attach_mode='rw'):
     """Ensure that a volume is set as attached."""
     return IMPL.volume_attached(context, volume_id, instance_id, host_name,
-                                mountpoint)
+                                mountpoint, attach_mode)
 
 
 def volume_create(context, values):
@@ -169,9 +175,9 @@ def volume_destroy(context, volume_id):
     return IMPL.volume_destroy(context, volume_id)
 
 
-def volume_detached(context, volume_id):
+def volume_detached(context, volume_id, attachment_id):
     """Ensure that a volume is set as detached."""
-    return IMPL.volume_detached(context, volume_id)
+    return IMPL.volume_detached(context, volume_id, attachment_id)
 
 
 def volume_get(context, volume_id):
@@ -217,6 +223,27 @@ def volume_update(context, volume_id, values):
 
     """
     return IMPL.volume_update(context, volume_id, values)
+
+
+def volume_attachment_update(context, attachment_id, values):
+    return IMPL.volume_attachment_update(context, attachment_id, values)
+
+
+def volume_attachment_get(context, attachment_id, session=None):
+    return IMPL.volume_attachment_get(context, attachment_id, session)
+
+
+def volume_attachment_get_used_by_volume_id(context, volume_id):
+    return IMPL.volume_attachment_get_used_by_volume_id(context, volume_id)
+
+
+def volume_attachment_get_by_host(context, volume_id, host):
+    return IMPL.volume_attachment_get_by_host(context, volume_id, host)
+
+
+def volume_attachment_get_by_instance_uuid(context, volume_id, instance_uuid):
+    return IMPL.volume_attachment_get_by_instance_uuid(context, volume_id,
+                                                       instance_uuid)
 
 
 ####################

@@ -48,18 +48,18 @@ def _translate_attachment_detail_view(_context, vol):
 
 def _translate_attachment_summary_view(_context, vol):
     """Maps keys for attachment summary view."""
-    d = {}
-
-    volume_id = vol['id']
-
-    # NOTE(justinsb): We use the volume id as the id of the attachment object
-    d['id'] = volume_id
-
-    d['volume_id'] = volume_id
-    d['server_id'] = vol['instance_uuid']
-    d['host_name'] = vol['attached_host']
-    if vol.get('mountpoint'):
-        d['device'] = vol['mountpoint']
+    d = []
+    attachments = vol.get('volume_attachment', [])
+    for attachment in attachments:
+        if attachment.get('attach_status') == 'attached':
+            a = {'id': attachment.get('volume_id'),
+                 'attachment_id': attachment.get('id'),
+                 'volume_id': attachment.get('volume_id'),
+                 'server_id': attachment.get('instance_uuid'),
+                 'host_name': attachment.get('attached_host'),
+                 'device': attachment.get('mountpoint'),
+                 }
+            d.append(a)
 
     return d
 
@@ -91,10 +91,14 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     else:
         d['bootable'] = 'false'
 
+    if vol['multiattach']:
+        d['multiattach'] = 'true'
+    else:
+        d['multiattach'] = 'false'
+
     d['attachments'] = []
     if vol['attach_status'] == 'attached':
-        attachment = _translate_attachment_detail_view(context, vol)
-        d['attachments'].append(attachment)
+        d['attachments'] = _translate_attachment_detail_view(context, vol)
 
     d['display_name'] = vol['display_name']
     d['display_description'] = vol['display_description']
@@ -146,6 +150,7 @@ def make_volume(elem):
     elem.set('volume_type')
     elem.set('snapshot_id')
     elem.set('source_volid')
+    elem.set('multiattach')
 
     attachments = xmlutil.SubTemplateElement(elem, 'attachments')
     attachment = xmlutil.SubTemplateElement(attachments, 'attachment',
@@ -373,6 +378,8 @@ class VolumeController(wsgi.Controller):
             size = kwargs['source_volume']['size']
 
         LOG.info(_LI("Create volume of %s GB"), size, context=context)
+        multiattach = volume.get('multiattach', False)
+        kwargs['multiattach'] = multiattach
 
         image_href = None
         image_uuid = None

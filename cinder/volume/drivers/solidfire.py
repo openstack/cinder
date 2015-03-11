@@ -923,7 +923,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if 'result' not in data:
             raise exception.SolidFireAPIDataException(data=data)
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
 
         LOG.debug("Entering SolidFire attach_volume...")
         sfaccount = self._get_sfaccount(volume['project_id'])

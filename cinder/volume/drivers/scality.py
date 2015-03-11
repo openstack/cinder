@@ -220,7 +220,7 @@ class ScalityDriver(driver.VolumeDriver):
         """Disallow connection from connector."""
         pass
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
         """Callback for volume detached."""
         pass
 

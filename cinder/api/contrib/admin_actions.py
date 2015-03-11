@@ -185,7 +185,10 @@ class VolumeAdminController(AdminController):
             raise exc.HTTPNotFound()
         self.volume_api.terminate_connection(context, volume,
                                              {}, force=True)
-        self.volume_api.detach(context, volume)
+
+        attachment_id = body['os-force_detach'].get('attachment_id', None)
+
+        self.volume_api.detach(context, volume, attachment_id)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-migrate_volume')

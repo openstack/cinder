@@ -221,7 +221,9 @@ class VolumeRpcAPITestCase(test.TestCase):
     def test_detach_volume(self):
         self._test_volume_api('detach_volume',
                               rpc_method='call',
-                              volume=self.fake_volume)
+                              volume=self.fake_volume,
+                              attachment_id='fake_uuid',
+                              version="1.20")
 
     def test_copy_volume_to_image(self):
         self._test_volume_api('copy_volume_to_image',
