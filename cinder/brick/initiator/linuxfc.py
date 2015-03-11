@@ -138,3 +138,75 @@ class LinuxFibreChannel(linuxscsi.LinuxSCSI):
                     wwnns.append(wwnn)
 
         return wwnns
+
+
+class LinuxFibreChannelS390X(LinuxFibreChannel):
+    def __init__(self, root_helper, execute=putils.execute,
+                 *args, **kwargs):
+        super(LinuxFibreChannelS390X, self).__init__(root_helper, execute,
+                                                     *args, **kwargs)
+
+    def get_fc_hbas_info(self):
+        """Get Fibre Channel WWNs and device paths from the system, if any."""
+
+        hbas = self.get_fc_hbas()
+        if not hbas:
+            return []
+
+        hbas_info = []
+        for hba in hbas:
+            if hba['port_state'] == 'Online':
+                wwpn = hba['port_name'].replace('0x', '')
+                wwnn = hba['node_name'].replace('0x', '')
+                device_path = hba['ClassDevicepath']
+                device = hba['ClassDevice']
+                hbas_info.append({'port_name': wwpn,
+                                  'node_name': wwnn,
+                                  'host_device': device,
+                                  'device_path': device_path})
+        return hbas_info
+
+    def configure_scsi_device(self, device_number, target_wwn, lun):
+        """Write the LUN to the port's unit_add attribute.
+
+        If auto-discovery of LUNs is disabled on s390 platforms
+        luns need to be added to the configuration through the
+        unit_add interface
+        """
+        LOG.debug("Configure lun for s390: device_number=(%(device_num)s) "
+                  "target_wwn=(%(target_wwn)s) target_lun=(%(target_lun)s)",
+                  {'device_num': device_number,
+                   'target_wwn': target_wwn,
+                   'target_lun': lun})
+        zfcp_device_command = ("/sys/bus/ccw/drivers/zfcp/%s/%s/unit_add" %
+                               (device_number, target_wwn))
+        LOG.debug("unit_add call for s390 execute: %s", zfcp_device_command)
+        try:
+            self.echo_scsi_command(zfcp_device_command, lun)
+        except putils.ProcessExecutionError as exc:
+            msg = _LW("unit_add call for s390 failed exit (%(code)s), "
+                      "stderr (%(stderr)s)")
+            LOG.warn(msg, {'code': exc.exit_code, 'stderr': exc.stderr})
+
+    def deconfigure_scsi_device(self, device_number, target_wwn, lun):
+        """Write the LUN to the port's unit_remove attribute.
+
+        If auto-discovery of LUNs is disabled on s390 platforms
+        luns need to be removed from the configuration through the
+        unit_remove interface
+        """
+        LOG.debug("Deconfigure lun for s390: "
+                  "device_number=(%(device_num)s) "
+                  "target_wwn=(%(target_wwn)s) target_lun=(%(target_lun)s)",
+                  {'device_num': device_number,
+                   'target_wwn': target_wwn,
+                   'target_lun': lun})
+        zfcp_device_command = ("/sys/bus/ccw/drivers/zfcp/%s/%s/unit_remove" %
+                               (device_number, target_wwn))
+        LOG.debug("unit_remove call for s390 execute: %s", zfcp_device_command)
+        try:
+            self.echo_scsi_command(zfcp_device_command, lun)
+        except putils.ProcessExecutionError as exc:
+            msg = _LW("unit_remove call for s390 failed exit (%(code)s), "
+                      "stderr (%(stderr)s)")
+            LOG.warn(msg, {'code': exc.exit_code, 'stderr': exc.stderr})
