@@ -99,17 +99,22 @@ class VolumeTypesManageController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest()
 
         vol_type = body['volume_type']
-        description = vol_type.get('description', None)
+        description = vol_type.get('description')
+        name = vol_type.get('name')
 
-        if description is None:
-            msg = _("Specify the description to update.")
+        # Name and description can not be both None.
+        # If name specified, name can not be empty.
+        if name and len(name.strip()) == 0:
+            msg = _("Volume type name can not be empty.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        if name is None and description is None:
+            msg = _("Specify either volume type name and/or description.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         try:
-            # check it exists
-            vol_type = volume_types.get_volume_type(context, id)
-            volume_types.update(context, id, description)
-            # get the updated
+            volume_types.update(context, id, name, description)
+            # Get the updated
             vol_type = volume_types.get_volume_type(context, id)
             req.cache_resource(vol_type, name='types')
             self._notify_volume_type_info(

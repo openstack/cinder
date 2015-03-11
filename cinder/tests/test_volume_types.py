@@ -78,10 +78,13 @@ class VolumeTypeTestCase(test.TestCase):
                          'drive type was not created')
 
         # update
+        new_type_name = self.vol_type1_name + '_updated'
         new_type_desc = self.vol_type1_description + '_updated'
         type_ref_updated = volume_types.update(self.ctxt,
                                                type_ref.id,
+                                               new_type_name,
                                                new_type_desc)
+        self.assertEqual(new_type_name, type_ref_updated['name'])
         self.assertEqual(new_type_desc, type_ref_updated['description'])
 
         # destroy
