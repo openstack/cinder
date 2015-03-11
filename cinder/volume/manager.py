@@ -1832,6 +1832,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                                     'valid': VALID_CREATE_CG_SRC_SNAP_STATUS})
                             raise exception.InvalidConsistencyGroup(reason=msg)
 
+            # Sort source snapshots so that they are in the same order as their
+            # corresponding target volumes.
+            sorted_snapshots = self._sort_snapshots(volumes, snapshots)
             self._notify_about_consistencygroup_usage(
                 context, group_ref, "create.start")
 
@@ -1843,7 +1846,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                       'snap': cgsnapshot_id})
             model_update, volumes_model_update = (
                 self.driver.create_consistencygroup_from_src(
-                    context, group_ref, volumes, cgsnapshot, snapshots))
+                    context, group_ref, volumes, cgsnapshot,
+                    sorted_snapshots))
 
             if volumes_model_update:
                 for update in volumes_model_update:
@@ -1889,6 +1893,29 @@ class VolumeManager(manager.SchedulerDependentManager):
             context, group_ref, "create.end")
 
         return group_ref['id']
+
+    def _sort_snapshots(self, volumes, snapshots):
+        # Sort source snapshots so that they are in the same order as their
+        # corresponding target volumes. Each source snapshot in the snapshots
+        # list should have a corresponding target volume in the volumes list.
+        if not volumes or not snapshots or len(volumes) != len(snapshots):
+            msg = _("Input volumes or snapshots are invalid.")
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        sorted_snapshots = []
+        for vol in volumes:
+            found_snaps = filter(
+                lambda snap: snap['id'] == vol['snapshot_id'], snapshots)
+            if not found_snaps:
+                LOG.error(_LE("Source snapshot cannot be found for target "
+                              "volume %(volume_id)s."),
+                          {'volume_id': vol['id']})
+                raise exception.SnapshotNotFound(
+                    snapshot_id=vol['snapshot_id'])
+            sorted_snapshots.extend(found_snaps)
+
+        return sorted_snapshots
 
     def _update_volume_from_src(self, context, vol, update, group_id=None):
         try:
