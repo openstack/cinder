@@ -28,9 +28,13 @@ def fake_retry(exceptions, interval=1, retries=3, backoff_rate=2):
         return f
     return _decorator
 
-mock.patch('cinder.utils.retry', fake_retry).start()
+patch_retry = mock.patch('cinder.utils.retry', fake_retry)
+patch_retry.start()
 sys.modules['purestorage'] = mock.Mock()
 from cinder.volume.drivers import pure
+
+# Only mock utils.retry for cinder.volume.drivers.pure import
+patch_retry.stop()
 
 DRIVER_PATH = "cinder.volume.drivers.pure"
 DRIVER_OBJ = DRIVER_PATH + ".PureISCSIDriver"
