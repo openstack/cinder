@@ -3064,6 +3064,13 @@ Time Remaining:  0 second(s)
                       '-o')]
         fake_cli.assert_has_calls(expect_cmd)
 
+    def test_unmanage(self):
+        self.driverSetup()
+        try:
+            self.driver.unmanage(self.testData.test_volume)
+        except NotImplementedError:
+            self.fail('Interface unmanage need to be implemented')
+
 
 class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
     def setUp(self):

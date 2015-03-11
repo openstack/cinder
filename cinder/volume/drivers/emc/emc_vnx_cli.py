@@ -1582,7 +1582,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.03.00'
+    VERSION = '05.03.01'
     stats = {'driver_version': VERSION,
              'storage_protocol': None,
              'vendor_name': 'EMC',
@@ -2916,6 +2916,10 @@ class EMCVnxCliBase(object):
                                             [self._client.LUN_POOL],
                                             poll=False)
         return data.get(self._client.LUN_POOL.key)
+
+    def unmanage(self, volume):
+        """Unmanages a volume"""
+        pass
 
 
 @decorate_all_methods(log_enter_exit)

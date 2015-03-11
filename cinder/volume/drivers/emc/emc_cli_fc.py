@@ -247,3 +247,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         return self.cli.update_consistencygroup(context, group,
                                                 add_volumes,
                                                 remove_volumes)
+
+    def unmanage(self, volume):
+        """Unmanages a volume."""
+        return self.cli.unmanage(volume)
