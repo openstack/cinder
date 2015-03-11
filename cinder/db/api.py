@@ -69,6 +69,22 @@ IMPL = db_concurrency.TpoolDbapiWrapper(CONF, _BACKEND_MAPPING)
 
 ###################
 
+def dispose_engine():
+    """Force the engine to establish new connections."""
+
+    # FIXME(jdg): When using sqlite if we do the dispose
+    # we seem to lose our DB here.  Adding this check
+    # means we don't do the dispose, but we keep our sqlite DB
+    # This likely isn't the best way to handle this
+
+    if 'sqlite' not in IMPL.get_engine().name:
+        return IMPL.dispose_engine()
+    else:
+        return
+
+
+###################
+
 
 def service_destroy(context, service_id):
     """Destroy the service or raise if it does not exist."""
