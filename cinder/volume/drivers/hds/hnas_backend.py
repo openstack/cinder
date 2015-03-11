@@ -593,6 +593,8 @@ class HnasBackend(object):
                                         'iscsi-target', 'add',
                                         targetalias, secret,
                                         check_exit_code=True)
+            if "success" in out:
+                return targetalias
 
         lines = out.split('\n')
         # returns the first iqn

@@ -184,6 +184,10 @@ Authentication      : Enabled                                        \n\
 Logical units       : No logical units.                              \n\
 \n"
 
+HNAS_RESULT20 = "Target does not exist."
+
+HNAS_RESULT21 = "Target created successfully."
+
 HNAS_CMDS = {
     ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'evsfs', 'list'):
         ["%s" % HNAS_RESULT1, ""],
@@ -412,14 +416,30 @@ class HDSHNASBendTest(test.TestCase):
 
         self.assertIn('already deleted', out)
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_get_targetiqn(self, m_cmd):
+    @mock.patch.object(hnas_backend.HnasBackend, '_get_evs', return_value=0)
+    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd')
+    def test_get_targetiqn(self, m_cmd, m_get_evs):
+
+        m_cmd.side_effect = [[HNAS_RESULT12, '']]
         out = self.hnas_bend.get_targetiqn("ssh", "0.0.0.0", "supervisor",
                                            "supervisor", "test_iqn",
                                            "test_hdp", "test_secret")
 
         self.assertEqual('test_iqn', out)
+
+        m_cmd.side_effect = [[HNAS_RESULT20, ''], [HNAS_RESULT21, '']]
+        out = self.hnas_bend.get_targetiqn("ssh", "0.0.0.0", "supervisor",
+                                           "supervisor", "test_iqn2",
+                                           "test_hdp", "test_secret")
+
+        self.assertEqual('test_iqn2', out)
+
+        m_cmd.side_effect = [[HNAS_RESULT20, ''], [HNAS_RESULT21, '']]
+        out = self.hnas_bend.get_targetiqn("ssh", "0.0.0.0", "supervisor",
+                                           "supervisor", "test_iqn3",
+                                           "test_hdp", "")
+
+        self.assertEqual('test_iqn3', out)
 
     @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
                        side_effect=m_run_cmd)
