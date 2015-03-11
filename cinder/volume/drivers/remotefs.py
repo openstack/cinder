@@ -181,6 +181,20 @@ class RemoteFSDriver(driver.VolumeDriver):
                 LOG.error(msg)
                 raise exception.InvalidConfigurationValue(msg)
 
+    def _get_provisioned_capacity(self):
+        """Returns the provisioned capacity.
+
+        Get the sum of sizes of volumes, snapshots and any other
+        files on the mountpoint.
+        """
+        provisioned_size = 0.0
+        for share in self.shares.keys():
+            mount_path = self._get_mount_point_for_share(share)
+            out, _ = self._execute('du', '--bytes', mount_path,
+                                   run_as_root=True)
+            provisioned_size += int(out.split()[0])
+        return round(provisioned_size / units.Gi, 2)
+
     def _get_mount_point_base(self):
         """Returns the mount point base for the remote fs.
 
