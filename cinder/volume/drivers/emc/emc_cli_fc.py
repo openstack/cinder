@@ -55,6 +55,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         5.2.0 - Pool-aware scheduler support
         5.3.0 - Consistency group modification support
         6.0.0 - Over subscription support
+                Create consistency group from cgsnapshot support
     """
 
     def __init__(self, *args, **kwargs):
@@ -253,3 +254,12 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
     def unmanage(self, volume):
         """Unmanages a volume."""
         return self.cli.unmanage(volume)
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None):
+        """Creates a consistency group from source."""
+        return self.cli.create_consistencygroup_from_src(context,
+                                                         group,
+                                                         volumes,
+                                                         cgsnapshot,
+                                                         snapshots)

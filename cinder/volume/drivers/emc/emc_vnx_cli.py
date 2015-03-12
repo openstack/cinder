@@ -272,6 +272,7 @@ class CommandLineHelper(object):
     CLI_RESP_PATTERN_LUN_NOT_MIGRATING = ('The specified source LUN '
                                           'is not currently migrating')
     CLI_RESP_PATTERN_LUN_IS_PREPARING = '0x712d8e0e'
+    CLI_RESP_PATTERM_IS_NOT_SMP = 'it is not a snapshot mount point'
 
     def __init__(self, configuration):
         configuration.append_config_values(san.san_opts)
@@ -589,13 +590,15 @@ class CommandLineHelper(object):
             if rc != 0:
                 self._raise_cli_error(command_modify_lun, rc, out)
 
-    def create_consistencygroup(self, context, group):
+    def create_consistencygroup(self, cg_name, members=None):
         """create the consistency group."""
-        cg_name = group['id']
         command_create_cg = ('-np', 'snap', '-group',
                              '-create',
                              '-name', cg_name,
                              '-allowSnapAutoDelete', 'no')
+        if members:
+            command_create_cg += ('-res', ','.join(map(six.text_type,
+                                                       members)))
 
         out, rc = self.command_execute(*command_create_cg)
         if rc != 0:
@@ -729,9 +732,8 @@ class CommandLineHelper(object):
             else:
                 self._raise_cli_error(create_cg_snap_cmd, rc, out)
 
-    def delete_cgsnapshot(self, cgsnapshot):
+    def delete_cgsnapshot(self, snap_name):
         """Delete a cgsnapshot (snap group)."""
-        snap_name = cgsnapshot['id']
         delete_cg_snap_cmd = ('-np', 'snap', '-destroy',
                               '-id', snap_name, '-o')
 
@@ -822,6 +824,27 @@ class CommandLineHelper(object):
 
         return rc
 
+    def copy_snapshot(self, src_snap_name, new_name):
+
+        copy_snap_cmd = ('snap', '-copy',
+                         '-id', src_snap_name,
+                         '-name', new_name,
+                         '-ignoreMigrationCheck',
+                         '-ignoreDeduplicationCheck')
+
+        out, rc = self.command_execute(*copy_snap_cmd)
+        if rc != 0:
+            self._raise_cli_error(copy_snap_cmd, rc, out)
+
+    def allow_snapshot_readwrite_and_autodelete(self, snap_name):
+
+        modify_cmd = ('snap', '-modify', '-id', snap_name,
+                      '-allowReadWrite', 'yes', '-allowAutoDelete', 'yes')
+
+        out, rc = self.command_execute(*modify_cmd)
+        if rc != 0:
+            self._raise_cli_error(modify_cmd, rc, out)
+
     def attach_mount_point(self, name, snapshot_name):
 
         command_attach_mount_point = ('lun', '-attach',
@@ -876,11 +899,11 @@ class CommandLineHelper(object):
 
         return rc
 
-    def migrate_lun_with_verification(self, src_id,
-                                      dst_id=None,
-                                      dst_name=None):
+    def migrate_lun_without_verification(self, src_id, dst_id,
+                                         dst_name=None):
         try:
             self.migrate_lun(src_id, dst_id)
+            return True
         except exception.EMCVnxCLICmdError as ex:
             migration_succeed = False
             orig_out = "\n".join(ex.kwargs["out"])
@@ -904,7 +927,10 @@ class CommandLineHelper(object):
                                     "start failed. LUN: %s"), dst_name)
                     self.delete_lun(dst_name)
                 return False
+            else:
+                return True
 
+    def verify_lun_migration(self, src_id):
         # Set the proper interval to verify the migration status
         def migration_is_ready(poll=False):
             mig_ready = False
@@ -954,8 +980,6 @@ class CommandLineHelper(object):
                     self._raise_cli_error(cmd_migrate_list, rc, out)
             return False
 
-        eventlet.sleep(INTERVAL_30_SEC)
-
         try:
             if migration_is_ready(True):
                 return True
@@ -983,6 +1007,17 @@ class CommandLineHelper(object):
         out, rc = self.command_execute(*cmd_migrate_cancel)
         if rc != 0:
             self._raise_cli_error(cmd_migrate_cancel, rc, out)
+
+    def migrate_lun_with_verification(self, src_id,
+                                      dst_id,
+                                      dst_name=None):
+        migration_started = self.migrate_lun_without_verification(
+            src_id, dst_id, dst_name)
+        if not migration_started:
+            return False
+
+        eventlet.sleep(INTERVAL_30_SEC)
+        return self.verify_lun_migration(src_id)
 
     def get_storage_group(self, name, poll=True):
 
@@ -2257,7 +2292,7 @@ class EMCVnxCliBase(object):
         new_lun_id = flow_engine.storage.fetch('new_lun_id')
         # Delete temp Snapshot
         if consistencygroup_id:
-            self._client.delete_cgsnapshot(snapshot)
+            self._client.delete_cgsnapshot(snapshot['id'])
         else:
             self.delete_snapshot(snapshot)
 
@@ -2321,7 +2356,7 @@ class EMCVnxCliBase(object):
 
         model_update = {'status': 'available'}
         try:
-            self._client.create_consistencygroup(context, group)
+            self._client.create_consistencygroup(group['id'])
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Create consistency group %s failed.'),
@@ -2426,7 +2461,7 @@ class EMCVnxCliBase(object):
                  'group_name': cgsnapshot['consistencygroup_id']})
 
         try:
-            self._client.delete_cgsnapshot(cgsnapshot)
+            self._client.delete_cgsnapshot(cgsnapshot['id'])
             for snapshot in snapshots:
                 snapshot['status'] = 'deleted'
         except Exception:
@@ -3005,6 +3040,96 @@ class EMCVnxCliBase(object):
         """Unmanages a volume"""
         pass
 
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None):
+        """Creates a consistency group from cgsnapshot."""
+
+        if not cgsnapshot or not snapshots:
+            msg = _("create_consistencygroup_from_src only supports a "
+                    "cgsnapshot source, other sources cannot be used.")
+            raise exception.InvalidInput(msg)
+
+        flow_name = 'create_consistencygroup_from_cgsnapshot'
+        work_flow = linear_flow.Flow(flow_name)
+        copied_snapshot_name = 'temp_snapshot_for_%s' % group['id']
+        store_spec = {
+            'group': group,
+            'src_snap_name': cgsnapshot['id'],
+            'snap_name': copied_snapshot_name,
+            'client': self._client
+        }
+
+        work_flow.add(CopySnapshotTask(),
+                      AllowReadWriteOnSnapshotTask())
+
+        # Add tasks for each volumes in the consistency group
+        lun_id_key_template = 'new_lun_id_%s'
+        lun_data_key_template = 'vol_%s'
+        volume_model_updates = []
+
+        for i, (volume, snap) in enumerate(zip(volumes, snapshots)):
+            specs = self.get_volumetype_extraspecs(volume)
+            provisioning, tiering = self._get_and_validate_extra_specs(specs)
+            pool_name = self. get_target_storagepool(volume, snap['volume'])
+            sub_store_spec = {
+                'volume': volume,
+                'source_vol_name': snap['volume_name'],
+                'pool_name': pool_name,
+                'dest_vol_name': volume['name'] + '_dest',
+                'volume_size': volume['size'],
+                'provisioning': provisioning,
+                'tiering': tiering,
+            }
+            work_flow.add(
+                CreateSMPTask(name="CreateSMPTask%s" % i,
+                              inject=sub_store_spec),
+                AttachSnapTask(name="AttachSnapTask%s" % i,
+                               inject=sub_store_spec),
+                CreateDestLunTask(name="CreateDestLunTask%s" % i,
+                                  providers=lun_data_key_template % i,
+                                  inject=sub_store_spec),
+                MigrateLunTask(name="MigrateLunTask%s" % i,
+                               providers=lun_id_key_template % i,
+                               inject=sub_store_spec,
+                               rebind={'lun_data': lun_data_key_template % i},
+                               wait_for_completion=False))
+
+            volume_model_updates.append({'id': volume['id']})
+            volume_host = volume['host']
+            host = vol_utils.extract_host(volume_host, 'backend')
+            host_and_pool = vol_utils.append_host(host, pool_name)
+            if volume_host != host_and_pool:
+                volume_model_updates[i]['host'] = host_and_pool
+
+        work_flow.add(WaitMigrationsCompleteTask(lun_id_key_template,
+                                                 len(volumes)),
+                      CreateConsistencyGroupTask(lun_id_key_template,
+                                                 len(volumes)))
+
+        flow_engine = taskflow.engines.load(work_flow, store=store_spec)
+        flow_engine.run()
+
+        # Delete copied snapshot
+        try:
+            self._client.delete_cgsnapshot(copied_snapshot_name)
+        except exception.EMCVnxCLICmdError as ex:
+            LOG.warning(_LW('Delete the temporary cgsnapshot %(name)s failed. '
+                            'This temporary cgsnapshot can be deleted '
+                            'manually. Consistency group %(cg)s is created '
+                            'successfully from cgsnapshot %(cgsnapshot)s. '
+                            'Message: %(msg)s'),
+                        {'name': copied_snapshot_name,
+                         'cg': group['id'],
+                         'cgsnapshot': cgsnapshot['id'],
+                         'msg': ex.kwargs['out']})
+
+        for i, update in enumerate(volume_model_updates):
+            new_lun_id = flow_engine.storage.fetch(lun_id_key_template % i)
+            update['provider_location'] = (
+                self._build_provider_location_for_lun(new_lun_id))
+
+        return None, volume_model_updates
+
 
 @decorate_all_methods(log_enter_exit)
 class EMCVnxCliPool(EMCVnxCliBase):
@@ -3148,7 +3273,15 @@ class AttachSnapTask(task.Task):
         else:
             LOG.warning(_LW('AttachSnapTask.revert: detach mount point %s'),
                         volume['name'])
-            client.detach_mount_point(volume['name'])
+            try:
+                client.detach_mount_point(volume['name'])
+            except exception.EMCVnxCLICmdError as ex:
+                with excutils.save_and_reraise_exception() as ctxt:
+                    is_not_smp_err = (
+                        ex.kwargs["rc"] == 163 and
+                        client.CLI_RESP_PATTERM_IS_NOT_SMP in
+                        "".join(ex.kwargs["out"]))
+                    ctxt.reraise = not is_not_smp_err
 
 
 class CreateDestLunTask(task.Task):
@@ -3156,8 +3289,10 @@ class CreateDestLunTask(task.Task):
 
     Reversion strategy: Delete the temp destination lun.
     """
-    def __init__(self):
-        super(CreateDestLunTask, self).__init__(provides='lun_data')
+    def __init__(self, name=None, providers='lun_data', inject=None):
+        super(CreateDestLunTask, self).__init__(name=name,
+                                                provides=providers,
+                                                inject=inject)
 
     def execute(self, client, pool_name, dest_vol_name, volume_size,
                 provisioning, tiering, *args, **kwargs):
@@ -3182,8 +3317,13 @@ class MigrateLunTask(task.Task):
 
     Reversion strategy: None
     """
-    def __init__(self):
-        super(MigrateLunTask, self).__init__(provides='new_lun_id')
+    def __init__(self, name=None, providers='new_lun_id', inject=None,
+                 rebind=None, wait_for_completion=True):
+        super(MigrateLunTask, self).__init__(name=name,
+                                             provides=providers,
+                                             inject=inject,
+                                             rebind=rebind)
+        self.wait_for_completion = wait_for_completion
 
     def execute(self, client, dest_vol_name, volume, lun_data,
                 *args, **kwargs):
@@ -3193,10 +3333,13 @@ class MigrateLunTask(task.Task):
         dest_vol_lun_id = lun_data['lun_id']
 
         LOG.info(_LI('Migrating Mount Point Volume: %s'), new_vol_name)
-
-        migrated = client.migrate_lun_with_verification(new_vol_lun_id,
-                                                        dest_vol_lun_id,
-                                                        None)
+        if self.wait_for_completion:
+            migrated = client.migrate_lun_with_verification(new_vol_lun_id,
+                                                            dest_vol_lun_id,
+                                                            None)
+        else:
+            migrated = client.migrate_lun_without_verification(
+                new_vol_lun_id, dest_vol_lun_id, None)
         if not migrated:
             msg = (_("Migrate volume failed between source vol %(src)s"
                      " and dest vol %(dst)s.") %
@@ -3237,9 +3380,72 @@ class CreateSnapshotTask(task.Task):
                 LOG.warning(_LW('CreateSnapshotTask.revert: '
                                 'delete temp cgsnapshot %s'),
                             snapshot['consistencygroup_id'])
-                client.delete_cgsnapshot(snapshot)
+                client.delete_cgsnapshot(snapshot['id'])
             else:
                 LOG.warning(_LW('CreateSnapshotTask.revert: '
                                 'delete temp snapshot %s'),
                             snapshot['name'])
                 client.delete_snapshot(snapshot['name'])
+
+
+class CopySnapshotTask(task.Task):
+    """Task to copy a volume snapshot/consistency group snapshot.
+
+    Reversion Strategy: Delete the copied snapshot/cgsnapshot
+    """
+    def execute(self, client, src_snap_name, snap_name, *args, **kwargs):
+        LOG.debug('CopySnapshotTask.execute')
+        client.copy_snapshot(src_snap_name,
+                             snap_name)
+
+    def revert(self, result, client, src_snap_name, snap_name,
+               *args, **kwargs):
+        LOG.debug('CopySnapshotTask.revert')
+        if isinstance(result, failure.Failure):
+            return
+        else:
+            LOG.warning(_LW('CopySnapshotTask.revert: delete the '
+                            'copied snapshot %(new_name)s of '
+                            '%(source_name)s.'),
+                        {'new_name': snap_name,
+                         'source_name': src_snap_name})
+            client.delete_cgsnapshot(snap_name)
+
+
+class AllowReadWriteOnSnapshotTask(task.Task):
+    """Task to modify a Snapshot to allow ReadWrite on it."""
+    def execute(self, client, snap_name, *args, **kwargs):
+        LOG.debug('AllowReadWriteOnSnapshotTask.execute')
+        client.allow_snapshot_readwrite_and_autodelete(snap_name)
+
+
+class CreateConsistencyGroupTask(task.Task):
+    """Task to create a consistency group."""
+    def __init__(self, lun_id_key_template, num_of_members):
+        self.lun_id_keys = set(
+            [lun_id_key_template % i for i in range(num_of_members)])
+        super(CreateConsistencyGroupTask, self).__init__(
+            requires=self.lun_id_keys)
+
+    def execute(self, client, group, *args, **kwargs):
+        LOG.debug('CreateConsistencyGroupTask.execute')
+        lun_ids = [kwargs[key] for key in self.lun_id_keys]
+        client.create_consistencygroup(group['id'], lun_ids)
+
+
+class WaitMigrationsCompleteTask(task.Task):
+    """Task to wait migrations to be completed."""
+    def __init__(self, lun_id_key_template, num_of_members):
+        self.lun_id_keys = set(
+            [lun_id_key_template % i for i in range(num_of_members)])
+        super(WaitMigrationsCompleteTask, self).__init__(
+            requires=self.lun_id_keys)
+
+    def execute(self, client, *args, **kwargs):
+        LOG.debug('WaitMigrationsCompleteTask.execute')
+        lun_ids = [kwargs[key] for key in self.lun_id_keys]
+        for lun_id in lun_ids:
+            migrated = client.verify_lun_migration(lun_id)
+            if not migrated:
+                msg = _("Migrate volume %(src)s failed.") % {'src': lun_id}
+                raise exception.VolumeBackendAPIException(data=msg)
