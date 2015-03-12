@@ -45,7 +45,7 @@ no_audit_log = re.compile(r"(.)*LOG\.audit(.)*")
 # NOTE(jsbryant): When other oslo libraries switch over non-namespaced
 # imports, we will need to add them to the regex below.
 oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](concurrency|db"
-                                    "|config|utils|serialization)")
+                                    "|config|utils|serialization|log)")
 
 
 def no_vi_headers(physical_line, line_number, lines):
