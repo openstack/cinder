@@ -283,7 +283,7 @@ class EMCVMAXFast(object):
 
         volumeName = 'vol1'
         volumeSize = '1'
-        volumeDict, _ = (
+        volumeDict, _rc = (
             self.provision.create_volume_from_pool(
                 conn, storageConfigurationInstanceName, volumeName,
                 poolInstanceName, volumeSize, extraSpecs))

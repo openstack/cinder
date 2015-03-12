@@ -1481,7 +1481,7 @@ class EMCVMAXCommon(object):
             LOG.debug("HardwareID instance is: %(hardwareIdInstance)s.",
                       {'hardwareIdInstance': hardwareIdInstance})
             try:
-                _, targetEndpoints = (
+                _rc, targetEndpoints = (
                     self.provision.get_target_endpoints(
                         self.conn, storageHardwareService, hardwareIdInstance))
             except Exception as ex:
@@ -1852,7 +1852,7 @@ class EMCVMAXCommon(object):
         :param extraSpecs: extra specifications
         :returns: volumeInstance -- the volume instance
         """
-        volumeDict, _ = (
+        volumeDict, _rc = (
             self.provision.create_volume_from_pool(
                 self.conn, storageConfigService, volumeName, poolInstanceName,
                 volumeSize, extraSpecs))
@@ -1874,7 +1874,7 @@ class EMCVMAXCommon(object):
         :returns: unboundVolumeInstance -- the unbound volume instance
         """
 
-        _, job = (
+        _rc, job = (
             self.provision.unbind_volume_from_storage_pool(
                 conn, storageConfigService, poolInstanceName,
                 volumeInstanceName,
@@ -2316,7 +2316,7 @@ class EMCVMAXCommon(object):
 
         extraSpecs = self._initial_setup(None, volumeTypeId)
 
-        _, storageSystem = (
+        _poolInstanceName, storageSystem = (
             self._get_pool_and_storage_system(extraSpecs))
 
         self.conn = self._get_ecom_connection()
@@ -2358,7 +2358,7 @@ class EMCVMAXCommon(object):
 
         extraSpecs = self._initial_setup(None, volumeTypeId)
 
-        __, storageSystem = (
+        _poolInstanceName, storageSystem = (
             self._get_pool_and_storage_system(extraSpecs))
 
         try:
@@ -2467,7 +2467,7 @@ class EMCVMAXCommon(object):
         extraSpecs = self._initial_setup(None, volumeTypeId)
         self.conn = self._get_ecom_connection()
 
-        _, storageSystem = (
+        _poolInstanceName, storageSystem = (
             self._get_pool_and_storage_system(extraSpecs))
 
         try:
@@ -2505,12 +2505,12 @@ class EMCVMAXCommon(object):
                     volumeSizeInbits))}
 
                 if extraSpecs[ISV3]:
-                    _, volumeDict, _ = (
+                    _rc, volumeDict, _storageSystemName = (
                         self._create_v3_volume(
                             volume, targetVolumeName, volumeSizeInbits,
                             extraSpecs))
                 else:
-                    _, volumeDict, _ = (
+                    _rc, volumeDict, _storageSystemName = (
                         self._create_composite_volume(
                             volume, targetVolumeName, volumeSizeInbits,
                             extraSpecs))
@@ -2603,7 +2603,7 @@ class EMCVMAXCommon(object):
         extraSpecs = self._initial_setup(None, volumeTypeId)
         self.conn = self._get_ecom_connection()
 
-        __, storageSystem = (
+        _poolInstanceName, storageSystem = (
             self._get_pool_and_storage_system(extraSpecs))
 
         try:
@@ -3664,7 +3664,7 @@ class EMCVMAXCommon(object):
 
         volume = {'size':
                   int(self.utils.convert_bits_to_gbs(volumeSizeInbits))}
-        _, volumeDict, storageSystemName = (
+        _rc, volumeDict, _storageSystemName = (
             self._create_v3_volume(
                 volume, cloneName, volumeSizeInbits, extraSpecs))
         targetInstance = self.utils.find_volume_instance(
@@ -3678,7 +3678,7 @@ class EMCVMAXCommon(object):
             # SyncType 7: snap, VG3R default snapshot is snapVx.
             syncType = self.utils.get_num(7, '16')
 
-        _, job = (
+        _rc, job = (
             self.provisionv3.create_element_replica(
                 self.conn, repServiceInstanceName, cloneName, syncType,
                 sourceInstance, extraSpecs, targetInstance))
@@ -3687,7 +3687,7 @@ class EMCVMAXCommon(object):
 
         cloneVolume['provider_location'] = six.text_type(cloneDict)
 
-        syncInstanceName, _ = (
+        syncInstanceName, _storageSystem = (
             self._find_storage_sync_sv_sv(cloneVolume, sourceVolume, True))
 
         # Detach/dissolve the clone/snap relationship.
