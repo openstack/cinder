@@ -1108,9 +1108,13 @@ class RemoteFSSnapDriver(RemoteFSDriver):
     def _create_snapshot(self, snapshot):
         """Create a snapshot.
 
-        If volume is attached, call to Nova to create snapshot,
-        providing a qcow2 file.
-        Otherwise, create locally with qemu-img.
+        If volume is attached, call to Nova to create snapshot, providing a
+        qcow2 file. Cinder creates and deletes qcow2 files, but Nova is
+        responsible for transitioning the VM between them and handling live
+        transfers of data between files as required.
+
+        If volume is detached, create locally with qemu-img. Cinder handles
+        manipulation of qcow2 files.
 
         A file named volume-<uuid>.info is stored with the volume
         data and is a JSON table which contains a mapping between
@@ -1150,39 +1154,62 @@ class RemoteFSSnapDriver(RemoteFSDriver):
             volume-1234.bbbb now becomes the "active" disk image, recording
             changes made to the volume.
 
-            info file: { 'active': 'volume-1234.bbbb',
+            info file: { 'active': 'volume-1234.bbbb',  (* changed!)
                          'aaaa':   'volume-1234.aaaa',
-                         'bbbb':   'volume-1234.bbbb' }
+                         'bbbb':   'volume-1234.bbbb' } (* added!)
 
-        4. First snapshot deleted:
-            volume-1234 <- volume-1234.aaaa(* now with bbbb's data)
+        4. Snapshot deletion when volume is attached ('in-use' state):
 
-            volume-1234.aaaa is removed (logically) from the snapshot chain.
-            The data from volume-1234.bbbb is merged into it.
+            * When first snapshot is deleted, Cinder calls Nova for online
+              snapshot deletion. Nova deletes snapshot with id "aaaa" and
+              makes snapshot with id "bbbb" point to the base image.
+              Snapshot with id "bbbb" is the active image.
 
-            (*) Since bbbb's data was committed into the aaaa file, we have
-                "removed" aaaa's snapshot point but the .aaaa file now
-                represents snapshot with id "bbbb".
+              volume-1234 <- volume-1234.bbbb
 
+              info file: { 'active': 'volume-1234.bbbb',
+                           'bbbb':   'volume-1234.bbbb'
+                         }
 
-            info file: { 'active': 'volume-1234.bbbb',
-                         'bbbb':   'volume-1234.aaaa'   (* changed!)
-                       }
+             * When second snapshot is deleted, Cinder calls Nova for online
+               snapshot deletion. Nova deletes snapshot with id "bbbb" by
+               pulling volume-1234's data into volume-1234.bbbb. This
+               (logically) removes snapshot with id "bbbb" and the active
+               file remains the same.
 
-        5. Second snapshot deleted:
-            volume-1234
+               volume-1234.bbbb
 
-            volume-1234.bbbb is removed from the snapshot chain, as above.
-            The base image, volume-1234, becomes the active image for this
-            volume again.  If in-use, the VM begins using the volume-1234.bbbb
-            file immediately as part of the snapshot delete process.
+               info file: { 'active': 'volume-1234.bbbb' }
 
-            info file: { 'active': 'volume-1234' }
+           TODO (deepakcs): Change this once Nova supports blockCommit for
+                            in-use volumes.
 
-        For the above operations, Cinder handles manipulation of qcow2 files
-        when the volume is detached.  When attached, Cinder creates and deletes
-        qcow2 files, but Nova is responsible for transitioning the VM between
-        them and handling live transfers of data between files as required.
+        5. Snapshot deletion when volume is detached ('available' state):
+
+            * When first snapshot is deleted, Cinder does the snapshot
+              deletion. volume-1234.aaaa is removed (logically) from the
+              snapshot chain. The data from volume-1234.bbbb is merged into
+              it.
+
+              Since bbbb's data was committed into the aaaa file, we have
+              "removed" aaaa's snapshot point but the .aaaa file now
+              represents snapshot with id "bbbb". Also .aaaa file becomes the
+              "active" disk image as it represent snapshot with id "bbbb".
+
+              volume-1234 <- volume-1234.aaaa(* now with bbbb's data)
+
+              info file: { 'active': 'volume-1234.aaaa',  (* changed!)
+                           'bbbb':   'volume-1234.aaaa'   (* changed!)
+                         }
+
+            * When second snapshot is deleted, Cinder does the snapshot
+              deletion. volume-1234.aaaa is removed from the snapshot chain.
+              The base image, volume-1234 becomes the active image for this
+              volume again.
+
+              volume-1234
+
+              info file: { 'active': 'volume-1234' }  (* changed!)
         """
 
         status = snapshot['volume']['status']
