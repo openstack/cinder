@@ -159,6 +159,8 @@ class Service(service.Service):
         self.rpcserver = rpc.get_server(target, endpoints, serializer)
         self.rpcserver.start()
 
+        self.manager.init_host_with_rpc()
+
         if self.report_interval:
             pulse = loopingcall.FixedIntervalLoopingCall(
                 self.report_state)
