@@ -90,6 +90,10 @@ def get_session(**kwargs):
     facade = _create_facade_lazily()
     return facade.get_session(**kwargs)
 
+
+def dispose_engine():
+    get_engine().dispose()
+
 _DEFAULT_QUOTA_NAME = 'default'
 
 
