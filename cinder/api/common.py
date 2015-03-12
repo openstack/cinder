@@ -287,39 +287,64 @@ class ViewBuilder(object):
                             str(identifier))
 
     def _get_collection_links(self, request, items, collection_name,
-                              id_key="uuid"):
+                              item_count, id_key="uuid"):
         """Retrieve 'next' link, if applicable.
 
         The next link is included if:
-        1) 'limit' param is specified and equals the number of volumes.
-        2) 'limit' param is specified but it exceeds CONF.osapi_max_limit,
-        in this case the number of volumes is CONF.osapi_max_limit.
-        3) 'limit' param is NOT specified but the number of volumes is
-        CONF.osapi_max_limit.
+        1) 'limit' param is specified and equal to or less than the
+        number of items.
+        2) 'limit' param is specified and both the limit and the number
+        of items are greater than CONF.osapi_max_limit, even if limit
+        is greater than the number of items.
+        3) 'limit' param is NOT specified and the number of items is
+        greater than CONF.osapi_max_limit.
+        Notes: The case limit equals to 0 or CONF.osapi_max_limit equals to 0
+        is not included in the above conditions.
 
         :param request: API request
         :param items: List of collection items
         :param collection_name: Name of collection, used to generate the
                                 next link for a pagination query
+        :param item_count: Length of the list of the original collection
+                           items
         :param id_key: Attribute key used to retrieve the unique ID, used
                        to generate the next link marker for a pagination query
         :returns links
         """
+        limit = request.params.get("limit", None)
+        if limit is None or int(limit) > CONF.osapi_max_limit:
+            # If limit is not set in the request or greater than
+            # osapi_max_limit, len(items) < item_count means the items
+            # are limited by osapi_max_limit and we need to generate the
+            # next link. Otherwise, all the items will be returned in
+            # the response, no next link is generated.
+            if len(items) < item_count:
+                return self._generate_next_link(items, id_key, request,
+                                                collection_name)
+        else:
+            # If limit is set in the request and not more than
+            # osapi_max_limit, int(limit) == len(items) means it is possible
+            # that the DB still have more items left. In this case,
+            # we generate the next link.
+            limit = int(limit)
+            if limit and limit == len(items):
+                return self._generate_next_link(items, id_key, request,
+                                                collection_name)
+        return []
+
+    def _generate_next_link(self, items, id_key, request,
+                            collection_name):
         links = []
-        max_items = min(
-            int(request.params.get("limit", CONF.osapi_max_limit)),
-            CONF.osapi_max_limit)
-        if max_items and max_items == len(items):
-            last_item = items[-1]
-            if id_key in last_item:
-                last_item_id = last_item[id_key]
-            else:
-                last_item_id = last_item["id"]
-            links.append({
-                "rel": "next",
-                "href": self._get_next_link(request, last_item_id,
-                                            collection_name),
-            })
+        last_item = items[-1]
+        if id_key in last_item:
+            last_item_id = last_item[id_key]
+        else:
+            last_item_id = last_item["id"]
+        links.append({
+            "rel": "next",
+            "href": self._get_next_link(request, last_item_id,
+                                        collection_name),
+        })
         return links
 
     def _update_link_prefix(self, orig_url, prefix):

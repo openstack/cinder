@@ -218,13 +218,16 @@ class BackupsController(wsgi.Controller):
             del filters['name']
 
         backups = self.backup_api.get_all(context, search_opts=filters)
+        backup_count = len(backups)
         limited_list = common.limited(backups, req)
         req.cache_db_backups(limited_list)
 
         if is_detail:
-            backups = self._view_builder.detail_list(req, limited_list)
+            backups = self._view_builder.detail_list(req, limited_list,
+                                                     backup_count)
         else:
-            backups = self._view_builder.summary_list(req, limited_list)
+            backups = self._view_builder.summary_list(req, limited_list,
+                                                      backup_count)
         return backups
 
     # TODO(frankm): Add some checks here including

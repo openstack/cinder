@@ -1111,7 +1111,7 @@ class VolumeApiTest(test.TestCase):
         api_keys = ['volumes', 'volumes/detail']
         fns = [self.controller.index, self.controller.detail]
 
-        # Number of volumes equals the max, include next link
+        # Number of volumes equals the max, next link not included
         def stub_volume_get_all(context, marker, limit,
                                 sort_keys=None, sort_dirs=None,
                                 filters=None,
@@ -1127,8 +1127,7 @@ class VolumeApiTest(test.TestCase):
                                           use_admin_context=True)
             res_dict = fn(req)
             self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
-            volumes_links = res_dict['volumes_links']
-            _verify_links(volumes_links, key)
+            self.assertFalse('volumes_links' in res_dict)
 
         # Number of volumes less than max, do not include
         def stub_volume_get_all2(context, marker, limit,
@@ -1168,7 +1167,7 @@ class VolumeApiTest(test.TestCase):
             _verify_links(volumes_links, key)
         # Pass a limit that is greater than the max and the total number of
         # volumes, ensure only the maximum is returned and that the next
-        # link is present
+        # link is present.
         for key, fn in zip(api_keys, fns):
             req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1&limit=%d'
                                           % (key, CONF.osapi_max_limit * 2),
