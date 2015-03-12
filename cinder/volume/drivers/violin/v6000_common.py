@@ -48,7 +48,6 @@ if vmemclient:
     LOG.info(_LI("Running with vmemclient version: %s."),
              vmemclient.__version__)
 
-# version vmos versions V6.3.0.4 or newer
 VMOS_SUPPORTED_VERSION_PATTERNS = ['V6.3.0.[4-9]', 'V6.3.[1-9].?[0-9]?']
 
 violin_opts = [
@@ -75,9 +74,10 @@ class V6000Common(object):
 
     Version history:
         1.0 - Initial driver
+        1.0.1 - Fixes polling for export completion
     """
 
-    VERSION = '1.0'
+    VERSION = '1.0.1'
 
     def __init__(self, config):
         self.vip = None
@@ -500,9 +500,9 @@ class V6000Common(object):
 
         return igroup_name
 
-    def _wait_for_export_config(self, volume_name, snapshot_name=None,
-                                state=False):
-        """Polls backend to verify volume's export configuration.
+    def _wait_for_export_state(self, volume_name, snapshot_name=None,
+                               state=False):
+        """Polls backend to verify volume's export state.
 
         XG sets/queries following a request to create or delete a lun
         export may fail on the backend if vshared is still processing
@@ -524,27 +524,41 @@ class V6000Common(object):
             (depending on 'state' param)
         """
         if not snapshot_name:
-            bn = "/vshare/config/export/container/%s/lun/%s" \
+            bn = "/vshare/state/local/container/%s/lun/%s/usn_id" \
                 % (self.container, volume_name)
         else:
-            bn = "/vshare/config/export/snapshot/container/%s/lun/%s/snap/%s" \
+            bn = "/vshare/state/snapshot/container/%s/lun/%s/snap/%s/usn_id" \
                 % (self.container, volume_name, snapshot_name)
 
         def _loop_func(state):
             status = [False, False]
             mg_conns = [self.mga, self.mgb]
 
-            LOG.debug("Entering _wait_for_export_config loop: state=%s.",
+            LOG.debug("Entering _wait_for_export_state loop: state=%s.",
                       state)
 
+            # TODO(rlucio): May need to handle situations where export
+            # fails, i.e., HBAs go offline and the array is in
+            # degraded mode.
+            #
             for node_id in range(2):
                 resp = mg_conns[node_id].basic.get_node_values(bn)
-                if state and len(resp.keys()):
-                    status[node_id] = True
-                elif (not state) and (not len(resp.keys())):
-                    status[node_id] = True
+
+                if state:
+                    # Verify export was added.  Validates when the usn_id is
+                    # altered to a non-default binding string.
+                    #
+                    if resp[bn] != "(not exported)":
+                        status[node_id] = True
+                else:
+                    # Verify export was removed.  Validates when the usn_id is
+                    # reset to the default binding string.
+                    #
+                    if resp[bn] == "(not exported)":
+                        status[node_id] = True
 
             if status[0] and status[1]:
+                LOG.debug("_wait_for_export_state loopingcall complete.")
                 raise loopingcall.LoopingCallDone(retvalue=True)
 
         timer = loopingcall.FixedIntervalLoopingCall(_loop_func, state)

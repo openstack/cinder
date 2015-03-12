@@ -319,9 +319,9 @@ class V6000FCPDriverTestCase(test.TestCase):
 
         self.driver.common._send_cmd_and_verify.assert_called_with(
             self.driver.common.vip.lun.export_lun,
-            self.driver.common._wait_for_export_config, '',
+            self.driver.common._wait_for_export_state, '',
             [self.driver.common.container, VOLUME['id'], 'all',
-             igroup, 'auto'], [VOLUME['id'], 'state=True'])
+             igroup, 'auto'], [VOLUME['id'], None, True])
         self.driver.common._get_lun_id.assert_called_with(VOLUME['id'])
         self.assertEqual(lun_id, result)
 
@@ -350,9 +350,9 @@ class V6000FCPDriverTestCase(test.TestCase):
 
         self.driver.common._send_cmd_and_verify.assert_called_with(
             self.driver.common.vip.lun.unexport_lun,
-            self.driver.common._wait_for_export_config, '',
+            self.driver.common._wait_for_export_state, '',
             [self.driver.common.container, VOLUME['id'], 'all', 'all', 'auto'],
-            [VOLUME['id'], 'state=False'])
+            [VOLUME['id'], None, False])
         self.assertTrue(result is None)
 
     def test_unexport_lun_fails_with_exception(self):
@@ -372,7 +372,7 @@ class V6000FCPDriverTestCase(test.TestCase):
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver.common._send_cmd = mock.Mock(return_value=response)
-        self.driver.common._wait_for_export_config = mock.Mock()
+        self.driver.common._wait_for_export_state = mock.Mock()
         self.driver.common._get_snapshot_id = mock.Mock(return_value=lun_id)
 
         result = self.driver._export_snapshot(SNAPSHOT, CONNECTOR, igroup)
@@ -381,7 +381,7 @@ class V6000FCPDriverTestCase(test.TestCase):
             self.driver.common.vip.snapshot.export_lun_snapshot, '',
             self.driver.common.container, SNAPSHOT['volume_id'],
             SNAPSHOT['id'], igroup, 'all', 'auto')
-        self.driver.common._wait_for_export_config.assert_called_with(
+        self.driver.common._wait_for_export_state.assert_called_with(
             SNAPSHOT['volume_id'], SNAPSHOT['id'], state=True)
         self.driver.common._get_snapshot_id.assert_called_once_with(
             SNAPSHOT['volume_id'], SNAPSHOT['id'])
@@ -392,7 +392,7 @@ class V6000FCPDriverTestCase(test.TestCase):
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver.common._send_cmd = mock.Mock(return_value=response)
-        self.driver.common._wait_for_export_config = mock.Mock()
+        self.driver.common._wait_for_export_state = mock.Mock()
 
         result = self.driver._unexport_snapshot(SNAPSHOT)
 
@@ -400,7 +400,7 @@ class V6000FCPDriverTestCase(test.TestCase):
             self.driver.common.vip.snapshot.unexport_lun_snapshot, '',
             self.driver.common.container, SNAPSHOT['volume_id'],
             SNAPSHOT['id'], 'all', 'all', 'auto', False)
-        self.driver.common._wait_for_export_config.assert_called_with(
+        self.driver.common._wait_for_export_state.assert_called_with(
             SNAPSHOT['volume_id'], SNAPSHOT['id'], state=False)
         self.assertTrue(result is None)
 
