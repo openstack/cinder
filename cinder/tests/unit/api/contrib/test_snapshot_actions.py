@@ -12,6 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+import mock
 from oslo_serialization import jsonutils
 import webob
 
@@ -26,7 +27,8 @@ class SnapshotActionsTest(test.TestCase):
     def setUp(self):
         super(SnapshotActionsTest, self).setUp()
 
-    def test_update_snapshot_status(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_update_snapshot_status(self, metadata_get):
         self.stubs.Set(db, 'snapshot_get', stub_snapshot_get)
         self.stubs.Set(db, 'snapshot_update', stub_snapshot_update)
 
@@ -39,7 +41,8 @@ class SnapshotActionsTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(res.status_int, 202)
 
-    def test_update_snapshot_status_invalid_status(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_update_snapshot_status_invalid_status(self, metadata_get):
         self.stubs.Set(db, 'snapshot_get', stub_snapshot_get)
         body = {'os-update_snapshot_status': {'status': 'in-use'}}
         req = webob.Request.blank('/v2/fake/snapshots/1/action')

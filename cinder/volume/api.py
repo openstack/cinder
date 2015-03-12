@@ -371,7 +371,8 @@ class API(base.Base):
                          'consistency group.'), volume['id'])
             raise exception.InvalidVolume(reason=msg)
 
-        snapshots = self.db.snapshot_get_all_for_volume(context, volume_id)
+        snapshots = objects.SnapshotList.get_all_for_volume(context,
+                                                            volume_id)
         if len(snapshots):
             LOG.info(_LI('Unable to delete volume: %s, '
                          'volume currently has snapshots.'), volume['id'])
@@ -781,7 +782,8 @@ class API(base.Base):
 
         try:
             for options in options_list:
-                snapshot = self.db.snapshot_create(context, options)
+                snapshot = objects.Snapshot(context=context, **options)
+                snapshot.create()
                 snapshot_list.append(snapshot)
 
             QUOTAS.commit(context, reservations)
@@ -789,7 +791,7 @@ class API(base.Base):
             with excutils.save_and_reraise_exception():
                 try:
                     for snap in snapshot_list:
-                        self.db.snapshot_destroy(context, snap['id'])
+                        snapshot.destroy()
                 finally:
                     QUOTAS.rollback(context, reservations)
 
@@ -1240,7 +1242,7 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
         # We only handle volumes without snapshots for now
-        snaps = self.db.snapshot_get_all_for_volume(context, volume['id'])
+        snaps = objects.SnapshotList.get_all_for_volume(context, volume['id'])
         if snaps:
             msg = _("Volume %s must not have snapshots.") % volume['id']
             LOG.error(msg)

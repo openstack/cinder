@@ -48,6 +48,7 @@ i18n.enable_lazy()
 from cinder import context
 from cinder import db
 from cinder.i18n import _, _LE
+from cinder import objects
 from cinder import rpc
 from cinder import utils
 from cinder import version
@@ -106,7 +107,7 @@ def main():
     volumes = db.volume_get_active_by_window(admin_context,
                                              begin,
                                              end)
-    LOG.debug("Found %d volumes", len(volumes))
+    LOG.debug("Found %d volumes"), len(volumes)
     for volume_ref in volumes:
         try:
             LOG.debug("Send exists notification for <volume_id: "
@@ -175,10 +176,9 @@ def main():
                 LOG.exception(_LE("Delete volume notification failed: %s"),
                               exc_msg, resource=volume_ref)
 
-    snapshots = db.snapshot_get_active_by_window(admin_context,
-                                                 begin,
-                                                 end)
-    LOG.debug("Found %d snapshots", len(snapshots))
+    snapshots = objects.SnapshotList.get_active_by_window(admin_context,
+                                                          begin, end)
+    LOG.debug("Found %d snapshots"), len(snapshots)
     for snapshot_ref in snapshots:
         try:
             LOG.debug("Send notification for <snapshot_id: %(snapshot_id)s> "

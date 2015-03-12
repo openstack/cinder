@@ -22,6 +22,7 @@ from taskflow.types import failure as ft
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LW
+from cinder import objects
 from cinder import policy
 from cinder import quota
 from cinder import utils
@@ -722,9 +723,9 @@ class VolumeCastTask(flow_utils.CinderTask):
             # If snapshot_id is set, make the call create volume directly to
             # the volume host where the snapshot resides instead of passing it
             # through the scheduler. So snapshot can be copy to new volume.
-            snapshot_ref = self.db.snapshot_get(context, snapshot_id)
+            snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
             source_volume_ref = self.db.volume_get(context,
-                                                   snapshot_ref['volume_id'])
+                                                   snapshot.volume_id)
             host = source_volume_ref['host']
         elif source_volid:
             source_volume_ref = self.db.volume_get(context, source_volid)

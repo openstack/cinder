@@ -28,6 +28,7 @@ from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI
+from cinder import objects
 from cinder import utils
 from cinder.volume import api as volume_api
 
@@ -232,9 +233,9 @@ class HostController(wsgi.Controller):
         project_ids = list(set(project_ids))
         for project_id in project_ids:
             (count, sum) = db.volume_data_get_for_project(context, project_id)
-            (snap_count, snap_sum) = db.snapshot_data_get_for_project(
-                context,
-                project_id)
+            (snap_count, snap_sum) = (
+                objects.Snapshot.snapshot_data_get_for_project(context,
+                                                               project_id))
             resources.append(
                 {'resource':
                     {'host': host,

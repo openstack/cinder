@@ -192,6 +192,12 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         if not md_was_changed:
             self.obj_reset_changes(['metadata'])
 
+    @base.remotable_classmethod
+    def snapshot_data_get_for_project(cls, context, project_id,
+                                      volume_type_id=None):
+        return db.snapshot_data_get_for_project(context, project_id,
+                                                volume_type_id)
+
 
 @base.CinderObjectRegistry.register
 class SnapshotList(base.ObjectListBase, base.CinderObject):
@@ -212,6 +218,12 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
                                   expected_attrs=['metadata'])
 
     @base.remotable_classmethod
+    def get_by_host(cls, context, host, filters=None):
+        snapshots = db.snapshot_get_by_host(context, host, filters)
+        return base.obj_make_list(context, cls(context), objects.Snapshot,
+                                  snapshots, expected_attrs=['metadata'])
+
+    @base.remotable_classmethod
     def get_all_by_project(cls, context, project_id):
         snapshots = db.snapshot_get_all_by_project(context, project_id)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
@@ -220,5 +232,17 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
     @base.remotable_classmethod
     def get_all_for_volume(cls, context, volume_id):
         snapshots = db.snapshot_get_all_for_volume(context, volume_id)
+        return base.obj_make_list(context, cls(context), objects.Snapshot,
+                                  snapshots, expected_attrs=['metadata'])
+
+    @base.remotable_classmethod
+    def get_active_by_window(cls, context, begin, end):
+        snapshots = db.snapshot_get_active_by_window(context, begin, end)
+        return base.obj_make_list(context, cls(context), objects.Snapshot,
+                                  snapshots, expected_attrs=['metadata'])
+
+    @base.remotable_classmethod
+    def get_all_for_cgsnapshot(cls, context, cgsnapshot_id):
+        snapshots = db.snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=['metadata'])

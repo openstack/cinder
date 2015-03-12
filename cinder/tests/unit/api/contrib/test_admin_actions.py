@@ -28,6 +28,7 @@ from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
@@ -313,17 +314,29 @@ class AdminActionsTest(test.TestCase):
     def test_snapshot_reset_status(self):
         ctx = context.RequestContext('admin', 'fake', True)
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': '', 'size': 1})
-        snapshot = db.snapshot_create(ctx, {'status': 'error_deleting',
-                                            'volume_id': volume['id']})
+                                        'provider_location': '', 'size': 1,
+                                        'availability_zone': 'test',
+                                        'attach_status': 'detached'})
+        kwargs = {
+            'volume_id': volume['id'],
+            'cgsnapshot_id': None,
+            'user_id': ctx.user_id,
+            'project_id': ctx.project_id,
+            'status': 'error_deleting',
+            'progress': '0%',
+            'volume_size': volume['size'],
+            'metadata': {}
+        }
+        snapshot = objects.Snapshot(context=ctx, **kwargs)
+        snapshot.create()
 
         resp = self._issue_snapshot_reset(ctx,
                                           snapshot,
                                           {'status': 'error'})
 
         self.assertEqual(resp.status_int, 202)
-        snapshot = db.snapshot_get(ctx, snapshot['id'])
-        self.assertEqual(snapshot['status'], 'error')
+        snapshot = objects.Snapshot.get_by_id(ctx, snapshot['id'])
+        self.assertEqual(snapshot.status, 'error')
 
     def test_invalid_status_for_snapshot(self):
         ctx = context.RequestContext('admin', 'fake', True)

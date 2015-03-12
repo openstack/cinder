@@ -125,6 +125,18 @@ class TestSnapshot(test_objects._LocalTest):
         volume_get_by_id.assert_called_once_with(self.context,
                                                  snapshot.volume_id)
 
+    @mock.patch('cinder.db.snapshot_data_get_for_project')
+    def test_snapshot_data_get_for_project(self, snapshot_data_get):
+        snapshot = snapshot_obj.Snapshot._from_db_object(
+            self.context, snapshot_obj.Snapshot(), fake_snapshot)
+        volume_type_id = mock.sentinel.volume_type_id
+        snapshot.snapshot_data_get_for_project(self.context,
+                                               self.project_id,
+                                               volume_type_id)
+        snapshot_data_get.assert_called_once_with(self.context,
+                                                  self.project_id,
+                                                  volume_type_id)
+
 
 class TestSnapshotList(test_objects._LocalTest):
     @mock.patch('cinder.db.snapshot_metadata_get', return_value={})
@@ -136,6 +148,20 @@ class TestSnapshotList(test_objects._LocalTest):
         volume_get_by_id.return_value = fake_volume_obj
 
         snapshots = snapshot_obj.SnapshotList.get_all(self.context)
+        self.assertEqual(1, len(snapshots))
+        TestSnapshot._compare(self, fake_snapshot, snapshots[0])
+
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value={})
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch('cinder.db.snapshot_get_by_host',
+                return_value=[fake_snapshot])
+    def test_get_by_host(self, get_by_host, volume_get_by_id,
+                         snapshot_metadata_get):
+        fake_volume_obj = fake_volume.fake_volume_obj(self.context)
+        volume_get_by_id.return_value = fake_volume_obj
+
+        snapshots = snapshot_obj.SnapshotList.get_by_host(
+            self.context, 'fake-host')
         self.assertEqual(1, len(snapshots))
         TestSnapshot._compare(self, fake_snapshot, snapshots[0])
 
@@ -164,5 +190,33 @@ class TestSnapshotList(test_objects._LocalTest):
 
         snapshots = snapshot_obj.SnapshotList.get_all_for_volume(
             self.context, fake_volume_obj.id)
+        self.assertEqual(1, len(snapshots))
+        TestSnapshot._compare(self, fake_snapshot, snapshots[0])
+
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value={})
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    @mock.patch('cinder.db.snapshot_get_active_by_window',
+                return_value=[fake_snapshot])
+    def test_get_active_by_window(self, get_active_by_window,
+                                  volume_get_by_id, snapshot_metadata_get):
+        fake_volume_obj = fake_volume.fake_volume_obj(self.context)
+        volume_get_by_id.return_value = fake_volume_obj
+
+        snapshots = snapshot_obj.SnapshotList.get_active_by_window(
+            self.context, mock.sentinel.begin, mock.sentinel.end)
+        self.assertEqual(1, len(snapshots))
+        TestSnapshot._compare(self, fake_snapshot, snapshots[0])
+
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value={})
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    @mock.patch('cinder.db.snapshot_get_all_for_cgsnapshot',
+                return_value=[fake_snapshot])
+    def test_get_all_for_cgsnapshot(self, get_all_for_cgsnapshot,
+                                    volume_get_by_id, snapshot_metadata_get):
+        fake_volume_obj = fake_volume.fake_volume_obj(self.context)
+        volume_get_by_id.return_value = fake_volume_obj
+
+        snapshots = snapshot_obj.SnapshotList.get_all_for_cgsnapshot(
+            self.context, mock.sentinel.cgsnapshot_id)
         self.assertEqual(1, len(snapshots))
         TestSnapshot._compare(self, fake_snapshot, snapshots[0])

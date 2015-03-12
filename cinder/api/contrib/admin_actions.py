@@ -24,6 +24,7 @@ from cinder import backup
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder import objects
 from cinder import rpc
 from cinder import volume
 
@@ -265,7 +266,12 @@ class SnapshotAdminController(AdminController):
     collection = 'snapshots'
 
     def _update(self, *args, **kwargs):
-        db.snapshot_update(*args, **kwargs)
+        context = args[0]
+        snapshot_id = args[1]
+        fields = args[2]
+        snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
+        snapshot.update(fields)
+        snapshot.save()
 
     def _get(self, *args, **kwargs):
         return self.volume_api.get_snapshot(*args, **kwargs)

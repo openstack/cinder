@@ -58,6 +58,7 @@ from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import glance
 from cinder import manager
+from cinder import objects
 from cinder.openstack.common import periodic_task
 from cinder import quota
 from cinder import utils
@@ -344,16 +345,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                                           {'status': 'error'})
                 else:
                     pass
-
-            snapshots = self.db.snapshot_get_by_host(ctxt,
-                                                     self.host,
-                                                     {'status': 'creating'})
+            snapshots = objects.SnapshotList.get_by_host(
+                ctxt, self.host, {'status': 'creating'})
             for snapshot in snapshots:
                 LOG.warning(_LW("Detected snapshot stuck in creating "
                             "status, setting to ERROR."), resource=snapshot)
-                self.db.snapshot_update(ctxt,
-                                        snapshot['id'],
-                                        {'status': 'error'})
+                snapshot.status = 'error'
+                snapshot.save()
         except Exception:
             LOG.exception(_LE("Error during re-export on driver init."),
                           resource=volume)
@@ -1542,7 +1540,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             extra_usage_info=extra_usage_info, host=self.host)
 
         if not snapshots:
-            snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+            snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
                 context, cgsnapshot['id'])
         if snapshots:
             for snapshot in snapshots:
@@ -1707,8 +1705,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                 msg = _("Retype requires migration but is not allowed.")
                 raise exception.VolumeMigrationFailed(reason=msg)
 
-            snaps = self.db.snapshot_get_all_for_volume(context,
-                                                        volume_ref['id'])
+            snaps = objects.SnapshotList.get_all_for_volume(context,
+                                                            volume_ref['id'])
             if snaps:
                 _retype_error(context, volume_id, old_reservations,
                               new_reservations, status_update)
@@ -1944,10 +1942,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                                         'id': group_ref['id']})
                     raise
                 if cgsnapshot:
-                    snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+                    snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
                         context, cgsnapshot_id)
                     for snap in snapshots:
-                        if (snap['status'] not in
+                        if (snap.status not in
                                 VALID_CREATE_CG_SRC_SNAP_STATUS):
                             msg = (_("Cannot create consistency group "
                                      "%(group)s because snapshot %(snap)s is "
@@ -2043,10 +2041,9 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def _update_volume_from_src(self, context, vol, update, group_id=None):
         try:
-            snapshot_ref = self.db.snapshot_get(context,
-                                                vol['snapshot_id'])
+            snapshot = objects.Snapshot.get_by_id(context, vol['snapshot_id'])
             orig_vref = self.db.volume_get(context,
-                                           snapshot_ref['volume_id'])
+                                           snapshot.volume_id)
             if orig_vref.bootable:
                 update['bootable'] = True
                 self.db.volume_glance_metadata_copy_to_volume(
@@ -2063,7 +2060,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         except exception.VolumeNotFound:
             LOG.error(_LE("The source volume %(volume_id)s "
                           "cannot be found."),
-                      {'volume_id': snapshot_ref['volume_id']})
+                      {'volume_id': snapshot.volume_id})
             self.db.volume_update(context, vol['id'],
                                   {'status': 'error'})
             if group_id:
@@ -2367,8 +2364,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         cgsnapshot_ref = self.db.cgsnapshot_get(context, cgsnapshot_id)
         LOG.info(_LI("Cgsnapshot %s: creating."), cgsnapshot_ref['id'])
 
-        snapshots = self.db.snapshot_get_all_for_cgsnapshot(context,
-                                                            cgsnapshot_id)
+        snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
+            context, cgsnapshot_id)
 
         self._notify_about_cgsnapshot_usage(
             context, cgsnapshot_ref, "create.start")
@@ -2383,7 +2380,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             # but it is not a requirement for all drivers.
             cgsnapshot_ref['context'] = caller_context
             for snapshot in snapshots:
-                snapshot['context'] = caller_context
+                snapshot.context = caller_context
 
             model_update, snapshots = \
                 self.driver.create_cgsnapshot(context, cgsnapshot_ref)
@@ -2393,6 +2390,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                     # Update db if status is error
                     if snapshot['status'] == 'error':
                         update = {'status': snapshot['status']}
+
+                        # TODO(thangp): Switch over to use snapshot.update()
+                        # after cgsnapshot has been switched over to objects
                         self.db.snapshot_update(context, snapshot['id'],
                                                 update)
                         # If status for one snapshot is error, make sure
@@ -2420,15 +2420,18 @@ class VolumeManager(manager.SchedulerDependentManager):
             if vol_ref.bootable:
                 try:
                     self.db.volume_glance_metadata_copy_to_snapshot(
-                        context, snapshot['id'], volume_id)
+                        context, snapshot_id, volume_id)
                 except exception.CinderException as ex:
                     LOG.error(_LE("Failed updating %(snapshot_id)s"
                                   " metadata using the provided volumes"
                                   " %(volume_id)s metadata"),
                               {'volume_id': volume_id,
                                'snapshot_id': snapshot_id})
+
+                    # TODO(thangp): Switch over to use snapshot.update()
+                    # after cgsnapshot has been switched over to objects
                     self.db.snapshot_update(context,
-                                            snapshot['id'],
+                                            snapshot_id,
                                             {'status': 'error'})
                     raise exception.MetadataCopyFailure(
                         reason=six.text_type(ex))
@@ -2456,8 +2459,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         LOG.info(_LI("cgsnapshot %s: deleting"), cgsnapshot_ref['id'])
 
-        snapshots = self.db.snapshot_get_all_for_cgsnapshot(context,
-                                                            cgsnapshot_id)
+        snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
+            context, cgsnapshot_id)
 
         self._notify_about_cgsnapshot_usage(
             context, cgsnapshot_ref, "delete.start")
@@ -2480,6 +2483,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             if snapshots:
                 for snapshot in snapshots:
                     update = {'status': snapshot['status']}
+
+                    # TODO(thangp): Switch over to use snapshot.update()
+                    # after cgsnapshot has been switched over to objects
                     self.db.snapshot_update(context, snapshot['id'],
                                             update)
                     if snapshot['status'] in ['error_deleting', 'error'] and \
@@ -2527,6 +2533,9 @@ class VolumeManager(manager.SchedulerDependentManager):
 
             self.db.volume_glance_metadata_delete_by_snapshot(context,
                                                               snapshot['id'])
+
+            # TODO(thangp): Switch over to use snapshot.destroy()
+            # after cgsnapshot has been switched over to objects
             self.db.snapshot_destroy(context, snapshot['id'])
 
             # Commit the reservations
