@@ -116,6 +116,39 @@ class HostManagerTestCase(test.TestCase):
                     'host3': host3_volume_capabs}
         self.assertDictMatch(service_states, expected)
 
+    @mock.patch('cinder.utils.service_is_up')
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_has_all_capabilities(self, _mock_service_get_all_by_topic,
+                                  _mock_service_is_up):
+        _mock_service_is_up.return_value = True
+        services = [
+            dict(id=1, host='host1', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=2, host='host2', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=3, host='host3', topic='volume', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+        ]
+        _mock_service_get_all_by_topic.return_value = services
+        # Create host_manager again to let db.service_get_all_by_topic mock run
+        self.host_manager = host_manager.HostManager()
+        self.assertFalse(self.host_manager.has_all_capabilities())
+
+        host1_volume_capabs = dict(free_capacity_gb=4321, timestamp=1)
+        host2_volume_capabs = dict(free_capacity_gb=5432, timestamp=1)
+        host3_volume_capabs = dict(free_capacity_gb=6543, timestamp=1)
+
+        service_name = 'volume'
+        self.host_manager.update_service_capabilities(service_name, 'host1',
+                                                      host1_volume_capabs)
+        self.assertFalse(self.host_manager.has_all_capabilities())
+        self.host_manager.update_service_capabilities(service_name, 'host2',
+                                                      host2_volume_capabs)
+        self.assertFalse(self.host_manager.has_all_capabilities())
+        self.host_manager.update_service_capabilities(service_name, 'host3',
+                                                      host3_volume_capabs)
+        self.assertTrue(self.host_manager.has_all_capabilities())
+
     @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch('cinder.utils.service_is_up')
     @mock.patch('oslo_utils.timeutils.utcnow')
@@ -185,7 +218,24 @@ class HostManagerTestCase(test.TestCase):
                  availability_zone='zone3', updated_at=timeutils.utcnow()),
         ]
 
-        # First test: service_is_up is always True, host5 is disabled
+        service_states = {
+            'host1': dict(volume_backend_name='AAA',
+                          total_capacity_gb=512, free_capacity_gb=200,
+                          timestamp=None, reserved_percentage=0,
+                          provisioned_capacity_gb=312),
+            'host2': dict(volume_backend_name='BBB',
+                          total_capacity_gb=256, free_capacity_gb=100,
+                          timestamp=None, reserved_percentage=0,
+                          provisioned_capacity_gb=156),
+            'host3': dict(volume_backend_name='CCC',
+                          total_capacity_gb=10000, free_capacity_gb=700,
+                          timestamp=None, reserved_percentage=0,
+                          provisioned_capacity_gb=9300),
+        }
+
+        # First test: service_is_up is always True, host5 is disabled,
+        # host4 has no capabilities
+        self.host_manager.service_states = service_states
         _mock_service_get_all_by_topic.return_value = services
         _mock_service_is_up.return_value = True
         _mock_warning = mock.Mock()
@@ -203,19 +253,19 @@ class HostManagerTestCase(test.TestCase):
 
         # Get host_state_map and make sure we have the first 4 hosts
         host_state_map = self.host_manager.host_state_map
-        self.assertEqual(len(host_state_map), 4)
-        for i in xrange(4):
+        self.assertEqual(len(host_state_map), 3)
+        for i in xrange(3):
             volume_node = services[i]
             host = volume_node['host']
             self.assertEqual(host_state_map[host].service, volume_node)
 
-        # Second test: Now service_is_up returns False for host4
+        # Second test: Now service_is_up returns False for host3
         _mock_service_is_up.reset_mock()
-        _mock_service_is_up.side_effect = [True, True, True, False]
+        _mock_service_is_up.side_effect = [True, True, False, True]
         _mock_service_get_all_by_topic.reset_mock()
         _mock_warning.reset_mock()
 
-        # Get all states, make sure host 4 is reported as down
+        # Get all states, make sure host 3 is reported as down
         self.host_manager.get_all_host_states(context)
         _mock_service_get_all_by_topic.assert_called_with(context,
                                                           topic,
@@ -224,16 +274,14 @@ class HostManagerTestCase(test.TestCase):
         for service in services:
             expected.append(mock.call(service))
         self.assertEqual(expected, _mock_service_is_up.call_args_list)
-        expected = []
-        for num in ['4']:
-            expected.append(mock.call("volume service is down. "
-                                      "(host: host" + num + ")"))
-        self.assertEqual(expected, _mock_warning.call_args_list)
+        _mock_warning.assert_called_once_with("volume service is down. "
+                                              "(host: host3)")
 
-        # Get host_state_map and make sure we have the first 4 hosts
+        # Get host_state_map and make sure we have the first 2 hosts (host3 is
+        # down, host4 is missing capabilities)
         host_state_map = self.host_manager.host_state_map
-        self.assertEqual(len(host_state_map), 3)
-        for i in xrange(3):
+        self.assertEqual(len(host_state_map), 2)
+        for i in xrange(2):
             volume_node = services[i]
             host = volume_node['host']
             self.assertEqual(host_state_map[host].service,

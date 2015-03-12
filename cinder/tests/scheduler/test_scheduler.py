@@ -255,6 +255,13 @@ class SchedulerTestCase(test.TestCase):
         _mock_update_cap.assert_called_once_with(service_name, host,
                                                  capabilities)
 
+    @mock.patch('cinder.scheduler.host_manager.HostManager.'
+                'has_all_capabilities', return_value=False)
+    def test_is_ready(self, _mock_has_caps):
+        ready = self.driver.is_ready()
+        _mock_has_caps.assert_called_once_with()
+        self.assertFalse(ready)
+
 
 class SchedulerDriverBaseTestCase(SchedulerTestCase):
     """Test cases for base scheduler driver class methods
