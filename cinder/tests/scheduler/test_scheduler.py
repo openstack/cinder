@@ -49,6 +49,7 @@ class SchedulerManagerTestCase(test.TestCase):
         super(SchedulerManagerTestCase, self).setUp()
         self.flags(scheduler_driver=self.driver_cls_name)
         self.manager = self.manager_cls()
+        self.manager._startup_delay = False
         self.context = context.RequestContext('fake_user', 'fake_project')
         self.topic = 'fake_topic'
         self.fake_args = (1, 2, 3)
@@ -58,6 +59,15 @@ class SchedulerManagerTestCase(test.TestCase):
         # Correct scheduler driver
         manager = self.manager
         self.assertIsInstance(manager.driver, self.driver_cls)
+
+    @mock.patch('eventlet.sleep')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.publish_service_capabilities')
+    def test_init_host_with_rpc(self, publish_capabilities_mock, sleep_mock):
+        self.manager._startup_delay = True
+        self.manager.init_host_with_rpc()
+        publish_capabilities_mock.assert_called_once_with(mock.ANY)
+        sleep_mock.assert_called_once_with(CONF.periodic_interval)
+        self.assertFalse(self.manager._startup_delay)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.'
                 'update_service_capabilities')
@@ -104,6 +114,65 @@ class SchedulerManagerTestCase(test.TestCase):
                                                     {'status': 'error'})
         _mock_sched_create.assert_called_once_with(self.context, request_spec,
                                                    {})
+
+    @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
+    @mock.patch('eventlet.sleep')
+    def test_create_volume_no_delay(self, _mock_sleep, _mock_sched_create):
+        fake_volume_id = 1
+        topic = 'fake_topic'
+
+        request_spec = {'volume_id': fake_volume_id}
+
+        self.manager.create_volume(self.context, topic, fake_volume_id,
+                                   request_spec=request_spec,
+                                   filter_properties={})
+        _mock_sched_create.assert_called_once_with(self.context, request_spec,
+                                                   {})
+        self.assertFalse(_mock_sleep.called)
+
+    @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
+    @mock.patch('cinder.scheduler.driver.Scheduler.is_ready')
+    @mock.patch('eventlet.sleep')
+    def test_create_volume_delay_scheduled_after_3_tries(self, _mock_sleep,
+                                                         _mock_is_ready,
+                                                         _mock_sched_create):
+        self.manager._startup_delay = True
+        fake_volume_id = 1
+        topic = 'fake_topic'
+
+        request_spec = {'volume_id': fake_volume_id}
+
+        _mock_is_ready.side_effect = [False, False, True]
+
+        self.manager.create_volume(self.context, topic, fake_volume_id,
+                                   request_spec=request_spec,
+                                   filter_properties={})
+        _mock_sched_create.assert_called_once_with(self.context, request_spec,
+                                                   {})
+        calls = [mock.call(1)] * 2
+        _mock_sleep.assert_has_calls(calls)
+        self.assertEqual(2, _mock_sleep.call_count)
+
+    @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
+    @mock.patch('cinder.scheduler.driver.Scheduler.is_ready')
+    @mock.patch('eventlet.sleep')
+    def test_create_volume_delay_scheduled_in_1_try(self, _mock_sleep,
+                                                    _mock_is_ready,
+                                                    _mock_sched_create):
+        self.manager._startup_delay = True
+        fake_volume_id = 1
+        topic = 'fake_topic'
+
+        request_spec = {'volume_id': fake_volume_id}
+
+        _mock_is_ready.return_value = True
+
+        self.manager.create_volume(self.context, topic, fake_volume_id,
+                                   request_spec=request_spec,
+                                   filter_properties={})
+        _mock_sched_create.assert_called_once_with(self.context, request_spec,
+                                                   {})
+        self.assertFalse(_mock_sleep.called)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.host_passes_filters')
     @mock.patch('cinder.db.volume_update')
