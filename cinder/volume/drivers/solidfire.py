@@ -56,7 +56,7 @@ sf_opts = [
     cfg.StrOpt('sf_template_account_name',
                default='openstack-vtemplate',
                help='Account name on the SolidFire Cluster to use as owner of '
-                    'template/cache volumes (created if doesnt exist).'),
+                    'template/cache volumes (created if does not exist).'),
 
     cfg.BoolOpt('sf_allow_template_caching',
                 default=True,
