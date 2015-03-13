@@ -48,7 +48,6 @@ from cinder.volume import volume_types
 
 CONF = cfg.CONF
 
-logging.register_options(CONF)
 LOG = logging.getLogger(__name__)
 
 
@@ -1585,7 +1584,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.03.01'
+    VERSION = '05.03.02'
     stats = {'driver_version': VERSION,
              'storage_protocol': None,
              'vendor_name': 'EMC',
