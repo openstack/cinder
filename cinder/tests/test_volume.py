@@ -1189,8 +1189,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         # cleanup resource
         db.volume_destroy(self.context, dst_vol_id)
 
-    def test_create_volume_from_volume_with_glance_volume_metadata_none(self):
+    @mock.patch('cinder.utils.execute')
+    def test_create_volume_from_volume_with_glance_volume_metadata_none(
+            self, mock_execute):
         # create source volume
+        mock_execute.return_value = None
         src_vol = tests_utils.create_volume(self.context, **self.volume_params)
         src_vol_id = src_vol['id']
 
@@ -1217,9 +1220,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         db.volume_destroy(self.context, src_vol_id)
         db.volume_destroy(self.context, dst_vol['id'])
 
+    @mock.patch('cinder.utils.execute')
     def test_create_volume_from_volume_raise_metadata_copy_failure(
-            self):
+            self, mock_execute):
         # create source volume
+        mock_execute.return_value = None
         src_vol = tests_utils.create_volume(self.context, **self.volume_params)
         src_vol_id = src_vol['id']
 
@@ -1239,9 +1244,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         # cleanup resource
         db.volume_destroy(self.context, src_vol_id)
 
+    @mock.patch('cinder.utils.execute')
     def test_create_volume_from_snapshot_raise_metadata_copy_failure(
-            self):
+            self, mock_execute):
         # create source volume
+        mock_execute.return_value = None
         src_vol = tests_utils.create_volume(self.context, **self.volume_params)
         src_vol_id = src_vol['id']
 
@@ -1271,8 +1278,10 @@ class VolumeTestCase(BaseVolumeTestCase):
 
     @mock.patch(
         'cinder.volume.driver.VolumeDriver.create_replica_test_volume')
+    @mock.patch('cinder.utils.execute')
     def test_create_volume_from_srcreplica_raise_metadata_copy_failure(
-            self, _create_replica_test):
+            self, mock_execute, _create_replica_test):
+        mock_execute.return_value = None
         _create_replica_test.return_value = None
         # create source volume
         src_vol = tests_utils.create_volume(self.context, **self.volume_params)
@@ -1294,9 +1303,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         # cleanup resource
         db.volume_destroy(self.context, src_vol_id)
 
+    @mock.patch('cinder.utils.execute')
     def test_create_volume_from_snapshot_with_glance_volume_metadata_none(
-            self):
+            self, mock_execute):
         # create source volume
+        mock_execute.return_value = None
         src_vol = tests_utils.create_volume(self.context, **self.volume_params)
         src_vol_id = src_vol['id']
 
