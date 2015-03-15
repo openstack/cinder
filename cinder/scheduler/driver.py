@@ -69,6 +69,15 @@ class Scheduler(object):
             CONF.scheduler_host_manager)
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
 
+    def is_ready(self):
+        """Returns True if Scheduler is ready to accept requests.
+
+        This is to handle scheduler service startup when it has no volume hosts
+        stats and will fail all the requests.
+        """
+
+        return self.host_manager.has_all_capabilities()
+
     def update_service_capabilities(self, service_name, host, capabilities):
         """Process a capability update from a service node."""
         self.host_manager.update_service_capabilities(service_name,
