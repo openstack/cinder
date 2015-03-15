@@ -349,7 +349,7 @@ class API(base.Base):
                                                    'terminated_at': now})
 
         self.volume_rpcapi.delete_volume(context, volume, unmanage_only)
-        LOG.info(_LI('Succesfully issued request to '
+        LOG.info(_LI('Successfully issued request to '
                      'delete volume: %s.'), volume['id'])
 
     @wrap_check_policy
@@ -843,7 +843,7 @@ class API(base.Base):
         volume = self.db.volume_get(context, snapshot_obj.volume_id)
         self.volume_rpcapi.delete_snapshot(context, snapshot_obj,
                                            volume['host'])
-        LOG.info(_LI('Succesfully issued request to '
+        LOG.info(_LI('Successfully issued request to '
                      'delete snapshot: %s'), snapshot_obj.id)
 
     @wrap_check_policy
