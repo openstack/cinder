@@ -22,6 +22,7 @@ import string
 import uuid
 
 import fixtures
+import mock
 from oslo_log import log as logging
 
 from cinder import service
@@ -69,7 +70,10 @@ class _IntegratedTestBase(test.TestCase):
 
         # set up services
         self.volume = self.start_service('volume')
-        self.scheduler = self.start_service('scheduler')
+        # NOTE(dulek): Mocking eventlet.sleep so test won't time out on
+        # scheduler service start.
+        with mock.patch('eventlet.sleep'):
+            self.scheduler = self.start_service('scheduler')
         self._start_api_service()
         self.addCleanup(self.osapi.stop)
 
