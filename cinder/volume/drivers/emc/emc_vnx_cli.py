@@ -1584,7 +1584,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.03.02'
+    VERSION = '05.03.03'
     stats = {'driver_version': VERSION,
              'storage_protocol': None,
              'vendor_name': 'EMC',
@@ -1809,8 +1809,7 @@ class EMCVnxCliBase(object):
         self._client.expand_lun_and_wait(volume['name'], new_size)
 
     def _get_original_status(self, volume):
-        if (volume['instance_uuid'] is None and
-                volume['attached_host'] is None):
+        if not volume['volume_attachment']:
             return 'available'
         else:
             return 'in-use'
