@@ -14,7 +14,7 @@ from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import Integer, MetaData, String, Table, ForeignKey
 
-from cinder.i18n import _
+from cinder.i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def upgrade(migrate_engine):
     try:
         volume_admin_metadata.create()
     except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(volume_admin_metadata))
+        LOG.error(_LE("Table |%s| not created!"), repr(volume_admin_metadata))
         raise
 
 
@@ -57,5 +57,5 @@ def downgrade(migrate_engine):
     try:
         volume_admin_metadata.drop()
     except Exception:
-        LOG.error(_("volume_admin_metadata table not dropped"))
+        LOG.error(_LE("volume_admin_metadata table not dropped"))
         raise

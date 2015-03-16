@@ -16,6 +16,8 @@ from migrate import ForeignKeyConstraint
 from oslo_log import log as logging
 from sqlalchemy import Integer, MetaData, String, Table
 
+from cinder.i18n import _LI
+
 LOG = logging.getLogger(__name__)
 
 
@@ -77,7 +79,7 @@ def upgrade(migrate_engine):
                                         name=fkey_name)
             try:
                 fkey.create()
-                LOG.info('Created foreign key %s' % fkey_name)
+                LOG.info(_LI('Created foreign key %s'), fkey_name)
             except Exception:
                 if migrate_engine.url.get_dialect().name.startswith('sqlite'):
                     pass
@@ -156,7 +158,7 @@ def downgrade(migrate_engine):
                                         name=fkey_name)
             try:
                 fkey.create()
-                LOG.info('Created foreign key %s' % fkey_name)
+                LOG.info(_LI('Created foreign key %s'), fkey_name)
             except Exception:
                 if migrate_engine.url.get_dialect().name.startswith('sqlite'):
                     pass

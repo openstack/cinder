@@ -16,7 +16,7 @@ from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey
 from sqlalchemy import Integer, MetaData, String, Table
 
-from cinder.i18n import _
+from cinder.i18n import _LE, _LI
 
 
 LOG = logging.getLogger(__name__)
@@ -240,7 +240,7 @@ def upgrade(migrate_engine):
             table.create()
         except Exception:
             LOG.info(repr(table))
-            LOG.exception(_('Exception while creating table.'))
+            LOG.exception(_LE('Exception while creating table.'))
             raise
 
     if migrate_engine.name == "mysql":
@@ -275,5 +275,5 @@ def downgrade(migrate_engine):
     tables = define_tables(meta)
     tables.reverse()
     for table in tables:
-        LOG.info("dropping table %(table)s" % {'table': table})
+        LOG.info(_LI("dropping table %(table)s"), {'table': table})
         table.drop()
