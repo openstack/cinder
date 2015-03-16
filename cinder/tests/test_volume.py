@@ -1831,7 +1831,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
         attachment2 = self.volume.attach_volume(self.context, volume_id,
                                                 instance_uuid_2, None,
                                                 mountpoint, 'ro')
@@ -1888,7 +1888,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                mountpoint, 'ro')
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual('in-use', vol['status'])
-        self.assertEqual(True, vol['multiattach'])
+        self.assertTrue(vol['multiattach'])
         self.assertEqual('attached', attachment['attach_status'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual(instance_uuid, attachment['instance_uuid'])
@@ -1899,7 +1899,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume_id, connector)
@@ -1958,7 +1958,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                mountpoint, 'ro')
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual('in-use', vol['status'])
-        self.assertEqual(False, vol['multiattach'])
+        self.assertFalse(vol['multiattach'])
         self.assertEqual('attached', attachment['attach_status'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual(instance_uuid, attachment['instance_uuid'])
@@ -1969,7 +1969,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume_id, connector)
@@ -2016,7 +2016,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertIsNone(attachment['instance_uuid'])
         # sanitized, conforms to RFC-952 and RFC-1123 specs.
-        self.assertEqual(attachment['attached_host'], 'fake-host')
+        self.assertEqual('fake-host', attachment['attached_host'])
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(2, len(admin_metadata))
         expected = dict(readonly='False', attached_mode='rw')
@@ -2036,7 +2036,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                           volume_id)
         self.volume.detach_volume(self.context, volume_id, attachment['id'])
         vol = db.volume_get(self.context, volume_id)
-        self.assertEqual(vol['status'], "available")
+        self.assertEqual("available", vol['status'])
 
         self.volume.delete_volume(self.context, volume_id)
         self.assertRaises(exception.VolumeNotFound,
@@ -2058,23 +2058,23 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                'fake_host', mountpoint, 'rw')
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual('in-use', vol['status'])
-        self.assertEqual(True, vol['multiattach'])
+        self.assertTrue(vol['multiattach'])
         self.assertEqual('attached', attachment['attach_status'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertIsNone(attachment['instance_uuid'])
         # sanitized, conforms to RFC-952 and RFC-1123 specs.
-        self.assertEqual(attachment['attached_host'], 'fake-host')
+        self.assertEqual('fake-host', attachment['attached_host'])
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(2, len(admin_metadata))
         expected = dict(readonly='False', attached_mode='rw')
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume_id, connector)
-        self.assertEqual(conn_info['data']['access_mode'], 'rw')
+        self.assertEqual('rw', conn_info['data']['access_mode'])
 
         mountpoint2 = "/dev/sdx"
         attachment2 = self.volume.attach_volume(self.context, volume_id, None,
@@ -2094,11 +2094,11 @@ class VolumeTestCase(BaseVolumeTestCase):
                           volume_id)
         self.volume.detach_volume(self.context, volume_id, attachment['id'])
         vol = db.volume_get(self.context, volume_id)
-        self.assertEqual(vol['status'], "in-use")
+        self.assertEqual("in-use", vol['status'])
 
         self.volume.detach_volume(self.context, volume_id, attachment2['id'])
         vol = db.volume_get(self.context, volume_id)
-        self.assertEqual(vol['status'], "available")
+        self.assertEqual("available", vol['status'])
 
         self.volume.delete_volume(self.context, volume_id)
         self.assertRaises(exception.VolumeNotFound,
@@ -2120,12 +2120,12 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                'fake_host', mountpoint, 'rw')
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual('in-use', vol['status'])
-        self.assertEqual(False, vol['multiattach'])
+        self.assertFalse(vol['multiattach'])
         self.assertEqual('attached', attachment['attach_status'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertIsNone(attachment['instance_uuid'])
         # sanitized, conforms to RFC-952 and RFC-1123 specs.
-        self.assertEqual(attachment['attached_host'], 'fake-host')
+        self.assertEqual('fake-host', attachment['attached_host'])
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(2, len(admin_metadata))
         expected = dict(readonly='False', attached_mode='rw')
@@ -4466,7 +4466,7 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
                                          self.image_meta)
 
         volume = db.volume_get(self.context, self.volume_id)
-        self.assertEqual(volume['status'], 'available')
+        self.assertEqual('available', volume['status'])
 
     def test_copy_volume_to_image_exception(self):
         self.image_meta['id'] = FAKE_UUID
