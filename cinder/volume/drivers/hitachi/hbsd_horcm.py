@@ -27,7 +27,7 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _LE, _LW
+from cinder.i18n import _LE, _LI, _LW
 from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
@@ -454,7 +454,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
                 continue
 
             target_wwns[port] = line[10]
-        LOG.debug('target wwns: %s' % target_wwns)
+        LOG.debug('target wwns: %s', target_wwns)
         return target_wwns
 
     def comm_get_hbawwn(self, hostgroups, wwns, port, is_detected):
@@ -584,8 +584,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
         if (re.search('SSB=%s' % SNAP_LAST_PATH_SSB, stderr) and
                 not self.comm_get_snapshot(ldev) or
                 re.search('SSB=%s' % HOST_IO_SSB, stderr)):
-            msg = basic_lib.set_msg(310, ldev=ldev, reason=stderr)
-            LOG.warning(msg)
+            LOG.warning(basic_lib.set_msg(310, ldev=ldev, reason=stderr))
 
             if time.time() - start >= LUN_DELETE_WAITTIME:
                 msg = basic_lib.output_err(
@@ -790,9 +789,8 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
                     if is_once:
                         break
                 else:
-                    msg = basic_lib.set_msg(
-                        314, ldev=ldev, lun=lun, port=port, id=gid)
-                    LOG.warning(msg)
+                    LOG.warning(basic_lib.set_msg(
+                        314, ldev=ldev, lun=lun, port=port, id=gid))
 
         finally:
             self.comm_unlock()
@@ -885,8 +883,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
             self.comm_lock()
             ret, stdout, stderr = self.exec_raidcom('raidcom', args)
             if ret:
-                msg = basic_lib.set_msg(315, ldev=ldev, reason=stderr)
-                LOG.warning(msg)
+                LOG.warning(basic_lib.set_msg(315, ldev=ldev, reason=stderr))
         finally:
             self.comm_unlock()
 
@@ -896,9 +893,8 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
     def discard_zero_page(self, ldev):
         try:
             self.comm_modify_ldev(ldev)
-        except Exception as e:
-            LOG.warning(_LW('Failed to discard zero page: %s') %
-                        six.text_type(e))
+        except Exception as ex:
+            LOG.warning(_LW('Failed to discard zero page: %s'), ex)
 
     @storage_synchronized
     def comm_add_snapshot(self, pvol, svol):
@@ -1396,8 +1392,7 @@ HORCM_CMD
                                            [basic_lib.PSUS], timeout,
                                            interval, check_svol=True)
                         except Exception as ex:
-                            LOG.warning(_LW('Failed to create pair: %s') %
-                                        six.text_type(ex))
+                            LOG.warning(_LW('Failed to create pair: %s'), ex)
 
                         try:
                             self.comm_pairsplit(copy_group, ldev_name)
@@ -1406,23 +1401,20 @@ HORCM_CMD
                                 [basic_lib.SMPL], timeout,
                                 self.conf.hitachi_async_copy_check_interval)
                         except Exception as ex:
-                            LOG.warning(_LW('Failed to create pair: %s') %
-                                        six.text_type(ex))
+                            LOG.warning(_LW('Failed to create pair: %s'), ex)
 
                     if self.is_smpl(copy_group, ldev_name):
                         try:
                             self.delete_pair_config(pvol, svol, copy_group,
                                                     ldev_name)
                         except Exception as ex:
-                            LOG.warning(_LW('Failed to create pair: %s') %
-                                        six.text_type(ex))
+                            LOG.warning(_LW('Failed to create pair: %s'), ex)
 
                     if restart:
                         try:
                             self.restart_pair_horcm()
                         except Exception as ex:
-                            LOG.warning(_LW('Failed to restart horcm: %s') %
-                                        six.text_type(ex))
+                            LOG.warning(_LW('Failed to restart horcm: %s'), ex)
 
         else:
             self.check_snap_count(pvol)
@@ -1440,8 +1432,7 @@ HORCM_CMD
                             pvol, svol, [basic_lib.SMPL], timeout,
                             self.conf.hitachi_async_copy_check_interval)
                     except Exception as ex:
-                        LOG.warning(_LW('Failed to create pair: %s') %
-                                    six.text_type(ex))
+                        LOG.warning(_LW('Failed to create pair: %s'), ex)
 
     def delete_pair(self, pvol, svol, is_vvol):
         timeout = basic_lib.DEFAULT_PROCESS_WAITTIME
@@ -1480,8 +1471,8 @@ HORCM_CMD
         for opt in volume_opts:
             if not opt.secret:
                 value = getattr(conf, opt.name)
-                LOG.info('\t%-35s%s' % (opt.name + ': ',
-                         six.text_type(value)))
+                LOG.info(_LI('\t%(name)-35s : %(value)s'),
+                         {'name': opt.name, 'value': value})
 
     def create_lock_file(self):
         inst = self.conf.hitachi_horcm_numbers[0]

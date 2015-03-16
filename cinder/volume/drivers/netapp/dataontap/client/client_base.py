@@ -83,12 +83,11 @@ class Client(object):
             self.connection.invoke_successfully(lun_create, True)
         except netapp_api.NaApiError as ex:
             with excutils.save_and_reraise_exception():
-                msg = _LE("Error provisioning volume %(lun_name)s on "
-                          "%(volume_name)s. Details: %(ex)s")
-                msg_args = {'lun_name': lun_name,
-                            'volume_name': volume_name,
-                            'ex': six.text_type(ex)}
-                LOG.error(msg % msg_args)
+                LOG.error(_LE("Error provisioning volume %(lun_name)s on "
+                              "%(volume_name)s. Details: %(ex)s"),
+                          {'lun_name': lun_name,
+                           'volume_name': volume_name,
+                           'ex': ex})
 
     def destroy_lun(self, path, force=True):
         """Destroys the LUN at the path."""
@@ -99,7 +98,7 @@ class Client(object):
             lun_destroy.add_new_child('force', 'true')
         self.connection.invoke_successfully(lun_destroy, True)
         seg = path.split("/")
-        LOG.debug("Destroyed LUN %s" % seg[-1])
+        LOG.debug("Destroyed LUN %s", seg[-1])
 
     def map_lun(self, path, igroup_name, lun_id=None):
         """Maps LUN to the initiator and returns LUN id assigned."""
@@ -114,9 +113,8 @@ class Client(object):
         except netapp_api.NaApiError as e:
             code = e.code
             message = e.message
-            msg = _LW('Error mapping LUN. Code :%(code)s, Message:%(message)s')
-            msg_fmt = {'code': code, 'message': message}
-            LOG.warning(msg % msg_fmt)
+            LOG.warning(_LW('Error mapping LUN. Code :%(code)s, Message: '
+                            '%(message)s'), {'code': code, 'message': message})
             raise
 
     def unmap_lun(self, path, igroup_name):
@@ -127,11 +125,10 @@ class Client(object):
         try:
             self.connection.invoke_successfully(lun_unmap, True)
         except netapp_api.NaApiError as e:
-            msg = _LW("Error unmapping LUN. Code :%(code)s,"
-                      " Message:%(message)s")
-            msg_fmt = {'code': e.code, 'message': e.message}
             exc_info = sys.exc_info()
-            LOG.warning(msg % msg_fmt)
+            LOG.warning(_LW("Error unmapping LUN. Code :%(code)s, Message: "
+                            "%(message)s"), {'code': e.code,
+                                             'message': e.message})
             # if the LUN is already unmapped
             if e.code == '13115' or e.code == '9016':
                 pass
@@ -186,8 +183,8 @@ class Client(object):
             geometry['max_resize'] =\
                 result.get_child_content("max-resize-size")
         except Exception as e:
-            LOG.error(_LE("LUN %(path)s geometry failed. Message - %(msg)s")
-                      % {'path': path, 'msg': e.message})
+            LOG.error(_LE("LUN %(path)s geometry failed. Message - %(msg)s"),
+                      {'path': path, 'msg': e.message})
         return geometry
 
     def get_volume_options(self, volume_name):
@@ -205,8 +202,8 @@ class Client(object):
         """Moves the LUN at path to new path."""
         seg = path.split("/")
         new_seg = new_path.split("/")
-        LOG.debug("Moving LUN %(name)s to %(new_name)s."
-                  % {'name': seg[-1], 'new_name': new_seg[-1]})
+        LOG.debug("Moving LUN %(name)s to %(new_name)s.",
+                  {'name': seg[-1], 'new_name': new_seg[-1]})
         lun_move = netapp_api.NaElement("lun-move")
         lun_move.add_new_child("path", path)
         lun_move.add_new_child("new-path", new_path)
@@ -337,6 +334,6 @@ class Client(object):
                 na_server.invoke_successfully(ems, True)
                 LOG.debug("ems executed successfully.")
             except netapp_api.NaApiError as e:
-                LOG.warning(_LW("Failed to invoke ems. Message : %s") % e)
+                LOG.warning(_LW("Failed to invoke ems. Message : %s"), e)
             finally:
                 requester.last_ems = timeutils.utcnow()

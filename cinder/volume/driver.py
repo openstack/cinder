@@ -351,12 +351,12 @@ class BaseVD(object):
                 self.terminate_connection(volume, properties, force=force)
             except Exception as err:
                 err_msg = (_('Unable to terminate volume connection: %(err)s')
-                           % {'err': err})
+                           % {'err': six.text_type(err)})
                 LOG.error(err_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
 
             try:
-                LOG.debug(("volume %s: removing export"), volume['id'])
+                LOG.debug("volume %s: removing export", volume['id'])
                 self.remove_export(context, volume)
             except Exception as ex:
                 LOG.exception(_LE("Error detaching volume %(volume)s, "
@@ -390,7 +390,7 @@ class BaseVD(object):
                                                         cgroup_name)
             except processutils.ProcessExecutionError as err:
                 LOG.warning(_LW('Failed to activate volume copy throttling: '
-                                '%(err)s'), {'err': six.text_type(err)})
+                                '%(err)s'), {'err': err})
         throttling.Throttle.set_default(self._throttle)
 
     def get_version(self):
@@ -482,8 +482,8 @@ class BaseVD(object):
 
     def copy_volume_data(self, context, src_vol, dest_vol, remote=None):
         """Copy data from src_vol to dest_vol."""
-        LOG.debug(('copy_data_between_volumes %(src)s -> %(dest)s.')
-                  % {'src': src_vol['name'], 'dest': dest_vol['name']})
+        LOG.debug('copy_data_between_volumes %(src)s -> %(dest)s.', {
+            'src': src_vol['name'], 'dest': dest_vol['name']})
 
         use_multipath = self.configuration.use_multipath_for_image_xfer
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
@@ -499,8 +499,8 @@ class BaseVD(object):
                 remote=dest_remote)
         except Exception:
             with excutils.save_and_reraise_exception():
-                msg = _("Failed to attach volume %(vol)s")
-                LOG.error(msg % {'vol': dest_vol['id']})
+                LOG.error(_LE("Failed to attach volume %(vol)s"),
+                          {'vol': dest_vol['id']})
                 self.db.volume_update(context, dest_vol['id'],
                                       {'status': dest_orig_status})
 
@@ -513,8 +513,8 @@ class BaseVD(object):
                                                            remote=src_remote)
         except Exception:
             with excutils.save_and_reraise_exception():
-                msg = _("Failed to attach volume %(vol)s")
-                LOG.error(msg % {'vol': src_vol['id']})
+                LOG.error(_LE("Failed to attach volume %(vol)s"),
+                          {'vol': src_vol['id']})
                 self.db.volume_update(context, src_vol['id'],
                                       {'status': src_orig_status})
                 self._detach_volume(context, dest_attach_info, dest_vol,
@@ -532,8 +532,8 @@ class BaseVD(object):
             copy_error = False
         except Exception:
             with excutils.save_and_reraise_exception():
-                msg = _("Failed to copy volume %(src)s to %(dest)s.")
-                LOG.error(msg % {'src': src_vol['id'], 'dest': dest_vol['id']})
+                LOG.error(_LE("Failed to copy volume %(src)s to %(dest)s."),
+                          {'src': src_vol['id'], 'dest': dest_vol['id']})
         finally:
             self._detach_volume(context, dest_attach_info, dest_vol,
                                 properties, force=copy_error,
@@ -544,7 +544,7 @@ class BaseVD(object):
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
-        LOG.debug(('copy_image_to_volume %s.') % volume['name'])
+        LOG.debug('copy_image_to_volume %s.', volume['name'])
 
         use_multipath = self.configuration.use_multipath_for_image_xfer
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
@@ -564,7 +564,7 @@ class BaseVD(object):
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-        LOG.debug(('copy_volume_to_image %s.') % volume['name'])
+        LOG.debug('copy_volume_to_image %s.', volume['name'])
 
         use_multipath = self.configuration.use_multipath_for_image_xfer
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
@@ -663,7 +663,7 @@ class BaseVD(object):
             # clean this up in the future.
             model_update = None
             try:
-                LOG.debug(("Volume %s: creating export"), volume['id'])
+                LOG.debug("Volume %s: creating export", volume['id'])
                 model_update = self.create_export(context, volume)
                 if model_update:
                     volume = self.db.volume_update(context, volume['id'],
@@ -672,7 +672,7 @@ class BaseVD(object):
                 if model_update:
                     LOG.exception(_LE("Failed updating model of volume "
                                       "%(volume_id)s with driver provided "
-                                      "model %(model)s") %
+                                      "model %(model)s"),
                                   {'volume_id': volume['id'],
                                    'model': model_update})
                     raise exception.ExportFailure(reason=ex)
@@ -682,13 +682,15 @@ class BaseVD(object):
             except Exception as err:
                 try:
                     err_msg = (_('Unable to fetch connection information from '
-                                 'backend: %(err)s') % {'err': err})
+                                 'backend: %(err)s') %
+                               {'err': six.text_type(err)})
                     LOG.error(err_msg)
                     LOG.debug("Cleaning up failed connect initialization.")
                     self.remove_export(context, volume)
                 except Exception as ex:
                     ex_msg = (_('Error encountered during cleanup '
-                                'of a failed attach: %(ex)s') % {'ex': ex})
+                                'of a failed attach: %(ex)s') %
+                              {'ex': six.text_type(ex)})
                     LOG.error(err_msg)
                     raise exception.VolumeBackendAPIException(data=ex_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
@@ -728,8 +730,7 @@ class BaseVD(object):
         """Create a new backup from an existing volume."""
         volume = self.db.volume_get(context, backup['volume_id'])
 
-        LOG.debug(('Creating a new backup for volume %s.') %
-                  volume['name'])
+        LOG.debug('Creating a new backup for volume %s.', volume['name'])
 
         use_multipath = self.configuration.use_multipath_for_image_xfer
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
@@ -755,7 +756,7 @@ class BaseVD(object):
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
         LOG.debug(('Restoring backup %(backup)s to '
-                   'volume %(volume)s.') %
+                   'volume %(volume)s.'),
                   {'backup': backup['id'],
                    'volume': volume['name']})
 
@@ -1391,8 +1392,8 @@ class ISCSIDriver(VolumeDriver):
     def _do_iscsi_discovery(self, volume):
         # TODO(justinsb): Deprecate discovery and use stored info
         # NOTE(justinsb): Discovery won't work with CHAP-secured targets (?)
-        LOG.warn(_LW("ISCSI provider_location not "
-                     "stored, using discovery"))
+        LOG.warning(_LW("ISCSI provider_location not "
+                        "stored, using discovery"))
 
         volume_name = volume['name']
 
@@ -1405,9 +1406,9 @@ class ISCSIDriver(VolumeDriver):
                                         volume['host'].split('@')[0],
                                         run_as_root=True)
         except processutils.ProcessExecutionError as ex:
-            LOG.error(_LE("ISCSI discovery attempt failed for:%s") %
+            LOG.error(_LE("ISCSI discovery attempt failed for:%s"),
                       volume['host'].split('@')[0])
-            LOG.debug("Error from iscsiadm -m discovery: %s" % ex.stderr)
+            LOG.debug("Error from iscsiadm -m discovery: %s", ex.stderr)
             return None
 
         for target in out.splitlines():
@@ -1468,7 +1469,7 @@ class ISCSIDriver(VolumeDriver):
                         (volume['name']))
                 raise exception.InvalidVolume(reason=msg)
 
-            LOG.debug("ISCSI Discovery: Found %s" % (location))
+            LOG.debug("ISCSI Discovery: Found %s", location)
             properties['target_discovered'] = True
 
         results = location.split(" ")
@@ -1524,8 +1525,8 @@ class ISCSIDriver(VolumeDriver):
                                    '-p', iscsi_properties['target_portal'],
                                    *iscsi_command, run_as_root=True,
                                    check_exit_code=check_exit_code)
-        LOG.debug("iscsiadm %s: stdout=%s stderr=%s" %
-                  (iscsi_command, out, err))
+        LOG.debug("iscsiadm %(command)s: stdout=%(out)s stderr=%(err)s",
+                  {'command': iscsi_command, 'out': out, 'err': err})
         return (out, err)
 
     def _run_iscsiadm_bare(self, iscsi_command, **kwargs):
@@ -1534,8 +1535,8 @@ class ISCSIDriver(VolumeDriver):
                                    *iscsi_command,
                                    run_as_root=True,
                                    check_exit_code=check_exit_code)
-        LOG.debug("iscsiadm %s: stdout=%s stderr=%s" %
-                  (iscsi_command, out, err))
+        LOG.debug("iscsiadm %(command)s: stdout=%(out)s stderr=%(err)s",
+                  {'command': iscsi_command, 'out': out, 'err': err})
         return (out, err)
 
     def _iscsiadm_update(self, iscsi_properties, property_key, property_value,
@@ -1597,9 +1598,8 @@ class ISCSIDriver(VolumeDriver):
         # iSCSI drivers require the initiator information
         required = 'initiator'
         if required not in connector:
-            err_msg = (_LE('The volume driver requires %(data)s '
-                           'in the connector.'), {'data': required})
-            LOG.error(*err_msg)
+            LOG.error(_LE('The volume driver requires %(data)s '
+                          'in the connector.'), {'data': required})
             raise exception.InvalidConnectorException(missing=required)
 
     def terminate_connection(self, volume, connector, **kwargs):
@@ -1847,11 +1847,10 @@ class FibreChannelDriver(VolumeDriver):
     def validate_connector_has_setting(connector, setting):
         """Test for non-empty setting in connector."""
         if setting not in connector or not connector[setting]:
-            msg = (_LE(
+            LOG.error(_LE(
                 "FibreChannelDriver validate_connector failed. "
                 "No '%(setting)s'. Make sure HBA state is Online."),
                 {'setting': setting})
-            LOG.error(*msg)
             raise exception.InvalidConnectorException(missing=setting)
 
     def get_volume_stats(self, refresh=False):

@@ -467,7 +467,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
             protocol = host['capabilities']['storage_protocol']
             if protocol != 'FC':
                 LOG.debug("3PAR FC driver cannot migrate in-use volume "
-                          "to a host with storage_protocol=%s." % protocol)
+                          "to a host with storage_protocol=%s.", protocol)
                 return False, None
 
         common = self._login()

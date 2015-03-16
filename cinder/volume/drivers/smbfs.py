@@ -228,8 +228,8 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         if not volume['provider_location']:
-            LOG.warn(_LW('Volume %s does not have provider_location '
-                         'specified, skipping.'), volume['name'])
+            LOG.warning(_LW('Volume %s does not have provider_location '
+                            'specified, skipping.'), volume['name'])
             return
 
         self._ensure_share_mounted(volume['provider_location'])
@@ -239,7 +239,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         if os.path.exists(mounted_path):
             self._delete(mounted_path)
         else:
-            LOG.debug("Skipping deletion of volume %s as it does not exist." %
+            LOG.debug("Skipping deletion of volume %s as it does not exist.",
                       mounted_path)
 
         info_path = self._local_path_volume_info(volume)
@@ -264,7 +264,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         volume_path = self.local_path(volume)
         volume_size = volume['size']
 
-        LOG.debug("Creating new volume at %s." % volume_path)
+        LOG.debug("Creating new volume at %s.", volume_path)
 
         if os.path.exists(volume_path):
             msg = _('File already exists at %s.') % volume_path
@@ -335,7 +335,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
             raise exception.SmbfsNoSuitableShareFound(
                 volume_size=volume_size_in_gib)
 
-        LOG.debug('Selected %s as target smbfs share.' % target_share)
+        LOG.debug('Selected %s as target smbfs share.', target_share)
 
         return target_share
 
@@ -365,13 +365,13 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         used = (total_size - total_available) / total_size
 
         if used > used_ratio:
-            LOG.debug('%s is above smbfs_used_ratio.' % smbfs_share)
+            LOG.debug('%s is above smbfs_used_ratio.', smbfs_share)
             return False
         if apparent_available <= requested_volume_size:
-            LOG.debug('%s is above smbfs_oversub_ratio.' % smbfs_share)
+            LOG.debug('%s is above smbfs_oversub_ratio.', smbfs_share)
             return False
         if total_allocated / total_size >= oversub_ratio:
-            LOG.debug('%s reserved space is above smbfs_oversub_ratio.' %
+            LOG.debug('%s reserved space is above smbfs_oversub_ratio.',
                       smbfs_share)
             return False
         return True
@@ -407,7 +407,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         volume_path = self.local_path(volume)
 
         self._check_extend_volume_support(volume, size_gb)
-        LOG.info(_LI('Resizing file to %sG...') % size_gb)
+        LOG.info(_LI('Resizing file to %sG...'), size_gb)
 
         self._do_extend_volume(volume_path, size_gb, volume['name'])
 
@@ -458,7 +458,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         """
 
         LOG.debug("Snapshot: %(snap)s, volume: %(vol)s, "
-                  "volume_size: %(size)s" %
+                  "volume_size: %(size)s",
                   {'snap': snapshot['id'],
                    'vol': volume['id'],
                    'size': volume_size})
@@ -477,7 +477,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
                                        snapshot['volume']['name'])
         path_to_snap_img = os.path.join(vol_dir, img_info.backing_file)
 
-        LOG.debug("Will copy from snapshot at %s" % path_to_snap_img)
+        LOG.debug("Will copy from snapshot at %s", path_to_snap_img)
 
         image_utils.convert_image(path_to_snap_img,
                                   self.local_path(volume),

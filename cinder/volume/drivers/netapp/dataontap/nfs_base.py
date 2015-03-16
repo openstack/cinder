@@ -241,8 +241,8 @@ class NetAppNfsDriver(nfs.NfsDriver):
                 volume['provider_location'], file_name)
         except Exception as e:
             LOG.warning(_LW('Exception while registering image %(image_id)s'
-                            ' in cache. Exception: %(exc)s')
-                        % {'image_id': image_id, 'exc': e.__str__()})
+                            ' in cache. Exception: %(exc)s'),
+                        {'image_id': image_id, 'exc': e})
 
     def _find_image_in_cache(self, image_id):
         """Finds image in cache and returns list of shares with file name."""
@@ -254,8 +254,8 @@ class NetAppNfsDriver(nfs.NfsDriver):
                 file_path = '%s/%s' % (dir, file_name)
                 if os.path.exists(file_path):
                     LOG.debug('Found cache file for image %(image_id)s'
-                              ' on share %(share)s'
-                              % {'image_id': image_id, 'share': share})
+                              ' on share %(share)s',
+                              {'image_id': image_id, 'share': share})
                     result.append((share, file_name))
         return result
 
@@ -309,8 +309,8 @@ class NetAppNfsDriver(nfs.NfsDriver):
                         continue
                 except Exception as e:
                     LOG.warning(_LW('Exception during cache cleaning'
-                                    ' %(share)s. Message - %(ex)s')
-                                % {'share': share, 'ex': e.__str__()})
+                                    ' %(share)s. Message - %(ex)s'),
+                                {'share': share, 'ex': e})
                     continue
         finally:
             LOG.debug('Image cache cleaning done.')
@@ -366,7 +366,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
             self._execute(*cmd, run_as_root=self._execute_as_root)
             return True
         except Exception as ex:
-            LOG.warning(_LW('Exception during deleting %s'), ex.__str__())
+            LOG.warning(_LW('Exception during deleting %s'), ex)
             return False
 
     def clone_image(self, context, volume,
@@ -394,10 +394,10 @@ class NetAppNfsDriver(nfs.NfsDriver):
             if cloned:
                 post_clone = self._post_clone_image(volume)
         except Exception as e:
-            msg = e.msg if getattr(e, 'msg', None) else e.__str__()
+            msg = e.msg if getattr(e, 'msg', None) else e
             LOG.info(_LI('Image cloning unsuccessful for image'
-                         ' %(image_id)s. Message: %(msg)s')
-                     % {'image_id': image_id, 'msg': msg})
+                         ' %(image_id)s. Message: %(msg)s'),
+                     {'image_id': image_id, 'msg': msg})
             vol_path = self.local_path(volume)
             volume['provider_location'] = None
             if os.path.exists(vol_path):
@@ -645,8 +645,8 @@ class NetAppNfsDriver(nfs.NfsDriver):
         try:
             return _move_file(source_path, dest_path)
         except Exception as e:
-            LOG.warning(_LW('Exception moving file %(src)s. Message - %(e)s')
-                        % {'src': source_path, 'e': e})
+            LOG.warning(_LW('Exception moving file %(src)s. Message - %(e)s'),
+                        {'src': source_path, 'e': e})
         return False
 
     def _get_export_ip_path(self, volume_id=None, share=None):

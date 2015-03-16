@@ -168,7 +168,7 @@ class V6000Common(object):
         """
         lun_type = '0'
 
-        LOG.debug("Creating LUN %(name)s, %(size)s GB." %
+        LOG.debug("Creating LUN %(name)s, %(size)s GB.",
                   {'name': volume['name'], 'size': volume['size']})
 
         if self.config.san_thin_provision:
@@ -188,7 +188,7 @@ class V6000Common(object):
             LOG.debug("Lun %s already exists, continuing.", volume['id'])
 
         except Exception:
-            LOG.warn(_LW("Lun create for %s failed!"), volume['id'])
+            LOG.warning(_LW("Lun create for %s failed!"), volume['id'])
             raise
 
     @utils.synchronized('vmem-lun')
@@ -213,8 +213,8 @@ class V6000Common(object):
             LOG.debug("Lun %s already deleted, continuing.", volume['id'])
 
         except exception.ViolinBackendErrExists:
-            LOG.warn(_LW("Lun %s has dependent snapshots, skipping."),
-                     volume['id'])
+            LOG.warning(_LW("Lun %s has dependent snapshots, skipping."),
+                        volume['id'])
             raise exception.VolumeIsBusy(volume_name=volume['id'])
 
         except Exception:
@@ -232,7 +232,7 @@ class V6000Common(object):
             volume   -- volume object provided by the Manager
             new_size -- new (increased) size in GB to be applied
         """
-        LOG.debug("Extending lun %(id)s, from %(size)s to %(new_size)s GB." %
+        LOG.debug("Extending lun %(id)s, from %(size)s to %(new_size)s GB.",
                   {'id': volume['id'], 'size': volume['size'],
                    'new_size': new_size})
 

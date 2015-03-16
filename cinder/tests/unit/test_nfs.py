@@ -119,7 +119,7 @@ class RemoteFsDriverTestCase(test.TestCase):
 
         drv._set_rw_permissions(self.TEST_FILE_NAME)
 
-        self.assertFalse(LOG.warn.called)
+        self.assertFalse(LOG.warning.called)
 
     @mock.patch.object(remotefs, 'LOG')
     def test_set_rw_permissions_without_secure_file_permissions(self, LOG):
@@ -129,10 +129,10 @@ class RemoteFsDriverTestCase(test.TestCase):
 
         drv._set_rw_permissions(self.TEST_FILE_NAME)
 
-        self.assertTrue(LOG.warn.called)
-        warn_msg = "%s is being set with open permissions: ugo+rw" % \
-                   self.TEST_FILE_NAME
-        LOG.warn.assert_called_once_with(warn_msg)
+        self.assertTrue(LOG.warning.called)
+        warn_msg = "%(path)s is being set with open permissions: %(perm)s"
+        LOG.warning.assert_called_once_with(
+            warn_msg, {'path': self.TEST_FILE_NAME, 'perm': 'ugo+rw'})
 
     @mock.patch('os.path.join')
     @mock.patch('os.path.isfile', return_value=False)
@@ -309,7 +309,7 @@ class RemoteFsDriverTestCase(test.TestCase):
         self.assertEqual('false', drv.configuration.nas_secure_file_operations)
         self.assertEqual('false',
                          drv.configuration.nas_secure_file_permissions)
-        self.assertTrue(LOG.warn.called)
+        self.assertTrue(LOG.warning.called)
 
     def test_secure_file_operations_enabled_true(self):
         """Test nas_secure_file_operations = 'true'
@@ -1003,7 +1003,7 @@ class NfsDriverTestCase(test.TestCase):
 
         self.assertEqual('true', drv.configuration.nas_secure_file_operations)
         self.assertEqual('true', drv.configuration.nas_secure_file_permissions)
-        self.assertFalse(LOG.warn.called)
+        self.assertFalse(LOG.warning.called)
 
     @mock.patch.object(nfs, 'LOG')
     def test_set_nas_security_options_when_false(self, LOG):
@@ -1027,7 +1027,7 @@ class NfsDriverTestCase(test.TestCase):
         self.assertEqual('false', drv.configuration.nas_secure_file_operations)
         self.assertEqual('false',
                          drv.configuration.nas_secure_file_permissions)
-        self.assertTrue(LOG.warn.called)
+        self.assertTrue(LOG.warning.called)
 
     def test_set_nas_security_options_exception_if_no_mounted_shares(self):
         """Ensure proper exception is raised if there are no mounted shares."""

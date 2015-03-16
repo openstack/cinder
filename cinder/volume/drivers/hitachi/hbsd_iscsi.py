@@ -24,7 +24,7 @@ from oslo_log import log as logging
 import six
 
 from cinder import exception
-from cinder.i18n import _LE
+from cinder.i18n import _LE, _LI
 from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
@@ -70,8 +70,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
         self.configuration.append_config_values(volume_opts)
         if (self.configuration.hitachi_auth_method and
                 self.configuration.hitachi_auth_method not in CHAP_METHOD):
-            msg = basic_lib.output_err(601, param='hitachi_auth_method')
-            raise exception.HBSDError(message=msg)
+            raise exception.HBSDError(
+                message=basic_lib.output_err(601, param='hitachi_auth_method'))
         if self.configuration.hitachi_auth_method == 'None':
             self.configuration.hitachi_auth_method = None
         for opt in volume_opts:
@@ -84,8 +84,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
         except exception.HBSDError:
             raise
         except Exception as ex:
-            msg = basic_lib.output_err(601, param=six.text_type(ex))
-            raise exception.HBSDError(message=msg)
+            raise exception.HBSDError(
+                message=basic_lib.output_err(601, param=six.text_type(ex)))
 
     def output_param_to_log(self):
         lock = basic_lib.get_process_lock(self.common.system_lock_file)
@@ -95,15 +95,14 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
             for opt in volume_opts:
                 if not opt.secret:
                     value = getattr(self.configuration, opt.name)
-                    LOG.info('\t%-35s%s' % (opt.name + ': ',
-                             six.text_type(value)))
+                    LOG.info(_LI('\t%(name)-35s : %(value)s'),
+                             {'name': opt.name, 'value': value})
 
     def _delete_lun_iscsi(self, hostgroups, ldev):
         try:
             self.common.command.comm_delete_lun_iscsi(hostgroups, ldev)
         except exception.HBSDNotFound:
-            msg = basic_lib.set_msg(301, ldev=ldev)
-            LOG.warning(msg)
+            LOG.warning(basic_lib.set_msg(301, ldev=ldev))
 
     def _add_target(self, hostgroups, ldev):
         self.common.add_lun('autargetmap', hostgroups, ldev)
@@ -111,7 +110,7 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
     def _add_initiator(self, hgs, port, gid, host_iqn):
         self.common.command.comm_add_initiator(port, gid, host_iqn)
         hgs.append({'port': port, 'gid': int(gid), 'detected': True})
-        LOG.debug("Create iSCSI target for %s" % hgs)
+        LOG.debug("Create iSCSI target for %s", hgs)
 
     def _get_unused_gid_iscsi(self, port):
         group_range = self.configuration.hitachi_group_range
@@ -123,16 +122,14 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
         ret, _stdout, _stderr = self.common.command.delete_iscsi_target(
             port, target_no, target_alias)
         if ret:
-            msg = basic_lib.set_msg(
-                307, port=port, tno=target_no, alias=target_alias)
-            LOG.warning(msg)
+            LOG.warning(basic_lib.set_msg(
+                307, port=port, tno=target_no, alias=target_alias))
 
     def _delete_chap_user(self, port):
         ret, _stdout, _stderr = self.common.command.delete_chap_user(port)
         if ret:
-            msg = basic_lib.set_msg(
-                303, user=self.configuration.hitachi_auth_user)
-            LOG.warning(msg)
+            LOG.warning(basic_lib.set_msg(
+                303, user=self.configuration.hitachi_auth_user))
 
     def _get_hostgroup_info_iscsi(self, hgs, host_iqn):
         return self.common.command.comm_get_hostgroup_info_iscsi(
@@ -147,8 +144,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
             hostgroup['ip_addr'] = ip_addr
             hostgroup['ip_port'] = ip_port
             hostgroup['target_iqn'] = target_iqn
-            LOG.debug("ip_addr=%(addr)s ip_port=%(port)s target_iqn=%(iqn)s"
-                      % {'addr': ip_addr, 'port': ip_port, 'iqn': target_iqn})
+            LOG.debug("ip_addr=%(addr)s ip_port=%(port)s target_iqn=%(iqn)s",
+                      {'addr': ip_addr, 'port': ip_port, 'iqn': target_iqn})
 
     def _fill_groups(self, hgs, ports, target_iqn, target_alias, add_iqn):
         for port in ports:
@@ -156,7 +153,7 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
             added_user = False
             LOG.debug('Create target (hgs: %(hgs)s port: %(port)s '
                       'target_iqn: %(tiqn)s target_alias: %(alias)s '
-                      'add_iqn: %(aiqn)s)' %
+                      'add_iqn: %(aiqn)s)',
                       {'hgs': hgs, 'port': port, 'tiqn': target_iqn,
                        'alias': target_alias, 'aiqn': add_iqn})
             gid = self.common.command.get_gid_from_targetiqn(
@@ -170,22 +167,20 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
                             port, gid, target_alias, target_iqn)
                         added_hostgroup = True
                     except exception.HBSDNotFound:
-                        msg = basic_lib.set_msg(312, resource='GID')
-                        LOG.warning(msg)
+                        LOG.warning(basic_lib.set_msg(312, resource='GID'))
                         continue
                     except Exception as ex:
-                        msg = basic_lib.set_msg(
+                        LOG.warning(basic_lib.set_msg(
                             309, port=port, alias=target_alias,
-                            reason=six.text_type(ex))
-                        LOG.warning(msg)
+                            reason=ex))
                         break
                     else:
                         LOG.debug('Completed to add target'
-                                  '(port: %(port)s gid: %(gid)d)'
-                                  % {'port': port, 'gid': gid})
+                                  '(port: %(port)s gid: %(gid)d)',
+                                  {'port': port, 'gid': gid})
                         break
             if gid is None:
-                LOG.error(_LE('Failed to add target(port: %s)') % port)
+                LOG.error(_LE('Failed to add target(port: %s)'), port)
                 continue
             try:
                 if added_hostgroup:
@@ -196,9 +191,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
                         port, target_alias)
                 self._add_initiator(hgs, port, gid, add_iqn)
             except Exception as ex:
-                msg = basic_lib.set_msg(
-                    316, port=port, reason=six.text_type(ex))
-                LOG.warning(msg)
+                LOG.warning(basic_lib.set_msg(
+                    316, port=port, reason=ex))
                 if added_hostgroup:
                     if added_user:
                         self._delete_chap_user(port)
@@ -227,15 +221,14 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
             self.add_hostgroup_core(hgs, diff_ports, target_iqn,
                                     target_alias, master_iqn)
         if not hgs:
-            msg = basic_lib.output_err(649)
-            raise exception.HBSDError(message=msg)
+            raise exception.HBSDError(message=basic_lib.output_err(649))
 
     def add_hostgroup(self):
         properties = utils.brick_get_connector_properties()
         if 'initiator' not in properties:
-            msg = basic_lib.output_err(650, resource='HBA')
-            raise exception.HBSDError(message=msg)
-        LOG.debug("initiator: %s" % properties['initiator'])
+            raise exception.HBSDError(
+                message=basic_lib.output_err(650, resource='HBA'))
+        LOG.debug("initiator: %s", properties['initiator'])
         hostgroups = []
         security_ports = self._get_hostgroup_info_iscsi(
             hostgroups, properties['initiator'])
@@ -325,8 +318,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
     def _initialize_connection(self, ldev, connector, src_hgs=None):
         LOG.debug("Call _initialize_connection "
-                  "(config_group: %(group)s ldev: %(ldev)d)"
-                  % {'group': self.configuration.config_group, 'ldev': ldev})
+                  "(config_group: %(group)s ldev: %(ldev)d)",
+                  {'group': self.configuration.config_group, 'ldev': ldev})
         if src_hgs:
             hostgroups = src_hgs[:]
         else:
@@ -344,26 +337,26 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
         self.do_setup_status.wait()
         ldev = self.common.get_ldev(volume)
         if ldev is None:
-            msg = basic_lib.output_err(619, volume_id=volume['id'])
-            raise exception.HBSDError(message=msg)
+            raise exception.HBSDError(
+                message=basic_lib.output_err(619, volume_id=volume['id']))
         self.common.add_volinfo(ldev, volume['id'])
         with self.common.volume_info[ldev]['lock'],\
                 self.common.volume_info[ldev]['in_use']:
             hostgroups = self._initialize_connection(ldev, connector)
             protocol = 'iscsi'
             properties = self._get_properties(volume, hostgroups)
-            LOG.debug('Initialize volume_info: %s'
-                      % self.common.volume_info)
+            LOG.debug('Initialize volume_info: %s',
+                      self.common.volume_info)
 
-        LOG.debug('HFCDrv: properties=%s' % properties)
+        LOG.debug('HFCDrv: properties=%s', properties)
         return {
             'driver_volume_type': protocol,
             'data': properties
         }
 
     def _terminate_connection(self, ldev, connector, src_hgs):
-        LOG.debug("Call _terminate_connection(config_group: %s)"
-                  % self.configuration.config_group)
+        LOG.debug("Call _terminate_connection(config_group: %s)",
+                  self.configuration.config_group)
         hostgroups = src_hgs[:]
         self._delete_lun_iscsi(hostgroups, ldev)
 
@@ -373,20 +366,18 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
         self.do_setup_status.wait()
         ldev = self.common.get_ldev(volume)
         if ldev is None:
-            msg = basic_lib.set_msg(302, volume_id=volume['id'])
-            LOG.warning(msg)
+            LOG.warning(basic_lib.set_msg(302, volume_id=volume['id']))
             return
 
         if 'initiator' not in connector:
-            msg = basic_lib.output_err(650, resource='HBA')
-            raise exception.HBSDError(message=msg)
+            raise exception.HBSDError(
+                message=basic_lib.output_err(650, resource='HBA'))
 
         hostgroups = []
         self._get_hostgroup_info_iscsi(hostgroups,
                                        connector['initiator'])
         if not hostgroups:
-            msg = basic_lib.output_err(649)
-            raise exception.HBSDError(message=msg)
+            raise exception.HBSDError(message=basic_lib.output_err(649))
 
         self.common.add_volinfo(ldev, volume['id'])
         with self.common.volume_info[ldev]['lock'],\
@@ -412,8 +403,8 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
         self.do_setup_status.wait()
         if volume['volume_attachment']:
             desc = 'volume %s' % volume['id']
-            msg = basic_lib.output_err(660, desc=desc)
-            raise exception.HBSDError(message=msg)
+            raise exception.HBSDError(
+                message=basic_lib.output_err(660, desc=desc))
         super(HBSDISCSIDriver, self).copy_volume_to_image(context, volume,
                                                           image_service,
                                                           image_meta)

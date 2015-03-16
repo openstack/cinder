@@ -56,9 +56,8 @@ class NetAppLun(object):
         if prop in self.metadata:
             return self.metadata[prop]
         name = self.name
-        msg = _("No metadata property %(prop)s defined for the LUN %(name)s")
-        msg_fmt = {'prop': prop, 'name': name}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("No metadata property %(prop)s defined for the LUN %(name)s",
+                  {'prop': prop, 'name': name})
 
     def __str__(self, *args, **kwargs):
         return 'NetApp Lun[handle:%s, name:%s, size:%s, metadata:%s]'\
@@ -144,7 +143,7 @@ class NetAppBlockStorageLibrary(object):
     def create_volume(self, volume):
         """Driver entry point for creating a new volume (Data ONTAP LUN)."""
 
-        LOG.debug('create_volume on %s' % volume['host'])
+        LOG.debug('create_volume on %s', volume['host'])
 
         # get Data ONTAP volume name as pool name
         ontap_volume_name = volume_utils.extract_host(volume['host'],
@@ -174,7 +173,7 @@ class NetAppBlockStorageLibrary(object):
 
         self._create_lun(ontap_volume_name, lun_name, size,
                          metadata, qos_policy_group)
-        LOG.debug('Created LUN with name %s' % lun_name)
+        LOG.debug('Created LUN with name %s', lun_name)
 
         metadata['Path'] = '/vol/%s/%s' % (ontap_volume_name, lun_name)
         metadata['Volume'] = ontap_volume_name
@@ -188,9 +187,8 @@ class NetAppBlockStorageLibrary(object):
         name = volume['name']
         metadata = self._get_lun_attr(name, 'metadata')
         if not metadata:
-            msg = _LW("No entry in LUN table for volume/snapshot %(name)s.")
-            msg_fmt = {'name': name}
-            LOG.warning(msg % msg_fmt)
+            LOG.warning(_LW("No entry in LUN table for volume/snapshot"
+                            " %(name)s."), {'name': name})
             return
         self.zapi_client.destroy_lun(metadata['Path'])
         self.lun_table.pop(name)
@@ -229,7 +227,7 @@ class NetAppBlockStorageLibrary(object):
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
         self.delete_volume(snapshot)
-        LOG.debug("Snapshot %s deletion successful" % snapshot['name'])
+        LOG.debug("Snapshot %s deletion successful", snapshot['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Driver entry point for creating a new volume from a snapshot.
@@ -381,8 +379,7 @@ class NetAppBlockStorageLibrary(object):
         except exception.VolumeNotFound as e:
             LOG.error(_LE("Message: %s"), e.msg)
         except Exception as e:
-            LOG.error(_LE("Error getting LUN attribute. Exception: %s"),
-                      e.__str__())
+            LOG.error(_LE("Error getting LUN attribute. Exception: %s"), e)
         return None
 
     def _create_lun_meta(self, lun):
@@ -518,7 +515,7 @@ class NetAppBlockStorageLibrary(object):
                 else:
                     LOG.error(_LE("Unknown exception in"
                                   " post clone resize LUN %s."), seg[-1])
-                    LOG.error(_LE("Exception details: %s") % (e.__str__()))
+                    LOG.error(_LE("Exception details: %s"), e)
 
     def _get_lun_block_count(self, path):
         """Gets block counts for the LUN."""
@@ -633,19 +630,17 @@ class NetAppBlockStorageLibrary(object):
         name = volume['name']
         lun_id = self._map_lun(name, [initiator_name], 'iscsi', None)
 
-        msg = "Mapped LUN %(name)s to the initiator %(initiator_name)s"
-        msg_fmt = {'name': name, 'initiator_name': initiator_name}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Mapped LUN %(name)s to the initiator %(initiator_name)s",
+                  {'name': name, 'initiator_name': initiator_name})
 
         target_list = self.zapi_client.get_iscsi_target_details()
         if not target_list:
-            msg = _('Failed to get LUN target list for the LUN %s')
-            raise exception.VolumeBackendAPIException(data=msg % name)
+            raise exception.VolumeBackendAPIException(
+                data=_('Failed to get LUN target list for the LUN %s') % name)
 
-        msg = ("Successfully fetched target list for LUN %(name)s and "
-               "initiator %(initiator_name)s")
-        msg_fmt = {'name': name, 'initiator_name': initiator_name}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Successfully fetched target list for LUN %(name)s and "
+                  "initiator %(initiator_name)s",
+                  {'name': name, 'initiator_name': initiator_name})
 
         preferred_target = self._get_preferred_target_from_list(
             target_list)
@@ -690,9 +685,9 @@ class NetAppBlockStorageLibrary(object):
         metadata = self._get_lun_attr(name, 'metadata')
         path = metadata['Path']
         self._unmap_lun(path, [initiator_name])
-        msg = _("Unmapped LUN %(name)s from the initiator %(initiator_name)s")
-        msg_fmt = {'name': name, 'initiator_name': initiator_name}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Unmapped LUN %(name)s from the initiator "
+                  "%(initiator_name)s",
+                  {'name': name, 'initiator_name': initiator_name})
 
     def initialize_connection_fc(self, volume, connector):
         """Initializes the connection and returns connection info.
@@ -744,21 +739,20 @@ class NetAppBlockStorageLibrary(object):
 
         lun_id = self._map_lun(volume_name, initiators, 'fcp', None)
 
-        msg = _("Mapped LUN %(name)s to the initiator(s) %(initiators)s")
-        msg_fmt = {'name': volume_name, 'initiators': initiators}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Mapped LUN %(name)s to the initiator(s) %(initiators)s",
+                  {'name': volume_name, 'initiators': initiators})
 
         target_wwpns, initiator_target_map, num_paths = \
             self._build_initiator_target_map(connector)
 
         if target_wwpns:
-            msg = _("Successfully fetched target details for LUN %(name)s "
-                    "and initiator(s) %(initiators)s")
-            msg_fmt = {'name': volume_name, 'initiators': initiators}
-            LOG.debug(msg % msg_fmt)
+            LOG.debug("Successfully fetched target details for LUN %(name)s "
+                      "and initiator(s) %(initiators)s",
+                      {'name': volume_name, 'initiators': initiators})
         else:
-            msg = _('Failed to get LUN target details for the LUN %s')
-            raise exception.VolumeBackendAPIException(data=msg % volume_name)
+            raise exception.VolumeBackendAPIException(
+                data=_('Failed to get LUN target details for '
+                       'the LUN %s') % volume_name)
 
         target_info = {'driver_volume_type': 'fibre_channel',
                        'data': {'target_discovered': True,
@@ -790,9 +784,8 @@ class NetAppBlockStorageLibrary(object):
 
         self._unmap_lun(path, initiators)
 
-        msg = _("Unmapped LUN %(name)s from the initiator %(initiators)s")
-        msg_fmt = {'name': name, 'initiators': initiators}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Unmapped LUN %(name)s from the initiator %(initiators)s",
+                  {'name': name, 'initiators': initiators})
 
         info = {'driver_volume_type': 'fibre_channel',
                 'data': {}}

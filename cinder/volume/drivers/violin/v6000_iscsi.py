@@ -71,7 +71,7 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         self.configuration.append_config_values(san.san_opts)
         self.common = v6000_common.V6000Common(self.configuration)
 
-        LOG.info(_LI("Initialized driver %(name)s version: %(vers)s.") %
+        LOG.info(_LI("Initialized driver %(name)s version: %(vers)s."),
                  {'name': self.__class__.__name__, 'vers': self.VERSION})
 
     def do_setup(self, context):
@@ -309,7 +309,7 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
 
         target_name = self._get_short_name(volume['id'])
 
-        LOG.debug("Exporting lun %s." % volume['id'])
+        LOG.debug("Exporting lun %s.", volume['id'])
 
         try:
             self.common._send_cmd_and_verify(
@@ -468,14 +468,14 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         if bn1 in resp:
             total_gb = resp[bn1] / units.Gi
         else:
-            LOG.warn(_LW("Failed to receive update for total_gb stat!"))
+            LOG.warning(_LW("Failed to receive update for total_gb stat!"))
             if 'total_capacity_gb' in self.stats:
                 total_gb = self.stats['total_capacity_gb']
 
         if bn2 in resp:
             free_gb = resp[bn2] / units.Gi
         else:
-            LOG.warn(_LW("Failed to receive update for free_gb stat!"))
+            LOG.warning(_LW("Failed to receive update for free_gb stat!"))
             if 'free_capacity_gb' in self.stats:
                 free_gb = self.stats['free_capacity_gb']
 
@@ -490,7 +490,7 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         data['free_capacity_gb'] = free_gb
 
         for i in data:
-            LOG.debug("stat update: %(name)s=%(data)s." %
+            LOG.debug("stat update: %(name)s=%(data)s.",
                       {'name': i, 'data': data[i]})
 
         self.stats = data
@@ -563,7 +563,7 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         if ret_dict:
             hostname = ret_dict.items()[0][1]
         else:
-            LOG.debug("Unable to fetch gateway hostname for %s." % mg_to_query)
+            LOG.debug("Unable to fetch gateway hostname for %s.", mg_to_query)
 
         return hostname
 

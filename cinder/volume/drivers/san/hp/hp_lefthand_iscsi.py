@@ -35,7 +35,7 @@ LeftHand array.
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _LE, _LI
+from cinder.i18n import _, _LI
 from cinder.volume import driver
 from cinder.volume.drivers.san.hp import hp_lefthand_cliq_proxy as cliq_proxy
 from cinder.volume.drivers.san.hp import hp_lefthand_rest_proxy as rest_proxy
@@ -81,7 +81,7 @@ class HPLeftHandISCSIDriver(driver.VolumeDriver):
         self.proxy = self._create_proxy(*self.args, **self.kwargs)
 
         LOG.info(_LI("HPLeftHand driver %(driver_ver)s, "
-                     "proxy %(proxy_ver)s") % {
+                     "proxy %(proxy_ver)s"), {
             "driver_ver": self.VERSION,
             "proxy_ver": self.proxy.get_version_string()})
 
@@ -91,10 +91,10 @@ class HPLeftHandISCSIDriver(driver.VolumeDriver):
             # Check minimum client version for REST proxy
             client_version = rest_proxy.hplefthandclient.version
 
-            if (client_version < MIN_CLIENT_VERSION):
-                ex_msg = (_LE("Invalid hplefthandclient version found ("
-                              "%(found)s). Version %(minimum)s or greater "
-                              "required.")
+            if client_version < MIN_CLIENT_VERSION:
+                ex_msg = (_("Invalid hplefthandclient version found ("
+                            "%(found)s). Version %(minimum)s or greater "
+                            "required.")
                           % {'found': client_version,
                              'minimum': MIN_CLIENT_VERSION})
                 LOG.error(ex_msg)

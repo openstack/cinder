@@ -44,7 +44,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import helpers as storwize_helpers
@@ -290,8 +290,8 @@ class StorwizeSVCDriver(san.SanDriver):
         """
         volume_defined = self._helpers.is_vdisk_defined(volume['name'])
         if not volume_defined:
-            LOG.error(_LE('ensure_export: Volume %s not found on storage')
-                      % volume['name'])
+            LOG.error(_LE('ensure_export: Volume %s not found on storage'),
+                      volume['name'])
 
     def create_export(self, ctxt, volume):
         model_update = None
@@ -309,9 +309,8 @@ class StorwizeSVCDriver(san.SanDriver):
         if 'FC' in self._state['enabled_protocols'] and 'wwpns' in connector:
             valid = True
         if not valid:
-            msg = (_LE('The connector does not contain the required '
-                       'information.'))
-            LOG.error(msg)
+            LOG.error(_LE('The connector does not contain the required '
+                          'information.'))
             raise exception.InvalidConnectorException(
                 missing='initiator or wwpns')
 
@@ -386,10 +385,10 @@ class StorwizeSVCDriver(san.SanDriver):
             IO_group = volume_attributes['IO_group_id']
         except KeyError as e:
             LOG.error(_LE('Did not find expected column name in '
-                          'lsvdisk: %s') % e)
-            msg = (_('initialize_connection: Missing volume '
-                     'attribute for volume %s') % volume_name)
-            raise exception.VolumeBackendAPIException(data=msg)
+                          'lsvdisk: %s'), e)
+            raise exception.VolumeBackendAPIException(
+                data=_('initialize_connection: Missing volume attribute for '
+                       'volume %s') % volume_name)
 
         try:
             # Get preferred node and other nodes in I/O group
@@ -413,8 +412,8 @@ class StorwizeSVCDriver(san.SanDriver):
             if not preferred_node_entry and not vol_opts['multipath']:
                 # Get 1st node in I/O group
                 preferred_node_entry = io_group_nodes[0]
-                LOG.warn(_LW('initialize_connection: Did not find a preferred '
-                             'node for volume %s') % volume_name)
+                LOG.warning(_LW('initialize_connection: Did not find a '
+                                'preferred node for volume %s'), volume_name)
 
             properties = {}
             properties['target_discovered'] = False
@@ -471,7 +470,7 @@ class StorwizeSVCDriver(san.SanDriver):
                         LOG.warning(_LW('Unable to find a preferred node match'
                                         ' for node %(node)s in the list of '
                                         'available WWPNs on %(host)s. '
-                                        'Using first available.') %
+                                        'Using first available.'),
                                     {'node': preferred_node,
                                      'host': host_name})
                         properties['target_wwn'] = conn_wwpns[0]
@@ -651,7 +650,7 @@ class StorwizeSVCDriver(san.SanDriver):
                 return replica_status
 
     def extend_volume(self, volume, new_size):
-        LOG.debug('enter: extend_volume: volume %s' % volume['id'])
+        LOG.debug('enter: extend_volume: volume %s', volume['id'])
         ret = self._helpers.ensure_vdisk_no_fc_mappings(volume['name'],
                                                         allow_snaps=False)
         if not ret:
@@ -662,7 +661,7 @@ class StorwizeSVCDriver(san.SanDriver):
 
         extend_amt = int(new_size) - volume['size']
         self._helpers.extend_vdisk(volume['name'], extend_amt)
-        LOG.debug('leave: extend_volume: volume %s' % volume['id'])
+        LOG.debug('leave: extend_volume: volume %s', volume['id'])
 
     def add_vdisk_copy(self, volume, dest_pool, vol_type):
         return self._helpers.add_vdisk_copy(volume, dest_pool,
@@ -703,37 +702,34 @@ class StorwizeSVCDriver(san.SanDriver):
                 self._vdiskcopyops_loop.stop()
                 self._vdiskcopyops_loop = None
         except KeyError:
-            msg = (_('_rm_vdisk_copy_op: Volume %s does not have any '
-                     'registered vdisk copy operations.') % volume['id'])
-            LOG.error(msg)
+            LOG.error(_LE('_rm_vdisk_copy_op: Volume %s does not have any '
+                          'registered vdisk copy operations.'), volume['id'])
             return
         except ValueError:
-            msg = (_('_rm_vdisk_copy_op: Volume %(vol)s does not have the '
-                     'specified vdisk copy operation: orig=%(orig)s '
-                     'new=%(new)s.')
-                   % {'vol': volume['id'], 'orig': orig_copy_id,
-                      'new': new_copy_id})
-            LOG.error(msg)
+            LOG.error(_LE('_rm_vdisk_copy_op: Volume %(vol)s does not have '
+                          'the specified vdisk copy operation: orig=%(orig)s '
+                          'new=%(new)s.'),
+                      {'vol': volume['id'], 'orig': orig_copy_id,
+                       'new': new_copy_id})
             return
 
         metadata = self.db.volume_admin_metadata_get(ctxt.elevated(),
                                                      volume['id'])
         curr_ops = metadata.get('vdiskcopyops', None)
         if not curr_ops:
-            msg = (_('_rm_vdisk_copy_op: Volume metadata %s does not have any '
-                     'registered vdisk copy operations.') % volume['id'])
-            LOG.error(msg)
+            LOG.error(_LE('_rm_vdisk_copy_op: Volume metadata %s does not '
+                          'have any registered vdisk copy operations.'),
+                      volume['id'])
             return
         curr_ops_list = [tuple(x.split(':')) for x in curr_ops.split(';')]
         try:
             curr_ops_list.remove((orig_copy_id, new_copy_id))
         except ValueError:
-            msg = (_('_rm_vdisk_copy_op: Volume %(vol)s metadata does not '
-                     'have the specified vdisk copy operation: orig=%(orig)s '
-                     'new=%(new)s.')
-                   % {'vol': volume['id'], 'orig': orig_copy_id,
-                      'new': new_copy_id})
-            LOG.error(msg)
+            LOG.error(_LE('_rm_vdisk_copy_op: Volume %(vol)s metadata does '
+                          'not have the specified vdisk copy operation: '
+                          'orig=%(orig)s new=%(new)s.'),
+                      {'vol': volume['id'], 'orig': orig_copy_id,
+                       'new': new_copy_id})
             return
 
         if len(curr_ops_list):
@@ -775,7 +771,7 @@ class StorwizeSVCDriver(san.SanDriver):
             try:
                 volume = self.db.volume_get(ctxt, vol_id)
             except Exception:
-                LOG.warn(_LW('Volume %s does not exist.'), vol_id)
+                LOG.warning(_LW('Volume %s does not exist.'), vol_id)
                 del self._vdiskcopyops[vol_id]
                 if not len(self._vdiskcopyops):
                     self._vdiskcopyops_loop.stop()
@@ -787,12 +783,11 @@ class StorwizeSVCDriver(san.SanDriver):
                     synced = self._helpers.is_vdisk_copy_synced(volume['name'],
                                                                 copy_op[1])
                 except Exception:
-                    msg = (_('_check_volume_copy_ops: Volume %(vol)s does not '
-                             'have the specified vdisk copy operation: '
-                             'orig=%(orig)s new=%(new)s.')
-                           % {'vol': volume['id'], 'orig': copy_op[0],
+                    LOG.info(_LI('_check_volume_copy_ops: Volume %(vol)s does '
+                                 'not have the specified vdisk copy '
+                                 'operation: orig=%(orig)s new=%(new)s.'),
+                             {'vol': volume['id'], 'orig': copy_op[0],
                               'new': copy_op[1]})
-                    LOG.info(msg)
                 else:
                     if synced:
                         self._helpers.rm_vdisk_copy(volume['name'], copy_op[0])
@@ -813,7 +808,7 @@ class StorwizeSVCDriver(san.SanDriver):
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
         """
-        LOG.debug('enter: migrate_volume: id=%(id)s, host=%(host)s' %
+        LOG.debug('enter: migrate_volume: id=%(id)s, host=%(host)s',
                   {'id': volume['id'], 'host': host['host']})
 
         false_ret = (False, None)
@@ -831,7 +826,7 @@ class StorwizeSVCDriver(san.SanDriver):
         self._check_volume_copy_ops()
         new_op = self.add_vdisk_copy(volume['name'], dest_pool, vol_type)
         self._add_vdisk_copy_op(ctxt, volume, new_op)
-        LOG.debug('leave: migrate_volume: id=%(id)s, host=%(host)s' %
+        LOG.debug('leave: migrate_volume: id=%(id)s, host=%(host)s',
                   {'id': volume['id'], 'host': host['host']})
         return (True, None)
 
@@ -854,10 +849,10 @@ class StorwizeSVCDriver(san.SanDriver):
                                                  self._state, (new, old))
 
         LOG.debug('enter: retype: id=%(id)s, new_type=%(new_type)s,'
-                  'diff=%(diff)s, host=%(host)s' % {'id': volume['id'],
-                                                    'new_type': new_type,
-                                                    'diff': diff,
-                                                    'host': host})
+                  'diff=%(diff)s, host=%(host)s', {'id': volume['id'],
+                                                   'new_type': new_type,
+                                                   'diff': diff,
+                                                   'host': host})
 
         ignore_keys = ['protocol', 'multipath']
         no_copy_keys = ['warning', 'autoexpand', 'easytier']
@@ -944,10 +939,10 @@ class StorwizeSVCDriver(san.SanDriver):
                                                            new_type)
 
         LOG.debug('exit: retype: ild=%(id)s, new_type=%(new_type)s,'
-                  'diff=%(diff)s, host=%(host)s' % {'id': volume['id'],
-                                                    'new_type': new_type,
-                                                    'diff': diff,
-                                                    'host': host['host']})
+                  'diff=%(diff)s, host=%(host)s', {'id': volume['id'],
+                                                   'new_type': new_type,
+                                                   'diff': diff,
+                                                   'host': host['host']})
         return True, model_update
 
     def manage_existing(self, volume, ref):

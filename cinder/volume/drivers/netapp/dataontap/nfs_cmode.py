@@ -81,7 +81,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
 
         :param volume: volume reference
         """
-        LOG.debug('create_volume on %s' % volume['host'])
+        LOG.debug('create_volume on %s', volume['host'])
         self._ensure_shares_mounted()
 
         # get share as pool name
@@ -100,18 +100,18 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
 
         try:
             volume['provider_location'] = share
-            LOG.info(_LI('casted to %s') % volume['provider_location'])
+            LOG.info(_LI('casted to %s'), volume['provider_location'])
             self._do_create_volume(volume)
             if qos_policy_group:
                 self._set_qos_policy_group_on_volume(volume, share,
                                                      qos_policy_group)
             return {'provider_location': volume['provider_location']}
         except Exception as ex:
-            LOG.error(_LW("Exception creating vol %(name)s on "
-                          "share %(share)s. Details: %(ex)s")
-                      % {'name': volume['name'],
-                         'share': volume['provider_location'],
-                         'ex': ex})
+            LOG.error(_LE("Exception creating vol %(name)s on "
+                          "share %(share)s. Details: %(ex)s"),
+                      {'name': volume['name'],
+                       'share': volume['provider_location'],
+                       'ex': ex})
             volume['provider_location'] = None
         finally:
             if self.ssc_enabled:
@@ -349,8 +349,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
     def _is_share_vol_type_match(self, volume, share):
         """Checks if share matches volume type."""
         netapp_vol = self._get_vol_for_share(share)
-        LOG.debug("Found volume %(vol)s for share %(share)s."
-                  % {'vol': netapp_vol, 'share': share})
+        LOG.debug("Found volume %(vol)s for share %(share)s.",
+                  {'vol': netapp_vol, 'share': share})
         extra_specs = na_utils.get_volume_extra_specs(volume)
         vols = ssc_cmode.get_volumes_for_specs(self.ssc_vols, extra_specs)
         return netapp_vol in vols
@@ -383,8 +383,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                 self._try_copyoffload(context, volume, image_service, image_id)
                 copy_success = True
                 LOG.info(_LI('Copied image %(img)s to volume %(vol)s using '
-                             'copy offload workflow.')
-                         % {'img': image_id, 'vol': volume['id']})
+                             'copy offload workflow.'),
+                         {'img': image_id, 'vol': volume['id']})
             else:
                 LOG.debug("Copy offload either not configured or"
                           " unsupported.")
@@ -498,8 +498,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
             else:
                 self._clone_file_dst_exists(dst_share, img_file, tmp_img_file)
             self._discover_file_till_timeout(dst_img_local, timeout=120)
-            LOG.debug('Copied image %(img)s to tmp file %(tmp)s.'
-                      % {'img': image_id, 'tmp': tmp_img_file})
+            LOG.debug('Copied image %(img)s to tmp file %(tmp)s.',
+                      {'img': image_id, 'tmp': tmp_img_file})
             dst_img_cache_local = os.path.join(dst_dir,
                                                'img-cache-%s' % image_id)
             if img_info['disk_format'] == 'raw':
@@ -507,8 +507,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                 self._clone_file_dst_exists(dst_share, tmp_img_file,
                                             volume['name'], dest_exists=True)
                 self._move_nfs_file(dst_img_local, dst_img_cache_local)
-                LOG.debug('Copied raw image %(img)s to volume %(vol)s.'
-                          % {'img': image_id, 'vol': volume['id']})
+                LOG.debug('Copied raw image %(img)s to volume %(vol)s.',
+                          {'img': image_id, 'vol': volume['id']})
             else:
                 LOG.debug('Image will be converted to raw %s.', image_id)
                 img_conv = six.text_type(uuid.uuid4())
@@ -533,8 +533,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                         self._move_nfs_file(dst_img_conv_local,
                                             dst_img_cache_local)
                         LOG.debug('Copied locally converted raw image'
-                                  ' %(img)s to volume %(vol)s.'
-                                  % {'img': image_id, 'vol': volume['id']})
+                                  ' %(img)s to volume %(vol)s.',
+                                  {'img': image_id, 'vol': volume['id']})
                 finally:
                     if os.path.exists(dst_img_conv_local):
                         self._delete_file(dst_img_conv_local)

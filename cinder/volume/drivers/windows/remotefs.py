@@ -93,11 +93,10 @@ class WindowsRemoteFsClient(remotefs.RemoteFsClient):
 
         if len(mappings) > 0:
             if os.path.exists(smbfs_share):
-                LOG.debug('Share already mounted: %s' % smbfs_share)
+                LOG.debug('Share already mounted: %s', smbfs_share)
                 return True
             else:
-                LOG.debug('Share exists but is unavailable: %s '
-                          % smbfs_share)
+                LOG.debug('Share exists but is unavailable: %s ', smbfs_share)
                 for mapping in mappings:
                     # Due to a bug in the WMI module, getting the output of
                     # methods returning None will raise an AttributeError
@@ -115,7 +114,7 @@ class WindowsRemoteFsClient(remotefs.RemoteFsClient):
                                 options.get('pass'))
 
         try:
-            LOG.info(_LI('Mounting share: %s') % smbfs_share)
+            LOG.info(_LI('Mounting share: %s'), smbfs_share)
             self.smb_conn.Msft_SmbMapping.Create(**smb_opts)
         except wmi.x_wmi as exc:
             err_msg = (_(
@@ -123,7 +122,7 @@ class WindowsRemoteFsClient(remotefs.RemoteFsClient):
                 'WMI exception: %(wmi_exc)s'
                 'Options: %(options)s') % {'smbfs_share': smbfs_share,
                                            'options': smb_opts,
-                                           'wmi_exc': exc})
+                                           'wmi_exc': six.text_type(exc)})
             raise exception.VolumeBackendAPIException(data=err_msg)
 
     def get_capacity_info(self, smbfs_share):
@@ -137,7 +136,7 @@ class WindowsRemoteFsClient(remotefs.RemoteFsClient):
                                                ctypes.pointer(total_bytes),
                                                ctypes.pointer(free_bytes))
         if retcode == 0:
-            LOG.error(_LE("Could not get share %s capacity info.") %
+            LOG.error(_LE("Could not get share %s capacity info."),
                       smbfs_share)
             return 0, 0
         return total_bytes.value, free_bytes.value

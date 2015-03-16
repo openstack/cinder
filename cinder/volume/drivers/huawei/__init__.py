@@ -62,15 +62,15 @@ class HuaweiVolumeDriver(object):
         conf_file = self.configuration.cinder_huawei_conf_file
         (product, protocol) = self._get_conf_info(conf_file)
 
-        LOG.info(_LI(
-            '_instantiate_driver: Loading %(protocol)s driver for '
-            'Huawei OceanStor %(product)s series storage arrays.')
-            % {'protocol': protocol,
-               'product': product})
+        LOG.info(_LI('_instantiate_driver: Loading %(protocol)s driver for '
+                     'Huawei OceanStor %(product)s series storage arrays.'),
+                 {'protocol': protocol,
+                  'product': product})
         # Map HVS to 18000
         if product in MAPPING:
-            LOG.warn(_LW("Product name %s is deprecated, update your "
-                         "configuration to the new product name."), product)
+            LOG.warning(_LW("Product name %s is deprecated, update your "
+                            "configuration to the new product name."),
+                        product)
             product = MAPPING[product]
 
         driver_module = self._product[product]

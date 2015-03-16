@@ -214,9 +214,7 @@ def validate_log_translations(logical_line, filename):
     # TODO(smcginnis): The following is temporary as a series
     # of patches are done to address these issues. It should be
     # removed completely when bug 1433216 is closed.
-    ignore_dirs = [
-        "cinder/openstack",
-        "cinder/volume"]
+    ignore_dirs = ["cinder/openstack"]
     for directory in ignore_dirs:
         if directory in filename:
             return

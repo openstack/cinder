@@ -632,13 +632,13 @@ class GlusterFsDriverTestCase(test.TestCase):
             self._driver._refresh_mounts()
 
             self.assertTrue(mock_unmount_shares.called)
-            self.assertTrue(mock_logger.warn.called)
+            self.assertTrue(mock_logger.warning.called)
             self.assertTrue(mock_ensure_shares_mounted.called)
 
             mock_unmount_shares.reset_mock()
             mock_ensure_shares_mounted.reset_mock()
             mock_logger.reset_mock()
-            mock_logger.warn.reset_mock()
+            mock_logger.warning.reset_mock()
 
             mock_stderr = _("umount: <mnt_path>: some other error")
             mock_unmount_shares.side_effect = \

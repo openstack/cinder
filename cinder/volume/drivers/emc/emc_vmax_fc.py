@@ -224,8 +224,8 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
             LOG.debug("Return FC data for zone removal: %(data)s.",
                       {'data': data})
         else:
-            LOG.warn(_LW("Volume %(volume)s is not in any masking view."),
-                     {'volume': volume['name']})
+            LOG.warning(_LW("Volume %(volume)s is not in any masking view."),
+                        {'volume': volume['name']})
         return data
 
     def _build_initiator_target_map(self, storage_system, volume, connector):

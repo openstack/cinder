@@ -135,7 +135,7 @@ class EMCVMAXFast(object):
             foundDefaultStorageGroupInstanceName = (
                 assocStorageGroupInstanceName)
         else:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Volume: %(volumeName)s Does not belong "
                 "to storage storage group %(defaultSgGroupName)s."),
                 {'volumeName': volumeName,
@@ -406,7 +406,7 @@ class EMCVMAXFast(object):
 
         if len(storageTierInstanceNames) == 0:
             storageTierInstanceNames = None
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Unable to get storage tiers from tier policy rule."))
 
         return storageTierInstanceNames
@@ -519,9 +519,8 @@ class EMCVMAXFast(object):
                     conn, tierPolicyServiceInstanceName,
                     storageGroupInstanceName, tierPolicyRuleInstanceName,
                     storageGroupName, fastPolicyName, extraSpecs)
-            except Exception as ex:
-                LOG.error(_LE("Exception: %s"), ex)
-                LOG.error(_LE(
+            except Exception:
+                LOG.exception(_LE(
                     "Failed to add storage group %(storageGroupInstanceName)s "
                     "to tier policy rule %(tierPolicyRuleInstanceName)s."),
                     {'storageGroupInstanceName': storageGroupInstanceName,

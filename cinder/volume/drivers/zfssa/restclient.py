@@ -92,8 +92,8 @@ class RestResult(object):
             self.status = self.error.code
             self.data = httplib.responses[self.status]
 
-        LOG.debug('Response code: %s' % self.status)
-        LOG.debug('Response data: %s' % self.data)
+        LOG.debug('Response code: %s', self.status)
+        LOG.debug('Response data: %s', self.data)
 
     def get_header(self, name):
         """Get an HTTP header with the given name from the results
@@ -177,7 +177,7 @@ class RestClientURL(object):
                 self.headers['x-auth-session'] = \
                     result.get_header('x-auth-session')
                 self.do_logout = True
-                LOG.info(_LI('ZFSSA version: %s') %
+                LOG.info(_LI('ZFSSA version: %s'),
                          result.get_header('x-zfssa-version'))
 
             elif result.status == httplib.NOT_FOUND:
@@ -268,35 +268,33 @@ class RestClientURL(object):
         retry = 0
         response = None
 
-        LOG.debug('Request: %s %s' % (request, zfssaurl))
-        LOG.debug('Out headers: %s' % out_hdrs)
+        LOG.debug('Request: %s %s', (request, zfssaurl))
+        LOG.debug('Out headers: %s', out_hdrs)
         if body and body != '':
-            LOG.debug('Body: %s' % body)
+            LOG.debug('Body: %s', body)
 
         while retry < maxreqretries:
             try:
                 response = urllib2.urlopen(req, timeout=self.timeout)
             except urllib2.HTTPError as err:
                 if err.code == httplib.NOT_FOUND:
-                    LOG.debug('REST Not Found: %s' % err.code)
+                    LOG.debug('REST Not Found: %s', err.code)
                 else:
-                    LOG.error(_LE('REST Not Available: %s') % err.code)
+                    LOG.error(_LE('REST Not Available: %s'), err.code)
 
                 if err.code == httplib.SERVICE_UNAVAILABLE and \
                    retry < maxreqretries:
                     retry += 1
                     time.sleep(1)
-                    LOG.error(_LE('Server Busy retry request: %s') % retry)
+                    LOG.error(_LE('Server Busy retry request: %s'), retry)
                     continue
                 if (err.code == httplib.UNAUTHORIZED or
                     err.code == httplib.INTERNAL_SERVER_ERROR) and \
                    '/access/v1' not in zfssaurl:
                     try:
-                        LOG.error(_LE('Authorizing request: '
-                                      '%(zfssaurl)s'
-                                      'retry: %(retry)d .')
-                                  % {'zfssaurl': zfssaurl,
-                                     'retry': retry})
+                        LOG.error(_LE('Authorizing request: %(zfssaurl)s '
+                                      'retry: %(retry)d .'),
+                                  {'zfssaurl': zfssaurl, 'retry': retry})
                         self._authorize()
                         req.add_header('x-auth-session',
                                        self.headers['x-auth-session'])
@@ -309,7 +307,7 @@ class RestClientURL(object):
                 return RestResult(err=err)
 
             except urllib2.URLError as err:
-                LOG.error(_LE('URLError: %s') % err.reason)
+                LOG.error(_LE('URLError: %s'), err.reason)
                 raise RestClientError(-1, name="ERR_URLError",
                                       message=err.reason)
 

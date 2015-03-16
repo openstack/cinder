@@ -73,8 +73,8 @@ class NetAppDriver(driver.ProxyVD):
         na_utils.check_flags(NetAppDriver.REQUIRED_FLAGS, config)
 
         app_version = na_utils.OpenStackInfo().info()
-        LOG.info(_LI('OpenStack OS Version Info: %(info)s') % {
-            'info': app_version})
+        LOG.info(_LI('OpenStack OS Version Info: %(info)s'),
+                 {'info': app_version})
         kwargs['app_version'] = app_version
 
         return NetAppDriver.create_driver(config.netapp_storage_family,
@@ -91,7 +91,7 @@ class NetAppDriver(driver.ProxyVD):
         fmt = {'storage_family': storage_family,
                'storage_protocol': storage_protocol}
         LOG.info(_LI('Requested unified config: %(storage_family)s and '
-                     '%(storage_protocol)s.') % fmt)
+                     '%(storage_protocol)s.'), fmt)
 
         family_meta = NETAPP_UNIFIED_DRIVER_REGISTRY.get(storage_family)
         if family_meta is None:
@@ -109,5 +109,5 @@ class NetAppDriver(driver.ProxyVD):
         kwargs['netapp_mode'] = 'proxy'
         driver = importutils.import_object(driver_loc, *args, **kwargs)
         LOG.info(_LI('NetApp driver of family %(storage_family)s and protocol '
-                     '%(storage_protocol)s loaded.') % fmt)
+                     '%(storage_protocol)s loaded.'), fmt)
         return driver

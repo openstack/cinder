@@ -62,7 +62,7 @@ class NaServer(object):
         self._password = password
         self._refresh_conn = True
 
-        LOG.debug('Using NetApp controller: %s' % self._host)
+        LOG.debug('Using NetApp controller: %s', self._host)
 
     def get_transport_type(self):
         """Get the transport type protocol."""

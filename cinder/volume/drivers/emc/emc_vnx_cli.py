@@ -286,7 +286,7 @@ class CommandLineHelper(object):
         self.primary_storage_ip = self.active_storage_ip
         self.secondary_storage_ip = configuration.san_secondary_ip
         if self.secondary_storage_ip == self.primary_storage_ip:
-            LOG.warning(_LE("san_secondary_ip is configured as "
+            LOG.warning(_LW("san_secondary_ip is configured as "
                             "the same value as san_ip."))
             self.secondary_storage_ip = None
         if not configuration.san_ip:
@@ -394,7 +394,7 @@ class CommandLineHelper(object):
             with excutils.save_and_reraise_exception():
                 self.delete_lun(name)
                 LOG.error(_LE("Error on enable compression on lun %s."),
-                          six.text_type(ex))
+                          ex)
 
         # handle consistency group
         try:
@@ -405,7 +405,7 @@ class CommandLineHelper(object):
             with excutils.save_and_reraise_exception():
                 self.delete_lun(name)
                 LOG.error(_LE("Error on adding lun to consistency"
-                              " group. %s"), six.text_type(ex))
+                              " group. %s"), ex)
         return data
 
     def create_lun_by_cmd(self, cmd, name):
@@ -514,7 +514,7 @@ class CommandLineHelper(object):
                               '_wait_for_a_condition: %(method_name)s '
                               'execution failed for %(exception)s',
                               {'method_name': testmethod.__name__,
-                               'exception': six.text_type(ex)})
+                               'exception': ex})
             if test_value:
                 raise loopingcall.LoopingCallDone()
 
@@ -2260,9 +2260,7 @@ class EMCVnxCliBase(object):
             self._client.delete_consistencygroup(cg_name)
         except Exception:
             with excutils.save_and_reraise_exception():
-                msg = (_('Delete consistency group %s failed.')
-                       % cg_name)
-                LOG.error(msg)
+                LOG.error(_LE('Delete consistency group %s failed.'), cg_name)
 
         for volume_ref in volumes:
             try:
@@ -3114,8 +3112,8 @@ class MigrateLunTask(task.Task):
                                                         dest_vol_lun_id,
                                                         None)
         if not migrated:
-            msg = (_LE("Migrate volume failed between source vol %(src)s"
-                       " and dest vol %(dst)s."),
+            msg = (_("Migrate volume failed between source vol %(src)s"
+                     " and dest vol %(dst)s.") %
                    {'src': new_vol_name, 'dst': dest_vol_name})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)

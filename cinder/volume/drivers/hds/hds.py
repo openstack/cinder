@@ -26,7 +26,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _LE, _LI
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.hds import hus_backend
@@ -70,9 +70,8 @@ def _loc_info(loc):
 
 def _do_lu_range_check(start, end, maxlun):
     """Validate array allocation range."""
-    LOG.debug("Range: start LU: %(start)s, end LU: %(end)s"
-              % {'start': start,
-                 'end': end})
+    LOG.debug("Range: start LU: %(start)s, end LU: %(end)s",
+              {'start': start, 'end': end})
     if int(start) < 0:
         msg = 'start LU limit too low: ' + start
         raise exception.InvalidInput(reason=msg)
@@ -84,7 +83,7 @@ def _do_lu_range_check(start, end, maxlun):
         raise exception.InvalidInput(reason=msg)
     if int(end) > int(maxlun):
         end = maxlun
-        LOG.debug("setting LU upper (end) limit to %s" % maxlun)
+        LOG.debug("setting LU upper (end) limit to %s", maxlun)
     return (start, end)
 
 
@@ -92,9 +91,8 @@ def _xml_read(root, element, check=None):
     """Read an xml element."""
     try:
         val = root.findtext(element)
-        LOG.info(_LI("%(element)s: %(val)s")
-                 % {'element': element,
-                    'val': val})
+        LOG.info(_LI("%(element)s: %(val)s"),
+                 {'element': element, 'val': val})
         if val:
             return val.strip()
         if check:
@@ -103,9 +101,9 @@ def _xml_read(root, element, check=None):
     except ETree.ParseError:
         if check:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("XML exception reading parameter: %s") % element)
+                LOG.error(_LE("XML exception reading parameter: %s"), element)
         else:
-            LOG.info(_LI("XML exception reading parameter: %s") % element)
+            LOG.info(_LI("XML exception reading parameter: %s"), element)
             return None
 
 
@@ -178,12 +176,9 @@ class HUSDriver(driver.ISCSIDriver):
                 conf[ip]['ctl'] = ctl
                 conf[ip]['port'] = port
                 conf[ip]['iscsi_port'] = ipp  # HUS default: 3260
-                msg = _('portal: %(ip)s:%(ipp)s, CTL: %(ctl)s, port: %(port)s')
-                LOG.debug(msg
-                          % {'ip': ip,
-                             'ipp': ipp,
-                             'ctl': ctl,
-                             'port': port})
+                LOG.debug('portal: %(ip)s:%(ipp)s, CTL: %(ctl)s, port: '
+                          '%(port)s', {'ip': ip, 'ipp': ipp,
+                                       'ctl': ctl, 'port': port})
         return conf
 
     def _get_service(self, volume):
@@ -197,7 +192,7 @@ class HUSDriver(driver.ISCSIDriver):
             service = (svc['iscsi_ip'], svc['iscsi_port'], svc['ctl'],
                        svc['port'], svc['hdp'])  # ip, ipp, ctl, port, hdp
         else:
-            LOG.error(_LE("No configuration found for service: %s") % label)
+            LOG.error(_LE("No configuration found for service: %s"), label)
             raise exception.ParameterNotFound(param=label)
         return service
 
@@ -250,7 +245,7 @@ class HUSDriver(driver.ISCSIDriver):
         lst.extend([self.config['snapshot_hdp'], ])
         for hdp in lst:
             if hdp not in hdpl:
-                LOG.error(_LE("HDP not found: %s") % hdp)
+                LOG.error(_LE("HDP not found: %s"), hdp)
                 err = "HDP not found: " + hdp
                 raise exception.ParameterNotFound(param=err)
 
@@ -290,7 +285,7 @@ class HUSDriver(driver.ISCSIDriver):
                     iscsi_info[svc_ip]['iscsi_port'])
             else:          # config iscsi address not found on device!
                 LOG.error(_LE("iSCSI portal not found "
-                              "for service: %s") % svc_ip)
+                              "for service: %s"), svc_ip)
                 raise exception.ParameterNotFound(param=svc_ip)
         return
 
@@ -328,9 +323,8 @@ class HUSDriver(driver.ISCSIDriver):
                                   '%s' % (int(volume['size']) * 1024))
         lun = self.arid + '.' + out.split()[1]
         sz = int(out.split()[5])
-        LOG.debug("LUN %(lun)s of size %(sz)s MB is created."
-                  % {'lun': lun,
-                     'sz': sz})
+        LOG.debug("LUN %(lun)s of size %(sz)s MB is created.",
+                  {'lun': lun, 'sz': sz})
         return {'provider_location': lun}
 
     @utils.synchronized('hds_hus', external=True)
@@ -356,9 +350,8 @@ class HUSDriver(driver.ISCSIDriver):
                                    '%s' % (size))
         lun = self.arid + '.' + out.split()[1]
         size = int(out.split()[5])
-        LOG.debug("LUN %(lun)s of size %(size)s MB is cloned."
-                  % {'lun': lun,
-                     'size': size})
+        LOG.debug("LUN %(lun)s of size %(size)s MB is cloned.",
+                  {'lun': lun, 'size': size})
         return {'provider_location': lun}
 
     @utils.synchronized('hds_hus', external=True)
@@ -373,9 +366,8 @@ class HUSDriver(driver.ISCSIDriver):
                              self.config['password'],
                              arid, lun,
                              '%s' % (new_size * 1024))
-        LOG.debug("LUN %(lun)s extended to %(size)s GB."
-                  % {'lun': lun,
-                     'size': new_size})
+        LOG.debug("LUN %(lun)s extended to %(size)s GB.",
+                  {'lun': lun, 'size': new_size})
 
     @utils.synchronized('hds_hus', external=True)
     def delete_volume(self, volume):
@@ -396,9 +388,8 @@ class HUSDriver(driver.ISCSIDriver):
                                      arid, lun, ctl, port, iqn,
                                      '')
         name = self.hus_name
-        LOG.debug("delete lun %(lun)s on %(name)s"
-                  % {'lun': lun,
-                     'name': name})
+        LOG.debug("delete lun %(lun)s on %(name)s",
+                  {'lun': lun, 'name': name})
         self.bend.delete_lu(self.config['hus_cmd'],
                             HDS_VERSION,
                             self.config['mgmt_ip0'],
@@ -481,9 +472,8 @@ class HUSDriver(driver.ISCSIDriver):
                                    '%s' % (size))
         lun = self.arid + '.' + out.split()[1]
         sz = int(out.split()[5])
-        LOG.debug("LUN %(lun)s of size %(sz)s MB is created from snapshot."
-                  % {'lun': lun,
-                     'sz': sz})
+        LOG.debug("LUN %(lun)s of size %(sz)s MB is created from snapshot.",
+                  {'lun': lun, 'sz': sz})
         return {'provider_location': lun}
 
     @utils.synchronized('hds_hus', external=True)
@@ -504,9 +494,8 @@ class HUSDriver(driver.ISCSIDriver):
                                    '%s' % (size))
         lun = self.arid + '.' + out.split()[1]
         size = int(out.split()[5])
-        LOG.debug("LUN %(lun)s of size %(size)s MB is created as snapshot."
-                  % {'lun': lun,
-                     'size': size})
+        LOG.debug("LUN %(lun)s of size %(size)s MB is created as snapshot.",
+                  {'lun': lun, 'size': size})
         return {'provider_location': lun}
 
     @utils.synchronized('hds_hus', external=True)
@@ -523,7 +512,7 @@ class HUSDriver(driver.ISCSIDriver):
                             self.config['username'],
                             self.config['password'],
                             arid, lun)
-        LOG.debug("LUN %s is deleted." % lun)
+        LOG.debug("LUN %s is deleted.", lun)
         return
 
     @utils.synchronized('hds_hus', external=True)

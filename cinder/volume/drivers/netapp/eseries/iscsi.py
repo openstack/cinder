@@ -162,26 +162,25 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
 
     def _check_multipath(self):
         if not self.configuration.use_multipath_for_image_xfer:
-            msg = _LW('Production use of "%(backend)s" backend requires the '
-                      'Cinder controller to have multipathing properly set up '
-                      'and the configuration option "%(mpflag)s" to be set to '
-                      '"True".') % {'backend': self._backend_name,
-                                    'mpflag': 'use_multipath_for_image_xfer'}
-            LOG.warning(msg)
+            LOG.warning(_LW('Production use of "%(backend)s" backend requires '
+                            'the Cinder controller to have multipathing '
+                            'properly set up and the configuration option '
+                            '"%(mpflag)s" to be set to "True".'),
+                        {'backend': self._backend_name,
+                         'mpflag': 'use_multipath_for_image_xfer'})
 
     def _ensure_multi_attach_host_group_exists(self):
         try:
             host_group = self._client.get_host_group_by_name(
                 utils.MULTI_ATTACH_HOST_GROUP_NAME)
-            msg = _LI("The multi-attach E-Series host group '%(label)s' "
-                      "already exists with clusterRef %(clusterRef)s")
-            LOG.info(msg % host_group)
+            LOG.info(_LI("The multi-attach E-Series host group '%(label)s' "
+                         "already exists with clusterRef %(clusterRef)s"),
+                     host_group)
         except exception.NotFound:
             host_group = self._client.create_host_group(
                 utils.MULTI_ATTACH_HOST_GROUP_NAME)
-            msg = _LI("Created multi-attach E-Series host group '%(label)s' "
-                      "with clusterRef %(clusterRef)s")
-            LOG.info(msg % host_group)
+            LOG.info(_LI("Created multi-attach E-Series host group %(label)s "
+                         "with clusterRef %(clusterRef)s"), host_group)
 
     def _check_mode_get_or_register_storage_system(self):
         """Does validity checks for storage system registry and health."""
@@ -190,11 +189,11 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                 ip = na_utils.resolve_hostname(host)
                 return ip
             except socket.gaierror as e:
-                LOG.error(_LE('Error resolving host %(host)s. Error - %(e)s.')
-                          % {'host': host, 'e': e})
+                LOG.error(_LE('Error resolving host %(host)s. Error - %(e)s.'),
+                          {'host': host, 'e': e})
                 raise exception.NoValidHost(
                     _("Controller IP '%(host)s' could not be resolved: %(e)s.")
-                    % {'host': host, 'e': e})
+                    % {'host': host, 'e': six.text_type(e)})
 
         ips = self.configuration.netapp_controller_ips
         ips = [i.strip() for i in ips.split(",")]
@@ -216,9 +215,9 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
             system = self._client.list_storage_system()
         except exception.NetAppDriverException:
             with excutils.save_and_reraise_exception():
-                msg = _LI("System with controller addresses [%s] is not"
-                          " registered with web service.")
-                LOG.info(msg % self.configuration.netapp_controller_ips)
+                LOG.info(_LI("System with controller addresses [%s] is not "
+                             "registered with web service."),
+                         self.configuration.netapp_controller_ips)
         password_not_in_sync = False
         if system.get('status', '').lower() == 'passwordoutofsync':
             password_not_in_sync = True
@@ -248,9 +247,10 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         msg_dict = {'id': system.get('id'), 'status': status}
         if (status == 'passwordoutofsync' or status == 'notsupported' or
                 status == 'offline'):
-            msg = _("System %(id)s found with bad status - %(status)s.")
-            raise exception.NetAppDriverException(msg % msg_dict)
-        LOG.info(_LI("System %(id)s has %(status)s status.") % msg_dict)
+            raise exception.NetAppDriverException(
+                _("System %(id)s found with bad status - "
+                  "%(status)s.") % msg_dict)
+        LOG.info(_LI("System %(id)s has %(status)s status."), msg_dict)
         return True
 
     def _populate_system_objects(self):
@@ -384,7 +384,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
     def create_volume(self, volume):
         """Creates a volume."""
 
-        LOG.debug('create_volume on %s' % volume['host'])
+        LOG.debug('create_volume on %s', volume['host'])
 
         # get E-series pool label as pool name
         eseries_pool_label = volume_utils.extract_host(volume['host'],
@@ -436,8 +436,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                          "label %s."), eseries_volume_label)
         except exception.NetAppDriverException as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error creating volume. Msg - %s."),
-                          six.text_type(e))
+                LOG.error(_LE("Error creating volume. Msg - %s."), e)
 
         return vol
 
@@ -492,8 +491,8 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
 
     def _copy_volume_high_prior_readonly(self, src_vol, dst_vol):
         """Copies src volume to dest volume."""
-        LOG.info(_LI("Copying src vol %(src)s to dest vol %(dst)s.")
-                 % {'src': src_vol['label'], 'dst': dst_vol['label']})
+        LOG.info(_LI("Copying src vol %(src)s to dest vol %(dst)s."),
+                 {'src': src_vol['label'], 'dst': dst_vol['label']})
         try:
             job = None
             job = self._client.create_volume_copy_job(src_vol['id'],
@@ -504,13 +503,13 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                         'pending' or j_st['status'] == 'unknown'):
                     time.sleep(self.SLEEP_SECS)
                     continue
-                if (j_st['status'] == 'failed' or j_st['status'] == 'halted'):
+                if j_st['status'] == 'failed' or j_st['status'] == 'halted':
                     LOG.error(_LE("Vol copy job status %s."), j_st['status'])
-                    msg = _("Vol copy job for dest %s failed.")\
-                        % dst_vol['label']
-                    raise exception.NetAppDriverException(msg)
-                LOG.info(_LI("Vol copy job completed for dest %s.")
-                         % dst_vol['label'])
+                    raise exception.NetAppDriverException(
+                        _("Vol copy job for dest %s failed.") %
+                        dst_vol['label'])
+                LOG.info(_LI("Vol copy job completed for dest %s."),
+                         dst_vol['label'])
                 break
         finally:
             if job:
@@ -579,7 +578,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         try:
             snap_grp = self._get_cached_snapshot_grp(snapshot['id'])
         except KeyError:
-            LOG.warning(_LW("Snapshot %s already deleted.") % snapshot['id'])
+            LOG.warning(_LW("Snapshot %s already deleted."), snapshot['id'])
             return
         self._client.delete_snapshot_group(snap_grp['pitGroupRef'])
         snapshot_name = snap_grp['label']
@@ -622,16 +621,15 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                                                             current_map)
 
         lun_id = mapping['lun']
-        msg = _("Mapped volume %(id)s to the initiator %(initiator_name)s.")
         msg_fmt = {'id': volume['id'], 'initiator_name': initiator_name}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Mapped volume %(id)s to the initiator %(initiator_name)s.",
+                  msg_fmt)
 
         iscsi_details = self._get_iscsi_service_details()
         iscsi_portal = self._get_iscsi_portal_for_vol(eseries_vol,
                                                       iscsi_details)
-        msg = _("Successfully fetched target details for volume %(id)s and "
-                "initiator %(initiator_name)s.")
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Successfully fetched target details for volume %(id)s and "
+                  "initiator %(initiator_name)s.", msg_fmt)
         iqn = iscsi_portal['iqn']
         address = iscsi_portal['ip']
         port = iscsi_portal['tcp_port']
@@ -688,9 +686,9 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                     host = self._client.update_host_type(
                         host['hostRef'], ht_def)
                 except exception.NetAppDriverException as e:
-                    msg = _LW("Unable to update host type for host with "
-                              "label %(l)s. %(e)s")
-                    LOG.warning(msg % {'l': host['label'], 'e': e.msg})
+                    LOG.warning(_LW("Unable to update host type for host with "
+                                    "label %(l)s. %(e)s"),
+                                {'l': host['label'], 'e': e.msg})
             return host
         except exception.NotFound as e:
             LOG.warning(_LW("Message - %s."), e.msg)
@@ -791,7 +789,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         {<volume_group_ref> : {<ssc_key>: <ssc_value>}}
         """
         LOG.info(_LI("Updating storage service catalog information for "
-                     "backend '%s'") % self._backend_name)
+                     "backend '%s'"), self._backend_name)
         self._ssc_stats = \
             self._update_ssc_disk_encryption(self._objects["disk_pool_refs"])
         self._ssc_stats = \
@@ -852,8 +850,8 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                      (int(x.get('totalRaidedSpace', 0)) -
                       int(x.get('usedSpace', 0) >= size))]
         if not avl_pools:
-            msg = _LW("No storage pool found with available capacity %s.")
-            LOG.warning(msg % size_gb)
+            LOG.warning(_LW("No storage pool found with available capacity "
+                            "%s."), size_gb)
         return avl_pools
 
     def extend_volume(self, volume, new_size):

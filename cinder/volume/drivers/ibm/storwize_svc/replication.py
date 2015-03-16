@@ -17,7 +17,7 @@
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -89,8 +89,8 @@ class StorwizeSVCReplicationStretchedCluster(StorwizeSVCReplication):
             self.driver._helpers.rm_vdisk_copy(volume['name'],
                                                secondary['copy_id'])
         else:
-            LOG.info(('Could not find replica to delete of'
-                      ' volume %(vol)s.') % {'vol': vdisk})
+            LOG.info(_LI('Could not find replica to delete of'
+                         ' volume %(vol)s.'), {'vol': vdisk})
 
     def test_replica(self, tgt_volume, src_volume):
         vdisk = src_volume['name']

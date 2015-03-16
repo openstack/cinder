@@ -86,8 +86,9 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
                     time.sleep(_delay)
                     _tries -= 1
                     _delay *= backoff
-                    LOG.debug('Retrying %s, (%s attempts remaining)...' %
-                              (args, _tries))
+                    LOG.debug('Retrying %(args)s, %(tries)s attempts '
+                              'remaining...',
+                              {'args': args, 'tries': _tries})
             # NOTE(jdg): Don't log the params passed here
             # some cmds like createAccount will have sensitive
             # info in the params, grab only the second tuple
@@ -327,7 +328,7 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         if not found_volume:
             LOG.error(_LE('Failed to retrieve volume SolidFire-'
-                          'ID: %s in get_by_account!') % sf_volume_id)
+                          'ID: %s in get_by_account!'), sf_volume_id)
             raise exception.VolumeNotFound(volume_id=sf_volume_id)
 
         model_update = {}
@@ -447,7 +448,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if len(presets) > 0:
             if len(presets) > 1:
                 LOG.warning(_LW('More than one valid preset was '
-                                'detected, using %s') % presets[0])
+                                'detected, using %s'), presets[0])
             qos = self.sf_qos_dict[presets[0]]
         else:
             # look for explicit settings
@@ -499,9 +500,9 @@ class SolidFireDriver(san.SanISCSIDriver):
             if uuid in v['name'] or uuid in alt_id:
                 found_count += 1
                 sf_volref = v
-                LOG.debug("Mapped SolidFire volumeID %s "
-                          "to cinder ID %s.",
-                          v['volumeID'], uuid)
+                LOG.debug("Mapped SolidFire volumeID %(volume_id)s "
+                          "to cinder ID %(uuid)s.",
+                          {'volume_id': v['volumeID'], 'uuid': uuid})
 
         if found_count == 0:
             # NOTE(jdg): Previously we would raise here, but there are cases
@@ -510,7 +511,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             LOG.error(_LE("Volume %s, not found on SF Cluster."), uuid)
 
         if found_count > 1:
-            LOG.error(_LE("Found %(count)s volumes mapped to id: %(uuid)s.") %
+            LOG.error(_LE("Found %(count)s volumes mapped to id: %(uuid)s."),
                       {'count': found_count,
                        'uuid': uuid})
             raise exception.DuplicateSfVolumeNames(vol_name=uuid)
@@ -749,7 +750,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if sfaccount is None:
             LOG.error(_LE("Account for Volume ID %s was not found on "
                           "the SolidFire Cluster while attempting "
-                          "delete_volume operation!") % volume['id'])
+                          "delete_volume operation!"), volume['id'])
             LOG.error(_LE("This usually means the volume was never "
                           "successfully created."))
             return
@@ -1030,8 +1031,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         sfid = external_ref.get('source-id', None)
         sfname = external_ref.get('name', None)
         if sfid is None:
-            raise exception.SolidFireAPIException("Manage existing volume "
-                                                  "requires 'source-id'.")
+            raise exception.SolidFireAPIException(_("Manage existing volume "
+                                                    "requires 'source-id'."))
 
         # First get the volume on the SF cluster (MUST be active)
         params = {'startVolumeID': sfid,
@@ -1086,8 +1087,8 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         sfid = external_ref.get('source-id', None)
         if sfid is None:
-            raise exception.SolidFireAPIException("Manage existing get size "
-                                                  "requires 'id'.")
+            raise exception.SolidFireAPIException(_("Manage existing get size "
+                                                    "requires 'id'."))
 
         params = {'startVolumeID': int(sfid),
                   'limit': 1}
@@ -1105,9 +1106,9 @@ class SolidFireDriver(san.SanISCSIDriver):
         if sfaccount is None:
             LOG.error(_LE("Account for Volume ID %s was not found on "
                           "the SolidFire Cluster while attempting "
-                          "unmanage operation!") % volume['id'])
-            raise exception.SolidFireAPIException("Failed to find account "
-                                                  "for volume.")
+                          "unmanage operation!"), volume['id'])
+            raise exception.SolidFireAPIException(_("Failed to find account "
+                                                    "for volume."))
 
         params = {'accountID': sfaccount['accountID']}
         sf_vol = self._get_sf_volume(volume['id'], params)
