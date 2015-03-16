@@ -119,8 +119,8 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         db_volume = db.volume_create(context, updates)
         self._from_db_object(context, self, db_volume)
 
-    def save(self):
-        context = self._context
+    @base.remotable
+    def save(self, context):
         updates = self.obj_get_changes()
         if updates:
             db.volume_update(context, self.id, updates)

@@ -18,9 +18,9 @@ from cinder.objects import fields
 
 def fake_db_volume(**updates):
     db_volume = {
-        'id': 1,
+        'id': '1',
         'size': 1,
-        'name': 'fake',
+        'name': 'volume-1',
         'availability_zone': 'fake_availability_zone',
         'status': 'available',
         'attach_status': 'detached',
