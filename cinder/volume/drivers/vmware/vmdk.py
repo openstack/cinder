@@ -44,6 +44,7 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import fileutils
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import datastore as hub
+from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 from cinder.volume.drivers.vmware import volumeops
 from cinder.volume import volume_types
 
@@ -511,8 +512,10 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 profile_id = profile.uniqueId
         return profile_id
 
-    def _create_backing(self, volume, host, create_params=None):
+    def _create_backing(self, volume, host=None, create_params=None):
         """Create volume backing under the given host.
+
+        If host is unspecified, any suitable host is selected.
 
         :param volume: Volume object
         :param host: Reference of the host
@@ -521,12 +524,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         :return: Reference to the created backing
         """
         create_params = create_params or {}
-        # Get datastores and resource pool of the host
-        (datastores, resource_pool) = self.volumeops.get_dss_rp(host)
-        # Pick a folder and datastore to create the volume backing on
-        (folder, summary) = self._get_folder_ds_summary(volume,
-                                                        resource_pool,
-                                                        datastores)
+        (host_ref, resource_pool, folder,
+         summary) = self._select_ds_for_volume(volume, host)
 
         # check if a storage profile needs to be associated with the backing VM
         profile_id = self._get_storage_profile_id(volume)
@@ -543,7 +542,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             return self.volumeops.create_backing_disk_less(backing_name,
                                                            folder,
                                                            resource_pool,
-                                                           host,
+                                                           host_ref,
                                                            summary.name,
                                                            profile_id)
 
@@ -557,7 +556,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                              disk_type,
                                              folder,
                                              resource_pool,
-                                             host,
+                                             host_ref,
                                              summary.name,
                                              profile_id,
                                              adapter_type)
@@ -565,83 +564,33 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     def _relocate_backing(self, volume, backing, host):
         pass
 
-    def _select_ds_for_volume(self, volume):
-        """Select datastore that can accommodate a volume of given size.
+    def _select_ds_for_volume(self, volume, host=None):
+        """Select datastore that can accommodate the given volume's backing.
 
         Returns the selected datastore summary along with a compute host and
         its resource pool and folder where the volume can be created
-        :return: (host, rp, folder, summary)
+        :return: (host, resource_pool, folder, summary)
         """
-        retrv_result = self.volumeops.get_hosts()
-        while retrv_result:
-            hosts = retrv_result.objects
-            if not hosts:
-                break
-            (selected_host, rp, folder, summary) = (None, None, None, None)
-            for host in hosts:
-                host = host.obj
-                try:
-                    (dss, rp) = self.volumeops.get_dss_rp(host)
-                    (folder, summary) = self._get_folder_ds_summary(volume,
-                                                                    rp, dss)
-                    selected_host = host
-                    break
-                except exceptions.VimException as excep:
-                    LOG.warn(_LW("Unable to find suitable datastore for volume"
-                                 " of size: %(vol)s GB under host: %(host)s. "
-                                 "More details: %(excep)s"),
-                             {'vol': volume['size'],
-                              'host': host, 'excep': excep})
-            if selected_host:
-                self.volumeops.cancel_retrieval(retrv_result)
-                return (selected_host, rp, folder, summary)
-            retrv_result = self.volumeops.continue_retrieval(retrv_result)
+        # Form requirements for datastore selection.
+        req = {}
+        req[hub.DatastoreSelector.SIZE_BYTES] = (volume['size'] * units.Gi)
+        req[hub.DatastoreSelector.PROFILE_NAME] = self._get_storage_profile(
+            volume)
 
-        msg = _("Unable to find host to accommodate a disk of size: %s "
-                "in the inventory.") % volume['size']
-        LOG.error(msg)
-        raise exceptions.VimException(msg)
+        # Select datastore satisfying the requirements.
+        hosts = [host] if host else None
+        best_candidate = self.ds_sel.select_datastore(req, hosts=hosts)
+        if not best_candidate:
+            LOG.error(_LE("There is no valid datastore to create backing for "
+                          "volume: %s."),
+                      volume['name'])
+            raise vmdk_exceptions.NoValidDatastoreException()
 
-    def _create_backing_in_inventory(self, volume, create_params=None):
-        """Creates backing under any suitable host.
+        (host_ref, resource_pool, summary) = best_candidate
+        dc = self.volumeops.get_dc(resource_pool)
+        folder = self._get_volume_group_folder(dc)
 
-        The method tries to pick datastore that can fit the volume under
-        any host in the inventory.
-
-        :param volume: Volume object
-        :param create_params: Dictionary specifying optional parameters for
-                              backing VM creation
-        :return: Reference to the created backing
-        """
-        create_params = create_params or {}
-        retrv_result = self.volumeops.get_hosts()
-        while retrv_result:
-            hosts = retrv_result.objects
-            if not hosts:
-                break
-            backing = None
-            for host in hosts:
-                try:
-                    backing = self._create_backing(volume,
-                                                   host.obj,
-                                                   create_params)
-                    if backing:
-                        break
-                except exceptions.VimException as excep:
-                    LOG.warn(_LW("Unable to find suitable datastore for "
-                                 "volume: %(vol)s under host: %(host)s. "
-                                 "More details: %(excep)s"),
-                             {'vol': volume['name'],
-                              'host': host.obj, 'excep': excep})
-            if backing:
-                self.volumeops.cancel_retrieval(retrv_result)
-                return backing
-            retrv_result = self.volumeops.continue_retrieval(retrv_result)
-
-        msg = _("Unable to create volume: %s in the "
-                "inventory.") % volume['name']
-        LOG.error(msg)
-        raise exceptions.VimException(msg)
+        return (host_ref, resource_pool, folder, summary)
 
     def _initialize_connection(self, volume, connector):
         """Get information of volume's backing.
@@ -682,7 +631,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 LOG.warn(_LW("Trying to boot from an empty volume: %s."),
                          volume['name'])
                 # Create backing
-                backing = self._create_backing_in_inventory(volume)
+                backing = self._create_backing(volume)
 
         # Set volume's moref value and name
         connection_info['data'] = {'volume': backing.value,
@@ -805,7 +754,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
 
         # Create a backing
-        backing = self._create_backing_in_inventory(volume)
+        backing = self._create_backing(volume)
         dest_vmdk_path = self.volumeops.get_vmdk_path(backing)
         datacenter = self.volumeops.get_dc(backing)
         # Deleting the current VMDK file
@@ -1101,7 +1050,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                   "%(param)s.",
                   {'id': volume['id'],
                    'param': create_params})
-        backing = self._create_backing_in_inventory(volume, create_params)
+        backing = self._create_backing(volume, create_params=create_params)
 
         try:
             # Find the backing's datacenter, host, datastore and folder.
@@ -1366,7 +1315,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         if not backing:
             LOG.info(_LI("Backing not found, creating for volume: %s"),
                      volume['name'])
-            backing = self._create_backing_in_inventory(volume)
+            backing = self._create_backing(volume)
         vmdk_file_path = self.volumeops.get_vmdk_path(backing)
 
         # Upload image from vmdk
@@ -1648,7 +1597,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         backing = self.volumeops.get_backing(volume['name'])
         if backing is None:
             LOG.debug("Creating backing for volume: %s.", volume['name'])
-            backing = self._create_backing_in_inventory(volume)
+            backing = self._create_backing(volume)
 
         tmp_vmdk_name = uuidutils.generate_uuid()
         with self._temporary_file(suffix=".vmdk",
