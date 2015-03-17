@@ -64,11 +64,12 @@ def RaiseXIODriverException():
 
 class XIOISEDriver(object):
 
-    VERSION = '1.1.0'
+    VERSION = '1.1.1'
 
     # Version   Changes
     # 1.0.0     Base driver
     # 1.1.0     QoS, affinity, retype and thin support
+    # 1.1.1     Fix retry loop (Bug 1429283)
 
     def __init__(self, *args, **kwargs):
         super(XIOISEDriver, self).__init__()
@@ -349,7 +350,7 @@ class XIOISEDriver(object):
             if remaining == 0:
                 # We are done - let our caller handle response
                 raise loopingcall.LoopingCallDone(response)
-            args['retries'] = remaining
+            loop_args['retries'] = remaining
 
         # Setup retries, interval and call wait function.
         loop_args = {}
