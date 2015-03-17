@@ -18,7 +18,6 @@ Tests for Volume Code.
 
 """
 
-import contextlib
 import datetime
 import os
 import shutil
@@ -1629,12 +1628,10 @@ class VolumeTestCase(BaseVolumeTestCase):
                           'key2': 'value2'}
                       }
 
-        with contextlib.nested(
-            mock.patch.object(cinder.volume.volume_types,
-                              'get_volume_type_qos_specs'),
+        with mock.patch.object(cinder.volume.volume_types,
+                               'get_volume_type_qos_specs') as type_qos, \
             mock.patch.object(cinder.tests.fake_driver.FakeISCSIDriver,
-                              'initialize_connection')
-        ) as (type_qos, driver_init):
+                              'initialize_connection') as driver_init:
             type_qos.return_value = dict(qos_specs=qos_values)
             driver_init.return_value = {'data': {}}
             qos_specs_expected = {'key1': 'value1',

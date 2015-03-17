@@ -138,6 +138,15 @@ def check_oslo_namespace_imports(logical_line):
         yield(0, msg)
 
 
+def check_no_contextlib_nested(logical_line):
+    msg = ("N339: contextlib.nested is deprecated. With Python 2.7 and later "
+           "the with-statement supports multiple nested objects. See https://"
+           "docs.python.org/2/library/contextlib.html#contextlib.nested "
+           "for more information.")
+    if "with contextlib.nested" in logical_line:
+        yield(0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
@@ -146,3 +155,4 @@ def factory(register):
     register(check_no_log_audit)
     register(check_assert_called_once)
     register(check_oslo_namespace_imports)
+    register(check_no_contextlib_nested)

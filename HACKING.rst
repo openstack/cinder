@@ -14,6 +14,7 @@ Cinder Specific Commandments
 - [N324] Enforce no use of LOG.audit messages.  LOG.info should be used instead.
 - [N327] assert_called_once is not a valid Mock method.
 - [N333] Ensure that oslo namespaces are used for namespaced libraries.
+- [N339] Prevent use of deprecated contextlib.nested.
 
 
 General

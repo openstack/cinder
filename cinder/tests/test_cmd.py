@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
 import datetime
 import StringIO
 import sys
@@ -706,16 +705,14 @@ class TestCinderRtstoolCmd(test.TestCase):
                           mock.sentinel.iser_enabled)
 
     def _test_create_rtslib_error_network_portal(self, ip):
-        with contextlib.nested(
-            mock.patch('rtslib.NetworkPortal'),
-            mock.patch('rtslib.LUN'),
-            mock.patch('rtslib.TPG'),
-            mock.patch('rtslib.FabricModule'),
-            mock.patch('rtslib.Target'),
-            mock.patch('rtslib.BlockStorageObject'),
-            mock.patch('rtslib.root.RTSRoot')
-        ) as (network_portal, lun, tpg, fabric_module, target,
-              block_storage_object, rts_root):
+        with mock.patch('rtslib.NetworkPortal') as network_portal, \
+                mock.patch('rtslib.LUN') as lun, \
+                mock.patch('rtslib.TPG') as tpg, \
+                mock.patch('rtslib.FabricModule') as fabric_module, \
+                mock.patch('rtslib.Target') as target, \
+                mock.patch('rtslib.BlockStorageObject') as \
+                block_storage_object, \
+                mock.patch('rtslib.root.RTSRoot') as rts_root:
             root_new = mock.MagicMock(storage_objects=mock.MagicMock())
             rts_root.return_value = root_new
             block_storage_object.return_value = mock.sentinel.so_new
@@ -766,16 +763,14 @@ class TestCinderRtstoolCmd(test.TestCase):
         self._test_create_rtslib_error_network_portal('::0')
 
     def _test_create(self, ip):
-        with contextlib.nested(
-            mock.patch('rtslib.NetworkPortal'),
-            mock.patch('rtslib.LUN'),
-            mock.patch('rtslib.TPG'),
-            mock.patch('rtslib.FabricModule'),
-            mock.patch('rtslib.Target'),
-            mock.patch('rtslib.BlockStorageObject'),
-            mock.patch('rtslib.root.RTSRoot')
-        ) as (network_portal, lun, tpg, fabric_module, target,
-              block_storage_object, rts_root):
+        with mock.patch('rtslib.NetworkPortal') as network_portal, \
+                mock.patch('rtslib.LUN') as lun, \
+                mock.patch('rtslib.TPG') as tpg, \
+                mock.patch('rtslib.FabricModule') as fabric_module, \
+                mock.patch('rtslib.Target') as target, \
+                mock.patch('rtslib.BlockStorageObject') as \
+                block_storage_object, \
+                mock.patch('rtslib.root.RTSRoot') as rts_root:
             root_new = mock.MagicMock(storage_objects=mock.MagicMock())
             rts_root.return_value = root_new
             block_storage_object.return_value = mock.sentinel.so_new
