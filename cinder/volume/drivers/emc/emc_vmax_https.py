@@ -108,7 +108,8 @@ class HTTPSConnection(httplib.HTTPSConnection):
             self.key_file = None if key_file is None else key_file
             self.cert_file = None if cert_file is None else cert_file
             self.insecure = no_verification
-            self.ca_certs = None if ca_certs is None else str(ca_certs)
+            self.ca_certs = (
+                None if ca_certs is None else six.text_type(ca_certs))
             self.set_context()
             # ssl exceptions are reported in various form in Python 3
             # so to be compatible, we report the same kind as under

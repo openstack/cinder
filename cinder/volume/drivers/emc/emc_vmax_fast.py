@@ -119,12 +119,11 @@ class EMCVMAXFast(object):
 
         assocStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(conn, volumeInstanceName))
-        defaultSgGroupName = (DEFAULT_SG_PREFIX + fastPolicyName +
-                              DEFAULT_SG_POSTFIX)
+        defaultSgName = self._format_default_sg_string(fastPolicyName)
         defaultStorageGroupInstanceName = (
             self.utils.find_storage_masking_group(conn,
                                                   controllerConfigService,
-                                                  defaultSgGroupName))
+                                                  defaultSgName))
         if defaultStorageGroupInstanceName is None:
             LOG.error(_LE(
                 "Unable to find default storage group "
@@ -140,8 +139,19 @@ class EMCVMAXFast(object):
                 "Volume: %(volumeName)s Does not belong "
                 "to storage storage group %(defaultSgGroupName)s."),
                 {'volumeName': volumeName,
-                 'defaultSgGroupName': defaultSgGroupName})
+                 'defaultSgGroupName': defaultSgName})
         return foundDefaultStorageGroupInstanceName
+
+    def _format_default_sg_string(self, fastPolicyName):
+        """Format the default storage group name
+
+        :param fastPolicyName: the fast policy name
+        :returns: defaultSgName
+        """
+        return ("%(prefix)s%(fastPolicyName)s%(postfix)s"
+                % {'prefix': DEFAULT_SG_PREFIX,
+                   'fastPolicyName': fastPolicyName,
+                   'postfix': DEFAULT_SG_POSTFIX})
 
     def add_volume_to_default_storage_group_for_fast_policy(
             self, conn, controllerConfigService, volumeInstance,
@@ -161,10 +171,9 @@ class EMCVMAXFast(object):
             associated with the volume
         """
         failedRet = None
-        defaultSgGroupName = (DEFAULT_SG_PREFIX + fastPolicyName +
-                              DEFAULT_SG_POSTFIX)
+        defaultSgName = self._format_default_sg_string(fastPolicyName)
         storageGroupInstanceName = self.utils.find_storage_masking_group(
-            conn, controllerConfigService, defaultSgGroupName)
+            conn, controllerConfigService, defaultSgName)
         if storageGroupInstanceName is None:
             LOG.error(_LE(
                 "Unable to create default storage group for "
@@ -742,19 +751,18 @@ class EMCVMAXFast(object):
         :returns: defaultStorageGroupInstanceName - the default storage group
                                                     instance name
         """
-        defaultSgGroupName = (DEFAULT_SG_PREFIX + fastPolicyName +
-                              DEFAULT_SG_POSTFIX)
+        defaultSgName = self._format_default_sg_string(fastPolicyName)
         defaultStorageGroupInstanceName = (
             self.utils.find_storage_masking_group(conn,
                                                   controllerConfigService,
-                                                  defaultSgGroupName))
+                                                  defaultSgName))
         if defaultStorageGroupInstanceName is None:
             # Create it and associate it with the FAST policy in question.
             defaultStorageGroupInstanceName = (
                 self._create_default_storage_group(conn,
                                                    controllerConfigService,
                                                    fastPolicyName,
-                                                   defaultSgGroupName,
+                                                   defaultSgName,
                                                    volumeInstance,
                                                    extraSpecs))
 

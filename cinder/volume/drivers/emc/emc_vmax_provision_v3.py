@@ -350,7 +350,9 @@ class EMCVMAXProvisionV3(object):
 
         for storagePoolSetting in storagePoolSettings:
             settingInstanceID = storagePoolSetting['InstanceID']
-            matchString = slo + ':' + workload
+            matchString = ("%(slo)s:%(workload)s"
+                           % {'slo': slo,
+                              'workload': workload})
             if matchString in settingInstanceID:
                 foundStoragePoolSetting = storagePoolSetting
                 break
