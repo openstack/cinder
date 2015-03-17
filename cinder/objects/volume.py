@@ -74,6 +74,10 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         'replication_driver_data': fields.StringField(nullable=True),
     }
 
+    # NOTE(thangp): obj_extra_fields is used to hold properties that are not
+    # usually part of the model
+    obj_extra_fields = ['name', 'name_id']
+
     @property
     def name_id(self):
         return self.id if not self._name_id else self._name_id

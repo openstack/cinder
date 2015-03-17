@@ -58,6 +58,12 @@ class TestVolume(test_objects._LocalTest):
         volume.destroy()
         volume_destroy.assert_called_once_with(self.context, '1')
 
+    def test_obj_fields(self):
+        volume = objects.Volume(context=self.context, id=2, _name_id=2)
+        self.assertEqual(['name', 'name_id'], volume.obj_extra_fields)
+        self.assertEqual('volume-2', volume.name)
+        self.assertEqual('2', volume.name_id)
+
 
 class TestVolumeList(test_objects._LocalTest):
     @mock.patch('cinder.db.volume_get_all')

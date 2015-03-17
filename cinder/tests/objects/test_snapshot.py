@@ -15,6 +15,7 @@
 import mock
 
 from cinder.objects import snapshot as snapshot_obj
+from cinder.objects import volume as volume_obj
 from cinder.tests import fake_volume
 from cinder.tests.objects import test_objects
 
@@ -98,6 +99,24 @@ class TestSnapshot(test_objects._LocalTest):
         self.assertEqual({'key1': 'value1'}, snapshot.metadata)
         snapshot_metadata_delete.assert_called_once_with(self.context, '1',
                                                          'key2')
+
+    def test_obj_fields(self):
+        volume = volume_obj.Volume(context=self.context, id=2, _name_id=2)
+        snapshot = snapshot_obj.Snapshot(context=self.context, id=1,
+                                         volume=volume)
+        self.assertEqual(['name', 'volume_name'], snapshot.obj_extra_fields)
+        self.assertEqual('snapshot-1', snapshot.name)
+        self.assertEqual('volume-2', snapshot.volume_name)
+
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_obj_load_attr(self, volume_get_by_id):
+        snapshot = snapshot_obj.Snapshot._from_db_object(
+            self.context, snapshot_obj.Snapshot(), fake_snapshot)
+        volume = volume_obj.Volume(context=self.context, id=2)
+        volume_get_by_id.return_value = volume
+        self.assertEqual(volume, snapshot.volume)
+        volume_get_by_id.assert_called_once_with(self.context,
+                                                 snapshot.volume_id)
 
 
 class TestSnapshotList(test_objects._LocalTest):
