@@ -17,6 +17,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
+from cinder.openstack.common import versionutils
 from cinder import utils
 from cinder.volume.targets import driver
 from cinder.volume import utils as vutils
@@ -41,6 +42,13 @@ class ISCSITarget(driver.Target):
             self.configuration.safe_get('iscsi_protocol')
         self.protocol = 'iSCSI'
         self.volumes_dir = self.configuration.safe_get('volumes_dir')
+
+        # If any of the deprecated options are set, we'll warn the operator.
+        msg = _LW("The option %s has been deprecated and no longer has "
+                  "any effect. It will be removed in the Liberty release.")
+        for opt in ('iscsi_num_targets', 'iser_num_targets'):
+            if self.configuration.safe_get(opt) is not None:
+                versionutils.report_deprecated_feature(LOG, msg, opt)
 
     def _get_iscsi_properties(self, volume, multipath=False):
         """Gets iscsi configuration

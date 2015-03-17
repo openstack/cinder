@@ -2408,8 +2408,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.assertNotIn(iscsi_target, targets)
             targets.append(iscsi_target)
 
-        total_slots = CONF.iscsi_num_targets
-        for _index in xrange(total_slots):
+        for _index in xrange(100):
             tests_utils.create_volume(self.context, **self.volume_params)
         for volume_id in volume_ids:
             self.volume.delete_volume(self.context, volume_id)
@@ -5170,7 +5169,6 @@ class ISCSITestCase(DriverTestCase):
     def setUp(self):
         super(ISCSITestCase, self).setUp()
         self.configuration = mox.MockObject(conf.Configuration)
-        self.configuration.iscsi_num_targets = 100
         self.configuration.iscsi_target_prefix = 'iqn.2010-10.org.openstack:'
         self.configuration.iscsi_ip_address = '0.0.0.0'
         self.configuration.iscsi_port = 3260
@@ -5304,7 +5302,6 @@ class ISERTestCase(DriverTestCase):
         self.configuration = mock.Mock(conf.Configuration)
         self.configuration.safe_get.return_value = None
         self.configuration.num_iser_scan_tries = 3
-        self.configuration.iser_num_targets = 100
         self.configuration.iser_target_prefix = 'iqn.2010-10.org.openstack:'
         self.configuration.iser_ip_address = '0.0.0.0'
         self.configuration.iser_port = 3260

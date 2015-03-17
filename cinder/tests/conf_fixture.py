@@ -21,7 +21,6 @@ from oslo_config import cfg
 
 CONF = cfg.CONF
 
-CONF.import_opt('iscsi_num_targets', 'cinder.volume.drivers.lvm')
 CONF.import_opt('policy_file', 'cinder.policy')
 CONF.import_opt('volume_driver', 'cinder.volume.manager')
 CONF.import_opt('xiv_ds8k_proxy',
@@ -39,7 +38,6 @@ def set_defaults(conf):
                      'cinder.tests.fake_driver.FakeISCSIDriver')
     conf.set_default('iscsi_helper', 'fake')
     conf.set_default('rpc_backend', 'cinder.openstack.common.rpc.impl_fake')
-    conf.set_default('iscsi_num_targets', 8)
     conf.set_default('connection', 'sqlite://', group='database')
     conf.set_default('sqlite_synchronous', False, group='database')
     conf.set_default('policy_file', 'cinder/tests/policy.json')
