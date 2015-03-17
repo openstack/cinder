@@ -2575,6 +2575,86 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
             close.assert_called_once_with(fd)
         delete_if_exists.assert_called_once_with(tmp)
 
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    def test_relocate_backing_nop(self, ds_sel, vops):
+        volume = {'name': 'vol-1', 'size': 1}
+
+        datastore = mock.sentinel.datastore
+        vops.get_datastore.return_value = datastore
+
+        profile = mock.sentinel.profile
+        vops.get_profile.return_value = profile
+
+        vops.is_datastore_accessible.return_value = True
+        ds_sel.is_datastore_compliant.return_value = True
+
+        backing = mock.sentinel.backing
+        host = mock.sentinel.host
+        self._driver._relocate_backing(volume, backing, host)
+
+        vops.is_datastore_accessible.assert_called_once_with(datastore, host)
+        ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
+                                                              profile)
+        self.assertFalse(vops.relocate_backing.called)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    def test_relocate_backing_with_no_datastore(
+            self, ds_sel, vops):
+        volume = {'name': 'vol-1', 'size': 1}
+
+        profile = mock.sentinel.profile
+        vops.get_profile.return_value = profile
+
+        vops.is_datastore_accessible.return_value = True
+        ds_sel.is_datastore_compliant.return_value = False
+
+        ds_sel.select_datastore.return_value = []
+
+        backing = mock.sentinel.backing
+        host = mock.sentinel.host
+
+        self.assertRaises(vmdk_exceptions.NoValidDatastoreException,
+                          self._driver._relocate_backing,
+                          volume,
+                          backing,
+                          host)
+        ds_sel.select_datastore.assert_called_once_with(
+            {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
+             hub.DatastoreSelector.PROFILE_NAME: profile}, hosts=[host])
+        self.assertFalse(vops.relocate_backing.called)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    def test_relocate_backing(
+            self, ds_sel, get_volume_group_folder, vops):
+        volume = {'name': 'vol-1', 'size': 1}
+
+        vops.is_datastore_accessible.return_value = False
+        ds_sel.is_datastore_compliant.return_value = True
+
+        backing = mock.sentinel.backing
+        host = mock.sentinel.host
+
+        rp = mock.sentinel.rp
+        datastore = mock.sentinel.datastore
+        summary = mock.Mock(datastore=datastore)
+        ds_sel.select_datastore.return_value = (host, rp, summary)
+
+        folder = mock.sentinel.folder
+        get_volume_group_folder.return_value = folder
+
+        self._driver._relocate_backing(volume, backing, host)
+
+        vops.relocate_backing.assert_called_once_with(backing,
+                                                      datastore,
+                                                      rp,
+                                                      host)
+        vops.move_backing_to_folder.assert_called_once_with(backing,
+                                                            folder)
+
 
 class ImageDiskTypeTest(test.TestCase):
     """Unit tests for ImageDiskType."""

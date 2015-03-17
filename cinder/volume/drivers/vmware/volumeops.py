@@ -392,6 +392,15 @@ class VMwareVolumeOps(object):
 
         return connected_hosts
 
+    def is_datastore_accessible(self, datastore, host):
+        """Check if the datastore is accessible to the given host.
+
+        :param datastore: datastore reference
+        :return: True if the datastore is accessible
+        """
+        hosts = self.get_connected_hosts(datastore)
+        return host.value in hosts
+
     def _in_maintenance(self, summary):
         """Check if a datastore is entering maintenance or in maintenance.
 
@@ -1340,3 +1349,27 @@ class VMwareVolumeOps(object):
         LOG.debug("Initiated deleting vmdk file via task: %s.", task)
         self._session.wait_for_task(task)
         LOG.info(_LI("Deleted vmdk file: %s."), vmdk_file_path)
+
+    def get_profile(self, backing):
+        """Query storage profile associated with the given backing.
+
+        :param backing: backing reference
+        :return: profile name
+        """
+        pbm = self._session.pbm
+        profile_manager = pbm.service_content.profileManager
+
+        object_ref = pbm.client.factory.create('ns0:PbmServerObjectRef')
+        object_ref.key = backing.value
+        object_ref.objectType = 'virtualMachine'
+
+        profile_ids = self._session.invoke_api(pbm,
+                                               'PbmQueryAssociatedProfile',
+                                               profile_manager,
+                                               entity=object_ref)
+        if profile_ids:
+            profiles = self._session.invoke_api(pbm,
+                                                'PbmRetrieveContent',
+                                                profile_manager,
+                                                profileIds=profile_ids)
+            return profiles[0].name
