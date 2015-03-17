@@ -517,6 +517,23 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                          self.connector.
                          _get_multipath_device_name('/dev/md-1'))
 
+    @mock.patch.object(os.path, 'realpath', return_value='/dev/sda')
+    @mock.patch.object(connector.ISCSIConnector, '_run_multipath')
+    def test_get_multipath_device_name_with_error(self, mock_multipath,
+                                                  mock_realpath):
+        mock_multipath.return_value = [
+            "Mar 17 14:32:37 | sda: No fc_host device for 'host-1'\n"
+            "mpathb (36e00000000010001) dm-4 IET ,VIRTUAL-DISK\n"
+            "size=1.0G features='0' hwhandler='0' wp=rw\n"
+            "|-+- policy='service-time 0' prio=0 status=active\n"
+            "| `- 2:0:0:1 sda 8:0 active undef running\n"
+            "`-+- policy='service-time 0' prio=0 status=enabled\n"
+            "  `- 3:0:0:1 sdb 8:16 active undef running\n"]
+        expected = '/dev/mapper/mpathb'
+        self.assertEqual(expected,
+                         self.connector.
+                         _get_multipath_device_name('/dev/sda'))
+
     def test_get_iscsi_devices(self):
         paths = [('ip-10.0.0.1:3260-iscsi-iqn.2013-01.ro.'
                  'com.netapp:node.netapp02-lun-0')]
