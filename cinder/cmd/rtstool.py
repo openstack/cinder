@@ -77,7 +77,7 @@ def create(backing_device, name, userid, password, iser_enabled,
 
     try:
         if iser_enabled == 'True':
-            portal._set_iser(1)
+            portal.iser = True
     except rtslib.utils.RTSLibError:
         print(_('Error enabling iSER for NetworkPortal: please ensure that '
                 'RDMA is supported on your iSCSI port.'))
