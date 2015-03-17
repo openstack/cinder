@@ -93,6 +93,16 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, 'foo', body)
 
+    def test_update_multi_value_with_bad_data(self):
+        orig_quota = self.controller.show(self.req, 'foo')
+        body = make_body(gigabytes=2000, snapshots=15, volumes="should_be_int",
+                         backups=5, tenant_id=None)
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
+                          self.req, 'foo', body)
+        # Verify that quota values are not updated in db
+        new_quota = self.controller.show(self.req, 'foo')
+        self.assertDictMatch(orig_quota, new_quota)
+
     def test_update_bad_quota_limit(self):
         body = {'quota_set': {'gigabytes': -1000}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
