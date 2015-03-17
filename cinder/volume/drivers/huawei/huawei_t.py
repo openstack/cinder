@@ -21,6 +21,7 @@ import re
 import time
 
 from oslo_log import log as logging
+from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
@@ -108,7 +109,7 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
                      'ini': connector['initiator']})
 
         self.common._update_login_info()
-        (iscsi_iqn, target_ip, port_ctr) =\
+        (iscsi_iqn, target_ip, port_ctr) = \
             self._get_iscsi_params(connector['initiator'])
 
         # First, add a host if not added before.
@@ -120,7 +121,12 @@ class HuaweiTISCSIDriver(driver.ISCSIDriver):
 
         # Finally, map the volume to the host.
         volume_id = volume['provider_location']
-        hostlun_id = self.common.map_volume(host_id, volume_id)
+        try:
+            hostlun_id = self.common.map_volume(host_id, volume_id)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                # Remove the iSCSI port from the host if the map failed.
+                self._remove_iscsi_port(host_id, connector)
 
         # Change LUN ctr for better performance, just for single path.
         lun_details = self.common.get_lun_details(volume_id)
@@ -467,7 +473,12 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
 
         # Finally, map the volume to the host.
         volume_id = volume['provider_location']
-        hostlun_id = self.common.map_volume(host_id, volume_id)
+        try:
+            hostlun_id = self.common.map_volume(host_id, volume_id)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                # Remove the FC port from the host if the map failed.
+                self._remove_fc_ports(host_id, connector)
 
         # Change LUN ctr for better performance, just for single path.
         if len(tgt_wwns) == 1:
@@ -502,7 +513,7 @@ class HuaweiTFCDriver(driver.FibreChannelDriver):
                 if (tmp_line[1] == 'FC') and (tmp_line[4] == 'Connected'):
                     wwns.append(tmp_line[0])
 
-        return wwns
+        return list(set(wwns))
 
     def _add_fc_port_to_host(self, hostid, wwn, multipathtype=0):
         """Add a FC port to host."""

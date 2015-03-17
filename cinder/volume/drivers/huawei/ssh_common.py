@@ -43,6 +43,7 @@ LOG = logging.getLogger(__name__)
 HOST_GROUP_NAME = 'HostGroup_OpenStack'
 HOST_NAME_PREFIX = 'Host_'
 VOL_AND_SNAP_NAME_PREFIX = 'OpenStack_'
+HOST_LUN_ERR_MSG = 'host LUN is mapped or does not exist'
 
 
 def ssh_read(user, channel, cmd, timeout):
@@ -122,14 +123,14 @@ class TseriesCommon():
                 LOG.error(err_msg)
                 raise exception.InvalidInput(reason=err_msg)
 
-        # make sure storage pool is set
+        # Make sure storage pool is set.
         if not huawei_utils.is_xml_item_exist(root, 'LUN/StoragePool', 'Name'):
             err_msg = _('_check_conf_file: Config file invalid. '
                         'StoragePool must be set.')
             LOG.error(err_msg)
             raise exception.InvalidInput(reason=err_msg)
 
-        # If setting os type, make sure it valid
+        # If setting os type, make sure it valid.
         if huawei_utils.is_xml_item_exist(root, 'Host', 'OSType'):
             os_list = huawei_utils.os_type.keys()
             if not huawei_utils.is_xml_item_valid(root, 'Host', os_list,
@@ -147,10 +148,10 @@ class TseriesCommon():
         filename = self.configuration.cinder_huawei_conf_file
         tree = ET.parse(filename)
         root = tree.getroot()
-        logininfo['ControllerIP0'] =\
-            root.findtext('Storage/ControllerIP0').strip()
-        logininfo['ControllerIP1'] =\
-            root.findtext('Storage/ControllerIP1').strip()
+        logininfo['ControllerIP0'] = (
+            root.findtext('Storage/ControllerIP0')).strip()
+        logininfo['ControllerIP1'] = (
+            root.findtext('Storage/ControllerIP1')).strip()
 
         need_encode = False
         for key in ['UserName', 'UserPassword']:
@@ -958,6 +959,17 @@ class TseriesCommon():
                           'lunid': volume_id,
                           'hostlunid': new_hostlun_id})
             out = self._execute_cli(cli_cmd)
+            # Check whether the hostlunid has already been assigned.
+            condition = re.search(HOST_LUN_ERR_MSG, out)
+            while condition:
+                new_hostlun_id = new_hostlun_id + 1
+                cli_cmd = ('addhostmap -host %(host_id)s -devlun %(lunid)s '
+                           '-hostlun %(hostlunid)s'
+                           % {'host_id': host_id,
+                              'lunid': volume_id,
+                              'hostlunid': new_hostlun_id})
+                out = self._execute_cli(cli_cmd)
+                condition = re.search(HOST_LUN_ERR_MSG, out)
 
             msg = ('Failed to map LUN %s to host %s. host LUN ID: %s'
                    % (volume_id, host_id, new_hostlun_id))

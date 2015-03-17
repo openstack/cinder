@@ -78,20 +78,22 @@ class RestCommon():
             if "xx/sessions" not in url:
                 LOG.info(_LI('\n\n\n\nRequest URL: %(url)s\n\n'
                              'Call Method: %(method)s\n\n'
-                             'Request Data: %(data)s\n\n'), {'url': url,
-                                                             'method': method,
-                                                             'data': data})
+                             'Request Data: %(data)s\n\n'
+                             'Response Data:%(res)s\n\n'), {'url': url,
+                                                            'method': method,
+                                                            'data': data,
+                                                            'res': res})
 
         except Exception as err:
             LOG.error(_LE('\nBad response from server: %s.') % err)
-            raise err
+            raise
 
         try:
             res_json = json.loads(res)
         except Exception as err:
             err_msg = (_LE('JSON transfer error: %s.') % err)
             LOG.error(err_msg)
-            raise err
+            raise
 
         return res_json
 
@@ -277,7 +279,7 @@ class RestCommon():
             root = tree.getroot()
         except Exception as err:
             LOG.error(_LE('_read_xml: %s') % err)
-            raise err
+            raise
         return root
 
     def _encode_name(self, name):
@@ -515,9 +517,9 @@ class RestCommon():
             except Exception as ex:
                 res = False
                 LOG.debug('_wait_for_condition: %(func_name)s '
-                          'failed for %(exception)s.'
-                          % {'func_name': func.__name__,
-                             'exception': ex.message})
+                          'failed for %(exception)s.',
+                          {'func_name': func.__name__,
+                           'exception': ex})
             if res:
                 raise loopingcall.LoopingCallDone()
 
@@ -645,9 +647,9 @@ class RestCommon():
         if hostgroup_id is None:
             hostgroup_id = self._create_hostgroup(host_group_name)
 
-        isAssociate = self._is_host_associate_to_hostgroup(hostgroup_id,
-                                                           host_id)
-        if isAssociate is False:
+        is_associated = self._is_host_associate_to_hostgroup(hostgroup_id,
+                                                             host_id)
+        if is_associated is False:
             self._associate_host_to_hostgroup(hostgroup_id, host_id)
 
         return hostgroup_id
@@ -672,7 +674,10 @@ class RestCommon():
             # Create lungroup and add LUN into to lungroup.
             if lungroup_id is None:
                 lungroup_id = self._create_lungroup(lungroup_name)
-            self._associate_lun_to_lungroup(lungroup_id, lun_id)
+            is_associated = self._is_lun_associated_to_lungroup(lungroup_id,
+                                                                lun_id)
+            if not is_associated:
+                self._associate_lun_to_lungroup(lungroup_id, lun_id)
 
             if view_id is None:
                 view_id = self._add_mapping_view(mapping_view_name)
@@ -923,7 +928,7 @@ class RestCommon():
                     except Exception as err:
                         msg = (_LE("JSON transfer data error. %s") % err)
                         LOG.error(msg)
-                        raise err
+                        raise
         return host_lun_id
 
     def _find_host(self, hostname):
@@ -971,6 +976,22 @@ class RestCommon():
 
         return False
 
+    def _is_lun_associated_to_lungroup(self, lungroup_id, lun_id):
+        """Check whether the lun is associated to the lungroup."""
+        url_subfix = ("/lun/associate?TYPE=11&"
+                      "ASSOCIATEOBJTYPE=256&ASSOCIATEOBJID=%s" % lungroup_id)
+
+        url = self.url + url_subfix
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, 'Check lungroup associate error.')
+
+        if "data" in result:
+            for item in result['data']:
+                if lun_id == item['ID']:
+                    return True
+
+        return False
+
     def _associate_host_to_hostgroup(self, hostgroup_id, host_id):
         url = self.url + "/hostgroup/associate"
         data = json.dumps({"TYPE": "14",
@@ -1003,9 +1024,8 @@ class RestCommon():
 
     def _initiator_is_added_to_array(self, ininame):
         """Check whether the initiator is already added on the array."""
-        url = self.url + "/iscsi_initiator"
-        data = json.dumps({"TYPE": "222", "ID": ininame})
-        result = self.call(url, data, "GET")
+        url = self.url + "/iscsi_initiator?range=[0-65535]"
+        result = self.call(url, None, "GET")
         self._assert_rest_result(result,
                                  'Check initiator added to array error.')
 
@@ -1017,9 +1037,8 @@ class RestCommon():
 
     def _is_initiator_associated_to_host(self, ininame):
         """Check whether the initiator is associated to the host."""
-        url = self.url + "/iscsi_initiator"
-        data = json.dumps({"TYPE": "222", "ID": ininame})
-        result = self.call(url, data, "GET")
+        url = self.url + "/iscsi_initiator?range=[0-65535]"
+        result = self.call(url, None, "GET")
         self._assert_rest_result(result,
                                  'Check initiator associated to host error.')
 
