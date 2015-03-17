@@ -42,7 +42,7 @@ from cinder.volume.drivers.san.hp import hp_lefthand_rest_proxy as rest_proxy
 
 LOG = logging.getLogger(__name__)
 
-MIN_CLIENT_VERSION = '1.0.3'
+MIN_CLIENT_VERSION = '1.0.4'
 
 
 class HPLeftHandISCSIDriver(driver.VolumeDriver):
@@ -55,9 +55,10 @@ class HPLeftHandISCSIDriver(driver.VolumeDriver):
         1.0.3 - Fix for no handler for logger during tests
         1.0.4 - Removing locks bug #1395953
         1.0.5 - Adding support for manage/unmanage.
+        1.0.6 - Fixed #1432757 Updated minimum client version.
     """
 
-    VERSION = "1.0.5"
+    VERSION = "1.0.6"
 
     def __init__(self, *args, **kwargs):
         super(HPLeftHandISCSIDriver, self).__init__(*args, **kwargs)
