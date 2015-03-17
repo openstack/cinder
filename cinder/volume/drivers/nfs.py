@@ -91,6 +91,7 @@ class NfsDriver(remotefs.RemoteFSDriver):
         self.base = getattr(self.configuration,
                             'nfs_mount_point_base',
                             CONF.nfs_mount_point_base)
+        self.base = os.path.realpath(self.base)
         opts = getattr(self.configuration,
                        'nfs_mount_options',
                        CONF.nfs_mount_options)
