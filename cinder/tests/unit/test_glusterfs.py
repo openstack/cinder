@@ -150,70 +150,24 @@ class GlusterFsDriverTestCase(test.TestCase):
         """_mount_glusterfs common case usage."""
         drv = self._driver
 
-        with mock.patch.object(drv, '_execute') as mock_execute:
-            drv._mount_glusterfs(self.TEST_EXPORT1, self.TEST_MNT_POINT)
+        with mock.patch.object(brick.remotefs.remotefs.RemoteFsClient,
+                               'mount') as mock_mount:
+            drv._mount_glusterfs(self.TEST_EXPORT1)
 
-            expected = [mock.call('mkdir', '-p', '/mnt/glusterfs'),
-                        mock.call('mount', '-t', 'glusterfs',
-                                  'glusterfs-host1:/export',
-                                  '/mnt/glusterfs', run_as_root=True)]
-            self.assertEqual(expected, mock_execute.mock_calls)
+            mock_mount.assert_called_once_with(self.TEST_EXPORT1, [])
 
-    def test_mount_glusterfs_should_suppress_already_mounted_error(self):
-        """_mount_glusterfs should suppress already mounted error if
-           ensure=True
+    def test_mount_glusterfs_should_reraise_exception_on_failure(self):
+        """_mount_glusterfs should reraise exception if mount fails.
         """
         drv = self._driver
 
-        with mock.patch.object(drv, '_execute') as mock_execute:
-            execute_iterable = (None,
-                                putils.ProcessExecutionError(
-                                    stderr='is busy or already mounted'))
-            mock_execute.side_effect = execute_iterable
-            drv._mount_glusterfs(self.TEST_EXPORT1, self.TEST_MNT_POINT,
-                                 ensure=True)
+        with mock.patch.object(brick.remotefs.remotefs.RemoteFsClient,
+                               'mount') as mock_mount:
 
-            expected = [mock.call('mkdir', '-p', '/mnt/glusterfs'),
-                        mock.call('mount', '-t', 'glusterfs',
-                                  'glusterfs-host1:/export',
-                                  '/mnt/glusterfs', run_as_root=True)]
-            self.assertEqual(expected, mock_execute.mock_calls)
+            mock_mount.side_effect = exception.GlusterfsException()
 
-    def test_mount_glusterfs_should_reraise_already_mounted_error(self):
-        """_mount_glusterfs should not suppress already mounted error
-           if ensure=False
-        """
-        drv = self._driver
-
-        with mock.patch.object(drv, '_execute') as mock_execute:
-            execute_iterable = (None,
-                                putils.ProcessExecutionError(
-                                    stderr='is busy or already mounted'))
-            mock_execute.side_effect = execute_iterable
-
-            self.assertRaises(putils.ProcessExecutionError,
-                              drv._mount_glusterfs, self.TEST_EXPORT1,
-                              self.TEST_MNT_POINT, ensure=False)
-
-            expected = [mock.call('mkdir', '-p', '/mnt/glusterfs'),
-                        mock.call('mount', '-t', 'glusterfs',
-                                  'glusterfs-host1:/export',
-                                  '/mnt/glusterfs', run_as_root=True)]
-            self.assertEqual(expected, mock_execute.mock_calls)
-
-    def test_mount_glusterfs_should_create_mountpoint_if_not_yet(self):
-        """_mount_glusterfs should create mountpoint if it doesn't exist."""
-        drv = self._driver
-
-        with mock.patch.object(drv, '_execute') as mock_execute:
-
-            drv._mount_glusterfs(self.TEST_EXPORT1, self.TEST_MNT_POINT)
-
-            expected = [mock.call('mkdir', '-p', '/mnt/glusterfs'),
-                        mock.call('mount', '-t', 'glusterfs',
-                                  'glusterfs-host1:/export',
-                                  '/mnt/glusterfs', run_as_root=True)]
-            self.assertEqual(expected, mock_execute.mock_calls)
+            self.assertRaises(exception.GlusterfsException,
+                              drv._mount_glusterfs, self.TEST_EXPORT1)
 
     def test_get_hash_str(self):
         """_get_hash_str should calculation correct value."""
@@ -395,7 +349,9 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock.patch.object(utils, 'get_file_mode') as \
                 mock_get_file_mode,\
                 mock.patch.object(tempfile, 'NamedTemporaryFile') as \
-                mock_named_temp:
+                mock_named_temp,\
+                mock.patch.object(brick.remotefs.remotefs.RemoteFsClient,
+                                  'mount') as mock_mount:
             drv._load_shares_config = self._fake_load_shares_config
             mock_named_temp.return_value = self._fake_NamedTemporaryFile
             mock_exists.return_value = True
@@ -410,11 +366,6 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock.call('umount',
                           '/mnt/test/8f0473c9ad824b8b6a27264b9cacb005',
                           run_as_root=True),
-                mock.call('mkdir', '-p',
-                          '/mnt/test/8f0473c9ad824b8b6a27264b9cacb005'),
-                mock.call('mount', '-t', 'glusterfs', '127.7.7.7:/gluster1',
-                          '/mnt/test/8f0473c9ad824b8b6a27264b9cacb005',
-                          run_as_root=True),
                 mock.call('chgrp', 888,
                           '/mnt/test/8f0473c9ad824b8b6a27264b9cacb005',
                           run_as_root=True),
@@ -422,6 +373,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                           '/mnt/test/8f0473c9ad824b8b6a27264b9cacb005',
                           run_as_root=True)]
             self.assertEqual(expected, mock_execute.mock_calls)
+            mock_mount.assert_called_once_with('127.7.7.7:/gluster1', [])
 
     def test_find_share_should_throw_error_if_there_is_no_mounted_shares(self):
         """_find_share should throw error if there is no mounted shares."""
