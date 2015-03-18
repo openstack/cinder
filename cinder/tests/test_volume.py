@@ -4740,7 +4740,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
             get_connector_properties(root_helper, CONF.my_ip, False, False).\
             AndReturn(properties)
         self.volume.driver._attach_volume(self.context, vol, properties).\
-            AndReturn(attach_info)
+            AndReturn((attach_info, vol))
         os.getuid()
         utils.execute('chown', None, '/dev/null', run_as_root=True)
         f = fileutils.file_open('/dev/null').AndReturn(file('/dev/null'))
@@ -4773,7 +4773,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
             get_connector_properties(root_helper, CONF.my_ip, False, False).\
             AndReturn(properties)
         self.volume.driver._attach_volume(self.context, vol, properties).\
-            AndReturn(attach_info)
+            AndReturn((attach_info, vol))
         os.getuid()
         utils.execute('chown', None, '/dev/null', run_as_root=True)
         f = fileutils.file_open('/dev/null', 'wb').AndReturn(file('/dev/null'))
