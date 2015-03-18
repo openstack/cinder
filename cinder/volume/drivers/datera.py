@@ -24,6 +24,7 @@ import requests
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.openstack.common import versionutils
+from cinder import utils
 from cinder.volume.drivers.san import san
 
 LOG = logging.getLogger(__name__)
@@ -122,24 +123,39 @@ class DateraDriver(san.SanISCSIDriver):
 
         self._login()
 
+    @utils.retry(exception.VolumeDriverException, retries=3)
+    def _wait_for_resource(self, id, resource_type):
+        result = self._issue_api_request(resource_type, 'get', id)
+        if result['status'] == 'available':
+            return
+        else:
+            raise exception.VolumeDriverException(msg=_('Resource not ready.'))
+
+    def _create_resource(self, resource, resource_type, body):
+        result = self._issue_api_request(resource_type, 'post', body=body)
+
+        if result['status'] == 'available':
+            return
+        self._wait_for_resource(resource['id'], resource_type)
+
     def create_volume(self, volume):
         """Create a logical volume."""
-        params = {
+        body = {
             'name': volume['display_name'] or volume['id'],
             'size': str(volume['size'] * units.Gi),
             'uuid': volume['id'],
             'numReplicas': self.num_replicas
         }
-        self._issue_api_request('volumes', 'post', body=params)
+        self._create_resource(volume, 'volumes', body)
 
     def create_cloned_volume(self, volume, src_vref):
-        data = {
+        body = {
             'name': volume['display_name'] or volume['id'],
             'uuid': volume['id'],
             'clone_uuid': src_vref['id'],
             'numReplicas': self.num_replicas
         }
-        self._issue_api_request('volumes', 'post', body=data)
+        self._create_resource(volume, 'volumes', body)
 
     def delete_volume(self, volume):
         try:
@@ -192,20 +208,20 @@ class DateraDriver(san.SanISCSIDriver):
             LOG.info(msg, snapshot['id'])
 
     def create_snapshot(self, snapshot):
-        data = {
+        body = {
             'uuid': snapshot['id'],
             'parentUUID': snapshot['volume_id']
         }
-        self._issue_api_request('snapshots', 'post', body=data)
+        self._create_resource(snapshot, 'snapshots', body)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        data = {
+        body = {
             'name': volume['display_name'] or volume['id'],
             'uuid': volume['id'],
             'snapshot_uuid': snapshot['id'],
             'numReplicas': self.num_replicas
         }
-        self._issue_api_request('volumes', 'post', body=data)
+        self._create_resource(volume, 'volumes', body)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -225,10 +241,10 @@ class DateraDriver(san.SanISCSIDriver):
         return self.cluster_stats
 
     def extend_volume(self, volume, new_size):
-        data = {
+        body = {
             'size': str(new_size * units.Gi)
         }
-        self._issue_api_request('volumes', 'put', body=data,
+        self._issue_api_request('volumes', 'put', body=body,
                                 resource=volume['id'])
 
     def _update_cluster_stats(self):
@@ -254,7 +270,7 @@ class DateraDriver(san.SanISCSIDriver):
 
     def _login(self):
         """Use the san_login and san_password to set self.auth_token."""
-        data = {
+        body = {
             'name': self.username,
             'password': self.password
         }
@@ -265,7 +281,7 @@ class DateraDriver(san.SanISCSIDriver):
 
         try:
             LOG.debug('Getting Datera auth token.')
-            results = self._issue_api_request('login', 'post', body=data,
+            results = self._issue_api_request('login', 'post', body=body,
                                               sensitive=True)
             self.auth_token = results['key']
         except exception.NotAuthorized:
