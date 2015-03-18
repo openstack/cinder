@@ -4201,6 +4201,51 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_cgsnapshot(self.context, cgsnapshot_id)
         self.volume.delete_consistencygroup(self.context, group_id)
 
+    def test_sort_snapshots(self):
+        vol1 = {'id': '1', 'name': 'volume 1',
+                'snapshot_id': '1',
+                'consistencygroup_id': '1'}
+        vol2 = {'id': '2', 'name': 'volume 2',
+                'snapshot_id': '2',
+                'consistencygroup_id': '1'}
+        vol3 = {'id': '3', 'name': 'volume 3',
+                'snapshot_id': '3',
+                'consistencygroup_id': '1'}
+        snp1 = {'id': '1', 'name': 'snap 1',
+                'cgsnapshot_id': '1'}
+        snp2 = {'id': '2', 'name': 'snap 2',
+                'cgsnapshot_id': '1'}
+        snp3 = {'id': '3', 'name': 'snap 3',
+                'cgsnapshot_id': '1'}
+        volumes = []
+        snapshots = []
+        volumes.append(vol1)
+        volumes.append(vol2)
+        volumes.append(vol3)
+        snapshots.append(snp2)
+        snapshots.append(snp3)
+        snapshots.append(snp1)
+        i = 0
+        for vol in volumes:
+            snap = snapshots[i]
+            i += 1
+            self.assertNotEqual(vol['snapshot_id'], snap['id'])
+        sorted_snaps = self.volume._sort_snapshots(volumes, snapshots)
+        i = 0
+        for vol in volumes:
+            snap = sorted_snaps[i]
+            i += 1
+            self.assertEqual(vol['snapshot_id'], snap['id'])
+
+        snapshots[2]['id'] = '9999'
+        self.assertRaises(exception.SnapshotNotFound,
+                          self.volume._sort_snapshots,
+                          volumes, snapshots)
+
+        self.assertRaises(exception.InvalidInput,
+                          self.volume._sort_snapshots,
+                          volumes, [])
+
     @staticmethod
     def _create_cgsnapshot(group_id, volume_id, size='0'):
         """Create a cgsnapshot object."""
