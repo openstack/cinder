@@ -863,11 +863,10 @@ class SRBDriverTestCase(test.TestCase):
             self._driver.create_volume_from_snapshot(newvol, srcsnap)
 
             expected_lv_activ_calls = [
-                mock.call(srcsnap['volume_name'] + "-pool"),
-                mock.call(srcsnap['name'], True)
+                mock.call(mock.ANY, srcsnap['volume_name'] + "-pool"),
+                mock.call(mock.ANY, srcsnap['name'], True)
             ]
-            lv_activ.assertEqual(expected_lv_activ_calls,
-                                 lv_activ.call_args_list)
+            lv_activ.assert_has_calls(expected_lv_activ_calls, any_order=True)
             cp_vol.assert_called_with(
                 '/dev/mapper/volume--SnapBase-_snapshot--SnappedBase',
                 '/dev/mapper/volume--SnapClone-volume--SnapClone',

@@ -1166,7 +1166,7 @@ class DellSCSanAPITestCase(test.TestCase):
                      mock_init):
         res = self.scapi.find_sc(64702)
         mock_get.assert_called_once_with('StorageCenter/StorageCenter')
-        mock_get_result.assert_called()
+        self.assertTrue(mock_get_result.called)
         self.assertEqual(u'64702', res, 'Unexpected SSN')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -1199,8 +1199,8 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._create_folder(
             'StorageCenter/ScVolumeFolder', 12345, '',
             self.configuration.dell_sc_volume_folder)
-        mock_post.assert_called()
-        mock_first_result.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.FLDR, res, 'Unexpected Folder')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1219,8 +1219,8 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._create_folder(
             'StorageCenter/ScVolumeFolder', 12345, 'parentFolder',
             self.configuration.dell_sc_volume_folder)
-        mock_post.assert_called()
-        mock_first_result.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.FLDR, res, 'Unexpected Folder')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -1253,7 +1253,7 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.dell_sc_volume_folder)
         mock_path_to_array.assert_called_once_with(
             self.configuration.dell_sc_volume_folder)
-        mock_find_folder.assert_called()
+        self.assertTrue(mock_find_folder.called)
         self.assertEqual(self.FLDR, res, 'Unexpected ScFolder')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1278,8 +1278,8 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.dell_sc_volume_folder)
         mock_path_to_array.assert_called_once_with(
             self.configuration.dell_sc_volume_folder)
-        mock_find_folder.assert_called()
-        mock_create_folder.assert_called()
+        self.assertTrue(mock_find_folder.called)
+        self.assertTrue(mock_create_folder.called)
         self.assertEqual(self.FLDR, res, 'Unexpected ScFolder')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1305,8 +1305,8 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.dell_sc_volume_folder)
         mock_path_to_array.assert_called_once_with(
             self.configuration.dell_sc_volume_folder)
-        mock_find_folder.assert_called()
-        mock_create_folder.assert_called()
+        self.assertTrue(mock_find_folder.called)
+        self.assertTrue(mock_create_folder.called)
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1324,8 +1324,8 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._find_folder(
             'StorageCenter/ScVolumeFolder', 12345,
             self.configuration.dell_sc_volume_folder)
-        mock_post.assert_called()
-        mock_get_result.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_result.called)
         self.assertEqual(u'devstackvol/fcvm/', res, 'Unexpected folder')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1344,8 +1344,8 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._find_folder(
             'StorageCenter/ScVolumeFolder', 12345,
             u'testParentFolder/opnstktst')
-        mock_post.assert_called()
-        mock_get_result.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_result.called)
         self.assertEqual(u'devstackvol/fcvm/', res, 'Unexpected folder')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -1416,8 +1416,8 @@ class DellSCSanAPITestCase(test.TestCase):
                          mock_open_connection,
                          mock_init):
         self.scapi._init_volume(self.VOLUME)
-        mock_map_volume.assert_called()
-        mock_unmap_volume.assert_called()
+        self.assertTrue(mock_map_volume.called)
+        self.assertTrue(mock_unmap_volume.called)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
@@ -1429,7 +1429,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                  mock_init):
         # Test case where ScServer list fails
         self.scapi._init_volume(self.VOLUME)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'unmap_volume',
@@ -1453,8 +1453,8 @@ class DellSCSanAPITestCase(test.TestCase):
                                       mock_init):
         # Test case where ScServer Status = Down
         self.scapi._init_volume(self.VOLUME)
-        mock_map_volume.assert_called()
-        mock_unmap_volume.assert_called()
+        self.assertFalse(mock_map_volume.called)
+        self.assertFalse(mock_unmap_volume.called)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
@@ -1477,8 +1477,8 @@ class DellSCSanAPITestCase(test.TestCase):
             1,
             12345,
             self.configuration.dell_sc_volume_folder)
-        mock_post.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_json.called)
         mock_find_volume_folder.assert_called_once_with(
             12345, self.configuration.dell_sc_volume_folder)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
@@ -1509,8 +1509,8 @@ class DellSCSanAPITestCase(test.TestCase):
             1,
             12345,
             self.configuration.dell_sc_volume_folder)
-        mock_post.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_json.called)
         mock_create_vol_folder_path.assert_called_once_with(
             12345,
             self.configuration.dell_sc_volume_folder)
@@ -1545,8 +1545,8 @@ class DellSCSanAPITestCase(test.TestCase):
             1,
             12345,
             self.configuration.dell_sc_volume_folder)
-        mock_post.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_json.called)
         mock_create_vol_folder_path.assert_called_once_with(
             12345,
             self.configuration.dell_sc_volume_folder)
@@ -1594,8 +1594,8 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case to find volume by name
         res = self.scapi.find_volume(12345,
                                      self.volume_name)
-        mock_post.assert_called()
-        mock_first_result.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.VOLUME, res, 'Unexpected volume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1614,8 +1614,8 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.find_volume(12345,
                                      None,
                                      '64702.3494')
-        mock_post.assert_called()
-        mock_first_result.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.VOLUME, res, 'Unexpected volume')
 
     def test_find_volume_no_name_or_instance(self,
@@ -1661,10 +1661,10 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_init):
         res = self.scapi.delete_volume(12345,
                                        self.volume_name)
-        mock_delete.assert_called()
+        self.assertTrue(mock_delete.called)
         mock_find_volume.assert_called_once_with(12345, self.volume_name, None)
-        mock_get_json.assert_called()
-        self.assertTrue(res, 'Expected True')
+        self.assertTrue(mock_get_json.called)
+        self.assertTrue(res)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'delete',
@@ -1739,8 +1739,8 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._add_hba(self.SCSERVER,
                                   self.IQN,
                                   False)
-        mock_post.assert_called()
-        self.assertTrue(res, 'Expected True')
+        self.assertTrue(mock_post.called)
+        self.assertTrue(res)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
@@ -1753,8 +1753,8 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._add_hba(self.SCSERVER,
                                   self.WWN,
                                   True)
-        mock_post.assert_called()
-        self.assertTrue(res, 'Expected True')
+        self.assertTrue(mock_post.called)
+        self.assertTrue(res)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
@@ -1767,8 +1767,8 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._add_hba(self.SCSERVER,
                                   self.IQN,
                                   False)
-        mock_post.assert_called()
-        self.assertFalse(res, 'Expected False')
+        self.assertTrue(mock_post.called)
+        self.assertFalse(res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
@@ -1783,8 +1783,8 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_open_connection,
                            mock_init):
         res = self.scapi._find_serveros(12345, 'Red Hat Linux 6.x')
-        mock_get_json.assert_called()
-        mock_post.assert_called()
+        self.assertTrue(mock_get_json.called)
+        self.assertTrue(mock_post.called)
         self.assertEqual('64702.38', res, 'Wrong InstanceId')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1801,8 +1801,8 @@ class DellSCSanAPITestCase(test.TestCase):
                                      mock_init):
         # Test requesting a Server OS that will not be found
         res = self.scapi._find_serveros(12345, 'Non existent OS')
-        mock_get_json.assert_called()
-        mock_post.assert_called()
+        self.assertTrue(mock_get_json.called)
+        self.assertTrue(mock_post.called)
         self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -1832,8 +1832,8 @@ class DellSCSanAPITestCase(test.TestCase):
             12345,
             self.configuration.dell_sc_server_folder,
             self.WWNS)
-        mock_create_server.assert_called()
-        mock_add_hba.assert_called()
+        self.assertTrue(mock_create_server.called)
+        self.assertTrue(mock_add_hba.called)
         self.assertEqual(self.SCSERVER, res, 'Unexpected ScServer')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1865,10 +1865,10 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.dell_sc_server_folder,
             self.IQN,
             False)
-        mock_find_serveros.assert_called()
-        mock_find_server_folder.assert_called()
-        mock_first_result.assert_called()
-        mock_add_hba.assert_called()
+        self.assertTrue(mock_find_serveros.called)
+        self.assertTrue(mock_find_server_folder.called)
+        self.assertTrue(mock_first_result.called)
+        self.assertTrue(mock_add_hba.called)
         self.assertEqual(self.SCSERVER, res, 'Unexpected ScServer')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1900,7 +1900,7 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.dell_sc_server_folder,
             self.IQN,
             False)
-        mock_find_serveros.assert_called()
+        self.assertTrue(mock_find_serveros.called)
         self.assertEqual(self.SCSERVER, res, 'Unexpected ScServer')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1936,8 +1936,8 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.dell_sc_server_folder,
             self.IQN,
             False)
-        mock_find_server_folder.assert_called()
-        mock_create_svr_fldr_path.assert_called()
+        self.assertTrue(mock_find_server_folder.called)
+        self.assertTrue(mock_create_svr_fldr_path.called)
         self.assertEqual(self.SCSERVER, res, 'Unexpected ScServer')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2045,7 +2045,7 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.dell_sc_server_folder,
             self.IQN,
             False)
-        mock_delete_server.assert_called()
+        self.assertTrue(mock_delete_server.called)
         self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2066,8 +2066,8 @@ class DellSCSanAPITestCase(test.TestCase):
                          mock_init):
         res = self.scapi.find_server(12345,
                                      self.IQN)
-        mock_find_serverhba.assert_called()
-        mock_first_result.assert_called()
+        self.assertTrue(mock_find_serverhba.called)
+        self.assertTrue(mock_first_result.called)
         self.assertIsNotNone(res, 'Expected ScServer')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2086,7 +2086,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # or WWN
         res = self.scapi.find_server(12345,
                                      self.IQN)
-        mock_find_serverhba.assert_called()
+        self.assertTrue(mock_find_serverhba.called)
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2105,7 +2105,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # ScServerHba
         res = self.scapi.find_server(12345,
                                      self.IQN)
-        mock_find_serverhba.assert_called()
+        self.assertTrue(mock_find_serverhba.called)
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2122,8 +2122,8 @@ class DellSCSanAPITestCase(test.TestCase):
                             mock_init):
         res = self.scapi.find_server(12345,
                                      self.IQN)
-        mock_post.assert_called()
-        mock_first_result.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_first_result.called)
         self.assertIsNotNone(res, 'Expected ScServerHba')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2153,8 +2153,8 @@ class DellSCSanAPITestCase(test.TestCase):
                           mock_open_connection,
                           mock_init):
         res = self.scapi._find_domains(u'64702.5764839588723736074.69')
-        mock_get .assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
         self.assertEqual(
             self.ISCSI_FLT_DOMAINS, res, 'Unexpected ScIscsiFaultDomain')
 
@@ -2184,8 +2184,8 @@ class DellSCSanAPITestCase(test.TestCase):
                          mock_init):
         res = self.scapi._find_domain(u'64702.5764839588723736074.69',
                                       u'192.168.0.21')
-        mock_get .assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
         self.assertIsNotNone(res, 'Expected ScIscsiFaultDomain')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2232,8 +2232,8 @@ class DellSCSanAPITestCase(test.TestCase):
                                 mock_open_connection,
                                 mock_init):
         res = self.scapi._find_fc_initiators(self.SCSERVER)
-        mock_get.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
         self.assertIsNotNone(res, 'Expected WWN list')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2261,8 +2261,8 @@ class DellSCSanAPITestCase(test.TestCase):
                               mock_open_connection,
                               mock_init):
         res = self.scapi.get_volume_count(self.SCSERVER)
-        mock_get.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
         self.assertEqual(len(self.MAPPINGS), res, 'Mapping count mismatch')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2275,7 +2275,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                       mock_init):
         # Test case of where get of ScServer MappingList fails
         res = self.scapi.get_volume_count(self.SCSERVER)
-        mock_get.assert_called()
+        self.assertTrue(mock_get.called)
         self.assertEqual(-1, res, 'Mapping count not -1')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2291,8 +2291,8 @@ class DellSCSanAPITestCase(test.TestCase):
                                          mock_open_connection,
                                          mock_init):
         res = self.scapi.get_volume_count(self.SCSERVER)
-        mock_get.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
         self.assertEqual(len([]), res, 'Mapping count mismatch')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2308,8 +2308,8 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_open_connection,
                            mock_init):
         res = self.scapi._find_mappings(self.VOLUME)
-        mock_get.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
         self.assertEqual(self.MAPPINGS, res, 'Mapping mismatch')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2322,7 +2322,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                         mock_init):
         # Test getting volume mappings on inactive volume
         res = self.scapi._find_mappings(self.INACTIVE_VOLUME)
-        mock_get.assert_called()
+        self.assertFalse(mock_get.called)
         self.assertEqual([], res, 'No mappings expected')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2335,7 +2335,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                    mock_init):
         # Test case of where get of ScVolume MappingList fails
         res = self.scapi._find_mappings(self.VOLUME)
-        mock_get.assert_called()
+        self.assertTrue(mock_get.called)
         self.assertEqual([], res, 'Mapping count not empty')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2352,8 +2352,8 @@ class DellSCSanAPITestCase(test.TestCase):
                                        mock_init):
         # Test case where ScVolume has no mappings
         res = self.scapi._find_mappings(self.VOLUME)
-        mock_get.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
         self.assertEqual([], res, 'Mapping count mismatch')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2369,8 +2369,8 @@ class DellSCSanAPITestCase(test.TestCase):
                                   mock_open_connection,
                                   mock_init):
         res = self.scapi._find_controller_port(u'64702.5764839588723736070.51')
-        mock_get.assert_called()
-        mock_first_result.assert_called()
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.CTRLR_PORT, res, 'ScControllerPort mismatch')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2383,7 +2383,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                           mock_init):
         # Test case where get of ScVolume MappingList fails
         res = self.scapi._find_controller_port(self.VOLUME)
-        mock_get.assert_called()
+        self.assertTrue(mock_get.called)
         self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2404,9 +2404,9 @@ class DellSCSanAPITestCase(test.TestCase):
                        mock_init):
         lun, wwns, itmap = self.scapi.find_wwns(self.VOLUME,
                                                 self.SCSERVER)
-        mock_find_fc_initiators.assert_called()
-        mock_find_mappings.assert_called()
-        mock_find_controller_port.assert_called()
+        self.assertTrue(mock_find_fc_initiators.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_controller_port.called)
 
         # The _find_controller_port is Mocked, so all mapping pairs
         # will have the same WWN for the ScControllerPort
@@ -2432,8 +2432,8 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where there are no ScMapping(s)
         lun, wwns, itmap = self.scapi.find_wwns(self.VOLUME,
                                                 self.SCSERVER)
-        mock_find_fc_initiators.assert_called()
-        mock_find_mappings.assert_called()
+        self.assertTrue(mock_find_fc_initiators.called)
+        self.assertTrue(mock_find_mappings.called)
         self.assertEqual(None, lun, 'Incorrect LUN')
         self.assertEqual([], wwns, 'WWNs is not empty')
         self.assertEqual({}, itmap, 'WWN mapping not empty')
@@ -2457,9 +2457,9 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where ScControllerPort is none
         lun, wwns, itmap = self.scapi.find_wwns(self.VOLUME,
                                                 self.SCSERVER)
-        mock_find_fc_initiators.assert_called()
-        mock_find_mappings.assert_called()
-        mock_find_controller_port.assert_called()
+        self.assertTrue(mock_find_fc_initiators.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_controller_port.called)
         self.assertEqual(None, lun, 'Incorrect LUN')
         self.assertEqual([], wwns, 'WWNs is not empty')
         self.assertEqual({}, itmap, 'WWN mapping not empty')
@@ -2481,9 +2481,9 @@ class DellSCSanAPITestCase(test.TestCase):
                                             mock_open_connection,
                                             mock_init):
         res = self.scapi.find_iscsi_properties(self.VOLUME)
-        mock_find_mappings.assert_called()
-        mock_find_domain.assert_called()
-        mock_find_ctrl_port.assert_called()
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_ctrl_port.called)
         expected = {'access_mode': 'rw',
                     'target_discovered': False,
                     'target_iqns':
@@ -2511,9 +2511,9 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case to find iSCSI mappings by IP Address & port
         res = self.scapi.find_iscsi_properties(
             self.VOLUME, '192.168.0.21', 3260)
-        mock_find_mappings.assert_called()
-        mock_find_domain.assert_called()
-        mock_find_ctrl_port.assert_called()
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_ctrl_port.called)
         expected = {'access_mode': 'rw',
                     'target_discovered': False,
                     'target_iqns':
@@ -2541,9 +2541,9 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case to find iSCSI mappings by IP Address & port are not found
         res = self.scapi.find_iscsi_properties(
             self.VOLUME, '192.168.1.21', 3260)
-        mock_find_mappings.assert_called()
-        mock_find_domain.assert_called()
-        mock_find_ctrl_port.assert_called()
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_ctrl_port.called)
         expected = {'access_mode': 'rw',
                     'target_discovered': False,
                     'target_iqns': [],
@@ -2561,7 +2561,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                               mock_init):
         # Test case where there are no ScMapping(s)
         res = self.scapi.find_iscsi_properties(self.VOLUME)
-        mock_find_mappings.assert_called()
+        self.assertTrue(mock_find_mappings.called)
         expected = {'access_mode': 'rw',
                     'target_discovered': False,
                     'target_iqns': [],
@@ -2587,9 +2587,9 @@ class DellSCSanAPITestCase(test.TestCase):
                                              mock_init):
         # Test case where there are no ScFaultDomain(s)
         res = self.scapi.find_iscsi_properties(self.VOLUME)
-        mock_find_mappings.assert_called()
-        mock_find_domain.assert_called()
-        mock_find_ctrl_port.assert_called()
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domain.called)
+        self.assertFalse(mock_find_ctrl_port.called)
         expected = {'access_mode': 'rw',
                     'target_discovered': False,
                     'target_iqns': [],
@@ -2615,9 +2615,9 @@ class DellSCSanAPITestCase(test.TestCase):
                                                 mock_init):
         # Test case where there are no ScFaultDomain(s)
         res = self.scapi.find_iscsi_properties(self.VOLUME)
-        mock_find_mappings.assert_called()
-        mock_find_domain.assert_called()
-        mock_find_ctrl_port.assert_called()
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_ctrl_port.called)
         expected = {'access_mode': 'rw',
                     'target_discovered': False,
                     'target_iqns': [],
@@ -2643,9 +2643,9 @@ class DellSCSanAPITestCase(test.TestCase):
                                       mock_init):
         # Test case where Read Only mappings are found
         res = self.scapi.find_iscsi_properties(self.VOLUME)
-        mock_find_mappings.assert_called()
-        mock_find_domain.assert_called()
-        mock_find_ctrl_port.assert_called()
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_ctrl_port.called)
         expected = {'access_mode': 'ro',
                     'target_discovered': False,
                     'target_iqns':
@@ -2672,9 +2672,9 @@ class DellSCSanAPITestCase(test.TestCase):
                                                  mock_init):
         # Test case where there are multiple portals
         res = self.scapi.find_iscsi_properties(self.VOLUME)
-        mock_find_mappings.assert_called()
-        mock_find_domain.assert_called()
-        mock_find_ctrl_port.assert_called()
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_ctrl_port.called)
         expected = {'access_mode': 'rw',
                     'target_discovered': False,
                     'target_iqns':
@@ -2698,8 +2698,8 @@ class DellSCSanAPITestCase(test.TestCase):
                         mock_init):
         res = self.scapi.map_volume(self.VOLUME,
                                     self.SCSERVER)
-        mock_post.assert_called()
-        mock_first_result.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.MAP_PROFILE, res, 'Incorrect ScMappingProfile')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2713,7 +2713,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where mapping volume to server fails
         res = self.scapi.map_volume(self.VOLUME,
                                     self.SCSERVER)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
         self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2734,10 +2734,10 @@ class DellSCSanAPITestCase(test.TestCase):
                           mock_init):
         res = self.scapi.unmap_volume(self.VOLUME,
                                       self.SCSERVER)
-        mock_get.assert_called()
-        mock_get_json.assert_called()
-        mock_delete.assert_called()
-        self.assertTrue(res, 'Expected True')
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
+        self.assertTrue(mock_delete.called)
+        self.assertTrue(res)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'get',
@@ -2749,12 +2749,9 @@ class DellSCSanAPITestCase(test.TestCase):
                                   mock_init):
         res = self.scapi.unmap_volume(self.VOLUME,
                                       self.SCSERVER)
-        mock_get.assert_called()
-        self.assertFalse(res, 'Expected False')
+        self.assertTrue(mock_get.called)
+        self.assertFalse(res)
 
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'delete',
-                       return_value=RESPONSE_200)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
                        return_value=[])
@@ -2764,16 +2761,14 @@ class DellSCSanAPITestCase(test.TestCase):
     def test_unmap_volume_no_map_profile(self,
                                          mock_get,
                                          mock_get_json,
-                                         mock_delete,
                                          mock_close_connection,
                                          mock_open_connection,
                                          mock_init):
         res = self.scapi.unmap_volume(self.VOLUME,
                                       self.SCSERVER)
-        mock_get.assert_called()
-        mock_get_json.assert_called()
-        mock_delete.assert_called()
-        self.assertTrue(res, 'Expected True')
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
+        self.assertTrue(res)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'delete',
@@ -2793,10 +2788,10 @@ class DellSCSanAPITestCase(test.TestCase):
                                    mock_init):
         res = self.scapi.unmap_volume(self.VOLUME,
                                       self.SCSERVER)
-        mock_get.assert_called()
-        mock_get_json.assert_called()
-        mock_delete.assert_called()
-        self.assertFalse(res, 'Expected False')
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
+        self.assertTrue(mock_delete.called)
+        self.assertFalse(res, False)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
@@ -2811,8 +2806,8 @@ class DellSCSanAPITestCase(test.TestCase):
                                mock_open_connection,
                                mock_init):
         res = self.scapi.get_storage_usage(64702)
-        mock_get.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
         self.assertEqual(self.STRG_USAGE, res, 'Unexpected ScStorageUsage')
 
     def test_get_storage_usage_no_ssn(self,
@@ -2833,7 +2828,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                        mock_open_connection,
                                        mock_init):
         res = self.scapi.get_storage_usage(64702)
-        mock_get.assert_called()
+        self.assertTrue(mock_get.called)
         self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2851,8 +2846,8 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.create_replay(self.VOLUME,
                                        'Test Replay',
                                        60)
-        mock_post.assert_called()
-        mock_first_result.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.RPLAY, res, 'Unexpected ScReplay')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2874,9 +2869,9 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.create_replay(self.INACTIVE_VOLUME,
                                        'Test Replay',
                                        60)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
         mock_init_volume.assert_called_once_with(self.INACTIVE_VOLUME)
-        mock_first_result.assert_called()
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.RPLAY, res, 'Unexpected ScReplay')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2894,8 +2889,8 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.create_replay(self.VOLUME,
                                        'Test Replay',
                                        0)
-        mock_post.assert_called()
-        mock_first_result.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.RPLAY, res, 'Unexpected ScReplay')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2924,7 +2919,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.create_replay(self.VOLUME,
                                        'Test Replay',
                                        60)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2941,8 +2936,8 @@ class DellSCSanAPITestCase(test.TestCase):
                          mock_init):
         res = self.scapi.find_replay(self.VOLUME,
                                      u'Cinder Test Replay012345678910')
-        mock_post.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_json.called)
         self.assertEqual(self.TST_RPLAY, res, 'Unexpected ScReplay')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2960,8 +2955,8 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where no replays are found
         res = self.scapi.find_replay(self.VOLUME,
                                      u'Cinder Test Replay012345678910')
-        mock_post.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_json.called)
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2979,8 +2974,8 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where None is returned for replays
         res = self.scapi.find_replay(self.VOLUME,
                                      u'Cinder Test Replay012345678910')
-        mock_post.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_json.called)
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2998,7 +2993,7 @@ class DellSCSanAPITestCase(test.TestCase):
         replayId = u'Cinder Test Replay012345678910'
         res = self.scapi.delete_replay(self.VOLUME,
                                        replayId)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
         mock_find_replay.assert_called_once_with(self.VOLUME, replayId)
         self.assertTrue(res, 'Expected True')
 
@@ -3018,7 +3013,7 @@ class DellSCSanAPITestCase(test.TestCase):
         replayId = u'Cinder Test Replay012345678910'
         res = self.scapi.delete_replay(self.VOLUME,
                                        replayId)
-        mock_post.assert_called()
+        self.assertFalse(mock_post.called)
         mock_find_replay.assert_called_once_with(self.VOLUME, replayId)
         self.assertTrue(res, 'Expected True')
 
@@ -3038,7 +3033,7 @@ class DellSCSanAPITestCase(test.TestCase):
         replayId = u'Cinder Test Replay012345678910'
         res = self.scapi.delete_replay(self.VOLUME,
                                        replayId)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
         mock_find_replay.assert_called_once_with(self.VOLUME, replayId)
         self.assertFalse(res, 'Expected False')
 
@@ -3063,11 +3058,11 @@ class DellSCSanAPITestCase(test.TestCase):
             vol_name,
             self.configuration.dell_sc_volume_folder,
             self.TST_RPLAY)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
         mock_find_volume_folder.assert_called_once_with(
             64702,
             self.configuration.dell_sc_volume_folder)
-        mock_first_result.assert_called()
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -3096,14 +3091,14 @@ class DellSCSanAPITestCase(test.TestCase):
             vol_name,
             self.configuration.dell_sc_volume_folder,
             self.TST_RPLAY)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
         mock_find_volume_folder.assert_called_once_with(
             64702,
             self.configuration.dell_sc_volume_folder)
         mock_create_volume_folder.assert_called_once_with(
             64702,
             self.configuration.dell_sc_volume_folder)
-        mock_first_result.assert_called()
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -3132,14 +3127,14 @@ class DellSCSanAPITestCase(test.TestCase):
             vol_name,
             self.configuration.dell_sc_volume_folder,
             self.TST_RPLAY)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
         mock_find_volume_folder.assert_called_once_with(
             64702,
             self.configuration.dell_sc_volume_folder)
         mock_create_volume_folder.assert_called_once_with(
             64702,
             self.configuration.dell_sc_volume_folder)
-        mock_first_result.assert_called()
+        self.assertTrue(mock_first_result.called)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -3160,7 +3155,7 @@ class DellSCSanAPITestCase(test.TestCase):
             vol_name,
             self.configuration.dell_sc_volume_folder,
             self.TST_RPLAY)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
         mock_find_volume_folder.assert_called_once_with(
             64702,
             self.configuration.dell_sc_volume_folder)
@@ -3225,8 +3220,8 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_open_connection,
                            mock_init):
         res = self.scapi.expand_volume(self.VOLUME, 550)
-        mock_post.assert_called()
-        mock_get_json.assert_called()
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_json.called)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -3238,7 +3233,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                    mock_open_connection,
                                    mock_init):
         res = self.scapi.expand_volume(self.VOLUME, 550)
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -3250,7 +3245,7 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_open_connection,
                            mock_init):
         res = self.scapi._delete_server(self.SCSERVER)
-        mock_delete.assert_called()
+        self.assertTrue(mock_delete.called)
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -3263,7 +3258,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                            mock_init):
         # Test case where delete of ScServer not allowed
         res = self.scapi._delete_server(self.SCSERVER_NO_DEL)
-        mock_delete.assert_called()
+        self.assertFalse(mock_delete.called)
         self.assertIsNone(res, 'Expected None')
 
 
@@ -3319,7 +3314,7 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
     def test_open_connection(self,
                              mock_post):
         self.scapi.open_connection()
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
@@ -3335,7 +3330,7 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
     def test_close_connection(self,
                               mock_post):
         self.scapi.close_connection()
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
@@ -3343,4 +3338,4 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
     def test_close_connection_failure(self,
                                       mock_post):
         self.scapi.close_connection()
-        mock_post.assert_called()
+        self.assertTrue(mock_post.called)
