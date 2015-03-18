@@ -281,6 +281,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self.override_config('backup_share', FAKE_BACKUP_SHARE)
         self.override_config('backup_mount_point_base',
                              '/tmp')
+        self.override_config('backup_file_size', 52428800)
         mock_remotefsclient = mock.Mock()
         mock_remotefsclient.get_mount_point = mock.Mock(
             return_value=self.temp_dir)
@@ -342,7 +343,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         service.backup(backup, self.volume_file)
         self.assertTrue(_send_progress.called)
         self.assertTrue(_send_progress_end.called)
-        return
+
         # If the backup_object_number_per_notification is increased to
         # another value, the _send_progress method will not be called.
         _send_progress.reset_mock()
@@ -480,9 +481,9 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self.assertEqual(backup['container'], container_name)
 
         # Create incremental backup with no change to contents
-        self.volume_file.seek(2 * 8 * 1024)
+        self.volume_file.seek(16 * 1024)
         self.volume_file.write(os.urandom(1024))
-        self.volume_file.seek(4 * 8 * 1024)
+        self.volume_file.seek(20 * 1024)
         self.volume_file.write(os.urandom(1024))
 
         self._create_backup_db_entry(container=container_name, backup_id=124,
@@ -497,9 +498,9 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         content1 = service._read_sha256file(backup)
         content2 = service._read_sha256file(deltabackup)
 
-        # Verify that two shas are changed at index 16 and 32
+        # Verify that two shas are changed at index 16 and 20
         self.assertNotEqual(content1['sha256s'][16], content2['sha256s'][16])
-        self.assertNotEqual(content1['sha256s'][32], content2['sha256s'][32])
+        self.assertNotEqual(content1['sha256s'][20], content2['sha256s'][20])
 
     def test_backup_delta_two_blocks_in_object_change(self):
 
