@@ -386,11 +386,15 @@ class StorwizeSVCManagementSimulator:
         if 'obj' not in kwargs:
             return self._print_info_cmd(rows=rows, **kwargs)
         else:
-            if kwargs['obj'] == self._flags['storwize_svc_volpool_name']:
+            pool_name = kwargs['obj'].strip('\'\"')
+            if pool_name == kwargs['obj']:
+                raise exception.InvalidInput(
+                    reason=_('obj missing quotes %s') % kwargs['obj'])
+            elif pool_name == self._flags['storwize_svc_volpool_name']:
                 row = rows[1]
-            elif kwargs['obj'] == 'openstack2':
+            elif pool_name == 'openstack2':
                 row = rows[2]
-            elif kwargs['obj'] == 'openstack3':
+            elif pool_name == 'openstack3':
                 row = rows[3]
             else:
                 return self._errors['CMMVC5754E']
@@ -624,6 +628,11 @@ port_speed!N/A
                   'easy_tier': volume_info['easy_tier'],
                   'compressed_copy': volume_info['compressed_copy']}
         volume_info['copies'] = {'0': vol_cp}
+
+        mdiskgrp = kwargs['mdiskgrp'].strip('\'\"')
+        if mdiskgrp == kwargs['mdiskgrp']:
+            raise exception.InvalidInput(
+                reason=_('mdiskgrp missing quotes %s') % kwargs['mdiskgrp'])
 
         if volume_info['name'] in self._volumes_list:
             return self._errors['CMMVC6035E']
@@ -1433,6 +1442,9 @@ port_speed!N/A
         if 'mdiskgrp' not in kwargs:
             return self._errors['CMMVC5707E']
         mdiskgrp = kwargs['mdiskgrp'].strip('\'\"')
+        if mdiskgrp == kwargs['mdiskgrp']:
+            raise exception.InvalidInput(
+                reason=_('mdiskgrp missing quotes %s') % kwargs['mdiskgrp'])
 
         copy_info = {}
         copy_info['id'] = self._find_unused_id(vol['copies'])
