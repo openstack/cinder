@@ -3544,7 +3544,7 @@ def purge_deleted_rows(context, age_in_days):
     try:
         age_in_days = int(age_in_days)
     except ValueError:
-        msg = _LE('Invalid valude for age, %(age)s')
+        msg = _LE('Invalid value for age, %(age)s')
         LOG.exception(msg, {'age': age_in_days})
         raise exception.InvalidParameterValue(msg % {'age': age_in_days})
     if age_in_days <= 0:
