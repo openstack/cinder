@@ -59,6 +59,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import loopingcall
+from cinder.openstack.common import versionutils
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -170,10 +171,11 @@ class HP3PARCommon(object):
         2.0.37 - Added support for enabling Flash Cache
         2.0.38 - Add stats for hp3par goodness_function and filter_function
         2.0.39 - Added support for updated detach_volume attachment.
+        2.0.40 - Make the 3PAR drivers honor the pool in create  bug #1432876
 
     """
 
-    VERSION = "2.0.39"
+    VERSION = "2.0.40"
 
     stats = {}
 
@@ -1067,20 +1069,27 @@ class HP3PARCommon(object):
         if cpg is not default_cpg:
             # The cpg was specified in a volume type extra spec so it
             # needs to be validated that it's in the correct domain.
+            # log warning here
+            msg = _LW("'hp3par:cpg' is not supported as an extra spec "
+                      "in a volume type.  CPG's are chosen by "
+                      "the cinder scheduler, as a pool, from the "
+                      "cinder.conf entry 'hp3par_cpg', which can "
+                      "be a list of CPGs.")
+            versionutils.report_deprecated_feature(LOG, msg)
+            LOG.info(_LI("Using pool %(pool)s instead of %(cpg)s"),
+                     {'pool': pool, 'cpg': cpg})
+
+            cpg = pool
             self.validate_cpg(cpg)
-            # Also, look to see if the snap_cpg was specified in volume
-            # type extra spec, if not use the extra spec cpg as the
-            # default.
-            snap_cpg = self._get_key_value(hp3par_keys, 'snap_cpg', cpg)
-        else:
-            # Look to see if the snap_cpg was specified in volume type
-            # extra spec, if not use hp3par_cpg_snap from config as the
-            # default.
-            snap_cpg = self.config.hp3par_cpg_snap
-            snap_cpg = self._get_key_value(hp3par_keys, 'snap_cpg', snap_cpg)
-            # If it's still not set or empty then set it to the cpg.
-            if not snap_cpg:
-                snap_cpg = cpg
+
+        # Look to see if the snap_cpg was specified in volume type
+        # extra spec, if not use hp3par_cpg_snap from config as the
+        # default.
+        snap_cpg = self.config.hp3par_cpg_snap
+        snap_cpg = self._get_key_value(hp3par_keys, 'snap_cpg', snap_cpg)
+        # If it's still not set or empty then set it to the cpg.
+        if not snap_cpg:
+            snap_cpg = cpg
 
         # if provisioning is not set use thin
         default_prov = self.valid_prov_values[0]
@@ -1147,10 +1156,12 @@ class HP3PARCommon(object):
         return volume_settings
 
     def create_volume(self, volume):
-        LOG.debug('CREATE VOLUME (%(disp_name)s: %(vol_name)s %(id)s)',
+        LOG.debug('CREATE VOLUME (%(disp_name)s: %(vol_name)s %(id)s on '
+                  '%(host)s)',
                   {'disp_name': volume['display_name'],
                    'vol_name': volume['name'],
-                   'id': self._get_3par_vol_name(volume['id'])})
+                   'id': self._get_3par_vol_name(volume['id']),
+                   'host': volume['host']})
         try:
             comments = {'volume_id': volume['id'],
                         'name': volume['name'],
