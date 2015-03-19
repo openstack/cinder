@@ -266,10 +266,10 @@ class EMCVNXCLIDriverTestData():
         'deleted': False,
         'host': "host@backendsec#unit_test_pool",
         'source_volid': None, 'provider_auth': None,
-        'display_name': 'vol-test02', 'instance_uuid': None,
+        'display_name': 'vol-test02',
         'attach_status': 'detached',
         'volume_type': [],
-        'attached_host': None,
+        'volume_attachment': [],
         'provider_location':
         'system^FNM11111|type^lun|id^1|version^05.03.00',
         '_name_id': None, 'volume_metadata': []}
@@ -302,7 +302,8 @@ class EMCVNXCLIDriverTestData():
                     'system^FNM11111|type^lun|id^4',
                     'host': 'ubuntu-server12@array_backend_1',
                     'source_volid': None, 'provider_auth': None,
-                    'display_name': 'vol-test02', 'instance_uuid': None,
+                    'display_name': 'vol-test02',
+                    'volume_attachment': [],
                     'attach_status': 'detached',
                     'volume_type': [],
                     '_name_id': None, 'volume_metadata': []}
@@ -320,7 +321,8 @@ class EMCVNXCLIDriverTestData():
                     'system^FNM11111|type^lun|id^5|version^05.02.00',
                     'host': 'ubuntu-server12@array_backend_1#unit_test_pool',
                     'source_volid': None, 'provider_auth': None,
-                    'display_name': 'vol-test05', 'instance_uuid': None,
+                    'display_name': 'vol-test05',
+                    'volume_attachment': [],
                     'attach_status': 'detached',
                     'volume_type': [],
                     '_name_id': None, 'volume_metadata': []}
