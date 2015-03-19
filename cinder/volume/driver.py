@@ -1216,8 +1216,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         raise NotImplementedError(msg)
 
     def retype(self, context, volume, new_type, diff, host):
-        msg = _("Retype existing volume not implemented.")
-        raise NotImplementedError(msg)
+        return False, None
 
     def reenable_replication(self, context, volume):
         msg = _("sync_replica not implemented.")
