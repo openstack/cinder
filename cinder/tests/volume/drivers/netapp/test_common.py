@@ -73,7 +73,6 @@ class NetAppDriverFactoryTestCase(test.TestCase):
         self.mock_object(na_common.NetAppDriver, 'create_driver')
 
         config = na_fakes.create_configuration()
-        config.netapp_storage_protocol = None
         config.netapp_storage_family = 'fake_family'
 
         kwargs = {'configuration': config}
