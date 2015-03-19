@@ -590,6 +590,29 @@ class V6000ISCSIDriverTestCase(test.TestCase):
                          self.driver.stats['volume_backend_name'])
         self.assertEqual(vendor_name, self.driver.stats['vendor_name'])
 
+    def test_update_stats_fails_data_query_but_has_cached_stats(self):
+        """Stats query to backend fails, but cached stats are available. """
+        backend_name = self.conf.volume_backend_name
+        vendor_name = "Violin Memory, Inc."
+        bn0 = '/cluster/state/master_id'
+        response1 = {bn0: '1'}
+        response2 = {}
+
+        # fake cached stats, from a previous stats query
+        self.driver.stats = {'free_capacity_gb': 50, 'total_capacity_gb': 100}
+
+        conf = {
+            'basic.get_node_values.side_effect': [response1, response2],
+        }
+        self.driver.common.vip = self.setup_mock_vshare(m_conf=conf)
+
+        self.assertIsNone(self.driver._update_stats())
+        self.assertEqual(100, self.driver.stats['total_capacity_gb'])
+        self.assertEqual(50, self.driver.stats['free_capacity_gb'])
+        self.assertEqual(backend_name,
+                         self.driver.stats['volume_backend_name'])
+        self.assertEqual(vendor_name, self.driver.stats['vendor_name'])
+
     def testGetShortName_LongName(self):
         long_name = "abcdefghijklmnopqrstuvwxyz1234567890"
         short_name = "abcdefghijklmnopqrstuvwxyz123456"

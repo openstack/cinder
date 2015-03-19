@@ -440,11 +440,15 @@ class V6000FCDriver(driver.FibreChannelDriver):
             total_gb = resp[bn1] / units.Gi
         else:
             LOG.warn(_LW("Failed to receive update for total_gb stat!"))
+            if 'total_capacity_gb' in self.stats:
+                total_gb = self.stats['total_capacity_gb']
 
         if bn2 in resp:
             free_gb = resp[bn2] / units.Gi
         else:
             LOG.warn(_LW("Failed to receive update for free_gb stat!"))
+            if 'free_capacity_gb' in self.stats:
+                free_gb = self.stats['free_capacity_gb']
 
         backend_name = self.configuration.volume_backend_name
         data['volume_backend_name'] = backend_name or self.__class__.__name__
