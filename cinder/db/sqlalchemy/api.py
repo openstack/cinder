@@ -3571,7 +3571,7 @@ def purge_deleted_rows(context, age_in_days):
         LOG.info(_LI('Purging deleted rows older than age=%(age)d days '
                      'from table=%(table)s'), {'age': age_in_days,
                                                'table': table})
-        deleted_age = dt.datetime.now() - dt.timedelta(days=age_in_days)
+        deleted_age = timeutils.utcnow() - dt.timedelta(days=age_in_days)
         try:
             with session.begin():
                 result = session.execute(

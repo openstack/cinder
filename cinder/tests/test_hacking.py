@@ -169,3 +169,13 @@ class HackingTestCase(test.TestCase):
             "with contextlib.nested("))))
         self.assertEqual(0, len(list(checks.check_no_contextlib_nested(
             "with foo as bar"))))
+
+    def test_check_datetime_now(self):
+        self.assertEqual(1, len(list(checks.check_datetime_now(
+            "datetime.now", False))))
+        self.assertEqual(0, len(list(checks.check_datetime_now(
+            "timeutils.utcnow", False))))
+
+    def test_check_datetime_now_noqa(self):
+        self.assertEqual(0, len(list(checks.check_datetime_now(
+                                     "datetime.now()  # noqa", True))))

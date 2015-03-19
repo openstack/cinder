@@ -15,6 +15,7 @@ Cinder Specific Commandments
 - [N327] assert_called_once is not a valid Mock method.
 - [N333] Ensure that oslo namespaces are used for namespaced libraries.
 - [N339] Prevent use of deprecated contextlib.nested.
+- [C301] timeutils.utcnow() from oslo_utils should be used instead of datetime.now().
 
 
 General

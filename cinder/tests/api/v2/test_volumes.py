@@ -19,6 +19,7 @@ import datetime
 from lxml import etree
 import mock
 from oslo_config import cfg
+from oslo_utils import timeutils
 import six
 import six.moves.urllib.parse as urlparse
 import webob
@@ -1601,7 +1602,7 @@ class VolumeSerializerTest(test.TestCase):
             size=1024,
             availability_zone='vol_availability',
             bootable=False,
-            created_at=datetime.datetime.now(),
+            created_at=timeutils.utcnow(),
             attachments=[
                 dict(
                     id='vol_id',
@@ -1635,7 +1636,7 @@ class VolumeSerializerTest(test.TestCase):
                 size=1024,
                 availability_zone='vol1_availability',
                 bootable=True,
-                created_at=datetime.datetime.now(),
+                created_at=timeutils.utcnow(),
                 attachments=[
                     dict(
                         id='vol1_id',
@@ -1657,7 +1658,7 @@ class VolumeSerializerTest(test.TestCase):
                 size=1024,
                 availability_zone='vol2_availability',
                 bootable=False,
-                created_at=datetime.datetime.now(),
+                created_at=timeutils.utcnow(),
                 attachments=[dict(id='vol2_id',
                                   volume_id='vol2_id',
                                   server_id='instance_uuid',

@@ -12,11 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import datetime
 import json
 import uuid
 
 from lxml import etree
+from oslo_utils import timeutils
 import webob
 
 from cinder import context
@@ -32,7 +32,7 @@ def fake_volume_get(*args, **kwargs):
         'status': 'available',
         'size': 5,
         'availability_zone': 'somewhere',
-        'created_at': datetime.datetime.now(),
+        'created_at': timeutils.utcnow(),
         'attach_status': None,
         'display_name': 'anothervolume',
         'display_description': 'Just another volume!',

@@ -13,11 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import datetime
-
 from lxml import etree
 import mock
 from oslo_log import log as logging
+from oslo_utils import timeutils
 import webob
 
 from cinder.api.v2 import snapshots
@@ -484,7 +483,7 @@ class SnapshotSerializerTest(test.TestCase):
             id='snap_id',
             status='snap_status',
             size=1024,
-            created_at=datetime.datetime.now(),
+            created_at=timeutils.utcnow(),
             name='snap_name',
             description='snap_desc',
             display_description='snap_desc',
@@ -503,7 +502,7 @@ class SnapshotSerializerTest(test.TestCase):
                 id='snap1_id',
                 status='snap1_status',
                 size=1024,
-                created_at=datetime.datetime.now(),
+                created_at=timeutils.utcnow(),
                 name='snap1_name',
                 description='snap1_desc',
                 volume_id='vol1_id',
@@ -512,7 +511,7 @@ class SnapshotSerializerTest(test.TestCase):
                 id='snap2_id',
                 status='snap2_status',
                 size=1024,
-                created_at=datetime.datetime.now(),
+                created_at=timeutils.utcnow(),
                 name='snap2_name',
                 description='snap2_desc',
                 volume_id='vol2_id',
