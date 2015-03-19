@@ -135,6 +135,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             update = {
                 'status': 'creating',
                 'scheduled_at': timeutils.utcnow(),
+                'host': None
             }
             LOG.debug("Updating volume %(volume_id)s with %(update)s." %
                       {'update': update, 'volume_id': volume_id})
@@ -146,6 +147,13 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
                           volume_id)
 
     def revert(self, context, result, flow_failures, **kwargs):
+        # NOTE(dulek): Revert is occurring and manager need to know if
+        # rescheduling happened. We're injecting this information into
+        # exception that will be caught there. This is ugly and we need
+        # TaskFlow to support better way of returning data from reverted flow.
+        cause = list(flow_failures.values())[0]
+        cause.exception.rescheduled = False
+
         # Check if we have a cause which can tell us not to reschedule.
         for failure in flow_failures.values():
             if failure.check(*self.no_reschedule_types):
@@ -156,10 +164,11 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         if self.reschedule_context:
             context = self.reschedule_context
             try:
-                cause = list(flow_failures.values())[0]
                 self._pre_reschedule(context, volume_id)
                 self._reschedule(context, cause, **kwargs)
                 self._post_reschedule(context, volume_id)
+                # Inject information that we rescheduled
+                cause.exception.rescheduled = True
             except exception.CinderException:
                 LOG.exception(_LE("Volume %s: rescheduling failed"), volume_id)
 
@@ -181,7 +190,6 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
         # In the future we might want to have a lock on the volume_id so that
         # the volume can not be deleted while its still being created?
         volume_ref = self.db.volume_get(context, volume_id)
-
         return volume_ref
 
     def revert(self, context, volume_id, result, **kwargs):
