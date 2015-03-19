@@ -55,12 +55,15 @@ class DateraVolumeTestCase(test.TestCase):
 
     def test_volume_create_success(self):
         self.mock_api.return_value = {
-            'uuid': 'c20aba21-6ef6-446b-b374-45733b4883ba',
-            'size': '1073741824',
-            'name': 'volume-00000001',
-            'parent': '00000000-0000-0000-0000-000000000000',
-            'numReplicas': '2',
-            'subType': 'IS_ORIGINAL'
+            u'status': u'available',
+            u'name': u'volume-00000001',
+            u'parent': u'00000000-0000-0000-0000-000000000000',
+            u'uuid': u'c20aba21-6ef6-446b-b374-45733b4883ba',
+            u'snapshots': {},
+            u'targets': {},
+            u'num_replicas': u'2',
+            u'sub_type': u'IS_ORIGINAL',
+            u'size': u'1073741824'
         }
         self.assertIsNone(self.driver.create_volume(self.volume))
 
@@ -69,12 +72,50 @@ class DateraVolumeTestCase(test.TestCase):
         self.assertRaises(exception.DateraAPIException,
                           self.driver.create_volume, self.volume)
 
+    def test_volume_create_delay(self):
+        """Verify after 1st retry volume becoming available is a success."""
+
+        def _progress_api_return(mock_api):
+            if mock_api.retry_count == 1:
+                return {
+                    u'status': u'unavailable',
+                    u'name': u'test',
+                    u'parent': u'00000000-0000-0000-0000-000000000000',
+                    u'uuid': u'9c1666fe-4f1a-4891-b33d-e710549527fe',
+                    u'snapshots': {},
+                    u'targets': {},
+                    u'num_replicas': u'2',
+                    u'sub_type': u'IS_ORIGINAL',
+                    u'size': u'1073741824'
+                }
+            else:
+                self.mock_api.retry_count += 1
+                return {
+                    u'status': u'available',
+                    u'name': u'test',
+                    u'parent': u'00000000-0000-0000-0000-000000000000',
+                    u'uuid': u'9c1666fe-4f1a-4891-b33d-e710549527fe',
+                    u'snapshots': {},
+                    u'targets': {},
+                    u'num_replicas': u'2',
+                    u'sub_type': u'IS_ORIGINAL',
+                    u'size': u'1073741824'
+                }
+
+        self.mock_api.retry_count = 0
+        self.mock_api.return_value = _progress_api_return(self.mock_api)
+        self.assertEqual(1, self.mock_api.retry_count)
+        self.assertIsNone(self.driver.create_volume(self.volume))
+
     def test_create_cloned_volume_success(self):
         self.mock_api.return_value = {
+            'status': 'available',
             'uuid': 'c20aba21-6ef6-446b-b374-45733b4883ba',
             'size': '1073741824',
             'name': 'volume-00000001',
             'parent': '7f91abfa-7964-41ed-88fc-207c3a290b4f',
+            'snapshots': {},
+            'targets': {},
             'numReplicas': '2',
             'subType': 'IS_CLONE'
         }
@@ -169,9 +210,12 @@ class DateraVolumeTestCase(test.TestCase):
 
     def test_create_snapshot_success(self):
         self.mock_api.return_value = {
+            u'status': u'available',
             u'uuid': u'0bb34f0c-fea4-48e0-bf96-591120ac7e3c',
             u'parent': u'c20aba21-6ef6-446b-b374-45733b4883ba',
             u'subType': u'IS_SNAPSHOT',
+            u'snapshots': {},
+            u'targets': {},
             u'numReplicas': 2,
             u'size': u'1073741824',
             u'name': u'snapshot-00000001'
@@ -210,8 +254,11 @@ class DateraVolumeTestCase(test.TestCase):
 
     def test_create_volume_from_snapshot_success(self):
         self.mock_api.return_value = {
+            u'status': u'available',
             u'uuid': u'c20aba21-6ef6-446b-b374-45733b4883ba',
             u'parent': u'0bb34f0c-fea4-48e0-bf96-591120ac7e3c',
+            u'snapshots': {},
+            u'targets': {},
             u'subType': u'IS_ORIGINAL',
             u'numReplicas': 2,
             u'size': u'1073741824',
