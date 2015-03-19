@@ -21,8 +21,8 @@ arrays.
 
 This driver requires VMOS v6.3.0.4 or newer software on the array.
 
-You will need to install the python xg-tools client:
-sudo pip install xg-tools
+You will need to install the Violin Memory REST client library:
+sudo pip install vmemclient
 
 Set the following in the cinder.conf file to enable the VMEM V6000
 Fibre Channel Driver along with the required flags:

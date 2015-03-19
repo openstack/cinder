@@ -14,8 +14,7 @@
 #    under the License.
 
 """
-Fake VMEM XG-Tools client for testing drivers.  Inspired by
-cinder/tests/fake_hp_3par_client.py.
+Fake VMEM REST client for testing drivers.
 """
 
 import sys
@@ -25,7 +24,7 @@ import mock
 vmemclient = mock.Mock()
 vmemclient.__version__ = "unknown"
 
-sys.modules['vxg'] = vmemclient
+sys.modules['vmemclient'] = vmemclient
 
 mock_client_conf = [
     'basic',
