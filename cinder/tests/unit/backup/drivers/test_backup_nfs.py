@@ -610,7 +610,6 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
     def test_restore_uncompressed(self):
         self._create_backup_db_entry()
         self.flags(backup_compression_algorithm='none')
-        self.flags(backup_file_size=(1024 * 1024 * 1024))
         self.flags(backup_sha_block_size_bytes=32)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
