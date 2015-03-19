@@ -1525,7 +1525,7 @@ class EMCVMAXUtils(object):
 
         for srpPoolInstanceName in srpPoolInstanceNames:
             poolInstanceID = srpPoolInstanceName['InstanceID']
-            poolnameStr, _ = (
+            poolnameStr, _systemName = (
                 self.parse_pool_instance_id_v3(poolInstanceID))
 
             if six.text_type(poolName) == six.text_type(poolnameStr):

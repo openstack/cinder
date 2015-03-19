@@ -1163,7 +1163,7 @@ class EMCVMAXMasking(object):
         :param initiatorGroupInstanceName: the initiator group instance name
         :returns: instance name foundMaskingViewInstanceName
         """
-        _, job = (
+        _rc, job = (
             self._create_masking_view(
                 conn, controllerConfigService, maskingViewName,
                 storageGroupInstanceName, portGroupInstanceName,
