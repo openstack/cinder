@@ -188,7 +188,7 @@ class SnapshotsController(wsgi.Controller):
             msg = _("Volume could not be found")
             raise exc.HTTPNotFound(explanation=msg)
         force = snapshot.get('force', False)
-        msg = _("Create snapshot from volume %s")
+        msg = _LI("Create snapshot from volume %s")
         LOG.info(msg, volume_id, context=context)
 
         # NOTE(thingee): v2 API allows name instead of display_name

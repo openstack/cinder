@@ -177,7 +177,7 @@ class SnapshotsController(wsgi.Controller):
             raise exc.HTTPNotFound()
 
         force = snapshot.get('force', False)
-        msg = _("Create snapshot from volume %s")
+        msg = _LI("Create snapshot from volume %s")
         LOG.info(msg, volume_id, context=context)
 
         if not utils.is_valid_boolstr(force):

@@ -28,7 +28,7 @@ from oslo_utils import excutils
 
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder import quota
 from cinder.volume import api as volume_api
 
@@ -65,8 +65,7 @@ class API(base.Base):
 
         volume_ref = self.db.volume_get(context, transfer.volume_id)
         if volume_ref['status'] != 'awaiting-transfer':
-            msg = _("Volume in unexpected state")
-            LOG.error(msg)
+            LOG.error(_LE("Volume in unexpected state"))
         self.db.transfer_destroy(context, transfer_id)
 
     def get_all(self, context, filters=None):
@@ -101,7 +100,7 @@ class API(base.Base):
     def create(self, context, volume_id, display_name):
         """Creates an entry in the transfers table."""
         volume_api.check_policy(context, 'create_transfer')
-        LOG.info("Generating transfer record for volume %s" % volume_id)
+        LOG.info(_LI("Generating transfer record for volume %s"), volume_id)
         volume_ref = self.db.volume_get(context, volume_id)
         if volume_ref['status'] != "available":
             raise exception.InvalidVolume(reason=_("status must be available"))
@@ -122,7 +121,7 @@ class API(base.Base):
             transfer = self.db.transfer_create(context, transfer_rec)
         except Exception:
             LOG.error(_LE("Failed to create transfer record "
-                          "for %s") % volume_id)
+                          "for %s"), volume_id)
             raise
         return {'id': transfer['id'],
                 'volume_id': transfer['volume_id'],
@@ -159,23 +158,23 @@ class API(base.Base):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
             if 'gigabytes' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "%(s_size)sG volume (%(d_consumed)dG of %(d_quota)dG "
-                        "already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                's_size': vol_ref['size'],
-                                'd_consumed': _consumed('gigabytes'),
-                                'd_quota': quotas['gigabytes']})
+                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                          "%(s_size)sG volume (%(d_consumed)dG of "
+                          "%(d_quota)dG already consumed)")
+                LOG.warning(msg, {'s_pid': context.project_id,
+                                  's_size': vol_ref['size'],
+                                  'd_consumed': _consumed('gigabytes'),
+                                  'd_quota': quotas['gigabytes']})
                 raise exception.VolumeSizeExceedsAvailableQuota(
                     requested=vol_ref['size'],
                     consumed=_consumed('gigabytes'),
                     quota=quotas['gigabytes'])
             elif 'volumes' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "volume (%(d_consumed)d volumes "
-                        "already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                'd_consumed': _consumed('volumes')})
+                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                          "volume (%(d_consumed)d volumes "
+                          "already consumed)")
+                LOG.warning(msg, {'s_pid': context.project_id,
+                                  'd_consumed': _consumed('volumes')})
                 raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
         try:
             donor_id = vol_ref['project_id']
@@ -186,7 +185,7 @@ class API(base.Base):
         except Exception:
             donor_reservations = None
             LOG.exception(_LE("Failed to update quota donating volume"
-                              " transfer id %s") % transfer_id)
+                              " transfer id %s"), transfer_id)
 
         try:
             # Transfer ownership of the volume now, must use an elevated
@@ -202,7 +201,7 @@ class API(base.Base):
             QUOTAS.commit(context, reservations)
             if donor_reservations:
                 QUOTAS.commit(context, donor_reservations, project_id=donor_id)
-            LOG.info(_LI("Volume %s has been transferred.") % volume_id)
+            LOG.info(_LI("Volume %s has been transferred."), volume_id)
         except Exception:
             with excutils.save_and_reraise_exception():
                 QUOTAS.rollback(context, reservations)

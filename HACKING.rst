@@ -13,6 +13,9 @@ Cinder Specific Commandments
 - [N323] Add check for explicit import of _() to ensure proper translation.
 - [N324] Enforce no use of LOG.audit messages.  LOG.info should be used instead.
 - [N327] assert_called_once is not a valid Mock method.
+- [N328] LOG.info messages require translations `_LI()`.
+- [N329] LOG.exception and LOG.error messages require translations `_LE()`.
+- [N330] LOG.warning messages require translations `_LW()`.
 - [N333] Ensure that oslo namespaces are used for namespaced libraries.
 - [N339] Prevent use of deprecated contextlib.nested.
 - [C301] timeutils.utcnow() from oslo_utils should be used instead of datetime.now().

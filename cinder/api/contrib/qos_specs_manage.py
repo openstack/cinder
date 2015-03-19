@@ -219,7 +219,7 @@ class QoSSpecsController(wsgi.Controller):
 
         # Convert string to bool type in strict manner
         force = strutils.bool_from_string(force)
-        LOG.debug("Delete qos_spec: %(id)s, force: %(force)s" %
+        LOG.debug("Delete qos_spec: %(id)s, force: %(force)s",
                   {'id': id, 'force': force})
 
         try:
@@ -258,7 +258,7 @@ class QoSSpecsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest()
 
         keys = body['keys']
-        LOG.debug("Delete_key spec: %(id)s, keys: %(keys)s" %
+        LOG.debug("Delete_key spec: %(id)s, keys: %(keys)s",
                   {'id': id, 'keys': keys})
 
         try:
@@ -287,7 +287,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.debug("Get associations for qos_spec id: %s" % id)
+        LOG.debug("Get associations for qos_spec id: %s", id)
 
         try:
             associates = qos_specs.get_associations(context, id)
@@ -325,7 +325,7 @@ class QoSSpecsController(wsgi.Controller):
                                          'qos_specs.delete',
                                          notifier_err)
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        LOG.debug("Associate qos_spec: %(id)s with type: %(type_id)s" %
+        LOG.debug("Associate qos_spec: %(id)s with type: %(type_id)s",
                   {'id': id, 'type_id': type_id})
 
         try:
@@ -379,7 +379,7 @@ class QoSSpecsController(wsgi.Controller):
                                          'qos_specs.delete',
                                          notifier_err)
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        LOG.debug("Disassociate qos_spec: %(id)s from type: %(type_id)s" %
+        LOG.debug("Disassociate qos_spec: %(id)s from type: %(type_id)s",
                   {'id': id, 'type_id': type_id})
 
         try:
@@ -415,7 +415,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.debug("Disassociate qos_spec: %s from all." % id)
+        LOG.debug("Disassociate qos_spec: %s from all.", id)
 
         try:
             qos_specs.disassociate_all(context, id)

@@ -35,7 +35,7 @@ import osprofiler.web
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.objects import base as objects_base
 from cinder.openstack.common import loopingcall
 from cinder.openstack.common import service
@@ -87,15 +87,16 @@ def setup_profiler(binary, host):
             "Messaging", messaging, context.get_admin_context().to_dict(),
             rpc.TRANSPORT, "cinder", binary, host)
         osprofiler.notifier.set(_notifier)
-        LOG.warning("OSProfiler is enabled.\nIt means that person who knows "
-                    "any of hmac_keys that are specified in "
-                    "/etc/cinder/api-paste.ini can trace his requests. \n"
-                    "In real life only operator can read this file so there "
-                    "is no security issue. Note that even if person can "
-                    "trigger profiler, only admin user can retrieve trace "
-                    "information.\n"
-                    "To disable OSprofiler set in cinder.conf:\n"
-                    "[profiler]\nenabled=false")
+        LOG.warning(
+            _LW("OSProfiler is enabled.\nIt means that person who knows "
+                "any of hmac_keys that are specified in "
+                "/etc/cinder/api-paste.ini can trace his requests. \n"
+                "In real life only operator can read this file so there "
+                "is no security issue. Note that even if person can "
+                "trigger profiler, only admin user can retrieve trace "
+                "information.\n"
+                "To disable OSprofiler set in cinder.conf:\n"
+                "[profiler]\nenabled=false"))
     else:
         osprofiler.web.disable()
 
@@ -137,7 +138,7 @@ class Service(service.Service):
 
     def start(self):
         version_string = version.version_string()
-        LOG.info(_('Starting %(topic)s node (version %(version_string)s)'),
+        LOG.info(_LI('Starting %(topic)s node (version %(version_string)s)'),
                  {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
         self.manager.init_host()
@@ -150,7 +151,7 @@ class Service(service.Service):
         except exception.NotFound:
             self._create_service_ref(ctxt)
 
-        LOG.debug("Creating RPC server for service %s" % self.topic)
+        LOG.debug("Creating RPC server for service %s", self.topic)
 
         target = messaging.Target(topic=self.topic, server=self.host)
         endpoints = [self.manager]
@@ -186,14 +187,15 @@ class Service(service.Service):
         if self.report_interval:
             if CONF.service_down_time <= self.report_interval:
                 new_down_time = int(self.report_interval * 2.5)
-                LOG.warn(_("Report interval must be less than service down "
-                           "time. Current config service_down_time: "
-                           "%(service_down_time)s, report_interval for this: "
-                           "service is: %(report_interval)s. Setting global "
-                           "service_down_time to: %(new_down_time)s") %
-                         {'service_down_time': CONF.service_down_time,
-                          'report_interval': self.report_interval,
-                          'new_down_time': new_down_time})
+                LOG.warning(
+                    _LW("Report interval must be less than service down "
+                        "time. Current config service_down_time: "
+                        "%(service_down_time)s, report_interval for this: "
+                        "service is: %(report_interval)s. Setting global "
+                        "service_down_time to: %(new_down_time)s"),
+                    {'service_down_time': CONF.service_down_time,
+                     'report_interval': self.report_interval,
+                     'new_down_time': new_down_time})
                 CONF.set_override('service_down_time', new_down_time)
 
     def _create_service_ref(self, context):
@@ -254,7 +256,7 @@ class Service(service.Service):
         try:
             db.service_destroy(context.get_admin_context(), self.service_id)
         except exception.NotFound:
-            LOG.warn(_('Service killed that has no database entry'))
+            LOG.warning(_LW('Service killed that has no database entry'))
 
     def stop(self):
         # Try to shut the connection down, but if we get any sort of
@@ -293,7 +295,7 @@ class Service(service.Service):
                 service_ref = db.service_get(ctxt, self.service_id)
             except exception.NotFound:
                 LOG.debug('The service database object disappeared, '
-                          'Recreating it.')
+                          'recreating it.')
                 self._create_service_ref(ctxt)
                 service_ref = db.service_get(ctxt, self.service_id)
 
@@ -307,12 +309,12 @@ class Service(service.Service):
             # TODO(termie): make this pattern be more elegant.
             if getattr(self, 'model_disconnected', False):
                 self.model_disconnected = False
-                LOG.error(_('Recovered model server connection!'))
+                LOG.error(_LE('Recovered model server connection!'))
 
         except db_exc.DBConnectionError:
             if not getattr(self, 'model_disconnected', False):
                 self.model_disconnected = True
-                LOG.exception(_('model server went away'))
+                LOG.exception(_LE('model server went away'))
 
 
 class WSGIService(object):
@@ -435,9 +437,9 @@ def wait():
         if ("_password" in flag or "_key" in flag or
                 (flag == "sql_connection" and
                     ("mysql:" in flag_get or "postgresql:" in flag_get))):
-            LOG.debug('%s : FLAG SET ' % flag)
+            LOG.debug('%s : FLAG SET ', flag)
         else:
-            LOG.debug('%(flag)s : %(flag_get)s' %
+            LOG.debug('%(flag)s : %(flag_get)s',
                       {'flag': flag, 'flag_get': flag_get})
     try:
         _launcher.wait()

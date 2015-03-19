@@ -27,7 +27,7 @@ from oslo_utils import timeutils
 
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 import cinder.policy
 from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi
@@ -98,8 +98,9 @@ class API(base.Base):
 
         valid = self._valid_availability_zone(availability_zone)
         if not valid:
-            msg = _("Availability zone '%s' is invalid") % (availability_zone)
-            LOG.warn(msg)
+            msg = _LW(
+                "Availability zone '%s' is invalid") % (availability_zone)
+            LOG.warning(msg)
             raise exception.InvalidInput(reason=msg)
 
         return availability_zone
@@ -343,9 +344,8 @@ class API(base.Base):
         if not group['host']:
             self.update_quota(context, group['id'], -1, group['project_id'])
 
-            msg = ("No host for consistency group %s. Deleting from "
-                   "the database.") % group['id']
-            LOG.debug(msg)
+            LOG.debug("No host for consistency group %s. Deleting from "
+                      "the database.", group['id'])
             self.db.consistencygroup_destroy(context.elevated(), group['id'])
 
             return
@@ -600,7 +600,7 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         if filters:
-            LOG.debug("Searching by: %s" % str(filters))
+            LOG.debug("Searching by: %s", filters)
 
         if (context.is_admin and 'all_tenants' in filters):
             # Need to remove all_tenants to pass the filtering below.
@@ -691,7 +691,7 @@ class API(base.Base):
                 context.elevated(), context.project_id)
 
         if search_opts:
-            LOG.debug("Searching by: %s" % search_opts)
+            LOG.debug("Searching by: %s", search_opts)
 
             results = []
             not_found = object()

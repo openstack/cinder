@@ -69,7 +69,7 @@ class VolumeReplicationController(wsgi.Controller):
             vol = self.volume_api.get(context, id)
             LOG.info(_LI('Attempting to promote secondary replica to primary'
                          ' for volume %s.'),
-                     str(id),
+                     id,
                      context=context)
             self.replication_api.promote(context, vol)
         except exception.NotFound:
@@ -87,7 +87,7 @@ class VolumeReplicationController(wsgi.Controller):
             vol = self.volume_api.get(context, id)
             LOG.info(_LI('Attempting to sync secondary replica with primary'
                          ' for volume %s.'),
-                     str(id),
+                     id,
                      context=context)
             self.replication_api.reenable(context, vol)
         except exception.NotFound:

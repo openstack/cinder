@@ -81,7 +81,7 @@ class AdminController(wsgi.Controller):
         context = req.environ['cinder.context']
         self.authorize(context, 'reset_status')
         update = self.validate_update(body['os-reset_status'])
-        msg = _("Updating %(resource)s '%(id)s' with '%(update)r'")
+        msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})
 

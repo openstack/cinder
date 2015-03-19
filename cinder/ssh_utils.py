@@ -25,6 +25,7 @@ from eventlet import pools
 from oslo_config import cfg
 from oslo_log import log as logging
 import paramiko
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LI
@@ -80,12 +81,12 @@ class SSHPool(pools.Pool):
         if 'hosts_key_file' in kwargs.keys():
             self.hosts_key_file = kwargs.pop('hosts_key_file')
             LOG.info(_LI("Secondary ssh hosts key file %(kwargs)s will be "
-                         "loaded along with %(conf)s from /etc/cinder.conf.") %
+                         "loaded along with %(conf)s from /etc/cinder.conf."),
                      {'kwargs': self.hosts_key_file,
                       'conf': CONF.ssh_hosts_key_file})
 
         LOG.debug("Setting strict_ssh_host_key_policy to '%(policy)s' "
-                  "using ssh_hosts_key_file '%(key_file)s'." %
+                  "using ssh_hosts_key_file '%(key_file)s'.",
                   {'policy': CONF.strict_ssh_host_key_policy,
                    'key_file': CONF.ssh_hosts_key_file})
 
@@ -148,7 +149,7 @@ class SSHPool(pools.Pool):
                 transport.set_keepalive(self.conn_timeout)
             return ssh
         except Exception as e:
-            msg = _("Error connecting via ssh: %s") % e
+            msg = _("Error connecting via ssh: %s") % six.text_type(e)
             LOG.error(msg)
             raise paramiko.SSHException(msg)
 

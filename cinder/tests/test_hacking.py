@@ -179,3 +179,23 @@ class HackingTestCase(test.TestCase):
     def test_check_datetime_now_noqa(self):
         self.assertEqual(0, len(list(checks.check_datetime_now(
                                      "datetime.now()  # noqa", True))))
+
+    def test_validate_log_translations(self):
+        self.assertEqual(1, len(list(checks.validate_log_translations(
+            "LOG.info('foo')", "foo.py"))))
+        self.assertEqual(1, len(list(checks.validate_log_translations(
+            "LOG.warning('foo')", "foo.py"))))
+        self.assertEqual(1, len(list(checks.validate_log_translations(
+            "LOG.error('foo')", "foo.py"))))
+        self.assertEqual(1, len(list(checks.validate_log_translations(
+            "LOG.exception('foo')", "foo.py"))))
+        self.assertEqual(0, len(list(checks.validate_log_translations(
+            "LOG.info('foo')", "cinder/tests/foo.py"))))
+        self.assertEqual(0, len(list(checks.validate_log_translations(
+            "LOG.info(_LI('foo')", "foo.py"))))
+        self.assertEqual(0, len(list(checks.validate_log_translations(
+            "LOG.warning(_LW('foo')", "foo.py"))))
+        self.assertEqual(0, len(list(checks.validate_log_translations(
+            "LOG.error(_LE('foo')", "foo.py"))))
+        self.assertEqual(0, len(list(checks.validate_log_translations(
+            "LOG.exception(_LE('foo')", "foo.py"))))

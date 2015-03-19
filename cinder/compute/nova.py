@@ -119,7 +119,7 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
                          endpoint_type=endpoint_type,
                          **region_filter)
 
-        LOG.debug('Creating a Nova client using "%s" user' %
+        LOG.debug('Creating a Nova client using "%s" user',
                   CONF.os_privileged_user_name)
     else:
         if nova_endpoint_template:
@@ -130,7 +130,7 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
                              endpoint_type=endpoint_type,
                              **region_filter)
 
-        LOG.debug('Nova client connection created using URL: %s' % url)
+        LOG.debug('Nova client connection created using URL: %s', url)
 
     c = nova_client.Client(context.user_id,
                            context.auth_token,
