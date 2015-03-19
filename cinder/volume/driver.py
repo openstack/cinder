@@ -492,10 +492,11 @@ class BaseVD(object):
         dest_remote = True if remote in ['dest', 'both'] else False
         dest_orig_status = dest_vol['status']
         try:
-            dest_attach_info = self._attach_volume(context,
-                                                   dest_vol,
-                                                   properties,
-                                                   remote=dest_remote)
+            dest_attach_info, dest_vol = self._attach_volume(
+                context,
+                dest_vol,
+                properties,
+                remote=dest_remote)
         except Exception:
             with excutils.save_and_reraise_exception():
                 msg = _("Failed to attach volume %(vol)s")
@@ -506,10 +507,10 @@ class BaseVD(object):
         src_remote = True if remote in ['src', 'both'] else False
         src_orig_status = src_vol['status']
         try:
-            src_attach_info = self._attach_volume(context,
-                                                  src_vol,
-                                                  properties,
-                                                  remote=src_remote)
+            src_attach_info, src_vol = self._attach_volume(context,
+                                                           src_vol,
+                                                           properties,
+                                                           remote=src_remote)
         except Exception:
             with excutils.save_and_reraise_exception():
                 msg = _("Failed to attach volume %(vol)s")
@@ -549,7 +550,7 @@ class BaseVD(object):
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
         properties = utils.brick_get_connector_properties(use_multipath,
                                                           enforce_multipath)
-        attach_info = self._attach_volume(context, volume, properties)
+        attach_info, volume = self._attach_volume(context, volume, properties)
 
         try:
             image_utils.fetch_to_raw(context,
@@ -569,7 +570,7 @@ class BaseVD(object):
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
         properties = utils.brick_get_connector_properties(use_multipath,
                                                           enforce_multipath)
-        attach_info = self._attach_volume(context, volume, properties)
+        attach_info, volume = self._attach_volume(context, volume, properties)
 
         try:
             image_utils.upload_volume(context,
@@ -675,7 +676,7 @@ class BaseVD(object):
                     LOG.error(err_msg)
                     raise exception.VolumeBackendAPIException(data=ex_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
-        return self._connect_device(conn)
+        return (self._connect_device(conn), volume)
 
     def _connect_device(self, conn):
         # Use Brick's code to do attach/detach
@@ -718,7 +719,7 @@ class BaseVD(object):
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
         properties = utils.brick_get_connector_properties(use_multipath,
                                                           enforce_multipath)
-        attach_info = self._attach_volume(context, volume, properties)
+        attach_info, volume = self._attach_volume(context, volume, properties)
 
         try:
             volume_path = attach_info['device']['path']
@@ -746,7 +747,7 @@ class BaseVD(object):
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
         properties = utils.brick_get_connector_properties(use_multipath,
                                                           enforce_multipath)
-        attach_info = self._attach_volume(context, volume, properties)
+        attach_info, volume = self._attach_volume(context, volume, properties)
 
         try:
             volume_path = attach_info['device']['path']
