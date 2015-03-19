@@ -184,6 +184,12 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(0, len(list(checks.check_datetime_now(
                                      "datetime.now()  # noqa", True))))
 
+    def test_check_timeutils_strtime(self):
+        self.assertEqual(1, len(list(checks.check_timeutils_strtime(
+            "timeutils.strtime"))))
+        self.assertEqual(0, len(list(checks.check_timeutils_strtime(
+            "strftime"))))
+
     def test_validate_log_translations(self):
         self.assertEqual(1, len(list(checks.validate_log_translations(
             "LOG.info('foo')", "foo.py"))))
