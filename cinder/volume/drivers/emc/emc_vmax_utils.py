@@ -1533,7 +1533,7 @@ class EMCVMAXUtils(object):
 
             if six.text_type(poolName) == six.text_type(poolnameStr):
                 try:
-                    # Check that pool hasnt suddently been deleted.
+                    # Check that pool hasn't suddenly been deleted.
                     srpPoolInstance = conn.GetInstance(srpPoolInstanceName)
                     propertiesList = srpPoolInstance.properties.items()
                     for properties in propertiesList:
@@ -1591,7 +1591,7 @@ class EMCVMAXUtils(object):
                 poolInstanceId)
             if poolnameStr is not None and systemNameStr is not None:
                 if six.text_type(poolNameInStr) == six.text_type(poolnameStr):
-                    # check that the pool hasnt recently been deleted.
+                    # check that the pool hasn't recently been deleted.
                     try:
                         conn.GetInstance(vpoolInstanceName)
                         foundPoolInstanceName = vpoolInstanceName
