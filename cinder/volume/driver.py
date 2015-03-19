@@ -1215,7 +1215,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         msg = _("Unmanage volume not implemented.")
         raise NotImplementedError(msg)
 
-    def retype(self, volume):
+    def retype(self, context, volume, new_type, diff, host):
         msg = _("Retype existing volume not implemented.")
         raise NotImplementedError(msg)
 
