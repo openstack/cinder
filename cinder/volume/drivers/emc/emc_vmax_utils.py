@@ -38,6 +38,7 @@ except ImportError:
 
 STORAGEGROUPTYPE = 4
 POSTGROUPTYPE = 3
+CLONE_REPLICATION_TYPE = 10
 
 EMC_ROOT = 'root/emc'
 CONCATENATED = 'concatenated'
@@ -1838,3 +1839,52 @@ class EMCVMAXUtils(object):
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
         return instance
+
+    def find_replication_service_capabilities(self, conn, storageSystemName):
+        """Find the replication service capabilities instance name.
+
+        :param conn: the connection to the ecom server
+        :param storageSystemName: the storage system name
+        :returns: foundRepServCapability
+        """
+        foundRepServCapability = None
+        repservices = conn.EnumerateInstanceNames(
+            'CIM_ReplicationServiceCapabilities')
+        for repservCap in repservices:
+            if storageSystemName in repservCap['InstanceID']:
+                foundRepServCapability = repservCap
+                LOG.debug("Found Replication Service Capabilities: "
+                          "%(repservCap)s",
+                          {'repservCap': repservCap})
+                break
+        if foundRepServCapability is None:
+            exceptionMessage = (_("Replication Service Capability not found "
+                                  "on %(storageSystemName)s.")
+                                % {'storageSystemName': storageSystemName})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+        return foundRepServCapability
+
+    def is_clone_licensed(self, conn, capabilityInstanceName):
+        """Check if the clone feature is licensed and enabled.
+
+        :param conn: the connection to the ecom server
+        :param capabilityInstanceName: the replication service capabilities
+        instance name
+        :returns: True if licensed and enabled; False otherwise.
+        """
+        capabilityInstance = conn.GetInstance(capabilityInstanceName)
+        propertiesList = capabilityInstance.properties.items()
+        for properties in propertiesList:
+            if properties[0] == 'SupportedReplicationTypes':
+                cimProperties = properties[1]
+                repTypes = cimProperties.value
+                LOG.debug("Found supported replication types: "
+                          "%(repTypes)s",
+                          {'repTypes': repTypes})
+                if CLONE_REPLICATION_TYPE in repTypes:
+                    # Clone is a supported replication type.
+                    LOG.debug("Clone is licensed and enabled.")
+                    return True
+        return False
