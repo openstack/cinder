@@ -121,7 +121,7 @@ class DateraVolumeTestCase(test.TestCase):
         ctxt = context.get_admin_context()
         expected = {
             'provider_location': u'172.28.121.10:3260 iqn.2013-05.com.daterain'
-                                 'c::01:sn:fc372bc0490b2dbe 1'
+                                 'c::01:sn:fc372bc0490b2dbe 0'
         }
         self.assertEqual(expected, self.driver.ensure_export(ctxt,
                                                              self.volume))
@@ -137,7 +137,7 @@ class DateraVolumeTestCase(test.TestCase):
         ctxt = context.get_admin_context()
         expected = {
             'provider_location': u'172.28.121.10:3260 iqn.2013-05.com.daterain'
-                                 'c::01:sn:fc372bc0490b2dbe 1'
+                                 'c::01:sn:fc372bc0490b2dbe 0'
         }
         self.assertEqual(expected, self.driver.create_export(ctxt,
                                                              self.volume))
@@ -259,24 +259,37 @@ class DateraVolumeTestCase(test.TestCase):
         self.assertEqual(1, self.mock_api.call_count)
 
 stub_export = {
-    '_ipColl': ['172.28.121.10'],
-    'active_servers': {'44454c4c-4d00-1048-8031-b4c04f4d4e31': True},
-    'auth': {
-        'atype': 'T_AUTH_NONE',
-        'info': {
-            'mpassword': '',
-            'muserid': '',
-            'password': '',
-            'userid': ''
+    u'_ipColl': [u'172.28.121.10', u'172.28.120.10'],
+    u'acls': {},
+    u'activeServers': {u'4594953e-f97f-e111-ad85-001e6738c0f0': u'1'},
+    u'ctype': u'TC_BLOCK_ISCSI',
+    u'endpointsExt1': {
+        u'4594953e-f97f-e111-ad85-001e6738c0f0': {
+            u'ipHigh': 0,
+            u'ipLow': u'192421036',
+            u'ipStr': u'172.28.120.11',
+            u'ipV': 4,
+            u'name': u'',
+            u'network': 24
         }
     },
-    'endpoint_addrs': {'172.28.121.10': True},
-    'endpoint_idents': {
-        'iqn.2013-05.com.daterainc::01:sn:fc372bc0490b2dbe': True},
-    'name': 'OpenStack-a4e692e8-7f95-4f87-8fe6-cbcbab624012',
-    'server_allocation': 'TS_ALLOC_COMPLETED',
-    'servers': {'44454c4c-4d00-1048-8031-b4c04f4d4e31': True},
-    'targetIds': {
+    u'endpointsExt2': {
+        u'4594953e-f97f-e111-ad85-001e6738c0f0': {
+            u'ipHigh': 0,
+            u'ipLow': u'192486572',
+            u'ipStr': u'172.28.121.11',
+            u'ipV': 4,
+            u'name': u'',
+            u'network': 24
+        }
+    },
+    u'inodes': {u'c20aba21-6ef6-446b-b374-45733b4883ba': u'1'},
+    u'name': u'',
+    u'networkPort': 0,
+    u'serverAllocation': u'TS_ALLOC_COMPLETED',
+    u'servers': {u'4594953e-f97f-e111-ad85-001e6738c0f0': u'1'},
+    u'targetAllocation': u'TS_ALLOC_COMPLETED',
+    u'targetIds': {
         u'4594953e-f97f-e111-ad85-001e6738c0f0': {
             u'ids': [{
                 u'dev': None,
@@ -284,11 +297,8 @@ stub_export = {
             }]
         }
     },
-    'target_allocation': 'TS_ALLOC_COMPLETED',
-    'target_ids': {'44454c4c-4d00-1048-8031-b4c04f4d4e31': True},
-    'type': 'iscsi',
-    'uuid': 'f11c2386-71d4-4352-a718-71c3e22f5888',
-    'volumes': {'a4e692e8-7f95-4f87-8fe6-cbcbab624012': True}
+    u'typeName': u'TargetIscsiConfig',
+    u'uuid': u'7071efd7-9f22-4996-8f68-47e9ab19d0fd'
 }
 
 
