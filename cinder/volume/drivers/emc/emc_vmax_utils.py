@@ -344,7 +344,7 @@ class EMCVMAXUtils(object):
         :param extraSpecs: extraSpecs dict
         :returns: JOB_RETRIES or user defined
         """
-        if extraSpecs:
+        if extraSpecs and RETRIES in extraSpecs:
             jobRetries = extraSpecs[RETRIES]
         else:
             jobRetries = JOB_RETRIES
@@ -356,7 +356,7 @@ class EMCVMAXUtils(object):
         :param extraSpecs: extraSpecs dict
         :returns: INTERVAL_10_SEC or user defined
         """
-        if extraSpecs:
+        if extraSpecs and INTERVAL in extraSpecs:
             intervalInSecs = extraSpecs[INTERVAL]
         else:
             intervalInSecs = INTERVAL_10_SEC
@@ -828,13 +828,13 @@ class EMCVMAXUtils(object):
         If it is not there then the default will be used.
 
         :param fileName: the path and name of the file
-        :returns: string -- interval - the interval in seconds
+        :returns: interval - the interval in seconds
         """
         interval = self._parse_from_file(fileName, 'Interval')
         if interval:
             return interval
         else:
-            LOG.debug("Interval not found in config file.")
+            LOG.debug("Interval not overridden, default of 10 assumed.")
             return None
 
     def parse_retries_from_file(self, fileName):
@@ -843,13 +843,13 @@ class EMCVMAXUtils(object):
         If it is not there then the default will be used.
 
         :param fileName: the path and name of the file
-        :returns: string -- retries - the max number of retries
+        :returns: retries - the max number of retries
         """
         retries = self._parse_from_file(fileName, 'Retries')
         if retries:
             return retries
         else:
-            LOG.debug("Retries not found in config file.")
+            LOG.debug("Retries not overridden, default of 60 assumed.")
             return None
 
     def parse_pool_instance_id(self, poolInstanceId):
