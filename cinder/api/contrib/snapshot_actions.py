@@ -18,7 +18,7 @@ import webob
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import db
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 
 LOG = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class SnapshotActionsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context, 'update_snapshot_status')
 
-        LOG.debug("body: %s" % body)
+        LOG.debug("body: %s", body)
         try:
             status = body['os-update_snapshot_status']['status']
         except KeyError:
@@ -87,7 +87,7 @@ class SnapshotActionsController(wsgi.Controller):
 
             update_dict.update({'progress': progress})
 
-        LOG.info("Updating snapshot %(id)s with info %(dict)s" %
+        LOG.info(_LI("Updating snapshot %(id)s with info %(dict)s"),
                  {'id': id, 'dict': update_dict})
 
         db.snapshot_update(context, id, update_dict)

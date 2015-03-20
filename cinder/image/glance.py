@@ -34,7 +34,7 @@ from oslo_utils import timeutils
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _LE, _LW
 
 
 glance_opts = [
@@ -177,23 +177,19 @@ class GlanceClientWrapper(object):
             except retry_excs as e:
                 netloc = self.netloc
                 extra = "retrying"
-                error_msg = _("Error contacting glance server "
-                              "'%(netloc)s' for '%(method)s', "
-                              "%(extra)s.") % {'netloc': netloc,
-                                               'method': method,
-                                               'extra': extra,
-                                               }
+                error_msg = _LE("Error contacting glance server "
+                                "'%(netloc)s' for '%(method)s', "
+                                "%(extra)s.")
                 if attempt == num_attempts:
                     extra = 'done trying'
-                    error_msg = _("Error contacting glance server "
-                                  "'%(netloc)s' for '%(method)s', "
-                                  "%(extra)s.") % {'netloc': netloc,
-                                                   'method': method,
-                                                   'extra': extra,
-                                                   }
-                    LOG.exception(error_msg)
+                    LOG.exception(error_msg, {'netloc': netloc,
+                                              'method': method,
+                                              'extra': extra})
                     raise exception.GlanceConnectionFailed(reason=e)
-                LOG.exception(error_msg)
+
+                LOG.exception(error_msg, {'netloc': netloc,
+                                          'method': method,
+                                          'extra': extra})
                 time.sleep(1)
 
 

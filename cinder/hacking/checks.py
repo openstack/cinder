@@ -47,6 +47,13 @@ no_audit_log = re.compile(r"(.)*LOG\.audit(.)*")
 oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](concurrency|db"
                                     "|config|utils|serialization|log)")
 
+log_translation_LI = re.compile(
+    r"(.)*LOG\.(info)\(\s*(_\(|'|\")")
+log_translation_LE = re.compile(
+    r"(.)*LOG\.(exception|error)\(\s*(_\(|'|\")")
+log_translation_LW = re.compile(
+    r"(.)*LOG\.(warning|warn)\(\s*(_\(|'|\")")
+
 
 def no_vi_headers(physical_line, line_number, lines):
     """Check for vi editor configuration in source files.
@@ -130,6 +137,40 @@ def check_assert_called_once(logical_line, filename):
             yield (pos, msg)
 
 
+def validate_log_translations(logical_line, filename):
+    # TODO(smcginnis): The following is temporary as a series
+    # of patches are done to address these issues. It should be
+    # removed completely when bug 1433216 is closed.
+    ignore_dirs = [
+        "cinder/backup",
+        "cinder/brick",
+        "cinder/common",
+        "cinder/db",
+        "cinder/openstack",
+        "cinder/scheduler",
+        "cinder/volume",
+        "cinder/zonemanager"]
+    for directory in ignore_dirs:
+        if directory in filename:
+            return
+
+    # Translations are not required in the test directory.
+    # This will not catch all instances of violations, just direct
+    # misuse of the form LOG.info('Message').
+    if "cinder/tests" in filename:
+        return
+    msg = "N328: LOG.info messages require translations `_LI()`!"
+    if log_translation_LI.match(logical_line):
+        yield (0, msg)
+    msg = ("N329: LOG.exception and LOG.error messages require "
+           "translations `_LE()`!")
+    if log_translation_LE.match(logical_line):
+        yield (0, msg)
+    msg = "N330: LOG.warning messages require translations `_LW()`!"
+    if log_translation_LW.match(logical_line):
+        yield (0, msg)
+
+
 def check_oslo_namespace_imports(logical_line):
     if re.match(oslo_namespace_imports, logical_line):
         msg = ("N333: '%s' must be used instead of '%s'.") % (
@@ -167,3 +208,4 @@ def factory(register):
     register(check_oslo_namespace_imports)
     register(check_no_contextlib_nested)
     register(check_datetime_now)
+    register(validate_log_translations)

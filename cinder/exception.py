@@ -93,7 +93,8 @@ class CinderException(Exception):
                 # log the issue and the kwargs
                 LOG.exception(_LE('Exception in string format operation'))
                 for name, value in kwargs.iteritems():
-                    LOG.error("%s: %s" % (name, value))
+                    LOG.error(_LE("%(name)s: %(value)s"),
+                              {'name': name, 'value': value})
                 if CONF.fatal_exception_format_errors:
                     raise exc_info[0], exc_info[1], exc_info[2]
                 # at least get the core message out if something happened

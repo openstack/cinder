@@ -523,7 +523,8 @@ def tempdir(**kwargs):
         try:
             shutil.rmtree(tmpdir)
         except OSError as e:
-            LOG.debug('Could not remove tmpdir: %s', e)
+            LOG.debug('Could not remove tmpdir: %s',
+                      six.text_type(e))
 
 
 def walk_class_hierarchy(clazz, encountered=None):
@@ -593,7 +594,7 @@ def require_driver_initialized(driver):
     # we can't do anything if the driver didn't init
     if not driver.initialized:
         driver_name = driver.__class__.__name__
-        LOG.error(_LE("Volume driver %s not initialized") % driver_name)
+        LOG.error(_LE("Volume driver %s not initialized"), driver_name)
         raise exception.DriverNotInitialized()
 
 
@@ -736,8 +737,7 @@ def remove_invalid_filter_options(context, filters,
     unknown_options = [opt for opt in filters
                        if opt not in allowed_search_options]
     bad_options = ", ".join(unknown_options)
-    log_msg = "Removing options '%s' from query." % bad_options
-    LOG.debug(log_msg)
+    LOG.debug("Removing options '%s' from query.", bad_options)
     for opt in unknown_options:
         del filters[opt]
 
@@ -748,7 +748,7 @@ def is_blk_device(dev):
             return True
         return False
     except Exception:
-        LOG.debug('Path %s not found in is_blk_device check' % dev)
+        LOG.debug('Path %s not found in is_blk_device check', dev)
         return False
 
 

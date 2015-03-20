@@ -760,7 +760,7 @@ class QuotaEngine(object):
                                             expire=expire,
                                             project_id=project_id)
 
-        LOG.debug("Created reservations %s" % reservations)
+        LOG.debug("Created reservations %s", reservations)
 
         return reservations
 
@@ -783,7 +783,7 @@ class QuotaEngine(object):
             # mechanisms will resolve the issue.  The exception is
             # logged, however, because this is less than optimal.
             LOG.exception(_LE("Failed to commit "
-                              "reservations %s") % reservations)
+                              "reservations %s"), reservations)
 
     def rollback(self, context, reservations, project_id=None):
         """Roll back reservations.
@@ -804,7 +804,7 @@ class QuotaEngine(object):
             # mechanisms will resolve the issue.  The exception is
             # logged, however, because this is less than optimal.
             LOG.exception(_LE("Failed to roll back reservations "
-                              "%s") % reservations)
+                              "%s"), reservations)
 
     def destroy_all_by_project(self, context, project_id):
         """Destroy all quotas, usages, and reservations associated with a

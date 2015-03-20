@@ -113,7 +113,7 @@ def main():
         try:
             LOG.debug("Send exists notification for <volume_id: "
                       "%(volume_id)s> <project_id %(project_id)s> "
-                      "<%(extra_info)s>" %
+                      "<%(extra_info)s>",
                       {'volume_id': volume_ref.id,
                        'project_id': volume_ref.project_id,
                        'extra_info': extra_info})
@@ -123,7 +123,7 @@ def main():
                 'exists', extra_usage_info=extra_info)
         except Exception as e:
             LOG.error(_LE("Failed to send exists notification"
-                          " for volume %s.") %
+                          " for volume %s."),
                       volume_ref.id)
             print(traceback.format_exc(e))
 
@@ -137,7 +137,7 @@ def main():
                 }
                 LOG.debug("Send create notification for "
                           "<volume_id: %(volume_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>" %
+                          "<project_id %(project_id)s> <%(extra_info)s>",
                           {'volume_id': volume_ref.id,
                            'project_id': volume_ref.project_id,
                            'extra_info': local_extra_info})
@@ -151,7 +151,7 @@ def main():
                     'create.end', extra_usage_info=local_extra_info)
             except Exception as e:
                 LOG.error(_LE("Failed to send create notification for "
-                              "volume %s.") % volume_ref.id)
+                              "volume %s."), volume_ref.id)
                 print(traceback.format_exc(e))
 
         if (CONF.send_actions and volume_ref.deleted_at and
@@ -164,7 +164,7 @@ def main():
                 }
                 LOG.debug("Send delete notification for "
                           "<volume_id: %(volume_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>" %
+                          "<project_id %(project_id)s> <%(extra_info)s>",
                           {'volume_id': volume_ref.id,
                            'project_id': volume_ref.project_id,
                            'extra_info': local_extra_info})
@@ -178,7 +178,7 @@ def main():
                     'delete.end', extra_usage_info=local_extra_info)
             except Exception as e:
                 LOG.error(_LE("Failed to send delete notification for volume "
-                              "%s.") % volume_ref.id)
+                              "%s."), volume_ref.id)
                 print(traceback.format_exc(e))
 
     snapshots = db.snapshot_get_active_by_window(admin_context,
@@ -188,7 +188,7 @@ def main():
     for snapshot_ref in snapshots:
         try:
             LOG.debug("Send notification for <snapshot_id: %(snapshot_id)s> "
-                      "<project_id %(project_id)s> <%(extra_info)s>" %
+                      "<project_id %(project_id)s> <%(extra_info)s>",
                       {'snapshot_id': snapshot_ref.id,
                        'project_id': snapshot_ref.project_id,
                        'extra_info': extra_info})
@@ -198,8 +198,8 @@ def main():
                                                             extra_info)
         except Exception as e:
             LOG.error(_LE("Failed to send exists notification "
-                          "for snapshot %s.")
-                      % snapshot_ref.id)
+                          "for snapshot %s."),
+                      snapshot_ref.id)
             print(traceback.format_exc(e))
 
         if (CONF.send_actions and
@@ -212,7 +212,7 @@ def main():
                 }
                 LOG.debug("Send create notification for "
                           "<snapshot_id: %(snapshot_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>" %
+                          "<project_id %(project_id)s> <%(extra_info)s>",
                           {'snapshot_id': snapshot_ref.id,
                            'project_id': snapshot_ref.project_id,
                            'extra_info': local_extra_info})
@@ -226,7 +226,7 @@ def main():
                     'create.end', extra_usage_info=local_extra_info)
             except Exception as e:
                 LOG.error(_LE("Failed to send create notification for snapshot"
-                              "%s.") % snapshot_ref.id)
+                              "%s."), snapshot_ref.id)
                 print(traceback.format_exc(e))
 
         if (CONF.send_actions and snapshot_ref.deleted_at and
@@ -239,7 +239,7 @@ def main():
                 }
                 LOG.debug("Send delete notification for "
                           "<snapshot_id: %(snapshot_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>" %
+                          "<project_id %(project_id)s> <%(extra_info)s>",
                           {'snapshot_id': snapshot_ref.id,
                            'project_id': snapshot_ref.project_id,
                            'extra_info': local_extra_info})
@@ -253,7 +253,7 @@ def main():
                     'delete.end', extra_usage_info=local_extra_info)
             except Exception as e:
                 LOG.error(_LE("Failed to send delete notification for snapshot"
-                              "%s.") % snapshot_ref.id)
+                              "%s."), snapshot_ref.id)
                 print(traceback.format_exc(e))
 
     print(_("Volume usage audit completed"))

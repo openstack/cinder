@@ -71,9 +71,9 @@ class BarbicanKeyManager(key_mgr.KeyManager):
                 self._barbican_client = barbican_client.Client(
                     session=sess,
                     endpoint=self._barbican_endpoint)
-            except Exception as e:
+            except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("Error creating Barbican client: %s"), (e))
+                    LOG.exception(_LE("Error creating Barbican client."))
 
         return self._barbican_client
 
@@ -108,9 +108,9 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             order = barbican_client.orders.get(order_ref)
             secret_uuid = order.secret_ref.rpartition('/')[2]
             return secret_uuid
-        except Exception as e:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error creating key: %s"), (e))
+                LOG.exception(_LE("Error creating key."))
 
     def store_key(self, ctxt, key, expiration=None, name='Cinder Volume Key',
                   payload_content_type='application/octet-stream',
@@ -163,9 +163,9 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             secret_ref = secret.store()
             secret_uuid = secret_ref.rpartition('/')[2]
             return secret_uuid
-        except Exception as e:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error storing key: %s"), (e))
+                LOG.exception(_LE("Error storing key."))
 
     def copy_key(self, ctxt, key_id):
         """Copies (i.e., clones) a key stored by barbican.
@@ -191,9 +191,9 @@ class BarbicanKeyManager(key_mgr.KeyManager):
                                        secret.algorithm, secret.bit_length,
                                        secret.mode, True)
             return copy_uuid
-        except Exception as e:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error copying key: %s"), (e))
+                LOG.exception(_LE("Error copying key."))
 
     def _create_secret_ref(self, key_id, barbican_client):
         """Creates the URL required for accessing a secret.
@@ -228,9 +228,9 @@ class BarbicanKeyManager(key_mgr.KeyManager):
             else:
                 secret_data = generated_data
             return secret_data
-        except Exception as e:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error getting secret data: %s"), (e))
+                LOG.exception(_LE("Error getting secret data."))
 
     def _get_secret(self, ctxt, secret_ref):
         """Creates the URL required for accessing a secret's metadata.
@@ -247,9 +247,9 @@ class BarbicanKeyManager(key_mgr.KeyManager):
 
         try:
             return barbican_client.secrets.get(secret_ref)
-        except Exception as e:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error getting secret metadata: %s"), (e))
+                LOG.exception(_LE("Error getting secret metadata."))
 
     def get_key(self, ctxt, key_id,
                 payload_content_type='application/octet-stream'):
@@ -276,9 +276,9 @@ class BarbicanKeyManager(key_mgr.KeyManager):
                 key_data = secret_data
             key = keymgr_key.SymmetricKey(secret.algorithm, key_data)
             return key
-        except Exception as e:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error getting key: %s"), (e))
+                LOG.exception(_LE("Error getting key."))
 
     def delete_key(self, ctxt, key_id):
         """Deletes the specified key.
@@ -293,6 +293,6 @@ class BarbicanKeyManager(key_mgr.KeyManager):
         try:
             secret_ref = self._create_secret_ref(key_id, barbican_client)
             barbican_client.secrets.delete(secret_ref)
-        except Exception as e:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error deleting key: %s"), (e))
+                LOG.exception(_LE("Error deleting key."))

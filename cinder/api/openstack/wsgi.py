@@ -752,14 +752,14 @@ class ResourceExceptionHandler(object):
         elif isinstance(ex_value, TypeError):
             exc_info = (ex_type, ex_value, ex_traceback)
             LOG.error(_LE(
-                'Exception handling resource: %s') %
+                'Exception handling resource: %s'),
                 ex_value, exc_info=exc_info)
             raise Fault(webob.exc.HTTPBadRequest())
         elif isinstance(ex_value, Fault):
-            LOG.info(_LI("Fault thrown: %s"), unicode(ex_value))
+            LOG.info(_LI("Fault thrown: %s"), ex_value)
             raise ex_value
         elif isinstance(ex_value, webob.exc.HTTPException):
-            LOG.info(_LI("HTTP exception thrown: %s"), unicode(ex_value))
+            LOG.info(_LI("HTTP exception thrown: %s"), ex_value)
             raise Fault(ex_value)
 
         # We didn't handle the exception
@@ -959,8 +959,9 @@ class Resource(wsgi.Application):
     def __call__(self, request):
         """WSGI method that controls (de)serialization and method dispatch."""
 
-        LOG.info("%(method)s %(url)s" % {"method": request.method,
-                                         "url": request.url})
+        LOG.info(_LI("%(method)s %(url)s"),
+                 {"method": request.method,
+                  "url": request.url})
 
         # Identify the action, its arguments, and the requested
         # content type
@@ -1058,12 +1059,12 @@ class Resource(wsgi.Application):
 
         try:
             msg_dict = dict(url=request.url, status=response.status_int)
-            msg = _("%(url)s returned with HTTP %(status)d") % msg_dict
+            msg = _LI("%(url)s returned with HTTP %(status)d")
         except AttributeError as e:
             msg_dict = dict(url=request.url, e=e)
-            msg = _("%(url)s returned a fault: %(e)s") % msg_dict
+            msg = _LI("%(url)s returned a fault: %(e)s")
 
-        LOG.info(msg)
+        LOG.info(msg, msg_dict)
 
         return response
 
@@ -1082,7 +1083,7 @@ class Resource(wsgi.Application):
                                                             'create',
                                                             'delete',
                                                             'update']):
-                    LOG.exception(six.text_type(e))
+                    LOG.exception(_LE('Get method error.'))
                 else:
                     ctxt.reraise = False
         else:
@@ -1092,7 +1093,7 @@ class Resource(wsgi.Application):
             # OK, it's an action; figure out which action...
             mtype = _MEDIA_TYPE_MAP.get(content_type)
             action_name = self.action_peek[mtype](body)
-            LOG.debug("Action body: %s" % body)
+            LOG.debug("Action body: %s", body)
         else:
             action_name = action
 

@@ -16,7 +16,7 @@
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _LW
 from cinder import quota
 
 
@@ -45,22 +45,23 @@ def get_volume_type_reservation(ctxt, volume, type_id):
                 s_size = volume['size']
                 d_quota = quotas[over]
                 d_consumed = _consumed(over)
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                LOG.warning(
+                    _LW("Quota exceeded for %(s_pid)s, tried to create "
                         "%(s_size)sG volume - (%(d_consumed)dG of "
-                        "%(d_quota)dG already consumed)")
-                LOG.warn(msg % {'s_pid': ctxt.project_id,
-                                's_size': s_size,
-                                'd_consumed': d_consumed,
-                                'd_quota': d_quota})
+                        "%(d_quota)dG already consumed)"),
+                    {'s_pid': ctxt.project_id,
+                     's_size': s_size,
+                     'd_consumed': d_consumed,
+                     'd_quota': d_quota})
                 raise exception.VolumeSizeExceedsAvailableQuota(
                     requested=s_size, quota=d_quota, consumed=d_consumed)
             elif 'volumes' in over:
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                LOG.warning(
+                    _LW("Quota exceeded for %(s_pid)s, tried to create "
                         "volume (%(d_consumed)d volumes "
-                        "already consumed)")
-
-                LOG.warn(msg % {'s_pid': ctxt.project_id,
-                                'd_consumed': _consumed(over)})
+                        "already consumed)"),
+                    {'s_pid': ctxt.project_id,
+                     'd_consumed': _consumed(over)})
                 raise exception.VolumeLimitExceeded(
                     allowed=quotas[over])
     return reservations

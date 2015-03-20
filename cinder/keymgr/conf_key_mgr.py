@@ -75,8 +75,9 @@ class ConfKeyManager(key_mgr.KeyManager):
 
     def _generate_hex_key(self, **kwargs):
         if CONF.keymgr.fixed_key is None:
-            LOG.warn(_LW('config option keymgr.fixed_key has not been defined:'
-                         ' some operations may fail unexpectedly'))
+            LOG.warning(
+                _LW('config option keymgr.fixed_key has not been defined:'
+                    ' some operations may fail unexpectedly'))
             raise ValueError(_('keymgr.fixed_key not defined'))
         return CONF.keymgr.fixed_key
 
@@ -131,4 +132,4 @@ class ConfKeyManager(key_mgr.KeyManager):
             raise exception.KeyManagerError(
                 reason="cannot delete non-existent key")
 
-        LOG.warn(_LW("Not deleting key %s"), key_id)
+        LOG.warning(_LW("Not deleting key %s"), key_id)
