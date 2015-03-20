@@ -145,8 +145,8 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         LOG.debug("Using swift URL %s", self.swift_url)
         self.swift_attempts = CONF.backup_swift_retry_attempts
         self.swift_backoff = CONF.backup_swift_retry_backoff
-        LOG.debug('Connect to %s in "%s" mode', (CONF.backup_swift_url,
-                                                 CONF.backup_swift_auth))
+        LOG.debug('Connect to %s in "%s" mode', CONF.backup_swift_url,
+                  CONF.backup_swift_auth)
         if CONF.backup_swift_auth == 'single_user':
             if CONF.backup_swift_user is None:
                 LOG.error(_LE("single_user auth mode enabled, "
