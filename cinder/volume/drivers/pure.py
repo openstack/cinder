@@ -15,7 +15,7 @@
 """
 Volume driver for Pure Storage FlashArray storage system.
 
-This driver requires Purity version 3.4.0 or later.
+This driver requires Purity version 4.0.0 or later.
 """
 
 import math
