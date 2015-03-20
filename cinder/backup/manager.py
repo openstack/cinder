@@ -706,3 +706,11 @@ class BackupManager(manager.SchedulerDependentManager):
             notifier = rpc.get_notifier('backupStatusUpdate')
             notifier.info(context, "backups.reset_status.end",
                           notifier_info)
+
+    def check_support_to_force_delete(self, context):
+        """Check if the backup driver supports force delete operation.
+
+        :param context: running context
+        """
+        backup_service = self.service.get_backup_driver(context)
+        return backup_service.support_force_delete

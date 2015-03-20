@@ -1504,3 +1504,12 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual("Missing required element 'backup-record' in "
                          "request body.",
                          res_dict['badRequest']['message'])
+
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.check_support_to_force_delete',
+                return_value=False)
+    def test_force_delete_with_not_supported_operation(self,
+                                                       mock_check_support):
+        backup_id = self._create_backup(status='available')
+        backup = self.backup_api.get(self.context, backup_id)
+        self.assertRaises(exception.NotSupportedOperation,
+                          self.backup_api.delete, self.context, backup, True)

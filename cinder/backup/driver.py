@@ -324,6 +324,10 @@ class BackupDriver(base.Base):
         super(BackupDriver, self).__init__(db_driver)
         self.context = context
         self.backup_meta_api = BackupMetadataAPI(context, db_driver)
+        # This flag indicates if backup driver supports force
+        # deletion. So it should be set to True if the driver that inherits
+        # from BackupDriver supports the force deletion function.
+        self.support_force_delete = False
 
     def get_metadata(self, volume_id):
         return self.backup_meta_api.get(volume_id)
