@@ -16,6 +16,7 @@
 import copy
 import os
 import platform
+import re
 import socket
 import time
 
@@ -40,6 +41,7 @@ LOG = logging.getLogger(__name__)
 
 synchronized = lockutils.synchronized_with_prefix('brick-')
 DEVICE_SCAN_ATTEMPTS_DEFAULT = 3
+MULTIPATH_ERROR_REGEX = re.compile("\w{3} \d+ \d\d:\d\d:\d\d \|.*$")
 
 
 def _check_multipathd_running(root_helper, enforce_multipath):
@@ -583,7 +585,7 @@ class ISCSIConnector(InitiatorConnector):
                                   device],
                                   check_exit_code=[0, 1])[0]
         mpath_line = [line for line in out.splitlines()
-                      if "scsi_id" not in line]  # ignore udev errors
+                      if not re.match(MULTIPATH_ERROR_REGEX, line)]
         if len(mpath_line) > 0 and len(mpath_line[0]) > 0:
             return "/dev/mapper/%s" % mpath_line[0].split(" ")[0]
 
