@@ -3548,12 +3548,13 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         volume_api = cinder.volume.api.API()
         azs = volume_api.list_availability_zones()
+        azs = list(azs).sort()
 
-        expected = (
+        expected = [
             {'name': 'pung', 'available': False},
             {'name': 'pong', 'available': True},
             {'name': 'ping', 'available': True},
-        )
+        ].sort()
 
         self.assertEqual(expected, azs)
 

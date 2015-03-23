@@ -122,7 +122,7 @@ class API(base.Base):
     def list_availability_zones(self, enable_cache=False):
         """Describe the known availability zones
 
-        :retval list of dicts, each with a 'name' and 'available' key
+        :retval tuple of dicts, each with a 'name' and 'available' key
         """
         refresh_cache = False
         if enable_cache:
