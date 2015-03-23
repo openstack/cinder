@@ -225,7 +225,7 @@ HNAS_CMDS = {
         ["%s" % HNAS_RESULT12, ""],
     ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
      'console-context', '--evs', '1', 'iscsi-target', 'addlu', 'test_iqn',
-     'test_lun', 0):
+     'test_lun', '0'):
         ["%s" % HNAS_RESULT13, ""],
     ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
      'console-context', '--evs', '1', 'iscsi-target', 'dellu', 'test_iqn',
