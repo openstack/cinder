@@ -170,11 +170,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                 # has closed the connection.
                 msg = _("The EQL array has closed the connection.")
                 LOG.error(msg)
-<<<<<<< HEAD
-                raise processutils.ProcessExecutionError(description=msg)
-=======
                 raise exception.VolumeBackendAPIException(data=msg)
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
             out += ret
 
         LOG.debug("CLI output\n%s", out)

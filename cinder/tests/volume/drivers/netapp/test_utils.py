@@ -25,10 +25,7 @@ from oslo_concurrency import processutils as putils
 from cinder import exception
 from cinder import test
 import cinder.tests.volume.drivers.netapp.fakes as fake
-<<<<<<< HEAD
-=======
 from cinder import version
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 import cinder.volume.drivers.netapp.utils as na_utils
 
 
@@ -109,25 +106,6 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0.0'), -5.5)
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0'), -5)
 
-<<<<<<< HEAD
-    def test_iscsi_connection_properties(self):
-        FAKE_LUN_ID = 1
-
-        actual_properties = na_utils.get_iscsi_connection_properties(
-            fake.ISCSI_FAKE_ADDRESS, fake.ISCSI_FAKE_PORT,
-            fake.ISCSI_FAKE_IQN, FAKE_LUN_ID, fake.ISCSI_FAKE_VOLUME)
-
-        actual_properties_mapped = actual_properties['data']
-
-        self.assertDictEqual(actual_properties_mapped, fake.ISCSI_FAKE_DICT)
-
-    def test_iscsi_connection_lun_id_str(self):
-        FAKE_LUN_ID = '1'
-
-        actual_properties = na_utils.get_iscsi_connection_properties(
-            fake.ISCSI_FAKE_ADDRESS, fake.ISCSI_FAKE_PORT,
-            fake.ISCSI_FAKE_IQN, FAKE_LUN_ID, fake.ISCSI_FAKE_VOLUME)
-=======
 
 class OpenStackInfoTestCase(test.TestCase):
 
@@ -392,22 +370,11 @@ class OpenStackInfoTestCase(test.TestCase):
         actual_properties = na_utils.get_iscsi_connection_properties(
             FAKE_LUN_ID, fake.ISCSI_FAKE_VOLUME, fake.ISCSI_FAKE_IQN,
             fake.ISCSI_FAKE_ADDRESS, fake.ISCSI_FAKE_PORT)
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
         actual_properties_mapped = actual_properties['data']
 
         self.assertIs(type(actual_properties_mapped['target_lun']), int)
 
-<<<<<<< HEAD
-    def test_iscsi_connection_lun_id_dict(self):
-        FAKE_LUN_ID = {'id': '1'}
-
-        self.assertRaises(TypeError,
-                          na_utils.get_iscsi_connection_properties,
-                          fake.ISCSI_FAKE_ADDRESS, fake.ISCSI_FAKE_PORT,
-                          fake.ISCSI_FAKE_IQN, FAKE_LUN_ID,
-                          fake.ISCSI_FAKE_VOLUME)
-=======
     def test_iscsi_connection_lun_id_type_dict(self):
         FAKE_LUN_ID = {'id': 'fake_id'}
 
@@ -415,4 +382,3 @@ class OpenStackInfoTestCase(test.TestCase):
                           FAKE_LUN_ID, fake.ISCSI_FAKE_VOLUME,
                           fake.ISCSI_FAKE_IQN, fake.ISCSI_FAKE_ADDRESS,
                           fake.ISCSI_FAKE_PORT)
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85

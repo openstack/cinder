@@ -1527,37 +1527,6 @@ class GlusterFsDriverTestCase(test.TestCase):
         """Backup a volume with no snapshots."""
         drv = self._driver
 
-<<<<<<< HEAD
-        (mox, drv) = self._mox, self._driver
-
-        mox.StubOutWithMock(drv.db, 'volume_get')
-        mox.StubOutWithMock(drv, 'get_active_image_from_info')
-        mox.StubOutWithMock(drv, '_qemu_img_info')
-        mox.StubOutWithMock(base_driver.VolumeDriver, 'backup_volume')
-
-        ctxt = context.RequestContext('fake_user', 'fake_project')
-        volume = self._simple_volume()
-        backup = {'volume_id': volume['id']}
-
-        drv.db.volume_get(ctxt, volume['id']).AndReturn(volume)
-
-        drv.get_active_image_from_info(IgnoreArg()).AndReturn('/some/path')
-
-        info = imageutils.QemuImgInfo()
-        info.file_format = 'raw'
-
-        drv._qemu_img_info(IgnoreArg(), IgnoreArg()).AndReturn(info)
-
-        base_driver.VolumeDriver.backup_volume(IgnoreArg(),
-                                               IgnoreArg(),
-                                               IgnoreArg())
-
-        mox.ReplayAll()
-
-        drv.backup_volume(ctxt, backup, IgnoreArg())
-
-        mox.VerifyAll()
-=======
         with mock.patch.object(drv.db, 'volume_get') as mock_volume_get,\
                 mock.patch.object(drv, 'get_active_image_from_info') as \
                 mock_get_active_image_from_info,\
@@ -1577,7 +1546,6 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             drv.backup_volume(ctxt, backup, mock.MagicMock())
             self.assertTrue(mock_backup_volume.called)
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
     def test_backup_volume_previous_snap(self):
         """Backup a volume that previously had a snapshot.
@@ -1586,37 +1554,6 @@ class GlusterFsDriverTestCase(test.TestCase):
         """
         drv = self._driver
 
-<<<<<<< HEAD
-        (mox, drv) = self._mox, self._driver
-
-        mox.StubOutWithMock(drv.db, 'volume_get')
-        mox.StubOutWithMock(drv, 'get_active_image_from_info')
-        mox.StubOutWithMock(drv, '_qemu_img_info')
-        mox.StubOutWithMock(base_driver.VolumeDriver, 'backup_volume')
-
-        ctxt = context.RequestContext('fake_user', 'fake_project')
-        volume = self._simple_volume()
-        backup = {'volume_id': volume['id']}
-
-        drv.db.volume_get(ctxt, volume['id']).AndReturn(volume)
-
-        drv.get_active_image_from_info(IgnoreArg()).AndReturn('/some/file2')
-
-        info = imageutils.QemuImgInfo()
-        info.file_format = 'raw'
-
-        drv._qemu_img_info(IgnoreArg(), IgnoreArg()).AndReturn(info)
-
-        base_driver.VolumeDriver.backup_volume(IgnoreArg(),
-                                               IgnoreArg(),
-                                               IgnoreArg())
-
-        mox.ReplayAll()
-
-        drv.backup_volume(ctxt, backup, IgnoreArg())
-
-        mox.VerifyAll()
-=======
         with mock.patch.object(drv.db, 'volume_get') as mock_volume_get,\
                 mock.patch.object(drv, 'get_active_image_from_info') as \
                 mock_get_active_image_from_info,\
@@ -1636,7 +1573,6 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             drv.backup_volume(ctxt, backup, mock.MagicMock())
             self.assertTrue(mock_backup_volume.called)
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
     def test_backup_snap_failure_1(self):
         """Backup fails if snapshot exists (database)."""
@@ -1660,35 +1596,6 @@ class GlusterFsDriverTestCase(test.TestCase):
         """Backup fails if snapshot exists (on-disk)."""
         drv = self._driver
 
-<<<<<<< HEAD
-        (mox, drv) = self._mox, self._driver
-        mox.StubOutWithMock(drv.db, 'volume_get')
-        mox.StubOutWithMock(drv, 'get_active_image_from_info')
-        mox.StubOutWithMock(drv, '_qemu_img_info')
-
-        ctxt = context.RequestContext('fake_user', 'fake_project')
-        volume = self._simple_volume()
-        backup = {'volume_id': volume['id']}
-
-        drv.db.volume_get(ctxt, volume['id']).AndReturn(volume)
-
-        drv.get_active_image_from_info(IgnoreArg()).\
-            AndReturn('/some/path/file2')
-
-        info = imageutils.QemuImgInfo()
-        info.file_format = 'raw'
-        info.backing_file = 'file1'
-
-        drv._qemu_img_info(IgnoreArg(), IgnoreArg()).AndReturn(info)
-
-        mox.ReplayAll()
-
-        self.assertRaises(exception.InvalidVolume,
-                          drv.backup_volume,
-                          ctxt, backup, IgnoreArg())
-
-        mox.VerifyAll()
-=======
         with mock.patch.object(drv.db, 'volume_get') as mock_volume_get,\
                 mock.patch.object(drv, 'get_active_image_from_info') as \
                 mock_get_active_image_from_info, \
@@ -1708,7 +1615,6 @@ class GlusterFsDriverTestCase(test.TestCase):
             self.assertRaises(exception.InvalidVolume,
                               drv.backup_volume,
                               ctxt, backup, mock.MagicMock())
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
     def test_backup_failure_unsupported_format(self):
         """Attempt to backup a volume with a qcow2 base."""
@@ -1724,13 +1630,8 @@ class GlusterFsDriverTestCase(test.TestCase):
             mock_volume_get.return_value = volume
             mock_get_active_image_from_info.return_value = '/some/path'
 
-<<<<<<< HEAD
-        drv.db.volume_get(ctxt, volume['id']).AndReturn(volume)
-        drv._qemu_img_info(IgnoreArg(), IgnoreArg()).AndReturn(info)
-=======
             info = imageutils.QemuImgInfo()
             info.file_format = 'qcow2'
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
             self.assertRaises(exception.InvalidVolume,
                               drv.backup_volume,

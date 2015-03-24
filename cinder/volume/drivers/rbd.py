@@ -666,13 +666,8 @@ class RBDDriver(driver.VolumeDriver):
                     # delete can be retried.
                     raise exception.VolumeIsBusy(msg, volume_name=volume_name)
                 except self.rbd.ImageNotFound:
-<<<<<<< HEAD
-                    msg = (_("RBD volume %s not found, allowing delete "
-                             "operation to proceed.") % volume_name)
-=======
                     msg = (_LI("RBD volume %s not found, allowing delete "
                                "operation to proceed.") % volume_name)
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
                     LOG.info(msg)
                     return
 

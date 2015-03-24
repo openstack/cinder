@@ -26,11 +26,6 @@ from sqlalchemy import Column, Integer, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship, backref, validates
-<<<<<<< HEAD
-
-from cinder.openstack.common import timeutils
-=======
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
 
 CONF = cfg.CONF

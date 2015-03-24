@@ -2963,7 +2963,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             # add_vdisk_qos will be called for retype, and disable_vdisk_qos
             # will not be called.
             get_vdisk_params.side_effect = [fake_opts, fake_opts_qos]
-<<<<<<< HEAD
             self.driver.retype(ctxt, volume, new_type, diff, host)
             update_vdisk_qos.assert_called_with(volume['name'],
                                                 fake_opts_qos['qos'])
@@ -2979,23 +2978,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             # disable_vdisk_qos will be called.
             get_vdisk_params.side_effect = [fake_opts_qos, fake_opts]
             self.driver.retype(ctxt, volume, new_type, diff, host)
-=======
-            self.driver.retype(ctxt, volume, new_type, diff, host)
-            update_vdisk_qos.assert_called_with(volume['name'],
-                                                fake_opts_qos['qos'])
-            self.assertFalse(disable_vdisk_qos.called)
-            self.driver.delete_volume(volume)
-
-        self.driver.create_volume(volume)
-        update_vdisk_qos.reset_mock()
-        with mock.patch.object(storwize_svc.StorwizeSVCDriver,
-                               '_get_vdisk_params') as get_vdisk_params:
-            # If qos is empty for target volume and specified for source
-            # volume, add_vdisk_qos will not be called for retype, and
-            # disable_vdisk_qos will be called.
-            get_vdisk_params.side_effect = [fake_opts_qos, fake_opts]
-            self.driver.retype(ctxt, volume, new_type, diff, host)
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
             self.assertFalse(update_vdisk_qos.called)
             disable_vdisk_qos.assert_called_with(volume['name'],
                                                  fake_opts_qos['qos'])
@@ -3438,8 +3420,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.assertEqual(term_data, term_ret)
 
-<<<<<<< HEAD
-=======
     def test_storwize_consistency_group_snapshot(self):
         cg_type = self._create_consistency_group_volume_type()
 
@@ -3473,7 +3453,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
     def _create_volume_type_qos(self, extra_specs, fake_qos):
         # Generate a QoS volume type for volume.
         if extra_specs:

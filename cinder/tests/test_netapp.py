@@ -29,22 +29,11 @@ from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
-<<<<<<< HEAD
-from cinder.volume.drivers.netapp.options import netapp_7mode_opts
-from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
-from cinder.volume.drivers.netapp.options import netapp_cluster_opts
-from cinder.volume.drivers.netapp.options import netapp_connection_opts
-from cinder.volume.drivers.netapp.options import netapp_provisioning_opts
-from cinder.volume.drivers.netapp.options import netapp_transport_opts
-from cinder.volume.drivers.netapp import ssc_utils
-from cinder.volume.drivers.netapp import utils
-=======
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils
 
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
 LOG = logging.getLogger("cinder.volume.driver")
 
@@ -586,43 +575,6 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.driver.check_for_setup_error()
 
     def test_do_setup_all_default(self):
-<<<<<<< HEAD
-        configuration = self._set_config(create_configuration())
-        driver = common.NetAppDriver(configuration=configuration)
-        driver._do_custom_setup = mock.Mock()
-        driver.do_setup(context='')
-        self.assertEqual('80', driver.client.get_port())
-        self.assertEqual('http', driver.client.get_transport_type())
-
-    def test_do_setup_http_default_port(self):
-        configuration = self._set_config(create_configuration())
-        configuration.netapp_transport_type = 'http'
-        driver = common.NetAppDriver(configuration=configuration)
-        driver._do_custom_setup = mock.Mock()
-        driver.do_setup(context='')
-        self.assertEqual('80', driver.client.get_port())
-        self.assertEqual('http', driver.client.get_transport_type())
-
-    def test_do_setup_https_default_port(self):
-        configuration = self._set_config(create_configuration())
-        configuration.netapp_transport_type = 'https'
-        driver = common.NetAppDriver(configuration=configuration)
-        driver._do_custom_setup = mock.Mock()
-        driver.do_setup(context='')
-        self.assertEqual('443', driver.client.get_port())
-        self.assertEqual('https', driver.client.get_transport_type())
-
-    def test_do_setup_http_non_default_port(self):
-        configuration = self._set_config(create_configuration())
-        configuration.netapp_server_port = 81
-        driver = common.NetAppDriver(configuration=configuration)
-        driver._do_custom_setup = mock.Mock()
-        driver.do_setup(context='')
-        self.assertEqual('81', driver.client.get_port())
-        self.assertEqual('http', driver.client.get_transport_type())
-
-    def test_do_setup_https_non_default_port(self):
-=======
         self.mock_object(utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
@@ -672,23 +624,15 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
                        mock.Mock(return_value=(1, 20)))
     def test_do_setup_https_non_default_port(self):
         self.mock_object(utils, 'OpenStackInfo')
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
         configuration = self._set_config(create_configuration())
         configuration.netapp_transport_type = 'https'
         configuration.netapp_server_port = 446
         driver = common.NetAppDriver(configuration=configuration)
-<<<<<<< HEAD
-        driver._do_custom_setup = mock.Mock()
-        driver.do_setup(context='')
-        self.assertEqual('446', driver.client.get_port())
-        self.assertEqual('https', driver.client.get_transport_type())
-=======
         driver.library._get_root_volume_name = mock.Mock()
         driver.do_setup(context='')
         na_server = driver.library.zapi_client.get_connection()
         self.assertEqual('446', na_server.get_port())
         self.assertEqual('https', na_server.get_transport_type())
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
     def test_create_destroy(self):
         self.driver.create_volume(self.volume)
@@ -736,14 +680,8 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             raise AssertionError('Target portal is none')
 
     def test_vol_stats(self):
-<<<<<<< HEAD
-        self.mock_object(utils, 'provide_ems')
-        self.driver.get_volume_stats(refresh=True)
-        stats = self.driver._stats
-=======
         self.mock_object(client_base.Client, 'provide_ems')
         stats = self.driver.get_volume_stats(refresh=True)
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
         self.assertEqual(stats['vendor_name'], 'NetApp')
 
     def test_create_vol_snapshot_diff_size_resize(self):
@@ -802,24 +740,6 @@ class NetAppDriverNegativeTestCase(test.TestCase):
         except exception.InvalidInput:
             pass
 
-<<<<<<< HEAD
-    def test_non_netapp_driver(self):
-        self.mock_object(utils, 'OpenStackInfo')
-        configuration = create_configuration()
-        common.netapp_unified_plugin_registry['test_family'] =\
-            {'iscsi': 'cinder.volume.drivers.arbitrary.IscsiDriver'}
-        configuration.netapp_storage_family = 'test_family'
-        configuration.netapp_storage_protocol = 'iscsi'
-        try:
-            common.NetAppDriver(configuration=configuration)
-            raise AssertionError('Non NetApp driver is getting instantiated.')
-        except exception.InvalidInput:
-            pass
-        finally:
-            common.netapp_unified_plugin_registry.pop('test_family')
-
-=======
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
 class FakeDirect7MODEServerHandler(FakeHTTPRequestHandler):
     """HTTP handler that fakes enough stuff to allow the driver to run."""

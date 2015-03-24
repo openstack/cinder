@@ -1095,12 +1095,7 @@ class GPFSDriverTestCase(test.TestCase):
         mock_local_path.return_value = "/tmp/fakepath"
         data = self.driver.initialize_connection(volume, '')
         self.assertEqual(data['data']['name'], 'test')
-<<<<<<< HEAD
-        self.assertEqual(data['data']['device_path'], os.path.join(
-            self.driver.configuration.gpfs_mount_point_base, 'test'))
-=======
         self.assertEqual(data['data']['device_path'], "/tmp/fakepath")
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
         self.assertEqual(data['driver_volume_type'], 'gpfs')
 
     def test_terminate_connection(self):

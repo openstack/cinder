@@ -1749,11 +1749,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     def test_do_setup_with_pbm_disabled(self, session, get_vc_version):
         session_obj = mock.Mock(name='session')
         session.return_value = session_obj
-<<<<<<< HEAD
-        get_vc_version.return_value = LooseVersion('5.0')
-=======
         get_vc_version.return_value = ver.LooseVersion('5.0')
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
         self._driver.do_setup(mock.ANY)
 
@@ -1762,45 +1758,25 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self.assertEqual(session_obj, self._driver.volumeops._session)
         self.assertEqual(session_obj, self._driver.ds_sel._session)
 
-<<<<<<< HEAD
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                '_get_pbm_wsdl_location')
-=======
     @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_vc_version')
     def test_do_setup_with_invalid_pbm_wsdl(self, get_vc_version,
                                             get_pbm_wsdl_location):
-<<<<<<< HEAD
-        vc_version = LooseVersion('5.5')
-        get_vc_version.return_value = vc_version
-        get_pbm_wsdl_location.return_value = None
-
-        self.assertRaises(error_util.VMwareDriverException,
-=======
         vc_version = ver.LooseVersion('5.5')
         get_vc_version.return_value = vc_version
         get_pbm_wsdl_location.return_value = None
 
         self.assertRaises(exceptions.VMwareDriverException,
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
                           self._driver.do_setup,
                           mock.ANY)
 
         self.assertFalse(self._driver._storage_policy_enabled)
         get_vc_version.assert_called_once_with()
-<<<<<<< HEAD
-        get_pbm_wsdl_location.assert_called_once_with(vc_version)
-
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                '_get_pbm_wsdl_location')
-=======
         get_pbm_wsdl_location.assert_called_once_with(
             six.text_type(vc_version))
 
     @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_vc_version')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
@@ -1809,11 +1785,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         session_obj = mock.Mock(name='session')
         session.return_value = session_obj
 
-<<<<<<< HEAD
-        vc_version = LooseVersion('5.5')
-=======
         vc_version = ver.LooseVersion('5.5')
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
         get_vc_version.return_value = vc_version
         get_pbm_wsdl_location.return_value = 'file:///pbm.wsdl'
 
@@ -1821,12 +1793,8 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
         self.assertTrue(self._driver._storage_policy_enabled)
         get_vc_version.assert_called_once_with()
-<<<<<<< HEAD
-        get_pbm_wsdl_location.assert_called_once_with(vc_version)
-=======
         get_pbm_wsdl_location.assert_called_once_with(
             six.text_type(vc_version))
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
         self.assertEqual(session_obj, self._driver.volumeops._session)
         self.assertEqual(session_obj, self._driver.ds_sel._session)
 

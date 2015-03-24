@@ -1316,10 +1316,7 @@ class EMCVMAXCommon(object):
         loc = volume['provider_location']
         if self.conn is None:
             self.conn = self._get_ecom_connection()
-<<<<<<< HEAD
-=======
 
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
         if isinstance(loc, six.string_types):
             name = eval(loc)
 
@@ -2260,8 +2257,6 @@ class EMCVMAXCommon(object):
 
         return numVolumesMapped
 
-<<<<<<< HEAD
-=======
     def _delete_snapshot(self, snapshot):
         """Helper function to delete the specified snapshot.
 
@@ -3599,7 +3594,6 @@ class EMCVMAXCommon(object):
 
         return rc, cloneDict
 
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
     def get_target_wwns_from_masking_view(
             self, storageSystem, volume, connector):
         """Find target WWNs via the masking view.
@@ -3607,23 +3601,6 @@ class EMCVMAXCommon(object):
         :param storageSystem: the storage system name
         :param volume: volume to be attached
         :param connector: the connector dict
-<<<<<<< HEAD
-        :returns: targetWwns, the target WWN list
-        """
-        targetWwns = []
-        mvInstanceName = self.get_masking_view_by_volume(volume)
-        targetWwns = self.masking.get_target_wwns(self.conn, mvInstanceName)
-        LOG.info("Target wwns in masking view %(maskingView)s: %(targetWwns)s"
-                 % {'maskingView': mvInstanceName,
-                    'targetWwns': str(targetWwns)})
-        return targetWwns
-
-    def get_port_group_from_masking_view(self, maskingViewInstanceName):
-        """Find port group that is part of a masking view.
-
-        :param maskingViewInstanceName: the owning masking view
-        :returns: port group instance name
-=======
         :returns: list -- the target WWN list
         """
         targetWwns = []
@@ -3642,37 +3619,10 @@ class EMCVMAXCommon(object):
 
         :param maskingViewInstanceName: masking view instance name
         :returns: portGroupInstanceName
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
         """
         return self.masking.get_port_group_from_masking_view(
             self.conn, maskingViewInstanceName)
 
-<<<<<<< HEAD
-    def get_masking_view_by_volume(self, volume):
-        """Given volume, retrieve the masking view instance name
-
-        :param volume: the volume
-        :param mvInstanceName: masking view instance name
-        :returns maskingviewInstanceName
-        """
-        LOG.debug("Finding Masking View for volume %(volume)s"
-                  % {'volume': volume})
-        volumeInstance = self._find_lun(volume)
-        return self.masking.get_masking_view_by_volume(
-            self.conn, volumeInstance)
-
-    def get_masking_views_by_port_group(self, portGroupInstanceName):
-        """Given port group, retrieve the masking view instance name
-
-        :param : the volume
-        :param mvInstanceName: masking view instance name
-        :returns: maksingViewInstanceNames
-        """
-        LOG.debug("Finding Masking Views for port group %(pg)s"
-                  % {'pg': portGroupInstanceName})
-        return self.masking.get_masking_views_by_port_group(
-            self.conn, portGroupInstanceName)
-=======
     def get_masking_view_by_volume(self, volume, connector):
         """Given volume, retrieve the masking view instance name.
 
@@ -3830,4 +3780,3 @@ class EMCVMAXCommon(object):
                     volumeRef['status'] = 'error_deleting'
                     modelUpdate['status'] = 'error_deleting'
         return modelUpdate, volumes
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85

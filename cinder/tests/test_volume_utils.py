@@ -432,58 +432,6 @@ class ClearVolumeTestCase(test.TestCase):
 
 
 class CopyVolumeTestCase(test.TestCase):
-<<<<<<< HEAD
-
-    def test_copy_volume_dd_iflag_and_oflag(self):
-        def fake_utils_execute(*cmd, **kwargs):
-            if 'if=/dev/zero' in cmd and 'iflag=direct' in cmd:
-                raise processutils.ProcessExecutionError()
-            if 'of=/dev/null' in cmd and 'oflag=direct' in cmd:
-                raise processutils.ProcessExecutionError()
-            if 'iflag=direct' in cmd and 'oflag=direct' in cmd:
-                raise exception.InvalidInput(message='iflag/oflag error')
-
-        def fake_check_odirect(src, dest, flags='blah'):
-            return False
-
-        self.stubs.Set(volume_utils,
-                       'check_for_odirect_support',
-                       fake_check_odirect)
-
-        volume_utils.copy_volume('/dev/zero', '/dev/null', 1024,
-                                 CONF.volume_dd_blocksize, sync=True,
-                                 ionice=None, execute=fake_utils_execute)
-
-
-class BlkioCgroupTestCase(test.TestCase):
-
-    @mock.patch.object(utils, 'get_blkdev_major_minor')
-    def test_setup_blkio_cgroup(self, mock_major_minor):
-
-        def fake_get_blkdev_major_minor(path):
-            return {'src_volume': "253:0", 'dst_volume': "253:1"}[path]
-
-        mock_major_minor.side_effect = fake_get_blkdev_major_minor
-
-        self.exec_cnt = 0
-
-        def fake_utils_execute(*cmd, **kwargs):
-            exec_cmds = [('cgcreate', '-g',
-                          'blkio:' + CONF.volume_copy_blkio_cgroup_name),
-                         ('cgset', '-r',
-                          'blkio.throttle.read_bps_device=253:0 1024',
-                          CONF.volume_copy_blkio_cgroup_name),
-                         ('cgset', '-r',
-                          'blkio.throttle.write_bps_device=253:1 1024',
-                          CONF.volume_copy_blkio_cgroup_name)]
-            self.assertEqual(exec_cmds[self.exec_cnt], cmd)
-            self.exec_cnt += 1
-
-        cmd = volume_utils.setup_blkio_cgroup('src_volume', 'dst_volume', 1024,
-                                              execute=fake_utils_execute)
-        self.assertEqual(['cgexec', '-g',
-                          'blkio:' + CONF.volume_copy_blkio_cgroup_name], cmd)
-=======
     @mock.patch('cinder.volume.utils._calculate_count',
                 return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
@@ -574,7 +522,6 @@ class BlkioCgroupTestCase(test.TestCase):
                                           'if=/dev/zero', 'of=/dev/null',
                                           'count=5678', 'bs=1234',
                                           'conv=fdatasync', run_as_root=True)
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
 
 class VolumeUtilsTestCase(test.TestCase):

@@ -282,13 +282,8 @@ def check_for_odirect_support(src, dest, flag='oflag=direct'):
         return False
 
 
-<<<<<<< HEAD
-def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
-                execute=utils.execute, ionice=None):
-=======
 def _copy_volume(prefix, srcstr, deststr, size_in_m, blocksize, sync=False,
                  execute=utils.execute, ionice=None):
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
     # Use O_DIRECT to avoid thrashing the system buffer cache
     extra_flags = []
     if check_for_odirect_support(srcstr, deststr, 'iflag=direct'):

@@ -124,11 +124,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
             original_secret_metadata.bit_length,
             original_secret_metadata.mode,
             original_secret_metadata.expiration)
-<<<<<<< HEAD
-        self.store.assert_called()
-=======
         self.create.return_value.store.assert_called_once_with()
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
     def test_copy_null_context(self):
         self.key_mgr._barbican_client = None
@@ -227,11 +223,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
                                             None,
                                             'AES', 256, 'CBC',
                                             None)
-<<<<<<< HEAD
-        self.store.assert_called_once()
-=======
         self.create.return_value.store.assert_called_once_with()
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
     def test_store_null_context(self):
         self.key_mgr._barbican_client = None

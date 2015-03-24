@@ -24,13 +24,8 @@ from oslo_utils import importutils
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.volume import driver
-<<<<<<< HEAD
-from cinder.volume.drivers.netapp.options import netapp_proxy_opts
-from cinder.volume.drivers.netapp import utils
-=======
 from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils as na_utils
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
 
 LOG = logging.getLogger(__name__)
@@ -63,26 +58,7 @@ class NetAppDriver(driver.ProxyVD):
        storage family and protocol configured.
     """
 
-<<<<<<< HEAD
-    def __init__(self, *args, **kwargs):
-        super(NetAppDriver, self).__init__()
-        app_version = utils.OpenStackInfo().info()
-        LOG.info(_('OpenStack OS Version Info: %(info)s') % {
-            'info': app_version})
-        self.configuration = kwargs.get('configuration', None)
-        if self.configuration:
-            self.configuration.append_config_values(netapp_proxy_opts)
-        else:
-            raise exception.InvalidInput(
-                reason=_("Required configuration not found"))
-        kwargs['app_version'] = app_version
-        self.driver = NetAppDriverFactory.create_driver(
-            self.configuration.netapp_storage_family,
-            self.configuration.netapp_storage_protocol,
-            *args, **kwargs)
-=======
     REQUIRED_FLAGS = ['netapp_storage_family', 'netapp_storage_protocol']
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
     def __new__(cls, *args, **kwargs):
 
