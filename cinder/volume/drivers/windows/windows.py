@@ -208,11 +208,20 @@ class WindowsDriver(driver.ISCSIDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        # Create a new volume
-        # Copy VHD file of the volume to clone to the created volume
-        self.create_volume(volume)
-        self.utils.copy_vhd_disk(self.local_path(src_vref),
-                                 self.local_path(volume))
+        vol_name = volume['name']
+        vol_size = volume['size']
+        src_vol_size = src_vref['size']
+
+        new_vhd_path = self.local_path(volume)
+        src_vhd_path = self.local_path(src_vref)
+
+        self.utils.copy_vhd_disk(src_vhd_path,
+                                 new_vhd_path)
+
+        if self.utils.is_resize_needed(new_vhd_path, vol_size, src_vol_size):
+            self.vhdutils.resize_vhd(new_vhd_path, vol_size << 30)
+
+        self.utils.import_wt_disk(new_vhd_path, vol_name)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.

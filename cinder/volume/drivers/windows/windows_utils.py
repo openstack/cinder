@@ -158,6 +158,19 @@ class WindowsUtils(object):
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
+    def import_wt_disk(self, vhd_path, vol_name):
+        """Import a vhd/x image to be used by Windows iSCSI targets"""
+        try:
+            self._conn_wmi.WT_Disk.ImportWTDisk(DevicePath=vhd_path,
+                                                Description=vol_name)
+        except wmi.x_wmi as exc:
+            err_msg = (_("Failed to import disk: %(vhd_path)s. "
+                         "WMI exception: %(exc)s") %
+                       {'vhd_path': vhd_path,
+                        'exc': exc})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
     def change_disk_status(self, vol_name, enabled):
         try:
             cl = self._conn_wmi.WT_Disk(Description=vol_name)[0]
@@ -335,6 +348,20 @@ class WindowsUtils(object):
                  'dest_path': destination_path})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
+
+    def is_resize_needed(self, vhd_path, new_size, old_size):
+        if new_size > old_size:
+            return True
+        elif old_size > new_size:
+            err_msg = (_("Cannot resize image %(vhd_path)s "
+                         "to a smaller size. "
+                         "Image size: %(old_size)s, "
+                         "Requested size: %(new_size)s") %
+                       {'vhd_path': vhd_path,
+                        'old_size': old_size,
+                        'new_size': new_size})
+            raise exception.VolumeBackendAPIException(data=err_msg)
+        return False
 
     def extend(self, vol_name, additional_size):
         """Extend an existing volume."""

@@ -26,6 +26,7 @@ class WindowsUtilsTestCase(test.TestCase):
 
         windows_utils.WindowsUtils.__init__ = lambda x: None
         self.wutils = windows_utils.WindowsUtils()
+        self.wutils._conn_wmi = mock.Mock()
         self.wutils._conn_cimv2 = mock.MagicMock()
 
     def _test_copy_vhd_disk(self, source_exists=True, copy_failed=False):
@@ -59,3 +60,33 @@ class WindowsUtilsTestCase(test.TestCase):
 
     def test_copy_vhd_disk_copy_failed(self):
         self._test_copy_vhd_disk(copy_failed=True)
+
+    @mock.patch.object(windows_utils, 'wmi', create=True)
+    def test_import_wt_disk_exception(self, mock_wmi):
+        mock_wmi.x_wmi = Exception
+        mock_import_disk = self.wutils._conn_wmi.WT_Disk.ImportWTDisk
+        mock_import_disk.side_effect = mock_wmi.x_wmi
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.wutils.import_wt_disk,
+                          mock.sentinel.vhd_path,
+                          mock.sentinel.vol_name)
+        mock_import_disk.assert_called_once_with(
+            DevicePath=mock.sentinel.vhd_path,
+            Description=mock.sentinel.vol_name)
+
+    def test_check_if_resize_is_needed_bigger_requested_size(self):
+        ret_val = self.wutils.is_resize_needed(
+            mock.sentinel.vhd_path, 1, 0)
+        self.assertTrue(ret_val)
+
+    def test_check_if_resize_is_needed_equal_requested_size(self):
+        ret_val = self.wutils.is_resize_needed(
+            mock.sentinel.vhd_path, 1, 1)
+        self.assertFalse(ret_val)
+
+    def test_check_if_resize_is_needed_smaller_requested_size(self):
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.wutils.is_resize_needed,
+            mock.sentinel.vhd_path, 1, 2)
