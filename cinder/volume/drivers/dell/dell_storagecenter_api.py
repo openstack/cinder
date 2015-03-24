@@ -765,9 +765,14 @@ class StorageCenterApi(object):
                 controllerport = self._find_controller_port(
                     self._get_id(cport))
                 if controllerport is not None:
-                    wwn = controllerport.get('WWN')
+                    # This changed case at one point or another.
+                    # Look for both keys.
+                    wwn = controllerport.get('wwn',
+                                             controllerport.get('WWN'))
+                    if wwn is None:
+                        LOG.error(_LE('Find_wwns: Unable to find port wwn'))
                     serverhba = mapping.get('serverHba')
-                    if serverhba is not None:
+                    if wwn is not None and serverhba is not None:
                         hbaname = serverhba.get('instanceName')
                         if hbaname in initiators:
                             if itmap.get(hbaname) is None:
