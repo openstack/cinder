@@ -15,7 +15,8 @@
 Volume driver for NetApp Data ONTAP (C-mode) iSCSI storage systems.
 """
 
-from cinder.openstack.common import log as logging
+from oslo_log import log as logging
+
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 

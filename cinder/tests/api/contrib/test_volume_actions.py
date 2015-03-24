@@ -17,8 +17,8 @@ import json
 import uuid
 
 import mock
-from oslo import messaging
 from oslo_config import cfg
+import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 import webob
 
@@ -37,7 +37,7 @@ CONF = cfg.CONF
 
 class VolumeActionsTest(test.TestCase):
 
-    _actions = ('os-detach', 'os-reserve', 'os-unreserve')
+    _actions = ('os-reserve', 'os-unreserve')
 
     _methods = ('attach', 'detach', 'reserve_volume', 'unreserve_volume')
 
@@ -178,6 +178,16 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(res.status_int, 202)
+
+    def test_detach(self):
+        body = {'os-detach': {'attachment_id': 'fakeuuid'}}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = "POST"
+        req.body = jsonutils.dumps(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(202, res.status_int)
 
     def test_attach_with_invalid_arguments(self):
         # Invalid request to attach volume an invalid target

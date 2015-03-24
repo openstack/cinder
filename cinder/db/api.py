@@ -69,6 +69,22 @@ IMPL = db_concurrency.TpoolDbapiWrapper(CONF, _BACKEND_MAPPING)
 
 ###################
 
+def dispose_engine():
+    """Force the engine to establish new connections."""
+
+    # FIXME(jdg): When using sqlite if we do the dispose
+    # we seem to lose our DB here.  Adding this check
+    # means we don't do the dispose, but we keep our sqlite DB
+    # This likely isn't the best way to handle this
+
+    if 'sqlite' not in IMPL.get_engine().name:
+        return IMPL.dispose_engine()
+    else:
+        return
+
+
+###################
+
 
 def service_destroy(context, service_id):
     """Destroy the service or raise if it does not exist."""
@@ -136,10 +152,16 @@ def iscsi_target_create_safe(context, values):
 ###############
 
 
-def volume_attached(context, volume_id, instance_id, host_name, mountpoint):
+def volume_attach(context, values):
+    """Attach a volume."""
+    return IMPL.volume_attach(context, values)
+
+
+def volume_attached(context, volume_id, instance_id, host_name, mountpoint,
+                    attach_mode='rw'):
     """Ensure that a volume is set as attached."""
     return IMPL.volume_attached(context, volume_id, instance_id, host_name,
-                                mountpoint)
+                                mountpoint, attach_mode)
 
 
 def volume_create(context, values):
@@ -169,9 +191,9 @@ def volume_destroy(context, volume_id):
     return IMPL.volume_destroy(context, volume_id)
 
 
-def volume_detached(context, volume_id):
+def volume_detached(context, volume_id, attachment_id):
     """Ensure that a volume is set as detached."""
-    return IMPL.volume_detached(context, volume_id)
+    return IMPL.volume_detached(context, volume_id, attachment_id)
 
 
 def volume_get(context, volume_id):
@@ -179,11 +201,11 @@ def volume_get(context, volume_id):
     return IMPL.volume_get(context, volume_id)
 
 
-def volume_get_all(context, marker, limit, sort_key, sort_dir,
+def volume_get_all(context, marker, limit, sort_keys=None, sort_dirs=None,
                    filters=None):
     """Get all volumes."""
-    return IMPL.volume_get_all(context, marker, limit, sort_key, sort_dir,
-                               filters=filters)
+    return IMPL.volume_get_all(context, marker, limit, sort_keys=sort_keys,
+                               sort_dirs=sort_dirs, filters=filters)
 
 
 def volume_get_all_by_host(context, host, filters=None):
@@ -196,11 +218,13 @@ def volume_get_all_by_group(context, group_id, filters=None):
     return IMPL.volume_get_all_by_group(context, group_id, filters=filters)
 
 
-def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
-                              sort_dir, filters=None):
+def volume_get_all_by_project(context, project_id, marker, limit,
+                              sort_keys=None, sort_dirs=None, filters=None):
     """Get all volumes belonging to a project."""
     return IMPL.volume_get_all_by_project(context, project_id, marker, limit,
-                                          sort_key, sort_dir, filters=filters)
+                                          sort_keys=sort_keys,
+                                          sort_dirs=sort_dirs,
+                                          filters=filters)
 
 
 def volume_get_iscsi_target_num(context, volume_id):
@@ -215,6 +239,27 @@ def volume_update(context, volume_id, values):
 
     """
     return IMPL.volume_update(context, volume_id, values)
+
+
+def volume_attachment_update(context, attachment_id, values):
+    return IMPL.volume_attachment_update(context, attachment_id, values)
+
+
+def volume_attachment_get(context, attachment_id, session=None):
+    return IMPL.volume_attachment_get(context, attachment_id, session)
+
+
+def volume_attachment_get_used_by_volume_id(context, volume_id):
+    return IMPL.volume_attachment_get_used_by_volume_id(context, volume_id)
+
+
+def volume_attachment_get_by_host(context, volume_id, host):
+    return IMPL.volume_attachment_get_by_host(context, volume_id, host)
+
+
+def volume_attachment_get_by_instance_uuid(context, volume_id, instance_uuid):
+    return IMPL.volume_attachment_get_by_instance_uuid(context, volume_id,
+                                                       instance_uuid)
 
 
 ####################
@@ -773,6 +818,12 @@ def backup_get_all_by_project(context, project_id, filters=None):
                                           filters=filters)
 
 
+def backup_get_all_by_volume(context, volume_id, filters=None):
+    """Get all backups belonging to a volume."""
+    return IMPL.backup_get_all_by_volume(context, volume_id,
+                                         filters=filters)
+
+
 def backup_update(context, backup_id, values):
     """Set the given properties on a backup and update it.
 
@@ -903,3 +954,17 @@ def purge_deleted_rows(context, age_in_days):
     :returns: number of deleted rows
     """
     return IMPL.purge_deleted_rows(context, age_in_days=age_in_days)
+
+
+###################
+
+
+def driver_initiator_data_update(context, initiator, namespace, updates):
+    """Create DriverPrivateData from the values dictionary."""
+    return IMPL.driver_initiator_data_update(context, initiator,
+                                             namespace, updates)
+
+
+def driver_initiator_data_get(context, initiator, namespace):
+    """Query for an DriverPrivateData that has the specified key"""
+    return IMPL.driver_initiator_data_get(context, initiator, namespace)

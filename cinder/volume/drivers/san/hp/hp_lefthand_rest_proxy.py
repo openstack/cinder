@@ -16,16 +16,22 @@
 """HP LeftHand SAN ISCSI REST Proxy."""
 
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import units
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume import utils
 from cinder.volume import volume_types
+
+import six
+
+import math
+import re
 
 LOG = logging.getLogger(__name__)
 
@@ -62,6 +68,7 @@ hplefthand_opts = [
 CONF = cfg.CONF
 CONF.register_opts(hplefthand_opts)
 
+MIN_API_VERSION = "1.1"
 
 # map the extra spec key to the REST client option key
 extra_specs_key_map = {
@@ -96,9 +103,11 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         1.0.7 - Fixed bug #1353137, Server was not removed from the HP
                 Lefthand backend after the last volume was detached.
         1.0.8 - Fixed bug #1418201, A cloned volume fails to attach.
+        1.0.9 - Adding support for manage/unmanage.
+        1.0.10 - Add stats for goodness_function and filter_function
     """
 
-    VERSION = "1.0.8"
+    VERSION = "1.0.10"
 
     device_stats = {}
 
@@ -149,7 +158,21 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
             raise exception.DriverNotInitialized(ex)
 
     def check_for_setup_error(self):
-        pass
+        """Checks for incorrect LeftHand API being used on backend."""
+        client = self._login()
+        try:
+            self.api_version = client.getApiVersion()
+
+            LOG.info(_LI("HPLeftHand API version %s"), self.api_version)
+
+            if self.api_version < MIN_API_VERSION:
+                LOG.warning(_LW("HPLeftHand API is version %(current)s. "
+                                "A minimum version of %(min)s is needed for "
+                                "manage/unmanage support."),
+                            {'current': self.api_version,
+                             'min': MIN_API_VERSION})
+        finally:
+            self._logout(client)
 
     def get_version_string(self):
         return (_('REST %(proxy_ver)s hplefthandclient %(rest_ver)s') % {
@@ -289,6 +312,24 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         # convert to GB
         data['total_capacity_gb'] = int(total_capacity) / units.Gi
         data['free_capacity_gb'] = int(free_capacity) / units.Gi
+
+        # Collect some stats
+        capacity_utilization = (
+            (float(total_capacity - free_capacity) /
+             float(total_capacity)) * 100)
+        # Don't have a better way to get the total number volumes
+        # so try to limit the size of data for now. Once new lefthand API is
+        # available, replace this call.
+        total_volumes = 0
+        volumes = client.getVolumes(
+            cluster=self.configuration.hplefthand_clustername,
+            fields=['members[id]', 'members[clusterName]'])
+        if volumes:
+            total_volumes = volumes['total']
+        data['capacity_utilization'] = capacity_utilization
+        data['total_volumes'] = total_volumes
+        data['filter_function'] = self.get_filter_function()
+        data['goodness_function'] = self.get_goodness_function()
 
         self.device_stats = data
 
@@ -614,3 +655,177 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
             self._logout(client)
 
         return (True, None)
+
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing LeftHand volume.
+
+        existing_ref is a dictionary of the form:
+        {'source-name': <name of the virtual volume>}
+        """
+        # Check API Version
+        self._check_api_version()
+
+        target_vol_name = self._get_existing_volume_ref_name(existing_ref)
+
+        # Check for the existence of the virtual volume.
+        client = self._login()
+        try:
+            volume_info = client.getVolumeByName(target_vol_name)
+        except hpexceptions.HTTPNotFound:
+            err = (_("Virtual volume '%s' doesn't exist on array.") %
+                   target_vol_name)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+        finally:
+            self._logout(client)
+
+        # Generate the new volume information based on the new ID.
+        new_vol_name = 'volume-' + volume['id']
+
+        volume_type = None
+        if volume['volume_type_id']:
+            try:
+                volume_type = self._get_volume_type(volume['volume_type_id'])
+            except Exception:
+                reason = (_("Volume type ID '%s' is invalid.") %
+                          volume['volume_type_id'])
+                raise exception.ManageExistingVolumeTypeMismatch(reason=reason)
+
+        new_vals = {"name": new_vol_name}
+
+        client = self._login()
+        try:
+            # Update the existing volume with the new name.
+            client.modifyVolume(volume_info['id'], new_vals)
+        finally:
+            self._logout(client)
+
+        LOG.info(_LI("Virtual volume '%(ref)s' renamed to '%(new)s'."),
+                 {'ref': existing_ref['source-name'], 'new': new_vol_name})
+
+        display_name = None
+        if volume['display_name']:
+            display_name = volume['display_name']
+
+        if volume_type:
+            LOG.info(_LI("Virtual volume %(disp)s '%(new)s' is "
+                         "being retyped."),
+                     {'disp': display_name, 'new': new_vol_name})
+
+            try:
+                self.retype(None,
+                            volume,
+                            volume_type,
+                            volume_type['extra_specs'],
+                            volume['host'])
+                LOG.info(_LI("Virtual volume %(disp)s successfully retyped to "
+                             "%(new_type)s."),
+                         {'disp': display_name,
+                          'new_type': volume_type.get('name')})
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.warning(_LW("Failed to manage virtual volume %(disp)s "
+                                    "due to error during retype."),
+                                {'disp': display_name})
+                    # Try to undo the rename and clear the new comment.
+                    client = self._login()
+                    try:
+                        client.modifyVolume(
+                            volume_info['id'],
+                            {'name': target_vol_name})
+                    finally:
+                        self._logout(client)
+
+        updates = {'display_name': display_name}
+
+        LOG.info(_LI("Virtual volume %(disp)s '%(new)s' is "
+                     "now being managed."),
+                 {'disp': display_name, 'new': new_vol_name})
+
+        # Return display name to update the name displayed in the GUI and
+        # any model updates from retype.
+        return updates
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume to be managed by manage_existing.
+
+        existing_ref is a dictionary of the form:
+        {'source-name': <name of the virtual volume>}
+        """
+        # Check API version.
+        self._check_api_version()
+
+        target_vol_name = self._get_existing_volume_ref_name(existing_ref)
+
+        # Make sure the reference is not in use.
+        if re.match('volume-*|snapshot-*', target_vol_name):
+            reason = _("Reference must be the volume name of an unmanaged "
+                       "virtual volume.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=target_vol_name,
+                reason=reason)
+
+        # Check for the existence of the virtual volume.
+        client = self._login()
+        try:
+            volume_info = client.getVolumeByName(target_vol_name)
+        except hpexceptions.HTTPNotFound:
+            err = (_("Virtual volume '%s' doesn't exist on array.") %
+                   target_vol_name)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+        finally:
+            self._logout(client)
+
+        return int(math.ceil(float(volume_info['size']) / units.Gi))
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management."""
+        # Check API version.
+        self._check_api_version()
+
+        # Rename the volume's name to unm-* format so that it can be
+        # easily found later.
+        client = self._login()
+        try:
+            volume_info = client.getVolumeByName(volume['name'])
+            new_vol_name = 'unm-' + six.text_type(volume['id'])
+            options = {'name': new_vol_name}
+            client.modifyVolume(volume_info['id'], options)
+        finally:
+            self._logout(client)
+
+        LOG.info(_LI("Virtual volume %(disp)s '%(vol)s' is no longer managed. "
+                     "Volume renamed to '%(new)s'."),
+                 {'disp': volume['display_name'],
+                  'vol': volume['name'],
+                  'new': new_vol_name})
+
+    def _get_existing_volume_ref_name(self, existing_ref):
+        """Returns the volume name of an existing reference.
+
+        Checks if an existing volume reference has a source-name element.
+        If source-name is not present an error will be thrown.
+        """
+        if 'source-name' not in existing_ref:
+            reason = _("Reference must contain source-name.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason)
+
+        return existing_ref['source-name']
+
+    def _check_api_version(self):
+        """Checks that the API version is correct."""
+        if (self.api_version < MIN_API_VERSION):
+            ex_msg = (_('Invalid HPLeftHand API version found: %(found)s. '
+                        'Version %(minimum)s or greater required for '
+                        'manage/unmanage support.')
+                      % {'found': self.api_version,
+                         'minimum': MIN_API_VERSION})
+            LOG.error(ex_msg)
+            raise exception.InvalidInput(reason=ex_msg)
+
+    def _get_volume_type(self, type_id):
+        ctxt = context.get_admin_context()
+        return volume_types.get_volume_type(ctxt, type_id)

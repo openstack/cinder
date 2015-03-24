@@ -26,25 +26,14 @@ import platform
 import socket
 
 from oslo_concurrency import processutils as putils
+from oslo_log import log as logging
 import six
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LW, _LI
-from cinder.openstack.common import log as logging
-<<<<<<< HEAD
-from cinder.openstack.common import processutils as putils
-from cinder.openstack.common import timeutils
 from cinder import utils
 from cinder import version
-from cinder.volume.drivers.netapp.api import NaApiError
-from cinder.volume.drivers.netapp.api import NaElement
-from cinder.volume.drivers.netapp.api import NaErrors
-from cinder.volume.drivers.netapp.api import NaServer
-=======
-from cinder import utils
-from cinder import version
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 from cinder.volume import volume_types
 
 
@@ -57,98 +46,6 @@ DEPRECATED_SSC_SPECS = {'netapp_unmirrored': 'netapp_mirrored',
                         'netapp_nodedup': 'netapp_dedup',
                         'netapp_nocompression': 'netapp_compression',
                         'netapp_thick_provisioned': 'netapp_thin_provisioned'}
-<<<<<<< HEAD
-
-
-def provide_ems(requester, server, netapp_backend, app_version,
-                server_type="cluster"):
-    """Provide ems with volume stats for the requester.
-
-    :param server_type: cluster or 7mode.
-    """
-
-    def _create_ems(netapp_backend, app_version, server_type):
-        """Create ems api request."""
-        ems_log = NaElement('ems-autosupport-log')
-        host = socket.getfqdn() or 'Cinder_node'
-        if server_type == "cluster":
-            dest = "cluster node"
-        else:
-            dest = "7 mode controller"
-        ems_log.add_new_child('computer-name', host)
-        ems_log.add_new_child('event-id', '0')
-        ems_log.add_new_child('event-source',
-                              'Cinder driver %s' % netapp_backend)
-        ems_log.add_new_child('app-version', app_version)
-        ems_log.add_new_child('category', 'provisioning')
-        ems_log.add_new_child('event-description',
-                              'OpenStack Cinder connected to %s' % dest)
-        ems_log.add_new_child('log-level', '6')
-        ems_log.add_new_child('auto-support', 'false')
-        return ems_log
-
-    def _create_vs_get():
-        """Create vs_get api request."""
-        vs_get = NaElement('vserver-get-iter')
-        vs_get.add_new_child('max-records', '1')
-        query = NaElement('query')
-        query.add_node_with_children('vserver-info',
-                                     **{'vserver-type': 'node'})
-        vs_get.add_child_elem(query)
-        desired = NaElement('desired-attributes')
-        desired.add_node_with_children(
-            'vserver-info', **{'vserver-name': '', 'vserver-type': ''})
-        vs_get.add_child_elem(desired)
-        return vs_get
-
-    def _get_cluster_node(na_server):
-        """Get the cluster node for ems."""
-        na_server.set_vserver(None)
-        vs_get = _create_vs_get()
-        res = na_server.invoke_successfully(vs_get)
-        if (res.get_child_content('num-records') and
-           int(res.get_child_content('num-records')) > 0):
-            attr_list = res.get_child_by_name('attributes-list')
-            vs_info = attr_list.get_child_by_name('vserver-info')
-            vs_name = vs_info.get_child_content('vserver-name')
-            return vs_name
-        return None
-
-    do_ems = True
-    if hasattr(requester, 'last_ems'):
-        sec_limit = 3559
-        if not (timeutils.is_older_than(requester.last_ems, sec_limit)):
-            do_ems = False
-    if do_ems:
-        na_server = copy.copy(server)
-        na_server.set_timeout(25)
-        ems = _create_ems(netapp_backend, app_version, server_type)
-        try:
-            if server_type == "cluster":
-                api_version = na_server.get_api_version()
-                if api_version:
-                    major, minor = api_version
-                else:
-                    raise NaApiError(code='Not found',
-                                     message='No api version found')
-                if major == 1 and minor > 15:
-                    node = getattr(requester, 'vserver', None)
-                else:
-                    node = _get_cluster_node(na_server)
-                if node is None:
-                    raise NaApiError(code='Not found',
-                                     message='No vserver found')
-                na_server.set_vserver(node)
-            else:
-                na_server.set_vfiler(None)
-            na_server.invoke_successfully(ems, True)
-            LOG.debug("ems executed successfully.")
-        except NaApiError as e:
-            LOG.warn(_("Failed to invoke ems. Message : %s") % e)
-        finally:
-            requester.last_ems = timeutils.utcnow()
-=======
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
 
 
 def validate_instantiation(**kwargs):
@@ -301,78 +198,6 @@ class OpenStackInfo(object):
         except Exception:
             pass
 
-<<<<<<< HEAD
-def round_down(value, precision):
-    return float(decimal.Decimal(six.text_type(value)).quantize(
-        decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))
-
-
-def log_extra_spec_warnings(extra_specs):
-    for spec in (set(extra_specs.keys() if extra_specs else []) &
-                 set(OBSOLETE_SSC_SPECS.keys())):
-            msg = _('Extra spec %(old)s is obsolete.  Use %(new)s instead.')
-            args = {'old': spec, 'new': OBSOLETE_SSC_SPECS[spec]}
-            LOG.warn(msg % args)
-    for spec in (set(extra_specs.keys() if extra_specs else []) &
-                 set(DEPRECATED_SSC_SPECS.keys())):
-            msg = _('Extra spec %(old)s is deprecated.  Use %(new)s instead.')
-            args = {'old': spec, 'new': DEPRECATED_SSC_SPECS[spec]}
-            LOG.warn(msg % args)
-
-
-def get_iscsi_connection_properties(address, port, iqn, lun_id, volume):
-        properties = {}
-        properties['target_discovered'] = False
-        properties['target_portal'] = '%s:%s' % (address, port)
-        properties['target_iqn'] = iqn
-        properties['target_lun'] = int(lun_id)
-        properties['volume_id'] = volume['id']
-        auth = volume['provider_auth']
-        if auth:
-            (auth_method, auth_username, auth_secret) = auth.split()
-            properties['auth_method'] = auth_method
-            properties['auth_username'] = auth_username
-            properties['auth_password'] = auth_secret
-        return {
-            'driver_volume_type': 'iscsi',
-            'data': properties,
-        }
-
-
-class OpenStackInfo(object):
-    """OS/distribution, release, and version.
-
-    NetApp uses these fields as content for EMS log entry.
-    """
-
-    PACKAGE_NAME = 'python-cinder'
-
-    def __init__(self):
-        self._version = 'unknown version'
-        self._release = 'unknown release'
-        self._vendor = 'unknown vendor'
-        self._platform = 'unknown platform'
-
-    def _update_version_from_version_string(self):
-        try:
-            self._version = version.version_info.version_string()
-        except Exception:
-            pass
-
-    def _update_release_from_release_string(self):
-        try:
-            self._release = version.version_info.release_string()
-        except Exception:
-            pass
-
-    def _update_platform(self):
-        try:
-            self._platform = platform.platform()
-        except Exception:
-            pass
-
-=======
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
     @staticmethod
     def _get_version_info_version():
         return version.version_info.version
@@ -403,11 +228,7 @@ class OpenStackInfo(object):
                                       "'%{version}\t%{release}\t%{vendor}'",
                                       self.PACKAGE_NAME)
             if not out:
-<<<<<<< HEAD
-                LOG.info(_('No rpm info found for %(pkg)s package.') % {
-=======
                 LOG.info(_LI('No rpm info found for %(pkg)s package.') % {
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
                     'pkg': self.PACKAGE_NAME})
                 return False
             parts = out.split()
@@ -416,12 +237,7 @@ class OpenStackInfo(object):
             self._vendor = ' '.join(parts[2::])
             return True
         except Exception as e:
-<<<<<<< HEAD
-            LOG.info(_('Could not run rpm command: %(msg)s.') % {
-                'msg': e})
-=======
             LOG.info(_LI('Could not run rpm command: %(msg)s.') % {'msg': e})
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
             return False
 
     # ubuntu, mirantis on ubuntu
@@ -432,13 +248,8 @@ class OpenStackInfo(object):
             out, err = putils.execute("dpkg-query", "-W", "-f='${Version}'",
                                       self.PACKAGE_NAME)
             if not out:
-<<<<<<< HEAD
-                LOG.info(_('No dpkg-query info found for %(pkg)s package.') % {
-                    'pkg': self.PACKAGE_NAME})
-=======
                 LOG.info(_LI('No dpkg-query info found for %(pkg)s package.')
                          % {'pkg': self.PACKAGE_NAME})
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
                 return False
             # debian format: [epoch:]upstream_version[-debian_revision]
             deb_version = out
@@ -455,11 +266,7 @@ class OpenStackInfo(object):
                 self._vendor = _vendor
             return True
         except Exception as e:
-<<<<<<< HEAD
-            LOG.info(_('Could not run dpkg-query command: %(msg)s.') % {
-=======
             LOG.info(_LI('Could not run dpkg-query command: %(msg)s.') % {
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
                 'msg': e})
             return False
 

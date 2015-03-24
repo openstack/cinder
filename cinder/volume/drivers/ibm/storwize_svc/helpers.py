@@ -21,6 +21,7 @@ import unicodedata
 
 
 from eventlet import greenthread
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import strutils
 import six
@@ -28,7 +29,6 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.ibm.storwize_svc import ssh as storwize_ssh
 from cinder.volume import qos_specs

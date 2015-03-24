@@ -22,10 +22,10 @@ This driver requires ISCSI target role installed
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.windows import constants
 from cinder.volume.drivers.windows import vhdutils

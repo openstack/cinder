@@ -19,11 +19,11 @@ import tempfile
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
@@ -102,8 +102,8 @@ class GPFSDriverTestCase(test.TestCase):
                                   'nodesUp:totalNodes:remarks:cnfsState:\n'
                                   'mmgetstate::0:1:::devstack:3:active:2:3:3:'
                                   'quorum node:(undefined):', '')
-        self.assertEqual(True, self.driver._get_gpfs_state().splitlines()[1].
-                         startswith('mmgetstate::0:1:::devstack'))
+        self.assertTrue(self.driver._get_gpfs_state().splitlines()[1].
+                        startswith('mmgetstate::0:1:::devstack'))
 
     @mock.patch('cinder.utils.execute')
     def test_get_gpfs_state_fail_mmgetstate(self, mock_exec):
@@ -780,8 +780,8 @@ class GPFSDriverTestCase(test.TestCase):
         org_value = self.driver.configuration.gpfs_sparse_volumes
         self.flags(volume_driver=self.driver_name, gpfs_sparse_volumes=False)
         self.driver.create_volume(volume)
-        self.assertEqual(True, self.driver._set_volume_attributes(volume,
-                         'test', metadata))
+        self.assertTrue(self.driver._set_volume_attributes(volume, 'test',
+                                                           metadata))
         self.flags(volume_driver=self.driver_name,
                    gpfs_sparse_volumes=org_value)
 
@@ -846,8 +846,8 @@ class GPFSDriverTestCase(test.TestCase):
         mock_set_volume_attributes.return_value = True
         metadata = [{'key': 'fake_key', 'value': 'fake_value'}]
 
-        self.assertEqual(True, self.driver._set_volume_attributes(volume,
-                         'test', metadata))
+        self.assertTrue(self.driver._set_volume_attributes(volume, 'test',
+                                                           metadata))
         self.assertEqual(self.driver.create_volume_from_snapshot(volume,
                                                                  snapshot),
                          {'size': 5.0})
@@ -898,8 +898,8 @@ class GPFSDriverTestCase(test.TestCase):
         mock_set_volume_attributes.return_value = True
         metadata = [{'key': 'fake_key', 'value': 'fake_value'}]
 
-        self.assertEqual(True, self.driver._set_volume_attributes(volume,
-                         'test', metadata))
+        self.assertTrue(self.driver._set_volume_attributes(volume, 'test',
+                                                           metadata))
         self.assertEqual(self.driver.create_cloned_volume(volume, src_volume),
                          {'size': 5.0})
 
@@ -968,14 +968,14 @@ class GPFSDriverTestCase(test.TestCase):
                                   '    no      2          148488  '
                                   '/gpfs0/test.txt', ''),
                                  ('', '')]
-        self.assertEqual(True, self.driver._gpfs_redirect(''))
+        self.assertTrue(self.driver._gpfs_redirect(''))
         self.flags(volume_driver=self.driver_name, gpfs_max_clone_depth=1)
         mock_exec.side_effect = [('Parent  Depth   Parent inode   File name\n'
                                   '------  -----  --------------  ---------\n'
                                   '    no      1          148488  '
                                   '/gpfs0/test.txt', ''),
                                  ('', '')]
-        self.assertEqual(False, self.driver._gpfs_redirect(''))
+        self.assertFalse(self.driver._gpfs_redirect(''))
         self.flags(volume_driver=self.driver_name,
                    gpfs_max_clone_depth=org_value)
 
@@ -988,7 +988,7 @@ class GPFSDriverTestCase(test.TestCase):
                                   '    no      2          148488  '
                                   '/gpfs0/test.txt', ''),
                                  ('', '')]
-        self.assertEqual(False, self.driver._gpfs_redirect(''))
+        self.assertFalse(self.driver._gpfs_redirect(''))
         self.flags(volume_driver=self.driver_name,
                    gpfs_max_clone_depth=org_value)
 
@@ -1001,7 +1001,7 @@ class GPFSDriverTestCase(test.TestCase):
                                   '                       148488  '
                                   '/gpfs0/test.txt', ''),
                                  ('', '')]
-        self.assertEqual(False, self.driver._gpfs_redirect(''))
+        self.assertFalse(self.driver._gpfs_redirect(''))
         self.flags(volume_driver=self.driver_name,
                    gpfs_max_clone_depth=org_value)
 
@@ -1038,8 +1038,8 @@ class GPFSDriverTestCase(test.TestCase):
                                   '------  -----  --------------  ---------\n'
                                   '    no      2          148488  '
                                   '/gpfs0/test.txt', '')]
-        self.assertEqual(True, self.driver._is_gpfs_parent_file(''))
-        self.assertEqual(False, self.driver._is_gpfs_parent_file(''))
+        self.assertTrue(self.driver._is_gpfs_parent_file(''))
+        self.assertFalse(self.driver._is_gpfs_parent_file(''))
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._gpfs_redirect')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'

@@ -18,13 +18,13 @@ import re
 
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder.brick.remotefs import remotefs
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
@@ -166,12 +166,31 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         """Get volume path (mounted locally fs path) for given volume.
         :param volume: volume reference
         """
+        volume_path_template = self._get_local_volume_path_template(volume)
+        volume_path = self._lookup_local_volume_path(volume_path_template)
+        if volume_path:
+            return volume_path
+
+        # The image does not exist, so retrieve the volume format
+        # in order to build the path.
         fmt = self.get_volume_format(volume)
-        local_dir = self._local_volume_dir(volume)
-        local_path = os.path.join(local_dir, volume['name'])
         if fmt in (self._DISK_FORMAT_VHD, self._DISK_FORMAT_VHDX):
-            local_path += '.' + fmt
-        return local_path
+            volume_path = volume_path_template + '.' + fmt
+        else:
+            volume_path = volume_path_template
+        return volume_path
+
+    def _get_local_volume_path_template(self, volume):
+        local_dir = self._local_volume_dir(volume)
+        local_path_template = os.path.join(local_dir, volume['name'])
+        return local_path_template
+
+    def _lookup_local_volume_path(self, volume_path_template):
+        for ext in ['', self._DISK_FORMAT_VHD, self._DISK_FORMAT_VHDX]:
+            volume_path = (volume_path_template + '.' + ext
+                           if ext else volume_path_template)
+            if os.path.exists(volume_path):
+                return volume_path
 
     def _local_path_volume_info(self, volume):
         return '%s%s' % (self.local_path(volume), '.info')
@@ -183,10 +202,10 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         return snap_path
 
     def get_volume_format(self, volume, qemu_format=False):
-        volume_dir = self._local_volume_dir(volume)
-        volume_path = os.path.join(volume_dir, volume['name'])
+        volume_path_template = self._get_local_volume_path_template(volume)
+        volume_path = self._lookup_local_volume_path(volume_path_template)
 
-        if os.path.exists(volume_path):
+        if volume_path:
             info = self._qemu_img_info(volume_path, volume['name'])
             volume_format = info.file_format
         else:

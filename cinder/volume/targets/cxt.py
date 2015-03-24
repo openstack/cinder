@@ -18,13 +18,12 @@ import os
 import re
 
 from oslo_concurrency import processutils as putils
+from oslo_log import log as logging
 from oslo_utils import netutils
-import six
 
 from cinder import exception
 from cinder.openstack.common import fileutils
 from cinder.i18n import _LI, _LW, _LE
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.targets import iscsi
 
@@ -88,22 +87,6 @@ class CxtAdm(iscsi.ISCSITarget):
         iscsi_target = 1
         return iscsi_target, lun
 
-    def _ensure_iscsi_targets(self, context, host):
-        """Ensure that target ids have been created in datastore."""
-        # NOTE : This is probably not required for chiscsi
-        # TODO(jdg): In the future move all of the dependent stuff into the
-        # cooresponding target admin class
-        host_iscsi_targets = self.db.iscsi_target_count_by_host(context,
-                                                                host)
-        if host_iscsi_targets >= self.configuration.iscsi_num_targets:
-            return
-
-        # NOTE Chiscsi target ids start at 1.
-        target_end = self.configuration.iscsi_num_targets + 1
-        for target_num in xrange(1, target_end):
-            target = {'host': host, 'target_num': target_num}
-            self.db.iscsi_target_create_safe(context, target)
-
     def _get_target_chap_auth(self, context, name):
         volumes_dir = self._get_volumes_dir()
         vol_id = name.split(':')[1]
@@ -114,17 +97,15 @@ class CxtAdm(iscsi.ISCSITarget):
                 volume_conf = f.read()
         except IOError as e_fnf:
             LOG.debug('Failed to open config for %(vol_id)s: %(e)s',
-                      {'vol_id': vol_id, 'e':
-                       six.text_type(e_fnf)})
+                      {'vol_id': vol_id, 'e': e_fnf})
             # We don't run on anything non-linux
             if e_fnf.errno == 2:
                 return None
             else:
                 raise
         except Exception as e_vol:
-            LOG.debug('Failed to open config for %(vol_id)s: %(e)s',
-                      {'vol_id': vol_id, 'e':
-                       six.text_type(e_vol)})
+            LOG.error(_LE('Failed to open config for %(vol_id)s: %(e)s'),
+                      {'vol_id': vol_id, 'e': e_vol})
             raise
 
         m = re.search('Auth_CHAP_Initiator="(\w+)":"(\w+)"', volume_conf)

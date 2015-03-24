@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log as logging
+
 from cinder.api import common
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
@@ -29,13 +30,15 @@ class ViewBuilder(common.ViewBuilder):
         """Initialize view builder."""
         super(ViewBuilder, self).__init__()
 
-    def summary_list(self, request, backups):
+    def summary_list(self, request, backups, origin_backup_count):
         """Show a list of backups without many details."""
-        return self._list_view(self.summary, request, backups)
+        return self._list_view(self.summary, request, backups,
+                               origin_backup_count)
 
-    def detail_list(self, request, backups):
+    def detail_list(self, request, backups, origin_backup_count):
         """Detailed view of a list of backups ."""
-        return self._list_view(self.detail, request, backups)
+        return self._list_view(self.detail, request, backups,
+                               origin_backup_count)
 
     def summary(self, request, backup):
         """Generic, non-detailed view of a backup."""
@@ -76,12 +79,13 @@ class ViewBuilder(common.ViewBuilder):
             }
         }
 
-    def _list_view(self, func, request, backups):
+    def _list_view(self, func, request, backups, origin_backup_count):
         """Provide a view for a list of backups."""
         backups_list = [func(request, backup)['backup'] for backup in backups]
         backups_links = self._get_collection_links(request,
                                                    backups,
-                                                   self._collection_name)
+                                                   self._collection_name,
+                                                   origin_backup_count)
         backups_dict = dict(backups=backups_list)
 
         if backups_links:

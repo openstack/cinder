@@ -47,6 +47,25 @@ ignore_messages = ["An attribute affected in cinder.tests",
 # positive rate.
 ignore_modules = ["cinder/openstack/common/", "cinder/tests/"]
 
+# Note(thangp): E0213, E1101, and E1102 should be ignored for only
+# cinder.object modules. E0213 and E1102 are error codes related to
+# the first argument of a method, but should be ignored because the method
+# is a remotable class method. E1101 is error code related to accessing a
+# non-existent member of an object, but should be ignored because the object
+# member is created dynamically.
+objects_ignore_codes = ["E0213", "E1101", "E1102"]
+# Note(thangp): The error messages are for codes [E1120, E1101] appearing in
+# the cinder code base using objects. E1120 is an error code related no value
+# passed for a parameter in function call, but should be ignored because it is
+# reporting false positives. E1101 is error code related to accessing a
+# non-existent member of an object, but should be ignored because the object
+# member is created dynamically.
+objects_ignore_messages = [
+    "No value passed for parameter 'id' in function call",
+    "Module 'cinder.objects' has no 'Snapshot' member",
+]
+objects_ignore_modules = ["cinder/objects/"]
+
 KNOWN_PYLINT_EXCEPTIONS_FILE = "tools/pylint_exceptions"
 
 
@@ -99,7 +118,16 @@ class LintOutput(object):
             return True
         if any(self.filename.startswith(name) for name in ignore_modules):
             return True
-        if any(msg in self.message for msg in ignore_messages):
+        if any(msg in self.message for msg in
+               (ignore_messages + objects_ignore_messages)):
+            return True
+        if (self.code in objects_ignore_codes and
+            any(self.filename.startswith(name)
+                for name in objects_ignore_modules)):
+            return True
+        if (self.code in objects_ignore_codes and
+            any(self.filename.startswith(name)
+                for name in objects_ignore_modules)):
             return True
         return False
 

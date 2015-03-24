@@ -24,11 +24,11 @@ import copy
 import urllib2
 
 from lxml import etree
+from oslo_log import log as logging
 import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

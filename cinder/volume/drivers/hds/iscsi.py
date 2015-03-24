@@ -21,18 +21,19 @@ import os
 from xml.etree import ElementTree as ETree
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.hds import hnas_backend
 from cinder.volume import utils
+from cinder.volume import volume_types
 
 
-HDS_HNAS_ISCSI_VERSION = '1.0.0'
+HDS_HNAS_ISCSI_VERSION = '3.0.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -44,11 +45,13 @@ iSCSI_OPTS = [
 CONF = cfg.CONF
 CONF.register_opts(iSCSI_OPTS)
 
-HNAS_DEFAULT_CONFIG = {'hnas_cmd': 'ssc', 'chap_enabled': 'True'}
+HNAS_DEFAULT_CONFIG = {'hnas_cmd': 'ssc',
+                       'chap_enabled': 'True',
+                       'ssh_port': '22'}
 
 
-def factory_bend(type):
-    return hnas_backend.HnasBackend()
+def factory_bend(drv_configs):
+    return hnas_backend.HnasBackend(drv_configs)
 
 
 def _loc_info(loc):
@@ -100,14 +103,31 @@ def _read_config(xml_config_file):
 
     # mandatory parameters
     config = {}
-    arg_prereqs = ['mgmt_ip0', 'username', 'password']
+    arg_prereqs = ['mgmt_ip0', 'username']
     for req in arg_prereqs:
         config[req] = _xml_read(root, req, 'check')
 
     # optional parameters
-    for opt in ['hnas_cmd', 'chap_enabled']:
-        config[opt] = _xml_read(root, opt) or\
-            HNAS_DEFAULT_CONFIG[opt]
+    opt_parameters = ['hnas_cmd', 'ssh_enabled', 'chap_enabled',
+                      'cluster_admin_ip0']
+    for req in opt_parameters:
+        config[req] = _xml_read(root, req)
+
+    if config['chap_enabled'] is None:
+        config['chap_enabled'] = HNAS_DEFAULT_CONFIG['chap_enabled']
+
+    if config['ssh_enabled'] == 'True':
+        config['ssh_private_key'] = _xml_read(root, 'ssh_private_key', 'check')
+        config['ssh_port'] = _xml_read(root, 'ssh_port')
+        config['password'] = _xml_read(root, 'password')
+        if config['ssh_port'] is None:
+            config['ssh_port'] = HNAS_DEFAULT_CONFIG['ssh_port']
+    else:
+        # password is mandatory when not using SSH
+        config['password'] = _xml_read(root, 'password', 'check')
+
+    if config['hnas_cmd'] is None:
+        config['hnas_cmd'] = HNAS_DEFAULT_CONFIG['hnas_cmd']
 
     config['hdp'] = {}
     config['services'] = {}
@@ -132,7 +152,11 @@ def _read_config(xml_config_file):
 
 
 class HDSISCSIDriver(driver.ISCSIDriver):
-    """HDS HNAS volume driver."""
+    """HDS HNAS volume driver.
+
+    Version 1.0.0: Initial driver version
+    Version 2.2.0:  Added support to SSH authentication
+    """
 
     def __init__(self, *args, **kwargs):
         """Initialize, read different config parameters."""
@@ -147,7 +171,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
         self.platform = self.type.lower()
         LOG.info(_LI("Backend type: %s"), self.type)
-        self.bend = factory_bend(self.type)
+        self.bend = factory_bend(self.config)
 
     def _array_info_get(self):
         """Get array parameters."""
@@ -192,17 +216,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
            :param volume: dictionary volume reference
         """
 
-        label = None
-        if volume['volume_type']:
-            label = volume['volume_type']['name']
-
-        label = label or 'default'
-        if label not in self.config['services'].keys():
-            # default works if no match is found
-            label = 'default'
-            LOG.info(_LI("Using default: instead of %s"), label)
-            LOG.info(_LI("Available services: %s"),
-                     self.config['services'].keys())
+        label = utils.extract_host(volume['host'], level='pool')
+        LOG.info(_LI("Using service label: %s"), label)
 
         if label in self.config['services'].keys():
             svc = self.config['services'][label]
@@ -273,37 +288,31 @@ class HDSISCSIDriver(driver.ISCSIDriver):
     def _get_stats(self):
         """Get HDP stats from HNAS."""
 
-        total_cap = 0
-        total_used = 0
-        out = self.bend.get_hdp_info(self.config['hnas_cmd'],
-                                     self.config['mgmt_ip0'],
-                                     self.config['username'],
-                                     self.config['password'])
-
-        for line in out.split('\n'):
-            if 'HDP' in line:
-                (hdp, size, _ign, used) = line.split()[1:5]  # in MB
-                LOG.debug("stats: looking for: %s", hdp)
-                if int(hdp) >= units.Ki:        # HNAS fsid
-                    hdp = line.split()[11]
-                if hdp in self.config['hdp'].keys():
-                    total_cap += int(size)
-                    total_used += int(used)
-
-        LOG.info(_LI("stats: total: %(cap)d used: %(used)d"),
-                 {'cap': total_cap, 'used': total_used})
-
         hnas_stat = {}
-        hnas_stat['total_capacity_gb'] = int(total_cap / units.Ki)  # in GB
-        hnas_stat['free_capacity_gb'] = \
-            int((total_cap - total_used) / units.Ki)
         be_name = self.configuration.safe_get('volume_backend_name')
         hnas_stat["volume_backend_name"] = be_name or 'HDSISCSIDriver'
         hnas_stat["vendor_name"] = 'HDS'
         hnas_stat["driver_version"] = HDS_HNAS_ISCSI_VERSION
         hnas_stat["storage_protocol"] = 'iSCSI'
-        hnas_stat['QoS_support'] = False
         hnas_stat['reserved_percentage'] = 0
+
+        for pool in self.pools:
+            out = self.bend.get_hdp_info(self.config['hnas_cmd'],
+                                         self.config['mgmt_ip0'],
+                                         self.config['username'],
+                                         self.config['password'],
+                                         pool['hdp'])
+
+            LOG.debug('Query for pool %s: %s', pool['pool_name'], out)
+
+            (hdp, size, _ign, used) = out.split()[1:5]  # in MB
+            pool['total_capacity_gb'] = int(size) / units.Ki
+            pool['free_capacity_gb'] = (int(size) - int(used)) / units.Ki
+            pool['allocated_capacity_gb'] = int(used) / units.Ki
+            pool['QoS_support'] = 'False'
+            pool['reserved_percentage'] = 0
+
+        hnas_stat['pools'] = self.pools
 
         LOG.info(_LI("stats: stats: %s"), hnas_stat)
         return hnas_stat
@@ -377,6 +386,18 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         self.context = context
         (self.arid, self.hnas_name, self.lumax) = self._array_info_get()
         self._check_hdp_list()
+
+        service_list = self.config['services'].keys()
+        for svc in service_list:
+            svc = self.config['services'][svc]
+            pool = {}
+            pool['pool_name'] = svc['volume_type']
+            pool['service_label'] = svc['volume_type']
+            pool['hdp'] = svc['hdp']
+
+            self.pools.append(pool)
+
+        LOG.info(_LI("Configured pools: %s"), self.pools)
 
         iscsi_info = self._get_iscsi_info()
         LOG.info(_LI("do_setup: %s"), iscsi_info)
@@ -693,3 +714,22 @@ class HDSISCSIDriver(driver.ISCSIDriver):
             self.driver_stats = self._get_stats()
 
         return self.driver_stats
+
+    def get_pool(self, volume):
+
+        if not volume['volume_type']:
+            return 'default'
+        else:
+            metadata = {}
+            type_id = volume['volume_type_id']
+            if type_id is not None:
+                metadata = volume_types.get_volume_type_extra_specs(type_id)
+            if not metadata.get('service_label'):
+                return 'default'
+            else:
+                if metadata['service_label'] not in \
+                        self.config['services'].keys():
+                    return 'default'
+                else:
+                    pass
+                return metadata['service_label']

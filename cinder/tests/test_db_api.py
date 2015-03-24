@@ -21,6 +21,7 @@ from oslo_utils import uuidutils
 
 from cinder import context
 from cinder import db
+from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder import quota
 from cinder import test
@@ -231,26 +232,36 @@ class DBAPIVolumeTestCase(BaseTest):
     def test_volume_attached_to_instance(self):
         volume = db.volume_create(self.ctxt, {'host': 'host1'})
         instance_uuid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-        db.volume_attached(self.ctxt, volume['id'],
+        values = {'volume_id': volume['id'],
+                  'instance_uuid': instance_uuid,
+                  'attach_status': 'attaching', }
+        attachment = db.volume_attach(self.ctxt, values)
+        db.volume_attached(self.ctxt, attachment['id'],
                            instance_uuid, None, '/tmp')
         volume = db.volume_get(self.ctxt, volume['id'])
-        self.assertEqual(volume['status'], 'in-use')
-        self.assertEqual(volume['mountpoint'], '/tmp')
-        self.assertEqual(volume['attach_status'], 'attached')
-        self.assertEqual(volume['instance_uuid'], instance_uuid)
-        self.assertIsNone(volume['attached_host'])
+        attachment = db.volume_attachment_get(self.ctxt, attachment['id'])
+        self.assertEqual('in-use', volume['status'])
+        self.assertEqual('/tmp', attachment['mountpoint'])
+        self.assertEqual('attached', attachment['attach_status'])
+        self.assertEqual(instance_uuid, attachment['instance_uuid'])
+        self.assertIsNone(attachment['attached_host'])
 
     def test_volume_attached_to_host(self):
         volume = db.volume_create(self.ctxt, {'host': 'host1'})
         host_name = 'fake_host'
-        db.volume_attached(self.ctxt, volume['id'],
+        values = {'volume_id': volume['id'],
+                  'attached_host': host_name,
+                  'attach_status': 'attaching', }
+        attachment = db.volume_attach(self.ctxt, values)
+        db.volume_attached(self.ctxt, attachment['id'],
                            None, host_name, '/tmp')
         volume = db.volume_get(self.ctxt, volume['id'])
-        self.assertEqual(volume['status'], 'in-use')
-        self.assertEqual(volume['mountpoint'], '/tmp')
-        self.assertEqual(volume['attach_status'], 'attached')
-        self.assertIsNone(volume['instance_uuid'])
-        self.assertEqual(volume['attached_host'], host_name)
+        attachment = db.volume_attachment_get(self.ctxt, attachment['id'])
+        self.assertEqual('in-use', volume['status'])
+        self.assertEqual('/tmp', attachment['mountpoint'])
+        self.assertEqual('attached', attachment['attach_status'])
+        self.assertIsNone(attachment['instance_uuid'])
+        self.assertEqual(attachment['attached_host'], host_name)
 
     def test_volume_data_get_for_host(self):
         for i in xrange(3):
@@ -275,28 +286,38 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_detached_from_instance(self):
         volume = db.volume_create(self.ctxt, {})
-        db.volume_attached(self.ctxt, volume['id'],
-                           'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        instance_uuid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        values = {'volume_id': volume['id'],
+                  'instance_uuid': instance_uuid,
+                  'attach_status': 'attaching', }
+        attachment = db.volume_attach(self.ctxt, values)
+        db.volume_attached(self.ctxt, attachment['id'],
+                           instance_uuid,
                            None, '/tmp')
-        db.volume_detached(self.ctxt, volume['id'])
+        db.volume_detached(self.ctxt, volume['id'], attachment['id'])
         volume = db.volume_get(self.ctxt, volume['id'])
+        self.assertRaises(exception.VolumeAttachmentNotFound,
+                          db.volume_attachment_get,
+                          self.ctxt,
+                          attachment['id'])
         self.assertEqual('available', volume['status'])
-        self.assertEqual('detached', volume['attach_status'])
-        self.assertIsNone(volume['mountpoint'])
-        self.assertIsNone(volume['instance_uuid'])
-        self.assertIsNone(volume['attached_host'])
 
     def test_volume_detached_from_host(self):
         volume = db.volume_create(self.ctxt, {})
-        db.volume_attached(self.ctxt, volume['id'],
-                           None, 'fake_host', '/tmp')
-        db.volume_detached(self.ctxt, volume['id'])
+        host_name = 'fake_host'
+        values = {'volume_id': volume['id'],
+                  'attach_host': host_name,
+                  'attach_status': 'attaching', }
+        attachment = db.volume_attach(self.ctxt, values)
+        db.volume_attached(self.ctxt, attachment['id'],
+                           None, host_name, '/tmp')
+        db.volume_detached(self.ctxt, volume['id'], attachment['id'])
         volume = db.volume_get(self.ctxt, volume['id'])
+        self.assertRaises(exception.VolumeAttachmentNotFound,
+                          db.volume_attachment_get,
+                          self.ctxt,
+                          attachment['id'])
         self.assertEqual('available', volume['status'])
-        self.assertEqual('detached', volume['attach_status'])
-        self.assertIsNone(volume['mountpoint'])
-        self.assertIsNone(volume['instance_uuid'])
-        self.assertIsNone(volume['attached_host'])
 
     def test_volume_get(self):
         volume = db.volume_create(self.ctxt, {})
@@ -314,7 +335,7 @@ class DBAPIVolumeTestCase(BaseTest):
                    {'host': 'h%d' % i, 'size': i})
                    for i in xrange(3)]
         self._assertEqualListsOfObjects(volumes, db.volume_get_all(
-                                        self.ctxt, None, None, 'host', None))
+                                        self.ctxt, None, None, ['host'], None))
 
     def test_volume_get_all_marker_passed(self):
         volumes = [
@@ -325,7 +346,7 @@ class DBAPIVolumeTestCase(BaseTest):
         ]
 
         self._assertEqualListsOfObjects(volumes[2:], db.volume_get_all(
-                                        self.ctxt, 2, 2, 'id', None))
+                                        self.ctxt, 2, 2, ['id'], ['asc']))
 
     def test_volume_get_all_by_host(self):
         volumes = []
@@ -432,7 +453,7 @@ class DBAPIVolumeTestCase(BaseTest):
             self._assertEqualListsOfObjects(volumes[i],
                                             db.volume_get_all_by_project(
                                             self.ctxt, 'p%d' % i, None,
-                                            None, 'host', None))
+                                            None, ['host'], None))
 
     def test_volume_get_by_name(self):
         db.volume_create(self.ctxt, {'display_name': 'vol1'})
@@ -440,17 +461,17 @@ class DBAPIVolumeTestCase(BaseTest):
         db.volume_create(self.ctxt, {'display_name': 'vol3'})
 
         # no name filter
-        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
-                                    'asc')
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['asc'])
         self.assertEqual(len(volumes), 3)
         # filter on name
-        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
-                                    'asc', {'display_name': 'vol2'})
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['asc'], {'display_name': 'vol2'})
         self.assertEqual(len(volumes), 1)
         self.assertEqual(volumes[0]['display_name'], 'vol2')
         # filter no match
-        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
-                                    'asc', {'display_name': 'vol4'})
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['asc'], {'display_name': 'vol4'})
         self.assertEqual(len(volumes), 0)
 
     def test_volume_list_by_status(self):
@@ -462,47 +483,52 @@ class DBAPIVolumeTestCase(BaseTest):
                                      'status': 'in-use'})
 
         # no status filter
-        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
-                                    'asc')
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['asc'])
         self.assertEqual(len(volumes), 3)
         # single match
-        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
-                                    'asc', {'status': 'in-use'})
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['asc'], {'status': 'in-use'})
         self.assertEqual(len(volumes), 1)
         self.assertEqual(volumes[0]['status'], 'in-use')
         # multiple match
-        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
-                                    'asc', {'status': 'available'})
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['asc'], {'status': 'available'})
         self.assertEqual(len(volumes), 2)
         for volume in volumes:
             self.assertEqual(volume['status'], 'available')
         # multiple filters
-        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
-                                    'asc', {'status': 'available',
-                                            'display_name': 'vol1'})
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['asc'], {'status': 'available',
+                                              'display_name': 'vol1'})
         self.assertEqual(len(volumes), 1)
         self.assertEqual(volumes[0]['display_name'], 'vol1')
         self.assertEqual(volumes[0]['status'], 'available')
         # no match
-        volumes = db.volume_get_all(self.ctxt, None, None, 'created_at',
-                                    'asc', {'status': 'in-use',
-                                            'display_name': 'vol1'})
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['asc'], {'status': 'in-use',
+                                              'display_name': 'vol1'})
         self.assertEqual(len(volumes), 0)
 
     def _assertEqualsVolumeOrderResult(self, correct_order, limit=None,
-                                       sort_key='created_at', sort_dir='asc',
+                                       sort_keys=None, sort_dirs=None,
                                        filters=None, project_id=None,
+                                       marker=None,
                                        match_keys=['id', 'display_name',
                                                    'volume_metadata',
                                                    'created_at']):
         """"Verifies that volumes are returned in the correct order."""
         if project_id:
-            result = db.volume_get_all_by_project(self.ctxt, project_id, None,
-                                                  limit, sort_key,
-                                                  sort_dir, filters=filters)
+            result = db.volume_get_all_by_project(self.ctxt, project_id,
+                                                  marker, limit,
+                                                  sort_keys=sort_keys,
+                                                  sort_dirs=sort_dirs,
+                                                  filters=filters)
         else:
-            result = db.volume_get_all(self.ctxt, None, limit, sort_key,
-                                       sort_dir, filters=filters)
+            result = db.volume_get_all(self.ctxt, marker, limit,
+                                       sort_keys=sort_keys,
+                                       sort_dirs=sort_dirs,
+                                       filters=filters)
         self.assertEqual(len(correct_order), len(result))
         for vol1, vol2 in zip(result, correct_order):
             for key in match_keys:
@@ -516,6 +542,7 @@ class DBAPIVolumeTestCase(BaseTest):
                     self.assertDictMatch(val1_dict, val2_dict)
                 else:
                     self.assertEqual(val1, val2)
+        return result
 
     def test_volume_get_by_filter(self):
         """Verifies that all filtering is done at the DB layer."""
@@ -542,7 +569,7 @@ class DBAPIVolumeTestCase(BaseTest):
 
         # By project, filter on size and name
         filters = {'size': '1'}
-        correct_order = [vols[0], vols[1]]
+        correct_order = [vols[1], vols[0]]
         self._assertEqualsVolumeOrderResult(correct_order, filters=filters,
                                             project_id='g1')
         filters = {'size': '1', 'display_name': 'name_1'}
@@ -552,18 +579,18 @@ class DBAPIVolumeTestCase(BaseTest):
 
         # Remove project scope
         filters = {'size': '1'}
-        correct_order = [vols[0], vols[1], vols[6], vols[7]]
+        correct_order = [vols[7], vols[6], vols[1], vols[0]]
         self._assertEqualsVolumeOrderResult(correct_order, filters=filters)
         filters = {'size': '1', 'display_name': 'name_1'}
-        correct_order = [vols[1], vols[7]]
+        correct_order = [vols[7], vols[1]]
         self._assertEqualsVolumeOrderResult(correct_order, filters=filters)
 
         # Remove size constraint
         filters = {'display_name': 'name_1'}
-        correct_order = [vols[1], vols[3], vols[5]]
+        correct_order = [vols[5], vols[3], vols[1]]
         self._assertEqualsVolumeOrderResult(correct_order, filters=filters,
                                             project_id='g1')
-        correct_order = [vols[1], vols[3], vols[5], vols[7]]
+        correct_order = [vols[7], vols[5], vols[3], vols[1]]
         self._assertEqualsVolumeOrderResult(correct_order, filters=filters)
 
         # Verify bogus values return nothing
@@ -597,7 +624,7 @@ class DBAPIVolumeTestCase(BaseTest):
         db.volume_admin_metadata_update(self.ctxt, vol5.id,
                                         {"readonly": "True"}, False)
 
-        vols = [vol1, vol2, vol3, vol4, vol5]
+        vols = [vol5, vol4, vol3, vol2, vol1]
 
         # Ensure we have 5 total instances
         self._assertEqualsVolumeOrderResult(vols)
@@ -608,20 +635,20 @@ class DBAPIVolumeTestCase(BaseTest):
 
         # Just the test2 volumes
         filters = {'display_name': 'test2'}
-        self._assertEqualsVolumeOrderResult([vol2, vol3], filters=filters)
-        self._assertEqualsVolumeOrderResult([vol2], limit=1,
+        self._assertEqualsVolumeOrderResult([vol3, vol2], filters=filters)
+        self._assertEqualsVolumeOrderResult([vol3], limit=1,
                                             filters=filters)
-        self._assertEqualsVolumeOrderResult([vol2, vol3], limit=2,
+        self._assertEqualsVolumeOrderResult([vol3, vol2], limit=2,
                                             filters=filters)
-        self._assertEqualsVolumeOrderResult([vol2, vol3], limit=100,
+        self._assertEqualsVolumeOrderResult([vol3, vol2], limit=100,
                                             filters=filters)
 
         # metadata filters
         filters = {'metadata': {'key1': 'val1'}}
-        self._assertEqualsVolumeOrderResult([vol3, vol4], filters=filters)
-        self._assertEqualsVolumeOrderResult([vol3], limit=1,
+        self._assertEqualsVolumeOrderResult([vol4, vol3], filters=filters)
+        self._assertEqualsVolumeOrderResult([vol4], limit=1,
                                             filters=filters)
-        self._assertEqualsVolumeOrderResult([vol3, vol4], limit=10,
+        self._assertEqualsVolumeOrderResult([vol4, vol3], limit=10,
                                             filters=filters)
 
         filters = {'metadata': {'readonly': 'True'}}
@@ -674,21 +701,159 @@ class DBAPIVolumeTestCase(BaseTest):
                                             'migration_status': 'btarget:'})
         vol4 = db.volume_create(self.ctxt, {'display_name': 'test4',
                                             'migration_status': 'target:'})
-        vols = [vol1, vol2, vol3, vol4]
 
-        # Ensure we have 4 total instances
-        self._assertEqualsVolumeOrderResult(vols)
+        # Ensure we have 4 total instances, default sort of created_at (desc)
+        self._assertEqualsVolumeOrderResult([vol4, vol3, vol2, vol1])
 
         # Apply the unique filter
         filters = {'no_migration_targets': True}
-        self._assertEqualsVolumeOrderResult([vol1, vol2, vol3],
+        self._assertEqualsVolumeOrderResult([vol3, vol2, vol1],
                                             filters=filters)
-        self._assertEqualsVolumeOrderResult([vol1, vol2], limit=2,
+        self._assertEqualsVolumeOrderResult([vol3, vol2], limit=2,
                                             filters=filters)
 
         filters = {'no_migration_targets': True,
                    'display_name': 'test4'}
         self._assertEqualsVolumeOrderResult([], filters=filters)
+
+    def test_volume_get_all_by_filters_sort_keys(self):
+        # Volumes that will reply to the query
+        test_h1_avail = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                     'status': 'available',
+                                                     'host': 'h1'})
+        test_h1_error = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                     'status': 'error',
+                                                     'host': 'h1'})
+        test_h1_error2 = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                      'status': 'error',
+                                                      'host': 'h1'})
+        test_h2_avail = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                     'status': 'available',
+                                                     'host': 'h2'})
+        test_h2_error = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                     'status': 'error',
+                                                     'host': 'h2'})
+        test_h2_error2 = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                      'status': 'error',
+                                                      'host': 'h2'})
+        # Other volumes in the DB, will not match name filter
+        other_error = db.volume_create(self.ctxt, {'display_name': 'other',
+                                                   'status': 'error',
+                                                   'host': 'a'})
+        other_active = db.volume_create(self.ctxt, {'display_name': 'other',
+                                                    'status': 'available',
+                                                    'host': 'a'})
+        filters = {'display_name': 'test'}
+
+        # Verify different sort key/direction combinations
+        sort_keys = ['host', 'status', 'created_at']
+        sort_dirs = ['asc', 'asc', 'asc']
+        correct_order = [test_h1_avail, test_h1_error, test_h1_error2,
+                         test_h2_avail, test_h2_error, test_h2_error2]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters,
+                                            sort_keys=sort_keys,
+                                            sort_dirs=sort_dirs)
+
+        sort_dirs = ['asc', 'desc', 'asc']
+        correct_order = [test_h1_error, test_h1_error2, test_h1_avail,
+                         test_h2_error, test_h2_error2, test_h2_avail]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters,
+                                            sort_keys=sort_keys,
+                                            sort_dirs=sort_dirs)
+
+        sort_dirs = ['desc', 'desc', 'asc']
+        correct_order = [test_h2_error, test_h2_error2, test_h2_avail,
+                         test_h1_error, test_h1_error2, test_h1_avail]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters,
+                                            sort_keys=sort_keys,
+                                            sort_dirs=sort_dirs)
+
+        # created_at is added by default if not supplied, descending order
+        sort_keys = ['host', 'status']
+        sort_dirs = ['desc', 'desc']
+        correct_order = [test_h2_error2, test_h2_error, test_h2_avail,
+                         test_h1_error2, test_h1_error, test_h1_avail]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters,
+                                            sort_keys=sort_keys,
+                                            sort_dirs=sort_dirs)
+
+        sort_dirs = ['asc', 'asc']
+        correct_order = [test_h1_avail, test_h1_error, test_h1_error2,
+                         test_h2_avail, test_h2_error, test_h2_error2]
+        self._assertEqualsVolumeOrderResult(correct_order, filters=filters,
+                                            sort_keys=sort_keys,
+                                            sort_dirs=sort_dirs)
+
+        # Remove name filter
+        correct_order = [other_active, other_error,
+                         test_h1_avail, test_h1_error, test_h1_error2,
+                         test_h2_avail, test_h2_error, test_h2_error2]
+        self._assertEqualsVolumeOrderResult(correct_order, sort_keys=sort_keys,
+                                            sort_dirs=sort_dirs)
+
+        # No sort data, default sort of created_at, id (desc)
+        correct_order = [other_active, other_error,
+                         test_h2_error2, test_h2_error, test_h2_avail,
+                         test_h1_error2, test_h1_error, test_h1_avail]
+        self._assertEqualsVolumeOrderResult(correct_order)
+
+    def test_volume_get_all_by_filters_sort_keys_paginate(self):
+        '''Verifies sort order with pagination.'''
+        # Volumes that will reply to the query
+        test1_avail = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                   'size': 1,
+                                                   'status': 'available'})
+        test1_error = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                   'size': 1,
+                                                   'status': 'error'})
+        test1_error2 = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                    'size': 1,
+                                                    'status': 'error'})
+        test2_avail = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                   'size': 2,
+                                                   'status': 'available'})
+        test2_error = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                   'size': 2,
+                                                   'status': 'error'})
+        test2_error2 = db.volume_create(self.ctxt, {'display_name': 'test',
+                                                    'size': 2,
+                                                    'status': 'error'})
+
+        # Other volumes in the DB, will not match name filter
+        db.volume_create(self.ctxt, {'display_name': 'other'})
+        db.volume_create(self.ctxt, {'display_name': 'other'})
+        filters = {'display_name': 'test'}
+        # Common sort information for every query
+        sort_keys = ['size', 'status', 'created_at']
+        sort_dirs = ['asc', 'desc', 'asc']
+        # Overall correct volume order based on the sort keys
+        correct_order = [test1_error, test1_error2, test1_avail,
+                         test2_error, test2_error2, test2_avail]
+
+        # Limits of 1, 2, and 3, verify that the volumes returned are in the
+        # correct sorted order, update the marker to get the next correct page
+        for limit in range(1, 4):
+            marker = None
+            # Include the maximum number of volumes (ie, 6) to ensure that
+            # the last query (with marker pointing to the last volume)
+            # returns 0 servers
+            for i in range(0, 7, limit):
+                if i == len(correct_order):
+                    correct = []
+                else:
+                    correct = correct_order[i:i + limit]
+                vols = self._assertEqualsVolumeOrderResult(
+                    correct, filters=filters,
+                    sort_keys=sort_keys, sort_dirs=sort_dirs,
+                    limit=limit, marker=marker)
+                if correct:
+                    marker = vols[-1]['id']
+                    self.assertEqual(correct[-1]['id'], marker)
+
+    def test_volume_get_all_invalid_sort_key(self):
+        for keys in (['foo'], ['display_name', 'foo']):
+            self.assertRaises(exception.InvalidInput, db.volume_get_all,
+                              self.ctxt, None, None, sort_keys=keys)
 
     def test_volume_get_iscsi_target_num(self):
         db.iscsi_target_create_safe(self.ctxt, {'volume_id': 42,
@@ -1202,12 +1367,15 @@ class DBAPIBackupTestCase(BaseTest):
             'fail_reason': 'test',
             'service_metadata': 'metadata',
             'service': 'service',
+            'parent_id': "parent_id",
             'size': 1000,
             'object_count': 100}
         if one:
             return base_values
 
         def compose(val, step):
+            if isinstance(val, bool):
+                return val
             if isinstance(val, str):
                 step = str(step)
             return val + step
@@ -1287,3 +1455,172 @@ class DBAPIBackupTestCase(BaseTest):
     def test_backup_not_found(self):
         self.assertRaises(exception.BackupNotFound, db.backup_get, self.ctxt,
                           'notinbase')
+
+
+class DBAPIProcessSortParamTestCase(test.TestCase):
+
+    def test_process_sort_params_defaults(self):
+        '''Verifies default sort parameters.'''
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params([], [])
+        self.assertEqual(['created_at', 'id'], sort_keys)
+        self.assertEqual(['asc', 'asc'], sort_dirs)
+
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(None, None)
+        self.assertEqual(['created_at', 'id'], sort_keys)
+        self.assertEqual(['asc', 'asc'], sort_dirs)
+
+    def test_process_sort_params_override_default_keys(self):
+        '''Verifies that the default keys can be overridden.'''
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            [], [], default_keys=['key1', 'key2', 'key3'])
+        self.assertEqual(['key1', 'key2', 'key3'], sort_keys)
+        self.assertEqual(['asc', 'asc', 'asc'], sort_dirs)
+
+    def test_process_sort_params_override_default_dir(self):
+        '''Verifies that the default direction can be overridden.'''
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            [], [], default_dir='dir1')
+        self.assertEqual(['created_at', 'id'], sort_keys)
+        self.assertEqual(['dir1', 'dir1'], sort_dirs)
+
+    def test_process_sort_params_override_default_key_and_dir(self):
+        '''Verifies that the default key and dir can be overridden.'''
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            [], [], default_keys=['key1', 'key2', 'key3'],
+            default_dir='dir1')
+        self.assertEqual(['key1', 'key2', 'key3'], sort_keys)
+        self.assertEqual(['dir1', 'dir1', 'dir1'], sort_dirs)
+
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            [], [], default_keys=[], default_dir='dir1')
+        self.assertEqual([], sort_keys)
+        self.assertEqual([], sort_dirs)
+
+    def test_process_sort_params_non_default(self):
+        '''Verifies that non-default keys are added correctly.'''
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            ['key1', 'key2'], ['asc', 'desc'])
+        self.assertEqual(['key1', 'key2', 'created_at', 'id'], sort_keys)
+        # First sort_dir in list is used when adding the default keys
+        self.assertEqual(['asc', 'desc', 'asc', 'asc'], sort_dirs)
+
+    def test_process_sort_params_default(self):
+        '''Verifies that default keys are added correctly.'''
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            ['id', 'key2'], ['asc', 'desc'])
+        self.assertEqual(['id', 'key2', 'created_at'], sort_keys)
+        self.assertEqual(['asc', 'desc', 'asc'], sort_dirs)
+
+        # Include default key value, rely on default direction
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            ['id', 'key2'], [])
+        self.assertEqual(['id', 'key2', 'created_at'], sort_keys)
+        self.assertEqual(['asc', 'asc', 'asc'], sort_dirs)
+
+    def test_process_sort_params_default_dir(self):
+        '''Verifies that the default dir is applied to all keys.'''
+        # Direction is set, ignore default dir
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            ['id', 'key2'], ['desc'], default_dir='dir')
+        self.assertEqual(['id', 'key2', 'created_at'], sort_keys)
+        self.assertEqual(['desc', 'desc', 'desc'], sort_dirs)
+
+        # But should be used if no direction is set
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            ['id', 'key2'], [], default_dir='dir')
+        self.assertEqual(['id', 'key2', 'created_at'], sort_keys)
+        self.assertEqual(['dir', 'dir', 'dir'], sort_dirs)
+
+    def test_process_sort_params_unequal_length(self):
+        '''Verifies that a sort direction list is applied correctly.'''
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            ['id', 'key2', 'key3'], ['desc'])
+        self.assertEqual(['id', 'key2', 'key3', 'created_at'], sort_keys)
+        self.assertEqual(['desc', 'desc', 'desc', 'desc'], sort_dirs)
+
+        # Default direction is the first key in the list
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            ['id', 'key2', 'key3'], ['desc', 'asc'])
+        self.assertEqual(['id', 'key2', 'key3', 'created_at'], sort_keys)
+        self.assertEqual(['desc', 'asc', 'desc', 'desc'], sort_dirs)
+
+        sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
+            ['id', 'key2', 'key3'], ['desc', 'asc', 'asc'])
+        self.assertEqual(['id', 'key2', 'key3', 'created_at'], sort_keys)
+        self.assertEqual(['desc', 'asc', 'asc', 'desc'], sort_dirs)
+
+    def test_process_sort_params_extra_dirs_lengths(self):
+        '''InvalidInput raised if more directions are given.'''
+        self.assertRaises(exception.InvalidInput,
+                          sqlalchemy_api.process_sort_params,
+                          ['key1', 'key2'],
+                          ['asc', 'desc', 'desc'])
+
+    def test_process_sort_params_invalid_sort_dir(self):
+        '''InvalidInput raised if invalid directions are given.'''
+        for dirs in [['foo'], ['asc', 'foo'], ['asc', 'desc', 'foo']]:
+            self.assertRaises(exception.InvalidInput,
+                              sqlalchemy_api.process_sort_params,
+                              ['key'],
+                              dirs)
+
+
+class DBAPIDriverInitiatorDataTestCase(BaseTest):
+    initiator = 'iqn.1993-08.org.debian:01:222'
+    namespace = 'test_ns'
+
+    def test_driver_initiator_data_set_and_remove(self):
+        data_key = 'key1'
+        data_value = 'value1'
+        update = {
+            'set_values': {
+                data_key: data_value
+            }
+        }
+
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, update)
+        data = db.driver_initiator_data_get(self.ctxt, self.initiator,
+                                            self.namespace)
+
+        self.assertIsNotNone(data)
+        self.assertEqual(data_key, data[0]['key'])
+        self.assertEqual(data_value, data[0]['value'])
+
+        update = {'remove_values': [data_key]}
+
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, update)
+        data = db.driver_initiator_data_get(self.ctxt, self.initiator,
+                                            self.namespace)
+
+        self.assertIsNotNone(data)
+        self.assertEqual([], data)
+
+    def test_driver_initiator_data_no_changes(self):
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, {})
+        data = db.driver_initiator_data_get(self.ctxt, self.initiator,
+                                            self.namespace)
+
+        self.assertIsNotNone(data)
+        self.assertEqual([], data)
+
+    def test_driver_initiator_data_update_existing_values(self):
+        data_key = 'key1'
+        data_value = 'value1'
+        update = {'set_values': {data_key: data_value}}
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, update)
+        data_value = 'value2'
+        update = {'set_values': {data_key: data_value}}
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, update)
+        data = db.driver_initiator_data_get(self.ctxt, self.initiator,
+                                            self.namespace)
+        self.assertEqual(data_value, data[0]['value'])
+
+    def test_driver_initiator_data_remove_not_existing(self):
+        update = {'remove_values': ['key_that_doesnt_exist']}
+        db.driver_initiator_data_update(self.ctxt, self.initiator,
+                                        self.namespace, update)

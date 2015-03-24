@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
 import copy
 import os
 
@@ -239,28 +238,28 @@ class SmbFsTestCase(test.TestCase):
         fake_volume_size = 2
         ret_value = self._test_is_share_eligible(fake_capacity_info,
                                                  fake_volume_size)
-        self.assertEqual(ret_value, False)
+        self.assertFalse(ret_value)
 
     def test_eligible_share(self):
         fake_capacity_info = (4, 4, 0)
         fake_volume_size = 1
         ret_value = self._test_is_share_eligible(fake_capacity_info,
                                                  fake_volume_size)
-        self.assertEqual(ret_value, True)
+        self.assertTrue(ret_value)
 
     def test_share_volume_above_oversub_ratio(self):
         fake_capacity_info = (4, 4, 7)
         fake_volume_size = 2
         ret_value = self._test_is_share_eligible(fake_capacity_info,
                                                  fake_volume_size)
-        self.assertEqual(ret_value, False)
+        self.assertFalse(ret_value)
 
     def test_share_reserved_above_oversub_ratio(self):
         fake_capacity_info = (4, 4, 10)
         fake_volume_size = 1
         ret_value = self._test_is_share_eligible(fake_capacity_info,
                                                  fake_volume_size)
-        self.assertEqual(ret_value, False)
+        self.assertFalse(ret_value)
 
     def test_parse_options(self):
         (opt_list,
@@ -275,16 +274,106 @@ class SmbFsTestCase(test.TestCase):
         flags = self._smbfs_driver.parse_credentials(fake_smb_options)
         self.assertEqual(expected_flags, flags)
 
-    def test_get_volume_path(self):
-        self._smbfs_driver.get_volume_format = mock.Mock(
-            return_value='vhd')
-        self._smbfs_driver._local_volume_dir = mock.Mock(
-            return_value=self._FAKE_MNT_POINT)
+    @mock.patch.object(smbfs.SmbfsDriver, '_get_local_volume_path_template')
+    @mock.patch.object(smbfs.SmbfsDriver, '_lookup_local_volume_path')
+    @mock.patch.object(smbfs.SmbfsDriver, 'get_volume_format')
+    def _test_get_volume_path(self, mock_get_volume_format, mock_lookup_volume,
+                              mock_get_path_template, volume_exists=True,
+                              volume_format='raw'):
+        drv = self._smbfs_driver
+        mock_get_path_template.return_value = self._FAKE_VOLUME_PATH
 
-        expected = self._FAKE_VOLUME_PATH + '.vhd'
+        expected_vol_path = self._FAKE_VOLUME_PATH
+        if volume_format in (drv._DISK_FORMAT_VHD, drv._DISK_FORMAT_VHDX):
+            expected_vol_path += '.' + volume_format
 
-        ret_val = self._smbfs_driver.local_path(self._FAKE_VOLUME)
-        self.assertEqual(expected, ret_val)
+        mock_lookup_volume.return_value = (
+            expected_vol_path if volume_exists else None)
+        mock_get_volume_format.return_value = volume_format
+
+        ret_val = drv.local_path(self._FAKE_VOLUME)
+
+        if volume_exists:
+            self.assertFalse(mock_get_volume_format.called)
+        else:
+            mock_get_volume_format.assert_called_once_with(self._FAKE_VOLUME)
+        self.assertEqual(expected_vol_path, ret_val)
+
+    def test_get_existing_volume_path(self):
+        self._test_get_volume_path()
+
+    def test_get_new_raw_volume_path(self):
+        self._test_get_volume_path(volume_exists=False)
+
+    def test_get_new_vhd_volume_path(self):
+        self._test_get_volume_path(volume_exists=False, volume_format='vhd')
+
+    @mock.patch.object(smbfs.SmbfsDriver, '_local_volume_dir')
+    def test_get_local_volume_path_template(self, mock_get_local_dir):
+        mock_get_local_dir.return_value = self._FAKE_MNT_POINT
+        ret_val = self._smbfs_driver._get_local_volume_path_template(
+            self._FAKE_VOLUME)
+        self.assertEqual(self._FAKE_VOLUME_PATH, ret_val)
+
+    @mock.patch('os.path.exists')
+    def test_lookup_local_volume_path(self, mock_exists):
+        expected_path = self._FAKE_VOLUME_PATH + '.vhdx'
+        mock_exists.side_effect = lambda x: x == expected_path
+
+        ret_val = self._smbfs_driver._lookup_local_volume_path(
+            self._FAKE_VOLUME_PATH)
+
+        possible_paths = [self._FAKE_VOLUME_PATH + ext
+                          for ext in ('', '.vhd', '.vhdx')]
+        mock_exists.assert_has_calls(
+            [mock.call(path) for path in possible_paths])
+        self.assertEqual(expected_path, ret_val)
+
+    @mock.patch.object(smbfs.SmbfsDriver, '_get_local_volume_path_template')
+    @mock.patch.object(smbfs.SmbfsDriver, '_lookup_local_volume_path')
+    @mock.patch.object(smbfs.SmbfsDriver, '_qemu_img_info')
+    @mock.patch.object(smbfs.SmbfsDriver, '_get_volume_format_spec')
+    def _mock_get_volume_format(self, mock_get_format_spec, mock_qemu_img_info,
+                                mock_lookup_volume, mock_get_path_template,
+                                qemu_format=False, volume_format='raw',
+                                volume_exists=True):
+        mock_get_path_template.return_value = self._FAKE_VOLUME_PATH
+        mock_lookup_volume.return_value = (
+            self._FAKE_VOLUME_PATH if volume_exists else None)
+
+        mock_qemu_img_info.return_value.file_format = volume_format
+        mock_get_format_spec.return_value = volume_format
+
+        ret_val = self._smbfs_driver.get_volume_format(self._FAKE_VOLUME,
+                                                       qemu_format)
+
+        if volume_exists:
+            mock_qemu_img_info.assert_called_once_with(self._FAKE_VOLUME_PATH,
+                                                       self._FAKE_VOLUME_NAME)
+            self.assertFalse(mock_get_format_spec.called)
+        else:
+            mock_get_format_spec.assert_called_once_with(self._FAKE_VOLUME)
+            self.assertFalse(mock_qemu_img_info.called)
+
+        return ret_val
+
+    def test_get_existing_raw_volume_format(self):
+        fmt = self._mock_get_volume_format()
+        self.assertEqual(fmt, 'raw')
+
+    def test_get_new_vhd_volume_format(self):
+        expected_fmt = 'vhd'
+        fmt = self._mock_get_volume_format(volume_format=expected_fmt,
+                                           volume_exists=False)
+        self.assertEqual(expected_fmt, fmt)
+
+    def test_get_new_vhd_legacy_volume_format(self):
+        img_fmt = 'vhd'
+        expected_fmt = 'vpc'
+        ret_val = self._mock_get_volume_format(volume_format=img_fmt,
+                                               volume_exists=False,
+                                               qemu_format=True)
+        self.assertEqual(expected_fmt, ret_val)
 
     def test_initialize_connection(self):
         self._smbfs_driver.get_active_image_from_info = mock.Mock(
@@ -321,10 +410,9 @@ class SmbFsTestCase(test.TestCase):
             return_value=mock.Mock(file_format=image_format))
         drv._delete = mock.Mock()
 
-        with contextlib.nested(
-                mock.patch.object(image_utils, 'resize_image'),
-                mock.patch.object(image_utils, 'convert_image')) as (
-                    fake_resize, fake_convert):
+        with mock.patch.object(image_utils, 'resize_image') as fake_resize, \
+                mock.patch.object(image_utils, 'convert_image') as \
+                fake_convert:
             if extend_failed:
                 self.assertRaises(exception.ExtendVolumeError,
                                   drv._extend_volume,
@@ -473,13 +561,9 @@ class SmbFsTestCase(test.TestCase):
             mock.sentinel.block_size)
 
         exc = None
-        with contextlib.nested(
-            mock.patch.object(image_utils,
-                              'fetch_to_volume_format'),
-            mock.patch.object(image_utils,
-                              'qemu_img_info')) as (
-                fake_fetch,
-                fake_qemu_img_info):
+        with mock.patch.object(image_utils, 'fetch_to_volume_format') as \
+                fake_fetch, mock.patch.object(image_utils, 'qemu_img_info') as \
+                fake_qemu_img_info:
 
             if wrong_size_after_fetch:
                 exc = exception.ImageUnacceptable

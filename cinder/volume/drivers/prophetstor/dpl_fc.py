@@ -15,10 +15,10 @@
 
 import errno
 
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import dplcommon
 from cinder.zonemanager import utils as fczm_utils

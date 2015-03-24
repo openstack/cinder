@@ -16,10 +16,10 @@
 import re
 import urllib2
 
+from oslo_log import log as logging
 import paste.urlmap
 
 from cinder.api.openstack import wsgi
-from cinder.openstack.common import log as logging
 
 
 _quoted_string_re = r'"[^"\\]*(?:\\.[^"\\]*)*"'

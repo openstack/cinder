@@ -19,8 +19,9 @@
 
 """Unit tests for fc san lookup service."""
 
+from oslo_log import log as logging
+
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.zonemanager import fc_san_lookup_service as san_service

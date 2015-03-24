@@ -12,6 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from oslo_log import log as logging
 from oslo_utils import strutils
 import webob
 from webob import exc
@@ -22,7 +23,6 @@ from cinder import backup
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import volume
 
@@ -81,7 +81,7 @@ class AdminController(wsgi.Controller):
         context = req.environ['cinder.context']
         self.authorize(context, 'reset_status')
         update = self.validate_update(body['os-reset_status'])
-        msg = _("Updating %(resource)s '%(id)s' with '%(update)r'")
+        msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})
 
@@ -185,7 +185,10 @@ class VolumeAdminController(AdminController):
             raise exc.HTTPNotFound()
         self.volume_api.terminate_connection(context, volume,
                                              {}, force=True)
-        self.volume_api.detach(context, volume)
+
+        attachment_id = body['os-force_detach'].get('attachment_id', None)
+
+        self.volume_api.detach(context, volume, attachment_id)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-migrate_volume')

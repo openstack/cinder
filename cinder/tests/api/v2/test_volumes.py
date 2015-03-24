@@ -19,6 +19,7 @@ import datetime
 from lxml import etree
 import mock
 from oslo_config import cfg
+from oslo_utils import timeutils
 import six
 import six.moves.urllib.parse as urlparse
 import webob
@@ -87,12 +88,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
-        ex = {'volume': {'attachments':
-                         [{'device': '/',
-                           'host_name': None,
-                           'id': '1',
-                           'server_id': 'fakeuuid',
-                           'volume_id': '1'}],
+        ex = {'volume': {'attachments': [],
                          'availability_zone': 'zone1:host1',
                          'bootable': 'false',
                          'consistencygroup_id': None,
@@ -107,6 +103,7 @@ class VolumeApiTest(test.TestCase):
                          'metadata': {},
                          'name': 'Volume Test Name',
                          'replication_status': 'disabled',
+                         'multiattach': False,
                          'size': 100,
                          'snapshot_id': None,
                          'source_volid': None,
@@ -222,11 +219,7 @@ class VolumeApiTest(test.TestCase):
                "description": "Volume Test Desc",
                "availability_zone": "nova",
                "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
-        ex = {'volume': {'attachments': [{'device': '/',
-                                          'host_name': None,
-                                          'id': '1',
-                                          'server_id': 'fakeuuid',
-                                          'volume_id': '1'}],
+        ex = {'volume': {'attachments': [],
                          'availability_zone': 'nova',
                          'bootable': 'false',
                          'consistencygroup_id': None,
@@ -242,6 +235,7 @@ class VolumeApiTest(test.TestCase):
                          'metadata': {},
                          'name': 'Volume Test Name',
                          'replication_status': 'disabled',
+                         'multiattach': False,
                          'size': '1',
                          'snapshot_id': None,
                          'source_volid': None,
@@ -312,11 +306,7 @@ class VolumeApiTest(test.TestCase):
                "description": "Volume Test Desc",
                "availability_zone": "nova",
                "image_id": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
-        ex = {'volume': {'attachments': [{'device': '/',
-                                          'host_name': None,
-                                          'id': '1',
-                                          'server_id': 'fakeuuid',
-                                          'volume_id': '1'}],
+        ex = {'volume': {'attachments': [],
                          'availability_zone': 'nova',
                          'bootable': 'false',
                          'consistencygroup_id': None,
@@ -332,6 +322,7 @@ class VolumeApiTest(test.TestCase):
                          'metadata': {},
                          'name': 'Volume Test Name',
                          'replication_status': 'disabled',
+                         'multiattach': False,
                          'size': '1',
                          'snapshot_id': None,
                          'source_volid': None,
@@ -406,11 +397,7 @@ class VolumeApiTest(test.TestCase):
                "description": "Volume Test Desc",
                "availability_zone": "nova",
                "imageRef": test_id}
-        ex = {'volume': {'attachments': [{'device': '/',
-                                          'host_name': None,
-                                          'id': '1',
-                                          'server_id': 'fakeuuid',
-                                          'volume_id': '1'}],
+        ex = {'volume': {'attachments': [],
                          'availability_zone': 'nova',
                          'bootable': 'false',
                          'consistencygroup_id': None,
@@ -426,6 +413,7 @@ class VolumeApiTest(test.TestCase):
                          'metadata': {},
                          'name': 'Volume Test Name',
                          'replication_status': 'disabled',
+                         'multiattach': False,
                          'size': '1',
                          'snapshot_id': None,
                          'source_volid': None,
@@ -500,15 +488,8 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'Updated Test Name',
                 'replication_status': 'disabled',
-                'attachments': [
-                    {
-                        'id': '1',
-                        'volume_id': '1',
-                        'server_id': 'fakeuuid',
-                        'host_name': None,
-                        'device': '/',
-                    }
-                ],
+                'multiattach': False,
+                'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
@@ -554,15 +535,8 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'Updated Test Name',
                 'replication_status': 'disabled',
-                'attachments': [
-                    {
-                        'id': '1',
-                        'volume_id': '1',
-                        'server_id': 'fakeuuid',
-                        'host_name': None,
-                        'device': '/',
-                    }
-                ],
+                'multiattach': False,
+                'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
@@ -611,15 +585,8 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'New Name',
                 'replication_status': 'disabled',
-                'attachments': [
-                    {
-                        'id': '1',
-                        'volume_id': '1',
-                        'server_id': 'fakeuuid',
-                        'host_name': None,
-                        'device': '/',
-                    }
-                ],
+                'multiattach': False,
+                'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
@@ -663,13 +630,8 @@ class VolumeApiTest(test.TestCase):
             'consistencygroup_id': None,
             'name': 'displayname',
             'replication_status': 'disabled',
-            'attachments': [{
-                'id': '1',
-                'volume_id': '1',
-                'server_id': 'fakeuuid',
-                'host_name': None,
-                'device': '/',
-            }],
+            'multiattach': False,
+            'attachments': [],
             'user_id': 'fakeuser',
             'volume_type': 'vol_type_name',
             'snapshot_id': None,
@@ -707,6 +669,10 @@ class VolumeApiTest(test.TestCase):
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
+        values = {'volume_id': '1', }
+        attachment = db.volume_attach(context.get_admin_context(), values)
+        db.volume_attached(context.get_admin_context(),
+                           attachment['id'], stubs.FAKE_UUID, None, '/')
 
         updates = {
             "name": "Updated Test Name",
@@ -718,7 +684,7 @@ class VolumeApiTest(test.TestCase):
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.update(req, '1', body)
         expected = {'volume': {
-            'status': 'fakestatus',
+            'status': 'in-use',
             'description': 'displaydesc',
             'encrypted': False,
             'availability_zone': 'fakeaz',
@@ -726,10 +692,12 @@ class VolumeApiTest(test.TestCase):
             'consistencygroup_id': None,
             'name': 'Updated Test Name',
             'replication_status': 'disabled',
+            'multiattach': False,
             'attachments': [{
                 'id': '1',
+                'attachment_id': attachment['id'],
                 'volume_id': '1',
-                'server_id': 'fakeuuid',
+                'server_id': stubs.FAKE_UUID,
                 'host_name': None,
                 'device': '/',
             }],
@@ -753,8 +721,8 @@ class VolumeApiTest(test.TestCase):
                 }
             ],
         }}
-        self.assertEqual(res_dict, expected)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
+        self.assertEqual(expected, res_dict)
+        self.assertEqual(2, len(fake_notifier.NOTIFICATIONS))
 
     def test_update_empty_body(self):
         body = {}
@@ -831,15 +799,8 @@ class VolumeApiTest(test.TestCase):
                     'consistencygroup_id': None,
                     'name': 'displayname',
                     'replication_status': 'disabled',
-                    'attachments': [
-                        {
-                            'device': '/',
-                            'server_id': 'fakeuuid',
-                            'host_name': None,
-                            'id': '1',
-                            'volume_id': '1'
-                        }
-                    ],
+                    'multiattach': False,
+                    'attachments': [],
                     'user_id': 'fakeuser',
                     'volume_type': 'vol_type_name',
                     'snapshot_id': None,
@@ -877,6 +838,10 @@ class VolumeApiTest(test.TestCase):
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
+        values = {'volume_id': '1', }
+        attachment = db.volume_attach(context.get_admin_context(), values)
+        db.volume_attached(context.get_admin_context(),
+                           attachment['id'], stubs.FAKE_UUID, None, '/')
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail')
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
@@ -885,7 +850,7 @@ class VolumeApiTest(test.TestCase):
         expected = {
             'volumes': [
                 {
-                    'status': 'fakestatus',
+                    'status': 'in-use',
                     'description': 'displaydesc',
                     'encrypted': False,
                     'availability_zone': 'fakeaz',
@@ -893,10 +858,12 @@ class VolumeApiTest(test.TestCase):
                     'consistencygroup_id': None,
                     'name': 'displayname',
                     'replication_status': 'disabled',
+                    'multiattach': False,
                     'attachments': [
                         {
+                            'attachment_id': attachment['id'],
                             'device': '/',
-                            'server_id': 'fakeuuid',
+                            'server_id': stubs.FAKE_UUID,
                             'host_name': None,
                             'id': '1',
                             'volume_id': '1'
@@ -928,7 +895,8 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_index_with_marker(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_key, sort_dir, filters=None,
+                                           sort_keys=None, sort_dirs=None,
+                                           filters=None,
                                            viewable_admin_meta=False):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
@@ -950,19 +918,27 @@ class VolumeApiTest(test.TestCase):
                        stubs.stub_volume_get_all_by_project)
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes?limit=1')
+        req = fakes.HTTPRequest.blank('/v2/volumes'
+                                      '?limit=1&name=foo'
+                                      '&sort=id1:asc')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(len(volumes), 1)
 
-        # Ensure that the next link is correctly formatted
+        # Ensure that the next link is correctly formatted, it should
+        # contain the same limit, filter, and sort information as the
+        # original request as well as a marker; this ensures that the
+        # caller can simply use the "next" link and that they do not
+        # need to manually insert the limit and sort information.
         links = res_dict['volumes_links']
         self.assertEqual(links[0]['rel'], 'next')
         href_parts = urlparse.urlparse(links[0]['href'])
         self.assertEqual('/v2/fakeproject/volumes', href_parts.path)
         params = urlparse.parse_qs(href_parts.query)
-        self.assertTrue('marker' in params)
+        self.assertEqual(str(volumes[0]['id']), params['marker'][0])
         self.assertEqual('1', params['limit'][0])
+        self.assertEqual('foo', params['name'][0])
+        self.assertEqual('id1:asc', params['sort'][0])
 
     def test_volume_index_limit_negative(self):
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1')
@@ -989,7 +965,8 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_index_limit_offset(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_key, sort_dir, filters=None,
+                                           sort_keys=None, sort_dirs=None,
+                                           filters=None,
                                            viewable_admin_meta=False):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
@@ -1017,7 +994,8 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_detail_with_marker(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_key, sort_dir, filters=None,
+                                           sort_keys=None, sort_dirs=None,
+                                           filters=None,
                                            viewable_admin_meta=False):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
@@ -1078,7 +1056,8 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_detail_limit_offset(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_key, sort_dir, filters=None,
+                                           sort_keys=None, sort_dirs=None,
+                                           filters=None,
                                            viewable_admin_meta=False):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
@@ -1112,8 +1091,7 @@ class VolumeApiTest(test.TestCase):
                           req)
 
     def test_volume_with_limit_zero(self):
-        def stub_volume_get_all(context, marker, limit,
-                                sort_key, sort_dir, **kwargs):
+        def stub_volume_get_all(context, marker, limit, **kwargs):
             return []
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all)
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=0')
@@ -1134,9 +1112,9 @@ class VolumeApiTest(test.TestCase):
         api_keys = ['volumes', 'volumes/detail']
         fns = [self.controller.index, self.controller.detail]
 
-        # Number of volumes equals the max, include next link
+        # Number of volumes equals the max, next link not included
         def stub_volume_get_all(context, marker, limit,
-                                sort_key, sort_dir,
+                                sort_keys=None, sort_dirs=None,
                                 filters=None,
                                 viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
@@ -1150,12 +1128,11 @@ class VolumeApiTest(test.TestCase):
                                           use_admin_context=True)
             res_dict = fn(req)
             self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
-            volumes_links = res_dict['volumes_links']
-            _verify_links(volumes_links, key)
+            self.assertFalse('volumes_links' in res_dict)
 
         # Number of volumes less than max, do not include
         def stub_volume_get_all2(context, marker, limit,
-                                 sort_key, sort_dir,
+                                 sort_keys=None, sort_dirs=None,
                                  filters=None,
                                  viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
@@ -1173,7 +1150,7 @@ class VolumeApiTest(test.TestCase):
 
         # Number of volumes more than the max, include next link
         def stub_volume_get_all3(context, marker, limit,
-                                 sort_key, sort_dir,
+                                 sort_keys=None, sort_dirs=None,
                                  filters=None,
                                  viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
@@ -1191,7 +1168,7 @@ class VolumeApiTest(test.TestCase):
             _verify_links(volumes_links, key)
         # Pass a limit that is greater than the max and the total number of
         # volumes, ensure only the maximum is returned and that the next
-        # link is present
+        # link is present.
         for key, fn in zip(api_keys, fns):
             req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1&limit=%d'
                                           % (key, CONF.osapi_max_limit * 2),
@@ -1214,14 +1191,16 @@ class VolumeApiTest(test.TestCase):
         """
         # Non-admin, project function should be called with no_migration_status
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_key, sort_dir, filters=None,
+                                           sort_keys=None, sort_dirs=None,
+                                           filters=None,
                                            viewable_admin_meta=False):
             self.assertEqual(filters['no_migration_targets'], True)
             self.assertFalse('all_tenants' in filters)
             return [stubs.stub_volume(1, display_name='vol1')]
 
         def stub_volume_get_all(context, marker, limit,
-                                sort_key, sort_dir, filters=None,
+                                sort_keys=None, sort_dirs=None,
+                                filters=None,
                                 viewable_admin_meta=False):
             return []
         self.stubs.Set(db, 'volume_get_all_by_project',
@@ -1238,13 +1217,15 @@ class VolumeApiTest(test.TestCase):
         # Admin, all_tenants is not set, project function should be called
         # without no_migration_status
         def stub_volume_get_all_by_project2(context, project_id, marker, limit,
-                                            sort_key, sort_dir, filters=None,
+                                            sort_keys=None, sort_dirs=None,
+                                            filters=None,
                                             viewable_admin_meta=False):
             self.assertFalse('no_migration_targets' in filters)
             return [stubs.stub_volume(1, display_name='vol2')]
 
         def stub_volume_get_all2(context, marker, limit,
-                                 sort_key, sort_dir, filters=None,
+                                 sort_keys=None, sort_dirs=None,
+                                 filters=None,
                                  viewable_admin_meta=False):
             return []
         self.stubs.Set(db, 'volume_get_all_by_project',
@@ -1259,12 +1240,14 @@ class VolumeApiTest(test.TestCase):
         # Admin, all_tenants is set, get_all function should be called
         # without no_migration_status
         def stub_volume_get_all_by_project3(context, project_id, marker, limit,
-                                            sort_key, sort_dir, filters=None,
+                                            sort_keys=None, sort_dirs=None,
+                                            filters=None,
                                             viewable_admin_meta=False):
             return []
 
         def stub_volume_get_all3(context, marker, limit,
-                                 sort_key, sort_dir, filters=None,
+                                 sort_keys=None, sort_dirs=None,
+                                 filters=None,
                                  viewable_admin_meta=False):
             self.assertFalse('no_migration_targets' in filters)
             self.assertFalse('all_tenants' in filters)
@@ -1294,15 +1277,8 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'displayname',
                 'replication_status': 'disabled',
-                'attachments': [
-                    {
-                        'device': '/',
-                        'server_id': 'fakeuuid',
-                        'host_name': None,
-                        'id': '1',
-                        'volume_id': '1'
-                    }
-                ],
+                'multiattach': False,
+                'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
                 'snapshot_id': None,
@@ -1345,6 +1321,7 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'displayname',
                 'replication_status': 'disabled',
+                'multiattach': False,
                 'attachments': [],
                 'user_id': 'fakeuser',
                 'volume_type': 'vol_type_name',
@@ -1389,6 +1366,10 @@ class VolumeApiTest(test.TestCase):
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
+        values = {'volume_id': '1', }
+        attachment = db.volume_attach(context.get_admin_context(), values)
+        db.volume_attached(context.get_admin_context(),
+                           attachment['id'], stubs.FAKE_UUID, None, '/')
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
@@ -1396,7 +1377,7 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.show(req, '1')
         expected = {
             'volume': {
-                'status': 'fakestatus',
+                'status': 'in-use',
                 'description': 'displaydesc',
                 'encrypted': False,
                 'availability_zone': 'fakeaz',
@@ -1404,10 +1385,12 @@ class VolumeApiTest(test.TestCase):
                 'consistencygroup_id': None,
                 'name': 'displayname',
                 'replication_status': 'disabled',
+                'multiattach': False,
                 'attachments': [
                     {
+                        'attachment_id': attachment['id'],
                         'device': '/',
-                        'server_id': 'fakeuuid',
+                        'server_id': stubs.FAKE_UUID,
                         'host_name': None,
                         'id': '1',
                         'volume_id': '1'
@@ -1551,8 +1534,10 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, None, 'created_at', 'desc',
-            {'display_name': 'Volume-573108026'}, viewable_admin_meta=True)
+            context, None, None,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'display_name': 'Volume-573108026'},
+            viewable_admin_meta=True)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_list(self, get_all):
@@ -1563,8 +1548,9 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, None, 'created_at', 'desc',
-            {'id': ['1', '2', '3']}, viewable_admin_meta=True)
+            context, None, None,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'id': ['1', '2', '3']}, viewable_admin_meta=True)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_expression(self, get_all):
@@ -1575,8 +1561,9 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, None, 'created_at', 'desc',
-            {'display_name': 'd-'}, viewable_admin_meta=True)
+            context, None, None,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'display_name': 'd-'}, viewable_admin_meta=True)
 
 
 class VolumeSerializerTest(test.TestCase):
@@ -1615,7 +1602,7 @@ class VolumeSerializerTest(test.TestCase):
             size=1024,
             availability_zone='vol_availability',
             bootable=False,
-            created_at=datetime.datetime.now(),
+            created_at=timeutils.utcnow(),
             attachments=[
                 dict(
                     id='vol_id',
@@ -1649,7 +1636,7 @@ class VolumeSerializerTest(test.TestCase):
                 size=1024,
                 availability_zone='vol1_availability',
                 bootable=True,
-                created_at=datetime.datetime.now(),
+                created_at=timeutils.utcnow(),
                 attachments=[
                     dict(
                         id='vol1_id',
@@ -1671,7 +1658,7 @@ class VolumeSerializerTest(test.TestCase):
                 size=1024,
                 availability_zone='vol2_availability',
                 bootable=False,
-                created_at=datetime.datetime.now(),
+                created_at=timeutils.utcnow(),
                 attachments=[dict(id='vol2_id',
                                   volume_id='vol2_id',
                                   server_id='instance_uuid',

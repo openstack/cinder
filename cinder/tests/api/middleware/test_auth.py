@@ -12,10 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_middleware import request_id
 import webob
 
 import cinder.api.middleware.auth
-from cinder.openstack.common.middleware import request_id
 from cinder import test
 
 

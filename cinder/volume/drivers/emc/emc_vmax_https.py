@@ -24,10 +24,10 @@ import urllib
 
 from eventlet import patcher
 import OpenSSL
+from oslo_log import log as logging
 import six
 
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 
 # Handle case where we are running in a monkey patched environment
 if patcher.is_monkey_patched('socket'):
@@ -80,7 +80,7 @@ class OpenSSLConnectionDelegator(object):
     a delegator must be used.
     """
     def __init__(self, *args, **kwargs):
-        self.connection = SSL.Connection(*args, **kwargs)
+        self.connection = SSL.GreenConnection(*args, **kwargs)
 
     def __getattr__(self, name):
         return getattr(self.connection, name)
@@ -108,7 +108,8 @@ class HTTPSConnection(httplib.HTTPSConnection):
             self.key_file = None if key_file is None else key_file
             self.cert_file = None if cert_file is None else cert_file
             self.insecure = no_verification
-            self.ca_certs = None if ca_certs is None else str(ca_certs)
+            self.ca_certs = (
+                None if ca_certs is None else six.text_type(ca_certs))
             self.set_context()
             # ssl exceptions are reported in various form in Python 3
             # so to be compatible, we report the same kind as under

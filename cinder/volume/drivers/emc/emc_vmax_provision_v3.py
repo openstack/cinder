@@ -15,9 +15,10 @@
 
 import time
 
+from oslo_log import log as logging
+
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.emc import emc_vmax_utils
 
 LOG = logging.getLogger(__name__)
@@ -349,7 +350,9 @@ class EMCVMAXProvisionV3(object):
 
         for storagePoolSetting in storagePoolSettings:
             settingInstanceID = storagePoolSetting['InstanceID']
-            matchString = slo + ':' + workload
+            matchString = ("%(slo)s:%(workload)s"
+                           % {'slo': slo,
+                              'workload': workload})
             if matchString in settingInstanceID:
                 foundStoragePoolSetting = storagePoolSetting
                 break

@@ -24,6 +24,7 @@ import datetime
 import functools
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
@@ -36,7 +37,8 @@ from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import glance
 from cinder import keymgr
-from cinder.openstack.common import log as logging
+from cinder import objects
+from cinder.objects import base as objects_base
 import cinder.policy
 from cinder import quota
 from cinder import quota_utils
@@ -69,7 +71,6 @@ CONF.register_opt(volume_same_az_opt)
 CONF.register_opt(az_cache_time_opt)
 
 CONF.import_opt('glance_core_properties', 'cinder.image.glance')
-CONF.import_opt('storage_availability_zone', 'cinder.volume.manager')
 
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
@@ -94,7 +95,13 @@ def check_policy(context, action, target_obj=None):
         'project_id': context.project_id,
         'user_id': context.user_id,
     }
-    target.update(target_obj or {})
+
+    if isinstance(target_obj, objects_base.CinderObject):
+        # Turn object into dict so target.update can work
+        target.update(objects_base.obj_to_primitive(target_obj) or {})
+    else:
+        target.update(target_obj or {})
+
     _action = 'volume:%s' % action
     cinder.policy.enforce(context, _action, target)
 
@@ -115,7 +122,7 @@ class API(base.Base):
     def list_availability_zones(self, enable_cache=False):
         """Describe the known availability zones
 
-        :retval list of dicts, each with a 'name' and 'available' key
+        :retval tuple of dicts, each with a 'name' and 'available' key
         """
         refresh_cache = False
         if enable_cache:
@@ -154,7 +161,8 @@ class API(base.Base):
                image_id=None, volume_type=None, metadata=None,
                availability_zone=None, source_volume=None,
                scheduler_hints=None,
-               source_replica=None, consistencygroup=None):
+               source_replica=None, consistencygroup=None,
+               cgsnapshot=None, multiattach=False):
 
         # NOTE(jdg): we can have a create without size if we're
         # doing a create from snap or volume.  Currently
@@ -172,7 +180,7 @@ class API(base.Base):
                     'than zero).') % size
             raise exception.InvalidInput(reason=msg)
 
-        if consistencygroup:
+        if consistencygroup and not cgsnapshot:
             if not volume_type:
                 msg = _("volume_type must be provided when creating "
                         "a volume in a consistency group.")
@@ -227,15 +235,23 @@ class API(base.Base):
             'key_manager': self.key_manager,
             'source_replica': source_replica,
             'optional_args': {'is_quota_committed': False},
-            'consistencygroup': consistencygroup
+            'consistencygroup': consistencygroup,
+            'cgsnapshot': cgsnapshot,
+            'multiattach': multiattach,
         }
         try:
-            flow_engine = create_volume.get_flow(self.scheduler_rpcapi,
-                                                 self.volume_rpcapi,
-                                                 self.db,
-                                                 self.image_service,
-                                                 availability_zones,
-                                                 create_what)
+            if cgsnapshot:
+                flow_engine = create_volume.get_flow_no_rpc(self.db,
+                                                            self.image_service,
+                                                            availability_zones,
+                                                            create_what)
+            else:
+                flow_engine = create_volume.get_flow(self.scheduler_rpcapi,
+                                                     self.volume_rpcapi,
+                                                     self.db,
+                                                     self.image_service,
+                                                     availability_zones,
+                                                     create_what)
         except Exception:
             msg = _('Failed to create api volume flow.')
             LOG.exception(msg)
@@ -333,7 +349,7 @@ class API(base.Base):
                                                    'terminated_at': now})
 
         self.volume_rpcapi.delete_volume(context, volume, unmanage_only)
-        LOG.info(_LI('Succesfully issued request to '
+        LOG.info(_LI('Successfully issued request to '
                      'delete volume: %s.'), volume['id'])
 
     @wrap_check_policy
@@ -375,8 +391,8 @@ class API(base.Base):
 
         return b
 
-    def get_all(self, context, marker=None, limit=None, sort_key='created_at',
-                sort_dir='desc', filters=None, viewable_admin_meta=False):
+    def get_all(self, context, marker=None, limit=None, sort_keys=None,
+                sort_dirs=None, filters=None, viewable_admin_meta=False):
         check_policy(context, 'get_all')
 
         if filters is None:
@@ -407,23 +423,24 @@ class API(base.Base):
         if context.is_admin and allTenants:
             # Need to remove all_tenants to pass the filtering below.
             del filters['all_tenants']
-            volumes = self.db.volume_get_all(context, marker, limit, sort_key,
-                                             sort_dir, filters=filters)
+            volumes = self.db.volume_get_all(context, marker, limit,
+                                             sort_keys=sort_keys,
+                                             sort_dirs=sort_dirs,
+                                             filters=filters)
         else:
             if viewable_admin_meta:
                 context = context.elevated()
             volumes = self.db.volume_get_all_by_project(context,
                                                         context.project_id,
                                                         marker, limit,
-                                                        sort_key, sort_dir,
+                                                        sort_keys=sort_keys,
+                                                        sort_dirs=sort_dirs,
                                                         filters=filters)
 
         return volumes
 
     def get_snapshot(self, context, snapshot_id):
-        check_policy(context, 'get_snapshot')
-        rv = self.db.snapshot_get(context, snapshot_id)
-        return dict(rv.iteritems())
+        return objects.Snapshot.get_by_id(context, snapshot_id)
 
     def get_volume(self, context, volume_id):
         check_policy(context, 'get_volume')
@@ -464,6 +481,13 @@ class API(base.Base):
         volume = self.db.volume_get(context, volume['id'])
         if volume['status'] == 'available':
             self.update(context, volume, {"status": "attaching"})
+        elif volume['status'] == 'in-use':
+            if volume['multiattach']:
+                self.update(context, volume, {"status": "attaching"})
+            else:
+                msg = _("Volume must be multiattachable to reserve again.")
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
         else:
             msg = _("Volume status must be available to reserve.")
             LOG.error(msg)
@@ -471,8 +495,14 @@ class API(base.Base):
 
     @wrap_check_policy
     def unreserve_volume(self, context, volume):
-        if volume['status'] == "attaching":
-            self.update(context, volume, {"status": "available"})
+        volume = self.db.volume_get(context, volume['id'])
+        if volume['status'] == 'attaching':
+            attaches = self.db.volume_attachment_get_used_by_volume_id(
+                context, volume['id'])
+            if attaches:
+                self.update(context, volume, {"status": "in-use"})
+            else:
+                self.update(context, volume, {"status": "available"})
 
     @wrap_check_policy
     def begin_detaching(self, context, volume):
@@ -522,8 +552,9 @@ class API(base.Base):
                                                 mode)
 
     @wrap_check_policy
-    def detach(self, context, volume):
-        return self.volume_rpcapi.detach_volume(context, volume)
+    def detach(self, context, volume, attachment_id):
+        return self.volume_rpcapi.detach_volume(context, volume,
+                                                attachment_id)
 
     @wrap_check_policy
     def initialize_connection(self, context, volume, connector):
@@ -624,28 +655,32 @@ class API(base.Base):
                         allowed=quotas[over])
 
         self._check_metadata_properties(metadata)
-        options = {'volume_id': volume['id'],
-                   'cgsnapshot_id': cgsnapshot_id,
-                   'user_id': context.user_id,
-                   'project_id': context.project_id,
-                   'status': "creating",
-                   'progress': '0%',
-                   'volume_size': volume['size'],
-                   'display_name': name,
-                   'display_description': description,
-                   'volume_type_id': volume['volume_type_id'],
-                   'encryption_key_id': volume['encryption_key_id'],
-                   'metadata': metadata}
 
         snapshot = None
         try:
-            snapshot = self.db.snapshot_create(context, options)
+            kwargs = {
+                'volume_id': volume['id'],
+                'cgsnapshot_id': cgsnapshot_id,
+                'user_id': context.user_id,
+                'project_id': context.project_id,
+                'status': 'creating',
+                'progress': '0%',
+                'volume_size': volume['size'],
+                'display_name': name,
+                'display_description': description,
+                'volume_type_id': volume['volume_type_id'],
+                'encryption_key_id': volume['encryption_key_id'],
+                'metadata': metadata or {}
+            }
+            snapshot = objects.Snapshot(context=context, **kwargs)
+            snapshot.create()
+
             QUOTAS.commit(context, reservations)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    if snapshot:
-                        self.db.snapshot_destroy(context, snapshot['id'])
+                    if hasattr(snapshot, 'id'):
+                        snapshot.destroy()
                 finally:
                     QUOTAS.rollback(context, reservations)
 
@@ -800,16 +835,21 @@ class API(base.Base):
                     'consistency group.') % snapshot['id']
             LOG.error(msg)
             raise exception.InvalidSnapshot(reason=msg)
-        self.db.snapshot_update(context, snapshot['id'],
-                                {'status': 'deleting'})
-        volume = self.db.volume_get(context, snapshot['volume_id'])
-        self.volume_rpcapi.delete_snapshot(context, snapshot, volume['host'])
-        LOG.info(_LI('Succesfully issued request to '
-                     'delete snapshot: %s.'), snapshot['id'])
+
+        snapshot_obj = self.get_snapshot(context, snapshot['id'])
+        snapshot_obj.status = 'deleting'
+        snapshot_obj.save(context)
+
+        volume = self.db.volume_get(context, snapshot_obj.volume_id)
+        self.volume_rpcapi.delete_snapshot(context, snapshot_obj,
+                                           volume['host'])
+        LOG.info(_LI('Successfully issued request to '
+                     'delete snapshot: %s'), snapshot_obj.id)
 
     @wrap_check_policy
     def update_snapshot(self, context, snapshot, fields):
-        self.db.snapshot_update(context, snapshot['id'], fields)
+        snapshot.update(fields)
+        snapshot.save(context)
 
     @wrap_check_policy
     def get_volume_metadata(self, context, volume):
@@ -911,12 +951,13 @@ class API(base.Base):
 
     def get_snapshot_metadata(self, context, snapshot):
         """Get all metadata associated with a snapshot."""
-        rv = self.db.snapshot_metadata_get(context, snapshot['id'])
-        return dict(rv.iteritems())
+        snapshot_obj = self.get_snapshot(context, snapshot['id'])
+        return snapshot_obj.metadata
 
     def delete_snapshot_metadata(self, context, snapshot, key):
         """Delete the given metadata item from a snapshot."""
-        self.db.snapshot_metadata_delete(context, snapshot['id'], key)
+        snapshot_obj = self.get_snapshot(context, snapshot['id'])
+        snapshot_obj.delete_metadata_key(context, key)
 
     def update_snapshot_metadata(self, context,
                                  snapshot, metadata,
@@ -930,20 +971,18 @@ class API(base.Base):
         if delete:
             _metadata = metadata
         else:
-            orig_meta = self.get_snapshot_metadata(context, snapshot)
+            orig_meta = snapshot.metadata
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
         self._check_metadata_properties(_metadata)
 
-        db_meta = self.db.snapshot_metadata_update(context,
-                                                   snapshot['id'],
-                                                   _metadata,
-                                                   True)
+        snapshot.metadata = _metadata
+        snapshot.save(context)
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
-        return db_meta
+        return snapshot.metadata
 
     def get_snapshot_metadata_value(self, snapshot, key):
         pass

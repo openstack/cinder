@@ -159,3 +159,43 @@ class HackingTestCase(test.TestCase):
             "from oslo.serialization import foo"))))
         self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
             "from oslo_serialization import bar"))))
+        self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
+            "from oslo.log import foo"))))
+        self.assertEqual(0, len(list(checks.check_oslo_namespace_imports(
+            "from oslo_log import bar"))))
+
+    def test_no_contextlib_nested(self):
+        self.assertEqual(1, len(list(checks.check_no_contextlib_nested(
+            "with contextlib.nested("))))
+        self.assertEqual(0, len(list(checks.check_no_contextlib_nested(
+            "with foo as bar"))))
+
+    def test_check_datetime_now(self):
+        self.assertEqual(1, len(list(checks.check_datetime_now(
+            "datetime.now", False))))
+        self.assertEqual(0, len(list(checks.check_datetime_now(
+            "timeutils.utcnow", False))))
+
+    def test_check_datetime_now_noqa(self):
+        self.assertEqual(0, len(list(checks.check_datetime_now(
+                                     "datetime.now()  # noqa", True))))
+
+    def test_validate_log_translations(self):
+        self.assertEqual(1, len(list(checks.validate_log_translations(
+            "LOG.info('foo')", "foo.py"))))
+        self.assertEqual(1, len(list(checks.validate_log_translations(
+            "LOG.warning('foo')", "foo.py"))))
+        self.assertEqual(1, len(list(checks.validate_log_translations(
+            "LOG.error('foo')", "foo.py"))))
+        self.assertEqual(1, len(list(checks.validate_log_translations(
+            "LOG.exception('foo')", "foo.py"))))
+        self.assertEqual(0, len(list(checks.validate_log_translations(
+            "LOG.info('foo')", "cinder/tests/foo.py"))))
+        self.assertEqual(0, len(list(checks.validate_log_translations(
+            "LOG.info(_LI('foo')", "foo.py"))))
+        self.assertEqual(0, len(list(checks.validate_log_translations(
+            "LOG.warning(_LW('foo')", "foo.py"))))
+        self.assertEqual(0, len(list(checks.validate_log_translations(
+            "LOG.error(_LE('foo')", "foo.py"))))
+        self.assertEqual(0, len(list(checks.validate_log_translations(
+            "LOG.exception(_LE('foo')", "foo.py"))))

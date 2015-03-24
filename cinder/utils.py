@@ -38,6 +38,7 @@ from xml.sax import saxutils
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
 import retrying
@@ -46,7 +47,6 @@ import six
 from cinder.brick.initiator import connector
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 
 
 CONF = cfg.CONF
@@ -523,7 +523,8 @@ def tempdir(**kwargs):
         try:
             shutil.rmtree(tmpdir)
         except OSError as e:
-            LOG.debug('Could not remove tmpdir: %s', e)
+            LOG.debug('Could not remove tmpdir: %s',
+                      six.text_type(e))
 
 
 def walk_class_hierarchy(clazz, encountered=None):
@@ -593,7 +594,7 @@ def require_driver_initialized(driver):
     # we can't do anything if the driver didn't init
     if not driver.initialized:
         driver_name = driver.__class__.__name__
-        LOG.error(_LE("Volume driver %s not initialized") % driver_name)
+        LOG.error(_LE("Volume driver %s not initialized"), driver_name)
         raise exception.DriverNotInitialized()
 
 
@@ -605,6 +606,11 @@ def get_file_mode(path):
 def get_file_gid(path):
     """This primarily exists to make unit testing easier."""
     return os.stat(path).st_gid
+
+
+def get_file_size(path):
+    """Returns the file size."""
+    return os.stat(path).st_size
 
 
 def _get_disk_of_partition(devpath, st=None):
@@ -731,8 +737,7 @@ def remove_invalid_filter_options(context, filters,
     unknown_options = [opt for opt in filters
                        if opt not in allowed_search_options]
     bad_options = ", ".join(unknown_options)
-    log_msg = "Removing options '%s' from query." % bad_options
-    LOG.debug(log_msg)
+    LOG.debug("Removing options '%s' from query.", bad_options)
     for opt in unknown_options:
         del filters[opt]
 
@@ -743,10 +748,8 @@ def is_blk_device(dev):
             return True
         return False
     except Exception:
-        LOG.debug('Path %s not found in is_blk_device check' % dev)
+        LOG.debug('Path %s not found in is_blk_device check', dev)
         return False
-<<<<<<< HEAD
-=======
 
 
 def retry(exceptions, interval=1, retries=3, backoff_rate=2):
@@ -783,4 +786,29 @@ def retry(exceptions, interval=1, retries=3, backoff_rate=2):
         return _wrapper
 
     return _decorator
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
+
+
+def convert_version_to_int(version):
+    try:
+        if isinstance(version, six.string_types):
+            version = convert_version_to_tuple(version)
+        if isinstance(version, tuple):
+            return reduce(lambda x, y: (x * 1000) + y, version)
+    except Exception:
+        msg = _("Version %s is invalid.") % version
+        raise exception.CinderException(msg)
+
+
+def convert_version_to_str(version_int):
+    version_numbers = []
+    factor = 1000
+    while version_int != 0:
+        version_number = version_int - (version_int // factor * factor)
+        version_numbers.insert(0, six.text_type(version_number))
+        version_int = version_int / factor
+
+    return reduce(lambda x, y: "%s.%s" % (x, y), version_numbers)
+
+
+def convert_version_to_tuple(version_str):
+    return tuple(int(part) for part in version_str.split('.'))

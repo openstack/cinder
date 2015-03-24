@@ -31,16 +31,18 @@ It also requires the setting of hplefthand_api_url, hplefthand_username,
 hplefthand_password for credentials to talk to the REST service on the
 LeftHand array.
 """
+
+from oslo_log import log as logging
+
 from cinder import exception
 from cinder.i18n import _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.san.hp import hp_lefthand_cliq_proxy as cliq_proxy
 from cinder.volume.drivers.san.hp import hp_lefthand_rest_proxy as rest_proxy
 
 LOG = logging.getLogger(__name__)
 
-MIN_CLIENT_VERSION = '1.0.3'
+MIN_CLIENT_VERSION = '1.0.4'
 
 
 class HPLeftHandISCSIDriver(driver.VolumeDriver):
@@ -52,9 +54,11 @@ class HPLeftHandISCSIDriver(driver.VolumeDriver):
         1.0.2 - Added support for volume migrate
         1.0.3 - Fix for no handler for logger during tests
         1.0.4 - Removing locks bug #1395953
+        1.0.5 - Adding support for manage/unmanage.
+        1.0.6 - Fixed #1432757 Updated minimum client version.
     """
 
-    VERSION = "1.0.4"
+    VERSION = "1.0.6"
 
     def __init__(self, *args, **kwargs):
         super(HPLeftHandISCSIDriver, self).__init__(*args, **kwargs)
@@ -152,3 +156,12 @@ class HPLeftHandISCSIDriver(driver.VolumeDriver):
     def migrate_volume(self, ctxt, volume, host):
         """Migrate directly if source and dest are managed by same storage."""
         return self.proxy.migrate_volume(ctxt, volume, host)
+
+    def manage_existing(self, volume, existing_ref):
+        return self.proxy.manage_existing(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        return self.proxy.manage_existing_get_size(volume, existing_ref)
+
+    def unmanage(self, volume):
+        return self.proxy.unmanage(volume)

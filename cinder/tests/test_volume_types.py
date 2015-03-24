@@ -20,6 +20,7 @@ import datetime
 import time
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import context
 from cinder import db
@@ -27,7 +28,6 @@ from cinder.db.sqlalchemy import api as db_api
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests import conf_fixture
 from cinder.volume import qos_specs
@@ -78,10 +78,13 @@ class VolumeTypeTestCase(test.TestCase):
                          'drive type was not created')
 
         # update
+        new_type_name = self.vol_type1_name + '_updated'
         new_type_desc = self.vol_type1_description + '_updated'
         type_ref_updated = volume_types.update(self.ctxt,
                                                type_ref.id,
+                                               new_type_name,
                                                new_type_desc)
+        self.assertEqual(new_type_name, type_ref_updated['name'])
         self.assertEqual(new_type_desc, type_ref_updated['description'])
 
         # destroy
@@ -293,11 +296,11 @@ class VolumeTypeTestCase(test.TestCase):
         # Check equality with only extra_specs
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
-        self.assertEqual(same, True)
+        self.assertTrue(same)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref3['id'])
-        self.assertEqual(same, False)
+        self.assertFalse(same)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val0'))
 
         # qos_ref 1 and 2 have the same specs, while 3 has different
@@ -314,7 +317,7 @@ class VolumeTypeTestCase(test.TestCase):
                                           type_ref2['id'])
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
-        self.assertEqual(same, True)
+        self.assertTrue(same)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
         self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v1'))
         qos_specs.disassociate_qos_specs(self.ctxt, qos_ref2['id'],
@@ -323,7 +326,7 @@ class VolumeTypeTestCase(test.TestCase):
                                           type_ref2['id'])
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
-        self.assertEqual(same, False)
+        self.assertFalse(same)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
         self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v0'))
         qos_specs.disassociate_qos_specs(self.ctxt, qos_ref3['id'],
@@ -344,7 +347,7 @@ class VolumeTypeTestCase(test.TestCase):
                                          enc_keyvals2)
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
-        self.assertEqual(same, False)
+        self.assertFalse(same)
         self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
         self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v1'))
         self.assertEqual(diff['encryption']['key_size'], (256, 128))
@@ -352,7 +355,7 @@ class VolumeTypeTestCase(test.TestCase):
         # Check diff equals type specs when one type is None
         diff, same = volume_types.volume_types_diff(self.ctxt, None,
                                                     type_ref1['id'])
-        self.assertEqual(same, False)
+        self.assertFalse(same)
         self.assertEqual(diff['extra_specs'],
                          {'key1': (None, 'val1'), 'key2': (None, 'val2')})
         self.assertEqual(diff['qos_specs'],

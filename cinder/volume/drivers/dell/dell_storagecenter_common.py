@@ -1,4 +1,4 @@
-#    Copyright 2014 Dell Inc.
+#    Copyright 2015 Dell Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -13,11 +13,11 @@
 #    under the License.
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.san import san
 

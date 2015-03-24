@@ -23,6 +23,7 @@ import shutil
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import units
 import six
 
@@ -31,7 +32,6 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
 
@@ -50,8 +50,8 @@ gpfs_opts = [
                help='Specifies the path of the Image service repository in '
                     'GPFS.  Leave undefined if not storing images in GPFS.'),
     cfg.StrOpt('gpfs_images_share_mode',
-               default='copy_on_write',
-               choices=['copy', 'copy_on_write'],
+               default=None,
+               choices=['copy', 'copy_on_write', None],
                help='Specifies the type of image copy to be used.  Set this '
                     'when the Image service repository also uses GPFS so '
                     'that image files can be transferred efficiently from '

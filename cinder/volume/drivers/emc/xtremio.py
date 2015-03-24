@@ -33,12 +33,12 @@ import urllib
 import urllib2
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils

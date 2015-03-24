@@ -14,9 +14,9 @@
 #    under the License.
 
 from lxml import etree
+from oslo_log import log as logging
 
 from cinder.api import common
-from cinder.openstack.common import log as logging
 from cinder.tests.integrated import integrated_helpers
 
 

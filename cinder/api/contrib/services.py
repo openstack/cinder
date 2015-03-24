@@ -15,6 +15,7 @@
 
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 import webob.exc
 
@@ -24,7 +25,7 @@ from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
+from cinder.openstack.common import versionutils
 from cinder import utils
 
 
@@ -89,8 +90,9 @@ class ServiceController(wsgi.Controller):
         service = ''
         if 'service' in req.GET:
             service = req.GET['service']
-            LOG.deprecated(_("Query by service parameter is deprecated. "
-                             "Please use binary parameter instead."))
+            versionutils.report_deprecated_feature(LOG, _(
+                "Query by service parameter is deprecated. "
+                "Please use binary parameter instead."))
         binary = ''
         if 'binary' in req.GET:
             binary = req.GET['binary']

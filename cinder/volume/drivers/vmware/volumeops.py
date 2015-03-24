@@ -19,12 +19,12 @@ Implements operations on volumes residing on VMware datastores.
 
 import urllib
 
+from oslo_log import log as logging
 from oslo_utils import units
 from oslo_vmware import exceptions
 from oslo_vmware import vim_util
 
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 
 
@@ -391,6 +391,15 @@ class VMwareVolumeOps(object):
                 connected_hosts.append(host_mount.key.value)
 
         return connected_hosts
+
+    def is_datastore_accessible(self, datastore, host):
+        """Check if the datastore is accessible to the given host.
+
+        :param datastore: datastore reference
+        :return: True if the datastore is accessible
+        """
+        hosts = self.get_connected_hosts(datastore)
+        return host.value in hosts
 
     def _in_maintenance(self, summary):
         """Check if a datastore is entering maintenance or in maintenance.
@@ -1339,62 +1348,28 @@ class VMwareVolumeOps(object):
                                         datacenter=dc_ref)
         LOG.debug("Initiated deleting vmdk file via task: %s.", task)
         self._session.wait_for_task(task)
-<<<<<<< HEAD
-        LOG.info(_("Deleted vmdk file: %s.") % vmdk_file_path)
+        LOG.info(_LI("Deleted vmdk file: %s."), vmdk_file_path)
 
-    def get_all_profiles(self):
-        """Get all profiles defined in current VC.
+    def get_profile(self, backing):
+        """Query storage profile associated with the given backing.
 
-        :return: PbmProfile data objects from VC
+        :param backing: backing reference
+        :return: profile name
         """
-        LOG.debug("Get all profiles defined in current VC.")
         pbm = self._session.pbm
         profile_manager = pbm.service_content.profileManager
-        res_type = pbm.client.factory.create('ns0:PbmProfileResourceType')
-        res_type.resourceType = 'STORAGE'
-        profiles = []
-        profileIds = self._session.invoke_api(pbm, 'PbmQueryProfile',
-                                              profile_manager,
-                                              resourceType=res_type)
-        LOG.debug("Got profile IDs: %s", profileIds)
 
-        if profileIds:
-            profiles = self._session.invoke_api(pbm, 'PbmRetrieveContent',
+        object_ref = pbm.client.factory.create('ns0:PbmServerObjectRef')
+        object_ref.key = backing.value
+        object_ref.objectType = 'virtualMachine'
+
+        profile_ids = self._session.invoke_api(pbm,
+                                               'PbmQueryAssociatedProfile',
+                                               profile_manager,
+                                               entity=object_ref)
+        if profile_ids:
+            profiles = self._session.invoke_api(pbm,
+                                                'PbmRetrieveContent',
                                                 profile_manager,
-                                                profileIds=profileIds)
-        return profiles
-
-    def retrieve_profile_id(self, profile_name):
-        """Get the profile uuid from current VC for given profile name.
-
-        :param profile_name: profile name as string
-        :return: profile id as string
-        """
-        LOG.debug("Trying to retrieve profile id for %s", profile_name)
-        for profile in self.get_all_profiles():
-            if profile.name == profile_name:
-                profileId = profile.profileId
-                LOG.debug("Got profile id %(id)s for profile %(name)s.",
-                          {'id': profileId, 'name': profile_name})
-                return profileId
-
-    def filter_matching_hubs(self, hubs, profile_id):
-        """Filter and return only hubs that match given profile.
-
-        :param hubs: PbmPlacementHub morefs candidates
-        :param profile_id: profile id string
-        :return: subset of hubs that match given profile_id
-        """
-        LOG.debug("Filtering hubs %(hubs)s that match profile "
-                  "%(profile)s.", {'hubs': hubs, 'profile': profile_id})
-        pbm = self._session.pbm
-        placement_solver = pbm.service_content.placementSolver
-        filtered_hubs = self._session.invoke_api(pbm, 'PbmQueryMatchingHub',
-                                                 placement_solver,
-                                                 hubsToSearch=hubs,
-                                                 profile=profile_id)
-        LOG.debug("Filtered hubs: %s", filtered_hubs)
-        return filtered_hubs
-=======
-        LOG.info(_LI("Deleted vmdk file: %s."), vmdk_file_path)
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
+                                                profileIds=profile_ids)
+            return profiles[0].name

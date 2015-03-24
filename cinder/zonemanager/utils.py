@@ -19,8 +19,9 @@ Utility functions related to the Zone Manager.
 """
 import logging
 
+from oslo_log import log
+
 from cinder.i18n import _LI, _LW
-from cinder.openstack.common import log
 from cinder.volume import configuration
 from cinder.volume import manager
 from cinder.zonemanager import fc_san_lookup_service

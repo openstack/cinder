@@ -14,12 +14,13 @@
 #    under the License.
 #
 """Unit tests for OpenStack Cinder volume drivers."""
+
 import mock
+from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests import fake_hp_lefthand_client as hplefthandclient
 from cinder.volume.drivers.san.hp import hp_lefthand_iscsi
@@ -30,6 +31,11 @@ hpexceptions = hplefthandclient.hpexceptions
 
 LOG = logging.getLogger(__name__)
 
+GOODNESS_FUNCTION = \
+    "capabilities.capacity_utilization < 0.6? 100 : 25"
+FILTER_FUNCTION = \
+    "capabilities.total_volumes < 400 && capabilities.capacity_utilization"
+
 
 class HPLeftHandBaseDriver():
 
@@ -39,6 +45,7 @@ class HPLeftHandBaseDriver():
     volume_id = 1
     volume = {
         'name': volume_name,
+        'display_name': 'Foo Volume',
         'provider_location': ('10.0.1.6 iqn.2003-10.com.lefthandnetworks:'
                               'group01:25366:fakev 0'),
         'id': volume_id,
@@ -67,6 +74,15 @@ class HPLeftHandBaseDriver():
     volume_type_id = 4
     init_iqn = 'iqn.1993-08.org.debian:01:222'
 
+    volume_type = {'name': 'gold',
+                   'deleted': False,
+                   'updated_at': None,
+                   'extra_specs': {'hplh:provisioning': 'thin',
+                                   'hplh:ao': 'true',
+                                   'hplh:data_pl': 'r-0'},
+                   'deleted_at': None,
+                   'id': 'gold'}
+
     connector = {
         'ip': '10.0.0.2',
         'initiator': 'iqn.1993-08.org.debian:01:222',
@@ -75,7 +91,8 @@ class HPLeftHandBaseDriver():
     driver_startup_call_stack = [
         mock.call.login('foo1', 'bar2'),
         mock.call.getClusterByName('CloudCluster1'),
-        mock.call.getCluster(1)]
+        mock.call.getCluster(1),
+    ]
 
 
 class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
@@ -650,7 +667,11 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
     driver_startup_call_stack = [
         mock.call.login('foo1', 'bar2'),
         mock.call.getClusterByName('CloudCluster1'),
-        mock.call.getCluster(1)]
+        mock.call.getCluster(1),
+        mock.call.getVolumes(
+            cluster='CloudCluster1',
+            fields=['members[id]', 'members[clusterName]']),
+    ]
 
     def default_mock_conf(self):
 
@@ -661,6 +682,8 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_conf.hplefthand_iscsi_chap_enabled = False
         mock_conf.hplefthand_debug = False
         mock_conf.hplefthand_clustername = "CloudCluster1"
+        mock_conf.goodness_function = GOODNESS_FUNCTION
+        mock_conf.filter_function = FILTER_FUNCTION
         return mock_conf
 
     @mock.patch('hplefthandclient.client.HPLeftHandClient', spec=True)
@@ -677,6 +700,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         self.driver = hp_lefthand_iscsi.HPLeftHandISCSIDriver(
             configuration=config)
         self.driver.do_setup(None)
+        self.cluster_name = config.hplefthand_clustername
         return _mock_client.return_value
 
     @mock.patch('hplefthandclient.version', "1.0.0")
@@ -695,6 +719,8 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # setup drive with default configuration
         # and return the mock HTTP LeftHand client
         mock_client = self.setup_driver()
+
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         # mock return value of createVolume
         mock_client.createVolume.return_value = {
@@ -744,6 +770,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # mock return value of createVolume
         mock_client.createVolume.return_value = {
             'iscsiIqn': self.connector['initiator']}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -774,6 +801,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         # mock return value of getVolumeByName
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -809,6 +837,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         # mock return value of getVolumeByName
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -845,6 +874,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'id': self.volume_id,
             'iscsiSessions': None
         }
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -857,7 +887,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # validate
             self.assertEqual('iscsi', result['driver_volume_type'])
-            self.assertEqual(False, result['data']['target_discovered'])
+            self.assertFalse(result['data']['target_discovered'])
             self.assertEqual(self.volume_id, result['data']['volume_id'])
             self.assertTrue('auth_method' not in result['data'])
 
@@ -897,6 +927,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'id': self.volume_id,
             'iscsiSessions': [{'server': {'uri': self.server_uri}}]
         }
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -909,7 +940,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # validate
             self.assertEqual('iscsi', result['driver_volume_type'])
-            self.assertEqual(False, result['data']['target_discovered'])
+            self.assertFalse(result['data']['target_discovered'])
             self.assertEqual(self.volume_id, result['data']['volume_id'])
             self.assertTrue('auth_method' not in result['data'])
 
@@ -943,6 +974,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'id': self.volume_id,
             'iscsiSessions': None
         }
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -955,7 +987,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # validate
             self.assertEqual('iscsi', result['driver_volume_type'])
-            self.assertEqual(False, result['data']['target_discovered'])
+            self.assertFalse(result['data']['target_discovered'])
             self.assertEqual(self.volume_id, result['data']['volume_id'])
             self.assertEqual('CHAP', result['data']['auth_method'])
 
@@ -985,6 +1017,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'id': self.server_id,
             'name': self.serverName}
         mock_client.findServerVolumes.return_value = [{'id': self.volume_id}]
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -1025,6 +1058,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.findServerVolumes.return_value = [
             {'id': self.volume_id},
             {'id': 99999}]
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -1059,6 +1093,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
 
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -1066,6 +1101,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # execute create_snapshot
             self.driver.create_snapshot(self.snapshot)
+            mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
             expected = self.driver_startup_call_stack + [
                 mock.call.getVolumeByName('fakevolume'),
@@ -1093,6 +1129,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
 
         mock_client.getSnapshotByName.return_value = {'id': self.snapshot_id}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -1144,6 +1181,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.getSnapshotByName.return_value = {'id': self.snapshot_id}
         mock_client.cloneSnapshot.return_value = {
             'iscsiIqn': self.connector['initiator']}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -1175,6 +1213,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
         mock_client.cloneVolume.return_value = {
             'iscsiIqn': self.connector['initiator']}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -1262,6 +1301,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # setup drive with default configuration
         # and return the mock HTTP LeftHand client
         mock_client = self.setup_driver()
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         ctxt = context.get_admin_context()
 
@@ -1298,6 +1338,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # and return the mock HTTP LeftHand client
         mock_client = self.setup_driver()
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         ctxt = context.get_admin_context()
 
@@ -1338,6 +1379,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # and return the mock HTTP LeftHand client
         mock_client = self.setup_driver()
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         ctxt = context.get_admin_context()
 
@@ -1375,6 +1417,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # and return the mock HTTP LeftHand client
         mock_client = self.setup_driver()
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         ctxt = context.get_admin_context()
 
@@ -1440,6 +1483,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             "id": self.cluster_id}
 
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         location = (self.driver.proxy.DRIVER_LOCATION % {
             'cluster': 'New_CloudCluster',
@@ -1483,6 +1527,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                                                     'iscsiSessions': None}
         mock_client.getVolume.return_value = {'snapshots': {
             'resource': None}}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         location = (self.driver.proxy.DRIVER_LOCATION % {
             'cluster': 'New_CloudCluster',
@@ -1533,6 +1578,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'iscsiSessions': None}
         mock_client.getVolume.return_value = {'snapshots': {
             'resource': 'snapfoo'}}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         location = (self.driver.proxy.DRIVER_LOCATION % {
             'cluster': 'New_CloudCluster',
@@ -1581,6 +1627,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # mock return value of createVolume
         mock_client.createVolume.return_value = {
             'iscsiIqn': self.connector['initiator']}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -1618,6 +1665,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # mock return value of createVolume
         mock_client.createVolume.return_value = {
             'iscsiIqn': self.connector['initiator']}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
                                '_create_client') as mock_do_setup:
@@ -1638,6 +1686,379 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                     {'isThinProvisioned': True,
                      'clusterName': 'CloudCluster1',
                      'isAdaptiveOptimizationEnabled': False}),
+                mock.call.logout()]
+
+            mock_client.assert_has_calls(expected)
+
+    def test__get_existing_volume_ref_name(self):
+        self.setup_driver()
+
+        existing_ref = {'source-name': self.volume_name}
+        result = self.driver.proxy._get_existing_volume_ref_name(
+            existing_ref)
+        self.assertEqual(self.volume_name, result)
+
+        existing_ref = {'bad-key': 'foo'}
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.proxy._get_existing_volume_ref_name,
+            existing_ref)
+
+    def test_manage_existing(self):
+        mock_client = self.setup_driver()
+
+        self.driver.proxy.api_version = "1.1"
+
+        volume = {'display_name': 'Foo Volume',
+                  'volume_type': None,
+                  'volume_type_id': None,
+                  'id': '12345'}
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+            mock_client.getVolumes.return_value = {
+                "type": "volume",
+                "total": 1,
+                "members": {
+                    "id": self.volume_id,
+                    "clusterName": self.cluster_name
+                }
+            }
+
+            existing_ref = {'source-name': self.volume_name}
+
+            expected_obj = {'display_name': 'Foo Volume'}
+
+            obj = self.driver.manage_existing(volume, existing_ref)
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack + [
+                    mock.call.getVolumeByName(self.volume_name),
+                    mock.call.logout()] +
+                self.driver_startup_call_stack + [
+                    mock.call.modifyVolume(self.volume_id,
+                                           {'name': 'volume-12345'}),
+                    mock.call.logout()])
+            self.assertEqual(expected_obj, obj)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_manage_existing_retype(self, _mock_volume_types):
+        mock_client = self.setup_driver()
+
+        _mock_volume_types.return_value = {
+            'name': 'gold',
+            'id': 'gold-id',
+            'extra_specs': {
+                'hplh:provisioning': 'thin',
+                'hplh:ao': 'true',
+                'hplh:data_pl': 'r-0',
+                'volume_type': self.volume_type}}
+
+        self.driver.proxy.api_version = "1.1"
+
+        volume = {'display_name': 'Foo Volume',
+                  'host': 'stack@lefthand#lefthand',
+                  'volume_type': 'gold',
+                  'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': '12345'}
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+            mock_client.getVolumes.return_value = {
+                "type": "volume",
+                "total": 1,
+                "members": {
+                    "id": self.volume_id,
+                    "clusterName": self.cluster_name
+                }
+            }
+
+            existing_ref = {'source-name': self.volume_name}
+
+            expected_obj = {'display_name': 'Foo Volume'}
+
+            obj = self.driver.manage_existing(volume, existing_ref)
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack + [
+                    mock.call.getVolumeByName(self.volume_name),
+                    mock.call.logout()] +
+                self.driver_startup_call_stack + [
+                    mock.call.modifyVolume(self.volume_id,
+                                           {'name': 'volume-12345'}),
+                    mock.call.logout()])
+            self.assertEqual(expected_obj, obj)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_manage_existing_retype_exception(self, _mock_volume_types):
+        mock_client = self.setup_driver()
+
+        _mock_volume_types.return_value = {
+            'name': 'gold',
+            'id': 'gold-id',
+            'extra_specs': {
+                'hplh:provisioning': 'thin',
+                'hplh:ao': 'true',
+                'hplh:data_pl': 'r-0',
+                'volume_type': self.volume_type}}
+
+        self.driver.proxy.retype = mock.Mock(
+            side_effect=exception.VolumeNotFound(volume_id="fake"))
+
+        self.driver.proxy.api_version = "1.1"
+
+        volume = {'display_name': 'Foo Volume',
+                  'host': 'stack@lefthand#lefthand',
+                  'volume_type': 'gold',
+                  'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': '12345'}
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+            mock_client.getVolumes.return_value = {
+                "type": "volume",
+                "total": 1,
+                "members": {
+                    "id": self.volume_id,
+                    "clusterName": self.cluster_name
+                }
+            }
+
+            existing_ref = {'source-name': self.volume_name}
+
+            self.assertRaises(exception.VolumeNotFound,
+                              self.driver.manage_existing,
+                              volume,
+                              existing_ref)
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack + [
+                    mock.call.getVolumeByName(self.volume_name),
+                    mock.call.logout()] +
+                self.driver_startup_call_stack + [
+                    mock.call.modifyVolume(self.volume_id,
+                                           {'name': 'volume-12345'}),
+                    mock.call.logout()] +
+                self.driver_startup_call_stack + [
+                    mock.call.modifyVolume(self.volume_id,
+                                           {'name': 'fakevolume'}),
+                    mock.call.logout()])
+
+    def test_manage_existing_volume_type_exception(self):
+        mock_client = self.setup_driver()
+
+        self.driver.proxy.api_version = "1.1"
+
+        volume = {'display_name': 'Foo Volume',
+                  'volume_type': 'gold',
+                  'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
+                  'id': '12345'}
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+            mock_client.getVolumes.return_value = {
+                "type": "volume",
+                "total": 1,
+                "members": {
+                    "id": self.volume_id,
+                    "clusterName": self.cluster_name
+                }
+            }
+
+            existing_ref = {'source-name': self.volume_name}
+
+            self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                              self.driver.manage_existing,
+                              volume=volume,
+                              existing_ref=existing_ref)
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack + [
+                    mock.call.getVolumeByName(self.volume_name),
+                    mock.call.logout()])
+
+    def test_manage_existing_get_size(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.return_value = {'size': 2147483648}
+
+        self.driver.proxy.api_version = "1.1"
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            mock_client.getVolumes.return_value = {
+                "type": "volume",
+                "total": 1,
+                "members": {
+                    "id": self.volume_id,
+                    "clusterName": self.cluster_name
+                }
+            }
+
+            volume = {}
+            existing_ref = {'source-name': self.volume_name}
+
+            size = self.driver.manage_existing_get_size(volume, existing_ref)
+
+            expected_size = 2
+            expected = [mock.call.getVolumeByName(existing_ref['source-name']),
+                        mock.call.logout()]
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack +
+                expected)
+            self.assertEqual(expected_size, size)
+
+    def test_manage_existing_get_size_invalid_reference(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.return_value = {'size': 2147483648}
+
+        self.driver.proxy.api_version = "1.1"
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            volume = {}
+            existing_ref = {'source-name': "volume-12345"}
+
+            self.assertRaises(exception.ManageExistingInvalidReference,
+                              self.driver.manage_existing_get_size,
+                              volume=volume,
+                              existing_ref=existing_ref)
+
+            mock_client.assert_has_calls([])
+
+            existing_ref = {}
+
+            self.assertRaises(exception.ManageExistingInvalidReference,
+                              self.driver.manage_existing_get_size,
+                              volume=volume,
+                              existing_ref=existing_ref)
+
+            mock_client.assert_has_calls([])
+
+    def test_manage_existing_get_size_invalid_input(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.side_effect = (
+            hpexceptions.HTTPNotFound('fake'))
+
+        self.driver.proxy.api_version = "1.1"
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            mock_client.getVolumes.return_value = {
+                "type": "volume",
+                "total": 1,
+                "members": {
+                    "id": self.volume_id,
+                    "clusterName": self.cluster_name
+                }
+            }
+
+            volume = {}
+            existing_ref = {'source-name': self.volume_name}
+
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.manage_existing_get_size,
+                              volume=volume,
+                              existing_ref=existing_ref)
+
+            expected = [mock.call.getVolumeByName(existing_ref['source-name'])]
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack +
+                expected)
+
+    def test_unmanage(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+        # mock return value of getVolumes
+        mock_client.getVolumes.return_value = {
+            "type": "volume",
+            "total": 1,
+            "members": {
+                "id": self.volume_id,
+                "clusterName": self.cluster_name
+            }
+        }
+
+        self.driver.proxy.api_version = "1.1"
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            self.driver.unmanage(self.volume)
+
+            new_name = 'unm-' + str(self.volume['id'])
+
+            expected = [
+                mock.call.getVolumeByName(self.volume['name']),
+                mock.call.modifyVolume(self.volume['id'], {'name': new_name}),
+                mock.call.logout()
+            ]
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack +
+                expected)
+
+    def test_api_version(self):
+        self.setup_driver()
+        self.driver.proxy.api_version = "1.1"
+        self.driver.proxy._check_api_version()
+
+        self.driver.proxy.api_version = "1.0"
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.proxy._check_api_version)
+
+    def test_get_volume_stats(self):
+
+        # set up driver with default config
+        mock_client = self.setup_driver()
+
+        # mock return value of getVolumes
+        mock_client.getVolumes.return_value = {
+            "type": "volume",
+            "total": 1,
+            "members": {
+                "id": 12345,
+                "clusterName": self.cluster_name
+            }
+        }
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # execute driver
+            stats = self.driver.get_volume_stats(True)
+
+            self.assertEqual('iSCSI', stats['storage_protocol'])
+            self.assertEqual(GOODNESS_FUNCTION, stats['goodness_function'])
+            self.assertEqual(FILTER_FUNCTION, stats['filter_function'])
+            self.assertEqual(1, int(stats['total_volumes']))
+
+            cap_util = (
+                float(units.Gi * 500 - units.Gi * 250) / float(units.Gi * 500)
+            ) * 100
+
+            self.assertEqual(cap_util, float(stats['capacity_utilization']))
+
+            expected = self.driver_startup_call_stack + [
+                mock.call.getCluster(1),
+                mock.call.getVolumes(fields=['members[id]',
+                                             'members[clusterName]'],
+                                     cluster=self.cluster_name),
                 mock.call.logout()]
 
             mock_client.assert_has_calls(expected)

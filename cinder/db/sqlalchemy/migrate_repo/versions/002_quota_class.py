@@ -13,11 +13,11 @@
 #    under the License.
 
 from migrate import ForeignKeyConstraint
+from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import MetaData, Integer, String, Table, ForeignKey
 
 from cinder.i18n import _LE
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

@@ -21,8 +21,8 @@ arrays.
 
 This driver requires VMOS v6.3.0.4 or newer software on the array.
 
-You will need to install the python xg-tools client:
-sudo pip install xg-tools
+You will need to install the Violin Memory REST client library:
+sudo pip install vmemclient
 
 Set the following in the cinder.conf file to enable the VMEM V6000
 Fibre Channel Driver along with the required flags:
@@ -35,13 +35,13 @@ properly in an active-active HA configuration.  See OpenStack Cinder
 driver documentation for more information.
 """
 
+from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san

@@ -29,8 +29,8 @@ interfaces.
 
 """
 
+from oslo_log import log as logging
 
-from cinder.openstack.common import log as logging
 from cinder.zonemanager import fc_common
 
 LOG = logging.getLogger(__name__)

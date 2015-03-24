@@ -1,4 +1,4 @@
-# Copyright 2014 Datera
+# Copyright 2015 Datera
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,12 +16,15 @@
 import json
 
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import units
 import requests
 
 from cinder import exception
-from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
+from cinder.i18n import _, _LE, _LW
+from cinder.openstack.common import versionutils
+from cinder import utils
 from cinder.volume.drivers.san import san
 
 LOG = logging.getLogger(__name__)
@@ -29,7 +32,9 @@ LOG = logging.getLogger(__name__)
 d_opts = [
     cfg.StrOpt('datera_api_token',
                default=None,
-               help='Datera API token.'),
+               help='DEPRECATED: This will be removed in the Liberty release. '
+                    'Use san_login and san_password instead. This directly '
+                    'sets the Datera API token.'),
     cfg.StrOpt('datera_api_port',
                default='7717',
                help='Datera API port.'),
@@ -45,7 +50,30 @@ d_opts = [
 CONF = cfg.CONF
 CONF.import_opt('driver_client_cert_key', 'cinder.volume.driver')
 CONF.import_opt('driver_client_cert', 'cinder.volume.driver')
+CONF.import_opt('driver_use_ssl', 'cinder.volume.driver')
 CONF.register_opts(d_opts)
+
+
+def _authenticated(func):
+        """Ensure the driver is authenticated to make a request.
+
+        In do_setup() we fetch an auth token and store it. If that expires when
+        we do API request, we'll fetch a new one.
+        """
+        def func_wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except exception.NotAuthorized:
+                # Prevent recursion loop. After the self arg is the
+                # resource_type arg from _issue_api_request(). If attempt to
+                # login failed, we should just give up.
+                if args[0] == 'login':
+                    raise
+
+                # Token might've expired, get a new one, try again.
+                self._login()
+                return func(self, *args, **kwargs)
+        return func_wrapper
 
 
 class DateraDriver(san.SanISCSIDriver):
@@ -53,33 +81,80 @@ class DateraDriver(san.SanISCSIDriver):
 
     Version history:
         1.0 - Initial driver
+        1.1 - Look for lun-0 instead of lun-1.
     """
-    VERSION = '1.0'
+    VERSION = '1.1'
 
     def __init__(self, *args, **kwargs):
         super(DateraDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(d_opts)
         self.num_replicas = self.configuration.datera_num_replicas
+        self.username = self.configuration.san_login
+        self.password = self.configuration.san_password
+        self.auth_token = None
         self.cluster_stats = {}
+
+    def do_setup(self, context):
+        # If any of the deprecated options are set, we'll warn the operator to
+        # use the new authentication method.
+        DEPRECATED_OPTS = [
+            self.configuration.driver_client_cert_key,
+            self.configuration.driver_client_cert,
+            self.configuration.datera_api_token
+        ]
+
+        if any(DEPRECATED_OPTS):
+            msg = _LW("Client cert verification and datera_api_token are "
+                      "deprecated in the Datera driver, and will be removed "
+                      "in the Liberty release. Please set the san_login and "
+                      "san_password in your cinder.conf instead.")
+            versionutils.report_deprecated_feature(LOG, msg)
+            return
+
+        # If we can't authenticate through the old and new method, just fail
+        # now.
+        if not all([self.username, self.password]):
+            msg = _("san_login and/or san_password is not set for Datera "
+                    "driver in the cinder.conf. Set this information and "
+                    "start the cinder-volume service again.")
+            LOG.error(msg)
+            raise exception.InvalidInput(msg)
+
+        self._login()
+
+    @utils.retry(exception.VolumeDriverException, retries=3)
+    def _wait_for_resource(self, id, resource_type):
+        result = self._issue_api_request(resource_type, 'get', id)
+        if result['status'] == 'available':
+            return
+        else:
+            raise exception.VolumeDriverException(msg=_('Resource not ready.'))
+
+    def _create_resource(self, resource, resource_type, body):
+        result = self._issue_api_request(resource_type, 'post', body=body)
+
+        if result['status'] == 'available':
+            return
+        self._wait_for_resource(resource['id'], resource_type)
 
     def create_volume(self, volume):
         """Create a logical volume."""
-        params = {
+        body = {
             'name': volume['display_name'] or volume['id'],
             'size': str(volume['size'] * units.Gi),
             'uuid': volume['id'],
             'numReplicas': self.num_replicas
         }
-        self._issue_api_request('volumes', 'post', body=params)
+        self._create_resource(volume, 'volumes', body)
 
     def create_cloned_volume(self, volume, src_vref):
-        data = {
+        body = {
             'name': volume['display_name'] or volume['id'],
             'uuid': volume['id'],
             'clone_uuid': src_vref['id'],
             'numReplicas': self.num_replicas
         }
-        self._issue_api_request('volumes', 'post', body=data)
+        self._create_resource(volume, 'volumes', body)
 
     def delete_volume(self, volume):
         try:
@@ -104,7 +179,7 @@ class DateraDriver(san.SanISCSIDriver):
         iscsi_portal = export['_ipColl'][0] + ':3260'
         iqn = export['targetIds'].itervalues().next()['ids'][0]['id']
 
-        provider_location = '%s %s %s' % (iscsi_portal, iqn, 1)
+        provider_location = '%s %s %s' % (iscsi_portal, iqn, 0)
         model_update = {'provider_location': provider_location}
         return model_update
 
@@ -114,7 +189,7 @@ class DateraDriver(san.SanISCSIDriver):
     def create_export(self, context, volume):
         return self._do_export(context, volume)
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
         try:
             self._issue_api_request('volumes', 'delete', resource=volume['id'],
                                     action='export')
@@ -133,20 +208,20 @@ class DateraDriver(san.SanISCSIDriver):
             LOG.info(msg, snapshot['id'])
 
     def create_snapshot(self, snapshot):
-        data = {
+        body = {
             'uuid': snapshot['id'],
             'parentUUID': snapshot['volume_id']
         }
-        self._issue_api_request('snapshots', 'post', body=data)
+        self._create_resource(snapshot, 'snapshots', body)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        data = {
+        body = {
             'name': volume['display_name'] or volume['id'],
             'uuid': volume['id'],
             'snapshot_uuid': snapshot['id'],
             'numReplicas': self.num_replicas
         }
-        self._issue_api_request('volumes', 'post', body=data)
+        self._create_resource(volume, 'volumes', body)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -166,10 +241,10 @@ class DateraDriver(san.SanISCSIDriver):
         return self.cluster_stats
 
     def extend_volume(self, volume, new_size):
-        data = {
+        body = {
             'size': str(new_size * units.Gi)
         }
-        self._issue_api_request('volumes', 'put', body=data,
+        self._issue_api_request('volumes', 'put', body=body,
                                 resource=volume['id'])
 
     def _update_cluster_stats(self):
@@ -193,8 +268,32 @@ class DateraDriver(san.SanISCSIDriver):
 
         self.cluster_stats = stats
 
+    def _login(self):
+        """Use the san_login and san_password to set self.auth_token."""
+        body = {
+            'name': self.username,
+            'password': self.password
+        }
+
+        # Unset token now, otherwise potential expired token will be sent
+        # along to be used for authorization when trying to login.
+        self.auth_token = None
+
+        try:
+            LOG.debug('Getting Datera auth token.')
+            results = self._issue_api_request('login', 'post', body=body,
+                                              sensitive=True)
+            self.auth_token = results['key']
+        except exception.NotAuthorized:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Logging into the Datera cluster failed. Please '
+                              'check your username and password set in the '
+                              'cinder.conf and start the cinder-volume'
+                              'service again.'))
+
+    @_authenticated
     def _issue_api_request(self, resource_type, method='get', resource=None,
-                           body=None, action=None):
+                           body=None, action=None, sensitive=False):
         """All API requests to Datera cluster go through this method.
 
         :param resource_type: the type of the resource
@@ -211,16 +310,26 @@ class DateraDriver(san.SanISCSIDriver):
 
         payload = json.dumps(body, ensure_ascii=False)
         payload.encode('utf-8')
-        header = {'Content-Type': 'application/json; charset=utf-8'}
 
+        if not sensitive:
+            LOG.debug("Payload for Datera API call: %s", payload)
+
+        header = {
+            'Content-Type': 'application/json; charset=utf-8',
+            'auth-token': self.auth_token
+        }
+
+        protocol = 'http'
+        if self.configuration.driver_use_ssl:
+            protocol = 'https'
+
+        # TODO(thingee): Auth method through Auth-Token is deprecated. Remove
+        # this and client cert verification stuff in the Liberty release.
         if api_token:
             header['Auth-Token'] = api_token
 
-        LOG.debug("Payload for Datera API call: %s", payload)
-
         client_cert = self.configuration.driver_client_cert
         client_cert_key = self.configuration.driver_client_cert_key
-        protocol = 'http'
         cert_data = None
 
         if client_cert:
@@ -247,10 +356,14 @@ class DateraDriver(san.SanISCSIDriver):
             raise exception.DateraAPIException(msg)
 
         data = response.json()
-        LOG.debug("Results of Datera API call: %s", data)
+        if not sensitive:
+            LOG.debug("Results of Datera API call: %s", data)
+
         if not response.ok:
             if response.status_code == 404:
                 raise exception.NotFound(data['message'])
+            elif response.status_code in [403, 401]:
+                raise exception.NotAuthorized()
             else:
                 msg = _('Request to Datera cluster returned bad status:'
                         ' %(status)s | %(reason)s') % {

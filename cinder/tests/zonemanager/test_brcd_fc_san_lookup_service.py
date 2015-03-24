@@ -21,10 +21,10 @@
 
 import mock
 from oslo_config import cfg
+from oslo_log import log as logging
 import paramiko
 
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 import cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service \

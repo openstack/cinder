@@ -21,10 +21,10 @@ Weighing Functions.
 """
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.openstack.common import log as logging
 from cinder.scheduler import driver
 from cinder.scheduler import scheduler_options
 from cinder.volume import utils
@@ -282,6 +282,15 @@ class FilterScheduler(driver.Scheduler):
 
         self.populate_filter_properties(request_spec,
                                         filter_properties)
+
+        # If multiattach is enabled on a volume, we need to add
+        # multiattach to extra specs, so that the capability
+        # filtering is enabled.
+        multiattach = volume_properties.get('multiattach', False)
+        if multiattach and 'multiattach' not in resource_type.get(
+                'extra_specs', {}):
+            resource_type['extra_specs'].update(
+                multiattach='<is> True')
 
         # Find our local list of acceptable hosts by filtering and
         # weighing our options. we virtually consume resources on

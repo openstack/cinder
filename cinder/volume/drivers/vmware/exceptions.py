@@ -40,3 +40,8 @@ class VirtualDiskNotFoundException(exceptions.VMwareDriverException):
 class ProfileNotFoundException(exceptions.VMwareDriverException):
     """Thrown when the given storage profile cannot be found."""
     msg_fmt = _("Storage profile: %(storage_profile)s not found.")
+
+
+class NoValidDatastoreException(exceptions.VMwareDriverException):
+    """Thrown when there are no valid datastores."""
+    message = _("There are no valid datastores.")

@@ -23,11 +23,11 @@ NAS based IBM GPFS Storage Systems).
 
 import mock
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import ibmnas
@@ -268,8 +268,8 @@ class IBMNASDriverTestCase(test.TestCase):
         drv = self._driver
         mock_size.return_value = True
 
-        self.assertEqual(True, drv._resize_volume_file(self.TEST_LOCAL_PATH,
-                         self.TEST_EXTEND_SIZE_IN_GB))
+        self.assertTrue(drv._resize_volume_file(self.TEST_LOCAL_PATH,
+                                                self.TEST_EXTEND_SIZE_IN_GB))
 
     @mock.patch('cinder.image.image_utils.resize_image')
     def test_resize_volume_exception(self, mock_size):

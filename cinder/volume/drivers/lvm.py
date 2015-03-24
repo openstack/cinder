@@ -21,6 +21,7 @@ import socket
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import units
 
@@ -30,7 +31,6 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume import utils as volutils
@@ -137,7 +137,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        size_in_g = volume.get('size', volume.get('volume_size', None))
+        size_in_g = volume.get('volume_size') or volume.get('size')
         if size_in_g is None:
             msg = (_LE("Size for volume: %s not found, "
                    "cannot secure delete.") % volume['id'])
@@ -219,6 +219,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         thin_enabled = self.configuration.lvm_type == 'thin'
 
+        # Calculate the total volumes used by the VG group.
+        # This includes volumes and snapshots.
+        total_volumes = len(self.vg.get_volumes())
+
         # Skip enabled_pools setting, treat the whole backend as one pool
         # XXX FIXME if multipool support is added to LVM driver.
         single_pool = {}
@@ -234,6 +238,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 self.configuration.max_over_subscription_ratio),
             thin_provisioning_support=thin_enabled,
             thick_provisioning_support=not thin_enabled,
+            total_volumes=total_volumes,
+            filter_function=self.get_filter_function(),
+            goodness_function=self.get_goodness_function()
         ))
         data["pools"].append(single_pool)
 
@@ -334,7 +341,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             raise exception.VolumeIsBusy(volume_name=volume['name'])
 
         self._delete_volume(volume)
-        LOG.info(_LI('Succesfully deleted volume: %s'), volume['id'])
+        LOG.info(_LI('Successfully deleted volume: %s'), volume['id'])
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -349,7 +356,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             # If the snapshot isn't present, then don't attempt to delete
             LOG.warning(_LW("snapshot: %s not found, "
                             "skipping delete operations") % snapshot['name'])
-            LOG.info(_LI('Succesfully deleted snapshot: %s'), snapshot['id'])
+            LOG.info(_LI('Successfully deleted snapshot: %s'), snapshot['id'])
             return True
 
         # TODO(yamahata): zeroing out the whole snapshot triggers COW.

@@ -18,12 +18,12 @@ import random
 import re
 from xml.dom import minidom
 
+from oslo_log import log as logging
 import six
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder.volume import volume_types
 
@@ -38,6 +38,7 @@ except ImportError:
 
 STORAGEGROUPTYPE = 4
 POSTGROUPTYPE = 3
+CLONE_REPLICATION_TYPE = 10
 
 EMC_ROOT = 'root/emc'
 CONCATENATED = 'concatenated'
@@ -343,7 +344,7 @@ class EMCVMAXUtils(object):
         :param extraSpecs: extraSpecs dict
         :returns: JOB_RETRIES or user defined
         """
-        if extraSpecs:
+        if extraSpecs and RETRIES in extraSpecs:
             jobRetries = extraSpecs[RETRIES]
         else:
             jobRetries = JOB_RETRIES
@@ -355,7 +356,7 @@ class EMCVMAXUtils(object):
         :param extraSpecs: extraSpecs dict
         :returns: INTERVAL_10_SEC or user defined
         """
-        if extraSpecs:
+        if extraSpecs and INTERVAL in extraSpecs:
             intervalInSecs = extraSpecs[INTERVAL]
         else:
             intervalInSecs = INTERVAL_10_SEC
@@ -827,13 +828,13 @@ class EMCVMAXUtils(object):
         If it is not there then the default will be used.
 
         :param fileName: the path and name of the file
-        :returns: string -- interval - the interval in seconds
+        :returns: interval - the interval in seconds
         """
         interval = self._parse_from_file(fileName, 'Interval')
         if interval:
             return interval
         else:
-            LOG.debug("Interval not found in config file.")
+            LOG.debug("Interval not overridden, default of 10 assumed.")
             return None
 
     def parse_retries_from_file(self, fileName):
@@ -842,13 +843,13 @@ class EMCVMAXUtils(object):
         If it is not there then the default will be used.
 
         :param fileName: the path and name of the file
-        :returns: string -- retries - the max number of retries
+        :returns: retries - the max number of retries
         """
         retries = self._parse_from_file(fileName, 'Retries')
         if retries:
             return retries
         else:
-            LOG.debug("Retries not found in config file.")
+            LOG.debug("Retries not overridden, default of 60 assumed.")
             return None
 
     def parse_pool_instance_id(self, poolInstanceId):
@@ -868,11 +869,22 @@ class EMCVMAXUtils(object):
 
         idarray = poolInstanceId.split('+')
         if len(idarray) > 2:
-            systemName = idarray[0] + '+' + idarray[1]
+            systemName = self._format_system_name(idarray[0], idarray[1])
 
         LOG.debug("Pool name: %(poolName)s  System name: %(systemName)s.",
                   {'poolName': poolName, 'systemName': systemName})
         return poolName, systemName
+
+    def _format_system_name(self, part1, part2):
+        """Join to make up system name
+
+        :param part1: the prefix
+        :param part2: the postfix
+        :returns: systemName
+        """
+        return ("%(part1)s+%(part2)s"
+                % {'part1': part1,
+                   'part2': part2})
 
     def parse_pool_instance_id_v3(self, poolInstanceId):
         """Given the instance Id parse the pool name and system name from it.
@@ -891,7 +903,7 @@ class EMCVMAXUtils(object):
 
         idarray = poolInstanceId.split('-+-')
         if len(idarray) > 2:
-            systemName = idarray[0] + '-+-' + idarray[1]
+            systemName = self._format_system_name(idarray[0], idarray[1])
 
         LOG.debug("Pool name: %(poolName)s  System name: %(systemName)s.",
                   {'poolName': poolName, 'systemName': systemName})
@@ -1366,7 +1378,7 @@ class EMCVMAXUtils(object):
         :returns: string -- delta in string H:MM:SS
         """
         delta = endTime - startTime
-        return str(datetime.timedelta(seconds=int(delta)))
+        return six.text_type(datetime.timedelta(seconds=int(delta)))
 
     def find_sync_sv_by_target(
             self, conn, storageSystem, target, waitforsync=True):
@@ -1513,7 +1525,7 @@ class EMCVMAXUtils(object):
 
         for srpPoolInstanceName in srpPoolInstanceNames:
             poolInstanceID = srpPoolInstanceName['InstanceID']
-            poolnameStr, _ = (
+            poolnameStr, _systemName = (
                 self.parse_pool_instance_id_v3(poolInstanceID))
 
             if six.text_type(poolName) == six.text_type(poolnameStr):
@@ -1706,7 +1718,11 @@ class EMCVMAXUtils(object):
         :param workload: the workload string e.g DSS
         :returns: storageGroupName
         """
-        return 'OS-' + poolName + '-' + slo + '-' + workload + '-SG'
+        storageGroupName = ("OS-%(poolName)s-%(slo)s-%(workload)s-SG"
+                            % {'poolName': poolName,
+                               'slo': slo,
+                               'workload': workload})
+        return storageGroupName
 
     def strip_short_host_name(self, storageGroupName):
         tempList = storageGroupName.split("-")
@@ -1823,3 +1839,52 @@ class EMCVMAXUtils(object):
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
         return instance
+
+    def find_replication_service_capabilities(self, conn, storageSystemName):
+        """Find the replication service capabilities instance name.
+
+        :param conn: the connection to the ecom server
+        :param storageSystemName: the storage system name
+        :returns: foundRepServCapability
+        """
+        foundRepServCapability = None
+        repservices = conn.EnumerateInstanceNames(
+            'CIM_ReplicationServiceCapabilities')
+        for repservCap in repservices:
+            if storageSystemName in repservCap['InstanceID']:
+                foundRepServCapability = repservCap
+                LOG.debug("Found Replication Service Capabilities: "
+                          "%(repservCap)s",
+                          {'repservCap': repservCap})
+                break
+        if foundRepServCapability is None:
+            exceptionMessage = (_("Replication Service Capability not found "
+                                  "on %(storageSystemName)s.")
+                                % {'storageSystemName': storageSystemName})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+        return foundRepServCapability
+
+    def is_clone_licensed(self, conn, capabilityInstanceName):
+        """Check if the clone feature is licensed and enabled.
+
+        :param conn: the connection to the ecom server
+        :param capabilityInstanceName: the replication service capabilities
+        instance name
+        :returns: True if licensed and enabled; False otherwise.
+        """
+        capabilityInstance = conn.GetInstance(capabilityInstanceName)
+        propertiesList = capabilityInstance.properties.items()
+        for properties in propertiesList:
+            if properties[0] == 'SupportedReplicationTypes':
+                cimProperties = properties[1]
+                repTypes = cimProperties.value
+                LOG.debug("Found supported replication types: "
+                          "%(repTypes)s",
+                          {'repTypes': repTypes})
+                if CLONE_REPLICATION_TYPE in repTypes:
+                    # Clone is a supported replication type.
+                    LOG.debug("Clone is licensed and enabled.")
+                    return True
+        return False

@@ -23,16 +23,18 @@ eventlet.monkey_patch()
 import sys
 import warnings
 
+from cinder import objects
+
 warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import i18n
 i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
-from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import service
 from cinder import utils
@@ -43,9 +45,10 @@ CONF = cfg.CONF
 
 
 def main():
+    objects.register_all()
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
-    logging.setup("cinder")
+    logging.setup(CONF, "cinder")
     utils.monkey_patch()
 
     rpc.init(CONF)

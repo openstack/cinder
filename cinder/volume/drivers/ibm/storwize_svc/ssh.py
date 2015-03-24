@@ -17,10 +17,10 @@
 import re
 
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 
@@ -89,7 +89,8 @@ class StorwizeSSH(object):
         return self.run_ssh_info(ssh_cmd)[0]
 
     def lsmdiskgrp(self, pool):
-        ssh_cmd = ['svcinfo', 'lsmdiskgrp', '-bytes', '-delim', '!', pool]
+        ssh_cmd = ['svcinfo', 'lsmdiskgrp', '-bytes', '-delim', '!',
+                   '"%s"' % pool]
         return self.run_ssh_info(ssh_cmd)[0]
 
     def lsiogrp(self):
@@ -191,9 +192,9 @@ class StorwizeSSH(object):
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def mkvdisk(self, name, size, units, pool, opts, params):
-        ssh_cmd = ['svctask', 'mkvdisk', '-name', name, '-mdiskgrp', pool,
-                   '-iogrp', str(opts['iogrp']), '-size', size, '-unit',
-                   units] + params
+        ssh_cmd = ['svctask', 'mkvdisk', '-name', name, '-mdiskgrp',
+                   '"%s"' % pool, '-iogrp', str(opts['iogrp']), '-size',
+                   size, '-unit', units] + params
         return self.run_ssh_check_created(ssh_cmd)
 
     def rmvdisk(self, vdisk, force=True):
@@ -330,7 +331,7 @@ class StorwizeSSH(object):
 
     def addvdiskcopy(self, vdisk, dest_pool, params):
         ssh_cmd = (['svctask', 'addvdiskcopy'] + params + ['-mdiskgrp',
-                   dest_pool, vdisk])
+                   '"%s"' % dest_pool, vdisk])
         return self.run_ssh_check_created(ssh_cmd)
 
     def lsvdiskcopy(self, vdisk, copy_id=None):

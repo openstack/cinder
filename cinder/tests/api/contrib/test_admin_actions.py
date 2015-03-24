@@ -13,6 +13,7 @@
 import ast
 
 import fixtures
+import mock
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
@@ -30,6 +31,7 @@ from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests.api.v2 import stubs
 from cinder.tests import cast_as_call
+from cinder.tests import fake_snapshot
 from cinder.volume import api as volume_api
 from cinder.volume.targets import tgt
 
@@ -354,12 +356,20 @@ class AdminActionsTest(test.TestCase):
         # volume is deleted
         self.assertRaises(exception.NotFound, db.volume_get, ctx, volume['id'])
 
-    def test_force_delete_snapshot(self):
+    @mock.patch.object(volume_api.API, 'delete_snapshot', return_value=True)
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    @mock.patch.object(db, 'snapshot_get')
+    @mock.patch.object(db, 'volume_get')
+    def test_force_delete_snapshot(self, volume_get, snapshot_get, get_by_id,
+                                   delete_snapshot):
         ctx = context.RequestContext('admin', 'fake', True)
-        snapshot = stubs.stub_snapshot(1, host='foo')
-        self.stubs.Set(db, 'volume_get', lambda x, y: snapshot)
-        self.stubs.Set(db, 'snapshot_get', lambda x, y: snapshot)
-        self.stubs.Set(volume_api.API, 'delete_snapshot', lambda *x, **y: True)
+        volume = stubs.stub_volume(1)
+        snapshot = stubs.stub_snapshot(1)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
+        volume_get.return_value = volume
+        snapshot_get.return_value = snapshot
+        get_by_id.return_value = snapshot_obj
+
         path = '/v2/fake/snapshots/%s/action' % snapshot['id']
         req = webob.Request.blank(path)
         req.method = 'POST'
@@ -381,15 +391,14 @@ class AdminActionsTest(test.TestCase):
         svc = self.start_service('volume', host='test')
         self.volume_api.reserve_volume(ctx, volume)
         mountpoint = '/dev/vbd'
-        self.volume_api.attach(ctx, volume, stubs.FAKE_UUID, None,
-                               mountpoint, 'rw')
+        attachment = self.volume_api.attach(ctx, volume, stubs.FAKE_UUID,
+                                            None, mountpoint, 'rw')
         # volume is attached
         volume = db.volume_get(ctx, volume['id'])
         self.assertEqual(volume['status'], 'in-use')
-        self.assertEqual(volume['instance_uuid'], stubs.FAKE_UUID)
-        self.assertIsNone(volume['attached_host'])
-        self.assertEqual(volume['mountpoint'], mountpoint)
-        self.assertEqual(volume['attach_status'], 'attached')
+        self.assertEqual(attachment['instance_uuid'], stubs.FAKE_UUID)
+        self.assertEqual(attachment['mountpoint'], mountpoint)
+        self.assertEqual(attachment['attach_status'], 'attached')
         admin_metadata = volume['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 2)
         self.assertEqual(admin_metadata[0]['key'], 'readonly')
@@ -405,7 +414,8 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
-        req.body = jsonutils.dumps({'os-force_detach': None})
+        req.body = jsonutils.dumps({'os-force_detach':
+                                    {'attachment_id': attachment['id']}})
         # attach admin context to request
         req.environ['cinder.context'] = ctx
         # make request
@@ -413,12 +423,12 @@ class AdminActionsTest(test.TestCase):
         # request is accepted
         self.assertEqual(resp.status_int, 202)
         volume = db.volume_get(ctx, volume['id'])
+        self.assertRaises(exception.VolumeAttachmentNotFound,
+                          db.volume_attachment_get,
+                          ctx, attachment['id'])
+
         # status changed to 'available'
         self.assertEqual(volume['status'], 'available')
-        self.assertIsNone(volume['instance_uuid'])
-        self.assertIsNone(volume['attached_host'])
-        self.assertIsNone(volume['mountpoint'])
-        self.assertEqual(volume['attach_status'], 'detached')
         admin_metadata = volume['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 1)
         self.assertEqual(admin_metadata[0]['key'], 'readonly')
@@ -435,17 +445,18 @@ class AdminActionsTest(test.TestCase):
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
-        self.volume_api.reserve_volume(ctx, volume)
+        self.volume_api.initialize_connection(ctx, volume, connector)
         mountpoint = '/dev/vbd'
         host_name = 'fake-host'
-        self.volume_api.attach(ctx, volume, None, host_name, mountpoint, 'ro')
+        attachment = self.volume_api.attach(ctx, volume, None, host_name,
+                                            mountpoint, 'ro')
         # volume is attached
         volume = db.volume_get(ctx, volume['id'])
         self.assertEqual(volume['status'], 'in-use')
-        self.assertIsNone(volume['instance_uuid'])
-        self.assertEqual(volume['attached_host'], host_name)
-        self.assertEqual(volume['mountpoint'], mountpoint)
-        self.assertEqual(volume['attach_status'], 'attached')
+        self.assertIsNone(attachment['instance_uuid'])
+        self.assertEqual(attachment['attached_host'], host_name)
+        self.assertEqual(attachment['mountpoint'], mountpoint)
+        self.assertEqual(attachment['attach_status'], 'attached')
         admin_metadata = volume['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 2)
         self.assertEqual(admin_metadata[0]['key'], 'readonly')
@@ -460,7 +471,8 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
-        req.body = jsonutils.dumps({'os-force_detach': None})
+        req.body = jsonutils.dumps({'os-force_detach':
+                                    {'attachment_id': attachment['id']}})
         # attach admin context to request
         req.environ['cinder.context'] = ctx
         # make request
@@ -468,12 +480,11 @@ class AdminActionsTest(test.TestCase):
         # request is accepted
         self.assertEqual(resp.status_int, 202)
         volume = db.volume_get(ctx, volume['id'])
+        self.assertRaises(exception.VolumeAttachmentNotFound,
+                          db.volume_attachment_get,
+                          ctx, attachment['id'])
         # status changed to 'available'
         self.assertEqual(volume['status'], 'available')
-        self.assertIsNone(volume['instance_uuid'])
-        self.assertIsNone(volume['attached_host'])
-        self.assertIsNone(volume['mountpoint'])
-        self.assertEqual(volume['attach_status'], 'detached')
         admin_metadata = volume['volume_admin_metadata']
         self.assertEqual(len(admin_metadata), 1)
         self.assertEqual(admin_metadata[0]['key'], 'readonly')
@@ -492,11 +503,10 @@ class AdminActionsTest(test.TestCase):
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
         self.volume_api.reserve_volume(ctx, volume)
-        mountpoint = '/dev/vbd'
-        self.volume_api.attach(ctx, volume, stubs.FAKE_UUID, None,
-                               mountpoint, 'rw')
         conn_info = self.volume_api.initialize_connection(ctx,
                                                           volume, connector)
+        self.volume_api.attach(ctx, volume, fakes.get_fake_uuid(), None,
+                               '/dev/vbd0', 'rw')
         self.assertEqual(conn_info['data']['access_mode'], 'rw')
         self.assertRaises(exception.InvalidVolume,
                           self.volume_api.attach,
@@ -504,15 +514,7 @@ class AdminActionsTest(test.TestCase):
                           volume,
                           fakes.get_fake_uuid(),
                           None,
-                          mountpoint,
-                          'rw')
-        self.assertRaises(exception.InvalidVolume,
-                          self.volume_api.attach,
-                          ctx,
-                          volume,
-                          fakes.get_fake_uuid(),
-                          None,
-                          mountpoint,
+                          '/dev/vdb1',
                           'ro')
         # cleanup
         svc.stop()
@@ -528,9 +530,9 @@ class AdminActionsTest(test.TestCase):
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
         self.volume_api.reserve_volume(ctx, volume)
-        mountpoint = '/dev/vbd'
-        host_name = 'fake_host'
-        self.volume_api.attach(ctx, volume, None, host_name, mountpoint, 'rw')
+        self.volume_api.initialize_connection(ctx, volume, connector)
+        self.volume_api.attach(ctx, volume, None, 'fake_host1',
+                               '/dev/vbd0', 'rw')
         conn_info = self.volume_api.initialize_connection(ctx,
                                                           volume, connector)
         conn_info['data']['access_mode'] = 'rw'
@@ -539,16 +541,8 @@ class AdminActionsTest(test.TestCase):
                           ctx,
                           volume,
                           None,
-                          host_name,
-                          mountpoint,
-                          'rw')
-        self.assertRaises(exception.InvalidVolume,
-                          self.volume_api.attach,
-                          ctx,
-                          volume,
-                          None,
-                          host_name,
-                          mountpoint,
+                          'fake_host2',
+                          '/dev/vbd1',
                           'ro')
         # cleanup
         svc.stop()
@@ -577,19 +571,23 @@ class AdminActionsTest(test.TestCase):
                                         'provider_location': '', 'size': 1})
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
-        values = {'status': 'attaching',
-                  'instance_uuid': fakes.get_fake_uuid()}
-        db.volume_update(ctx, volume['id'], values)
+        self.volume_api.reserve_volume(ctx, volume)
+        values = {'volume_id': volume['id'],
+                  'attach_status': 'attaching',
+                  'attach_time': timeutils.utcnow(),
+                  'instance_uuid': 'abc123',
+                  }
+        db.volume_attach(ctx, values)
+        db.volume_admin_metadata_update(ctx, volume['id'],
+                                        {"attached_mode": 'rw'}, False)
         mountpoint = '/dev/vbd'
-        self.assertRaises(exception.InvalidVolume,
-                          self.volume_api.attach,
-                          ctx,
-                          volume,
-                          stubs.FAKE_UUID,
-                          None,
-                          mountpoint,
-                          'rw')
-        # cleanup
+        attachment = self.volume_api.attach(ctx, volume,
+                                            stubs.FAKE_UUID, None,
+                                            mountpoint, 'rw')
+
+        self.assertEqual(stubs.FAKE_UUID, attachment['instance_uuid'])
+        self.assertEqual(volume['id'], attachment['volume_id'], volume['id'])
+        self.assertEqual('attached', attachment['attach_status'])
         svc.stop()
 
     def test_attach_attaching_volume_with_different_mode(self):

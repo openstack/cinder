@@ -15,12 +15,11 @@ import re
 import time
 
 from oslo_concurrency import processutils as putils
-import six
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.openstack.common import fileutils
 from cinder.i18n import _LI, _LW, _LE
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.targets import iscsi
 
@@ -107,8 +106,8 @@ class TgtAdm(iscsi.ISCSITarget):
         except putils.ProcessExecutionError as e:
             LOG.error(_LE("Failed recovery attempt to create "
                           "iscsi backing lun for Volume "
-                          "id:%(vol_id)s: %(e)s"),
-                      {'vol_id': name, 'e': six.text_type(e)})
+                          "ID:%(vol_id)s: %(e)s"),
+                      {'vol_id': name, 'e': e})
         finally:
             LOG.debug('StdOut from recreate backing lun: %s', out)
             LOG.debug('StdErr from recreate backing lun: %s', err)
@@ -130,10 +129,18 @@ class TgtAdm(iscsi.ISCSITarget):
         try:
             with open(volume_path, 'r') as f:
                 volume_conf = f.read()
-        except Exception as e:
+        except IOError as e_fnf:
             LOG.debug('Failed to open config for Volume %(vol_id)s: %(e)s',
-                      {'vol_id': vol_id, 'e': six.text_type(e)})
-            return None
+                      {'vol_id': vol_id, 'e': e_fnf})
+            # tgt is linux specific
+            if e_fnf.errno == 2:
+                return None
+            else:
+                raise
+        except Exception as e_vol:
+            LOG.error(_LE('Failed to open config for %(vol_id)s: %(e)s'),
+                      {'vol_id': vol_id, 'e': e_vol})
+            raise
 
         m = re.search('incominguser (\w+) (\w+)', volume_conf)
         if m:
@@ -214,11 +221,12 @@ class TgtAdm(iscsi.ISCSITarget):
                 # ER marker (Ref bug: #1398078).
                 LOG.warning(_LW('Could not create target because '
                                 'it already exists for volume: %s'), vol_id)
-                LOG.debug('Exception was: %s', six.text_type(e))
+                LOG.debug('Exception was: %s', e)
 
-            LOG.error(_LE("Failed to create iscsi target for Volume "
-                          "ID: %(vol_id)s: %(e)s"),
-                      {'vol_id': vol_id, 'e': six.text_type(e)})
+            else:
+                LOG.error(_LE("Failed to create iscsi target for Volume "
+                              "ID: %(vol_id)s: %(e)s"),
+                          {'vol_id': vol_id, 'e': e})
 
             # Don't forget to remove the persistent file we created
             os.unlink(volume_path)
@@ -301,13 +309,16 @@ class TgtAdm(iscsi.ISCSITarget):
                           iqn,
                           run_as_root=True)
         except putils.ProcessExecutionError as e:
-            if "can't find the target" in e.stderr:
-                LOG.warning(_LW("Failed target removal because target "
-                                "couldn't be found for iqn: %s."), iqn)
+            non_fatal_errors = ("can't find the target",
+                                "access control rule does not exist")
+
+            if any(error in e.stderr for error in non_fatal_errors):
+                LOG.warning(_LW("Failed target removal because target or "
+                                "ACL's couldn't be found for iqn: %s."), iqn)
             else:
-                LOG.error(_LE("Failed to remove iscsi target for volume "
+                LOG.error(_LE("Failed to remove iscsi target for Volume "
                               "ID: %(vol_id)s: %(e)s"),
-                          {'vol_id': vol_id, 'e': six.text_type(e)})
+                          {'vol_id': vol_id, 'e': e})
                 raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
         # NOTE(jdg): There's a bug in some versions of tgt that
         # will sometimes fail silently when using the force flag
@@ -330,7 +341,7 @@ class TgtAdm(iscsi.ISCSITarget):
             except putils.ProcessExecutionError as e:
                 LOG.error(_LE("Failed to remove iscsi target for Volume "
                               "ID: %(vol_id)s: %(e)s"),
-                          {'vol_id': vol_id, 'e': six.text_type(e)})
+                          {'vol_id': vol_id, 'e': e})
                 raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
 
         # NOTE(jdg): This *should* be there still but incase

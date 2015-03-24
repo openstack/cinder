@@ -21,6 +21,8 @@ import os
 
 import eventlet
 
+from cinder import objects
+
 if os.name == 'nt':
     # eventlet monkey patching the os module causes subprocess.Popen to fail
     # on Windows when using pipes due to missing non-blocking IO support.
@@ -34,13 +36,13 @@ import warnings
 warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import i18n
 i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
-from cinder.openstack.common import log as logging
 from cinder import service
 from cinder import utils
 from cinder import version
@@ -54,9 +56,10 @@ CONF = cfg.CONF
 
 
 def main():
+    objects.register_all()
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
-    logging.setup("cinder")
+    logging.setup(CONF, "cinder")
     utils.monkey_patch()
     launcher = service.get_launcher()
     if CONF.enabled_backends:

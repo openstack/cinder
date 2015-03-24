@@ -15,7 +15,6 @@
 #    under the License.
 """Unit tests for the Quobyte driver module."""
 
-import contextlib
 import errno
 import os
 import StringIO
@@ -126,11 +125,9 @@ class QuobyteDriverTestCase(test.TestCase):
             drv.local_path(volume))
 
     def test_mount_quobyte_should_mount_correctly(self):
-        with contextlib.nested(
-                mock.patch.object(self._driver, '_execute'),
+        with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
-                           '.read_proc_mount'),
-        ) as (mock_execute, mock_open):
+                           '.read_proc_mount') as mock_open:
             # Content of /proc/mount (not mounted yet).
             mock_open.return_value = StringIO.StringIO(
                 "/dev/sda5 / ext4 rw,relatime,data=ordered 0 0")
@@ -152,11 +149,9 @@ class QuobyteDriverTestCase(test.TestCase):
                 [mkdir_call, mount_call, getfattr_call], any_order=False)
 
     def test_mount_quobyte_already_mounted_detected_seen_in_proc_mount(self):
-        with contextlib.nested(
-                mock.patch.object(self._driver, '_execute'),
+        with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
-                           '.read_proc_mount'),
-        ) as (mock_execute, mock_open):
+                           '.read_proc_mount') as mock_open:
             # Content of /proc/mount (already mounted).
             mock_open.return_value = StringIO.StringIO(
                 "quobyte@%s %s fuse rw,nosuid,nodev,noatime,user_id=1000"
@@ -179,12 +174,10 @@ class QuobyteDriverTestCase(test.TestCase):
            Because _mount_quobyte gets called with ensure=True, the error will
            be suppressed and logged instead.
         """
-        with contextlib.nested(
-                mock.patch.object(self._driver, '_execute'),
+        with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
-                           '.read_proc_mount'),
-                mock.patch('cinder.volume.drivers.quobyte.LOG')
-        ) as (mock_execute, mock_open, mock_LOG):
+                           '.read_proc_mount') as mock_open, \
+                mock.patch('cinder.volume.drivers.quobyte.LOG') as mock_LOG:
             # Content of /proc/mount (empty).
             mock_open.return_value = StringIO.StringIO()
             mock_execute.side_effect = [None, putils.ProcessExecutionError(
@@ -209,11 +202,9 @@ class QuobyteDriverTestCase(test.TestCase):
            test_mount_quobyte_should_suppress_and_log_already_mounted_error
            but with ensure=False.
         """
-        with contextlib.nested(
-                mock.patch.object(self._driver, '_execute'),
+        with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
-                           '.read_proc_mount')
-        ) as (mock_execute, mock_open):
+                           '.read_proc_mount') as mock_open:
             mock_open.return_value = StringIO.StringIO()
             mock_execute.side_effect = [
                 None,  # mkdir
@@ -312,10 +303,10 @@ class QuobyteDriverTestCase(test.TestCase):
 
     def test_ensure_share_mounted(self):
         """_ensure_share_mounted simple use case."""
-        with contextlib.nested(
-                mock.patch.object(self._driver, '_get_mount_point_for_share'),
-                mock.patch.object(self._driver, '_mount_quobyte')
-        ) as (mock_get_mount_point, mock_mount):
+        with mock.patch.object(self._driver, '_get_mount_point_for_share') as \
+                mock_get_mount_point, \
+                mock.patch.object(self._driver, '_mount_quobyte') as \
+                mock_mount:
             drv = self._driver
             drv._ensure_share_mounted(self.TEST_QUOBYTE_VOLUME)
 
@@ -578,16 +569,19 @@ class QuobyteDriverTestCase(test.TestCase):
         volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume_filename)
         info_file = volume_path + '.info'
 
-        with contextlib.nested(
-                mock.patch.object(self._driver, '_ensure_share_mounted'),
-                mock.patch.object(self._driver, '_local_volume_dir'),
-                mock.patch.object(self._driver, 'get_active_image_from_info'),
-                mock.patch.object(self._driver, '_execute'),
-                mock.patch.object(self._driver, '_local_path_volume'),
-                mock.patch.object(self._driver, '_local_path_volume_info')
-        ) as (mock_ensure_share_mounted, mock_local_volume_dir,
-              mock_active_image_from_info, mock_execute,
-              mock_local_path_volume, mock_local_path_volume_info):
+        with mock.patch.object(self._driver, '_ensure_share_mounted') as \
+                mock_ensure_share_mounted, \
+                mock.patch.object(self._driver, '_local_volume_dir') as \
+                mock_local_volume_dir, \
+                mock.patch.object(self._driver,
+                                  'get_active_image_from_info') as \
+                mock_active_image_from_info, \
+                mock.patch.object(self._driver, '_execute') as \
+                mock_execute, \
+                mock.patch.object(self._driver, '_local_path_volume') as \
+                mock_local_path_volume, \
+                mock.patch.object(self._driver, '_local_path_volume_info') as \
+                mock_local_path_volume_info:
             mock_local_volume_dir.return_value = self.TEST_MNT_POINT
             mock_active_image_from_info.return_value = volume_filename
             mock_local_path_volume.return_value = volume_path
@@ -812,15 +806,16 @@ class QuobyteDriverTestCase(test.TestCase):
         volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume['name'])
         image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
 
-        with contextlib.nested(
-            mock.patch.object(drv, 'get_active_image_from_info'),
-            mock.patch.object(drv, '_local_volume_dir'),
-            mock.patch.object(image_utils, 'qemu_img_info'),
-            mock.patch.object(image_utils, 'upload_volume'),
-            mock.patch.object(image_utils, 'create_temporary_file')
-        ) as (mock_get_active_image_from_info, mock_local_volume_dir,
-              mock_qemu_img_info, mock_upload_volume,
-              mock_create_temporary_file):
+        with mock.patch.object(drv, 'get_active_image_from_info') as \
+                mock_get_active_image_from_info, \
+                mock.patch.object(drv, '_local_volume_dir') as \
+                mock_local_volume_dir, \
+                mock.patch.object(image_utils, 'qemu_img_info') as \
+                mock_qemu_img_info, \
+                mock.patch.object(image_utils, 'upload_volume') as \
+                mock_upload_volume, \
+                mock.patch.object(image_utils, 'create_temporary_file') as \
+                mock_create_temporary_file:
             mock_get_active_image_from_info.return_value = volume['name']
 
             mock_local_volume_dir.return_value = self.TEST_MNT_POINT
@@ -844,7 +839,7 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_qemu_img_info.assert_called_once_with(volume_path)
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path)
-            mock_create_temporary_file.assert_once_called_with()
+            self.assertTrue(mock_create_temporary_file.called)
 
     def test_copy_volume_to_image_qcow2_image(self):
         """Upload a qcow2 image file which has to be converted to raw first."""
@@ -854,16 +849,18 @@ class QuobyteDriverTestCase(test.TestCase):
         volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume['name'])
         image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
 
-        with contextlib.nested(
-            mock.patch.object(drv, 'get_active_image_from_info'),
-            mock.patch.object(drv, '_local_volume_dir'),
-            mock.patch.object(image_utils, 'qemu_img_info'),
-            mock.patch.object(image_utils, 'convert_image'),
-            mock.patch.object(image_utils, 'upload_volume'),
-            mock.patch.object(image_utils, 'create_temporary_file')
-        ) as (mock_get_active_image_from_info, mock_local_volume_dir,
-              mock_qemu_img_info, mock_convert_image, mock_upload_volume,
-              mock_create_temporary_file):
+        with mock.patch.object(drv, 'get_active_image_from_info') as \
+                mock_get_active_image_from_info, \
+                mock.patch.object(drv, '_local_volume_dir') as \
+                mock_local_volume_dir, \
+                mock.patch.object(image_utils, 'qemu_img_info') as \
+                mock_qemu_img_info, \
+                mock.patch.object(image_utils, 'convert_image') as \
+                mock_convert_image, \
+                mock.patch.object(image_utils, 'upload_volume') as \
+                mock_upload_volume, \
+                mock.patch.object(image_utils, 'create_temporary_file') as \
+                mock_create_temporary_file:
             mock_get_active_image_from_info.return_value = volume['name']
 
             mock_local_volume_dir.return_value = self.TEST_MNT_POINT
@@ -889,7 +886,7 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume_path, upload_path, 'raw')
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path)
-            mock_create_temporary_file.assert_once_called_with()
+            self.assertTrue(mock_create_temporary_file.called)
 
     def test_copy_volume_to_image_snapshot_exists(self):
         """Upload an active snapshot which has to be converted to raw first."""
@@ -900,16 +897,18 @@ class QuobyteDriverTestCase(test.TestCase):
         volume_filename = 'volume-%s' % self.VOLUME_UUID
         image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
 
-        with contextlib.nested(
-            mock.patch.object(drv, 'get_active_image_from_info'),
-            mock.patch.object(drv, '_local_volume_dir'),
-            mock.patch.object(image_utils, 'qemu_img_info'),
-            mock.patch.object(image_utils, 'convert_image'),
-            mock.patch.object(image_utils, 'upload_volume'),
-            mock.patch.object(image_utils, 'create_temporary_file')
-        ) as (mock_get_active_image_from_info, mock_local_volume_dir,
-              mock_qemu_img_info, mock_convert_image, mock_upload_volume,
-              mock_create_temporary_file):
+        with mock.patch.object(drv, 'get_active_image_from_info') as \
+                mock_get_active_image_from_info, \
+                mock.patch.object(drv, '_local_volume_dir') as \
+                mock_local_volume_dir, \
+                mock.patch.object(image_utils, 'qemu_img_info') as \
+                mock_qemu_img_info, \
+                mock.patch.object(image_utils, 'convert_image') as \
+                mock_convert_image, \
+                mock.patch.object(image_utils, 'upload_volume') as \
+                mock_upload_volume, \
+                mock.patch.object(image_utils, 'create_temporary_file') as \
+                mock_create_temporary_file:
             mock_get_active_image_from_info.return_value = volume['name']
 
             mock_local_volume_dir.return_value = self.TEST_MNT_POINT
@@ -936,4 +935,4 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume_path, upload_path, 'raw')
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path)
-            mock_create_temporary_file.assert_once_called_with()
+            self.assertTrue(mock_create_temporary_file.called)

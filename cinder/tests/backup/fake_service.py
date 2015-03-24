@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log as logging
+
 from cinder.backup import driver
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

@@ -346,6 +346,7 @@ class NfsDriverTestCase(test.TestCase):
     TEST_NFS_EXPORT2_OPTIONS = '-o intr'
     TEST_SIZE_IN_GB = 1
     TEST_MNT_POINT = '/mnt/nfs'
+    TEST_MNT_POINT_BASE_EXTRA_SLASH = '/opt/stack/data/cinder//mnt'
     TEST_MNT_POINT_BASE = '/mnt/test'
     TEST_LOCAL_PATH = '/mnt/nfs/volume-123'
     TEST_FILE_NAME = 'test.txt'
@@ -440,6 +441,22 @@ class NfsDriverTestCase(test.TestCase):
 
         self.assertEqual('/mnt/test/2f4f60214cf43c595666dd815f0360a4',
                          drv._get_mount_point_for_share(self.TEST_NFS_EXPORT1))
+
+    def test_get_mount_point_for_share_given_extra_slash_in_state_path(self):
+        """_get_mount_point_for_share should calculate correct value."""
+        # This test gets called with the extra slash
+        self.configuration.nfs_mount_point_base = (
+            self.TEST_MNT_POINT_BASE_EXTRA_SLASH)
+
+        # The driver gets called with the correct configuration and removes
+        # the extra slash
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        self.assertEqual('/opt/stack/data/cinder/mnt', drv.base)
+
+        self.assertEqual(
+            '/opt/stack/data/cinder/mnt/2f4f60214cf43c595666dd815f0360a4',
+            drv._get_mount_point_for_share(self.TEST_NFS_EXPORT1))
 
     def test_get_capacity_info(self):
         """_get_capacity_info should calculate correct value."""

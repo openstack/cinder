@@ -53,6 +53,10 @@ Cinder Db
 
     Sync the database up to the most recent version. This is the standard way to create the db as well.
 
+``cinder-manage db purge [<number of days>]``
+
+    Purge database entries that are marked as deleted, that are older than the number of days specified.
+
 
 Cinder Logs
 ~~~~~~~~~~~

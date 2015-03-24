@@ -27,18 +27,19 @@ we should look at maybe pushing this up to Oslo
 import contextlib
 import math
 import os
+import re
 import tempfile
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI, _LW
 from cinder.openstack.common import fileutils
 from cinder.openstack.common import imageutils
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
@@ -61,6 +62,36 @@ def qemu_img_info(path, run_as_root=True):
         cmd = cmd[2:]
     out, _err = utils.execute(*cmd, run_as_root=run_as_root)
     return imageutils.QemuImgInfo(out)
+
+
+def get_qemu_img_version():
+    info = utils.execute('qemu-img', '--help', check_exit_code=False)[0]
+    pattern = r"qemu-img version ([0-9\.]*)"
+    version = re.match(pattern, info)
+    if not version:
+        LOG.warning(_LW("qemu-img is not installed."))
+        return None
+    return _get_version_from_string(version.groups()[0])
+
+
+def _get_version_from_string(version_string):
+    return [int(x) for x in version_string.split('.')]
+
+
+def check_qemu_img_version(minimum_version):
+    qemu_version = get_qemu_img_version()
+    if qemu_version < _get_version_from_string(minimum_version):
+        if qemu_version:
+            current_version = '.'.join((str(element)
+                                       for element in qemu_version))
+        else:
+            current_version = None
+
+        _msg = _('qemu-img %(minimum_version)s or later is required by '
+                 'this volume driver. Current qemu-img version: '
+                 '%(current_version)s') % {'minimum_version': minimum_version,
+                                           'current_version': current_version}
+        raise exception.VolumeBackendAPIException(data=_msg)
 
 
 def _convert_image(prefix, source, dest, out_format, run_as_root=True):
@@ -127,13 +158,13 @@ def _convert_image(prefix, source, dest, out_format, run_as_root=True):
     mbps = (fsz_mb / duration)
     msg = ("Image conversion details: src %(src)s, size %(sz).2f MB, "
            "duration %(duration).2f sec, destination %(dest)s")
-    LOG.debug(msg % {"src": source,
-                     "sz": fsz_mb,
-                     "duration": duration,
-                     "dest": dest})
+    LOG.debug(msg, {"src": source,
+                    "sz": fsz_mb,
+                    "duration": duration,
+                    "dest": dest})
 
-    msg = _("Converted %(sz).2f MB image at %(mbps).2f MB/s")
-    LOG.info(msg % {"sz": fsz_mb, "mbps": mbps})
+    msg = _LI("Converted %(sz).2f MB image at %(mbps).2f MB/s")
+    LOG.info(msg, {"sz": fsz_mb, "mbps": mbps})
 
 
 def convert_image(source, dest, out_format, run_as_root=True, throttle=None):
@@ -170,11 +201,11 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
     mbps = (fsz_mb / duration)
     msg = ("Image fetch details: dest %(dest)s, size %(sz).2f MB, "
            "duration %(duration).2f sec")
-    LOG.debug(msg % {"dest": image_file.name,
-                     "sz": fsz_mb,
-                     "duration": duration})
-    msg = _("Image download %(sz).2f MB at %(mbps).2f MB/s")
-    LOG.info(msg % {"sz": fsz_mb, "mbps": mbps})
+    LOG.debug(msg, {"dest": image_file.name,
+                    "sz": fsz_mb,
+                    "duration": duration})
+    msg = _LI("Image download %(sz).2f MB at %(mbps).2f MB/s")
+    LOG.info(msg, {"sz": fsz_mb, "mbps": mbps})
 
 
 def fetch_verify_image(context, image_service, image_id, dest,
@@ -272,8 +303,8 @@ def fetch_to_volume_format(context, image_service,
             # result we only need to copy the image to the destination and then
             # return.
             LOG.debug('Copying image from %(tmp)s to volume %(dest)s - '
-                      'size: %(size)s' % {'tmp': tmp, 'dest': dest,
-                                          'size': image_meta['size']})
+                      'size: %(size)s', {'tmp': tmp, 'dest': dest,
+                                         'size': image_meta['size']})
             image_size_m = math.ceil(image_meta['size'] / units.Mi)
             volume_utils.copy_volume(tmp, dest, image_size_m, blocksize)
             return
@@ -310,8 +341,8 @@ def fetch_to_volume_format(context, image_service,
         # check via 'qemu-img info' that what we copied was in fact a raw
         # image and not a different format with a backing file, which may be
         # malicious.
-        LOG.debug("%s was %s, converting to %s " % (image_id, fmt,
-                                                    volume_format))
+        LOG.debug("%s was %s, converting to %s ", (image_id, fmt,
+                                                   volume_format))
         convert_image(tmp, dest, volume_format,
                       run_as_root=run_as_root)
 
@@ -329,8 +360,8 @@ def upload_volume(context, image_service, image_meta, volume_path,
                   volume_format='raw', run_as_root=True):
     image_id = image_meta['id']
     if (image_meta['disk_format'] == volume_format):
-        LOG.debug("%s was %s, no need to convert to %s" %
-                  (image_id, volume_format, image_meta['disk_format']))
+        LOG.debug("%s was %s, no need to convert to %s",
+                  image_id, volume_format, image_meta['disk_format'])
         if os.name == 'nt' or os.access(volume_path, os.R_OK):
             with fileutils.file_open(volume_path, 'rb') as image_file:
                 image_service.update(context, image_id, {}, image_file)
@@ -341,8 +372,8 @@ def upload_volume(context, image_service, image_meta, volume_path,
         return
 
     with temporary_file() as tmp:
-        LOG.debug("%s was %s, converting to %s" %
-                  (image_id, volume_format, image_meta['disk_format']))
+        LOG.debug("%s was %s, converting to %s",
+                  image_id, volume_format, image_meta['disk_format'])
         convert_image(volume_path, tmp, image_meta['disk_format'],
                       run_as_root=run_as_root)
 

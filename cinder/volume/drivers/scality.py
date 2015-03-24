@@ -17,24 +17,19 @@ Scality SOFS Volume Driver.
 """
 
 
-import errno
 import os
 import urllib2
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import units
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import image_utils
-<<<<<<< HEAD
-from cinder.openstack.common import lockutils
-=======
 from cinder.openstack.common import fileutils
->>>>>>> 8bb5554537b34faead2b5eaf6d29600ff8243e85
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import driver
 
@@ -97,20 +92,13 @@ class ScalityDriver(driver.VolumeDriver):
             LOG.warn(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def _makedirs(self, path):
-        try:
-            os.makedirs(path)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
-
     @lockutils.synchronized('mount-sofs', 'cinder-sofs', external=True)
     def _mount_sofs(self):
         config = self.configuration.scality_sofs_config
         mount_path = self.configuration.scality_sofs_mount_point
         sysdir = os.path.join(mount_path, 'sys')
 
-        self._makedirs(mount_path)
+        fileutils.ensure_tree(mount_path)
         if not os.path.isdir(sysdir):
             self._execute('mount', '-t', 'sofs', config, mount_path,
                           run_as_root=True)
@@ -138,8 +126,7 @@ class ScalityDriver(driver.VolumeDriver):
         self._mount_sofs()
         voldir = os.path.join(self.configuration.scality_sofs_mount_point,
                               self.configuration.scality_sofs_volume_dir)
-        if not os.path.isdir(voldir):
-            self._makedirs(voldir)
+        fileutils.ensure_tree(voldir)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -224,7 +211,7 @@ class ScalityDriver(driver.VolumeDriver):
         """Disallow connection from connector."""
         pass
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
         """Callback for volume detached."""
         pass
 

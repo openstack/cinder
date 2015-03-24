@@ -19,8 +19,10 @@
 Scheduler Service
 """
 
-from oslo import messaging
+import eventlet
 from oslo_config import cfg
+from oslo_log import log as logging
+import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
 
@@ -30,7 +32,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE
 from cinder import manager
-from cinder.openstack.common import log as logging
+from cinder.openstack.common import versionutils
 from cinder import quota
 from cinder import rpc
 from cinder.scheduler.flows import create_volume
@@ -65,18 +67,23 @@ class SchedulerManager(manager.Manager):
                                 'cinder.scheduler.simple.SimpleScheduler']:
             scheduler_driver = ('cinder.scheduler.filter_scheduler.'
                                 'FilterScheduler')
-            LOG.deprecated(_('ChanceScheduler and SimpleScheduler have been '
-                             'deprecated due to lack of support for advanced '
-                             'features like: volume types, volume encryption,'
-                             ' QoS etc. These two schedulers can be fully '
-                             'replaced by FilterScheduler with certain '
-                             'combination of filters and weighers.'))
+            versionutils.report_deprecated_feature(LOG, _(
+                'ChanceScheduler and SimpleScheduler have been '
+                'deprecated due to lack of support for advanced '
+                'features like: volume types, volume encryption,'
+                ' QoS etc. These two schedulers can be fully '
+                'replaced by FilterScheduler with certain '
+                'combination of filters and weighers.'))
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
+        self._startup_delay = True
 
-    def init_host(self):
+    def init_host_with_rpc(self):
         ctxt = context.get_admin_context()
         self.request_service_capabilities(ctxt)
+
+        eventlet.sleep(CONF.periodic_interval)
+        self._startup_delay = False
 
     def update_service_capabilities(self, context, service_name=None,
                                     host=None, capabilities=None, **kwargs):
@@ -87,10 +94,18 @@ class SchedulerManager(manager.Manager):
                                                 host,
                                                 capabilities)
 
+    def _wait_for_scheduler(self):
+        # NOTE(dulek): We're waiting for scheduler to announce that it's ready
+        # or CONF.periodic_interval seconds from service startup has passed.
+        while self._startup_delay and not self.driver.is_ready():
+            eventlet.sleep(1)
+
     def create_consistencygroup(self, context, topic,
                                 group_id,
                                 request_spec_list=None,
                                 filter_properties_list=None):
+
+        self._wait_for_scheduler()
         try:
             self.driver.schedule_create_consistencygroup(
                 context, group_id,
@@ -115,6 +130,7 @@ class SchedulerManager(manager.Manager):
                       image_id=None, request_spec=None,
                       filter_properties=None):
 
+        self._wait_for_scheduler()
         try:
             flow_engine = create_volume.get_flow(context,
                                                  db, self.driver,
@@ -139,6 +155,8 @@ class SchedulerManager(manager.Manager):
                                force_host_copy, request_spec,
                                filter_properties=None):
         """Ensure that the host exists and can accept the volume."""
+
+        self._wait_for_scheduler()
 
         def _migrate_volume_set_error(self, context, ex, request_spec):
             volume_state = {'volume_state': {'migration_status': None}}
@@ -171,6 +189,9 @@ class SchedulerManager(manager.Manager):
         :param request_spec: parameters for this retype request
         :param filter_properties: parameters to filter by
         """
+
+        self._wait_for_scheduler()
+
         def _retype_volume_set_error(self, context, ex, request_spec,
                                      volume_ref, msg, reservations):
             if reservations:
@@ -221,6 +242,8 @@ class SchedulerManager(manager.Manager):
                         request_spec, filter_properties=None):
         """Ensure that the host exists and can accept the volume."""
 
+        self._wait_for_scheduler()
+
         def _manage_existing_set_error(self, context, ex, request_spec):
             volume_state = {'volume_state': {'status': 'error'}}
             self._set_volume_state_and_notify('manage_existing', volume_state,
@@ -242,7 +265,12 @@ class SchedulerManager(manager.Manager):
                                                       request_spec.get('ref'))
 
     def get_pools(self, context, filters=None):
-        """Get active pools from scheduler's cache."""
+        """Get active pools from scheduler's cache.
+
+        NOTE(dulek): There's no self._wait_for_scheduler() because get_pools is
+        an RPC call (is blocking for the c-api). Also this is admin-only API
+        extension so it won't hurt the user much to retry the request manually.
+        """
         return self.driver.get_pools(context, filters)
 
     def _set_volume_state_and_notify(self, method, updates, context, ex,

@@ -31,6 +31,7 @@ from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_db import options
 from oslo_db.sqlalchemy import session as db_session
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import osprofiler.sqlalchemy
@@ -49,7 +50,6 @@ from cinder.common import sqlalchemyutils
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _, _LW, _LE, _LI
-from cinder.openstack.common import log as logging
 
 
 CONF = cfg.CONF
@@ -89,6 +89,10 @@ def get_engine():
 def get_session(**kwargs):
     facade = _create_facade_lazily()
     return facade.get_session(**kwargs)
+
+
+def dispose_engine():
+    get_engine().dispose()
 
 _DEFAULT_QUOTA_NAME = 'default'
 
@@ -975,18 +979,51 @@ def reservation_expire(context):
 
 
 @require_admin_context
-def volume_attached(context, volume_id, instance_uuid, host_name, mountpoint):
+def volume_attach(context, values):
+    volume_attachment_ref = models.VolumeAttachment()
+    if not values.get('id'):
+        values['id'] = str(uuid.uuid4())
+
+    volume_attachment_ref.update(values)
+    session = get_session()
+    with session.begin():
+        volume_attachment_ref.save(session=session)
+        return volume_attachment_get(context, values['id'],
+                                     session=session)
+
+
+@require_admin_context
+def volume_attached(context, attachment_id, instance_uuid, host_name,
+                    mountpoint, attach_mode='rw'):
+    """This method updates a volume attachment entry.
+
+    This function saves the information related to a particular
+    attachment for a volume.  It also updates the volume record
+    to mark the volume as attached.
+
+    """
     if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
         raise exception.InvalidUUID(uuid=instance_uuid)
 
     session = get_session()
     with session.begin():
-        volume_ref = _volume_get(context, volume_id, session=session)
+        volume_attachment_ref = volume_attachment_get(context, attachment_id,
+                                                      session=session)
+
+        volume_attachment_ref['mountpoint'] = mountpoint
+        volume_attachment_ref['attach_status'] = 'attached'
+        volume_attachment_ref['instance_uuid'] = instance_uuid
+        volume_attachment_ref['attached_host'] = host_name
+        volume_attachment_ref['attach_time'] = timeutils.utcnow()
+        volume_attachment_ref['attach_mode'] = attach_mode
+
+        volume_ref = _volume_get(context, volume_attachment_ref['volume_id'],
+                                 session=session)
+        volume_attachment_ref.save(session=session)
+
         volume_ref['status'] = 'in-use'
-        volume_ref['mountpoint'] = mountpoint
         volume_ref['attach_status'] = 'attached'
-        volume_ref['instance_uuid'] = instance_uuid
-        volume_ref['attached_host'] = host_name
+        volume_ref.save(session=session)
         return volume_ref
 
 
@@ -1134,18 +1171,57 @@ def volume_destroy(context, volume_id):
 
 
 @require_admin_context
-def volume_detached(context, volume_id):
+def volume_detach(context, attachment_id):
     session = get_session()
     with session.begin():
+        volume_attachment_ref = volume_attachment_get(context, attachment_id,
+                                                      session=session)
+        volume_attachment_ref['attach_status'] = 'detaching'
+        volume_attachment_ref.save(session=session)
+
+
+@require_admin_context
+def volume_detached(context, volume_id, attachment_id):
+    """This updates a volume attachment and marks it as detached.
+
+    This method also ensures that the volume entry is correctly
+    marked as either still attached/in-use or detached/available
+    if this was the last detachment made.
+
+    """
+    session = get_session()
+    with session.begin():
+        attachment = volume_attachment_get(context, attachment_id,
+                                           session=session)
+
+        # If this is already detached, attachment will be None
+        if attachment:
+            now = timeutils.utcnow()
+            attachment['attach_status'] = 'detached'
+            attachment['detach_time'] = now
+            attachment['deleted'] = True
+            attachment['deleted_at'] = now
+            attachment.save(session=session)
+
+        attachment_list = volume_attachment_get_used_by_volume_id(
+            context, volume_id, session=session)
+        remain_attachment = False
+        if attachment_list and len(attachment_list) > 0:
+            remain_attachment = True
+
         volume_ref = _volume_get(context, volume_id, session=session)
-        # Hide status update from user if we're performing a volume migration
-        if not volume_ref['migration_status']:
-            volume_ref['status'] = 'available'
-        volume_ref['mountpoint'] = None
-        volume_ref['attach_status'] = 'detached'
-        volume_ref['instance_uuid'] = None
-        volume_ref['attached_host'] = None
-        volume_ref['attach_time'] = None
+        if not remain_attachment:
+            # Hide status update from user if we're performing volume migration
+            if not volume_ref['migration_status']:
+                volume_ref['status'] = 'available'
+
+            volume_ref['attach_status'] = 'detached'
+            volume_ref.save(session=session)
+        else:
+            # Volume is still attached
+            volume_ref['status'] = 'in-use'
+            volume_ref['attach_status'] = 'attached'
+            volume_ref.save(session=session)
 
 
 @require_context
@@ -1156,12 +1232,14 @@ def _volume_get_query(context, session=None, project_only=False):
             options(joinedload('volume_metadata')).\
             options(joinedload('volume_admin_metadata')).\
             options(joinedload('volume_type')).\
+            options(joinedload('volume_attachment')).\
             options(joinedload('consistencygroup'))
     else:
         return model_query(context, models.Volume, session=session,
                            project_only=project_only).\
             options(joinedload('volume_metadata')).\
             options(joinedload('volume_type')).\
+            options(joinedload('volume_attachment')).\
             options(joinedload('consistencygroup'))
 
 
@@ -1178,21 +1256,75 @@ def _volume_get(context, volume_id, session=None):
 
 
 @require_context
+def volume_attachment_get(context, attachment_id, session=None):
+    result = model_query(context, models.VolumeAttachment,
+                         session=session).\
+        filter_by(id=attachment_id).\
+        first()
+    if not result:
+        raise exception.VolumeAttachmentNotFound(filter='attachment_id = %s' %
+                                                 attachment_id)
+    return result
+
+
+@require_context
+def volume_attachment_get_used_by_volume_id(context, volume_id, session=None):
+    result = model_query(context, models.VolumeAttachment,
+                         session=session).\
+        filter_by(volume_id=volume_id).\
+        filter(models.VolumeAttachment.attach_status != 'detached').\
+        all()
+    return result
+
+
+@require_context
+def volume_attachment_get_by_host(context, volume_id, host):
+    session = get_session()
+    with session.begin():
+        result = model_query(context, models.VolumeAttachment,
+                             session=session).\
+            filter_by(volume_id=volume_id).\
+            filter_by(attached_host=host).\
+            filter(models.VolumeAttachment.attach_status != 'detached').\
+            first()
+        return result
+
+
+@require_context
+def volume_attachment_get_by_instance_uuid(context, volume_id, instance_uuid):
+    session = get_session()
+    with session.begin():
+        result = model_query(context, models.VolumeAttachment,
+                             session=session).\
+            filter_by(volume_id=volume_id).\
+            filter_by(instance_uuid=instance_uuid).\
+            filter(models.VolumeAttachment.attach_status != 'detached').\
+            first()
+        return result
+
+
+@require_context
 def volume_get(context, volume_id):
     return _volume_get(context, volume_id)
 
 
 @require_admin_context
-def volume_get_all(context, marker, limit, sort_key, sort_dir,
+def volume_get_all(context, marker, limit, sort_keys=None, sort_dirs=None,
                    filters=None):
     """Retrieves all volumes.
+
+    If no sort parameters are specified then the returned volumes are sorted
+    first by the 'created_at' key and then by the 'id' key in descending
+    order.
 
     :param context: context to query under
     :param marker: the last item of the previous page, used to determine the
                    next page of results to return
     :param limit: maximum number of items to return
-    :param sort_key: single attributes by which results should be sorted
-    :param sort_dir: direction in which results should be sorted (asc, desc)
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
     :param filters: dictionary of filters; values that are in lists, tuples,
                     or sets cause an 'IN' operation, while exact matching
                     is used for other values, see _process_volume_filters
@@ -1203,7 +1335,7 @@ def volume_get_all(context, marker, limit, sort_key, sort_dir,
     with session.begin():
         # Generate the query
         query = _generate_paginate_query(context, session, marker, limit,
-                                         sort_key, sort_dir, filters)
+                                         sort_keys, sort_dirs, filters)
         # No volumes would match, return empty list
         if query is None:
             return []
@@ -1245,7 +1377,7 @@ def volume_get_all_by_host(context, host, filters=None):
         return []
 
 
-@require_admin_context
+@require_context
 def volume_get_all_by_group(context, group_id, filters=None):
     """Retrieves all volumes associated with the group_id.
 
@@ -1267,17 +1399,23 @@ def volume_get_all_by_group(context, group_id, filters=None):
 
 
 @require_context
-def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
-                              sort_dir, filters=None):
+def volume_get_all_by_project(context, project_id, marker, limit,
+                              sort_keys=None, sort_dirs=None, filters=None):
     """"Retrieves all volumes in a project.
+
+    If no sort parameters are specified then the returned volumes are sorted
+    first by the 'created_at' key and then by the 'id' key in descending
+    order.
 
     :param context: context to query under
     :param project_id: project for all volumes being retrieved
     :param marker: the last item of the previous page, used to determine the
                    next page of results to return
     :param limit: maximum number of items to return
-    :param sort_key: single attributes by which results should be sorted
-    :param sort_dir: direction in which results should be sorted (asc, desc)
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
     :param filters: dictionary of filters; values that are in lists, tuples,
                     or sets cause an 'IN' operation, while exact matching
                     is used for other values, see _process_volume_filters
@@ -1292,15 +1430,15 @@ def volume_get_all_by_project(context, project_id, marker, limit, sort_key,
         filters['project_id'] = project_id
         # Generate the query
         query = _generate_paginate_query(context, session, marker, limit,
-                                         sort_key, sort_dir, filters)
+                                         sort_keys, sort_dirs, filters)
         # No volumes would match, return empty list
         if query is None:
             return []
         return query.all()
 
 
-def _generate_paginate_query(context, session, marker, limit, sort_key,
-                             sort_dir, filters):
+def _generate_paginate_query(context, session, marker, limit, sort_keys,
+                             sort_dirs, filters):
     """Generate the query to include the filters and the paginate options.
 
     Returns a query with sorting / pagination criteria added or None
@@ -1311,14 +1449,19 @@ def _generate_paginate_query(context, session, marker, limit, sort_key,
     :param marker: the last item of the previous page; we returns the next
                     results after this value.
     :param limit: maximum number of items to return
-    :param sort_key: single attributes by which results should be sorted
-    :param sort_dir: direction in which results should be sorted (asc, desc)
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
     :param filters: dictionary of filters; values that are in lists, tuples,
                     or sets cause an 'IN' operation, while exact matching
                     is used for other values, see _process_volume_filters
                     function for more information
     :returns: updated query or None
     """
+    sort_keys, sort_dirs = process_sort_params(sort_keys,
+                                               sort_dirs,
+                                               default_dir='desc')
     query = _volume_get_query(context, session=session)
 
     if filters:
@@ -1331,9 +1474,9 @@ def _generate_paginate_query(context, session, marker, limit, sort_key,
         marker_volume = _volume_get(context, marker, session)
 
     return sqlalchemyutils.paginate_query(query, models.Volume, limit,
-                                          [sort_key, 'created_at', 'id'],
+                                          sort_keys,
                                           marker=marker_volume,
-                                          sort_dir=sort_dir)
+                                          sort_dirs=sort_dirs)
 
 
 def _process_volume_filters(query, filters):
@@ -1418,6 +1561,77 @@ def _process_volume_filters(query, filters):
     return query
 
 
+def process_sort_params(sort_keys, sort_dirs, default_keys=None,
+                        default_dir='asc'):
+    """Process the sort parameters to include default keys.
+
+    Creates a list of sort keys and a list of sort directions. Adds the default
+    keys to the end of the list if they are not already included.
+
+    When adding the default keys to the sort keys list, the associated
+    direction is:
+    1) The first element in the 'sort_dirs' list (if specified), else
+    2) 'default_dir' value (Note that 'asc' is the default value since this is
+    the default in sqlalchemy.utils.paginate_query)
+
+    :param sort_keys: List of sort keys to include in the processed list
+    :param sort_dirs: List of sort directions to include in the processed list
+    :param default_keys: List of sort keys that need to be included in the
+                         processed list, they are added at the end of the list
+                         if not already specified.
+    :param default_dir: Sort direction associated with each of the default
+                        keys that are not supplied, used when they are added
+                        to the processed list
+    :returns: list of sort keys, list of sort directions
+    :raise exception.InvalidInput: If more sort directions than sort keys
+                                   are specified or if an invalid sort
+                                   direction is specified
+    """
+    if default_keys is None:
+        default_keys = ['created_at', 'id']
+
+    # Determine direction to use for when adding default keys
+    if sort_dirs and len(sort_dirs):
+        default_dir_value = sort_dirs[0]
+    else:
+        default_dir_value = default_dir
+
+    # Create list of keys (do not modify the input list)
+    if sort_keys:
+        result_keys = list(sort_keys)
+    else:
+        result_keys = []
+
+    # If a list of directions is not provided, use the default sort direction
+    # for all provided keys.
+    if sort_dirs:
+        result_dirs = []
+        # Verify sort direction
+        for sort_dir in sort_dirs:
+            if sort_dir not in ('asc', 'desc'):
+                msg = _LE("Unknown sort direction, must be 'desc' or 'asc'.")
+                raise exception.InvalidInput(reason=msg)
+            result_dirs.append(sort_dir)
+    else:
+        result_dirs = [default_dir_value for _sort_key in result_keys]
+
+    # Ensure that the key and direction length match
+    while len(result_dirs) < len(result_keys):
+        result_dirs.append(default_dir_value)
+    # Unless more direction are specified, which is an error
+    if len(result_dirs) > len(result_keys):
+        msg = _LE("Sort direction array size exceeds sort key array size.")
+        raise exception.InvalidInput(reason=msg)
+
+    # Ensure defaults are included
+    for key in default_keys:
+        if key not in result_keys:
+            result_keys.append(key)
+            result_dirs.append(default_dir_value)
+
+    return result_keys, result_dirs
+
+
 @require_admin_context
 def volume_get_iscsi_target_num(context, volume_id):
     result = model_query(context, models.IscsiTarget, read_deleted="yes").\
@@ -1454,6 +1668,17 @@ def volume_update(context, volume_id, values):
         volume_ref.update(values)
 
         return volume_ref
+
+
+@require_context
+def volume_attachment_update(context, attachment_id, values):
+    session = get_session()
+    with session.begin():
+        volume_attachment_ref = volume_attachment_get(context, attachment_id,
+                                                      session=session)
+        volume_attachment_ref.update(values)
+        volume_attachment_ref.save(session=session)
+        return volume_attachment_ref
 
 
 ####################
@@ -1940,12 +2165,34 @@ def _volume_type_get_query(context, session=None, read_deleted=None,
 def volume_type_update(context, volume_type_id, values):
     session = get_session()
     with session.begin():
+        # Check it exists
         volume_type_ref = _volume_type_ref_get(context,
                                                volume_type_id,
                                                session)
-
         if not volume_type_ref:
             raise exception.VolumeTypeNotFound(type_id=volume_type_id)
+
+        # No description change
+        if values['description'] is None:
+            del values['description']
+
+        # No name change
+        if values['name'] is None:
+            del values['name']
+        else:
+            # Volume type name is unique. If change to a name that belongs to
+            # a different volume_type , it should be prevented.
+            check_vol_type = None
+            try:
+                check_vol_type = \
+                    _volume_type_get_by_name(context,
+                                             values['name'],
+                                             session=session)
+            except exception.VolumeTypeNotFoundByName:
+                pass
+            else:
+                if check_vol_type.get('id') != volume_type_id:
+                    raise exception.VolumeTypeExists(id=values['name'])
 
         volume_type_ref.update(values)
         volume_type_ref.save(session=session)
@@ -2921,6 +3168,20 @@ def backup_get_all_by_project(context, project_id, filters=None):
 
 
 @require_context
+def backup_get_all_by_volume(context, volume_id, filters=None):
+
+    authorize_project_context(context, volume_id)
+    if not filters:
+        filters = {}
+    else:
+        filters = filters.copy()
+
+    filters['volume_id'] = volume_id
+
+    return _backup_get_all(context, filters)
+
+
+@require_context
 def backup_create(context, values):
     backup = models.Backup()
     if not values.get('id'):
@@ -3283,7 +3544,7 @@ def purge_deleted_rows(context, age_in_days):
     try:
         age_in_days = int(age_in_days)
     except ValueError:
-        msg = _LE('Invalid valude for age, %(age)s')
+        msg = _LE('Invalid value for age, %(age)s')
         LOG.exception(msg, {'age': age_in_days})
         raise exception.InvalidParameterValue(msg % {'age': age_in_days})
     if age_in_days <= 0:
@@ -3298,7 +3559,8 @@ def purge_deleted_rows(context, age_in_days):
     tables = []
 
     for model_class in models.__dict__.itervalues():
-        if hasattr(model_class, "__tablename__"):
+        if hasattr(model_class, "__tablename__") \
+                and hasattr(model_class, "deleted"):
             tables.append(model_class.__tablename__)
 
     # Reorder the list so the volumes table is last to avoid FK constraints
@@ -3309,7 +3571,7 @@ def purge_deleted_rows(context, age_in_days):
         LOG.info(_LI('Purging deleted rows older than age=%(age)d days '
                      'from table=%(table)s'), {'age': age_in_days,
                                                'table': table})
-        deleted_age = dt.datetime.now() - dt.timedelta(days=age_in_days)
+        deleted_age = timeutils.utcnow() - dt.timedelta(days=age_in_days)
         try:
             with session.begin():
                 result = session.execute(
@@ -3323,3 +3585,48 @@ def purge_deleted_rows(context, age_in_days):
         rows_purged = result.rowcount
         LOG.info(_LI("Deleted %(row)d rows from table=%(table)s"),
                  {'row': rows_purged, 'table': table})
+
+
+###############################
+
+
+@require_context
+def driver_initiator_data_update(context, initiator, namespace, updates):
+    session = get_session()
+    with session.begin():
+        set_values = updates.get('set_values', {})
+        for key, value in set_values.items():
+            data = session.query(models.DriverInitiatorData).\
+                filter_by(initiator=initiator).\
+                filter_by(namespace=namespace).\
+                filter_by(key=key).\
+                first()
+
+            if data:
+                data.update({'value': value})
+                data.save(session=session)
+            else:
+                data = models.DriverInitiatorData()
+                data.initiator = initiator
+                data.namespace = namespace
+                data.key = key
+                data.value = value
+                session.add(data)
+
+        remove_values = updates.get('remove_values', [])
+        for key in remove_values:
+            session.query(models.DriverInitiatorData).\
+                filter_by(initiator=initiator).\
+                filter_by(namespace=namespace).\
+                filter_by(key=key).\
+                delete()
+
+
+@require_context
+def driver_initiator_data_get(context, initiator, namespace):
+    session = get_session()
+    with session.begin():
+        return session.query(models.DriverInitiatorData).\
+            filter_by(initiator=initiator).\
+            filter_by(namespace=namespace).\
+            all()

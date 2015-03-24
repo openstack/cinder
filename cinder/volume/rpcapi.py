@@ -16,10 +16,11 @@
 Client side of the volume RPC API.
 """
 
-from oslo import messaging
 from oslo_config import cfg
+import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 
+from cinder.objects import base as objects_base
 from cinder import rpc
 from cinder.volume import utils
 
@@ -58,6 +59,11 @@ class VolumeAPI(object):
                create_cgsnapshot, and delete_cgsnapshot. Also adds
                the consistencygroup_id parameter in create_volume.
         1.19 - Adds update_migrated_volume
+        1.20 - Adds support for sending objects over RPC in create_snapshot()
+               and delete_snapshot()
+        1.21 - Adds update_consistencygroup.
+        1.22 - Adds create_consistencygroup_from_src.
+        1.23 - Adds attachment_id to detach_volume
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -66,7 +72,8 @@ class VolumeAPI(object):
         super(VolumeAPI, self).__init__()
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, '1.19')
+        serializer = objects_base.CinderObjectSerializer()
+        self.client = rpc.get_client(target, '1.23', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
@@ -79,6 +86,23 @@ class VolumeAPI(object):
         cctxt = self.client.prepare(server=host, version='1.18')
         cctxt.cast(ctxt, 'delete_consistencygroup',
                    group_id=group['id'])
+
+    def update_consistencygroup(self, ctxt, group, add_volumes=None,
+                                remove_volumes=None):
+        host = utils.extract_host(group['host'])
+        cctxt = self.client.prepare(server=host, version='1.21')
+        cctxt.cast(ctxt, 'update_consistencygroup',
+                   group_id=group['id'],
+                   add_volumes=add_volumes,
+                   remove_volumes=remove_volumes)
+
+    def create_consistencygroup_from_src(self, ctxt, group, host,
+                                         cgsnapshot=None):
+        new_host = utils.extract_host(host)
+        cctxt = self.client.prepare(server=new_host, version='1.22')
+        cctxt.cast(ctxt, 'create_consistencygroup_from_src',
+                   group_id=group['id'],
+                   cgsnapshot_id=cgsnapshot['id'])
 
     def create_cgsnapshot(self, ctxt, group, cgsnapshot):
 
@@ -100,7 +124,8 @@ class VolumeAPI(object):
                       snapshot_id=None, image_id=None,
                       source_replicaid=None,
                       source_volid=None,
-                      consistencygroup_id=None):
+                      consistencygroup_id=None,
+                      cgsnapshot_id=None):
 
         new_host = utils.extract_host(host)
         cctxt = self.client.prepare(server=new_host, version='1.4')
@@ -114,7 +139,8 @@ class VolumeAPI(object):
                    image_id=image_id,
                    source_replicaid=source_replicaid,
                    source_volid=source_volid,
-                   consistencygroup_id=consistencygroup_id)
+                   consistencygroup_id=consistencygroup_id,
+                   cgsnapshot_id=cgsnapshot_id)
 
     def delete_volume(self, ctxt, volume, unmanage_only=False):
         new_host = utils.extract_host(volume['host'])
@@ -127,12 +153,12 @@ class VolumeAPI(object):
         new_host = utils.extract_host(volume['host'])
         cctxt = self.client.prepare(server=new_host)
         cctxt.cast(ctxt, 'create_snapshot', volume_id=volume['id'],
-                   snapshot_id=snapshot['id'])
+                   snapshot=snapshot)
 
     def delete_snapshot(self, ctxt, snapshot, host):
         new_host = utils.extract_host(host)
         cctxt = self.client.prepare(server=new_host)
-        cctxt.cast(ctxt, 'delete_snapshot', snapshot_id=snapshot['id'])
+        cctxt.cast(ctxt, 'delete_snapshot', snapshot=snapshot)
 
     def attach_volume(self, ctxt, volume, instance_uuid, host_name,
                       mountpoint, mode):
@@ -146,10 +172,11 @@ class VolumeAPI(object):
                           mountpoint=mountpoint,
                           mode=mode)
 
-    def detach_volume(self, ctxt, volume):
+    def detach_volume(self, ctxt, volume, attachment_id):
         new_host = utils.extract_host(volume['host'])
-        cctxt = self.client.prepare(server=new_host)
-        return cctxt.call(ctxt, 'detach_volume', volume_id=volume['id'])
+        cctxt = self.client.prepare(server=new_host, version='1.20')
+        return cctxt.call(ctxt, 'detach_volume', volume_id=volume['id'],
+                          attachment_id=attachment_id)
 
     def copy_volume_to_image(self, ctxt, volume, image_meta):
         new_host = utils.extract_host(volume['host'])

@@ -20,12 +20,13 @@ Manage hosts in the current zone.
 import UserDict
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 
+from cinder import context as cinder_context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common.scheduler import weights
 from cinder import utils
@@ -118,6 +119,9 @@ class HostState(object):
         self.max_over_subscription_ratio = 1.0
         self.thin_provisioning_support = False
         self.thick_provisioning_support = False
+        # Does this backend support attaching a volume to more than
+        # once host/instance?
+        self.multiattach = False
 
         # PoolState for all pools
         self.pools = {}
@@ -331,6 +335,7 @@ class PoolState(HostState):
                 'thin_provisioning_support', False)
             self.thick_provisioning_support = capability.get(
                 'thick_provisioning_support', False)
+            self.multiattach = capability.get('multiattach', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
@@ -368,6 +373,9 @@ class HostManager(object):
         else:
             # Do nothing when some other scheduler is configured
             pass
+
+        self._no_capabilities_hosts = set()  # Hosts having no capabilities
+        self._update_host_state_map(cinder_context.get_admin_context())
 
     def _choose_host_filters(self, filter_cls_names):
         """Return a list of available filter names.
@@ -458,6 +466,11 @@ class HostManager(object):
                   {'service_name': service_name, 'host': host,
                    'cap': capabilities})
 
+        self._no_capabilities_hosts.discard(host)
+
+    def has_all_capabilities(self):
+        return len(self._no_capabilities_hosts) == 0
+
     def _update_host_state_map(self, context):
 
         # Get resource usage across the available volume nodes:
@@ -466,12 +479,17 @@ class HostManager(object):
                                                       topic,
                                                       disabled=False)
         active_hosts = set()
+        no_capabilities_hosts = set()
         for service in volume_services:
             host = service['host']
             if not utils.service_is_up(service):
                 LOG.warn(_LW("volume service is down. (host: %s)") % host)
                 continue
             capabilities = self.service_states.get(host, None)
+            if capabilities is None:
+                no_capabilities_hosts.add(host)
+                continue
+
             host_state = self.host_state_map.get(host)
             if not host_state:
                 host_state = self.host_state_cls(host,
@@ -484,6 +502,8 @@ class HostManager(object):
                                                      service=
                                                      dict(service.iteritems()))
             active_hosts.add(host)
+
+        self._no_capabilities_hosts = no_capabilities_hosts
 
         # remove non-active hosts from host_state_map
         nonactive_hosts = set(self.host_state_map.keys()) - active_hosts

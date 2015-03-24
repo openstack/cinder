@@ -35,9 +35,10 @@ try:
 except ImportError:
     hpexceptions = None
 
+from oslo_log import log as logging
+
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
-from cinder.openstack.common import log as logging
 import cinder.volume.driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san import san
@@ -82,10 +83,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.13 - Update LOG usage to fix translations.  bug #1384312
         2.0.14 - Do not allow a different iSCSI IP (hp3par_iscsi_ips) to be
                  used during live-migration.  bug #1423958
+        2.0.15 - Added support for updated detach_volume attachment.
 
     """
 
-    VERSION = "2.0.14"
+    VERSION = "2.0.15"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -114,7 +116,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
     def get_volume_stats(self, refresh=False):
         common = self._login()
         try:
-            stats = common.get_volume_stats(refresh)
+            stats = common.get_volume_stats(
+                refresh,
+                self.get_filter_function(),
+                self.get_goodness_function())
             stats['storage_protocol'] = 'iSCSI'
             stats['driver_version'] = self.VERSION
             backend_name = self.configuration.safe_get('volume_backend_name')
@@ -688,10 +693,10 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         finally:
             self._logout(common)
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
         common = self._login()
         try:
-            common.detach_volume(volume)
+            common.detach_volume(volume, attachment)
         finally:
             self._logout(common)
 

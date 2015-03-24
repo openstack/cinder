@@ -19,8 +19,9 @@
 
 import math
 
+from oslo_log import log as logging
+
 from cinder.i18n import _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 
 

@@ -22,6 +22,7 @@ import time
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 import six
 
@@ -29,7 +30,6 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import throttling
@@ -50,8 +50,9 @@ volume_opts = [
                default=0,
                help='The percentage of backend capacity is reserved'),
     cfg.IntOpt('iscsi_num_targets',
-               default=100,
-               help='The maximum number of iSCSI target IDs per host'),
+               default=None,
+               help='This option is deprecated and unused. '
+                    'It will be removed in the Liberty release.'),
     cfg.StrOpt('iscsi_target_prefix',
                default='iqn.2010-10.org.openstack:',
                help='Prefix for iSCSI volumes'),
@@ -95,11 +96,13 @@ volume_opts = [
                     'for example "-c3" for idle only priority.'),
     cfg.StrOpt('iscsi_helper',
                default='tgtadm',
-               choices=['tgtadm', 'lioadm', 'iseradm', 'iscsictl', 'fake'],
+               choices=['tgtadm', 'lioadm', 'scstadmin', 'iseradm', 'iscsictl',
+                        'ietadm', 'fake'],
                help='iSCSI target user-land tool to use. tgtadm is default, '
-                    'use lioadm for LIO iSCSI support, iseradm for the ISER '
-                    'protocol, iscsictl for Chelsio iSCSI Target or fake for '
-                    'testing.'),
+                    'use lioadm for LIO iSCSI support, scstadmin for SCST '
+                    'target support, iseradm for the ISER protocol, ietadm '
+                    'for iSCSI Enterprise Target, iscsictl for Chelsio iSCSI '
+                    'Target or fake for testing.'),
     cfg.StrOpt('volumes_dir',
                default='$state_path/volumes',
                help='Volume configuration file storage '
@@ -193,6 +196,21 @@ volume_opts = [
                help='Password for specified CHAP account name.',
                deprecated_opts=deprecated_chap_password_opts,
                secret=True),
+    cfg.StrOpt('driver_data_namespace',
+               default=None,
+               help='Namespace for driver private data values to be '
+                    'saved in.'),
+    cfg.StrOpt('filter_function',
+               default=None,
+               help='String representation for an equation that will be '
+                    'used to filter hosts. Only used when the driver '
+                    'filter is set to be used by the Cinder scheduler.'),
+    cfg.StrOpt('goodness_function',
+               default=None,
+               help='String representation for an equation that will be '
+                    'used to determine the goodness of a host. Only used '
+                    'when using the goodness weigher is set to be used by '
+                    'the Cinder scheduler.'),
 ]
 
 # for backward compatibility
@@ -202,8 +220,9 @@ iser_opts = [
                help='The maximum number of times to rescan iSER target'
                     'to find volume'),
     cfg.IntOpt('iser_num_targets',
-               default=100,
-               help='The maximum number of iSER target IDs per host'),
+               default=None,
+               help='This option is deprecated and unused. '
+                    'It will be removed in the Liberty release.'),
     cfg.StrOpt('iser_target_prefix',
                default='iqn.2010-10.org.openstack:',
                help='Prefix for iSER volumes'),
@@ -425,6 +444,42 @@ class BaseVD(object):
         """
         return None
 
+    def _update_pools_and_stats(self, data):
+        """Updates data for pools and volume stats based on provided data."""
+        # provisioned_capacity_gb is set to None by default below, but
+        # None won't be used in calculation. It will be overridden by
+        # driver's provisioned_capacity_gb if reported, otherwise it
+        # defaults to allocated_capacity_gb in host_manager.py.
+        if self.pools:
+            for pool in self.pools:
+                new_pool = {}
+                new_pool.update(dict(
+                    pool_name=pool,
+                    total_capacity_gb=0,
+                    free_capacity_gb=0,
+                    provisioned_capacity_gb=None,
+                    reserved_percentage=100,
+                    QoS_support=False,
+                    filter_function=self.get_filter_function(),
+                    goodness_function=self.get_goodness_function()
+                ))
+                data["pools"].append(new_pool)
+        else:
+            # No pool configured, the whole backend will be treated as a pool
+            single_pool = {}
+            single_pool.update(dict(
+                pool_name=data["volume_backend_name"],
+                total_capacity_gb=0,
+                free_capacity_gb=0,
+                provisioned_capacity_gb=None,
+                reserved_percentage=100,
+                QoS_support=False,
+                filter_function=self.get_filter_function(),
+                goodness_function=self.get_goodness_function()
+            ))
+            data["pools"].append(single_pool)
+        self._stats = data
+
     def copy_volume_data(self, context, src_vol, dest_vol, remote=None):
         """Copy data from src_vol to dest_vol."""
         LOG.debug(('copy_data_between_volumes %(src)s -> %(dest)s.')
@@ -437,10 +492,11 @@ class BaseVD(object):
         dest_remote = True if remote in ['dest', 'both'] else False
         dest_orig_status = dest_vol['status']
         try:
-            dest_attach_info = self._attach_volume(context,
-                                                   dest_vol,
-                                                   properties,
-                                                   remote=dest_remote)
+            dest_attach_info, dest_vol = self._attach_volume(
+                context,
+                dest_vol,
+                properties,
+                remote=dest_remote)
         except Exception:
             with excutils.save_and_reraise_exception():
                 msg = _("Failed to attach volume %(vol)s")
@@ -451,10 +507,10 @@ class BaseVD(object):
         src_remote = True if remote in ['src', 'both'] else False
         src_orig_status = src_vol['status']
         try:
-            src_attach_info = self._attach_volume(context,
-                                                  src_vol,
-                                                  properties,
-                                                  remote=src_remote)
+            src_attach_info, src_vol = self._attach_volume(context,
+                                                           src_vol,
+                                                           properties,
+                                                           remote=src_remote)
         except Exception:
             with excutils.save_and_reraise_exception():
                 msg = _("Failed to attach volume %(vol)s")
@@ -494,7 +550,7 @@ class BaseVD(object):
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
         properties = utils.brick_get_connector_properties(use_multipath,
                                                           enforce_multipath)
-        attach_info = self._attach_volume(context, volume, properties)
+        attach_info, volume = self._attach_volume(context, volume, properties)
 
         try:
             image_utils.fetch_to_raw(context,
@@ -514,7 +570,7 @@ class BaseVD(object):
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
         properties = utils.brick_get_connector_properties(use_multipath,
                                                           enforce_multipath)
-        attach_info = self._attach_volume(context, volume, properties)
+        attach_info, volume = self._attach_volume(context, volume, properties)
 
         try:
             image_utils.upload_volume(context,
@@ -523,6 +579,60 @@ class BaseVD(object):
                                       attach_info['device']['path'])
         finally:
             self._detach_volume(context, attach_info, volume, properties)
+
+    def get_filter_function(self):
+        """Get filter_function string.
+
+        Returns either the string from the driver instance or global section
+        in cinder.conf. If nothing is specified in cinder.conf, then try to
+        find the default filter_function. When None is returned the scheduler
+        will always pass the driver instance.
+
+        :return a filter_function string or None
+        """
+        ret_function = self.configuration.filter_function
+        if not ret_function:
+            ret_function = CONF.filter_function
+        if not ret_function:
+            ret_function = self.get_default_filter_function()
+        return ret_function
+
+    def get_goodness_function(self):
+        """Get good_function string.
+
+        Returns either the string from the driver instance or global section
+        in cinder.conf. If nothing is specified in cinder.conf, then try to
+        find the default goodness_function. When None is returned the scheduler
+        will give the lowest score to the driver instance.
+
+        :return a goodness_function string or None
+        """
+        ret_function = self.configuration.goodness_function
+        if not ret_function:
+            ret_function = CONF.goodness_function
+        if not ret_function:
+            ret_function = self.get_default_goodness_function()
+        return ret_function
+
+    def get_default_filter_function(self):
+        """Get the default filter_function string.
+
+        Each driver could overwrite the method to return a well-known
+        default string if it is available.
+
+        :return: None
+        """
+        return None
+
+    def get_default_goodness_function(self):
+        """Get the default goodness_function string.
+
+        Each driver could overwrite the method to return a well-known
+        default string if it is available.
+
+        :return: None
+        """
+        return None
 
     def _attach_volume(self, context, volume, properties, remote=False):
         """Attach the volume."""
@@ -566,7 +676,7 @@ class BaseVD(object):
                     LOG.error(err_msg)
                     raise exception.VolumeBackendAPIException(data=ex_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
-        return self._connect_device(conn)
+        return (self._connect_device(conn), volume)
 
     def _connect_device(self, conn):
         # Use Brick's code to do attach/detach
@@ -609,7 +719,7 @@ class BaseVD(object):
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
         properties = utils.brick_get_connector_properties(use_multipath,
                                                           enforce_multipath)
-        attach_info = self._attach_volume(context, volume, properties)
+        attach_info, volume = self._attach_volume(context, volume, properties)
 
         try:
             volume_path = attach_info['device']['path']
@@ -637,7 +747,7 @@ class BaseVD(object):
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
         properties = utils.brick_get_connector_properties(use_multipath,
                                                           enforce_multipath)
-        attach_info = self._attach_volume(context, volume, properties)
+        attach_info, volume = self._attach_volume(context, volume, properties)
 
         try:
             volume_path = attach_info['device']['path']
@@ -664,7 +774,7 @@ class BaseVD(object):
         """Callback for volume attached to instance or host."""
         pass
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
         """Callback for volume detached."""
         pass
 
@@ -701,8 +811,24 @@ class BaseVD(object):
         return
 
     @abc.abstractmethod
-    def initialize_connection(self, volume, connector):
-        """Allow connection to connector and return connection info."""
+    def initialize_connection(self, volume, connector, initiator_data=None):
+        """Allow connection to connector and return connection info.
+
+        :param volume: The volume to be attached
+        :param connector: Dictionary containing information about what is being
+        connected to.
+        :param initiator_data (optional): A dictionary of driver_initiator_data
+        objects with key-value pairs that have been saved for this initiator by
+        a driver in previous initialize_connection calls.
+        :returns conn_info: A dictionary of connection information. This can
+        optionally include a "initiator_updates" field.
+
+        The "initiator_updates" field must be a dictionary containing a
+        "set_values" and/or "remove_values" field. The "set_values" field must
+        be a dictionary of key-value pairs to be set/updated in the db. The
+        "remove_values" field must be a list of keys, previously set with
+        "set_values", that will be deleted from the db.
+        """
         return
 
     @abc.abstractmethod
@@ -916,6 +1042,10 @@ class ManageableVD(object):
         compare against the properties of the referenced backend storage
         object.  If they are incompatible, raise a
         ManageExistingVolumeTypeMismatch, specifying a reason for the failure.
+
+        :param volume:       Cinder volume to manage
+        :param existing_ref: Driver-specific information used to identify a
+        volume
         """
         return
 
@@ -924,6 +1054,10 @@ class ManageableVD(object):
         """Return size of volume to be managed by manage_existing.
 
         When calculating the size, round up to the next GB.
+
+        :param volume:       Cinder volume to manage
+        :param existing_ref: Driver-specific information used to identify a
+        volume
         """
         return
 
@@ -937,6 +1071,8 @@ class ManageableVD(object):
         drivers might use this call as an opportunity to clean up any
         Cinder-specific configuration that they have associated with the
         backend storage object.
+
+        :param volume: Cinder volume to unmanage
         """
         pass
 
@@ -1079,9 +1215,8 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         msg = _("Unmanage volume not implemented.")
         raise NotImplementedError(msg)
 
-    def retype(self, volume):
-        msg = _("Retype existing volume not implemented.")
-        raise NotImplementedError(msg)
+    def retype(self, context, volume, new_type, diff, host):
+        return False, None
 
     def reenable_replication(self, context, volume):
         msg = _("sync_replica not implemented.")
@@ -1111,8 +1246,64 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         """Creates a consistencygroup."""
         raise NotImplementedError()
 
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None):
+        """Creates a consistencygroup from source.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be created.
+        :param volumes: a list of volume dictionaries in the group.
+        :param cgsnapshot: the dictionary of the cgsnapshot as source.
+        :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
+        :return model_update, volumes_model_update
+
+        Currently the source can only be cgsnapshot.
+
+        param volumes is retrieved directly from the db. It is a list of
+        cinder.db.sqlalchemy.models.Volume to be precise. It cannot be
+        assigned to volumes_model_update. volumes_model_update is a list of
+        dictionaries. It has to be built by the driver. An entry will be
+        in this format: ['id': xxx, 'status': xxx, ......]. model_update
+        will be in this format: ['status': xxx, ......].
+
+        To be consistent with other volume operations, the manager will
+        assume the operation is successful if no exception is thrown by
+        the driver. For a successful operation, the driver can either build
+        the model_update and volumes_model_update and return them or
+        return None, None.
+        """
+        raise NotImplementedError()
+
     def delete_consistencygroup(self, context, group):
         """Deletes a consistency group."""
+        raise NotImplementedError()
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        """Updates a consistency group.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be updated.
+        :param add_volumes: a list of volume dictionaries to be added.
+        :param remove_volumes: a list of volume dictionaries to be removed.
+        :return model_update, add_volumes_update, remove_volumes_update
+
+        model_update is a dictionary that the driver wants the manager
+        to update upon a successful return. If None is returned, the manager
+        will set the status to 'available'.
+
+        add_volumes_update and remove_volumes_update are lists of dictionaries
+        that the driver wants the manager to update upon a successful return.
+        Note that each entry requires a {'id': xxx} so that the correct
+        volume entry can be updated. If None is returned, the volume will
+        remain its original status. Also note that you cannot directly
+        assign add_volumes to add_volumes_update as add_volumes is a list of
+        cinder.db.sqlalchemy.models.Volume objects and cannot be used for
+        db update directly. Same with remove_volumes.
+
+        If the driver throws an exception, the status of the group as well as
+        those of the volumes to be added/removed will be set to 'error'.
+        """
         raise NotImplementedError()
 
     def create_cgsnapshot(self, context, cgsnapshot):
@@ -1235,10 +1426,15 @@ class ISCSIDriver(VolumeDriver):
         :access_mode:    the volume access mode allow client used
                          ('rw' or 'ro' currently supported)
 
-        In some of drivers, When multipath=True is specified, :target_iqn,
-        :target_portal, :target_lun may be replaced with :target_iqns,
-        :target_portals, :target_luns, which contain lists of multiple values.
-        In this case, the initiator should establish sessions to all the path.
+        In some of drivers that support multiple connections (for multipath
+        and for single path with failover on connection failure), it returns
+        :target_iqns, :target_portals, :target_luns, which contain lists of
+        multiple values. The main portal information is also returned in
+        :target_iqn, :target_portal, :target_lun for backward compatibility.
+
+        Note that some of drivers don't return :target_portals even if they
+        support multipath. Then the connector should use sendtargets discovery
+        to find the other portals if it supports multipath.
         """
 
         properties = {}
@@ -1276,14 +1472,13 @@ class ISCSIDriver(VolumeDriver):
             else:
                 lun = 0
 
-        if multipath:
+        if nr_portals > 1:
             properties['target_portals'] = portals
             properties['target_iqns'] = [iqn] * nr_portals
             properties['target_luns'] = [lun] * nr_portals
-        else:
-            properties['target_portal'] = portals[0]
-            properties['target_iqn'] = iqn
-            properties['target_lun'] = lun
+        properties['target_portal'] = portals[0]
+        properties['target_iqn'] = iqn
+        properties['target_lun'] = lun
 
         properties['volume_id'] = volume['id']
 
@@ -1351,14 +1546,31 @@ class ISCSIDriver(VolumeDriver):
                 }
             }
 
+        If the backend driver supports multiple connections for multipath and
+        for single path with failover, "target_portals", "target_iqns",
+        "target_luns" are also populated::
+
+            {
+                'driver_volume_type': 'iscsi'
+                'data': {
+                    'target_discovered': False,
+                    'target_iqn': 'iqn.2010-10.org.openstack:volume1',
+                    'target_iqns': ['iqn.2010-10.org.openstack:volume1',
+                                    'iqn.2010-10.org.openstack:volume1-2'],
+                    'target_portal': '10.0.0.1:3260',
+                    'target_portals': ['10.0.0.1:3260', '10.0.1.1:3260']
+                    'target_lun': 1,
+                    'target_luns': [1, 1],
+                    'volume_id': 1,
+                    'access_mode': 'rw'
+                }
+            }
         """
         # NOTE(jdg): Yes, this is duplicated in the volume/target
         # drivers, for now leaving it as there are 3'rd party
         # drivers that don't use target drivers, but inherit from
         # this base class and use this init data
-        iscsi_properties = self._get_iscsi_properties(volume,
-                                                      connector.get(
-                                                          'multipath'))
+        iscsi_properties = self._get_iscsi_properties(volume)
         return {
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties
@@ -1389,7 +1601,7 @@ class ISCSIDriver(VolumeDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug("Updating volume stats")
+        LOG.debug("Updating volume stats...")
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'Generic_iSCSI'
@@ -1398,35 +1610,7 @@ class ISCSIDriver(VolumeDriver):
         data["storage_protocol"] = 'iSCSI'
         data["pools"] = []
 
-        # provisioned_capacity_gb is set to None by default below, but
-        # None won't be used in calculation. It will be overridden by
-        # driver's provisioned_capacity_gb if reported, otherwise it
-        # defaults to allocated_capacity_gb in host_manager.py.
-        if self.pools:
-            for pool in self.pools:
-                new_pool = {}
-                new_pool.update(dict(
-                    pool_name=pool,
-                    total_capacity_gb=0,
-                    free_capacity_gb=0,
-                    provisioned_capacity_gb=None,
-                    reserved_percentage=100,
-                    QoS_support=False
-                ))
-                data["pools"].append(new_pool)
-        else:
-            # No pool configured, the whole backend will be treated as a pool
-            single_pool = {}
-            single_pool.update(dict(
-                pool_name=data["volume_backend_name"],
-                total_capacity_gb=0,
-                free_capacity_gb=0,
-                provisioned_capacity_gb=None,
-                reserved_percentage=100,
-                QoS_support=False
-            ))
-            data["pools"].append(single_pool)
-        self._stats = data
+        self._update_pools_and_stats(data)
 
 
 class FakeISCSIDriver(ISCSIDriver):
@@ -1515,8 +1699,6 @@ class ISERDriver(ISCSIDriver):
         # for backward compatibility
         self.configuration.num_volume_device_scan_tries = \
             self.configuration.num_iser_scan_tries
-        self.configuration.iscsi_num_targets = \
-            self.configuration.iser_num_targets
         self.configuration.iscsi_target_prefix = \
             self.configuration.iser_target_prefix
         self.configuration.iscsi_ip_address = \
@@ -1551,7 +1733,7 @@ class ISERDriver(ISCSIDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug("Updating volume stats")
+        LOG.debug("Updating volume stats...")
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data["volume_backend_name"] = backend_name or 'Generic_iSER'
@@ -1560,29 +1742,7 @@ class ISERDriver(ISCSIDriver):
         data["storage_protocol"] = 'iSER'
         data["pools"] = []
 
-        if self.pools:
-            for pool in self.pools:
-                new_pool = {}
-                new_pool.update(dict(
-                    pool_name=pool,
-                    total_capacity_gb=0,
-                    free_capacity_gb=0,
-                    reserved_percentage=100,
-                    QoS_support=False
-                ))
-                data["pools"].append(new_pool)
-        else:
-            # No pool configured, the whole backend will be treated as a pool
-            single_pool = {}
-            single_pool.update(dict(
-                pool_name=data["volume_backend_name"],
-                total_capacity_gb=0,
-                free_capacity_gb=0,
-                reserved_percentage=100,
-                QoS_support=False
-            ))
-            data["pools"].append(single_pool)
-        self._stats = data
+        self._update_pools_and_stats(data)
 
 
 class FakeISERDriver(FakeISCSIDriver):
@@ -1661,3 +1821,27 @@ class FibreChannelDriver(VolumeDriver):
                 {'setting': setting})
             LOG.error(*msg)
             raise exception.InvalidConnectorException(missing=setting)
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume stats.
+
+        If 'refresh' is True, run update the stats first.
+        """
+        if refresh:
+            self._update_volume_stats()
+
+        return self._stats
+
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+
+        LOG.debug("Updating volume stats...")
+        data = {}
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        data["volume_backend_name"] = backend_name or 'Generic_FC'
+        data["vendor_name"] = 'Open Source'
+        data["driver_version"] = '1.0'
+        data["storage_protocol"] = 'FC'
+        data["pools"] = []
+
+        self._update_pools_and_stats(data)

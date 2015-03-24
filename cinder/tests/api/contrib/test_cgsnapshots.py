@@ -21,13 +21,13 @@ import json
 from xml.dom import minidom
 
 import mock
+from oslo_log import log as logging
 import webob
 
 from cinder.consistencygroup import api as consistencygroupAPI
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.api import fakes
 from cinder.tests import utils

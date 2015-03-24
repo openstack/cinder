@@ -38,12 +38,12 @@ except ImportError:
     vdisklib = None
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import six
 
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
 

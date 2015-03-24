@@ -13,10 +13,11 @@
 import abc
 
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
-from cinder.openstack.common import log as logging
+from cinder.openstack.common import versionutils
 from cinder import utils
 from cinder.volume.targets import driver
 from cinder.volume import utils as vutils
@@ -41,6 +42,13 @@ class ISCSITarget(driver.Target):
             self.configuration.safe_get('iscsi_protocol')
         self.protocol = 'iSCSI'
         self.volumes_dir = self.configuration.safe_get('volumes_dir')
+
+        # If any of the deprecated options are set, we'll warn the operator.
+        msg = _LW("The option %s has been deprecated and no longer has "
+                  "any effect. It will be removed in the Liberty release.")
+        for opt in ('iscsi_num_targets', 'iser_num_targets'):
+            if self.configuration.safe_get(opt) is not None:
+                versionutils.report_deprecated_feature(LOG, msg, opt)
 
     def _get_iscsi_properties(self, volume, multipath=False):
         """Gets iscsi configuration
@@ -70,10 +78,15 @@ class ISCSITarget(driver.Target):
         :access_mode:    the volume access mode allow client used
                          ('rw' or 'ro' currently supported)
 
-        When multipath=True is specified, :target_iqn, :target_portal,
-        :target_lun may be replaced with :target_iqns, :target_portals,
-        :target_luns, which contain lists of multiple values.
-        In this case, the initiator should establish sessions to all the path.
+        In some of drivers that support multiple connections (for multipath
+        and for single path with failover on connection failure), it returns
+        :target_iqns, :target_portals, :target_luns, which contain lists of
+        multiple values. The main portal information is also returned in
+        :target_iqn, :target_portal, :target_lun for backward compatibility.
+
+        Note that some of drivers don't return :target_portals even if they
+        support multipath. Then the connector should use sendtargets discovery
+        to find the other portals if it supports multipath.
         """
 
         properties = {}
@@ -113,14 +126,13 @@ class ISCSITarget(driver.Target):
             else:
                 lun = 0
 
-        if multipath:
+        if nr_portals > 1 or multipath:
             properties['target_portals'] = portals
             properties['target_iqns'] = [iqn] * nr_portals
             properties['target_luns'] = [lun] * nr_portals
-        else:
-            properties['target_portal'] = portals[0]
-            properties['target_iqn'] = iqn
-            properties['target_lun'] = lun
+        properties['target_portal'] = portals[0]
+        properties['target_iqn'] = iqn
+        properties['target_lun'] = lun
 
         properties['volume_id'] = volume['id']
 

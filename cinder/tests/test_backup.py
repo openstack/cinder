@@ -21,6 +21,7 @@ import tempfile
 
 import mock
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
@@ -28,7 +29,6 @@ from cinder.backup import manager
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.backup import fake_service_with_verify as fake_service
 
@@ -80,6 +80,8 @@ class BaseBackupTest(test.TestCase):
         backup['status'] = status
         backup['fail_reason'] = ''
         backup['service'] = CONF.backup_driver
+        backup['snapshot'] = False
+        backup['parent_id'] = None
         backup['size'] = size
         backup['object_count'] = object_count
         return db.backup_create(self.ctxt, backup)['id']
@@ -102,6 +104,13 @@ class BaseBackupTest(test.TestCase):
         vol['display_description'] = display_description
         vol['attach_status'] = 'detached'
         return db.volume_create(self.ctxt, vol)['id']
+
+    def _create_volume_attach(self, volume_id):
+        values = {'volume_id': volume_id,
+                  'attach_status': 'attached', }
+        attachment = db.volume_attach(self.ctxt, values)
+        db.volume_attached(self.ctxt, attachment['id'], None, 'testhost',
+                           '/dev/vd0')
 
     def _create_exported_record_entry(self, vol_size=1):
         """Create backup metadata export entry."""
@@ -136,8 +145,12 @@ class BackupTestCase(BaseBackupTest):
         """Make sure stuck volumes and backups are reset to correct
         states when backup_manager.init_host() is called
         """
-        vol1_id = self._create_volume_db_entry(status='backing-up')
-        vol2_id = self._create_volume_db_entry(status='restoring-backup')
+        vol1_id = self._create_volume_db_entry()
+        self._create_volume_attach(vol1_id)
+        db.volume_update(self.ctxt, vol1_id, {'status': 'backing-up'})
+        vol2_id = self._create_volume_db_entry()
+        self._create_volume_attach(vol2_id)
+        db.volume_update(self.ctxt, vol2_id, {'status': 'restoring-backup'})
         backup1_id = self._create_backup_db_entry(status='creating')
         backup2_id = self._create_backup_db_entry(status='restoring')
         backup3_id = self._create_backup_db_entry(status='deleting')

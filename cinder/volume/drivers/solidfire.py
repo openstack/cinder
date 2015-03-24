@@ -21,6 +21,7 @@ import string
 import time
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
@@ -30,7 +31,6 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
@@ -56,7 +56,7 @@ sf_opts = [
     cfg.StrOpt('sf_template_account_name',
                default='openstack-vtemplate',
                help='Account name on the SolidFire Cluster to use as owner of '
-                    'template/cache volumes (created if doesnt exist).'),
+                    'template/cache volumes (created if does not exist).'),
 
     cfg.BoolOpt('sf_allow_template_caching',
                 default=True,
@@ -923,7 +923,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if 'result' not in data:
             raise exception.SolidFireAPIDataException(data=data)
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
 
         LOG.debug("Entering SolidFire attach_volume...")
         sfaccount = self._get_sfaccount(volume['project_id'])

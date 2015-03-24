@@ -12,13 +12,13 @@
 
 import os
 
+from oslo_log import log as logging
 # For more information please visit: https://wiki.openstack.org/wiki/TaskFlow
 from taskflow.listeners import base
 from taskflow.listeners import logging as logging_listener
 from taskflow import task
 
 from cinder import exception
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

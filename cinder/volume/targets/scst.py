@@ -11,11 +11,11 @@
 #    under the License.
 
 from oslo_concurrency import processutils as putils
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder import utils
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder.volume.targets import iscsi
 from cinder.volume import utils as vutils
 

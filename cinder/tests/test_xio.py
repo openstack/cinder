@@ -14,10 +14,10 @@
 #    under the License.
 
 import mock
+from oslo_log import log as logging
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.volume.drivers import xio
 from cinder.volume import qos_specs
@@ -78,6 +78,9 @@ FC_CONN2 = {'wwpns': ['init_wwn3', 'init_wwn4'],
 
 ISE_HTTP_IP = 'http://' + ISE_IP1
 
+ISE_HOST_LOCATION = '/storage/hosts/1'
+ISE_HOST_LOCATION_URL = ISE_HTTP_IP + ISE_HOST_LOCATION
+
 ISE_VOLUME1_LOCATION = '/storage/volumes/volume1'
 ISE_VOLUME1_LOCATION_URL = ISE_HTTP_IP + ISE_VOLUME1_LOCATION
 ISE_VOLUME2_LOCATION = '/storage/volumes/volume2'
@@ -120,6 +123,74 @@ ISE_GET_QUERY_RESP =\
     {'status': 200,
      'location': '',
      'content': " ".join(ISE_GET_QUERY_XML.split())}
+
+ISE_GET_QUERY_NO_CAP_XML =\
+    """<array>
+        <globalid>ABC12345</globalid>
+        <controllers>
+            <controller>
+                <ipaddress>%s</ipaddress>
+                <rank value="1"/>
+            </controller>
+            <controller>
+                <ipaddress>%s</ipaddress>
+                <rank value="0"/>
+            </controller>
+        </controllers>
+       </array>""" % (ISE_IP1, ISE_IP2)
+
+ISE_GET_QUERY_NO_CAP_RESP =\
+    {'status': 200,
+     'location': '',
+     'content': " ".join(ISE_GET_QUERY_NO_CAP_XML.split())}
+
+ISE_GET_QUERY_NO_CTRL_XML =\
+    """<array>
+        <globalid>ABC12345</globalid>
+        <capabilities>
+            <capability value="3" string="Storage" type="source"/>
+            <capability value="49003" string="Volume Affinity"/>
+            <capability value="49004" string="Volume Quality of Service IOPS"/>
+            <capability value="49005" string="Thin Provisioning"/>
+            <capability value="49006" string="Clones" type="source"/>
+            <capability value="49007" string="Thin clones" type="source"/>
+            <capability value="49007" string="Thin clones" type="source"/>
+        </capabilities>
+       </array>"""
+
+ISE_GET_QUERY_NO_CTRL_RESP =\
+    {'status': 200,
+     'location': '',
+     'content': " ".join(ISE_GET_QUERY_NO_CTRL_XML.split())}
+
+ISE_GET_QUERY_NO_IP_XML =\
+    """<array>
+        <globalid>ABC12345</globalid>
+        <capabilities>
+            <test value="1"/>
+            <capability value="3" string="Storage" type="source"/>
+            <capability value="49003" string="Volume Affinity"/>
+            <capability value="49004" string="Volume Quality of Service IOPS"/>
+            <capability value="49005" string="Thin Provisioning"/>
+            <capability value="49006" string="Clones" type="source"/>
+            <capability value="49007" string="Thin clones" type="source"/>
+            <capability value="49007" string="Thin clones" type="source"/>
+        </capabilities>
+        <controllers>
+            <test value="2"/>
+            <controller>
+                <rank value="1"/>
+            </controller>
+            <controller>
+                <rank value="0"/>
+            </controller>
+        </controllers>
+       </array>"""
+
+ISE_GET_QUERY_NO_IP_RESP =\
+    {'status': 200,
+     'location': '',
+     'content': " ".join(ISE_GET_QUERY_NO_IP_XML.split())}
 
 ISE_GET_QUERY_NO_GID_XML =\
     """<array>
@@ -414,6 +485,7 @@ ISE_GET_HOSTS_NOHOST_RESP =\
 ISE_GET_HOSTS_HOST1_XML =\
     """<hosts self="http://ip/storage/hosts">
         <host self="http://ip/storage/hosts/1">
+            <type>"OPENSTACK"</type>
             <name>%s</name>
             <id>1</id>
             <endpoints self="http://ip/storage/endpoints">
@@ -434,6 +506,31 @@ ISE_GET_HOSTS_HOST1_RESP =\
     {'status': 200,
      'location': '',
      'content': " ".join(ISE_GET_HOSTS_HOST1_XML.split())}
+
+ISE_GET_HOSTS_HOST1_HOST_TYPE_XML =\
+    """<hosts self="http://ip/storage/hosts">
+        <host self="http://ip/storage/hosts/1">
+            <type>"WINDOWS"</type>
+            <name>%s</name>
+            <id>1</id>
+            <endpoints self="http://ip/storage/endpoints">
+                <endpoint self="http://ip/storage/endpoints/ep1">
+                    <globalid>init_wwn1</globalid>
+                </endpoint>
+                <endpoint self="http://ip/storage/endpoints/ep2">
+                    <globalid>init_wwn2</globalid>
+                </endpoint>
+                <endpoint self="http://ip/storage/endpoints/ep1">
+                    <globalid>init_iqn1</globalid>
+                </endpoint>
+            </endpoints>
+        </host>
+       </hosts>""" % HOST1
+
+ISE_GET_HOSTS_HOST1_HOST_TYPE_RESP =\
+    {'status': 200,
+     'location': '',
+     'content': " ".join(ISE_GET_HOSTS_HOST1_HOST_TYPE_XML.split())}
 
 ISE_GET_HOSTS_HOST2_XML =\
     """<hosts self="http://ip/storage/hosts">
@@ -588,6 +685,13 @@ ISE_MODIFY_VOLUME_RESP =\
      'location': ISE_VOLUME1_LOCATION_URL,
      'content': " ".join(ISE_MODIFY_VOLUME_XML.split())}
 
+ISE_MODIFY_HOST_XML = """<host/>"""
+
+ISE_MODIFY_HOST_RESP =\
+    {'status': 201,
+     'location': ISE_HOST_LOCATION_URL,
+     'content': " ".join(ISE_MODIFY_HOST_XML.split())}
+
 ISE_BAD_CONNECTION_RESP =\
     {'status': 0,
      'location': '',
@@ -688,12 +792,30 @@ class XIOISEDriverTestCase(object):
     def test_do_setup(self, mock_req):
         self.setup_driver()
         mock_req.side_effect = iter([ISE_GET_QUERY_RESP])
+        self.driver.do_setup(None)
 
     def test_negative_do_setup_no_clone_support(self, mock_req):
         self.setup_driver()
         mock_req.side_effect = iter([ISE_GET_QUERY_NO_CLONE_RESP])
         self.assertRaises(exception.XIODriverException,
                           self.driver.do_setup, None)
+
+    def test_negative_do_setup_no_capabilities(self, mock_req):
+        self.setup_driver()
+        mock_req.side_effect = iter([ISE_GET_QUERY_NO_CAP_RESP])
+        self.assertRaises(exception.XIODriverException,
+                          self.driver.do_setup, None)
+
+    def test_negative_do_setup_no_ctrl(self, mock_req):
+        self.setup_driver()
+        mock_req.side_effect = iter([ISE_GET_QUERY_NO_CTRL_RESP])
+        self.assertRaises(exception.XIODriverException,
+                          self.driver.do_setup, None)
+
+    def test_negative_do_setup_no_ipaddress(self, mock_req):
+        self.setup_driver()
+        mock_req.side_effect = iter([ISE_GET_QUERY_NO_IP_RESP])
+        self.driver.do_setup(None)
 
     def test_negative_do_setup_bad_globalid_none(self, mock_req):
         self.setup_driver()
@@ -742,7 +864,7 @@ class XIOISEDriverTestCase(object):
             protocol = 'fibre_channel'
         exp_result = {}
         exp_result = {'vendor_name': "X-IO",
-                      'driver_version': "1.1.0",
+                      'driver_version': "1.1.1",
                       'volume_backend_name': backend_name,
                       'reserved_percentage': 0,
                       'total_capacity_gb': 100,
@@ -908,6 +1030,37 @@ class XIOISEDriverTestCase(object):
             self.driver.initialize_connection(VOLUME1, self.connector)
         self.assertDictMatch(exp_result, act_result)
 
+    def test_initialize_connection_positive_host_type(self, mock_req):
+        mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
+                                     ISE_GET_HOSTS_HOST1_HOST_TYPE_RESP,
+                                     ISE_MODIFY_HOST_RESP,
+                                     ISE_CREATE_ALLOC_RESP,
+                                     ISE_GET_ALLOC_WITH_EP_RESP,
+                                     ISE_GET_CONTROLLERS_RESP])
+        self.setup_driver()
+
+        exp_result = {}
+        if self.configuration.ise_protocol == 'iscsi':
+            exp_result = {"driver_volume_type": "iscsi",
+                          "data": {"target_lun": '1',
+                                   "volume_id": '1',
+                                   "access_mode": 'rw',
+                                   "target_discovered": False,
+                                   "target_iqn": ISE_IQN,
+                                   "target_portal": ISE_ISCSI_IP1 + ":3260"}}
+        elif self.configuration.ise_protocol == 'fibre_channel':
+            exp_result = {"driver_volume_type": "fibre_channel",
+                          "data": {"target_lun": '1',
+                                   "volume_id": '1',
+                                   "access_mode": 'rw',
+                                   "target_discovered": True,
+                                   "initiator_target_map": ISE_INIT_TARGET_MAP,
+                                   "target_wwn": ISE_TARGETS}}
+
+        act_result =\
+            self.driver.initialize_connection(VOLUME1, self.connector)
+        self.assertDictMatch(exp_result, act_result)
+
     def test_initialize_connection_positive_chap(self, mock_req):
         mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
                                      ISE_GET_HOSTS_HOST2_RESP,
@@ -941,6 +1094,25 @@ class XIOISEDriverTestCase(object):
         act_result =\
             self.driver.initialize_connection(VOLUME2, self.connector)
         self.assertDictMatch(exp_result, act_result)
+
+    def test_initialize_connection_negative_no_host(self, mock_req):
+        mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
+                                     ISE_GET_HOSTS_HOST2_RESP,
+                                     ISE_CREATE_HOST_RESP,
+                                     ISE_GET_HOSTS_HOST2_RESP])
+        self.setup_driver()
+        self.assertRaises(exception.XIODriverException,
+                          self.driver.initialize_connection,
+                          VOLUME2, self.connector)
+
+    def test_initialize_connection_negative_host_type(self, mock_req):
+        mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
+                                     ISE_GET_HOSTS_HOST1_HOST_TYPE_RESP,
+                                     ISE_400_RESP])
+        self.setup_driver()
+        self.assertRaises(exception.XIODriverException,
+                          self.driver.initialize_connection,
+                          VOLUME2, self.connector)
 
     def test_terminate_connection_positive(self, mock_req):
         self.setup_driver()
@@ -1052,8 +1224,12 @@ class XIOISEDriverTestCase(object):
 
         mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
                                      ISE_GET_VOL1_STATUS_RESP,
+                                     ISE_400_INVALID_STATE_RESP,
+                                     ISE_400_INVALID_STATE_RESP,
+                                     ISE_400_INVALID_STATE_RESP,
+                                     ISE_400_INVALID_STATE_RESP,
                                      ISE_400_INVALID_STATE_RESP])
-        self.configuration.ise_completion_retries = 1
+        self.configuration.ise_completion_retries = 5
         self.setup_driver()
         self.assertRaises(exception.XIODriverException,
                           self.driver.create_snapshot, SNAPSHOT1)

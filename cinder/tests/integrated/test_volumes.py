@@ -15,9 +15,9 @@
 
 import time
 
+from oslo_log import log as logging
 import testtools
 
-from cinder.openstack.common import log as logging
 from cinder import service
 from cinder.tests import fake_driver
 from cinder.tests.integrated.api import client

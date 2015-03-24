@@ -84,12 +84,28 @@ def return_volume_types_create_duplicate_type(context,
     raise exception.VolumeTypeExists(id=name)
 
 
-def return_volume_types_update(context, id, description):
+def return_volume_types_update(context, id, name, description):
     pass
 
 
-def return_volume_types_update_fail(context, id, description):
+def return_volume_types_update_fail(context, id, name, description):
     raise exception.VolumeTypeUpdateFailed(id=id)
+
+
+def stub_volume_type_updated_name_only(id):
+    return dict(id=id,
+                name='vol_type_%s_%s' % (six.text_type(id), six.text_type(id)),
+                description='vol_type_desc_%s' % six.text_type(id))
+
+
+def stub_volume_type_updated_name_after_delete(id):
+    return dict(id=id,
+                name='vol_type_%s' % six.text_type(id),
+                description='vol_type_desc_%s' % six.text_type(id))
+
+
+def return_volume_types_update_exist(context, id, name, description):
+    raise exception.VolumeTypeExists(id=id, name=name)
 
 
 def return_volume_types_get_volume_type_updated(context, id):
@@ -97,6 +113,10 @@ def return_volume_types_get_volume_type_updated(context, id):
         raise exception.VolumeTypeNotFound(volume_type_id=id)
     if id == '888':
         return stub_volume_type_updated_desc_only(int(id))
+    if id == '999':
+        return stub_volume_type_updated_name_only(int(id))
+    if id == '666':
+        return stub_volume_type_updated_name_after_delete(int(id))
 
     # anything else
     return stub_volume_type_updated(int(id))
@@ -213,7 +233,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_volume_type',
                        return_volume_types_get_volume_type_updated)
 
-        body = {"volume_type": {"description": "vol_type_desc_1_1"}}
+        body = {"volume_type": {"name": "vol_type_1_1",
+                                "description": "vol_type_desc_1_1"}}
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         req.method = 'PUT'
 
@@ -221,7 +242,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         res_dict = self.controller._update(req, '1', body)
         self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
         self._check_test_results(res_dict,
-                                 {'expected_desc': 'vol_type_desc_1_1'})
+                                 {'expected_desc': 'vol_type_desc_1_1',
+                                  'expected_name': 'vol_type_1_1'})
 
     def test_update_non_exist(self):
         self.stubs.Set(volume_types, 'update',
@@ -229,7 +251,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_volume_type',
                        return_volume_types_get_volume_type)
 
-        body = {"volume_type": {"description": "vol_type_desc_1_1"}}
+        body = {"volume_type": {"name": "vol_type_1_1",
+                                "description": "vol_type_desc_1_1"}}
         req = fakes.HTTPRequest.blank('/v2/fake/types/777')
         req.method = 'PUT'
 
@@ -244,7 +267,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_volume_type',
                        return_volume_types_get_volume_type)
 
-        body = {"volume_type": {"description": "vol_type_desc_1_1"}}
+        body = {"volume_type": {"name": "vol_type_1_1",
+                                "description": "vol_type_desc_1_1"}}
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         req.method = 'PUT'
 
@@ -253,13 +277,98 @@ class VolumeTypesManageApiTest(test.TestCase):
                           self.controller._update, req, '1', body)
         self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
-    def test_update_no_description(self):
+    def test_update_no_name_no_description(self):
         body = {"volume_type": {}}
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         req.method = 'PUT'
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._update, req, '1', body)
+
+    def test_update_empty_name(self):
+        body = {"volume_type": {"name": "  ",
+                                "description": "something"}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
+        req.method = 'PUT'
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._update, req, '1', body)
+
+    def test_update_only_name(self):
+        self.stubs.Set(volume_types, 'update',
+                       return_volume_types_update)
+        self.stubs.Set(volume_types, 'get_volume_type',
+                       return_volume_types_get_volume_type_updated)
+
+        body = {"volume_type": {"name": "vol_type_999_999"}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/999')
+        req.method = 'PUT'
+
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        res_dict = self.controller._update(req, '999', body)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self._check_test_results(res_dict,
+                                 {'expected_name': 'vol_type_999_999',
+                                  'expected_desc': 'vol_type_desc_999'})
+
+    def test_update_only_description(self):
+        self.stubs.Set(volume_types, 'update',
+                       return_volume_types_update)
+        self.stubs.Set(volume_types, 'get_volume_type',
+                       return_volume_types_get_volume_type_updated)
+
+        body = {"volume_type": {"description": "vol_type_desc_888_888"}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/888')
+        req.method = 'PUT'
+
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        res_dict = self.controller._update(req, '888', body)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self._check_test_results(res_dict,
+                                 {'expected_name': 'vol_type_888',
+                                  'expected_desc': 'vol_type_desc_888_888'})
+
+    def test_rename_existing_name(self):
+        self.stubs.Set(volume_types, 'update',
+                       return_volume_types_update_exist)
+        self.stubs.Set(volume_types, 'get_volume_type',
+                       return_volume_types_get_volume_type_updated)
+        # first attempt fail
+        body = {"volume_type": {"name": "vol_type_666"}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/666')
+        req.method = 'PUT'
+
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller._update, req, '666', body)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+
+        # delete
+        fake_notifier.reset()
+        self.stubs.Set(volume_types, 'destroy',
+                       return_volume_types_destroy)
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.controller._delete(req, '1')
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+
+        # update again
+        self.stubs.Set(volume_types, 'update',
+                       return_volume_types_update)
+        self.stubs.Set(volume_types, 'get_volume_type',
+                       return_volume_types_get_volume_type_updated)
+        body = {"volume_type": {"name": "vol_type_666_666"}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/666')
+        req.method = 'PUT'
+
+        fake_notifier.reset()
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        res_dict = self.controller._update(req, '666', body)
+        self._check_test_results(res_dict,
+                                 {'expected_name': 'vol_type_666',
+                                  'expected_desc': 'vol_type_desc_666'})
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
     def _check_test_results(self, results, expected_results):
         self.assertEqual(1, len(results))

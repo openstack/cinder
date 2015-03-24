@@ -1,4 +1,4 @@
-#    Copyright 2014 Dell Inc.
+#    Copyright 2015 Dell Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,12 +16,12 @@
 import json
 import os.path
 
+from oslo_log import log as logging
 import requests
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 
@@ -364,6 +364,7 @@ class StorageCenterApi(object):
                                     scserver)
                     self.unmap_volume(scvolume,
                                       scserver)
+                    break
 
     def create_volume(self, name, size, ssn, volfolder):
         '''This creates a new volume on the storage center.  It
@@ -407,10 +408,17 @@ class StorageCenterApi(object):
                       {'name': name,
                        'c': r.status_code,
                        'r': r.reason})
-        if scvolume is not None:
-            LOG.info(_LI('Created volume %(index)d: %(name)s'),
-                     {'index': scvolume['index'],
+        if scvolume:
+            LOG.info(_LI('Created volume %(instanceId)s: %(name)s'),
+                     {'instanceId': scvolume['instanceId'],
                       'name': scvolume['name']})
+        else:
+            LOG.error(_LE('ScVolume returned success with empty payload.'
+                          '  Attempting to locate volume'))
+            # In theory it is there since success was returned.
+            # Try one last time to find it before returning.
+            scvolume = self.find_volume(ssn, name, None)
+
         return scvolume
 
     def find_volume(self, ssn, name=None, instanceid=None):
@@ -933,8 +941,6 @@ class StorageCenterApi(object):
             payload = {}
             payload['description'] = replayid
             payload['expireTime'] = expire
-            if expire == 0:
-                payload['doNotExpire'] = True
             r = self.client.post('StorageCenter/ScVolume/%s/CreateReplay'
                                  % self._get_id(scvolume),
                                  payload)
@@ -1079,7 +1085,7 @@ class StorageCenterApi(object):
                        'r': r.reason})
         if vol is not None:
             LOG.debug('Volume expanded: %(i)s %(s)s',
-                      {'i': vol['index'],
+                      {'i': vol['instanceId'],
                        's': vol['configuredSize']})
         return vol
 

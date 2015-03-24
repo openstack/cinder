@@ -21,6 +21,7 @@ import os
 import tempfile
 
 import mock
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 
@@ -28,7 +29,6 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
-from cinder.openstack.common import log as logging
 from cinder import test
 from cinder.tests.image import fake as fake_image
 from cinder.tests import test_volume
@@ -160,23 +160,18 @@ class RBDTestCase(test.TestCase):
         client = self.mock_client.return_value
         client.__enter__.return_value = client
 
-        with mock.patch.object(self.driver, '_supports_layering') as \
-                mock_supports_layering:
-            mock_supports_layering.return_value = True
+        self.driver.create_volume(self.volume)
 
-            self.driver.create_volume(self.volume)
-
-            chunk_size = self.cfg.rbd_store_chunk_size * units.Mi
-            order = int(math.log(chunk_size, 2))
-            args = [client.ioctx, str(self.volume_name),
-                    self.volume_size * units.Gi, order]
-            kwargs = {'old_format': False,
-                      'features': self.mock_rbd.RBD_FEATURE_LAYERING}
-            self.mock_rbd.RBD.return_value.create.assert_called_once_with(
-                *args, **kwargs)
-            client.__enter__.assert_called_once_with()
-            client.__exit__.assert_called_once_with(None, None, None)
-            mock_supports_layering.assert_called_once_with()
+        chunk_size = self.cfg.rbd_store_chunk_size * units.Mi
+        order = int(math.log(chunk_size, 2))
+        args = [client.ioctx, str(self.volume_name),
+                self.volume_size * units.Gi, order]
+        kwargs = {'old_format': False,
+                  'features': client.features}
+        self.mock_rbd.RBD.return_value.create.assert_called_once_with(
+            *args, **kwargs)
+        client.__enter__.assert_called_once_with()
+        client.__exit__.assert_called_once_with(None, None, None)
 
     @common_mocks
     def test_manage_existing_get_size(self):
@@ -242,29 +237,6 @@ class RBDTestCase(test.TestCase):
         # Make sure the exception was raised
         self.assertEqual(RAISED_EXCEPTIONS,
                          [self.mock_rbd.ImageExists])
-
-    @common_mocks
-    def test_create_volume_no_layering(self):
-        client = self.mock_client.return_value
-        client.__enter__.return_value = client
-
-        with mock.patch.object(self.driver, '_supports_layering') as \
-                mock_supports_layering:
-            mock_supports_layering.return_value = False
-
-            self.driver.create_volume(self.volume)
-
-            chunk_size = self.cfg.rbd_store_chunk_size * units.Mi
-            order = int(math.log(chunk_size, 2))
-            args = [client.ioctx, str(self.volume_name),
-                    self.volume_size * units.Gi, order]
-            kwargs = {'old_format': True,
-                      'features': 0}
-            self.mock_rbd.RBD.return_value.create.assert_called_once_with(
-                *args, **kwargs)
-            client.__enter__.assert_called_once_with()
-            client.__exit__.assert_called_once_with(None, None, None)
-            mock_supports_layering.assert_called_once_with()
 
     @common_mocks
     def test_delete_backup_snaps(self):
@@ -807,7 +779,7 @@ class RBDTestCase(test.TestCase):
 
         args = [client_stack[0].ioctx, str(src_image), str(src_snap),
                 client_stack[1].ioctx, str(self.volume_name)]
-        kwargs = {'features': self.mock_rbd.RBD_FEATURE_LAYERING}
+        kwargs = {'features': client.features}
         self.mock_rbd.RBD.return_value.clone.assert_called_once_with(
             *args, **kwargs)
         self.assertEqual(client.__enter__.call_count, 2)

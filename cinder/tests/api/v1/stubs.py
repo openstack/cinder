@@ -29,9 +29,6 @@ def stub_volume(id, **kwargs):
         'host': 'fakehost',
         'size': 1,
         'availability_zone': 'fakeaz',
-        'instance_uuid': 'fakeuuid',
-        'attached_host': None,
-        'mountpoint': '/',
         'attached_mode': 'rw',
         'status': 'fakestatus',
         'migration_status': None,
@@ -46,6 +43,8 @@ def stub_volume(id, **kwargs):
         'volume_type_id': '3e196c20-3c06-11e2-81c1-0800200c9a66',
         'volume_metadata': [],
         'volume_type': {'name': 'vol_type_name'},
+        'volume_attachment': [],
+        'multiattach': False,
         'readonly': 'False'}
 
     volume.update(kwargs)

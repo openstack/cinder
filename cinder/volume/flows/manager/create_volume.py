@@ -14,6 +14,7 @@ import traceback
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 import taskflow.engines
 from taskflow.patterns import linear_flow
@@ -23,7 +24,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI
 from cinder.image import glance
-from cinder.openstack.common import log as logging
+from cinder import objects
 from cinder import utils
 from cinder.volume.flows import common
 from cinder.volume import utils as volume_utils
@@ -134,6 +135,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             update = {
                 'status': 'creating',
                 'scheduled_at': timeutils.utcnow(),
+                'host': None
             }
             LOG.debug("Updating volume %(volume_id)s with %(update)s." %
                       {'update': update, 'volume_id': volume_id})
@@ -145,6 +147,13 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
                           volume_id)
 
     def revert(self, context, result, flow_failures, **kwargs):
+        # NOTE(dulek): Revert is occurring and manager need to know if
+        # rescheduling happened. We're injecting this information into
+        # exception that will be caught there. This is ugly and we need
+        # TaskFlow to support better way of returning data from reverted flow.
+        cause = list(flow_failures.values())[0]
+        cause.exception.rescheduled = False
+
         # Check if we have a cause which can tell us not to reschedule.
         for failure in flow_failures.values():
             if failure.check(*self.no_reschedule_types):
@@ -155,10 +164,11 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         if self.reschedule_context:
             context = self.reschedule_context
             try:
-                cause = list(flow_failures.values())[0]
                 self._pre_reschedule(context, volume_id)
                 self._reschedule(context, cause, **kwargs)
                 self._post_reschedule(context, volume_id)
+                # Inject information that we rescheduled
+                cause.exception.rescheduled = True
             except exception.CinderException:
                 LOG.exception(_LE("Volume %s: rescheduling failed"), volume_id)
 
@@ -180,7 +190,6 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
         # In the future we might want to have a lock on the volume_id so that
         # the volume can not be deleted while its still being created?
         volume_ref = self.db.volume_get(context, volume_id)
-
         return volume_ref
 
     def revert(self, context, volume_id, result, **kwargs):
@@ -408,16 +417,16 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
     def _create_from_snapshot(self, context, volume_ref, snapshot_id,
                               **kwargs):
         volume_id = volume_ref['id']
-        snapshot_ref = self.db.snapshot_get(context, snapshot_id)
+        snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
         model_update = self.driver.create_volume_from_snapshot(volume_ref,
-                                                               snapshot_ref)
+                                                               snapshot)
         # NOTE(harlowja): Subtasks would be useful here since after this
         # point the volume has already been created and further failures
         # will not destroy the volume (although they could in the future).
         make_bootable = False
         try:
             originating_vref = self.db.volume_get(context,
-                                                  snapshot_ref['volume_id'])
+                                                  snapshot.volume_id)
             make_bootable = originating_vref.bootable
         except exception.CinderException as ex:
             LOG.exception(_LE("Failed fetching snapshot %(snapshot_id)s "
@@ -425,7 +434,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                               " flag using the provided glance snapshot "
                               "%(snapshot_ref_id)s volume reference") %
                           {'snapshot_id': snapshot_id,
-                           'snapshot_ref_id': snapshot_ref['volume_id']})
+                           'snapshot_ref_id': snapshot.volume_id})
             raise exception.MetadataUpdateFailure(reason=ex)
         if make_bootable:
             self._handle_bootable_volume_glance_meta(context, volume_id,
@@ -716,7 +725,7 @@ def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
              allow_reschedule, reschedule_context, request_spec,
              filter_properties, snapshot_id=None, image_id=None,
              source_volid=None, source_replicaid=None,
-             consistencygroup_id=None):
+             consistencygroup_id=None, cgsnapshot_id=None):
     """Constructs and returns the manager entrypoint flow.
 
     This flow will do the following:
@@ -748,6 +757,7 @@ def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
         'volume_id': volume_id,
         'source_replicaid': source_replicaid,
         'consistencygroup_id': consistencygroup_id,
+        'cgsnapshot_id': cgsnapshot_id,
     }
 
     volume_flow.add(ExtractVolumeRefTask(db, host))

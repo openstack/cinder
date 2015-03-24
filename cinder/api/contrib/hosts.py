@@ -18,6 +18,7 @@
 from xml.parsers import expat
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 import webob.exc
 
@@ -27,7 +28,6 @@ from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume import api as volume_api
 
@@ -112,7 +112,7 @@ def _list_hosts(req, service=None):
         active = 'enabled'
         if host['disabled']:
             active = 'disabled'
-        LOG.debug('status, active and update: %s, %s, %s' %
+        LOG.debug('status, active and update: %s, %s, %s',
                   (status, active, host['updated_at']))
         hosts.append({'host_name': host['host'],
                       'service': host['topic'],

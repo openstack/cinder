@@ -23,14 +23,15 @@ Volume driver for NetApp NFS storage.
 import os
 import uuid
 
+from oslo_log import log as logging
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.volume.drivers.netapp.dataontap.client import api as na_api
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
@@ -106,7 +107,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                                                      qos_policy_group)
             return {'provider_location': volume['provider_location']}
         except Exception as ex:
-            LOG.error(_LW("Exception creattest_nfs.pying vol %(name)s on "
+            LOG.error(_LW("Exception creating vol %(name)s on "
                           "share %(share)s. Details: %(ex)s")
                       % {'name': volume['name'],
                          'share': volume['provider_location'],
@@ -127,6 +128,28 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         self.zapi_client.file_assign_qos(flex_vol_name,
                                          qos_policy_group,
                                          target_path)
+
+    def _check_volume_type(self, volume, share, file_name):
+        """Match volume type for share file."""
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+        qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
+            if extra_specs else None
+        if not self._is_share_vol_type_match(volume, share):
+            raise exception.ManageExistingVolumeTypeMismatch(
+                reason=(_("Volume type does not match for share %s."),
+                        share))
+        if qos_policy_group:
+            try:
+                vserver, flex_vol_name = self._get_vserver_and_exp_vol(
+                    share=share)
+                self.zapi_client.file_assign_qos(flex_vol_name,
+                                                 qos_policy_group,
+                                                 file_name)
+            except na_api.NaApiError as ex:
+                LOG.exception(_LE('Setting file QoS policy group failed. %s'),
+                              ex)
+                raise exception.NetAppDriverException(
+                    reason=(_('Setting file QoS policy group failed. %s'), ex))
 
     def _clone_volume(self, volume_name, clone_name,
                       volume_id, share=None):

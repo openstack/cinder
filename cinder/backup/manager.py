@@ -33,8 +33,9 @@ Volume backups can be created, restored, deleted and listed.
 
 """
 
-from oslo import messaging
 from oslo_config import cfg
+from oslo_log import log as logging
+import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
 
@@ -44,7 +45,6 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import manager
-from cinder.openstack.common import log as logging
 from cinder import quota
 from cinder import rpc
 from cinder import utils
@@ -197,18 +197,28 @@ class BackupManager(manager.SchedulerDependentManager):
         for volume in volumes:
             volume_host = volume_utils.extract_host(volume['host'], 'backend')
             backend = self._get_volume_backend(host=volume_host)
-            if volume['status'] == 'backing-up':
-                LOG.info(_LI('Resetting volume %s to available '
-                             '(was backing-up).') % volume['id'])
-                mgr = self._get_manager(backend)
-                mgr.detach_volume(ctxt, volume['id'])
-            if volume['status'] == 'restoring-backup':
-                LOG.info(_LI('Resetting volume %s to error_restoring '
-                             '(was restoring-backup).') % volume['id'])
-                mgr = self._get_manager(backend)
-                mgr.detach_volume(ctxt, volume['id'])
-                self.db.volume_update(ctxt, volume['id'],
-                                      {'status': 'error_restoring'})
+            attachments = volume['volume_attachment']
+            if attachments:
+                if volume['status'] == 'backing-up':
+                    LOG.info(_LI('Resetting volume %s to available '
+                                 '(was backing-up).'), volume['id'])
+                    mgr = self._get_manager(backend)
+                    for attachment in attachments:
+                        if (attachment['attached_host'] == self.host and
+                           attachment['instance_uuid'] is None):
+                            mgr.detach_volume(ctxt, volume['id'],
+                                              attachment['id'])
+                if volume['status'] == 'restoring-backup':
+                    LOG.info(_LI('setting volume %s to error_restoring '
+                                 '(was restoring-backup).'), volume['id'])
+                    mgr = self._get_manager(backend)
+                    for attachment in attachments:
+                        if (attachment['attached_host'] == self.host and
+                           attachment['instance_uuid'] is None):
+                            mgr.detach_volume(ctxt, volume['id'],
+                                              attachment['id'])
+                    self.db.volume_update(ctxt, volume['id'],
+                                          {'status': 'error_restoring'})
 
         # TODO(smulcahy) implement full resume of backup and restore
         # operations on restart (rather than simply resetting)

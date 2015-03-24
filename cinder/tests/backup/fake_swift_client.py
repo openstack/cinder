@@ -19,9 +19,8 @@ import os
 import socket
 import zlib
 
+from oslo_log import log as logging
 from swiftclient import client as swift
-
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 
@@ -87,9 +86,12 @@ class FakeSwiftConnection(object):
             metadata['backup_description'] = 'fake backup description'
             metadata['created_at'] = '2013-02-19 11:20:54,805'
             metadata['objects'] = [{
-                'backup_001': {'compression': 'zlib', 'length': 10},
-                'backup_002': {'compression': 'zlib', 'length': 10},
-                'backup_003': {'compression': 'zlib', 'length': 10}
+                'backup_001': {'compression': 'zlib', 'length': 10,
+                               'offset': 0},
+                'backup_002': {'compression': 'zlib', 'length': 10,
+                               'offset': 10},
+                'backup_003': {'compression': 'zlib', 'length': 10,
+                               'offset': 20}
             }]
             metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
             fake_object_body = metadata_json

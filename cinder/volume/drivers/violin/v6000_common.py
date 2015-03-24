@@ -20,7 +20,7 @@ Provides common (ie., non-protocol specific) management functions for
 V6000 series flash arrays.
 
 Backend array communication is handled via VMEM's python library
-called 'xg-tools'.
+called 'vmemclient'.
 
 NOTE: this driver file requires the use of synchronization points for
 certain types of backend operations, and as a result may not work
@@ -32,19 +32,20 @@ import re
 import time
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW, _LI
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
-vxg = importutils.try_import("vxg")
-if vxg:
-    LOG.info(_LI("Running with xg-tools version: %s."), vxg.__version__)
+vmemclient = importutils.try_import("vmemclient")
+if vmemclient:
+    LOG.info(_LI("Running with vmemclient version: %s."),
+             vmemclient.__version__)
 
 # version vmos versions V6.3.0.4 or newer
 VMOS_SUPPORTED_VERSION_PATTERNS = ['V6.3.0.[4-9]', 'V6.3.[1-9].?[0-9]?']
@@ -100,12 +101,15 @@ class V6000Common(object):
                 reason=_('Global timeout option \'request_timeout\' must be '
                          'greater than 0'))
 
-        self.vip = vxg.open(self.config.san_ip, self.config.san_login,
-                            self.config.san_password, keepalive=True)
-        self.mga = vxg.open(self.config.gateway_mga, self.config.san_login,
-                            self.config.san_password, keepalive=True)
-        self.mgb = vxg.open(self.config.gateway_mgb, self.config.san_login,
-                            self.config.san_password, keepalive=True)
+        self.vip = vmemclient.open(self.config.san_ip,
+                                   self.config.san_login,
+                                   self.config.san_password, keepalive=True)
+        self.mga = vmemclient.open(self.config.gateway_mga,
+                                   self.config.san_login,
+                                   self.config.san_password, keepalive=True)
+        self.mgb = vmemclient.open(self.config.gateway_mgb,
+                                   self.config.san_login,
+                                   self.config.san_password, keepalive=True)
 
         ret_dict = self.vip.basic.get_node_values(
             "/vshare/state/local/container/*")

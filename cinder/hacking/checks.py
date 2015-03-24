@@ -29,7 +29,8 @@ Guidelines for writing new hacking checks
 
 """
 
-UNDERSCORE_IMPORT_FILES = []
+# NOTE(thangp): Ignore N323 pep8 error caused by importing cinder objects
+UNDERSCORE_IMPORT_FILES = ['./cinder/objects/__init__.py']
 
 translated_log = re.compile(
     r"(.)*LOG\.(audit|error|info|warn|warning|critical|exception)"
@@ -44,7 +45,14 @@ no_audit_log = re.compile(r"(.)*LOG\.audit(.)*")
 # NOTE(jsbryant): When other oslo libraries switch over non-namespaced
 # imports, we will need to add them to the regex below.
 oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](concurrency|db"
-                                    "|config|utils|serialization)")
+                                    "|config|utils|serialization|log)")
+
+log_translation_LI = re.compile(
+    r"(.)*LOG\.(info)\(\s*(_\(|'|\")")
+log_translation_LE = re.compile(
+    r"(.)*LOG\.(exception|error)\(\s*(_\(|'|\")")
+log_translation_LW = re.compile(
+    r"(.)*LOG\.(warning|warn)\(\s*(_\(|'|\")")
 
 
 def no_vi_headers(physical_line, line_number, lines):
@@ -129,11 +137,64 @@ def check_assert_called_once(logical_line, filename):
             yield (pos, msg)
 
 
+def validate_log_translations(logical_line, filename):
+    # TODO(smcginnis): The following is temporary as a series
+    # of patches are done to address these issues. It should be
+    # removed completely when bug 1433216 is closed.
+    ignore_dirs = [
+        "cinder/backup",
+        "cinder/brick",
+        "cinder/common",
+        "cinder/db",
+        "cinder/openstack",
+        "cinder/scheduler",
+        "cinder/volume",
+        "cinder/zonemanager"]
+    for directory in ignore_dirs:
+        if directory in filename:
+            return
+
+    # Translations are not required in the test directory.
+    # This will not catch all instances of violations, just direct
+    # misuse of the form LOG.info('Message').
+    if "cinder/tests" in filename:
+        return
+    msg = "N328: LOG.info messages require translations `_LI()`!"
+    if log_translation_LI.match(logical_line):
+        yield (0, msg)
+    msg = ("N329: LOG.exception and LOG.error messages require "
+           "translations `_LE()`!")
+    if log_translation_LE.match(logical_line):
+        yield (0, msg)
+    msg = "N330: LOG.warning messages require translations `_LW()`!"
+    if log_translation_LW.match(logical_line):
+        yield (0, msg)
+
+
 def check_oslo_namespace_imports(logical_line):
     if re.match(oslo_namespace_imports, logical_line):
         msg = ("N333: '%s' must be used instead of '%s'.") % (
             logical_line.replace('oslo.', 'oslo_'),
             logical_line)
+        yield(0, msg)
+
+
+def check_no_contextlib_nested(logical_line):
+    msg = ("N339: contextlib.nested is deprecated. With Python 2.7 and later "
+           "the with-statement supports multiple nested objects. See https://"
+           "docs.python.org/2/library/contextlib.html#contextlib.nested "
+           "for more information.")
+    if "with contextlib.nested" in logical_line:
+        yield(0, msg)
+
+
+def check_datetime_now(logical_line, noqa):
+    if noqa:
+        return
+
+    msg = ("C301: Found datetime.now(). "
+           "Please use timeutils.utcnow() from oslo_utils.")
+    if 'datetime.now' in logical_line:
         yield(0, msg)
 
 
@@ -145,3 +206,6 @@ def factory(register):
     register(check_no_log_audit)
     register(check_assert_called_once)
     register(check_oslo_namespace_imports)
+    register(check_no_contextlib_nested)
+    register(check_datetime_now)
+    register(validate_log_translations)

@@ -18,11 +18,11 @@ import copy
 import math
 import time
 
+from oslo_log import log as logging
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 

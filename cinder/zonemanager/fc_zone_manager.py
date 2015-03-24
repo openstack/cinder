@@ -32,11 +32,11 @@ detach operation.
 """
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume import configuration as config
 from cinder.zonemanager import fc_common
 

@@ -52,11 +52,11 @@ This module provides Manager, a base class for managers.
 """
 
 
-from oslo import messaging
 from oslo_config import cfg
+from oslo_log import log as logging
+import oslo_messaging as messaging
 
 from cinder.db import base
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import periodic_task
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
@@ -86,7 +86,19 @@ class Manager(base.Base, periodic_task.PeriodicTasks):
     def init_host(self):
         """Handle initialization if this is a standalone service.
 
-        Child classes should override this method.
+        A hook point for services to execute tasks before the services are made
+        available (i.e. showing up on RPC and starting to accept RPC calls) to
+        other components.  Child classes should override this method.
+
+        """
+        pass
+
+    def init_host_with_rpc(self):
+        """A hook for service to do jobs after RPC is ready.
+
+        Like init_host(), this method is a hook where services get a chance
+        to execute tasks that *need* RPC. Child classes should override
+        this method.
 
         """
         pass

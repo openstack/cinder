@@ -12,6 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from oslo_log import log as logging
 import webob
 from webob import exc
 
@@ -19,7 +20,6 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder import volume
 
 LOG = logging.getLogger(__name__)

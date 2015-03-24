@@ -20,12 +20,12 @@ import os
 import threading
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 import six
 
 from cinder import exception
 from cinder.i18n import _LW
-from cinder.openstack.common import log as logging
 from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib

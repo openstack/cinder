@@ -28,12 +28,14 @@ stepping stone.
 import socket
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import netutils
 
 from cinder.i18n import _
 
 
 CONF = cfg.CONF
+logging.register_options(CONF)
 
 core_opts = [
     cfg.StrOpt('api_paste_config',
@@ -194,7 +196,8 @@ global_opts = [
     cfg.StrOpt('os_privileged_user_password',
                default=None,
                help='Password associated with the OpenStack privileged '
-                    'account.'),
+                    'account.',
+               secret=True),
     cfg.StrOpt('os_privileged_user_tenant',
                default=None,
                help='Tenant name associated with the OpenStack privileged '

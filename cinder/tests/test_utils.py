@@ -652,6 +652,19 @@ class GetDiskOfPartitionTestCase(test.TestCase):
 
 class GetBlkdevMajorMinorTestCase(test.TestCase):
     @mock.patch('os.stat')
+    def test_get_file_size(self, mock_stat):
+
+        class stat_result:
+            st_mode = 0o777
+            st_size = 1074253824
+
+        test_file = '/var/tmp/made_up_file'
+        mock_stat.return_value = stat_result
+        size = utils.get_file_size(test_file)
+        self.assertEqual(size, stat_result.st_size)
+        mock_stat.assert_called_once_with(test_file)
+
+    @mock.patch('os.stat')
     def test_get_blkdev_major_minor(self, mock_stat):
 
         class stat_result:
@@ -1477,3 +1490,19 @@ class TestRetryDecorator(test.TestCase):
 
             self.assertRaises(WrongException, raise_unexpected_error)
             self.assertFalse(mock_sleep.called)
+
+
+class VersionTestCase(test.TestCase):
+    def test_convert_version_to_int(self):
+        self.assertEqual(utils.convert_version_to_int('6.2.0'), 6002000)
+        self.assertEqual(utils.convert_version_to_int((6, 4, 3)), 6004003)
+        self.assertEqual(utils.convert_version_to_int((5, )), 5)
+        self.assertRaises(exception.CinderException,
+                          utils.convert_version_to_int, '5a.6b')
+
+    def test_convert_version_to_string(self):
+        self.assertEqual(utils.convert_version_to_str(6007000), '6.7.0')
+        self.assertEqual(utils.convert_version_to_str(4), '4')
+
+    def test_convert_version_to_tuple(self):
+        self.assertEqual(utils.convert_version_to_tuple('6.7.0'), (6, 7, 0))

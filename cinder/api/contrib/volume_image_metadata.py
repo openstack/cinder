@@ -16,6 +16,8 @@
 
 import logging
 
+import six
+
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
@@ -39,7 +41,7 @@ class VolumeImageMetadataController(wsgi.Controller):
             all_metadata = self.volume_api.get_volumes_image_metadata(context)
         except Exception as e:
             LOG.debug('Problem retrieving volume image metadata. '
-                      'It will be skipped. Error: %s', e)
+                      'It will be skipped. Error: %s', six.text_type(e))
             all_metadata = {}
         return all_metadata
 

@@ -22,6 +22,7 @@ import tempfile
 import urllib
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import encodeutils
 from oslo_utils import units
 import six
@@ -30,7 +31,6 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 
 try:
@@ -247,6 +247,13 @@ class RADOSClient(object):
     def __exit__(self, type_, value, traceback):
         self.driver._disconnect_from_rados(self.cluster, self.ioctx)
 
+    @property
+    def features(self):
+        features = self.cluster.conf_get('rbd_default_features')
+        if ((features is None) or (int(features) == 0)):
+            features = self.driver.rbd.RBD_FEATURE_LAYERING
+        return int(features)
+
 
 class RBDDriver(driver.VolumeDriver):
     """Implements RADOS block device (RBD) volume commands."""
@@ -273,13 +280,12 @@ class RBDDriver(driver.VolumeDriver):
         if rados is None:
             msg = _('rados and rbd python libraries not found')
             raise exception.VolumeBackendAPIException(data=msg)
-        try:
-            with RADOSClient(self):
-                pass
-        except self.rados.Error:
-            msg = _('error connecting to ceph cluster')
-            LOG.exception(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+
+        # NOTE: Checking connection to ceph
+        # RADOSClient __init__ method invokes _connect_to_rados
+        # so no need to check for self.rados.Error here.
+        with RADOSClient(self):
+            pass
 
     def _ceph_args(self):
         args = []
@@ -308,11 +314,12 @@ class RBDDriver(driver.VolumeDriver):
                 client.connect()
             ioctx = client.open_ioctx(pool)
             return client, ioctx
-        except self.rados.Error as exc:
-            LOG.error(_LE("error connecting to ceph cluster."))
+        except self.rados.Error:
+            msg = _("Error connecting to ceph cluster.")
+            LOG.exception(msg)
             # shutdown cannot raise an exception
             client.shutdown()
-            raise exception.VolumeBackendAPIException(data=str(exc))
+            raise exception.VolumeBackendAPIException(data=msg)
 
     def _disconnect_from_rados(self, client, ioctx):
         # closing an ioctx cannot raise an exception
@@ -380,9 +387,6 @@ class RBDDriver(driver.VolumeDriver):
         if refresh:
             self._update_volume_stats()
         return self._stats
-
-    def _supports_layering(self):
-        return hasattr(self.rbd, 'RBD_FEATURE_LAYERING')
 
     def _get_clone_depth(self, client, volume_name, depth=0):
         """Returns the number of ancestral clones (if any) of the given volume.
@@ -474,7 +478,7 @@ class RBDDriver(driver.VolumeDriver):
                            'dest': dest_name})
                 self.rbd.RBD().clone(client.ioctx, src_name, clone_snap,
                                      client.ioctx, dest_name,
-                                     features=self.rbd.RBD_FEATURE_LAYERING)
+                                     features=client.features)
             except Exception as exc:
                 src_volume.unprotect_snap(clone_snap)
                 src_volume.remove_snap(clone_snap)
@@ -497,21 +501,16 @@ class RBDDriver(driver.VolumeDriver):
 
         LOG.debug("creating volume '%s'" % (volume['name']))
 
-        old_format = True
-        features = 0
         chunk_size = CONF.rbd_store_chunk_size * units.Mi
         order = int(math.log(chunk_size, 2))
-        if self._supports_layering():
-            old_format = False
-            features = self.rbd.RBD_FEATURE_LAYERING
 
         with RADOSClient(self) as client:
             self.rbd.RBD().create(client.ioctx,
                                   encodeutils.safe_encode(volume['name']),
                                   size,
                                   order,
-                                  old_format=old_format,
-                                  features=features)
+                                  old_format=False,
+                                  features=client.features)
 
     def _flatten(self, pool, volume_name):
         LOG.debug('flattening %(pool)s/%(img)s' %
@@ -530,7 +529,7 @@ class RBDDriver(driver.VolumeDriver):
                                      encodeutils.safe_encode(src_snap),
                                      dest_client.ioctx,
                                      encodeutils.safe_encode(volume['name']),
-                                     features=self.rbd.RBD_FEATURE_LAYERING)
+                                     features=src_client.features)
 
     def _resize(self, volume, **kwargs):
         size = kwargs.get('size', None)
@@ -694,8 +693,7 @@ class RBDDriver(driver.VolumeDriver):
         with RBDVolumeProxy(self, snapshot['volume_name']) as volume:
             snap = encodeutils.safe_encode(snapshot['name'])
             volume.create_snap(snap)
-            if self._supports_layering():
-                volume.protect_snap(snap)
+            volume.protect_snap(snap)
 
     def delete_snapshot(self, snapshot):
         """Deletes an rbd snapshot."""
@@ -704,11 +702,10 @@ class RBDDriver(driver.VolumeDriver):
         volume_name = encodeutils.safe_encode(snapshot['volume_name'])
         snap_name = encodeutils.safe_encode(snapshot['name'])
         with RBDVolumeProxy(self, volume_name) as volume:
-            if self._supports_layering():
-                try:
-                    volume.unprotect_snap(snap_name)
-                except self.rbd.ImageBusy:
-                    raise exception.SnapshotIsBusy(snapshot_name=snap_name)
+            try:
+                volume.unprotect_snap(snap_name)
+            except self.rbd.ImageBusy:
+                raise exception.SnapshotIsBusy(snapshot_name=snap_name)
             volume.remove_snap(snap_name)
 
     def retype(self, context, volume, new_type, diff, host):
@@ -863,9 +860,8 @@ class RBDDriver(driver.VolumeDriver):
             args = ['rbd', 'import',
                     '--pool', self.configuration.rbd_pool,
                     '--order', order,
-                    tmp.name, volume['name']]
-            if self._supports_layering():
-                args.append('--new-format')
+                    tmp.name, volume['name'],
+                    '--new-format']
             args.extend(self._ceph_args())
             self._try_execute(*args)
         self._resize(volume)

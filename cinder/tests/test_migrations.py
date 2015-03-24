@@ -722,6 +722,91 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         snapshots = db_utils.get_table(engine, 'snapshots')
         self.assertNotIn('provider_id', snapshots.c)
 
+    def _check_037(self, engine, data):
+        consistencygroups = db_utils.get_table(engine, 'consistencygroups')
+        self.assertIsInstance(consistencygroups.c.cgsnapshot_id.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_037(self, engine):
+        consistencygroups = db_utils.get_table(engine, 'consistencygroups')
+        self.assertNotIn('cgsnapshot_id', consistencygroups.c)
+
+    def _check_038(self, engine, data):
+        """Test adding and removing driver_initiator_data table."""
+
+        has_table = engine.dialect.has_table(engine.connect(),
+                                             "driver_initiator_data")
+        self.assertTrue(has_table)
+
+        private_data = db_utils.get_table(
+            engine,
+            'driver_initiator_data'
+        )
+
+        self.assertIsInstance(private_data.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(private_data.c.updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(private_data.c.id.type,
+                              sqlalchemy.types.INTEGER)
+        self.assertIsInstance(private_data.c.initiator.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(private_data.c.namespace.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(private_data.c.key.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(private_data.c.value.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_038(self, engine):
+        has_table = engine.dialect.has_table(engine.connect(),
+                                             "driver_initiator_data")
+        self.assertFalse(has_table)
+
+    def _check_039(self, engine, data):
+        backups = db_utils.get_table(engine, 'backups')
+        self.assertIsInstance(backups.c.parent_id.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_039(self, engine):
+        backups = db_utils.get_table(engine, 'backups')
+        self.assertNotIn('parent_id', backups.c)
+
+    def _check_40(self, engine, data):
+        volumes = db_utils.get_table(engine, 'volumes')
+        self.assertNotIn('instance_uuid', volumes.c)
+        self.assertNotIn('attached_host', volumes.c)
+        self.assertNotIn('attach_time', volumes.c)
+        self.assertNotIn('mountpoint', volumes.c)
+        self.assertIsInstance(volumes.c.multiattach.type,
+                              self.BOOL_TYPE)
+
+        attachments = db_utils.get_table(engine, 'volume_attachment')
+        self.assertIsInstance(attachments.c.attach_mode.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(attachments.c.instance_uuid.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(attachments.c.attached_host.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(attachments.c.mountpoint.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(attachments.c.attach_status.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_040(self, engine):
+        self.assertFalse(engine.dialect.has_table(engine.connect(),
+                                                  "volume_attachment"))
+        volumes = db_utils.get_table(engine, 'volumes')
+        self.assertNotIn('multiattach', volumes.c)
+        self.assertIsInstance(volumes.c.instance_uuid.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(volumes.c.attached_host.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(volumes.c.attach_time.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(volumes.c.mountpoint.type,
+                              sqlalchemy.types.VARCHAR)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 

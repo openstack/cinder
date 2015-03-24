@@ -30,6 +30,8 @@ import eventlet
 import eventlet.wsgi
 import greenlet
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_log import loggers
 from oslo_utils import excutils
 from oslo_utils import netutils
 from paste import deploy
@@ -39,7 +41,6 @@ import webob.exc
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 
@@ -139,7 +140,7 @@ class Server(object):
         self.pool_size = pool_size or self.default_pool_size
         self._pool = eventlet.GreenPool(self.pool_size)
         self._logger = logging.getLogger("eventlet.wsgi.server")
-        self._wsgi_logger = logging.WritableLogger(self._logger)
+        self._wsgi_logger = loggers.WritableLogger(self._logger)
 
         if backlog < 1:
             raise exception.InvalidInput(
@@ -197,7 +198,7 @@ class Server(object):
                                {'host': host, 'port': port})
 
         (self._host, self._port) = self._socket.getsockname()[0:2]
-        LOG.info(_LI("%(name)s listening on %(_host)s:%(_port)s") %
+        LOG.info(_LI("%(name)s listening on %(_host)s:%(_port)s"),
                  {'name': self.name, '_host': self._host, '_port': self._port})
 
     def start(self):
@@ -244,7 +245,7 @@ class Server(object):
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE("Failed to start %(name)s on %(_host)s:"
                                   "%(_port)s with SSL "
-                                  "support.") % self.__dict__)
+                                  "support."), self.__dict__)
 
         wsgi_kwargs = {
             'func': eventlet.wsgi.server,
@@ -559,6 +560,6 @@ class Loader(object):
         """
         try:
             return deploy.loadapp("config:%s" % self.config_path, name=name)
-        except LookupError as err:
-            LOG.error(err)
+        except LookupError:
+            LOG.exception(_LE("Error loading app %s"), name)
             raise exception.PasteAppNotFound(name=name, path=self.config_path)

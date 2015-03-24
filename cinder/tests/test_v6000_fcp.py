@@ -24,7 +24,7 @@ from cinder import context
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import test
-from cinder.tests import fake_vmem_xgtools_client as vxg
+from cinder.tests import fake_vmem_client as vmemclient
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.violin import v6000_common
 from cinder.volume.drivers.violin import v6000_fcp
@@ -120,7 +120,7 @@ class V6000FCPDriverTestCase(test.TestCase):
         """Create a fake VShare communication object."""
         _m_vshare = mock.Mock(name='VShare',
                               version='1.1.1',
-                              spec=vxg.mock_client_conf)
+                              spec=vmemclient.mock_client_conf)
 
         if m_conf:
             _m_vshare.configure_mock(**m_conf)
@@ -224,7 +224,7 @@ class V6000FCPDriverTestCase(test.TestCase):
         self.driver._build_initiator_target_map.assert_called_with(
             CONNECTOR)
         self.assertEqual("fibre_channel", props['driver_volume_type'])
-        self.assertEqual(True, props['data']['target_discovered'])
+        self.assertTrue(props['data']['target_discovered'])
         self.assertEqual(target_wwns, props['data']['target_wwn'])
         self.assertEqual(lun_id, props['data']['target_lun'])
         self.assertEqual(init_targ_map, props['data']['initiator_target_map'])
@@ -249,7 +249,7 @@ class V6000FCPDriverTestCase(test.TestCase):
         self.driver._build_initiator_target_map.assert_called_with(
             CONNECTOR)
         self.assertEqual("fibre_channel", props['driver_volume_type'])
-        self.assertEqual(True, props['data']['target_discovered'])
+        self.assertTrue(props['data']['target_discovered'])
         self.assertEqual(target_wwns, props['data']['target_wwn'])
         self.assertEqual(lun_id, props['data']['target_lun'])
         self.assertEqual(init_targ_map, props['data']['initiator_target_map'])

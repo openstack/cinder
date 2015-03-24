@@ -18,6 +18,7 @@ import datetime
 from lxml import etree
 import mock
 from oslo_config import cfg
+from oslo_utils import timeutils
 import webob
 
 from cinder.api import extensions
@@ -85,11 +86,8 @@ class VolumeApiTest(test.TestCase):
                                'availability_zone': 'zone1:host1',
                                'display_name': 'Volume Test Name',
                                'encrypted': False,
-                               'attachments': [{'device': '/',
-                                                'server_id': 'fakeuuid',
-                                                'host_name': None,
-                                                'id': '1',
-                                                'volume_id': '1'}],
+                               'attachments': [],
+                               'multiattach': 'false',
                                'bootable': 'false',
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
@@ -176,11 +174,8 @@ class VolumeApiTest(test.TestCase):
                                'availability_zone': 'nova',
                                'display_name': 'Volume Test Name',
                                'encrypted': False,
-                               'attachments': [{'device': '/',
-                                                'server_id': 'fakeuuid',
-                                                'host_name': None,
-                                                'id': '1',
-                                                'volume_id': '1'}],
+                               'attachments': [],
+                               'multiattach': 'false',
                                'bootable': 'false',
                                'volume_type': 'vol_type_name',
                                'image_id': test_id,
@@ -258,13 +253,8 @@ class VolumeApiTest(test.TestCase):
             'availability_zone': 'fakeaz',
             'display_name': 'Updated Test Name',
             'encrypted': False,
-            'attachments': [{
-                'id': '1',
-                'volume_id': '1',
-                'server_id': 'fakeuuid',
-                'host_name': None,
-                'device': '/'
-            }],
+            'attachments': [],
+            'multiattach': 'false',
             'bootable': 'false',
             'volume_type': 'vol_type_name',
             'snapshot_id': None,
@@ -294,13 +284,8 @@ class VolumeApiTest(test.TestCase):
             'availability_zone': 'fakeaz',
             'display_name': 'displayname',
             'encrypted': False,
-            'attachments': [{
-                'id': '1',
-                'volume_id': '1',
-                'server_id': 'fakeuuid',
-                'host_name': None,
-                'device': '/'
-            }],
+            'attachments': [],
+            'multiattach': 'false',
             'bootable': 'false',
             'volume_type': 'vol_type_name',
             'snapshot_id': None,
@@ -328,6 +313,10 @@ class VolumeApiTest(test.TestCase):
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
+        values = {'volume_id': '1', }
+        attachment = db.volume_attach(context.get_admin_context(), values)
+        db.volume_attached(context.get_admin_context(),
+                           attachment['id'], stubs.FAKE_UUID, None, '/')
 
         updates = {
             "display_name": "Updated Test Name",
@@ -339,18 +328,20 @@ class VolumeApiTest(test.TestCase):
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.update(req, '1', body)
         expected = {'volume': {
-            'status': 'fakestatus',
+            'status': 'in-use',
             'display_description': 'displaydesc',
             'availability_zone': 'fakeaz',
             'display_name': 'Updated Test Name',
             'encrypted': False,
             'attachments': [{
+                'attachment_id': attachment['id'],
                 'id': '1',
                 'volume_id': '1',
-                'server_id': 'fakeuuid',
+                'server_id': stubs.FAKE_UUID,
                 'host_name': None,
                 'device': '/'
             }],
+            'multiattach': 'false',
             'bootable': 'false',
             'volume_type': None,
             'snapshot_id': None,
@@ -400,11 +391,8 @@ class VolumeApiTest(test.TestCase):
                                  'availability_zone': 'fakeaz',
                                  'display_name': 'displayname',
                                  'encrypted': False,
-                                 'attachments': [{'device': '/',
-                                                  'server_id': 'fakeuuid',
-                                                  'host_name': None,
-                                                  'id': '1',
-                                                  'volume_id': '1'}],
+                                 'attachments': [],
+                                 'multiattach': 'false',
                                  'bootable': 'false',
                                  'volume_type': 'vol_type_name',
                                  'snapshot_id': None,
@@ -430,21 +418,28 @@ class VolumeApiTest(test.TestCase):
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
+        values = {'volume_id': '1', }
+        attachment = db.volume_attach(context.get_admin_context(), values)
+        db.volume_attached(context.get_admin_context(),
+                           attachment['id'], stubs.FAKE_UUID, None, '/')
 
         req = fakes.HTTPRequest.blank('/v1/volumes')
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.index(req)
-        expected = {'volumes': [{'status': 'fakestatus',
+        expected = {'volumes': [{'status': 'in-use',
                                  'display_description': 'displaydesc',
                                  'availability_zone': 'fakeaz',
                                  'display_name': 'displayname',
                                  'encrypted': False,
-                                 'attachments': [{'device': '/',
-                                                  'server_id': 'fakeuuid',
-                                                  'host_name': None,
-                                                  'id': '1',
-                                                  'volume_id': '1'}],
+                                 'attachments': [
+                                     {'attachment_id': attachment['id'],
+                                      'device': '/',
+                                      'server_id': stubs.FAKE_UUID,
+                                      'host_name': None,
+                                      'id': '1',
+                                      'volume_id': '1'}],
+                                 'multiattach': 'false',
                                  'bootable': 'false',
                                  'volume_type': None,
                                  'snapshot_id': None,
@@ -469,11 +464,8 @@ class VolumeApiTest(test.TestCase):
                                  'availability_zone': 'fakeaz',
                                  'display_name': 'displayname',
                                  'encrypted': False,
-                                 'attachments': [{'device': '/',
-                                                  'server_id': 'fakeuuid',
-                                                  'host_name': None,
-                                                  'id': '1',
-                                                  'volume_id': '1'}],
+                                 'attachments': [],
+                                 'multiattach': 'false',
                                  'bootable': 'false',
                                  'volume_type': 'vol_type_name',
                                  'snapshot_id': None,
@@ -499,21 +491,28 @@ class VolumeApiTest(test.TestCase):
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
+        values = {'volume_id': '1', }
+        attachment = db.volume_attach(context.get_admin_context(), values)
+        db.volume_attached(context.get_admin_context(),
+                           attachment['id'], stubs.FAKE_UUID, None, '/')
 
         req = fakes.HTTPRequest.blank('/v1/volumes/detail')
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.index(req)
-        expected = {'volumes': [{'status': 'fakestatus',
+        expected = {'volumes': [{'status': 'in-use',
                                  'display_description': 'displaydesc',
                                  'availability_zone': 'fakeaz',
                                  'display_name': 'displayname',
                                  'encrypted': False,
-                                 'attachments': [{'device': '/',
-                                                  'server_id': 'fakeuuid',
-                                                  'host_name': None,
-                                                  'id': '1',
-                                                  'volume_id': '1'}],
+                                 'attachments': [
+                                     {'attachment_id': attachment['id'],
+                                      'device': '/',
+                                      'server_id': stubs.FAKE_UUID,
+                                      'host_name': None,
+                                      'id': '1',
+                                      'volume_id': '1'}],
+                                 'multiattach': 'false',
                                  'bootable': 'false',
                                  'volume_type': None,
                                  'snapshot_id': None,
@@ -536,11 +535,8 @@ class VolumeApiTest(test.TestCase):
                                'availability_zone': 'fakeaz',
                                'display_name': 'displayname',
                                'encrypted': False,
-                               'attachments': [{'device': '/',
-                                                'server_id': 'fakeuuid',
-                                                'host_name': None,
-                                                'id': '1',
-                                                'volume_id': '1'}],
+                               'attachments': [],
+                               'multiattach': 'false',
                                'bootable': 'false',
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
@@ -569,6 +565,7 @@ class VolumeApiTest(test.TestCase):
                                'display_name': 'displayname',
                                'encrypted': False,
                                'attachments': [],
+                               'multiattach': 'false',
                                'bootable': 'false',
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
@@ -594,11 +591,8 @@ class VolumeApiTest(test.TestCase):
                                'availability_zone': 'fakeaz',
                                'display_name': 'displayname',
                                'encrypted': False,
-                               'attachments': [{'device': '/',
-                                                'server_id': 'fakeuuid',
-                                                'host_name': None,
-                                                'id': '1',
-                                                'volume_id': '1'}],
+                               'attachments': [],
+                               'multiattach': 'false',
                                'bootable': 'true',
                                'volume_type': 'vol_type_name',
                                'snapshot_id': None,
@@ -625,8 +619,8 @@ class VolumeApiTest(test.TestCase):
     def test_volume_detail_limit_offset(self):
         def volume_detail_limit_offset(is_admin):
             def stub_volume_get_all_by_project(context, project_id, marker,
-                                               limit, sort_key, sort_dir,
-                                               filters=None,
+                                               limit, sort_keys=None,
+                                               sort_dirs=None, filters=None,
                                                viewable_admin_meta=False):
                 return [
                     stubs.stub_volume(1, display_name='vol1'),
@@ -661,21 +655,28 @@ class VolumeApiTest(test.TestCase):
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
+        values = {'volume_id': '1', }
+        attachment = db.volume_attach(context.get_admin_context(), values)
+        db.volume_attached(context.get_admin_context(),
+                           attachment['id'], stubs.FAKE_UUID, None, '/')
 
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.show(req, '1')
-        expected = {'volume': {'status': 'fakestatus',
+        expected = {'volume': {'status': 'in-use',
                                'display_description': 'displaydesc',
                                'availability_zone': 'fakeaz',
                                'display_name': 'displayname',
                                'encrypted': False,
-                               'attachments': [{'device': '/',
-                                                'server_id': 'fakeuuid',
-                                                'host_name': None,
-                                                'id': '1',
-                                                'volume_id': '1'}],
+                               'attachments': [
+                                   {'attachment_id': attachment['id'],
+                                    'device': '/',
+                                    'server_id': stubs.FAKE_UUID,
+                                    'host_name': None,
+                                    'id': '1',
+                                    'volume_id': '1'}],
+                               'multiattach': 'false',
                                'bootable': 'false',
                                'volume_type': None,
                                'snapshot_id': None,
@@ -770,8 +771,8 @@ class VolumeApiTest(test.TestCase):
         req.environ = {'cinder.context': context}
         self.controller._items(req, mock.Mock)
         get_all.assert_called_once_with(
-            context, sort_dir='desc', viewable_admin_meta=True,
-            sort_key='created_at', limit=None,
+            context, sort_dirs=['desc'], viewable_admin_meta=True,
+            sort_keys=['created_at'], limit=None,
             filters={'display_name': 'Volume-573108026'}, marker=None)
 
     @mock.patch('cinder.volume.api.API.get_all')
@@ -782,8 +783,8 @@ class VolumeApiTest(test.TestCase):
         req.environ = {'cinder.context': context}
         self.controller._items(req, mock.Mock)
         get_all.assert_called_once_with(
-            context, sort_dir='desc', viewable_admin_meta=True,
-            sort_key='created_at', limit=None,
+            context, sort_dirs=['desc'], viewable_admin_meta=True,
+            sort_keys=['created_at'], limit=None,
             filters={'id': ['1', '2', '3']}, marker=None)
 
     @mock.patch('cinder.volume.api.API.get_all')
@@ -794,8 +795,8 @@ class VolumeApiTest(test.TestCase):
         req.environ = {'cinder.context': context}
         self.controller._items(req, mock.Mock)
         get_all.assert_called_once_with(
-            context, sort_dir='desc', viewable_admin_meta=True,
-            sort_key='created_at', limit=None, filters={'id': 'd+'},
+            context, sort_dirs=['desc'], viewable_admin_meta=True,
+            sort_keys=['created_at'], limit=None, filters={'id': 'd+'},
             marker=None)
 
 
@@ -835,7 +836,7 @@ class VolumeSerializerTest(test.TestCase):
             size=1024,
             availability_zone='vol_availability',
             bootable='false',
-            created_at=datetime.datetime.now(),
+            created_at=timeutils.utcnow(),
             attachments=[dict(id='vol_id',
                               volume_id='vol_id',
                               server_id='instance_uuid',
@@ -860,7 +861,7 @@ class VolumeSerializerTest(test.TestCase):
                             size=1024,
                             availability_zone='vol1_availability',
                             bootable='true',
-                            created_at=datetime.datetime.now(),
+                            created_at=timeutils.utcnow(),
                             attachments=[dict(id='vol1_id',
                                               volume_id='vol1_id',
                                               server_id='instance_uuid',
@@ -877,7 +878,7 @@ class VolumeSerializerTest(test.TestCase):
                             size=1024,
                             availability_zone='vol2_availability',
                             bootable='true',
-                            created_at=datetime.datetime.now(),
+                            created_at=timeutils.utcnow(),
                             attachments=[dict(id='vol2_id',
                                               volume_id='vol2_id',
                                               server_id='instance_uuid',

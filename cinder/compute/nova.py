@@ -24,12 +24,12 @@ from novaclient.v1_1 import client as nova_client
 from novaclient.v1_1.contrib import assisted_volume_snapshots
 from novaclient.v1_1.contrib import list_extensions
 from oslo_config import cfg
+from oslo_log import log as logging
 from requests import exceptions as request_exceptions
 
 from cinder import context as ctx
 from cinder.db import base
 from cinder import exception
-from cinder.openstack.common import log as logging
 
 nova_opts = [
     cfg.StrOpt('nova_catalog_info',
@@ -119,7 +119,7 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
                          endpoint_type=endpoint_type,
                          **region_filter)
 
-        LOG.debug('Creating a Nova client using "%s" user' %
+        LOG.debug('Creating a Nova client using "%s" user',
                   CONF.os_privileged_user_name)
     else:
         if nova_endpoint_template:
@@ -130,7 +130,7 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
                              endpoint_type=endpoint_type,
                              **region_filter)
 
-        LOG.debug('Nova client connection created using URL: %s' % url)
+        LOG.debug('Nova client connection created using URL: %s', url)
 
     c = nova_client.Client(context.user_id,
                            context.auth_token,
@@ -173,14 +173,14 @@ class API(base.Base):
                                                          new_volume_id)
 
     def create_volume_snapshot(self, context, volume_id, create_info):
-        nova = novaclient(context, admin_endpoint=True)
+        nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
         nova.assisted_volume_snapshots.create(
             volume_id,
             create_info=create_info)
 
     def delete_volume_snapshot(self, context, snapshot_id, delete_info):
-        nova = novaclient(context, admin_endpoint=True)
+        nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
         nova.assisted_volume_snapshots.delete(
             snapshot_id,

@@ -15,11 +15,15 @@
 
 import copy
 import os
+import platform
+import re
 import socket
 import time
 
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils as putils
+from oslo_log import log as logging
+import six
 
 from cinder.brick import exception
 from cinder.brick import executor
@@ -28,13 +32,16 @@ from cinder.brick.initiator import linuxfc
 from cinder.brick.initiator import linuxscsi
 from cinder.brick.remotefs import remotefs
 from cinder.i18n import _, _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
+
+S390X = "s390x"
+S390 = "s390"
 
 LOG = logging.getLogger(__name__)
 
 synchronized = lockutils.synchronized_with_prefix('brick-')
 DEVICE_SCAN_ATTEMPTS_DEFAULT = 3
+MULTIPATH_ERROR_REGEX = re.compile("\w{3} \d+ \d\d:\d\d:\d\d \|.*$")
 
 
 def _check_multipathd_running(root_helper, enforce_multipath):
@@ -105,9 +112,10 @@ class InitiatorConnector(executor.Executor):
     def factory(protocol, root_helper, driver=None,
                 execute=putils.execute, use_multipath=False,
                 device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
+                arch=platform.machine(),
                 *args, **kwargs):
-        """Build a Connector object based upon protocol."""
-        LOG.debug("Factory for %s" % protocol)
+        """Build a Connector object based upon protocol and architecture."""
+        LOG.debug("Factory for %s on %s" % (protocol, arch))
         protocol = protocol.upper()
         if protocol == "ISCSI":
             return ISCSIConnector(root_helper=root_helper,
@@ -124,13 +132,22 @@ class InitiatorConnector(executor.Executor):
                                  device_scan_attempts=device_scan_attempts,
                                  *args, **kwargs)
         elif protocol == "FIBRE_CHANNEL":
-            return FibreChannelConnector(root_helper=root_helper,
-                                         driver=driver,
-                                         execute=execute,
-                                         use_multipath=use_multipath,
-                                         device_scan_attempts=
-                                         device_scan_attempts,
-                                         *args, **kwargs)
+            if arch in (S390, S390X):
+                return FibreChannelConnectorS390X(root_helper=root_helper,
+                                                  driver=driver,
+                                                  execute=execute,
+                                                  use_multipath=use_multipath,
+                                                  device_scan_attempts=
+                                                  device_scan_attempts,
+                                                  *args, **kwargs)
+            else:
+                return FibreChannelConnector(root_helper=root_helper,
+                                             driver=driver,
+                                             execute=execute,
+                                             use_multipath=use_multipath,
+                                             device_scan_attempts=
+                                             device_scan_attempts,
+                                             *args, **kwargs)
         elif protocol == "AOE":
             return AoEConnector(root_helper=root_helper,
                                 driver=driver,
@@ -217,18 +234,27 @@ class ISCSIConnector(InitiatorConnector):
         super(ISCSIConnector, self).set_execute(execute)
         self._linuxscsi.set_execute(execute)
 
-    def _iterate_multiple_targets(self, connection_properties, ips_iqns_luns):
-        for ip, iqn, lun in ips_iqns_luns:
+    def _iterate_all_targets(self, connection_properties):
+        for ip, iqn, lun in self._get_all_targets(connection_properties):
             props = copy.deepcopy(connection_properties)
             props['target_portal'] = ip
             props['target_iqn'] = iqn
             props['target_lun'] = lun
+            for key in ('target_portals', 'target_iqns', 'target_luns'):
+                props.pop(key, None)
             yield props
 
-    def _multipath_targets(self, connection_properties):
-        return zip(connection_properties.get('target_portals', []),
-                   connection_properties.get('target_iqns', []),
-                   connection_properties.get('target_luns', []))
+    def _get_all_targets(self, connection_properties):
+        if all([key in connection_properties for key in ('target_portals',
+                                                         'target_iqns',
+                                                         'target_luns')]):
+            return zip(connection_properties['target_portals'],
+                       connection_properties['target_iqns'],
+                       connection_properties['target_luns'])
+
+        return [(connection_properties['target_portal'],
+                 connection_properties['target_iqn'],
+                 connection_properties.get('target_lun', 0))]
 
     def _discover_iscsi_portals(self, connection_properties):
         if all([key in connection_properties for key in ('target_portals',
@@ -273,8 +299,16 @@ class ISCSIConnector(InitiatorConnector):
             self._rescan_iscsi()
             host_devices = self._get_device_path(connection_properties)
         else:
-            self._connect_to_iscsi_portal(connection_properties)
-            host_devices = self._get_device_path(connection_properties)
+            target_props = connection_properties
+            for props in self._iterate_all_targets(connection_properties):
+                if self._connect_to_iscsi_portal(props):
+                    target_props = props
+                    break
+                else:
+                    LOG.warn(_LW(
+                        'Failed to login to any of the iSCSI targets.'))
+
+            host_devices = self._get_device_path(target_props)
 
         # The /dev/disk/by-path/... node is not always present immediately
         # TODO(justinsb): This retry-with-delay is a pattern, move to utils?
@@ -293,7 +327,7 @@ class ISCSIConnector(InitiatorConnector):
             if self.use_multipath:
                 self._rescan_iscsi()
             else:
-                self._run_iscsiadm(connection_properties, ("--rescan",))
+                self._run_iscsiadm(target_props, ("--rescan",))
 
             tries = tries + 1
             if all(map(lambda x: not os.path.exists(x), host_devices)):
@@ -358,13 +392,7 @@ class ISCSIConnector(InitiatorConnector):
 
         # When multiple portals/iqns/luns are specified, we need to remove
         # unused devices created by logging into other LUNs' session.
-        ips_iqns_luns = self._multipath_targets(connection_properties)
-        if not ips_iqns_luns:
-            ips_iqns_luns = [[connection_properties['target_portal'],
-                              connection_properties['target_iqn'],
-                              connection_properties.get('target_lun', 0)]]
-        for props in self._iterate_multiple_targets(connection_properties,
-                                                    ips_iqns_luns):
+        for props in self._iterate_all_targets(connection_properties):
             self._disconnect_volume_iscsi(props)
 
     def _disconnect_volume_iscsi(self, connection_properties):
@@ -388,16 +416,8 @@ class ISCSIConnector(InitiatorConnector):
             self._disconnect_from_iscsi_portal(connection_properties)
 
     def _get_device_path(self, connection_properties):
-        multipath_targets = self._multipath_targets(connection_properties)
-        if multipath_targets:
-            return ["/dev/disk/by-path/ip-%s-iscsi-%s-lun-%s" % x for x in
-                    multipath_targets]
-
-        path = ("/dev/disk/by-path/ip-%(portal)s-iscsi-%(iqn)s-lun-%(lun)s" %
-                {'portal': connection_properties['target_portal'],
-                 'iqn': connection_properties['target_iqn'],
-                 'lun': connection_properties.get('target_lun', 0)})
-        return [path]
+        return ["/dev/disk/by-path/ip-%s-iscsi-%s-lun-%s" % x for x in
+                self._get_all_targets(connection_properties)]
 
     def get_initiator(self):
         """Secure helper to read file as root."""
@@ -536,17 +556,20 @@ class ISCSIConnector(InitiatorConnector):
                                    ("--login",),
                                    check_exit_code=[0, 255])
             except putils.ProcessExecutionError as err:
-                # as this might be one of many paths,
-                # only set successful logins to startup automatically
-                if err.exit_code in [15]:
-                    self._iscsiadm_update(connection_properties,
-                                          "node.startup",
-                                          "automatic")
-                    return
+                # exit_code=15 means the session already exists, so it should
+                # be regarded as successful login.
+                if err.exit_code not in [15]:
+                    LOG.warn(_LW('Failed to login iSCSI target %(iqn)s '
+                                 'on portal %(portal)s (exit code %(err)s).'),
+                             {'iqn': connection_properties['target_iqn'],
+                              'portal': connection_properties['target_portal'],
+                              'err': err.exit_code})
+                    return False
 
             self._iscsiadm_update(connection_properties,
                                   "node.startup",
                                   "automatic")
+        return True
 
     def _disconnect_from_iscsi_portal(self, connection_properties):
         self._iscsiadm_update(connection_properties, "node.startup", "manual",
@@ -562,7 +585,7 @@ class ISCSIConnector(InitiatorConnector):
                                   device],
                                   check_exit_code=[0, 1])[0]
         mpath_line = [line for line in out.splitlines()
-                      if "scsi_id" not in line]  # ignore udev errors
+                      if not re.match(MULTIPATH_ERROR_REGEX, line)]
         if len(mpath_line) > 0 and len(mpath_line[0]) > 0:
             return "/dev/mapper/%s" % mpath_line[0].split(" ")[0]
 
@@ -667,31 +690,12 @@ class FibreChannelConnector(InitiatorConnector):
         LOG.debug("execute = %s" % self._execute)
         device_info = {'type': 'block'}
 
-        ports = connection_properties['target_wwn']
-        wwns = []
-        # we support a list of wwns or a single wwn
-        if isinstance(ports, list):
-            for wwn in ports:
-                wwns.append(str(wwn))
-        elif isinstance(ports, basestring):
-            wwns.append(str(ports))
-
-        # We need to look for wwns on every hba
-        # because we don't know ahead of time
-        # where they will show up.
         hbas = self._linuxfc.get_fc_hbas_info()
-        host_devices = []
-        for hba in hbas:
-            pci_num = self._get_pci_num(hba)
-            if pci_num is not None:
-                for wwn in wwns:
-                    target_wwn = "0x%s" % wwn.lower()
-                    host_device = ("/dev/disk/by-path/pci-%s-fc-%s-lun-%s" %
-                                   (pci_num,
-                                    target_wwn,
-                                    connection_properties.get(
-                                        'target_lun', 0)))
-                    host_devices.append(host_device)
+        ports = connection_properties['target_wwn']
+        possible_devs = self._get_possible_devices(hbas, ports)
+
+        lun = connection_properties.get('target_lun', 0)
+        host_devices = self._get_host_devices(possible_devs, lun)
 
         if len(host_devices) == 0:
             # this is empty because we don't have any FC HBAs
@@ -764,6 +768,50 @@ class FibreChannelConnector(InitiatorConnector):
         device_info['devices'] = devices
         return device_info
 
+    def _get_host_devices(self, possible_devs, lun):
+        host_devices = []
+        for pci_num, target_wwn in possible_devs:
+            host_device = "/dev/disk/by-path/pci-%s-fc-%s-lun-%s" % (
+                pci_num,
+                target_wwn,
+                lun)
+            host_devices.append(host_device)
+        return host_devices
+
+    def _get_possible_devices(self, hbas, wwnports):
+        """Compute the possible valid fibre channel device options.
+
+        :param hbas: available hba devices.
+        :param wwnports: possible wwn addresses. Can either be string
+        or list of strings.
+
+        :returns: list of (pci_id, wwn) tuples
+
+        Given one or more wwn (mac addresses for fibre channel) ports
+        do the matrix math to figure out a set of pci device, wwn
+        tuples that are potentially valid (they won't all be). This
+        provides a search space for the device connection.
+
+        """
+        # the wwn (think mac addresses for fiber channel devices) can
+        # either be a single value or a list. Normalize it to a list
+        # for further operations.
+        wwns = []
+        if isinstance(wwnports, list):
+            for wwn in wwnports:
+                wwns.append(str(wwn))
+        elif isinstance(wwnports, six.string_types):
+            wwns.append(str(wwnports))
+
+        raw_devices = []
+        for hba in hbas:
+            pci_num = self._get_pci_num(hba)
+            if pci_num is not None:
+                for wwn in wwns:
+                    target_wwn = "0x%s" % wwn.lower()
+                    raw_devices.append((pci_num, target_wwn))
+        return raw_devices
+
     @synchronized('connect_volume')
     def disconnect_volume(self, connection_properties, device_info):
         """Detach the volume from instance_name.
@@ -784,6 +832,9 @@ class FibreChannelConnector(InitiatorConnector):
             LOG.debug("devices to remove = %s" % devices)
             self._linuxscsi.flush_multipath_device(multipath_id)
 
+        self._remove_devices(connection_properties, devices)
+
+    def _remove_devices(self, connection_properties, devices):
         # There may have been more than 1 device mounted
         # by the kernel for this volume.  We have to remove
         # all of them
@@ -810,6 +861,69 @@ class FibreChannelConnector(InitiatorConnector):
                     pci_num = device_path[index - 1]
 
         return pci_num
+
+
+class FibreChannelConnectorS390X(FibreChannelConnector):
+    """Connector class to attach/detach Fibre Channel volumes on S390X arch."""
+
+    def __init__(self, root_helper, driver=None,
+                 execute=putils.execute, use_multipath=False,
+                 device_scan_attempts=DEVICE_SCAN_ATTEMPTS_DEFAULT,
+                 *args, **kwargs):
+        super(FibreChannelConnectorS390X, self).__init__(root_helper,
+                                                         driver=driver,
+                                                         execute=execute,
+                                                         device_scan_attempts=
+                                                         device_scan_attempts,
+                                                         *args, **kwargs)
+        LOG.debug("Initializing Fibre Channel connector for S390")
+        self._linuxscsi = linuxscsi.LinuxSCSI(root_helper, execute)
+        self._linuxfc = linuxfc.LinuxFibreChannelS390X(root_helper, execute)
+        self.use_multipath = use_multipath
+
+    def set_execute(self, execute):
+        super(FibreChannelConnectorS390X, self).set_execute(execute)
+        self._linuxscsi.set_execute(execute)
+        self._linuxfc.set_execute(execute)
+
+    def _get_host_devices(self, possible_devs, lun):
+        host_devices = []
+        for pci_num, target_wwn in possible_devs:
+            target_lun = self._get_lun_string(lun)
+            host_device = self._get_device_file_path(
+                pci_num,
+                target_wwn,
+                target_lun)
+            self._linuxfc.configure_scsi_device(pci_num, target_wwn,
+                                                target_lun)
+            host_devices.append(host_device)
+        return host_devices
+
+    def _get_lun_string(self, lun):
+        target_lun = 0
+        if lun < 256:
+            target_lun = "0x00%02x000000000000" % lun
+        elif lun <= 0xffffffff:
+            target_lun = "0x%08x00000000" % lun
+        return target_lun
+
+    def _get_device_file_path(self, pci_num, target_wwn, target_lun):
+        host_device = "/dev/disk/by-path/ccw-%s-zfcp-%s:%s" % (
+            pci_num,
+            target_wwn,
+            target_lun)
+        return host_device
+
+    def _remove_devices(self, connection_properties, devices):
+        hbas = self._linuxfc.get_fc_hbas_info()
+        ports = connection_properties['target_wwn']
+        possible_devs = self._get_possible_devices(hbas, ports)
+        lun = connection_properties.get('target_lun', 0)
+        target_lun = self._get_lun_string(lun)
+        for pci_num, target_wwn in possible_devs:
+            self._linuxfc.deconfigure_scsi_device(pci_num,
+                                                  target_wwn,
+                                                  target_lun)
 
 
 class AoEConnector(InitiatorConnector):

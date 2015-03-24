@@ -26,6 +26,7 @@ import eventlet
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_serialization import jsonutils as json
 from oslo_utils import excutils
 from oslo_utils import timeutils
@@ -37,7 +38,6 @@ from taskflow.types import failure
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume import configuration as config
@@ -47,7 +47,9 @@ from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
 CONF = cfg.CONF
+
 LOG = logging.getLogger(__name__)
+
 
 INTERVAL_5_SEC = 5
 INTERVAL_20_SEC = 20
@@ -589,41 +591,67 @@ class CommandLineHelper(object):
             for m in re.finditer(cg_pat, out):
                 data['Name'] = m.groups()[0].strip()
                 data['State'] = m.groups()[4].strip()
-                luns_of_cg = m.groups()[3].split(',')
-                if luns_of_cg:
-                    data['Luns'] = [lun.strip() for lun in luns_of_cg]
+                # Handle case when no lun in cg Member LUN ID(s):  None
+                luns_of_cg = m.groups()[3].replace('None', '').strip()
+                data['Luns'] = ([lun.strip() for lun in luns_of_cg.split(',')]
+                                if luns_of_cg else [])
                 LOG.debug("Found consistent group %s.", data['Name'])
 
         return data
 
-    def add_lun_to_consistency_group(self, cg_name, lun_id):
-        add_lun_to_cg_cmd = ('-np', 'snap', '-group',
+    def add_lun_to_consistency_group(self, cg_name, lun_id, poll=False):
+        add_lun_to_cg_cmd = ('snap', '-group',
                              '-addmember', '-id',
                              cg_name, '-res', lun_id)
 
-        out, rc = self.command_execute(*add_lun_to_cg_cmd)
+        out, rc = self.command_execute(*add_lun_to_cg_cmd, poll=poll)
         if rc != 0:
-            msg = (_("Can not add the lun %(lun)s to consistency "
-                   "group %(cg_name)s.") % {'lun': lun_id,
-                                            'cg_name': cg_name})
-            LOG.error(msg)
+            LOG.error(_LE("Can not add the lun %(lun)s to consistency "
+                          "group %(cg_name)s."), {'lun': lun_id,
+                                                  'cg_name': cg_name})
             self._raise_cli_error(add_lun_to_cg_cmd, rc, out)
 
         def add_lun_to_consistency_success():
             data = self.get_consistency_group_by_name(cg_name)
             if str(lun_id) in data['Luns']:
-                LOG.debug(("Add lun %(lun)s to consistency "
-                           "group %(cg_name)s successfully."),
+                LOG.debug("Add lun %(lun)s to consistency "
+                          "group %(cg_name)s successfully.",
                           {'lun': lun_id, 'cg_name': cg_name})
                 return True
             else:
-                LOG.debug(("Adding lun %(lun)s to consistency "
-                           "group %(cg_name)s."),
+                LOG.debug("Adding lun %(lun)s to consistency "
+                          "group %(cg_name)s.",
                           {'lun': lun_id, 'cg_name': cg_name})
                 return False
 
         self._wait_for_a_condition(add_lun_to_consistency_success,
                                    interval=INTERVAL_30_SEC)
+
+    def remove_luns_from_consistencygroup(self, cg_name, remove_ids,
+                                          poll=False):
+        """Removes LUN(s) from cg"""
+        remove_luns_cmd = ('snap', '-group', '-rmmember',
+                           '-id', cg_name,
+                           '-res', ','.join(remove_ids))
+        out, rc = self.command_execute(*remove_luns_cmd, poll=poll)
+        if rc != 0:
+            LOG.error(_LE("Can not remove LUNs %(luns)s in consistency "
+                          "group %(cg_name)s."), {'luns': remove_ids,
+                                                  'cg_name': cg_name})
+            self._raise_cli_error(remove_luns_cmd, rc, out)
+
+    def replace_luns_in_consistencygroup(self, cg_name, new_ids,
+                                         poll=False):
+        """Replaces LUN(s) with new_ids for cg"""
+        replace_luns_cmd = ('snap', '-group', '-replmember',
+                            '-id', cg_name,
+                            '-res', ','.join(new_ids))
+        out, rc = self.command_execute(*replace_luns_cmd, poll=poll)
+        if rc != 0:
+            LOG.error(_LE("Can not place new LUNs %(luns)s in consistency "
+                          "group %(cg_name)s."), {'luns': new_ids,
+                                                  'cg_name': cg_name})
+            self._raise_cli_error(replace_luns_cmd, rc, out)
 
     def delete_consistencygroup(self, cg_name):
         delete_cg_cmd = ('-np', 'snap', '-group',
@@ -1556,7 +1584,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.02.01'
+    VERSION = '05.03.03'
     stats = {'driver_version': VERSION,
              'storage_protocol': None,
              'vendor_name': 'EMC',
@@ -1781,8 +1809,7 @@ class EMCVnxCliBase(object):
         self._client.expand_lun_and_wait(volume['name'], new_size)
 
     def _get_original_status(self, volume):
-        if (volume['instance_uuid'] is None and
-                volume['attached_host'] is None):
+        if not volume['volume_attachment']:
             return 'available'
         else:
             return 'in-use'
@@ -2158,11 +2185,28 @@ class EMCVnxCliBase(object):
             if len(fields) == 2 and fields[0] == key:
                 return fields[1]
 
+    def _consistencygroup_creation_check(self, group):
+        """Check extra spec for consistency group."""
+
+        if group.get('volume_type_id') is not None:
+            for id in group['volume_type_id'].split(","):
+                if id:
+                    provisioning, tiering = self._get_extra_spec_value(
+                        volume_types.get_volume_type_extra_specs(id))
+                    if provisioning == 'compressed':
+                        msg = _("Failed to create consistency group %s "
+                                "because VNX consistency group cannot "
+                                "accept compressed LUNs as members."
+                                ) % group['id']
+                        raise exception.VolumeBackendAPIException(data=msg)
+
     def create_consistencygroup(self, context, group):
         """Creates a consistency group."""
         LOG.info(_LI('Start to create consistency group: %(group_name)s '
                      'id: %(id)s'),
                  {'group_name': group['name'], 'id': group['id']})
+
+        self._consistencygroup_creation_check(group)
 
         model_update = {'status': 'available'}
         try:
@@ -2200,6 +2244,41 @@ class EMCVnxCliBase(object):
                 model_update['status'] = 'error_deleting'
 
         return model_update, volumes
+
+    def update_consistencygroup(self, context,
+                                group,
+                                add_volumes,
+                                remove_volumes):
+        """Adds or removes LUN(s) to/from an existing consistency group"""
+        model_update = {'status': 'available'}
+        cg_name = group['id']
+        add_ids = [six.text_type(self.get_lun_id(vol))
+                   for vol in add_volumes] if add_volumes else []
+        remove_ids = [six.text_type(self.get_lun_id(vol))
+                      for vol in remove_volumes] if remove_volumes else []
+
+        data = self._client.get_consistency_group_by_name(cg_name)
+        ids_curr = data['Luns']
+        ids_later = []
+
+        if ids_curr:
+            ids_later.extend(ids_curr)
+        ids_later.extend(add_ids)
+        for remove_id in remove_ids:
+            if remove_id in ids_later:
+                ids_later.remove(remove_id)
+            else:
+                LOG.warning(_LW("LUN with id %(remove_id)s is not present "
+                                "in cg %(cg_name)s, skip it."),
+                            {'remove_id': remove_id, 'cg_name': cg_name})
+        # Remove all from cg
+        if not ids_later:
+            self._client.remove_luns_from_consistencygroup(cg_name,
+                                                           ids_curr)
+        else:
+            self._client.replace_luns_in_consistencygroup(cg_name,
+                                                          ids_later)
+        return model_update, None, None
 
     def create_cgsnapshot(self, driver, context, cgsnapshot):
         """Creates a cgsnapshot (snap group)."""
@@ -2838,6 +2917,10 @@ class EMCVnxCliBase(object):
                                             [self._client.LUN_POOL],
                                             poll=False)
         return data.get(self._client.LUN_POOL.key)
+
+    def unmanage(self, volume):
+        """Unmanages a volume"""
+        pass
 
 
 @decorate_all_methods(log_enter_exit)

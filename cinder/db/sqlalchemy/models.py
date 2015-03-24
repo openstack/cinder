@@ -84,6 +84,7 @@ class ConsistencyGroup(BASE, CinderBase):
     description = Column(String(255))
     volume_type_id = Column(String(255))
     status = Column(String(255))
+    cgsnapshot_id = Column(String(36))
 
 
 class Cgsnapshot(BASE, CinderBase):
@@ -133,10 +134,6 @@ class Volume(BASE, CinderBase):
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     size = Column(Integer)
     availability_zone = Column(String(255))  # TODO(vish): foreign key?
-    instance_uuid = Column(String(36))
-    attached_host = Column(String(255))
-    mountpoint = Column(String(255))
-    attach_time = Column(String(255))  # TODO(vish): datetime
     status = Column(String(255))  # TODO(vish): enum?
     attach_status = Column(String(255))  # TODO(vish): enum
     migration_status = Column(String(255))
@@ -161,6 +158,7 @@ class Volume(BASE, CinderBase):
 
     deleted = Column(Boolean, default=False)
     bootable = Column(Boolean, default=False)
+    multiattach = Column(Boolean, default=False)
 
     replication_status = Column(String(255))
     replication_extended_status = Column(String(255))
@@ -199,6 +197,26 @@ class VolumeAdminMetadata(BASE, CinderBase):
                           primaryjoin='and_('
                           'VolumeAdminMetadata.volume_id == Volume.id,'
                           'VolumeAdminMetadata.deleted == False)')
+
+
+class VolumeAttachment(BASE, CinderBase):
+    """Represents a volume attachment for a vm."""
+    __tablename__ = 'volume_attachment'
+    id = Column(String(36), primary_key=True)
+
+    volume_id = Column(String(36), ForeignKey('volumes.id'), nullable=False)
+    volume = relationship(Volume, backref="volume_attachment",
+                          foreign_keys=volume_id,
+                          primaryjoin='and_('
+                          'VolumeAttachment.volume_id == Volume.id,'
+                          'VolumeAttachment.deleted == False)')
+    instance_uuid = Column(String(36))
+    attached_host = Column(String(255))
+    mountpoint = Column(String(255))
+    attach_time = Column(DateTime)
+    detach_time = Column(DateTime)
+    attach_status = Column(String(255))
+    attach_mode = Column(String(255))
 
 
 class VolumeTypes(BASE, CinderBase):
@@ -500,6 +518,7 @@ class Backup(BASE, CinderBase):
     display_name = Column(String(255))
     display_description = Column(String(255))
     container = Column(String(255))
+    parent_id = Column(String(36))
     status = Column(String(255))
     fail_reason = Column(String(255))
     service_metadata = Column(String(255))
@@ -552,6 +571,20 @@ class Transfer(BASE, CinderBase):
                           'Transfer.deleted == False)')
 
 
+class DriverInitiatorData(BASE, models.TimestampMixin, models.ModelBase):
+    """Represents private key-value pair specific an initiator for drivers"""
+    __tablename__ = 'driver_initiator_data'
+    __table_args__ = (
+        schema.UniqueConstraint("initiator", "namespace", "key"),
+        {'mysql_engine': 'InnoDB'}
+    )
+    id = Column(Integer, primary_key=True, nullable=False)
+    initiator = Column(String(255), index=True, nullable=False)
+    namespace = Column(String(255), nullable=False)
+    key = Column(String(255), nullable=False)
+    value = Column(String(255))
+
+
 def register_models():
     """Register Models and create metadata.
 
@@ -565,6 +598,7 @@ def register_models():
               Volume,
               VolumeMetadata,
               VolumeAdminMetadata,
+              VolumeAttachment,
               SnapshotMetadata,
               Transfer,
               VolumeTypeExtraSpecs,

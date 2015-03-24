@@ -29,10 +29,11 @@ import uuid
 import fixtures
 import mock
 import mox
-from oslo.messaging import conffixture as messaging_conffixture
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
+from oslo_log import log
+from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import strutils
 from oslo_utils import timeutils
 import stubout
@@ -42,7 +43,7 @@ from cinder.common import config  # noqa Need to register global_opts
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder import i18n
-from cinder.openstack.common import log as oslo_logging
+from cinder import objects
 from cinder import rpc
 from cinder import service
 from cinder.tests import conf_fixture
@@ -56,7 +57,7 @@ test_opts = [
 CONF = cfg.CONF
 CONF.register_opts(test_opts)
 
-LOG = oslo_logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 _DB_CACHE = None
 
@@ -99,12 +100,38 @@ class Database(fixtures.Fixture):
                 os.path.join(CONF.state_path, self.sqlite_db))
 
 
+def _patch_mock_to_raise_for_invalid_assert_calls():
+    def raise_for_invalid_assert_calls(wrapped):
+        def wrapper(_self, name):
+            valid_asserts = [
+                'assert_called_with',
+                'assert_called_once_with',
+                'assert_has_calls',
+                'assert_any_calls']
+
+            if name.startswith('assert') and name not in valid_asserts:
+                raise AttributeError('%s is not a valid mock assert method'
+                                     % name)
+
+            return wrapped(_self, name)
+        return wrapper
+    mock.Mock.__getattr__ = raise_for_invalid_assert_calls(
+        mock.Mock.__getattr__)
+
+# NOTE(gibi): needs to be called only once at import time
+# to patch the mock lib
+_patch_mock_to_raise_for_invalid_assert_calls()
+
+
 class TestCase(testtools.TestCase):
     """Test case base class for all unit tests."""
 
     def setUp(self):
         """Run before each test method to initialize test environment."""
         super(TestCase, self).setUp()
+
+        # Import cinder objects for test cases
+        objects.register_all()
 
         # Unit tests do not need to use lazy gettext
         i18n.enable_lazy(False)

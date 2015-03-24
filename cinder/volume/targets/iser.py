@@ -10,9 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log as logging
 
 from cinder.i18n import _LW
-from cinder.openstack.common import log as logging
 from cinder.volume.targets import tgt
 
 
@@ -39,8 +39,6 @@ class ISERTgtAdm(tgt.TgtAdm):
         # backwards compatibility mess
         self.configuration.num_volume_device_scan_tries = \
             self.configuration.num_iser_scan_tries
-        self.configuration.iscsi_num_targets = \
-            self.configuration.iser_num_targets
         self.configuration.iscsi_target_prefix = \
             self.configuration.iser_target_prefix
         self.configuration.iscsi_ip_address = \

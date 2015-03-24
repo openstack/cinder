@@ -18,6 +18,7 @@
 
 import ast
 
+from oslo_log import log as logging
 from oslo_utils import uuidutils
 import webob
 from webob import exc
@@ -30,7 +31,6 @@ from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import glance
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import utils as volume_utils
@@ -44,6 +44,7 @@ SCHEDULER_HINTS_NAMESPACE =\
 
 def make_attachment(elem):
     elem.set('id')
+    elem.set('attachment_id')
     elem.set('server_id')
     elem.set('host_name')
     elem.set('volume_id')
@@ -63,6 +64,7 @@ def make_volume(elem):
     elem.set('snapshot_id')
     elem.set('source_volid')
     elem.set('consistencygroup_id')
+    elem.set('multiattach')
 
     attachments = xmlutil.SubTemplateElement(elem, 'attachments')
     attachment = xmlutil.SubTemplateElement(attachments, 'attachment',
@@ -216,8 +218,7 @@ class VolumeController(wsgi.Controller):
         params = req.params.copy()
         marker = params.pop('marker', None)
         limit = params.pop('limit', None)
-        sort_key = params.pop('sort_key', 'created_at')
-        sort_dir = params.pop('sort_dir', 'desc')
+        sort_keys, sort_dirs = common.get_sort_params(params)
         params.pop('offset', None)
         filters = params
 
@@ -236,8 +237,10 @@ class VolumeController(wsgi.Controller):
             except (ValueError, SyntaxError):
                 LOG.debug('Could not evaluate value %s, assuming string', v)
 
-        volumes = self.volume_api.get_all(context, marker, limit, sort_key,
-                                          sort_dir, filters,
+        volumes = self.volume_api.get_all(context, marker, limit,
+                                          sort_keys=sort_keys,
+                                          sort_dirs=sort_dirs,
+                                          filters=filters,
                                           viewable_admin_meta=True)
 
         volumes = [dict(vol.iteritems()) for vol in volumes]
@@ -246,12 +249,15 @@ class VolumeController(wsgi.Controller):
             utils.add_visible_admin_metadata(volume)
 
         limited_list = common.limited(volumes, req)
+        volume_count = len(volumes)
         req.cache_db_volumes(limited_list)
 
         if is_detail:
-            volumes = self._view_builder.detail_list(req, limited_list)
+            volumes = self._view_builder.detail_list(req, limited_list,
+                                                     volume_count)
         else:
-            volumes = self._view_builder.summary_list(req, limited_list)
+            volumes = self._view_builder.summary_list(req, limited_list,
+                                                      volume_count)
         return volumes
 
     def _image_uuid_from_ref(self, image_ref, context):
@@ -411,6 +417,8 @@ class VolumeController(wsgi.Controller):
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
+        multiattach = volume.get('multiattach', False)
+        kwargs['multiattach'] = multiattach
 
         new_volume = self.volume_api.create(context,
                                             size,

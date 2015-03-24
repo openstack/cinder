@@ -19,7 +19,8 @@
 Hitachi Unified Storage (HUS) platform. Backend operations.
 """
 
-from cinder.openstack.common import log as logging
+from oslo_log import log as logging
+
 from cinder import utils
 
 LOG = logging.getLogger("cinder.volume.driver")

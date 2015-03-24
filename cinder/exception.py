@@ -25,11 +25,11 @@ SHOULD include dedicated exception logging.
 import sys
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import six
 import webob.exc
 
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
@@ -93,7 +93,8 @@ class CinderException(Exception):
                 # log the issue and the kwargs
                 LOG.exception(_LE('Exception in string format operation'))
                 for name, value in kwargs.iteritems():
-                    LOG.error("%s: %s" % (name, value))
+                    LOG.error(_LE("%(name)s: %(value)s"),
+                              {'name': name, 'value': value})
                 if CONF.fatal_exception_format_errors:
                     raise exc_info[0], exc_info[1], exc_info[2]
                 # at least get the core message out if something happened
@@ -250,6 +251,11 @@ class NotFound(CinderException):
 
 class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
+
+
+class VolumeAttachmentNotFound(NotFound):
+    message = _("Volume attachment could not be found with "
+                "filter: %(filter)s .")
 
 
 class VolumeMetadataNotFound(NotFound):
@@ -655,6 +661,30 @@ class ExtendVolumeError(CinderException):
 
 class EvaluatorParseException(Exception):
     message = _("Error during evaluator parsing: %(reason)s")
+
+
+class ObjectActionError(CinderException):
+    msg_fmt = _('Object action %(action)s failed because: %(reason)s')
+
+
+class ObjectFieldInvalid(CinderException):
+    msg_fmt = _('Field %(field)s of %(objname)s is not an instance of Field')
+
+
+class UnsupportedObjectError(CinderException):
+    msg_fmt = _('Unsupported object type %(objtype)s')
+
+
+class OrphanedObjectError(CinderException):
+    msg_fmt = _('Cannot call %(method)s on orphaned %(objtype)s object')
+
+
+class IncompatibleObjectVersion(CinderException):
+    msg_fmt = _('Version %(objver)s of %(objname)s is not supported')
+
+
+class ReadOnlyFieldError(CinderException):
+    msg_fmt = _('Cannot modify readonly field %(field)s')
 
 
 # Driver specific exceptions

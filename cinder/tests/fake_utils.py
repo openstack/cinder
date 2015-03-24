@@ -18,8 +18,8 @@ import re
 
 from eventlet import greenthread
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 LOG = logging.getLogger(__name__)

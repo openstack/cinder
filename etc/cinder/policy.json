@@ -73,6 +73,7 @@
 
     "consistencygroup:create" : "group:nobody",
     "consistencygroup:delete": "group:nobody",
+    "consistencygroup:update": "group:nobody",
     "consistencygroup:get": "group:nobody",
     "consistencygroup:get_all": "group:nobody",
 

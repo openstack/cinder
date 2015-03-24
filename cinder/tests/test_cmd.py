@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
 import datetime
 import StringIO
 import sys
@@ -49,7 +48,7 @@ class TestCinderApiCmd(test.TestCase):
     @mock.patch('cinder.service.process_launcher')
     @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.utils.monkey_patch')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.setup')
     def test_main(self, log_setup, monkey_patch, rpc_init, process_launcher,
                   wsgi_service):
         launcher = process_launcher.return_value
@@ -60,7 +59,7 @@ class TestCinderApiCmd(test.TestCase):
 
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
         rpc_init.assert_called_once_with(CONF)
         process_launcher.assert_called_once_with()
@@ -84,7 +83,7 @@ class TestCinderBackupCmd(test.TestCase):
     @mock.patch('cinder.service.serve')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.utils.monkey_patch')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.setup')
     def test_main(self, log_setup, monkey_patch, service_create, service_serve,
                   service_wait):
         server = service_create.return_value
@@ -93,7 +92,7 @@ class TestCinderBackupCmd(test.TestCase):
 
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
         service_create.assert_called_once_with(binary='cinder-backup')
         service_serve.assert_called_once_with(server)
@@ -114,8 +113,8 @@ class TestCinderAllCmd(test.TestCase):
     @mock.patch('cinder.service.WSGIService')
     @mock.patch('cinder.service.process_launcher')
     @mock.patch('cinder.utils.monkey_patch')
-    @mock.patch('cinder.openstack.common.log.getLogger')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.getLogger')
+    @mock.patch('oslo_log.log.setup')
     def test_main(self, log_setup, get_logger, monkey_patch, process_launcher,
                   wsgi_service, service_create):
         launcher = process_launcher.return_value
@@ -127,7 +126,7 @@ class TestCinderAllCmd(test.TestCase):
 
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder.all')
         monkey_patch.assert_called_once_with()
         process_launcher.assert_called_once_with()
@@ -147,8 +146,8 @@ class TestCinderAllCmd(test.TestCase):
     @mock.patch('cinder.service.WSGIService')
     @mock.patch('cinder.service.process_launcher')
     @mock.patch('cinder.utils.monkey_patch')
-    @mock.patch('cinder.openstack.common.log.getLogger')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.getLogger')
+    @mock.patch('oslo_log.log.setup')
     def test_main_load_osapi_volume_exception(self, log_setup, get_logger,
                                               monkey_patch, process_launcher,
                                               wsgi_service, service_create):
@@ -164,7 +163,7 @@ class TestCinderAllCmd(test.TestCase):
 
             self.assertEqual(CONF.project, 'cinder')
             self.assertEqual(CONF.version, version.version_string())
-            log_setup.assert_called_once_with("cinder")
+            log_setup.assert_called_once_with(CONF, "cinder")
             get_logger.assert_called_once_with('cinder.all')
             monkey_patch.assert_called_once_with()
             process_launcher.assert_called_once_with()
@@ -185,8 +184,8 @@ class TestCinderAllCmd(test.TestCase):
     @mock.patch('cinder.service.WSGIService')
     @mock.patch('cinder.service.process_launcher')
     @mock.patch('cinder.utils.monkey_patch')
-    @mock.patch('cinder.openstack.common.log.getLogger')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.getLogger')
+    @mock.patch('oslo_log.log.setup')
     def test_main_load_binary_exception(self, log_setup, get_logger,
                                         monkey_patch, process_launcher,
                                         wsgi_service, service_create):
@@ -206,7 +205,7 @@ class TestCinderAllCmd(test.TestCase):
 
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder.all')
         monkey_patch.assert_called_once_with()
         process_launcher.assert_called_once_with()
@@ -233,7 +232,7 @@ class TestCinderSchedulerCmd(test.TestCase):
     @mock.patch('cinder.service.serve')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.utils.monkey_patch')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.setup')
     def test_main(self, log_setup, monkey_patch, service_create,
                   service_serve, service_wait):
         server = service_create.return_value
@@ -242,7 +241,7 @@ class TestCinderSchedulerCmd(test.TestCase):
 
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
         service_create.assert_called_once_with(binary='cinder-scheduler')
         service_serve.assert_called_once_with(server)
@@ -262,7 +261,7 @@ class TestCinderVolumeCmd(test.TestCase):
     @mock.patch('cinder.service.get_launcher')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.utils.monkey_patch')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.setup')
     def test_main(self, log_setup, monkey_patch, service_create,
                   get_launcher):
         CONF.set_override('enabled_backends', None)
@@ -273,7 +272,7 @@ class TestCinderVolumeCmd(test.TestCase):
 
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
         get_launcher.assert_called_once_with()
         service_create.assert_called_once_with(binary='cinder-volume')
@@ -283,7 +282,7 @@ class TestCinderVolumeCmd(test.TestCase):
     @mock.patch('cinder.service.get_launcher')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.utils.monkey_patch')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.setup')
     def test_main_with_backends(self, log_setup, monkey_patch, service_create,
                                 get_launcher):
         backends = ['backend1', 'backend2']
@@ -294,7 +293,7 @@ class TestCinderVolumeCmd(test.TestCase):
 
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
         get_launcher.assert_called_once_with()
         self.assertEqual(len(backends), service_create.call_count)
@@ -398,12 +397,13 @@ class TestCinderManageCmd(test.TestCase):
             service_get_all.assert_called_once_with(mock.sentinel.ctxt)
             self.assertEqual(expected_out, fake_out.getvalue())
 
+    @mock.patch('cinder.objects.base.CinderObjectSerializer')
     @mock.patch('cinder.rpc.get_client')
     @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.rpc.initialized', return_value=False)
-    @mock.patch('oslo.messaging.Target')
+    @mock.patch('oslo_messaging.Target')
     def test_volume_commands_init(self, messaging_target, rpc_initialized,
-                                  rpc_init, get_client):
+                                  rpc_init, get_client, object_serializer):
         CONF.set_override('volume_topic', 'fake-topic')
         mock_target = messaging_target.return_value
         mock_rpc_client = get_client.return_value
@@ -414,7 +414,8 @@ class TestCinderManageCmd(test.TestCase):
         rpc_initialized.assert_called_once_with()
         rpc_init.assert_called_once_with(CONF)
         messaging_target.assert_called_once_with(topic='fake-topic')
-        get_client.assert_called_once_with(mock_target)
+        get_client.assert_called_once_with(mock_target,
+                                           serializer=object_serializer())
         self.assertEqual(mock_rpc_client, rpc_client)
 
     @mock.patch('cinder.db.volume_get')
@@ -648,7 +649,7 @@ class TestCinderManageCmd(test.TestCase):
         self.assertEqual(exit.code, 2)
 
     @mock.patch('oslo_config.cfg.ConfigOpts.__call__')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.setup')
     @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
     def test_main_sudo_failed(self, register_cli_opt, log_setup,
                               config_opts_call):
@@ -693,7 +694,7 @@ class TestCinderRtstoolCmd(test.TestCase):
         super(TestCinderRtstoolCmd, self).tearDown()
 
     @mock.patch('rtslib.root.RTSRoot')
-    def test_create_rtsllib_error(self, rtsroot):
+    def test_create_rtslib_error(self, rtsroot):
         rtsroot.side_effect = rtslib.utils.RTSLibError()
 
         self.assertRaises(rtslib.utils.RTSLibError, cinder_rtstool.create,
@@ -703,17 +704,15 @@ class TestCinderRtstoolCmd(test.TestCase):
                           mock.sentinel.password,
                           mock.sentinel.iser_enabled)
 
-    def _test_create_rtsllib_error_network_portal(self, ip):
-        with contextlib.nested(
-            mock.patch('rtslib.NetworkPortal'),
-            mock.patch('rtslib.LUN'),
-            mock.patch('rtslib.TPG'),
-            mock.patch('rtslib.FabricModule'),
-            mock.patch('rtslib.Target'),
-            mock.patch('rtslib.BlockStorageObject'),
-            mock.patch('rtslib.root.RTSRoot')
-        ) as (network_portal, lun, tpg, fabric_module, target,
-              block_storage_object, rts_root):
+    def _test_create_rtslib_error_network_portal(self, ip):
+        with mock.patch('rtslib.NetworkPortal') as network_portal, \
+                mock.patch('rtslib.LUN') as lun, \
+                mock.patch('rtslib.TPG') as tpg, \
+                mock.patch('rtslib.FabricModule') as fabric_module, \
+                mock.patch('rtslib.Target') as target, \
+                mock.patch('rtslib.BlockStorageObject') as \
+                block_storage_object, \
+                mock.patch('rtslib.root.RTSRoot') as rts_root:
             root_new = mock.MagicMock(storage_objects=mock.MagicMock())
             rts_root.return_value = root_new
             block_storage_object.return_value = mock.sentinel.so_new
@@ -757,23 +756,21 @@ class TestCinderRtstoolCmd(test.TestCase):
             if ip == '::0':
                 network_portal.assert_any_call(tpg_new, ip, 3260, mode='any')
 
-    def test_create_rtsllib_error_network_portal_ipv4(self):
-        self._test_create_rtsllib_error_network_portal('0.0.0.0')
+    def test_create_rtslib_error_network_portal_ipv4(self):
+        self._test_create_rtslib_error_network_portal('0.0.0.0')
 
-    def test_create_rtsllib_error_network_portal_ipv6(self):
-        self._test_create_rtsllib_error_network_portal('::0')
+    def test_create_rtslib_error_network_portal_ipv6(self):
+        self._test_create_rtslib_error_network_portal('::0')
 
     def _test_create(self, ip):
-        with contextlib.nested(
-            mock.patch('rtslib.NetworkPortal'),
-            mock.patch('rtslib.LUN'),
-            mock.patch('rtslib.TPG'),
-            mock.patch('rtslib.FabricModule'),
-            mock.patch('rtslib.Target'),
-            mock.patch('rtslib.BlockStorageObject'),
-            mock.patch('rtslib.root.RTSRoot')
-        ) as (network_portal, lun, tpg, fabric_module, target,
-              block_storage_object, rts_root):
+        with mock.patch('rtslib.NetworkPortal') as network_portal, \
+                mock.patch('rtslib.LUN') as lun, \
+                mock.patch('rtslib.TPG') as tpg, \
+                mock.patch('rtslib.FabricModule') as fabric_module, \
+                mock.patch('rtslib.Target') as target, \
+                mock.patch('rtslib.BlockStorageObject') as \
+                block_storage_object, \
+                mock.patch('rtslib.root.RTSRoot') as rts_root:
             root_new = mock.MagicMock(storage_objects=mock.MagicMock())
             rts_root.return_value = root_new
             block_storage_object.return_value = mock.sentinel.so_new
@@ -1035,8 +1032,8 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.version.version_string')
-    @mock.patch('cinder.openstack.common.log.getLogger')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.getLogger')
+    @mock.patch('oslo_log.log.setup')
     @mock.patch('cinder.context.get_admin_context')
     def test_main_time_error(self, get_admin_context, log_setup, get_logger,
                              version_string, rpc_init,
@@ -1051,7 +1048,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         get_admin_context.assert_called_once_with()
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')
         self.assertEqual(exit.code, -1)
         rpc_init.assert_called_once_with(CONF)
@@ -1062,8 +1059,8 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.version.version_string')
-    @mock.patch('cinder.openstack.common.log.getLogger')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.getLogger')
+    @mock.patch('oslo_log.log.setup')
     @mock.patch('cinder.context.get_admin_context')
     def test_main_send_create_volume_error(self, get_admin_context, log_setup,
                                            get_logger, version_string,
@@ -1107,7 +1104,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         get_admin_context.assert_called_once_with()
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')
         rpc_init.assert_called_once_with(CONF)
         last_completed_audit_period.assert_called_once_with()
@@ -1124,8 +1121,8 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.version.version_string')
-    @mock.patch('cinder.openstack.common.log.getLogger')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.getLogger')
+    @mock.patch('oslo_log.log.setup')
     @mock.patch('cinder.context.get_admin_context')
     def test_main_send_delete_volume_error(self, get_admin_context, log_setup,
                                            get_logger, version_string,
@@ -1173,7 +1170,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         get_admin_context.assert_called_once_with()
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')
         rpc_init.assert_called_once_with(CONF)
         last_completed_audit_period.assert_called_once_with()
@@ -1200,8 +1197,8 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.version.version_string')
-    @mock.patch('cinder.openstack.common.log.getLogger')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.getLogger')
+    @mock.patch('oslo_log.log.setup')
     @mock.patch('cinder.context.get_admin_context')
     def test_main_send_snapshot_error(self, get_admin_context,
                                       log_setup, get_logger,
@@ -1251,7 +1248,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         get_admin_context.assert_called_once_with()
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')
         rpc_init.assert_called_once_with(CONF)
         last_completed_audit_period.assert_called_once_with()
@@ -1273,8 +1270,8 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.version.version_string')
-    @mock.patch('cinder.openstack.common.log.getLogger')
-    @mock.patch('cinder.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.getLogger')
+    @mock.patch('oslo_log.log.setup')
     @mock.patch('cinder.context.get_admin_context')
     def test_main(self, get_admin_context, log_setup, get_logger,
                   version_string, rpc_init, last_completed_audit_period,
@@ -1328,7 +1325,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         get_admin_context.assert_called_once_with()
         self.assertEqual(CONF.project, 'cinder')
         self.assertEqual(CONF.version, version.version_string())
-        log_setup.assert_called_once_with("cinder")
+        log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')
         rpc_init.assert_called_once_with(CONF)
         last_completed_audit_period.assert_called_once_with()

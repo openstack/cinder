@@ -13,9 +13,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from oslo_log import log as logging
 from oslo_utils import uuidutils
 
-from cinder.openstack.common import log as logging
 from cinder.openstack.common.scheduler import filters
 from cinder.volume import api as volume
 

@@ -66,35 +66,31 @@ class EvaluatorTestCase(test.TestCase):
             -8.0, evaluator. evaluate("((1.0 / 0.5) * (2)) *(-2)"))
 
     def test_comparisons(self):
-        self.assertEqual(True, evaluator.evaluate("1 < 2"))
-        self.assertEqual(True, evaluator.evaluate("2 > 1"))
-        self.assertEqual(True, evaluator.evaluate("2 != 1"))
-        self.assertEqual(False, evaluator.evaluate("1 > 2"))
-        self.assertEqual(False, evaluator.evaluate("2 < 1"))
-        self.assertEqual(False, evaluator.evaluate("2 == 1"))
-        self.assertEqual(True, evaluator.evaluate("(1 == 1) == !(1 == 2)"))
+        self.assertTrue(evaluator.evaluate("1 < 2"))
+        self.assertTrue(evaluator.evaluate("2 > 1"))
+        self.assertTrue(evaluator.evaluate("2 != 1"))
+        self.assertFalse(evaluator.evaluate("1 > 2"))
+        self.assertFalse(evaluator.evaluate("2 < 1"))
+        self.assertFalse(evaluator.evaluate("2 == 1"))
+        self.assertTrue(evaluator.evaluate("(1 == 1) == !(1 == 2)"))
 
     def test_logic_ops(self):
-        self.assertEqual(True, evaluator.evaluate("(1 == 1) AND (2 == 2)"))
-        self.assertEqual(True, evaluator.evaluate("(1 == 1) and (2 == 2)"))
-        self.assertEqual(True, evaluator.evaluate("(1 == 1) && (2 == 2)"))
-        self.assertEqual(False, evaluator.evaluate("(1 == 1) && (5 == 2)"))
+        self.assertTrue(evaluator.evaluate("(1 == 1) AND (2 == 2)"))
+        self.assertTrue(evaluator.evaluate("(1 == 1) and (2 == 2)"))
+        self.assertTrue(evaluator.evaluate("(1 == 1) && (2 == 2)"))
+        self.assertFalse(evaluator.evaluate("(1 == 1) && (5 == 2)"))
 
-        self.assertEqual(True, evaluator.evaluate("(1 == 1) OR (5 == 2)"))
-        self.assertEqual(True, evaluator.evaluate("(1 == 1) or (5 == 2)"))
-        self.assertEqual(True, evaluator.evaluate("(1 == 1) || (5 == 2)"))
-        self.assertEqual(False, evaluator.evaluate("(5 == 1) || (5 == 2)"))
+        self.assertTrue(evaluator.evaluate("(1 == 1) OR (5 == 2)"))
+        self.assertTrue(evaluator.evaluate("(1 == 1) or (5 == 2)"))
+        self.assertTrue(evaluator.evaluate("(1 == 1) || (5 == 2)"))
+        self.assertFalse(evaluator.evaluate("(5 == 1) || (5 == 2)"))
 
-        self.assertEqual(
-            False, evaluator.evaluate("(1 == 1) AND NOT (2 == 2)"))
-        self.assertEqual(
-            False, evaluator.evaluate("(1 == 1) AND not (2 == 2)"))
-        self.assertEqual(
-            False, evaluator.evaluate("(1 == 1) AND !(2 == 2)"))
-        self.assertEqual(
-            True, evaluator.evaluate("(1 == 1) AND NOT (5 == 2)"))
-        self.assertEqual(
-            True, evaluator.evaluate("(1 == 1) OR NOT (2 == 2) AND (5 == 5)"))
+        self.assertFalse(evaluator.evaluate("(1 == 1) AND NOT (2 == 2)"))
+        self.assertFalse(evaluator.evaluate("(1 == 1) AND not (2 == 2)"))
+        self.assertFalse(evaluator.evaluate("(1 == 1) AND !(2 == 2)"))
+        self.assertTrue(evaluator.evaluate("(1 == 1) AND NOT (5 == 2)"))
+        self.assertTrue(evaluator.evaluate("(1 == 1) OR NOT (2 == 2) "
+                                           "AND (5 == 5)"))
 
     def test_ternary_conditional(self):
         self.assertEqual(5, evaluator.evaluate("(1 < 2) ? 5 : 10"))

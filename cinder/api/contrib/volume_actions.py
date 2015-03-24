@@ -13,7 +13,8 @@
 #   under the License.
 
 
-from oslo import messaging
+from oslo_log import log as logging
+import oslo_messaging as messaging
 from oslo_utils import strutils
 import webob
 
@@ -22,7 +23,6 @@ from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import volume
 
@@ -127,7 +127,11 @@ class VolumeActionsController(wsgi.Controller):
         except exception.VolumeNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
-        self.volume_api.detach(context, volume)
+        attachment_id = None
+        if body['os-detach']:
+            attachment_id = body['os-detach'].get('attachment_id', None)
+
+        self.volume_api.detach(context, volume, attachment_id)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-reserve')
