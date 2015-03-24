@@ -30,7 +30,6 @@ import mock
 import mox
 from oslo_concurrency import processutils
 from oslo_config import cfg
-from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
@@ -40,6 +39,7 @@ from taskflow.engines.action_engine import engine
 
 from cinder.backup import driver as backup_driver
 from cinder.brick.local_dev import lvm as brick_lvm
+from cinder import compute
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -50,6 +50,7 @@ from cinder.openstack.common import fileutils
 import cinder.policy
 from cinder import quota
 from cinder import test
+from cinder.tests.api import fakes
 from cinder.tests.brick import fake_lvm
 from cinder.tests import conf_fixture
 from cinder.tests import fake_driver
@@ -3674,45 +3675,91 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.assertIsNone(volume['migration_status'])
             self.assertEqual('available', volume['status'])
 
-    def test_migrate_volume_generic(self):
-        def fake_migr(vol, host):
-            raise Exception('should not be called')
+    @mock.patch.object(compute.nova.API, 'update_server_volume')
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                'migrate_volume_completion')
+    @mock.patch('cinder.db.volume_get')
+    def test_migrate_volume_generic(self, volume_get,
+                                    migrate_volume_completion,
+                                    update_server_volume):
+        fake_volume_id = 'fake_volume_id'
+        fake_new_volume = {'status': 'available', 'id': fake_volume_id}
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        volume_get.return_value = fake_new_volume
+        volume = tests_utils.create_volume(self.context, size=1,
+                                           host=CONF.host)
+        with mock.patch.object(self.volume.driver, 'copy_volume_data') as \
+                mock_copy_volume:
+            self.volume._migrate_volume_generic(self.context, volume,
+                                                host_obj, None)
+            mock_copy_volume.assert_called_with(self.context, volume,
+                                                fake_new_volume,
+                                                remote='dest')
+            migrate_volume_completion.assert_called_with(self.context,
+                                                         volume['id'],
+                                                         fake_new_volume['id'],
+                                                         error=False)
 
-        def fake_delete_volume_rpc(self, ctxt, vol_id):
-            raise Exception('should not be called')
+    @mock.patch.object(compute.nova.API, 'update_server_volume')
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                'migrate_volume_completion')
+    @mock.patch('cinder.db.volume_get')
+    def test_migrate_volume_generic_attached_volume(self, volume_get,
+                                                    migrate_volume_completion,
+                                                    update_server_volume):
+        attached_host = 'some-host'
+        fake_volume_id = 'fake_volume_id'
+        fake_new_volume = {'status': 'available', 'id': fake_volume_id}
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        fake_uuid = fakes.get_fake_uuid()
+        volume_get.return_value = fake_new_volume
+        volume = tests_utils.create_volume(self.context, size=1,
+                                           host=CONF.host)
+        volume = tests_utils.attach_volume(self.context, volume['id'],
+                                           fake_uuid, attached_host,
+                                           '/dev/vda')
+        self.assertIsNotNone(volume['volume_attachment'][0]['id'])
+        self.assertEqual(fake_uuid,
+                         volume['volume_attachment'][0]['instance_uuid'])
+        self.assertEqual('in-use', volume['status'])
+        self.volume._migrate_volume_generic(self.context, volume,
+                                            host_obj, None)
+        self.assertFalse(migrate_volume_completion.called)
+        with mock.patch.object(self.volume.driver, 'copy_volume_data') as \
+                mock_copy_volume:
+            self.volume._migrate_volume_generic(self.context, volume,
+                                                host_obj, None)
+            self.assertFalse(mock_copy_volume.called)
+            self.assertFalse(migrate_volume_completion.called)
 
-        def fake_create_volume(self, ctxt, volume, host, req_spec, filters,
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'update_migrated_volume')
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume')
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume')
+    def test_migrate_volume_for_volume_generic(self, create_volume,
+                                               delete_volume,
+                                               update_migrated_volume):
+        fake_volume = tests_utils.create_volume(self.context, size=1,
+                                                host=CONF.host)
+
+        def fake_create_volume(ctxt, volume, host, req_spec, filters,
                                allow_reschedule=True):
             db.volume_update(ctxt, volume['id'],
                              {'status': 'available'})
 
-        self.stubs.Set(self.volume.driver, 'migrate_volume', fake_migr)
-        self.stubs.Set(volume_rpcapi.VolumeAPI, 'create_volume',
-                       fake_create_volume)
-        self.stubs.Set(self.volume.driver, 'copy_volume_data',
-                       lambda x, y, z, remote='dest': True)
-        self.stubs.Set(volume_rpcapi.VolumeAPI, 'delete_volume',
-                       fake_delete_volume_rpc)
-        self.stubs.Set(volume_rpcapi.VolumeAPI,
-                       'update_migrated_volume',
-                       lambda *args: self.volume.update_migrated_volume(
-                           self.context,
-                           args[1],
-                           args[2]))
-        error_logs = []
-        LOG = logging.getLogger('cinder.volume.manager')
-        self.stubs.Set(LOG, 'error', lambda x: error_logs.append(x))
-
-        volume = tests_utils.create_volume(self.context, size=0,
-                                           host=CONF.host)
         host_obj = {'host': 'newhost', 'capabilities': {}}
-        self.volume.migrate_volume(self.context, volume['id'],
-                                   host_obj, True)
-        volume = db.volume_get(context.get_admin_context(), volume['id'])
-        self.assertEqual(volume['host'], 'newhost')
-        self.assertIsNone(volume['migration_status'])
-        self.assertEqual(volume['status'], 'available')
-        self.assertEqual(error_logs, [])
+        with mock.patch.object(self.volume.driver, 'migrate_volume') as \
+                mock_migrate_volume,\
+                mock.patch.object(self.volume.driver, 'copy_volume_data'):
+            create_volume.side_effect = fake_create_volume
+            self.volume.migrate_volume(self.context, fake_volume['id'],
+                                       host_obj, True)
+            volume = db.volume_get(context.get_admin_context(),
+                                   fake_volume['id'])
+            self.assertEqual(volume['host'], 'newhost')
+            self.assertIsNone(volume['migration_status'])
+            self.assertFalse(mock_migrate_volume.called)
+            self.assertFalse(delete_volume.called)
+            self.assertTrue(update_migrated_volume.called)
 
     def test_migrate_volume_generic_copy_error(self):
         def fake_create_volume(ctxt, volume, host, req_spec, filters,
@@ -3820,47 +3867,50 @@ class VolumeTestCase(BaseVolumeTestCase):
     def _test_migrate_volume_completion(self, status='available',
                                         instance_uuid=None, attached_host=None,
                                         retyping=False):
-        elevated = context.get_admin_context()
+        def fake_attach_volume(ctxt, volume, instance_uuid, host_name,
+                               mountpoint, mode):
+            tests_utils.attach_volume(ctxt, volume['id'],
+                                      instance_uuid, host_name,
+                                      '/dev/vda')
+
         initial_status = retyping and 'retyping' or status
         old_volume = tests_utils.create_volume(self.context, size=0,
                                                host=CONF.host,
                                                status=initial_status,
                                                migration_status='migrating')
+        attachment_id = None
         if status == 'in-use':
             vol = tests_utils.attach_volume(self.context, old_volume['id'],
                                             instance_uuid, attached_host,
                                             '/dev/vda')
             self.assertEqual(vol['status'], 'in-use')
+            attachment_id = vol['volume_attachment'][0]['id']
         target_status = 'target:%s' % old_volume['id']
         new_volume = tests_utils.create_volume(self.context, size=0,
                                                host=CONF.host,
                                                migration_status=target_status)
-
-        self.stubs.Set(volume_rpcapi.VolumeAPI, 'delete_volume',
-                       lambda x: None)
-        self.stubs.Set(volume_rpcapi.VolumeAPI, 'attach_volume',
-                       lambda *args: self.volume.attach_volume(args[1],
-                                                               args[2]['id'],
-                                                               *args[3:]))
-
-        self.stubs.Set(volume_rpcapi.VolumeAPI, 'update_migrated_volume',
-                       lambda *args: self.volume.update_migrated_volume(
-                           elevated,
-                           args[1],
-                           args[2]))
-        self.stubs.Set(self.volume.driver, 'attach_volume',
-                       lambda *args, **kwargs: None)
-
-        with mock.patch.object(self.volume.driver, 'detach_volume'):
+        with mock.patch.object(self.volume, 'detach_volume') as \
+                mock_detach_volume,\
+                mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'),\
+                mock.patch.object(volume_rpcapi.VolumeAPI, 'attach_volume') as \
+                mock_attach_volume,\
+                mock.patch.object(volume_rpcapi.VolumeAPI,
+                                  'update_migrated_volume'),\
+                mock.patch.object(self.volume.driver, 'attach_volume'):
+            mock_attach_volume.side_effect = fake_attach_volume
             self.volume.migrate_volume_completion(self.context, old_volume[
                 'id'], new_volume['id'])
-
-        if status == 'in-use':
-            attachment = db.volume_attachment_get_by_instance_uuid(
-                self.context, old_volume['id'], instance_uuid)
-            self.assertIsNotNone(attachment)
-            self.assertEqual(attachment['attached_host'], attached_host)
-            self.assertEqual(attachment['instance_uuid'], instance_uuid)
+            if status == 'in-use':
+                mock_detach_volume.assert_called_with(self.context,
+                                                      old_volume['id'],
+                                                      attachment_id)
+                attachment = db.volume_attachment_get_by_instance_uuid(
+                    self.context, old_volume['id'], instance_uuid)
+                self.assertIsNotNone(attachment)
+                self.assertEqual(attachment['attached_host'], attached_host)
+                self.assertEqual(attachment['instance_uuid'], instance_uuid)
+            else:
+                self.assertFalse(mock_detach_volume.called)
 
     def test_migrate_volume_completion_retype_available(self):
         self._test_migrate_volume_completion('available', retyping=True)
