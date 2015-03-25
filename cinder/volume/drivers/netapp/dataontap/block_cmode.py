@@ -283,3 +283,25 @@ class NetAppBlockStorageCmodeLibrary(block_base.
                           " type. Ensure LUN volume with ssc features is"
                           " present on vserver %(vs)s.")
                         % {'ref': existing_ref, 'vs': self.vserver}))
+
+    def _get_preferred_target_from_list(self, target_details_list):
+        # cDOT iSCSI LIFs do not migrate from controller to controller
+        # in failover.  Rather, an iSCSI LIF must be configured on each
+        # controller and the initiator has to take responsibility for
+        # using a LIF that is UP.  In failover, the iSCSI LIF on the
+        # downed controller goes DOWN until the controller comes back up.
+        #
+        # Currently Nova only accepts a single target when obtaining
+        # target details from Cinder, so we pass back the first portal
+        # with an UP iSCSI LIF.  There are plans to have Nova accept
+        # and try multiple targets.  When that happens, we can and should
+        # remove this filter and return all targets since their operational
+        # state could change between the time we test here and the time
+        # Nova uses the target.
+
+        operational_addresses = (
+            self.zapi_client.get_operational_network_interface_addresses())
+
+        return (super(NetAppBlockStorageCmodeLibrary, self)
+                ._get_preferred_target_from_list(target_details_list,
+                                                 filter=operational_addresses))

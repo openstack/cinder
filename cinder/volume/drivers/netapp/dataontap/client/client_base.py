@@ -59,6 +59,13 @@ class Client(object):
         if not isinstance(elem, netapp_api.NaElement):
             raise ValueError('Expects NaElement')
 
+    def send_request(self, api_name, api_args=None, enable_tunneling=True):
+        """Sends request to Ontapi."""
+        request = netapp_api.NaElement(api_name)
+        if api_args:
+            request.translate_struct(api_args)
+        return self.connection.invoke_successfully(request, enable_tunneling)
+
     def create_lun(self, volume_name, lun_name, size, metadata,
                    qos_policy_group=None):
         """Issues API request for creating LUN on volume."""

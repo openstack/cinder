@@ -338,3 +338,12 @@ class NetAppBlockStorage7modeLibrary(block_base.
             raise exception.ManageExistingVolumeTypeMismatch(
                 reason=_("Setting LUN QoS policy group is not supported"
                          " on this storage family and ONTAP version."))
+
+    def _get_preferred_target_from_list(self, target_details_list):
+        # 7-mode iSCSI LIFs migrate from controller to controller
+        # in failover and flap operational state in transit, so
+        # we  don't filter these on operational state.
+
+        return (super(NetAppBlockStorage7modeLibrary, self)
+                ._get_preferred_target_from_list(target_details_list,
+                                                 filter=None))

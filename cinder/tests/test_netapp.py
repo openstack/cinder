@@ -1,5 +1,5 @@
 # Copyright (c) 2012 NetApp, Inc.
-# All Rights Reserved.
+# All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -30,6 +30,7 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
 from cinder.volume.drivers.netapp.dataontap.client import client_base
+from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils
@@ -646,6 +647,9 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.driver.delete_volume(self.volume)
 
     def test_map_unmap(self):
+        self.mock_object(client_cmode.Client,
+                         'get_operational_network_interface_addresses',
+                         mock.Mock(return_value=[]))
         self.driver.create_volume(self.volume)
         updates = self.driver.create_export(None, self.volume)
         self.assertTrue(updates['provider_location'])
@@ -667,6 +671,9 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.driver.delete_volume(self.volume)
 
     def test_map_by_creating_igroup(self):
+        self.mock_object(client_cmode.Client,
+                         'get_operational_network_interface_addresses',
+                         mock.Mock(return_value=[]))
         self.driver.create_volume(self.volume)
         updates = self.driver.create_export(None, self.volume)
         self.assertTrue(updates['provider_location'])

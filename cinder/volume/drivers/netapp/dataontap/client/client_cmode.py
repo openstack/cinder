@@ -460,3 +460,26 @@ class Client(client_base.Client):
                 msg = _("Data ONTAP API version could not be determined.")
                 raise exception.VolumeBackendAPIException(data=msg)
         return failed_apis
+
+    def get_operational_network_interface_addresses(self):
+        """Gets the IP addresses of operational LIFs on the vserver."""
+
+        api_args = {
+            'query': {
+                'net-interface-info': {
+                    'operational-status': 'up'
+                }
+            },
+            'desired-attributes': {
+                'net-interface-info': {
+                    'address': None,
+                }
+            }
+        }
+        result = self.send_request('net-interface-get-iter', api_args)
+
+        lif_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        return [lif_info.get_child_content('address') for lif_info in
+                lif_info_list.get_children()]

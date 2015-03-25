@@ -1,5 +1,5 @@
-# Copyright (c) 2014 Alex Meade.  All rights reserved.
-# All Rights Reserved.
+# Copyright (c) 2014 Alex Meade.
+# All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -21,6 +21,7 @@ import six
 
 from cinder import exception
 from cinder import test
+from cinder.tests.volume.drivers.netapp.dataontap.client import fakes as fake
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp import utils as netapp_utils
@@ -658,3 +659,14 @@ class NetAppCmodeClientTestCase(test.TestCase):
         actual_bytes = self.client.get_file_usage(fake_vserver, fake_path)
 
         self.assertEqual(expected_bytes, actual_bytes)
+
+    def test_get_operational_network_interface_addresses(self):
+        expected_result = ['1.2.3.4', '99.98.97.96']
+        api_response = netapp_api.NaElement(
+            fake.GET_OPERATIONAL_NETWORK_INTERFACE_ADDRESSES_RESPONSE)
+        self.connection.invoke_successfully.return_value = api_response
+
+        address_list = (
+            self.client.get_operational_network_interface_addresses())
+
+        self.assertEqual(expected_result, address_list)

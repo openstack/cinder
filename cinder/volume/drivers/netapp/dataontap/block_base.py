@@ -608,31 +608,28 @@ class NetAppBlockStorageLibrary(object):
         initiator_name = connector['initiator']
         name = volume['name']
         lun_id = self._map_lun(name, [initiator_name], 'iscsi', None)
+
         msg = _("Mapped LUN %(name)s to the initiator %(initiator_name)s")
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)
-        target_details_list = self.zapi_client.get_iscsi_target_details()
-        msg = _("Successfully fetched target details for LUN %(name)s and "
+
+        target_list = self.zapi_client.get_iscsi_target_details()
+        if not target_list:
+            msg = _('Failed to get LUN target list for the LUN %s')
+            raise exception.VolumeBackendAPIException(data=msg % name)
+
+        msg = _("Successfully fetched target list for LUN %(name)s and "
                 "initiator %(initiator_name)s")
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)
 
-        if not target_details_list:
-            msg = _('Failed to get LUN target details for the LUN %s')
-            raise exception.VolumeBackendAPIException(data=msg % name)
-        target_details = None
-        for tgt_detail in target_details_list:
-            if tgt_detail.get('interface-enabled', 'true') == 'true':
-                target_details = tgt_detail
-                break
-        if not target_details:
-            target_details = target_details_list[0]
-
-        (address, port) = (target_details['address'], target_details['port'])
-
-        if not target_details['address'] and target_details['port']:
+        preferred_target = self._get_preferred_target_from_list(
+            target_list)
+        if preferred_target is None:
             msg = _('Failed to get target portal for the LUN %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
+        (address, port) = (preferred_target['address'],
+                           preferred_target['port'])
 
         iqn = self.zapi_client.get_iscsi_service_details()
         if not iqn:
@@ -642,8 +639,20 @@ class NetAppBlockStorageLibrary(object):
         properties = na_utils.get_iscsi_connection_properties(lun_id, volume,
                                                               iqn, address,
                                                               port)
-
         return properties
+
+    def _get_preferred_target_from_list(self, target_details_list,
+                                        filter=None):
+        preferred_target = None
+        for target in target_details_list:
+            if filter and target['address'] not in filter:
+                continue
+            if target.get('interface-enabled', 'true') == 'true':
+                preferred_target = target
+                break
+        if preferred_target is None and len(target_details_list) > 0:
+            preferred_target = target_details_list[0]
+        return preferred_target
 
     def terminate_connection_iscsi(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance.
