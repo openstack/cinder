@@ -33,6 +33,7 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp.api import NaElement
 from cinder.volume.drivers.netapp.api import NaServer
 from cinder.volume.drivers.netapp import common
+from cinder.volume.drivers.netapp import iscsi as netapp_iscsi
 from cinder.volume.drivers.netapp.options import netapp_7mode_opts
 from cinder.volume.drivers.netapp.options import netapp_basicauth_opts
 from cinder.volume.drivers.netapp.options import netapp_cluster_opts
@@ -547,6 +548,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
     ssc_map = {'mirrored': set([vol1]), 'dedup': set([vol1]),
                'compression': set([vol1]),
                'thin': set([vol1]), 'all': set([vol1])}
+    portal = {'address': '1.2.3.4', 'port': '3260'}
 
     def setUp(self):
         super(NetAppDirectCmodeISCSIDriverTestCase, self).setUp()
@@ -637,6 +639,9 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.driver.delete_volume(self.volume)
 
     def test_map_unmap(self):
+        self.mock_object(netapp_iscsi.NetAppDirectCmodeISCSIDriver,
+                         '_get_preferred_target_from_list',
+                         mock.Mock(return_value=self.portal))
         self.driver.create_volume(self.volume)
         updates = self.driver.create_export(None, self.volume)
         self.assertTrue(updates['provider_location'])
@@ -644,6 +649,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
 
         connection_info = self.driver.initialize_connection(self.volume,
                                                             self.connector)
+
         self.assertEqual(connection_info['driver_volume_type'], 'iscsi')
         properties = connection_info['data']
         if not properties:
@@ -658,13 +664,18 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.driver.delete_volume(self.volume)
 
     def test_map_by_creating_igroup(self):
+        self.mock_object(netapp_iscsi.NetAppDirectCmodeISCSIDriver,
+                         '_get_preferred_target_from_list',
+                         mock.Mock(return_value=self.portal))
         self.driver.create_volume(self.volume)
         updates = self.driver.create_export(None, self.volume)
         self.assertTrue(updates['provider_location'])
         self.volume['provider_location'] = updates['provider_location']
         connector_new = {'initiator': 'iqn.1993-08.org.debian:01:1001'}
+
         connection_info = self.driver.initialize_connection(self.volume,
                                                             connector_new)
+
         self.assertEqual(connection_info['driver_volume_type'], 'iscsi')
         properties = connection_info['data']
         if not properties:
