@@ -239,7 +239,9 @@ class SchedulerManagerTestCase(test.TestCase):
         request_spec = {'volume_id': fake_volume_id, 'volume_type': {'id': 3},
                         'migration_policy': 'on-demand'}
         vol_info = {'id': fake_volume_id, 'status': 'in-use',
-                    'instance_uuid': 'foo', 'attached_host': None}
+                    'volume_attachment': [{'id': 'fake_id',
+                                           'instance_uuid': 'foo',
+                                           'attached_host': None}]}
 
         _mock_vol_get.return_value = vol_info
         _mock_vol_update.return_value = {'status': 'in-use'}
