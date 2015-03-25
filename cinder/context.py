@@ -24,7 +24,6 @@ from oslo_log import log as logging
 from oslo_utils import timeutils
 
 from cinder.i18n import _
-from cinder.openstack.common import local
 from cinder import policy
 
 
@@ -74,8 +73,6 @@ class RequestContext(context.RequestContext):
             timestamp = timeutils.parse_strtime(timestamp)
         self.timestamp = timestamp
         self.quota_class = quota_class
-        if overwrite or not hasattr(local.store, 'context'):
-            self.update_store()
 
         if service_catalog:
             # Only include required parts of service_catalog
@@ -109,9 +106,6 @@ class RequestContext(context.RequestContext):
     read_deleted = property(_get_read_deleted, _set_read_deleted,
                             _del_read_deleted)
 
-    def update_store(self):
-        local.store.context = self
-
     def to_dict(self):
         default = super(RequestContext, self).to_dict()
         extra = {'user_id': self.user_id,
@@ -123,7 +117,8 @@ class RequestContext(context.RequestContext):
                  'remote_address': self.remote_address,
                  'timestamp': timeutils.strtime(self.timestamp),
                  'quota_class': self.quota_class,
-                 'service_catalog': self.service_catalog}
+                 'service_catalog': self.service_catalog,
+                 'request_id': self.request_id}
         return dict(default.items() + extra.items())
 
     @classmethod
