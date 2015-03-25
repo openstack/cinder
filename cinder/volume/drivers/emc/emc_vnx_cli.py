@@ -413,12 +413,26 @@ class CommandLineHelper(object):
             else:
                 self._raise_cli_error(cmd, rc, out)
 
+        def _lun_state_validation(lun_data):
+            lun_state = lun_data[self.LUN_STATE.key]
+            if lun_state == 'Initializing':
+                return False
+            # Lun in Ready or Faulted state is eligible for IO access,
+            # so if no lun operation, return success.
+            elif lun_state in ['Ready', 'Faulted']:
+                return lun_data[self.LUN_OPERATION.key] == 'None'
+            # Raise exception if lun state is Offline, Invalid, Destroying
+            # or other unexpected states.
+            else:
+                msg = _("Volume %(lun_name)s was created in VNX, but in"
+                        " %(lun_state)s state."
+                        ) % {'lun_name': lun_data[self.LUN_NAME.key],
+                             'lun_state': lun_state}
+                raise exception.VolumeBackendAPIException(data=msg)
+
         def lun_is_ready():
             try:
                 data = self.get_lun_by_name(name, self.LUN_ALL, False)
-                return (data[self.LUN_STATE.key] == 'Ready' and
-                        data[self.LUN_STATUS.key] == 'OK(0x0)' and
-                        data[self.LUN_OPERATION.key] == 'None')
             except exception.EMCVnxCLICmdError as ex:
                 orig_out = "\n".join(ex.kwargs["out"])
                 if orig_out.find(
@@ -426,10 +440,13 @@ class CommandLineHelper(object):
                     return False
                 else:
                     raise ex
+            return _lun_state_validation(data)
 
         self._wait_for_a_condition(lun_is_ready,
                                    None,
-                                   INTERVAL_5_SEC)
+                                   INTERVAL_5_SEC,
+                                   lambda ex:
+                                   isinstance(ex, exception.EMCVnxCLICmdError))
         lun = self.get_lun_by_name(name, self.LUN_ALL, False)
         return lun
 
@@ -474,26 +491,29 @@ class CommandLineHelper(object):
         return hlus
 
     def _wait_for_a_condition(self, testmethod, timeout=None,
-                              interval=INTERVAL_5_SEC):
+                              interval=INTERVAL_5_SEC,
+                              ignorable_exception_arbiter=lambda ex: True):
         start_time = time.time()
         if timeout is None:
             timeout = self.timeout
 
         def _inner():
             try:
-                testValue = testmethod()
+                test_value = testmethod()
             except Exception as ex:
-                testValue = False
-                LOG.debug('CommandLineHelper.'
-                          '_wait_for_condition: %(method_name)s '
-                          'execution failed for %(exception)s',
-                          {'method_name': testmethod.__name__,
-                           'exception': six.text_type(ex)})
-            if testValue:
+                test_value = False
+                with excutils.save_and_reraise_exception(
+                        reraise=not ignorable_exception_arbiter(ex)):
+                    LOG.debug('CommandLineHelper.'
+                              '_wait_for_a_condition: %(method_name)s '
+                              'execution failed for %(exception)s',
+                              {'method_name': testmethod.__name__,
+                               'exception': six.text_type(ex)})
+            if test_value:
                 raise loopingcall.LoopingCallDone()
 
             if int(time.time()) - start_time > timeout:
-                msg = (_('CommandLineHelper._wait_for_condition: %s timeout')
+                msg = (_('CommandLineHelper._wait_for_a_condition: %s timeout')
                        % testmethod.__name__)
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
@@ -1584,7 +1604,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.03.03'
+    VERSION = '05.03.04'
     stats = {'driver_version': VERSION,
              'storage_protocol': None,
              'vendor_name': 'EMC',
