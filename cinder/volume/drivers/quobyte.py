@@ -308,7 +308,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
 
         self.shares[url] = None  # None = No extra mount options.
 
-        LOG.debug("Quobyte Volume URL set to: %s" % str(self.shares))
+        LOG.debug("Quobyte Volume URL set to: %s", self.shares)
 
     def _ensure_share_mounted(self, quobyte_volume):
         """Mount Quobyte volume.
@@ -317,6 +317,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
         mount_path = self._get_mount_point_for_share(quobyte_volume)
         self._mount_quobyte(quobyte_volume, mount_path, ensure=True)
 
+    @utils.synchronized('quobyte_ensure', external=False)
     def _ensure_shares_mounted(self):
         """Mount the Quobyte volume.
 
@@ -331,9 +332,9 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
                 self._ensure_share_mounted(share)
                 self._mounted_shares.append(share)
             except Exception as exc:
-                LOG.warning(_LW('Exception during mounting %s') % (exc,))
+                LOG.warning(_LW('Exception during mounting %s'), exc)
 
-        LOG.debug('Available shares %s' % str(self._mounted_shares))
+        LOG.debug('Available shares %s', self._mounted_shares)
 
     def _find_share(self, volume_size_in_gib):
         """Returns the mounted Quobyte volume.
