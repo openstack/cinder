@@ -37,8 +37,6 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
 
     fields = {
         'id': fields.UUIDField(),
-        'name': fields.StringField(nullable=True),
-        'volume_name': fields.StringField(nullable=True),
 
         'user_id': fields.UUIDField(nullable=True),
         'project_id': fields.UUIDField(nullable=True),
@@ -61,9 +59,17 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         'volume': fields.ObjectField('Volume', nullable=True),
     }
 
+    # NOTE(thangp): obj_extra_fields is used to hold properties that are not
+    # usually part of the model
+    obj_extra_fields = ['name', 'volume_name']
+
     @property
     def name(self):
         return CONF.snapshot_name_template % self.id
+
+    @property
+    def volume_name(self):
+        return self.volume.name
 
     def __init__(self, *args, **kwargs):
         super(Snapshot, self).__init__(*args, **kwargs)
@@ -167,8 +173,11 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
             raise exception.OrphanedObjectError(method='obj_load_attr',
                                                 objtype=self.obj_name())
 
-        self.volume = objects.Volume.get_by_id(self._context, self.volume_id)
-        self.obj_reset_changes(fields=['volume'])
+        if attrname == 'volume':
+            self.volume = objects.Volume.get_by_id(self._context,
+                                                   self.volume_id)
+
+        self.obj_reset_changes(fields=[attrname])
 
     def delete_metadata_key(self, context, key):
         db.snapshot_metadata_delete(context, self.id, key)
