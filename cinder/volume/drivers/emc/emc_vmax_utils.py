@@ -1550,7 +1550,7 @@ class EMCVMAXUtils(object):
         return totalCapacityGb, remainingCapacityGb
 
     def isArrayV3(self, conn, arrayName):
-        """Check is the array is V2 or V3.
+        """Check if the array is V2 or V3.
 
         :param conn: the connection to the ecom server
         :param arrayName: the array name

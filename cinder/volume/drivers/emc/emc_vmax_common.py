@@ -369,7 +369,7 @@ class EMCVMAXCommon(object):
         portGroupName = OS-<target>-PG  The portGroupName will come from
                         the EMC configuration xml file.
                         These are precreated. If the portGroup does not exist
-                        then a error will be returned to the user
+                        then an error will be returned to the user
         maskingView  = OS-<shortHostName>-<poolName>-<shortProtocol>-MV
                        e.g OS-myShortHost-SATA_BRONZ1-I-MV
 
@@ -634,7 +634,7 @@ class EMCVMAXCommon(object):
         :param diff: Unused parameter.
         :param host: The host dict holding the relevant target(destination)
             information
-        :returns: boolean -- True if retype succeeded, Fasle if error
+        :returns: boolean -- True if retype succeeded, False if error
         """
 
         volumeName = volume['name']
@@ -911,7 +911,7 @@ class EMCVMAXCommon(object):
         LOG.debug("sourceFastPolicyName is : %(sourceFastPolicyName)s.",
                   {'sourceFastPolicyName': sourceFastPolicyName})
 
-        # If the source volume is is FAST enabled it must first be removed
+        # If the source volume is FAST enabled it must first be removed
         # from the default storage group for that policy.
         if sourceFastPolicyName is not None:
             self.remove_from_default_SG(
@@ -926,7 +926,7 @@ class EMCVMAXCommon(object):
             self.conn, targetPoolName, storageSystemName)
         if targetPoolInstanceName is None:
             LOG.error(_LE(
-                "Error finding targe pool instance name for pool: "
+                "Error finding target pool instance name for pool: "
                 "%(targetPoolName)s."),
                 {'targetPoolName': targetPoolName})
             return falseRet
@@ -1163,7 +1163,7 @@ class EMCVMAXCommon(object):
                  'targetArraySerialNumber': targetArraySerialNumber})
             return falseRet
 
-        # Get the pool from the source array and check that is is different
+        # Get the pool from the source array and check that is different
         # to the pool in the target array.
         assocPoolInstanceName = self.utils.get_assoc_pool_from_volume(
             self.conn, volumeInstanceName)
@@ -1496,7 +1496,7 @@ class EMCVMAXCommon(object):
             if targetEndpoints:
                 endpoints = targetEndpoints['TargetEndpoints']
 
-                LOG.debug("There are  %(len)lu endpoints.",
+                LOG.debug("There are %(len)lu endpoints.",
                           {'len': len(endpoints)})
                 for targetendpoint in endpoints:
                     wwn = targetendpoint['Name']
@@ -1657,7 +1657,7 @@ class EMCVMAXCommon(object):
                 "Unable to get configuration information necessary to create "
                 "a volume. Please check that there is a configuration file "
                 "for each config group, if multi-backend is enabled. "
-                "The should be in the following format "
+                "The file should be in the following format "
                 "/etc/cinder/cinder_emc_config_<CONFIG_GROUP>.xml."))
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
@@ -2113,7 +2113,7 @@ class EMCVMAXCommon(object):
     def _remove_device_from_storage_group(
             self, controllerConfigurationService, volumeInstanceName,
             volumeName, extraSpecs):
-        """Check is volume is part of a storage group prior to delete.
+        """Check if volume is part of a storage group prior to delete.
 
         Log a warning if volume is part of storage group.
 
@@ -2983,7 +2983,7 @@ class EMCVMAXCommon(object):
             targetWorkload, storageSystemName, newType, extraSpecs):
         """Migrate from one slo/workload combination to another (V3).
 
-        This requires moving the volume from it's current SG to a
+        This requires moving the volume from its current SG to a
         new or existing SG that has the target attributes.
 
         :param volume: the volume object
@@ -3204,8 +3204,8 @@ class EMCVMAXCommon(object):
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
 
-        # Get the FAST policy from the file this value can be None if the
-        # user doesnt want to associate with any FAST policy.
+        # Get the FAST policy from the file. This value can be None if the
+        # user doesn't want to associate with any FAST policy.
         fastPolicyName = self.utils.parse_fast_policy_name_from_file(
             configurationFile)
         if fastPolicyName is not None:

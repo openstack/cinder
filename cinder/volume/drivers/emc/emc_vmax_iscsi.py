@@ -291,7 +291,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         :param new_type: the new volume type.
         :param diff: Unused parameter in common.retype
         :param host: the host dict holding the relevant target information
-        :returns: boolean -- True if retype succeeded, Fasle if error
+        :returns: boolean -- True if retype succeeded, False if error
         """
         return self.common.retype(ctxt, volume, new_type, diff, host)
 

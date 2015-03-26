@@ -297,7 +297,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         :param diff: Unused parameter.
         :param host: the host dict holding the relevant
             target(destination) information
-        :returns: boolean -- True if retype succeeded, Fasle if error
+        :returns: boolean -- True if retype succeeded, False if error
         """
         return self.common.retype(ctxt, volume, new_type, diff, host)
 
