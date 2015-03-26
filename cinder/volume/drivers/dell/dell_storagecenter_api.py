@@ -697,7 +697,7 @@ class StorageCenterApi(object):
             LOG.debug('HbaList error: %(c)d %(r)s',
                       {'c': r.status_code,
                        'r': r.reason})
-            LOG.error(_LE('Unable to find FC intitiators'))
+            LOG.error(_LE('Unable to find FC initiators'))
         return initiators
 
     def get_volume_count(self, scserver):
