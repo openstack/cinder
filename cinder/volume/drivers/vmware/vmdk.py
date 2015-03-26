@@ -1309,7 +1309,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
 
         # if volume is attached raise exception
-        if volume['instance_uuid'] or volume['attached_host']:
+        if (volume['volume_attachment'] and
+                len(volume['volume_attachment']) > 0):
             msg = _("Upload to glance of attached volume is not supported.")
             LOG.error(msg)
             raise exception.InvalidVolume(msg)
