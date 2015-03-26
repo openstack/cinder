@@ -35,7 +35,6 @@ netapp_proxy_opts = [
                      'operating in 7-Mode, ontap_cluster for using '
                      'clustered Data ONTAP, or eseries for using E-Series.')),
     cfg.StrOpt('netapp_storage_protocol',
-               default='iscsi',
                choices=['iscsi', 'fc', 'nfs'],
                help=('The storage protocol to be used on the data path with '
                      'the storage system.')), ]
