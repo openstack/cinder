@@ -997,6 +997,25 @@ class DBAPIVolumeTypeTestCase(BaseTest):
                           self.ctxt,
                           {'name': 'n2', 'id': vt['id']})
 
+    def test_get_volume_type_extra_specs(self):
+        # Ensure that volume type extra specs can be accessed after
+        # the DB session is closed.
+        vt_extra_specs = {'mock_key': 'mock_value'}
+        vt = db.volume_type_create(self.ctxt,
+                                   {'name': 'n1',
+                                    'extra_specs': vt_extra_specs})
+        volume_ref = db.volume_create(self.ctxt, {'volume_type_id': vt.id})
+
+        session = sqlalchemy_api.get_session()
+        volume = sqlalchemy_api._volume_get(self.ctxt, volume_ref.id,
+                                            session=session)
+        session.close()
+
+        actual_specs = {}
+        for spec in volume.volume_type.extra_specs:
+            actual_specs[spec.key] = spec.value
+        self.assertEqual(vt_extra_specs, actual_specs)
+
 
 class DBAPIEncryptionTestCase(BaseTest):
 

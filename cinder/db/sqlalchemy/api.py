@@ -1232,6 +1232,7 @@ def _volume_get_query(context, session=None, project_only=False):
             options(joinedload('volume_metadata')).\
             options(joinedload('volume_admin_metadata')).\
             options(joinedload('volume_type')).\
+            options(joinedload('volume_type.extra_specs')).\
             options(joinedload('volume_attachment')).\
             options(joinedload('consistencygroup'))
     else:
@@ -1239,6 +1240,7 @@ def _volume_get_query(context, session=None, project_only=False):
                            project_only=project_only).\
             options(joinedload('volume_metadata')).\
             options(joinedload('volume_type')).\
+            options(joinedload('volume_type.extra_specs')).\
             options(joinedload('volume_attachment')).\
             options(joinedload('consistencygroup'))
 
