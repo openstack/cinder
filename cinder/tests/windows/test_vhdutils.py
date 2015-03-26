@@ -50,7 +50,8 @@ class VHDUtilsTestCase(test.TestCase):
         mock.patch.multiple(
             'cinder.volume.drivers.windows.vhdutils',
             ctypes=fake_ctypes, kernel32=mock.DEFAULT,
-            virtdisk=mock.DEFAULT, Win32_GUID=mock.DEFAULT,
+            wintypes=mock.DEFAULT, virtdisk=mock.DEFAULT,
+            Win32_GUID=mock.DEFAULT,
             Win32_RESIZE_VIRTUAL_DISK_PARAMETERS=mock.DEFAULT,
             Win32_CREATE_VIRTUAL_DISK_PARAMETERS=mock.DEFAULT,
             Win32_VIRTUAL_STORAGE_TYPE=mock.DEFAULT,
@@ -109,7 +110,7 @@ class VHDUtilsTestCase(test.TestCase):
             vhdutils.VIRTUAL_DISK_ACCESS_NONE, None,
             vhdutils.CREATE_VIRTUAL_DISK_FLAG_NONE, 0,
             vhdutils.ctypes.byref(fake_params), None,
-            vhdutils.ctypes.byref(vhdutils.ctypes.wintypes.HANDLE()))
+            vhdutils.ctypes.byref(vhdutils.wintypes.HANDLE()))
         self.assertTrue(self._vhdutils._close.called)
 
     def test_create_vhd_exception(self):
@@ -150,7 +151,7 @@ class VHDUtilsTestCase(test.TestCase):
                 vhdutils.ctypes.byref(fake_vst),
                 vhdutils.ctypes.c_wchar_p(self._FAKE_VHD_PATH),
                 fake_access_mask, fake_open_flag, fake_params,
-                vhdutils.ctypes.byref(vhdutils.ctypes.wintypes.HANDLE()))
+                vhdutils.ctypes.byref(vhdutils.wintypes.HANDLE()))
 
             self.assertEqual(fake_device_id, fake_vst.DeviceId)
 
@@ -309,8 +310,8 @@ class VHDUtilsTestCase(test.TestCase):
         fake_info_member = vhdutils.GET_VIRTUAL_DISK_INFO_SIZE
         fake_info = mock.Mock()
         fake_info.VhdInfo.Size._fields_ = [
-            ("VirtualSize", vhdutils.ctypes.wintypes.ULARGE_INTEGER),
-            ("PhysicalSize", vhdutils.ctypes.wintypes.ULARGE_INTEGER)]
+            ("VirtualSize", vhdutils.wintypes.ULARGE_INTEGER),
+            ("PhysicalSize", vhdutils.wintypes.ULARGE_INTEGER)]
         fake_info.VhdInfo.Size.VirtualSize = self._FAKE_VHD_SIZE
         fake_info.VhdInfo.Size.PhysicalSize = fake_physical_size
 
