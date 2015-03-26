@@ -292,8 +292,8 @@ FAKE_LIST_FILE_SYSTEM_RESPONSE = """{ "listFilesystemResponse" : {
 FAKE_LIST_STORAGE_SNAPSHOTS_RESPONSE = """{ "listDatasetSnapshotsResponse" : {
     "count":1 ,
     "snapshot" : [{
-        "name": "DS1Snap1",
-        "path": "devpool1/acc1openstacktsm/DS1@DS1Snap1",
+        "name": "snap_c60890b1f23646f29e6d51e6e592cee6",
+        "path": "DS1@snap_c60890b1f23646f29e6d51e6e592cee6",
         "availMem": "-",
         "usedMem": "0",
         "refer": "26K",
@@ -363,7 +363,7 @@ FAKE_CREATE_STORAGE_SNAPSHOT_RESPONSE = (
     """{ "createStorageSnapshotResponse" :  {
     "StorageSnapshot" : {
         "id": "21d7a92a-f15e-3f5b-b981-cb30697b8028",
-        "name": "DS1Snap1",
+        "name": "snap_c60890b1f23646f29e6d51e6e592cee6",
         "usn": "21d7a92af15e3f5bb981cb30697b8028",
         "lunusn": "12371e7c392b34b9ac43073b3c85f1d1",
         "lunid": "12371e7c-392b-34b9-ac43-073b3c85f1d1",
@@ -614,6 +614,8 @@ MAP_COMMAND_TO_FAKE_RESPONSE['updateFileSystem'] = (
     json.loads(FAKE_UPDATE_FILE_SYSTEM_RESPONSE))
 MAP_COMMAND_TO_FAKE_RESPONSE['updateQosGroup'] = (
     json.loads(FAKE_UPDATE_QOS_GROUP_RESPONSE))
+MAP_COMMAND_TO_FAKE_RESPONSE['listStorageSnapshots'] = (
+    json.loads(FAKE_LIST_STORAGE_SNAPSHOTS_RESPONSE))
 
 # This dict maps the http commands of elasticenter
 # with its respective fake json responses
@@ -868,7 +870,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         fake_volume_id = self._get_fake_volume_id()
 
         snapshot = {
-            'id': 'SomeID',
+            'id': 'c60890b1-f236-46f2-9e6d-51e6e592cee6',
             'display_name': 'DS1Snap1',
             'volume_id': 'SomeVol',
             'volume': {
@@ -884,10 +886,13 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         mock_api_req.side_effect = self._side_effect_api_req
 
         # now run the test
-        self.driver.create_snapshot(snapshot)
+        model_update = self.driver.create_snapshot(snapshot)
 
         # assert that 2 api calls were invoked
         self.assertEqual(2, mock_api_req.call_count)
+
+        self.assertEqual('DS1@snap_c60890b1f23646f29e6d51e6e592cee6',
+                         model_update['provider_id'])
 
         # Test - II
 
