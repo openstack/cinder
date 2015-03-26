@@ -482,7 +482,7 @@ class CinderObject(object):
                'cinder_object.version': target_version or self.VERSION,
                'cinder_object.data': primitive}
         if self.obj_what_changed():
-            obj['cinder_object.changes'] = list(self.obj_what_changed())
+            obj['cinder_object.changes'] = sorted(self.obj_what_changed())
         return obj
 
     def obj_set_defaults(self, *attrs):

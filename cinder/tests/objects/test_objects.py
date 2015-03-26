@@ -578,7 +578,7 @@ class _TestObject(object):
                     'cinder_object.namespace': 'cinder',
                     'cinder_object.version': '1.6',
                     'cinder_object.changes':
-                        ['deleted', 'created_at', 'deleted_at', 'updated_at'],
+                        ['created_at', 'deleted', 'deleted_at', 'updated_at'],
                     'cinder_object.data':
                         {'created_at': timeutils.isotime(dt),
                          'updated_at': timeutils.isotime(dt),
