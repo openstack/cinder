@@ -349,20 +349,29 @@ class TestWindowsDriver(test.TestCase):
 
         volume = db_fakes.get_fake_volume_info()
         volume_cloned = db_fakes.get_fake_volume_info_cloned()
-
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'create_volume')
-
-        self.stubs.Set(drv, 'local_path', self.fake_local_path)
-
-        windows_utils.WindowsUtils.create_volume(mox.IgnoreArg(),
-                                                 mox.IgnoreArg(),
-                                                 mox.IgnoreArg())
+        new_vhd_path = self.fake_local_path(volume)
+        src_vhd_path = self.fake_local_path(volume_cloned)
 
         self.mox.StubOutWithMock(windows_utils.WindowsUtils,
                                  'copy_vhd_disk')
-        windows_utils.WindowsUtils.copy_vhd_disk(self.fake_local_path(
-            volume_cloned), self.fake_local_path(volume))
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'import_wt_disk')
+        self.mox.StubOutWithMock(vhdutils.VHDUtils,
+                                 'resize_vhd')
+
+        self.stubs.Set(drv.utils,
+                       'is_resize_needed',
+                       lambda vhd_path, new_size, old_size: True)
+        self.stubs.Set(drv, 'local_path', self.fake_local_path)
+
+        windows_utils.WindowsUtils.copy_vhd_disk(src_vhd_path,
+                                                 new_vhd_path)
+        drv.utils.is_resize_needed(new_vhd_path,
+                                   volume['size'],
+                                   volume_cloned['size'])
+        vhdutils.VHDUtils.resize_vhd(new_vhd_path, volume['size'] << 30)
+        windows_utils.WindowsUtils.import_wt_disk(new_vhd_path,
+                                                  volume['name'])
 
         self.mox.ReplayAll()
 
