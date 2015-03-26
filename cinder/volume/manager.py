@@ -361,8 +361,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                     # Offload all the pending volume delete operations to the
                     # threadpool to prevent the main volume service thread
                     # from being blocked.
-                    self._add_to_threadpool(self.delete_volume(ctxt,
-                                                               volume['id']))
+                    self._add_to_threadpool(self.delete_volume, ctxt,
+                                            volume['id'])
                 else:
                     # By default, delete volumes sequentially
                     self.delete_volume(ctxt, volume['id'])
