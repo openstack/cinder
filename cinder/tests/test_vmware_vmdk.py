@@ -1125,8 +1125,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         image_meta['disk_format'] = 'novmdk'
         volume = FakeObject()
         volume['name'] = 'vol-name'
-        volume['instance_uuid'] = None
-        volume['attached_host'] = None
+        volume['volume_attachment'] = None
 
         m.ReplayAll()
         self.assertRaises(cinder_exceptions.ImageUnacceptable,
@@ -1140,7 +1139,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         """Test copy_volume_to_image when volume is attached."""
         m = self.mox
         volume = FakeObject()
-        volume['instance_uuid'] = 'my_uuid'
+        volume['volume_attachment'] = [mock.sentinel.volume_attachment]
 
         m.ReplayAll()
         self.assertRaises(cinder_exceptions.InvalidVolume,
@@ -1174,8 +1173,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         size = size_gb * units.Gi
         volume['size'] = size_gb
         volume['project_id'] = project_id
-        volume['instance_uuid'] = None
-        volume['attached_host'] = None
+        volume['volume_attachment'] = None
         # volumeops.get_backing
         backing = FakeMor("VirtualMachine", "my_vm")
         m.StubOutWithMock(self._volumeops, 'get_backing')
