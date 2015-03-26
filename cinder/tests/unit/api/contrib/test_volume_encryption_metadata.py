@@ -22,7 +22,6 @@ from cinder import context
 from cinder import db
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.volume import volume_types
 
 
 def return_volume_type_encryption_metadata(context, volume_type_id):
@@ -48,7 +47,8 @@ class VolumeEncryptionMetadataTest(test.TestCase):
                        status='creating',
                        availability_zone='fake_az',
                        host='fake_host',
-                       size=1):
+                       size=1,
+                       encryption_key_id='fake_key'):
         """Create a volume object."""
         volume = {
             'size': size,
@@ -60,7 +60,7 @@ class VolumeEncryptionMetadataTest(test.TestCase):
             'attach_status': 'detached',
             'availability_zone': availability_zone,
             'host': host,
-            'encryption_key_id': 'fake_key',
+            'encryption_key_id': encryption_key_id,
         }
         return db.volume_create(context, volume)['id']
 
@@ -77,8 +77,6 @@ class VolumeEncryptionMetadataTest(test.TestCase):
                         self.volume_id)
 
     def test_index(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
-
         req = webob.Request.blank('/v2/fake/volumes/%s/encryption'
                                   % self.volume_id)
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
@@ -95,8 +93,6 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_index_bad_tenant_id(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
-
         req = webob.Request.blank('/v2/%s/volumes/%s/encryption'
                                   % ('bad-tenant-id', self.volume_id))
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
@@ -108,8 +104,6 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_index_bad_volume_id(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
-
         bad_volume_id = 'bad_volume_id'
         req = webob.Request.blank('/v2/fake/volumes/%s/encryption'
                                   % bad_volume_id)
@@ -124,8 +118,6 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_show_key(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
-
         req = webob.Request.blank('/v2/fake/volumes/%s/encryption/'
                                   'encryption_key_id' % self.volume_id)
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
@@ -134,8 +126,6 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual('fake_key', res.body)
 
     def test_show_control(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
-
         req = webob.Request.blank('/v2/fake/volumes/%s/encryption/'
                                   'control_location' % self.volume_id)
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
@@ -144,8 +134,6 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual('front-end', res.body)
 
     def test_show_provider(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
-
         req = webob.Request.blank('/v2/fake/volumes/%s/encryption/'
                                   'provider' % self.volume_id)
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
@@ -155,8 +143,6 @@ class VolumeEncryptionMetadataTest(test.TestCase):
                          res.body)
 
     def test_show_bad_tenant_id(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
-
         req = webob.Request.blank('/v2/%s/volumes/%s/encryption/'
                                   'encryption_key_id' % ('bad-tenant-id',
                                                          self.volume_id))
@@ -169,8 +155,6 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_show_bad_volume_id(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
-
         bad_volume_id = 'bad_volume_id'
         req = webob.Request.blank('/v2/fake/volumes/%s/encryption/'
                                   'encryption_key_id' % bad_volume_id)
@@ -185,8 +169,6 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_retrieve_key_admin(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: True)
-
         ctxt = context.RequestContext('fake', 'fake', is_admin=True)
 
         req = webob.Request.blank('/v2/fake/volumes/%s/encryption/'
@@ -197,19 +179,27 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual('fake_key', res.body)
 
     def test_show_volume_not_encrypted_type(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: False)
+        self.stubs.Set(db.sqlalchemy.api, 'volume_type_encryption_get',
+                       lambda *args, **kwargs: None)
+
+        volume_id = self._create_volume(self.ctxt, encryption_key_id=None)
+        self.addCleanup(db.volume_destroy, self.ctxt.elevated(), volume_id)
 
         req = webob.Request.blank('/v2/fake/volumes/%s/encryption/'
-                                  'encryption_key_id' % self.volume_id)
+                                  'encryption_key_id' % volume_id)
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
         self.assertEqual(200, res.status_code)
         self.assertEqual(0, len(res.body))
 
     def test_index_volume_not_encrypted_type(self):
-        self.stubs.Set(volume_types, 'is_encrypted', lambda *a, **kw: False)
+        self.stubs.Set(db.sqlalchemy.api, 'volume_type_encryption_get',
+                       lambda *args, **kwargs: None)
+
+        volume_id = self._create_volume(self.ctxt, encryption_key_id=None)
+        self.addCleanup(db.volume_destroy, self.ctxt.elevated(), volume_id)
 
         req = webob.Request.blank('/v2/fake/volumes/%s/encryption'
-                                  % self.volume_id)
+                                  % volume_id)
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
 
         self.assertEqual(200, res.status_code)
