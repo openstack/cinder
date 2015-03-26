@@ -1058,7 +1058,7 @@ class DBAPIVolumeTypeTestCase(BaseTest):
 
 class DBAPIEncryptionTestCase(BaseTest):
 
-    """Tests for the db.api.volume_type_encryption_* methods."""
+    """Tests for the db.api.volume_(type_)?encryption_* methods."""
 
     _ignored_keys = [
         'deleted',
@@ -1156,6 +1156,29 @@ class DBAPIEncryptionTestCase(BaseTest):
             db.volume_type_encryption_get(self.ctxt,
                                           encryption['volume_type_id'])
         self.assertIsNone(encryption_get)
+
+    def test_volume_encryption_get(self):
+        # normal volume -- metadata should be None
+        volume = db.volume_create(self.ctxt, {})
+        values = db.volume_encryption_metadata_get(self.ctxt, volume.id)
+
+        self.assertEqual({'encryption_key_id': None}, values)
+
+        # encrypted volume -- metadata should match volume type
+        volume_type = self.created[0]
+
+        volume = db.volume_create(self.ctxt, {'volume_type_id':
+                                              volume_type['volume_type_id']})
+        values = db.volume_encryption_metadata_get(self.ctxt, volume.id)
+
+        expected = {
+            'encryption_key_id': volume.encryption_key_id,
+            'control_location': volume_type['control_location'],
+            'cipher': volume_type['cipher'],
+            'key_size': volume_type['key_size'],
+            'provider': volume_type['provider'],
+        }
+        self.assertEqual(expected, values)
 
 
 class DBAPIReservationTestCase(BaseTest):

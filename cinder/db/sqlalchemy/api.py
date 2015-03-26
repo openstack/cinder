@@ -2968,13 +2968,15 @@ def volume_encryption_metadata_get(context, volume_id, session=None):
     encryption_ref = volume_type_encryption_get(context,
                                                 volume_ref['volume_type_id'])
 
-    return {
+    values = {
         'encryption_key_id': volume_ref['encryption_key_id'],
-        'control_location': encryption_ref['control_location'],
-        'cipher': encryption_ref['cipher'],
-        'key_size': encryption_ref['key_size'],
-        'provider': encryption_ref['provider'],
     }
+
+    if encryption_ref:
+        for key in ['control_location', 'cipher', 'key_size', 'provider']:
+            values[key] = encryption_ref[key]
+
+    return values
 
 
 ####################
