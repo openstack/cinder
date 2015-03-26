@@ -196,8 +196,8 @@ class SchedulerManager(manager.Manager):
                                      volume_ref, msg, reservations):
             if reservations:
                 QUOTAS.rollback(context, reservations)
-            if (volume_ref['instance_uuid'] is None and
-                    volume_ref['attached_host'] is None):
+            if (volume_ref['volume_attachment'] is None or
+               len(volume_ref['volume_attachment']) == 0):
                 orig_status = 'available'
             else:
                 orig_status = 'in-use'
