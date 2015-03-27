@@ -402,6 +402,9 @@ class ISCSIConnector(InitiatorConnector):
         dev_name = self._linuxscsi.get_name_from_path(host_device)
         if dev_name:
             self._linuxscsi.remove_scsi_device(dev_name)
+            # make sure the volume is gone before moving on
+            # Bug #1437441 - Race removing iscsi device
+            self._linuxscsi.wait_for_volume_removal(host_device)
 
         # NOTE(vish): Only disconnect from the target if no luns from the
         #             target are in use.

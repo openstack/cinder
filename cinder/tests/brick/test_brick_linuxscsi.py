@@ -17,6 +17,7 @@ import string
 
 from oslo_log import log as logging
 
+from cinder.brick import exception
 from cinder.brick.initiator import linuxscsi
 from cinder import test
 
@@ -60,6 +61,18 @@ class LinuxSCSITestCase(test.TestCase):
         expected_commands = [
             ('blockdev --flushbufs /dev/sdc'),
             ('tee -a /sys/block/sdc/device/delete')]
+        self.assertEqual(expected_commands, self.cmds)
+
+    def test_wait_for_volume_removal(self):
+        fake_path = '/dev/disk/by-path/fake-iscsi-iqn-lun-0'
+        self.stubs.Set(os.path, "exists", lambda x: True)
+        self.assertRaises(exception.VolumePathNotRemoved,
+                          self.linuxscsi.wait_for_volume_removal,
+                          fake_path)
+
+        self.stubs.Set(os.path, "exists", lambda x: False)
+        self.linuxscsi.wait_for_volume_removal(fake_path)
+        expected_commands = []
         self.assertEqual(expected_commands, self.cmds)
 
     def test_flush_multipath_device(self):
