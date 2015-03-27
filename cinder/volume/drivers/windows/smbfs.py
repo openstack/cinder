@@ -164,7 +164,7 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
         self.vhdutils.create_differencing_vhd(new_snap_path,
                                               backing_file_full_path)
 
-    def _do_extend_volume(self, volume_path, size_gb):
+    def _do_extend_volume(self, volume_path, size_gb, volume_name=None):
         self.vhdutils.resize_vhd(volume_path, size_gb * units.Gi)
 
     @utils.synchronized('smbfs', external=False)
