@@ -1164,6 +1164,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         image_meta['disk_format'] = 'vmdk'
         image_meta['id'] = image_id
         image_meta['name'] = image_id
+        image_meta['is_public'] = True
         image_service = FakeObject()
         vol_name = 'volume-123456789'
         project_id = 'project-owner-id-123'
