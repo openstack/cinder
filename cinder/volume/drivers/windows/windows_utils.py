@@ -18,6 +18,7 @@ Utility class for Windows Storage Server 2012 volume related operations.
 
 import ctypes
 import os
+import sys
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -27,7 +28,7 @@ from cinder.i18n import _, _LI
 from cinder.volume.drivers.windows import constants
 
 # Check needed for unit testing on Unix
-if os.name == 'nt':
+if sys.platform == 'win32':
     import wmi
 
     from ctypes import wintypes

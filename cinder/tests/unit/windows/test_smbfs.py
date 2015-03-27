@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import importlib
 import os
 import sys
 
@@ -21,6 +20,7 @@ import mock
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.volume.drivers.windows import smbfs
 
 
 class WindowsSmbFsTestCase(test.TestCase):
@@ -53,25 +53,19 @@ class WindowsSmbFsTestCase(test.TestCase):
         super(WindowsSmbFsTestCase, self).setUp()
         self._mock_wmi = mock.MagicMock()
 
-        self._platform_patcher = mock.patch('sys.platform', 'win32')
+        mock.patch('sys.platform', 'win32').start()
+        mock.patch.dict(sys.modules, ctypes=mock.DEFAULT).start()
+        mock.patch('__builtin__.wmi', create=True).start()
 
-        mock.patch.dict(sys.modules, wmi=self._mock_wmi,
-                        ctypes=self._mock_wmi).start()
-
-        self._platform_patcher.start()
-        # self._wmi_patcher.start()
         self.addCleanup(mock.patch.stopall)
 
-        smbfs = importlib.import_module(
-            'cinder.volume.drivers.windows.smbfs')
-        smbfs.WindowsSmbfsDriver.__init__ = lambda x: None
-        self._smbfs_driver = smbfs.WindowsSmbfsDriver()
+        self._smbfs_driver = smbfs.WindowsSmbfsDriver(
+            configuration=mock.Mock())
         self._smbfs_driver._remotefsclient = mock.Mock()
         self._smbfs_driver._delete = mock.Mock()
         self._smbfs_driver.local_path = mock.Mock(
             return_value=self._FAKE_VOLUME_PATH)
         self._smbfs_driver.vhdutils = mock.Mock()
-        self._smbfs_driver._check_os_platform = mock.Mock()
 
     def _test_create_volume(self, volume_exists=False, volume_format='vhdx'):
         self._smbfs_driver.create_dynamic_vhd = mock.MagicMock()
@@ -241,6 +235,7 @@ class WindowsSmbFsTestCase(test.TestCase):
             return_value=self._FAKE_VOLUME_PATH)
         drv.configuration = mock.MagicMock()
         drv.configuration.volume_dd_blocksize = mock.sentinel.block_size
+        drv._extend_vhd_if_needed = mock.Mock()
 
         with mock.patch.object(image_utils,
                                'fetch_to_volume_format') as fake_fetch:
@@ -254,6 +249,8 @@ class WindowsSmbFsTestCase(test.TestCase):
                 mock.sentinel.image_id,
                 self._FAKE_VOLUME_PATH, mock.sentinel.volume_format,
                 mock.sentinel.block_size)
+            drv._extend_vhd_if_needed.assert_called_once_with(
+                self._FAKE_VOLUME_PATH, self._FAKE_VOLUME['size'])
 
     def test_copy_volume_from_snapshot(self):
         drv = self._smbfs_driver
@@ -272,6 +269,7 @@ class WindowsSmbFsTestCase(test.TestCase):
             return_value=fake_img_info)
         drv.local_path = mock.Mock(
             return_value=mock.sentinel.new_volume_path)
+        drv._extend_vhd_if_needed = mock.Mock()
 
         drv._copy_volume_from_snapshot(
             self._FAKE_SNAPSHOT, self._FAKE_VOLUME,
@@ -281,8 +279,8 @@ class WindowsSmbFsTestCase(test.TestCase):
         drv.vhdutils.convert_vhd.assert_called_once_with(
             self._FAKE_VOLUME_PATH,
             mock.sentinel.new_volume_path)
-        drv.vhdutils.resize_vhd.assert_called_once_with(
-            mock.sentinel.new_volume_path, self._FAKE_VOLUME['size'] << 30)
+        drv._extend_vhd_if_needed.assert_called_once_with(
+            mock.sentinel.new_volume_path, self._FAKE_VOLUME['size'])
 
     def test_rebase_img(self):
         self._smbfs_driver._rebase_img(
@@ -290,3 +288,41 @@ class WindowsSmbFsTestCase(test.TestCase):
             self._FAKE_VOLUME_NAME + '.vhdx', 'vhdx')
         self._smbfs_driver.vhdutils.reconnect_parent.assert_called_once_with(
             self._FAKE_SNAPSHOT_PATH, self._FAKE_VOLUME_PATH)
+
+    def _test_extend_vhd_if_needed(self, virtual_size_gb, requested_size_gb):
+        drv = self._smbfs_driver
+        virtual_size_bytes = virtual_size_gb << 30
+        requested_size_bytes = requested_size_gb << 30
+
+        virtual_size_dict = {'VirtualSize': virtual_size_bytes}
+        drv.vhdutils.get_vhd_size = mock.Mock(return_value=virtual_size_dict)
+
+        if virtual_size_gb > requested_size_gb:
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              drv._extend_vhd_if_needed,
+                              mock.sentinel.vhd_path,
+                              requested_size_gb)
+        else:
+            drv._extend_vhd_if_needed(mock.sentinel.vhd_path,
+                                      requested_size_gb)
+
+            if virtual_size_gb < requested_size_gb:
+                drv.vhdutils.resize_vhd.assert_called_once_with(
+                    mock.sentinel.vhd_path, requested_size_bytes)
+            else:
+                self.assertFalse(drv.vhdutils.resize_vhd.called)
+
+        drv.vhdutils.get_vhd_size.assert_called_once_with(
+            mock.sentinel.vhd_path)
+
+    def test_extend_vhd_if_needed_bigger_size(self):
+        self._test_extend_vhd_if_needed(virtual_size_gb=1,
+                                        requested_size_gb=2)
+
+    def test_extend_vhd_if_needed_equal_size(self):
+        self._test_extend_vhd_if_needed(virtual_size_gb=1,
+                                        requested_size_gb=1)
+
+    def test_extend_vhd_if_needed_smaller_size(self):
+        self._test_extend_vhd_if_needed(virtual_size_gb=2,
+                                        requested_size_gb=1)
