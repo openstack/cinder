@@ -64,12 +64,13 @@ def RaiseXIODriverException():
 
 class XIOISEDriver(object):
 
-    VERSION = '1.1.1'
+    VERSION = '1.1.2'
 
     # Version   Changes
     # 1.0.0     Base driver
     # 1.1.0     QoS, affinity, retype and thin support
     # 1.1.1     Fix retry loop (Bug 1429283)
+    # 1.1.2     Fix host object deletion (Bug 1433450).
 
     def __init__(self, *args, **kwargs):
         super(XIOISEDriver, self).__init__()
@@ -1398,6 +1399,14 @@ class XIOISEDriver(object):
     def local_path(self, volume):
         LOG.debug("X-IO local_path called.")
 
+    def delete_host(self, endpoints):
+        """Delete ISE host object"""
+        host = self._find_host(endpoints)
+        if host['locator'] != '':
+            # Delete host
+            self._send_cmd('DELETE', host['locator'], {})
+            LOG.debug("X-IO: host %s deleted", host['name'])
+
 
 # Protocol specific classes for entry.  They are wrappers around base class
 # above and every external API resuslts in a call to common function in base
@@ -1506,7 +1515,13 @@ class XIOISEISCSIDriver(driver.ISCSIDriver):
                 'data': data}
 
     def terminate_connection(self, volume, connector, **kwargs):
-        return self.driver.ise_unpresent(volume, connector['initiator'])
+        hostname = self.driver.ise_unpresent(volume, connector['initiator'])
+        alloc_cnt = 0
+        if hostname != '':
+            alloc_cnt = self.driver.find_allocations(hostname)
+            if alloc_cnt == 0:
+                # delete host object
+                self.driver.delete_host(connector['initiator'])
 
     def create_snapshot(self, snapshot):
         return self.driver.create_snapshot(snapshot)
@@ -1603,14 +1618,17 @@ class XIOISEFCDriver(driver.FibreChannelDriver):
         alloc_cnt = 0
         if hostname != '':
             alloc_cnt = self.driver.find_allocations(hostname)
-        if alloc_cnt == 0:
-            target_wwns = self.driver.find_target_wwns()
-            data['target_wwn'] = target_wwns
-            # build target initiator map
-            target_map = {}
-            for initiator in connector['wwpns']:
-                target_map[initiator] = target_wwns
-            data['initiator_target_map'] = target_map
+            if alloc_cnt == 0:
+                target_wwns = self.driver.find_target_wwns()
+                data['target_wwn'] = target_wwns
+                # build target initiator map
+                target_map = {}
+                for initiator in connector['wwpns']:
+                    target_map[initiator] = target_wwns
+                data['initiator_target_map'] = target_map
+                # delete host object
+                self.driver.delete_host(connector['wwpns'])
+
         return {'driver_volume_type': 'fibre_channel',
                 'data': data}
 

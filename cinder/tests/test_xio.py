@@ -864,7 +864,7 @@ class XIOISEDriverTestCase(object):
             protocol = 'fibre_channel'
         exp_result = {}
         exp_result = {'vendor_name': "X-IO",
-                      'driver_version': "1.1.1",
+                      'driver_version': "1.1.2",
                       'volume_backend_name': backend_name,
                       'reserved_percentage': 0,
                       'total_capacity_gb': 100,
@@ -1120,6 +1120,9 @@ class XIOISEDriverTestCase(object):
             mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
                                          ISE_GET_HOSTS_HOST1_RESP,
                                          ISE_GET_ALLOC_WITH_EP_RESP,
+                                         ISE_DELETE_ALLOC_RESP,
+                                         ISE_GET_ALLOC_WITH_EP_RESP,
+                                         ISE_GET_HOSTS_HOST1_RESP,
                                          ISE_DELETE_ALLOC_RESP])
         elif self.configuration.ise_protocol == 'fibre_channel':
             mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
@@ -1127,7 +1130,9 @@ class XIOISEDriverTestCase(object):
                                          ISE_GET_ALLOC_WITH_EP_RESP,
                                          ISE_DELETE_ALLOC_RESP,
                                          ISE_GET_ALLOC_WITH_EP_RESP,
-                                         ISE_GET_CONTROLLERS_RESP])
+                                         ISE_GET_CONTROLLERS_RESP,
+                                         ISE_GET_HOSTS_HOST1_RESP,
+                                         ISE_DELETE_ALLOC_RESP])
         self.driver.terminate_connection(VOLUME1, self.connector)
 
     def test_terminate_connection_positive_noalloc(self, mock_req):
@@ -1135,13 +1140,18 @@ class XIOISEDriverTestCase(object):
         if self.configuration.ise_protocol == 'iscsi':
             mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
                                          ISE_GET_HOSTS_HOST1_RESP,
-                                         ISE_GET_ALLOC_WITH_NO_ALLOC_RESP])
+                                         ISE_GET_ALLOC_WITH_NO_ALLOC_RESP,
+                                         ISE_GET_ALLOC_WITH_NO_ALLOC_RESP,
+                                         ISE_GET_HOSTS_HOST1_RESP,
+                                         ISE_DELETE_ALLOC_RESP])
         elif self.configuration.ise_protocol == 'fibre_channel':
             mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
                                          ISE_GET_HOSTS_HOST1_RESP,
                                          ISE_GET_ALLOC_WITH_NO_ALLOC_RESP,
                                          ISE_GET_ALLOC_WITH_NO_ALLOC_RESP,
-                                         ISE_GET_CONTROLLERS_RESP])
+                                         ISE_GET_CONTROLLERS_RESP,
+                                         ISE_GET_HOSTS_HOST1_RESP,
+                                         ISE_DELETE_ALLOC_RESP])
         self.driver.terminate_connection(VOLUME1, self.connector)
 
     def test_negative_terminate_connection_bad_host(self, mock_req):
