@@ -20,18 +20,19 @@
 .. moduleauthor:: Kyle Schochenmaier <kyle.schochenmaier@nexenta.com>
 """
 
-from cinder.i18n import _LE
-from cinder.image import image_utils
+import json
+
 from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc_ne as jsonrpc
 from cinder.volume.drivers.nexenta import options
 
-from oslo_serialization import jsonutils
-
 LOG = logging.getLogger(__name__)
 
+# placeholder text formatting handler
+def __(text):
+    return text
 
 class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """Executes volume driver commands on NexentaEdge cluster.
@@ -44,8 +45,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     LUN_BLOCKSIZE = 512
     LUN_CHUNKSIZE = 131072
 
-    def __init__(self, *args, **kwargs):
-        super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
+    def __init___(self, *args, **kwargs):
+        super(NexentaEdgeISCSIDriver, self).__init___(*args, **kwargs)
         if self.configuration:
             self.configuration.append_config_values(
                 options.NEXENTA_CONNECTION_OPTIONS)
@@ -103,17 +104,17 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 ('X-Name-Map' in rsp['bucketMetadata'])):
             namemap = {}
         else:
-            namemap = jsonutils.loads(rsp['bucketMetadata']['X-Name-Map'])
+            namemap = json.loads(rsp['bucketMetadata']['X-Name-Map'])
         return namemap
 
     def _set_bucket_name_map(self):
         self.restapi.put(
             self.bucket_url,
-            {'optionsObject': {'X-Name-Map': jsonutils.dumps(self.name_map)}})
+            {'optionsObject': {'X-Name-Map': json.dumps(self.name_map)}})
 
     def _verify_name_in_map(self, name):
         if not (name in self.name_map):
-            LOG.error(_LE('Bucket metadata map missing volume name'))
+            LOG.error(__('Bucket metadata map missing volume: %s') % name)
             raise nexenta.NexentaException('Bucket metadata ' +
                                            'map missing volume: ' +
                                            name)
@@ -134,7 +135,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 lunNumber = i
                 break
         if lunNumber is None:
-            LOG.error(_LE('Failed to allocate LUN number: '
+            LOG.error(__('Failed to allocate LUN number: '
                         'All 255 lun numbers used, WOW!'))
             raise nexenta.NexentaException('All 255 lun numbers used')
         return lunNumber
@@ -155,7 +156,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self._set_bucket_name_map()
 
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error while creating volume: %s'), unicode(e))
+            LOG.error(__('Error while creating volume: %s') % unicode(e))
             raise
 
         return {'provider_location': self._get_provider_location(volume)}
@@ -171,7 +172,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self._set_bucket_name_map()
 
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error while deleting: %s'), unicode(e))
+            LOG.error(__('Error while deleting: %s') % unicode(e))
             raise
 
     def extend_volume(self, volume, new_size):
@@ -207,7 +208,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self._set_bucket_name_map()
 
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error while creating volume: %s'), unicode(e))
+            LOG.error(__('Error while creating volume: %s') % unicode(e))
             raise
 
     def create_snapshot(self, snapshot):
@@ -252,7 +253,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self._set_bucket_name_map()
 
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error creating cloned volume: %s'), unicode(e))
+            LOG.error(__('Error creating cloned volume: %s') % unicode(e))
             raise
 
     def create_export(self, context, volume):
@@ -266,7 +267,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def initialize_connection(self, volume, connector):
         lunNumber = self._get_lun_from_name(volume['name'])
-        rsp = self.restapi.get('iscsi?number=' + str(lunNumber))
 
         target_portal = self.restapi_host + ':' + \
             str(self.configuration.nexenta_iscsi_target_portal_port)
@@ -275,7 +275,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'data': {
                 'bucket_path': self.bucket_path,
                 'target_discovered': True,
-                'target_lun': rsp['luns'][0]['number'],
+                'target_lun': lunNumber,
                 'target_iqn': self.target_name,
                 'target_portal': target_portal,
                 'volume_id': volume['id'],
