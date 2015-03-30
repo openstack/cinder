@@ -479,7 +479,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
     @utils.synchronized('smbfs', external=False)
     def create_volume_from_snapshot(self, volume, snapshot):
-        self._create_volume_from_snapshot(volume, snapshot)
+        return self._create_volume_from_snapshot(volume, snapshot)
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
         """Copy data from snapshot to destination volume.
@@ -551,7 +551,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     @utils.synchronized('smbfs', external=False)
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        self._create_cloned_volume(volume, src_vref)
+        return self._create_cloned_volume(volume, src_vref)
 
     def _ensure_share_mounted(self, smbfs_share):
         mnt_flags = []
