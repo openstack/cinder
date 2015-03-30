@@ -428,7 +428,6 @@ class V6000FCPDriverTestCase(test.TestCase):
     def test_build_initiator_target_map(self):
         """Successfully build a map when zoning is enabled."""
         expected_targ_wwns = FC_TARGET_WWPNS
-        expected_init_targ_map = FC_INITIATOR_TARGET_MAP
 
         self.driver.lookup_service = mock.Mock()
         self.driver.lookup_service.get_device_mapping_from_network.\
@@ -440,7 +439,18 @@ class V6000FCPDriverTestCase(test.TestCase):
         self.driver.lookup_service.get_device_mapping_from_network.\
             assert_called_with(CONNECTOR['wwpns'], self.driver.gateway_fc_wwns)
         self.assertEqual(set(expected_targ_wwns), set(targ_wwns))
-        self.assertEqual(expected_init_targ_map, init_targ_map)
+
+        i = FC_INITIATOR_WWPNS[0]
+        self.assertIn(FC_TARGET_WWPNS[0], init_targ_map[i])
+        self.assertIn(FC_TARGET_WWPNS[1], init_targ_map[i])
+        self.assertEqual(2, len(init_targ_map[i]))
+
+        i = FC_INITIATOR_WWPNS[1]
+        self.assertIn(FC_TARGET_WWPNS[2], init_targ_map[i])
+        self.assertIn(FC_TARGET_WWPNS[3], init_targ_map[i])
+        self.assertEqual(2, len(init_targ_map[i]))
+
+        self.assertEqual(2, len(init_targ_map))
 
     def test_build_initiator_target_map_no_lookup_service(self):
         """Successfully build a map when zoning is disabled."""
