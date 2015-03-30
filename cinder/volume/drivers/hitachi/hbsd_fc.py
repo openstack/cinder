@@ -505,7 +505,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         self.do_setup_status.wait()
-        if (volume['instance_uuid'] or volume['attached_host']):
+        if volume['volume_attachment']:
             desc = 'volume %s' % volume['id']
             msg = basic_lib.output_err(660, desc=desc)
             raise exception.HBSDError(message=msg)
