@@ -22,8 +22,10 @@ import re
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 
+from cinder.brick import exception
 from cinder.brick import executor
-from cinder.i18n import _, _LW
+from cinder.i18n import _, _LW, _LE
+from cinder.openstack.common import loopingcall
 
 LOG = logging.getLogger(__name__)
 
@@ -64,6 +66,36 @@ class LinuxSCSI(executor.Executor):
 
             LOG.debug("Remove SCSI device(%s) with %s" % (device, path))
             self.echo_scsi_command(path, "1")
+
+    def wait_for_volume_removal(self, volume_path):
+        """This is used to ensure that volumes are gone."""
+
+        def _wait_for_volume_removal(volume_path):
+            LOG.debug("Waiting for SCSI mount point %s to be removed.",
+                      volume_path)
+            if os.path.exists(volume_path):
+                if self.tries >= self.scan_attempts:
+                    msg = _LE("Exceeded the number of attempts to detect "
+                              "volume removal.")
+                    LOG.error(msg)
+                    raise exception.VolumePathNotRemoved(
+                        volume_path=volume_path)
+
+                LOG.debug("%(path)s still exists, rescanning. Try number: "
+                          "%(tries)s",
+                          {'path': volume_path, 'tries': self.tries})
+                self.tries = self.tries + 1
+            else:
+                LOG.debug("SCSI mount point %s has been removed.", volume_path)
+                raise loopingcall.LoopingCallDone()
+
+        # Setup a loop here to give the kernel time
+        # to remove the volume from /dev/disk/by-path/
+        self.tries = 0
+        self.scan_attempts = 3
+        timer = loopingcall.FixedIntervalLoopingCall(
+            _wait_for_volume_removal, volume_path)
+        timer.start(interval=2).wait()
 
     def get_device_info(self, device):
         (out, _err) = self._execute('sg_scan', device, run_as_root=True,
