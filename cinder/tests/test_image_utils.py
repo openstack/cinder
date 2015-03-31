@@ -381,6 +381,7 @@ class TestUploadVolume(test.TestCase):
         mock_os.name = 'posix'
         data = mock_info.return_value
         data.file_format = mock.sentinel.disk_format
+        data.backing_file = None
         temp_file = mock_temp.return_value.__enter__.return_value
 
         output = image_utils.upload_volume(ctxt, image_service, image_meta,
@@ -391,7 +392,8 @@ class TestUploadVolume(test.TestCase):
                                              temp_file,
                                              mock.sentinel.disk_format,
                                              run_as_root=True)
-        mock_info.assert_called_once_with(temp_file, run_as_root=True)
+        mock_info.assert_called_with(temp_file, run_as_root=True)
+        self.assertEqual(mock_info.call_count, 2)
         mock_open.assert_called_once_with(temp_file, 'rb')
         image_service.update.assert_called_once_with(
             ctxt, image_meta['id'], {},
@@ -470,6 +472,7 @@ class TestUploadVolume(test.TestCase):
         mock_os.name = 'posix'
         data = mock_info.return_value
         data.file_format = mock.sentinel.other_disk_format
+        data.backing_file = None
         temp_file = mock_temp.return_value.__enter__.return_value
 
         self.assertRaises(exception.ImageUnacceptable,
@@ -479,7 +482,8 @@ class TestUploadVolume(test.TestCase):
                                              temp_file,
                                              mock.sentinel.disk_format,
                                              run_as_root=True)
-        mock_info.assert_called_once_with(temp_file, run_as_root=True)
+        mock_info.assert_called_with(temp_file, run_as_root=True)
+        self.assertEqual(mock_info.call_count, 2)
         self.assertFalse(image_service.update.called)
 
 
