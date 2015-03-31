@@ -396,6 +396,10 @@ class TestUtils(test.TestCase):
         m = self._mox
         m.StubOutWithMock(utils, 'execute')
 
+        utils.execute(
+            'env', 'LC_ALL=C', 'qemu-img', 'info',
+            mox.IgnoreArg(), run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored'))
         utils.execute('qemu-img', 'convert', '-O', 'qcow2',
                       mox.IgnoreArg(), mox.IgnoreArg(), run_as_root=True)
         utils.execute(
@@ -434,6 +438,10 @@ class TestUtils(test.TestCase):
         m = self._mox
         m.StubOutWithMock(utils, 'execute')
 
+        utils.execute(
+            'env', 'LC_ALL=C', 'qemu-img', 'info',
+            mox.IgnoreArg(), run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored'))
         utils.execute('qemu-img', 'convert', '-O', 'qcow2',
                       mox.IgnoreArg(), mox.IgnoreArg(), run_as_root=True)
         utils.execute(
