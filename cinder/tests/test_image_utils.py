@@ -462,6 +462,10 @@ class TestUtils(test.TestCase):
         volume_utils.setup_blkio_cgroup(mox.IgnoreArg(), mox.IgnoreArg(),
                                         bps_limit).AndReturn(prefix)
 
+        utils.execute(
+            'env', 'LC_ALL=C', 'qemu-img', 'info',
+            mox.IgnoreArg(), run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored'))
         utils.execute(*cmd, run_as_root=True)
         utils.execute(
             'env', 'LC_ALL=C', 'qemu-img', 'info',
@@ -497,6 +501,11 @@ class TestUtils(test.TestCase):
 
         volume_utils.setup_blkio_cgroup(mox.IgnoreArg(), mox.IgnoreArg(),
                                         bps_limit).AndReturn(prefix)
+
+        utils.execute(
+            'env', 'LC_ALL=C', 'qemu-img', 'info',
+            mox.IgnoreArg(), run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored'))
         utils.execute(*cmd, run_as_root=True)
         utils.execute(
             'env', 'LC_ALL=C', 'qemu-img', 'info',
@@ -534,6 +543,10 @@ class TestUtils(test.TestCase):
         m.StubOutWithMock(utils, 'execute')
         m.StubOutWithMock(volume_utils, 'check_for_odirect_support')
 
+        utils.execute(
+            'env', 'LC_ALL=C', 'qemu-img', 'info',
+            mox.IgnoreArg(), run_as_root=True).AndReturn(
+                (TEST_RET, 'ignored'))
         utils.execute('qemu-img', 'convert', '-O', 'qcow2',
                       mox.IgnoreArg(), mox.IgnoreArg(), run_as_root=True)
         utils.execute(
