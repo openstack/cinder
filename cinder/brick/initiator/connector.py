@@ -645,7 +645,7 @@ class ISCSIConnector(InitiatorConnector):
                                 check_exit_code=[0, 1, 21, 255])
 
     def _rescan_multipath(self):
-        self._run_multipath('-r', check_exit_code=[0, 1, 21])
+        self._run_multipath(['-r'], check_exit_code=[0, 1, 21])
 
 
 class ISERConnector(ISCSIConnector):
