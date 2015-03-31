@@ -63,6 +63,11 @@ class Service(BASE, CinderBase):
     disabled = Column(Boolean, default=False)
     availability_zone = Column(String(255), default='cinder')
     disabled_reason = Column(String(255))
+    # adding column modified_at to contain timestamp
+    # for manual enable/disable of cinder services
+    # updated_at column will now contain timestamps for
+    # periodic updates
+    modified_at = Column(DateTime)
 
 
 class ConsistencyGroup(BASE, CinderBase):

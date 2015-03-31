@@ -807,6 +807,16 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(volumes.c.mountpoint.type,
                               sqlalchemy.types.VARCHAR)
 
+    def _check_041(self, engine, data):
+        """Test that adding modified_at column works correctly."""
+        services = db_utils.get_table(engine, 'services')
+        self.assertIsInstance(services.c.modified_at.type,
+                              self.TIME_TYPE)
+
+    def _post_downgrade_041(self, engine):
+        services = db_utils.get_table(engine, 'services')
+        self.assertNotIn('modified_at', services.c)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 

@@ -37,7 +37,8 @@ fake_services_list = [
      'disabled': True,
      'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
      'created_at': datetime.datetime(2012, 9, 18, 2, 46, 27),
-     'disabled_reason': 'test1'},
+     'disabled_reason': 'test1',
+     'modified_at': ''},
     {'binary': 'cinder-volume',
      'host': 'host1',
      'availability_zone': 'cinder',
@@ -45,7 +46,8 @@ fake_services_list = [
      'disabled': True,
      'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 5),
      'created_at': datetime.datetime(2012, 9, 18, 2, 46, 27),
-     'disabled_reason': 'test2'},
+     'disabled_reason': 'test2',
+     'modified_at': ''},
     {'binary': 'cinder-scheduler',
      'host': 'host2',
      'availability_zone': 'cinder',
@@ -53,7 +55,8 @@ fake_services_list = [
      'disabled': False,
      'updated_at': datetime.datetime(2012, 9, 19, 6, 55, 34),
      'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28),
-     'disabled_reason': ''},
+     'disabled_reason': '',
+     'modified_at': ''},
     {'binary': 'cinder-volume',
      'host': 'host2',
      'availability_zone': 'cinder',
@@ -61,7 +64,27 @@ fake_services_list = [
      'disabled': True,
      'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
      'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28),
-     'disabled_reason': 'test4'}, ]
+     'disabled_reason': 'test4',
+     'modified_at': ''},
+    {'binary': 'cinder-volume',
+     'host': 'host2',
+     'availability_zone': 'cinder',
+     'id': 5,
+     'disabled': True,
+     'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
+     'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28),
+     'disabled_reason': 'test5',
+     'modified_at': datetime.datetime(2012, 10, 29, 13, 42, 5)},
+    {'binary': 'cinder-volume',
+     'host': 'host2',
+     'availability_zone': 'cinder',
+     'id': 6,
+     'disabled': False,
+     'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
+     'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28),
+     'disabled_reason': '',
+     'modified_at': datetime.datetime(2012, 9, 18, 8, 1, 38)},
+]
 
 
 class FakeRequest(object):
@@ -175,6 +198,18 @@ class ServicesTest(test.TestCase):
                                   'zone': 'cinder',
                                   'status': 'disabled', 'state': 'down',
                                   'updated_at': datetime.datetime(
+                                      2012, 9, 18, 8, 3, 38)},
+                                 {'binary': 'cinder-volume',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'disabled', 'state': 'down',
+                                  'updated_at': datetime.datetime(
+                                      2012, 10, 29, 13, 42, 5)},
+                                 {'binary': 'cinder-volume',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'enabled', 'state': 'down',
+                                  'updated_at': datetime.datetime(
                                       2012, 9, 18, 8, 3, 38)}]}
         self.assertEqual(res_dict, response)
 
@@ -209,7 +244,21 @@ class ServicesTest(test.TestCase):
                                   'status': 'disabled', 'state': 'down',
                                   'updated_at': datetime.datetime(
                                       2012, 9, 18, 8, 3, 38),
-                                  'disabled_reason': 'test4'}]}
+                                  'disabled_reason': 'test4'},
+                                 {'binary': 'cinder-volume',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'disabled', 'state': 'down',
+                                  'updated_at': datetime.datetime(
+                                      2012, 10, 29, 13, 42, 5),
+                                  'disabled_reason': 'test5'},
+                                 {'binary': 'cinder-volume',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'enabled', 'state': 'down',
+                                  'updated_at': datetime.datetime(
+                                      2012, 9, 18, 8, 3, 38),
+                                  'disabled_reason': ''}]}
         self.assertEqual(res_dict, response)
 
     def test_services_list_with_host(self):
@@ -272,6 +321,20 @@ class ServicesTest(test.TestCase):
              'status': 'disabled',
              'state': 'down',
              'updated_at': datetime.datetime(2012, 9, 18,
+                                             8, 3, 38)},
+            {'binary': 'cinder-volume',
+             'host': 'host2',
+             'zone': 'cinder',
+             'status': 'disabled',
+             'state': 'down',
+             'updated_at': datetime.datetime(2012, 10, 29,
+                                             13, 42, 5)},
+            {'binary': 'cinder-volume',
+             'host': 'host2',
+             'zone': 'cinder',
+             'status': 'enabled',
+             'state': 'down',
+             'updated_at': datetime.datetime(2012, 9, 18,
                                              8, 3, 38)}]}
         self.assertEqual(res_dict, response)
 
@@ -297,7 +360,23 @@ class ServicesTest(test.TestCase):
              'state': 'down',
              'updated_at': datetime.datetime(2012, 9, 18,
                                              8, 3, 38),
-             'disabled_reason': 'test4'}]}
+             'disabled_reason': 'test4'},
+            {'binary': 'cinder-volume',
+             'host': 'host2',
+             'zone': 'cinder',
+             'status': 'disabled',
+             'state': 'down',
+             'updated_at': datetime.datetime(2012, 10, 29,
+                                             13, 42, 5),
+             'disabled_reason': 'test5'},
+            {'binary': 'cinder-volume',
+             'host': 'host2',
+             'zone': 'cinder',
+             'status': 'enabled',
+             'state': 'down',
+             'updated_at': datetime.datetime(2012, 9, 18,
+                                             8, 3, 38),
+             'disabled_reason': ''}]}
         self.assertEqual(res_dict, response)
 
     def test_services_list_with_binary(self):
@@ -316,6 +395,20 @@ class ServicesTest(test.TestCase):
              'host': 'host2',
              'zone': 'cinder',
              'status': 'disabled',
+             'state': 'down',
+             'updated_at': datetime.datetime(2012, 9, 18,
+                                             8, 3, 38)},
+            {'binary': 'cinder-volume',
+             'host': 'host2',
+             'zone': 'cinder',
+             'status': 'disabled',
+             'state': 'down',
+             'updated_at': datetime.datetime(2012, 10, 29,
+                                             13, 42, 5)},
+            {'binary': 'cinder-volume',
+             'host': 'host2',
+             'zone': 'cinder',
+             'status': 'enabled',
              'state': 'down',
              'updated_at': datetime.datetime(2012, 9, 18,
                                              8, 3, 38)}]}
@@ -343,7 +436,23 @@ class ServicesTest(test.TestCase):
              'state': 'down',
              'updated_at': datetime.datetime(2012, 9, 18,
                                              8, 3, 38),
-             'disabled_reason': 'test4'}]}
+             'disabled_reason': 'test4'},
+            {'binary': 'cinder-volume',
+             'host': 'host2',
+             'zone': 'cinder',
+             'status': 'disabled',
+             'state': 'down',
+             'updated_at': datetime.datetime(2012, 10, 29,
+                                             13, 42, 5),
+             'disabled_reason': 'test5'},
+            {'binary': 'cinder-volume',
+             'host': 'host2',
+             'zone': 'cinder',
+             'status': 'enabled',
+             'state': 'down',
+             'updated_at': datetime.datetime(2012, 9, 18,
+                                             8, 3, 38),
+             'disabled_reason': ''}]}
         self.assertEqual(res_dict, response)
 
     def test_services_list_with_host_service(self):
