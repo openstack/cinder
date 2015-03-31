@@ -312,8 +312,7 @@ def fetch_to_volume_format(context, image_service,
         # check via 'qemu-img info' that what we copied was in fact a raw
         # image and not a different format with a backing file, which may be
         # malicious.
-        LOG.debug("%s was %s, converting to %s ", (image_id, fmt,
-                                                   volume_format))
+        LOG.debug("%s was %s, converting to %s ", image_id, fmt, volume_format)
         convert_image(tmp, dest, volume_format,
                       run_as_root=run_as_root)
 
