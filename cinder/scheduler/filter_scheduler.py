@@ -289,6 +289,9 @@ class FilterScheduler(driver.Scheduler):
         multiattach = volume_properties.get('multiattach', False)
         if multiattach and 'multiattach' not in resource_type.get(
                 'extra_specs', {}):
+            if 'extra_specs' not in resource_type:
+                resource_type['extra_specs'] = {}
+
             resource_type['extra_specs'].update(
                 multiattach='<is> True')
 
