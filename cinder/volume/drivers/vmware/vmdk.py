@@ -1171,13 +1171,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 vm_import_spec=vm_import_spec,
                 image_size=image_size)
         except (exceptions.VimException,
-                exceptions.VMwareDriverException) as excep:
+                exceptions.VMwareDriverException):
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Exception in copy_image_to_volume: %s."),
-                              excep)
+                LOG.exception(_LE("Error occurred while copying image: %(id)s "
+                                  "to volume: %(vol)s."),
+                              {'id': image_id, 'vol': volume['name']})
                 backing = self.volumeops.get_backing(volume['name'])
                 if backing:
-                    LOG.exception(_LE("Deleting the backing: %s"), backing)
                     # delete the backing
                     self.volumeops.delete_backing(backing)
 
@@ -1271,10 +1271,11 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                     context, volume, image_service, image_id,
                     image_size_in_bytes, image_adapter_type, image_disk_type)
         except (exceptions.VimException,
-                exceptions.VMwareDriverException) as excep:
+                exceptions.VMwareDriverException):
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Exception in copying the image to the "
-                                  "volume: %s."), excep)
+                LOG.exception(_LE("Error occurred while copying image: %(id)s "
+                                  "to volume: %(vol)s."),
+                              {'id': image_id, 'vol': volume['name']})
 
         LOG.debug("Volume: %(id)s created from image: %(image_id)s.",
                   {'id': volume['id'],
