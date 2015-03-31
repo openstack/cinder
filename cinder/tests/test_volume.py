@@ -326,6 +326,45 @@ class VolumeTestCase(BaseVolumeTestCase):
             manager.init_host()
         self.assertEqual(0, mock_add_p_task.call_count)
 
+    def test_create_volume_fails_with_creating_and_downloading_status(self):
+        """Test init_host in case of volume.
+
+        While the status of volume is 'creating' or 'downloading',
+        volume process down.
+        After process restarting this 'creating' status is changed to 'error'.
+        """
+        for status in ['creating', 'downloading']:
+            volume = tests_utils.create_volume(self.context, status=status,
+                                               size=0, host=CONF.host)
+
+            volume_id = volume['id']
+            self.volume.init_host()
+            volume = db.volume_get(context.get_admin_context(), volume_id)
+            self.assertEqual('error', volume['status'])
+            self.volume.delete_volume(self.context, volume_id)
+
+    def test_create_snapshot_fails_with_creating_status(self):
+        """Test init_host in case of snapshot.
+
+        While the status of snapshot is 'creating', volume process
+        down. After process restarting this 'creating' status is
+        changed to 'error'.
+        """
+        volume = tests_utils.create_volume(self.context,
+                                           **self.volume_params)
+        snapshot = tests_utils.create_snapshot(self.context,
+                                               volume['id'],
+                                               status='creating')
+        snap_id = snapshot['id']
+        self.volume.init_host()
+
+        snapshot_obj = objects.Snapshot.get_by_id(self.context, snap_id)
+
+        self.assertEqual('error', snapshot_obj.status)
+
+        self.volume.delete_snapshot(self.context, snapshot_obj)
+        self.volume.delete_volume(self.context, volume['id'])
+
     @mock.patch.object(QUOTAS, 'reserve')
     @mock.patch.object(QUOTAS, 'commit')
     @mock.patch.object(QUOTAS, 'rollback')
