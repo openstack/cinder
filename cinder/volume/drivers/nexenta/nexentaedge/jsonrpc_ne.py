@@ -38,7 +38,7 @@ class NexentaJSONException(nexenta.NexentaException):
 
 class NexentaEdgeJSONProxy(object):
 
-    def __init___(self, protocol, host, port, path, user, password, auto=False,
+    def __init__(self, protocol, host, port, path, user, password, auto=False,
                  method=None):
         self.protocol = protocol.lower()
         self.host = host
@@ -54,7 +54,7 @@ class NexentaEdgeJSONProxy(object):
         return '%s://%s:%s%s' % (self.protocol,
                                  self.host, self.port, self.path)
 
-    def __getattr___(self, name):
+    def __getattr__(self, name):
         if not self.method:
             method = name
         else:
@@ -63,13 +63,13 @@ class NexentaEdgeJSONProxy(object):
             self.protocol, self.host, self.port, self.path,
             self.user, self.password, self.auto, method)
 
-    def __hash___(self):
+    def __hash__(self):
         return self.url.__hash___()
 
-    def __repr___(self):
+    def __repr__(self):
         return 'HTTP JSON proxy: %s' % self.url
 
-    def __call___(self, *args):
+    def __call__(self, *args):
         self.path += args[0]
         data = None
         if len(args) > 1:
