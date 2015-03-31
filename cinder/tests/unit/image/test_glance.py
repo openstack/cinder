@@ -610,10 +610,6 @@ class TestGlanceImageService(test.TestCase):
         config.glance_api_version = 2
         config.glance_num_retries = 0
 
-        attributes = ['size', 'disk_format', 'owner', 'container_format',
-                      'checksum', 'id', 'name', 'created_at', 'updated_at',
-                      'deleted', 'status', 'min_disk', 'min_ram', 'is_public']
-
         metadata = {
             'id': 1,
             'size': 2,
@@ -623,23 +619,13 @@ class TestGlanceImageService(test.TestCase):
             'ramdisk_id': 'bar',
         }
 
-        class FakeSchema(object):
-
-            def __init__(self, base):
-                self.base = base
-
-            def is_base_property(self, key):
-                if key in self.base:
-                    return True
-                else:
-                    return False
-
         image = glance_stubs.FakeImage(metadata)
         client = glance_stubs.StubGlanceClient()
 
         service = self._create_image_service(client)
-        service._image_schema = FakeSchema(attributes)
-        actual = service._translate_from_glance(image)
+        service._image_schema = glance_stubs.FakeSchema()
+
+        actual = service._translate_from_glance('fake_context', image)
         expected = {
             'id': 1,
             'name': None,
@@ -651,7 +637,6 @@ class TestGlanceImageService(test.TestCase):
             'container_format': None,
             'checksum': None,
             'deleted': None,
-            'deleted_at': None,
             'status': None,
             'properties': {'kernel_id': 'foo',
                            'ramdisk_id': 'bar'},

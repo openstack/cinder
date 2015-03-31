@@ -161,9 +161,7 @@ class GlanceClientWrapper(object):
         If we get a connection error,
         retry the request according to CONF.glance_num_retries.
         """
-        version = self.version
-        if 'version' in kwargs:
-            version = kwargs['version']
+        version = kwargs.pop('version', self.version)
 
         retry_excs = (glanceclient.exc.ServiceUnavailable,
                       glanceclient.exc.InvalidEndpoint,
@@ -174,7 +172,9 @@ class GlanceClientWrapper(object):
             client = self.client or self._create_onetime_client(context,
                                                                 version)
             try:
-                return getattr(client.images, method)(*args, **kwargs)
+                controller = getattr(client,
+                                     kwargs.pop('controller', 'images'))
+                return getattr(controller, method)(*args, **kwargs)
             except retry_excs as e:
                 netloc = self.netloc
                 extra = "retrying"
@@ -199,6 +199,7 @@ class GlanceImageService(object):
 
     def __init__(self, client=None):
         self._client = client or GlanceClientWrapper()
+        self._image_schema = None
 
     def detail(self, context, **kwargs):
         """Calls out to Glance for a list of detailed image information."""
@@ -211,7 +212,7 @@ class GlanceImageService(object):
         _images = []
         for image in images:
             if self._is_image_available(context, image):
-                _images.append(self._translate_from_glance(image))
+                _images.append(self._translate_from_glance(context, image))
 
         return _images
 
@@ -240,7 +241,7 @@ class GlanceImageService(object):
         if not self._is_image_available(context, image):
             raise exception.ImageNotFound(image_id=image_id)
 
-        base_image_meta = self._translate_from_glance(image)
+        base_image_meta = self._translate_from_glance(context, image)
         return base_image_meta
 
     def get_location(self, context, image_id):
@@ -305,7 +306,7 @@ class GlanceImageService(object):
         recv_service_image_meta = self._client.call(context, 'create',
                                                     **sent_service_image_meta)
 
-        return self._translate_from_glance(recv_service_image_meta)
+        return self._translate_from_glance(context, recv_service_image_meta)
 
     def update(self, context, image_id,
                image_meta, data=None, purge_props=True):
@@ -330,7 +331,7 @@ class GlanceImageService(object):
         except Exception:
             _reraise_translated_image_exception(image_id)
         else:
-            return self._translate_from_glance(image_meta)
+            return self._translate_from_glance(context, image_meta)
 
     def delete(self, context, image_id):
         """Delete the given image.
@@ -345,17 +346,45 @@ class GlanceImageService(object):
             raise exception.ImageNotFound(image_id=image_id)
         return True
 
+    def _translate_from_glance(self, context, image):
+        """Get image metadata from glance image.
+
+        Extract metadata from image and convert it's properties
+        to type cinder expected.
+
+        :param image: glance image object
+        :return: image metadata dictionary
+        """
+        if CONF.glance_api_version == 2:
+            if self._image_schema is None:
+                self._image_schema = self._client.call(context, 'get',
+                                                       controller='schemas',
+                                                       schema_name='image',
+                                                       version=2)
+            # NOTE(aarefiev): get base image property, store image 'schema'
+            #                 is redundant, so ignore it.
+            image_meta = {key: getattr(image, key)
+                          for key in image.keys()
+                          if self._image_schema.is_base_property(key) is True
+                          and key != 'schema'}
+
+            # NOTE(aarefiev): nova is expected that all image properties
+            # (custom or defined in schema-image.json) stores in
+            # 'properties' key.
+            image_meta['properties'] = {
+                key: getattr(image, key) for key in image.keys()
+                if self._image_schema.is_base_property(key) is False}
+        else:
+            image_meta = _extract_attributes(image)
+
+        image_meta = _convert_timestamps_to_datetimes(image_meta)
+        image_meta = _convert_from_string(image_meta)
+        return image_meta
+
     @staticmethod
     def _translate_to_glance(image_meta):
         image_meta = _convert_to_string(image_meta)
         image_meta = _remove_read_only(image_meta)
-        return image_meta
-
-    @staticmethod
-    def _translate_from_glance(image):
-        image_meta = _extract_attributes(image)
-        image_meta = _convert_timestamps_to_datetimes(image_meta)
-        image_meta = _convert_from_string(image_meta)
         return image_meta
 
     @staticmethod
