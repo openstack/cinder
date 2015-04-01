@@ -467,7 +467,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 _run_flow()
             else:
                 _run_flow_locked()
-        except exception.CinderException as e:
+        except Exception as e:
             if hasattr(e, 'rescheduled'):
                 rescheduled = e.rescheduled
             raise
