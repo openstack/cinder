@@ -19,14 +19,16 @@ import mock
 
 from cinder import exception
 from cinder import test
+from cinder import utils
 from cinder.volume.drivers import remotefs
 
 
 class RemoteFsSnapDriverTestCase(test.TestCase):
 
     _FAKE_CONTEXT = 'fake_context'
-    _FAKE_VOLUME_NAME = 'volume-4f711859-4928-4cb7-801a-a50c37ceaccc'
-    _FAKE_VOLUME = {'id': '4f711859-4928-4cb7-801a-a50c37ceaccc',
+    _FAKE_VOLUME_ID = '4f711859-4928-4cb7-801a-a50c37ceaccc'
+    _FAKE_VOLUME_NAME = 'volume-%s' % _FAKE_VOLUME_ID
+    _FAKE_VOLUME = {'id': _FAKE_VOLUME_ID,
                     'size': 1,
                     'provider_location': 'fake_share',
                     'name': _FAKE_VOLUME_NAME,
@@ -295,3 +297,56 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidVolume,
                           self._driver._create_snapshot,
                           fake_snapshot)
+
+    @mock.patch.object(utils, 'synchronized')
+    def _locked_volume_operation_test_helper(self, mock_synchronized, func,
+                                             expected_exception=False,
+                                             *args, **kwargs):
+        def mock_decorator(*args, **kwargs):
+            def mock_inner(f):
+                return f
+            return mock_inner
+
+        mock_synchronized.side_effect = mock_decorator
+        expected_lock = '%s-%s' % (self._driver.driver_prefix,
+                                   self._FAKE_VOLUME_ID)
+
+        if expected_exception:
+            self.assertRaises(expected_exception, func,
+                              self._driver,
+                              *args, **kwargs)
+        else:
+            ret_val = func(self._driver, *args, **kwargs)
+
+            mock_synchronized.assert_called_with(expected_lock,
+                                                 external=False)
+            self.assertEqual(mock.sentinel.ret_val, ret_val)
+
+    def test_locked_volume_id_operation(self):
+        mock_volume = {'id': self._FAKE_VOLUME_ID}
+
+        @remotefs.locked_volume_id_operation
+        def synchronized_func(inst, volume):
+            return mock.sentinel.ret_val
+
+        self._locked_volume_operation_test_helper(func=synchronized_func,
+                                                  volume=mock_volume)
+
+    def test_locked_volume_id_snapshot_operation(self):
+        mock_snapshot = {'volume': {'id': self._FAKE_VOLUME_ID}}
+
+        @remotefs.locked_volume_id_operation
+        def synchronized_func(inst, snapshot):
+            return mock.sentinel.ret_val
+
+        self._locked_volume_operation_test_helper(func=synchronized_func,
+                                                  snapshot=mock_snapshot)
+
+    def test_locked_volume_id_operation_exception(self):
+        @remotefs.locked_volume_id_operation
+        def synchronized_func(inst):
+            return mock.sentinel.ret_val
+
+        self._locked_volume_operation_test_helper(
+            func=synchronized_func,
+            expected_exception=exception.VolumeBackendAPIException)
