@@ -1611,6 +1611,19 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def fake_is_v3(self, conn, serialNumber):
         return False
 
+    def test_format_system_name(self):
+        v2array = ['SYMMETRIX', '000195900551', 'U', 'gold']
+        systemnameV2 = self.driver.utils._format_system_name(v2array[0],
+                                                             v2array[1],
+                                                             '+')
+        self.assertEqual('SYMMETRIX+000195900551', systemnameV2)
+
+        v3array = ['SYMMETRIX', '000197200056', 'SRP_1']
+        systemnameV3 = self.driver.utils._format_system_name(v3array[0],
+                                                             v3array[1],
+                                                             '-+-')
+        self.assertEqual('SYMMETRIX-+-000197200056', systemnameV3)
+
     def test_wait_for_job_complete(self):
         myjob = SE_ConcreteJob()
         myjob.classname = 'SE_ConcreteJob'
