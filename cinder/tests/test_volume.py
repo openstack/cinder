@@ -416,6 +416,27 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
+    def test_create_non_cinder_exception_rescheduling(self):
+        params = self.volume_params
+        del params['host']
+        volume = tests_utils.create_volume(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            **params)
+
+        volume_id = volume['id']
+        with mock.patch.object(self.volume.driver, 'create_volume',
+                               side_effect=processutils.ProcessExecutionError):
+            self.assertRaises(processutils.ProcessExecutionError,
+                              self.volume.create_volume,
+                              self.context, volume_id,
+                              {'volume_properties': params})
+        # NOTE(dulek): Volume should be rescheduled as we passed request_spec,
+        # assert that it wasn't counted in allocated_capacity tracking.
+        self.assertEqual(self.volume.stats['pools'], {})
+
+        db.volume_destroy(context.get_admin_context(), volume_id)
+
     @mock.patch.object(QUOTAS, 'rollback')
     @mock.patch.object(QUOTAS, 'commit')
     @mock.patch.object(QUOTAS, 'reserve')
