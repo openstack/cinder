@@ -114,6 +114,15 @@ DATA_IN_VOLUME_VG = {'id': 'abc123',
                      'status': 'available',
                      'host': "hostname@backend#%s" % POOLUUID}
 
+DATA_IN_REMOVE_VOLUME_VG = {
+    'id': 'fe2dbc515810451dab2f8c8a48d15bee',
+    'display_name': 'fe2dbc515810451dab2f8c8a48d15bee',
+    'display_description': '',
+    'size': 1,
+    'consistencygroup_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
+    'status': 'available',
+    'host': "hostname@backend#%s" % POOLUUID}
+
 DATA_IN_VOLUME1 = {'id': 'abc456',
                    'display_name': 'abc456',
                    'display_description': '',
@@ -138,6 +147,42 @@ DATA_OUT_SNAPSHOT_CG = {
     'display_name': 'snapshot1',
     'display_description': '',
     'cgsnapshot_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee'}
+
+DATA_OUT_CG = {
+    "objectType": "application/cdmi-container",
+    "objectID": "fe2dbc515810451dab2f8c8a48d15bee",
+    "objectName": "<new_volume_group_uuid>",
+    "parentURI": "/dpl_volgroup",
+    "parentID": "fe2dbc515810451dab2f8c8a48d15bee",
+    "domainURI": "",
+    "capabilitiesURI": "",
+    "completionStatus": "Complete",
+    "percentComplete": 100,
+    "metadata":
+    {
+        "type": "volume|snapshot|replica",
+        "volume_group_uuid": "<volume_group_uuid>",
+        "origin_uuid": "<origin_uuid>",
+        "snapshot_uuid": "<snapshot_uuid>",
+        "display_name": "<display name>",
+        "display_description": "<display description>",
+        "ctime": 12345678,
+        "total_capacity": 1024,
+        "snapshot_used_capacity": 0,
+        "maximum_snapshot": 1024,
+        "snapshot_quota": 0,
+        "state": "<state>",
+        "properties":
+        {
+            "snapshot_rotation": True,
+        }
+    },
+    "childrenrange": "<range>",
+    "children":
+    [
+        "fe2dbc515810451dab2f8c8a48d15bee",
+    ],
+}
 
 
 class TestProphetStorDPLVolume(test.TestCase):
@@ -290,8 +335,8 @@ class TestProphetStorDPLVolume(test.TestCase):
         metadata = {}
         params = {}
         metadata['display_name'] = DATA_IN_SNAPSHOT['display_name']
-        metadata['display_description'] = \
-            DATA_IN_SNAPSHOT['display_description']
+        metadata['display_description'] = (
+            DATA_IN_SNAPSHOT['display_description'])
         params['metadata'] = metadata
         params['snapshot'] = DATA_IN_SNAPSHOT['id']
 
@@ -640,8 +685,8 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.assertDictMatch({'status': 'available'}, model_update)
 
     def test_delete_consistency_group(self):
-        self.DB_MOCK.volume_get_all_by_group.return_value = \
-            [DATA_IN_VOLUME_VG]
+        self.DB_MOCK.volume_get_all_by_group.return_value = (
+            [DATA_IN_VOLUME_VG])
         self.DPL_MOCK.delete_vdev.return_value = DATA_OUTPUT
         self.DPL_MOCK.delete_cg.return_value = DATA_OUTPUT
         model_update, volumes = self.dpldriver.delete_consistencygroup(
@@ -652,17 +697,59 @@ class TestProphetStorDPLDriver(test.TestCase):
             self._conver_uuid2hex((DATA_IN_VOLUME_VG['id'])))
         self.assertDictMatch({'status': 'deleted'}, model_update, )
 
+    def test_update_consistencygroup(self):
+        self.DPL_MOCK.get_vg.return_value = (0, DATA_OUT_CG)
+        self.DPL_MOCK.join_vg.return_value = DATA_OUTPUT
+        self.DPL_MOCK.leave_vg.return_value = DATA_OUTPUT
+        add_vol = DATA_IN_VOLUME_VG
+        remove_vol = DATA_IN_REMOVE_VOLUME_VG
+        (model_update, add_vols, remove_vols) = (
+            self.dpldriver.update_consistencygroup(self.context,
+                                                   DATA_IN_GROUP,
+                                                   [add_vol],
+                                                   [remove_vol]))
+        self.DPL_MOCK.join_vg.assert_called_once_with(
+            self._conver_uuid2hex(add_vol['id']),
+            self._conver_uuid2hex(DATA_IN_GROUP['id']))
+        self.DPL_MOCK.leave_vg.assert_called_once_with(
+            self._conver_uuid2hex(remove_vol['id']),
+            self._conver_uuid2hex(DATA_IN_GROUP['id']))
+        self.assertDictMatch({'status': 'available'}, model_update)
+
+    def test_update_consistencygroup_exception_join(self):
+        self.DPL_MOCK.get_vg.return_value = (0, DATA_OUT_CG)
+        self.DPL_MOCK.join_vg.return_value = -1, None
+        self.DPL_MOCK.leave_vg.return_value = DATA_OUTPUT
+        add_vol = DATA_IN_VOLUME_VG
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.dpldriver.update_consistencygroup,
+                          context=None,
+                          group=DATA_IN_GROUP,
+                          add_volumes=[add_vol],
+                          remove_volumes=None)
+
+    def test_update_consistencygroup_exception_leave(self):
+        self.DPL_MOCK.get_vg.return_value = (0, DATA_OUT_CG)
+        self.DPL_MOCK.leave_vg.return_value = -1, None
+        remove_vol = DATA_IN_REMOVE_VOLUME_VG
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.dpldriver.update_consistencygroup,
+                          context=None,
+                          group=DATA_IN_GROUP,
+                          add_volumes=None,
+                          remove_volumes=[remove_vol])
+
     def test_create_consistency_group_snapshot(self):
-        self.DB_MOCK.snapshot_get_all_for_cgsnapshot.return_value = \
-            [DATA_OUT_SNAPSHOT_CG]
+        self.DB_MOCK.snapshot_get_all_for_cgsnapshot.return_value = (
+            [DATA_OUT_SNAPSHOT_CG])
         self.DPL_MOCK.create_vdev_snapshot.return_value = DATA_OUTPUT
         model_update, snapshots = self.dpldriver.create_cgsnapshot(
             self.context, DATA_IN_CG_SNAPSHOT)
         self.assertDictMatch({'status': 'available'}, model_update)
 
     def test_delete_consistency_group_snapshot(self):
-        self.DB_MOCK.snapshot_get_all_for_cgsnapshot.return_value = \
-            [DATA_OUT_SNAPSHOT_CG]
+        self.DB_MOCK.snapshot_get_all_for_cgsnapshot.return_value = (
+            [DATA_OUT_SNAPSHOT_CG])
         self.DPL_MOCK.delete_cgsnapshot.return_value = DATA_OUTPUT
         model_update, snapshots = self.dpldriver.delete_cgsnapshot(
             self.context, DATA_IN_CG_SNAPSHOT)
