@@ -81,7 +81,19 @@ nas_opts = [
     cfg.StrOpt('nas_mount_options',
                default=None,
                help=('Options used to mount the storage backend file system '
-                     'where Cinder volumes are stored.'))
+                     'where Cinder volumes are stored.')),
+]
+
+old_vol_type_opts = [cfg.DeprecatedOpt('glusterfs_sparsed_volumes'),
+                     cfg.DeprecatedOpt('glusterfs_qcow2_volumes')]
+
+volume_opts = [
+    cfg.StrOpt('nas_volume_prov_type',
+               default='thin',
+               choices=['thin', 'thick'],
+               deprecated_opts=old_vol_type_opts,
+               help=('Provisioning type that will be used when '
+                     'creating volumes.')),
 ]
 
 CONF = cfg.CONF
@@ -137,6 +149,7 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
 
         if self.configuration:
             self.configuration.append_config_values(nas_opts)
+            self.configuration.append_config_values(volume_opts)
 
     def check_for_setup_error(self):
         """Just to override parent behavior."""
@@ -321,6 +334,11 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
                       'bs=%dM' % block_size_mb,
                       'count=%d' % block_count,
                       run_as_root=self._execute_as_root)
+
+    def _fallocate(self, path, size):
+        """Creates a raw file of given size in GiB using fallocate."""
+        self._execute('fallocate', '--length=%sG' % size,
+                      path, run_as_root=True)
 
     def _create_qcow2_file(self, path, size_gb):
         """Creates a QCOW2 file of a given size in GiB."""
