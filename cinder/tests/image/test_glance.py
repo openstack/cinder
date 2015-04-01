@@ -606,6 +606,14 @@ class TestGlanceClientVersion(test.TestCase):
         glance.GlanceClientWrapper('fake', 'fake_host', 9292, version=2)
         self.assertEqual('2', _mockglanceclient.call_args[0][0])
 
+    @mock.patch('cinder.image.glance.glanceclient.Client')
+    def test_call_glance_version_by_arg(self, _mockglanceclient):
+        """Test glance version set by arg to GlanceClientWrapper"""
+        glance_wrapper = glance.GlanceClientWrapper()
+        glance_wrapper.call('fake_context', 'method', version=2)
+
+        self.assertEqual('2', _mockglanceclient.call_args[0][0])
+
 
 def _create_failing_glance_client(info):
     class MyGlanceStubClient(glance_stubs.StubGlanceClient):

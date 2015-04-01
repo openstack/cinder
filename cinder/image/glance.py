@@ -74,8 +74,7 @@ def _parse_image_ref(image_href):
     return (image_id, netloc, use_ssl)
 
 
-def _create_glance_client(context, netloc, use_ssl,
-                          version=CONF.glance_api_version):
+def _create_glance_client(context, netloc, use_ssl, version=None):
     """Instantiate a new glanceclient.Client object."""
     if version is None:
         version = CONF.glance_api_version
@@ -161,7 +160,7 @@ class GlanceClientWrapper(object):
         retry the request according to CONF.glance_num_retries.
         """
         version = self.version
-        if version in kwargs:
+        if 'version' in kwargs:
             version = kwargs['version']
 
         retry_excs = (glanceclient.exc.ServiceUnavailable,
