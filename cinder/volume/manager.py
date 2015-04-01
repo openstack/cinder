@@ -854,8 +854,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                         " this volume") % {'id': volume_id}
                 LOG.error(msg)
                 raise exception.InvalidVolume(reason=msg)
-            else:
+            elif len(attachments) == 1:
                 attachment = attachments[0]
+            else:
+                # there aren't any attachments for this volume.
+                msg = _("Volume %(id)s doesn't have any attachments "
+                        "to detach") % {'id': volume_id}
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
 
         volume = self.db.volume_get(context, volume_id)
         self._notify_about_volume_usage(context, volume, "detach.start")

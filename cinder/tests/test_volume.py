@@ -1879,6 +1879,16 @@ class VolumeTestCase(BaseVolumeTestCase):
                           volume_id,
                           attachment_id)
 
+    def test_detach_no_attachments(self):
+        volume = tests_utils.create_volume(self.context,
+                                           admin_metadata={'readonly': 'True'},
+                                           multiattach=False,
+                                           **self.volume_params)
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume.detach_volume,
+                          self.context,
+                          volume['id'])
+
     def test_run_attach_detach_volume_for_instance_no_attachment_id(self):
         """Make sure volume can be attached and detached from instance."""
         mountpoint = "/dev/sdf"
