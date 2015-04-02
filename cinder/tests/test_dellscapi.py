@@ -110,6 +110,51 @@ class DellSCSanAPITestCase(test.TestCase):
               u'mapped': False,
               u'cmmSource': False}
 
+    VOLUME_CONFIG = \
+        {u'instanceId': u'64702.3494',
+         u'scSerialNumber': 64702,
+         u'maximumSiblingCount': 100,
+         u'writeCacheStatus': u'Up',
+         u'objectType': u'ScVolumeConfiguration',
+         u'currentSiblingConfiguredSize': u'2.147483648E9 Bytes',
+         u'compressionPaused': False,
+         u'enforceConsumptionLimit': False,
+         u'volumeSpaceConsumptionLimit': u'2.147483648E9 Bytes',
+         u'readCacheEnabled': True,
+         u'writeCacheEnabled': True,
+         u'instanceName': u'volume-ff9589d3-2d41-48d5-9ef5-2713a875e85b',
+         u'dateModified': u'04/03/2015 12:01:08 AM',
+         u'modifyUser': u'Admin',
+         u'replayExpirationPaused': False,
+         u'currentSiblingCount': 1,
+         u'replayCreationPaused': False,
+         u'replayProfileList': [{u'instanceId': u'64702.2',
+                                 u'instanceName': u'Daily',
+                                 u'objectType': u'ScReplayProfile'}],
+         u'dateCreated': u'04/04/2014 03:54:26 AM',
+         u'volume': {u'instanceId': u'64702.3494',
+                     u'instanceName':
+                     u'volume-37883deb-85cd-426a-9a98-62eaad8671ea',
+                     u'objectType': u'ScVolume'},
+         u'controller': {u'instanceId': u'64702.64703',
+                         u'instanceName': u'SN 64703',
+                         u'objectType': u'ScController'},
+         u'coalesceIntoActive': False,
+         u'createUser': u'Admin',
+         u'importToLowestTier': False,
+         u'readCacheStatus': u'Up',
+         u'maximumSiblingConfiguredSpace': u'5.49755813888E14 Bytes',
+         u'storageProfile': {u'instanceId': u'64702.1',
+                             u'instanceName': u'Recommended',
+                             u'objectType': u'ScStorageProfile'},
+         u'scName': u'Storage Center 64702',
+         u'notes': u'',
+         u'diskFolder': {u'instanceId': u'64702.3',
+                         u'instanceName': u'Assigned',
+                         u'objectType': u'ScDiskFolder'},
+         u'openVmsUniqueDiskId': 48,
+         u'compressionEnabled': False}
+
     INACTIVE_VOLUME = \
         {u'instanceId': u'64702.3494',
          u'scSerialNumber': 64702,
@@ -623,6 +668,110 @@ class DellSCSanAPITestCase(test.TestCase):
                     u'transport': u'FibreChannel',
                     u'objectType': u'ScMapping'}]
 
+    FC_MAPPINGS_LUN_MISMATCH = \
+        [{u'profile': {u'instanceId': u'64702.2941',
+                       u'instanceName': u'6025-47',
+                       u'objectType': u'ScMappingProfile'},
+          u'status': u'Up',
+          u'statusMessage': u'',
+          u'instanceId': u'64702.7639.64702',
+          u'scName': u'Storage Center 64702',
+          u'scSerialNumber': 64702,
+          u'controller': {u'instanceId': u'64702.64703',
+                          u'instanceName': u'SN 64703',
+                          u'objectType': u'ScController'},
+          u'server': {u'instanceId': u'64702.47',
+                      u'instanceName': u'Server_21000024ff30441d',
+                      u'objectType': u'ScPhysicalServer'},
+          u'volume': {u'instanceId': u'64702.6025',
+                      u'instanceName':
+                      u'Server_21000024ff30441d Test Vol',
+                      u'objectType': u'ScVolume'},
+          u'readOnly': False,
+          u'lun': 1,
+          u'serverHba': {u'instanceId': u'64702.3282218607',
+                         u'instanceName': u'21000024FF30441C',
+                         u'objectType': u'ScServerHba'},
+          u'path': {u'instanceId': u'64702.64702.64703.27.73',
+                    u'instanceName':
+                    u'21000024FF30441C-5000D31000FCBE36',
+                    u'objectType': u'ScServerHbaPath'},
+          u'controllerPort':
+          {u'instanceId': u'64702.5764839588723736118.50',
+           u'instanceName': u'5000D31000FCBE36',
+           u'objectType': u'ScControllerPort'},
+          u'instanceName': u'64702-7639',
+          u'transport': u'FibreChannel',
+          u'objectType': u'ScMapping'},
+         {u'profile': {u'instanceId': u'64702.2941',
+                       u'instanceName': u'6025-47',
+                       u'objectType': u'ScMappingProfile'},
+          u'status': u'Up',
+          u'statusMessage': u'',
+          u'instanceId': u'64702.7640.64702',
+          u'scName': u'Storage Center 64702',
+          u'scSerialNumber': 64702,
+          u'controller': {u'instanceId': u'64702.64703',
+                          u'instanceName': u'SN 64703',
+                          u'objectType': u'ScController'},
+          u'server': {u'instanceId': u'64702.47',
+                      u'instanceName': u'Server_21000024ff30441d',
+                      u'objectType': u'ScPhysicalServer'},
+          u'volume':
+          {u'instanceId': u'64702.6025',
+           u'instanceName': u'Server_21000024ff30441d Test Vol',
+           u'objectType': u'ScVolume'},
+          u'readOnly': False,
+          u'lun': 1,
+          u'serverHba': {u'instanceId': u'64702.3282218606',
+                         u'instanceName': u'21000024FF30441D',
+                         u'objectType': u'ScServerHba'},
+          u'path':
+          {u'instanceId': u'64702.64702.64703.27.78',
+           u'instanceName': u'21000024FF30441D-5000D31000FCBE36',
+           u'objectType': u'ScServerHbaPath'},
+          u'controllerPort':
+          {u'instanceId': u'64702.5764839588723736118.50',
+           u'instanceName': u'5000D31000FCBE36',
+           u'objectType': u'ScControllerPort'},
+          u'instanceName': u'64702-7640',
+          u'transport': u'FibreChannel',
+          u'objectType': u'ScMapping'},
+            {u'profile': {u'instanceId': u'64702.2941',
+                          u'instanceName': u'6025-47',
+                          u'objectType': u'ScMappingProfile'},
+             u'status': u'Up',
+             u'statusMessage': u'',
+             u'instanceId': u'64702.7638.64702',
+             u'scName': u'Storage Center 64702',
+             u'scSerialNumber': 64702,
+             u'controller': {u'instanceId': u'64702.64703',
+                             u'instanceName': u'SN 64703',
+                             u'objectType': u'ScController'},
+             u'server': {u'instanceId': u'64702.47',
+                         u'instanceName': u'Server_21000024ff30441d',
+                         u'objectType': u'ScPhysicalServer'},
+             u'volume': {u'instanceId': u'64702.6025',
+                         u'instanceName':
+                         u'Server_21000024ff30441d Test Vol',
+                         u'objectType': u'ScVolume'},
+             u'readOnly': False,
+             u'lun': 2,
+             u'serverHba': {u'instanceId': u'64702.3282218606',
+                            u'instanceName': u'21000024FF30441D',
+                            u'objectType': u'ScServerHba'},
+             u'path':
+                        {u'instanceId': u'64702.64702.64703.28.76',
+                         u'instanceName': u'21000024FF30441D-5000D31000FCBE3E',
+                         u'objectType': u'ScServerHbaPath'},
+             u'controllerPort': {u'instanceId':
+                                 u'64702.5764839588723736126.60',
+                                 u'instanceName': u'5000D31000FCBE3E',
+                                 u'objectType': u'ScControllerPort'},
+             u'instanceName': u'64702-7638',
+             u'transport': u'FibreChannel',
+             u'objectType': u'ScMapping'}]
+
     RPLAY = {u'scSerialNumber': 64702,
              u'globalIndex': u'64702-46-250',
              u'description': u'Cinder Clone Replay',
@@ -1070,6 +1219,40 @@ class DellSCSanAPITestCase(test.TestCase):
                      u'statusMessage': u'',
                      u'objectType': u'ScControllerPort'}
 
+    FC_CTRLR_PORT_WWN_ERROR = \
+        {u'preferredParent':
+         {u'instanceId': u'64702.5764839588723736093.57',
+          u'instanceName': u'5000D31000FCBE1D',
+          u'objectType': u'ScControllerPort'},
+         u'status': u'Up',
+         u'iscsiIpAddress': u'0.0.0.0',
+         u'Wwn': u'5000D31000FCBE36',
+         u'name': u'5000D31000FCBE36',
+         u'parent':
+         {u'instanceId': u'64702.5764839588723736093.57',
+          u'instanceName': u'5000D31000FCBE1D',
+          u'objectType': u'ScControllerPort'},
+         u'iscsiGateway': u'0.0.0.0',
+         u'instanceId': u'64702.5764839588723736118.50',
+         u'scName': u'Storage Center 64702',
+         u'scSerialNumber': 64702,
+         u'transportType': u'FibreChannel',
+         u'virtual': True,
+         u'controller': {u'instanceId': u'64702.64703',
+                         u'instanceName': u'SN 64703',
+                         u'objectType': u'ScController'},
+         u'iscsiName': u'',
+         u'purpose': u'FrontEnd',
+         u'iscsiSubnetMask': u'0.0.0.0',
+         u'faultDomain':
+         {u'instanceId': u'64702.1.0',
+          u'instanceName': u'Domain 0',
+          u'objectType': u'ScControllerPortFaultDomain'},
+         u'instanceName': u'5000D31000FCBE36',
+         u'childStatus': u'Up',
+         u'statusMessage': u'',
+         u'objectType': u'ScControllerPort'}
+
     STRG_USAGE = {u'systemSpace': u'7.38197504E8 Bytes',
                   u'freeSpace': u'1.297659461632E13 Bytes',
                   u'oversubscribedSpace': u'0.0 Bytes',
@@ -1093,6 +1276,10 @@ class DellSCSanAPITestCase(test.TestCase):
 
     WWNS = [u'21000024FF30441C',
             u'21000024FF30441D']
+
+    # Used to test finding no match in find_wwns
+    WWNS_NO_MATCH = [u'21000024FF30451C',
+                     u'21000024FF30451D']
 
     FLDR_PATH = 'StorageCenter/ScVolumeFolder/'
 
@@ -2466,6 +2653,125 @@ class DellSCSanAPITestCase(test.TestCase):
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
+                       return_value=FC_CTRLR_PORT_WWN_ERROR)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=FC_MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_fc_initiators',
+                       return_value=WWNS)
+    def test_find_wwns_wwn_error(self,
+                                 mock_find_fc_initiators,
+                                 mock_find_mappings,
+                                 mock_find_controller_port,
+                                 mock_close_connection,
+                                 mock_open_connection,
+                                 mock_init):
+        # Test case where ScControllerPort object has WWn instead of wwn for a
+        # property
+        lun, wwns, itmap = self.scapi.find_wwns(self.VOLUME,
+                                                self.SCSERVER)
+        self.assertTrue(mock_find_fc_initiators.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_controller_port.called)
+
+        self.assertEqual(None, lun, 'Incorrect LUN')
+        self.assertEqual([], wwns, 'WWNs is not empty')
+        self.assertEqual({}, itmap, 'WWN mapping not empty')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port',
+                       return_value=FC_CTRLR_PORT)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=FC_MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_fc_initiators',
+                       return_value=WWNS_NO_MATCH)
+    # Test case where HBA name is not found in list of initiators
+    def test_find_wwns_hbaname_not_found(self,
+                                         mock_find_fc_initiators,
+                                         mock_find_mappings,
+                                         mock_find_controller_port,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        lun, wwns, itmap = self.scapi.find_wwns(self.VOLUME,
+                                                self.SCSERVER)
+        self.assertTrue(mock_find_fc_initiators.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_controller_port.called)
+
+        self.assertEqual(None, lun, 'Incorrect LUN')
+        self.assertEqual([], wwns, 'WWNs is not empty')
+        self.assertEqual({}, itmap, 'WWN mapping not empty')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port',
+                       return_value=FC_CTRLR_PORT)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=FC_MAPPINGS_LUN_MISMATCH)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_fc_initiators',
+                       return_value=WWNS)
+    # Test case where FC mappings contain a LUN mismatch
+    def test_find_wwns_lun_mismatch(self,
+                                    mock_find_fc_initiators,
+                                    mock_find_mappings,
+                                    mock_find_controller_port,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        lun, wwns, itmap = self.scapi.find_wwns(self.VOLUME,
+                                                self.SCSERVER)
+        self.assertTrue(mock_find_fc_initiators.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_controller_port.called)
+        # The _find_controller_port is Mocked, so all mapping pairs
+        # will have the same WWN for the ScControllerPort
+        itmapCompare = {u'21000024FF30441C': [u'5000D31000FCBE36'],
+                        u'21000024FF30441D':
+                        [u'5000D31000FCBE36', u'5000D31000FCBE36']}
+        self.assertEqual(1, lun, 'Incorrect LUN')
+        self.assertIsNotNone(wwns, 'WWNs is None')
+        self.assertEqual(itmapCompare, itmap, 'WWN mapping incorrect')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_first_result',
+                       return_value=VOLUME_CONFIG)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_find_active_controller(self,
+                                    mock_get,
+                                    mock_first_result,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        res = self.scapi._find_active_controller(self.VOLUME)
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_first_result.called)
+        self.assertEqual('64702.64703', res, 'Unexpected Active Controller')
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_204)
+    def test_find_active_controller_failure(self,
+                                            mock_get,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+        # Test case of where get of ScVolume MappingList fails
+        res = self.scapi._find_active_controller(self.VOLUME)
+        self.assertTrue(mock_get.called)
+        self.assertEqual(None, res, 'Expected None')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.5764839588723736131.91')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_domains',
@@ -2477,6 +2783,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             mock_find_mappings,
                                             mock_find_domain,
                                             mock_find_ctrl_port,
+                                            mock_find_active_controller,
                                             mock_close_connection,
                                             mock_open_connection,
                                             mock_init):
@@ -2484,14 +2791,19 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
-                    'target_iqns':
+        self.assertTrue(mock_find_active_controller.called)
+        expected = (0,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns':
                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
-                    'target_luns': [1],
-                    'target_portals': [u'192.168.0.21:3260']}
+                     'target_luns': [1],
+                     'target_portals': [u'192.168.0.21:3260']})
         self.assertEqual(expected, res, 'Wrong Target Info')
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.5764839588723736131.91')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
@@ -2505,6 +2817,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                               mock_find_mappings,
                                               mock_find_domain,
                                               mock_find_ctrl_port,
+                                              mock_find_active_controller,
                                               mock_close_connection,
                                               mock_open_connection,
                                               mock_init):
@@ -2514,14 +2827,19 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
-                    'target_iqns':
+        self.assertTrue(mock_find_active_controller.called)
+        expected = (0,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns':
                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
-                    'target_luns': [1],
-                    'target_portals': [u'192.168.0.21:3260']}
+                     'target_luns': [1],
+                     'target_portals': [u'192.168.0.21:3260']})
         self.assertEqual(expected, res, 'Wrong Target Info')
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.5764839588723736131.91')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
@@ -2535,6 +2853,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                                         mock_find_mappings,
                                                         mock_find_domain,
                                                         mock_find_ctrl_port,
+                                                        mock_find_active_ctrl,
                                                         mock_close_connection,
                                                         mock_open_connection,
                                                         mock_init):
@@ -2544,31 +2863,42 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
-                    'target_iqns': [],
-                    'target_luns': [],
-                    'target_portals': []}
+        self.assertTrue(mock_find_active_ctrl.called)
+        expected = (0,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns': [],
+                     'target_luns': [],
+                     'target_portals': []})
         self.assertEqual(expected, res, 'Wrong Target Info')
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.5764839588723736131.91')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=[])
     def test_find_iscsi_properties_no_mapping(self,
                                               mock_find_mappings,
+                                              mock_find_active_controller,
                                               mock_close_connection,
                                               mock_open_connection,
                                               mock_init):
         # Test case where there are no ScMapping(s)
         res = self.scapi.find_iscsi_properties(self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
-                    'target_iqns': [],
-                    'target_luns': [],
-                    'target_portals': []}
+        self.assertTrue(mock_find_active_controller.called)
+        expected = (0,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns': [],
+                     'target_luns': [],
+                     'target_portals': []})
         self.assertEqual(expected, res, 'Expected empty Target Info')
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.5764839588723736131.91')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
@@ -2582,6 +2912,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                              mock_find_mappings,
                                              mock_find_domain,
                                              mock_find_ctrl_port,
+                                             mock_find_active_controller,
                                              mock_close_connection,
                                              mock_open_connection,
                                              mock_init):
@@ -2590,13 +2921,18 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertFalse(mock_find_ctrl_port.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
-                    'target_iqns': [],
-                    'target_luns': [],
-                    'target_portals': []}
+        self.assertTrue(mock_find_active_controller.called)
+        expected = (0,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns': [],
+                     'target_luns': [],
+                     'target_portals': []})
         self.assertEqual(expected, res, 'Expected empty Target Info')
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.5764839588723736131.91')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=None)
@@ -2610,6 +2946,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                                 mock_find_mappings,
                                                 mock_find_domain,
                                                 mock_find_ctrl_port,
+                                                mock_find_active_controller,
                                                 mock_close_connection,
                                                 mock_open_connection,
                                                 mock_init):
@@ -2618,13 +2955,18 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
-                    'target_iqns': [],
-                    'target_luns': [],
-                    'target_portals': []}
+        self.assertTrue(mock_find_active_controller.called)
+        expected = (0,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns': [],
+                     'target_luns': [],
+                     'target_portals': []})
         self.assertEqual(expected, res, 'Expected empty Target Info')
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.5764839588723736131.91')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
@@ -2638,6 +2980,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                       mock_find_mappings,
                                       mock_find_domain,
                                       mock_find_ctrl_port,
+                                      mock_find_active_controller,
                                       mock_close_connection,
                                       mock_open_connection,
                                       mock_init):
@@ -2646,14 +2989,19 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
-        expected = {'access_mode': 'ro',
-                    'target_discovered': False,
-                    'target_iqns':
+        self.assertTrue(mock_find_active_controller.called)
+        expected = (0,
+                    {'access_mode': 'ro',
+                     'target_discovered': False,
+                     'target_iqns':
                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
-                    'target_luns': [1],
-                    'target_portals': [u'192.168.0.21:3260']}
+                     'target_luns': [1],
+                     'target_portals': [u'192.168.0.21:3260']})
         self.assertEqual(expected, res, 'Wrong Target Info')
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.5764839588723736131.91')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
@@ -2667,6 +3015,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                                  mock_find_mappings,
                                                  mock_find_domain,
                                                  mock_find_ctrl_port,
+                                                 mock_find_active_controller,
                                                  mock_close_connection,
                                                  mock_open_connection,
                                                  mock_init):
@@ -2675,13 +3024,15 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
-                    'target_iqns':
+        self.assertTrue(mock_find_active_controller.called)
+        expected = (0,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns':
                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
-                    'target_luns': [1],
-                    'target_portals':
-                        [u'192.168.0.21:3260', u'192.168.0.25:3260']}
+                     'target_luns': [1],
+                     'target_portals':
+                        [u'192.168.0.21:3260', u'192.168.0.25:3260']})
         self.assertEqual(expected, res, 'Wrong Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,

@@ -180,7 +180,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     ISCSI_PROPERTIES = {'access_mode': 'rw',
                         'target_discovered': False,
                         'target_iqns':
-                            [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                        [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
                         'target_luns': [1],
                         'target_portals': [u'192.168.0.21:3260']}
 
@@ -343,7 +343,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        return_value=MAPPINGS[0])
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_iscsi_properties',
-                       return_value=ISCSI_PROPERTIES)
+                       return_value=(0, ISCSI_PROPERTIES))
     def test_initialize_connection(self,
                                    mock_find_iscsi_props,
                                    mock_map_volume,
@@ -388,7 +388,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        return_value=MAPPINGS[0])
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_iscsi_properties',
-                       return_value=ISCSI_PROPERTIES)
+                       return_value=(0, ISCSI_PROPERTIES))
     def test_initialize_connection_multi_path(self,
                                               mock_find_iscsi_props,
                                               mock_map_volume,
@@ -432,7 +432,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        return_value=MAPPINGS)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_iscsi_properties',
-                       return_value=ISCSI_PROPERTIES_EMPTY)
+                       return_value=(0, ISCSI_PROPERTIES_EMPTY))
     def test_initialize_connection_no_iqn(self,
                                           mock_find_iscsi_properties,
                                           mock_map_volume,
@@ -466,7 +466,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        return_value=MAPPINGS)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_iscsi_properties',
-                       return_value=ISCSI_PROPERTIES_EMPTY)
+                       return_value=(0, ISCSI_PROPERTIES_EMPTY))
     def test_initialize_connection_no_server(self,
                                              mock_find_iscsi_properties,
                                              mock_map_volume,
@@ -498,7 +498,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        return_value=MAPPINGS)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_iscsi_properties',
-                       return_value=ISCSI_PROPERTIES_EMPTY)
+                       return_value=(0, ISCSI_PROPERTIES_EMPTY))
     def test_initialize_connection_vol_not_found(self,
                                                  mock_find_iscsi_properties,
                                                  mock_map_volume,
@@ -532,7 +532,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_iscsi_properties',
-                       return_value=ISCSI_PROPERTIES)
+                       return_value=(0, ISCSI_PROPERTIES))
     def test_initialize_connection_map_vol_fail(self,
                                                 mock_find_iscsi_props,
                                                 mock_map_volume,
