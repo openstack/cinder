@@ -22,6 +22,7 @@ import mock
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_log import log as logging
+import six
 
 from cinder.brick import exception
 from cinder.brick.initiator import connector
@@ -715,7 +716,7 @@ class FibreChannelConnectorTestCase(ConnectorTestCase):
         name = 'volume-00000001'
         vol = {'id': 1, 'name': name}
         # Should work for string, unicode, and list
-        wwns = ['1234567890123456', unicode('1234567890123456'),
+        wwns = ['1234567890123456', six.text_type('1234567890123456'),
                 ['1234567890123456', '1234567890123457']]
         for wwn in wwns:
             connection_info = self.fibrechan_connection(vol, location, wwn)

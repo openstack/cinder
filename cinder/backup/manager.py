@@ -38,6 +38,7 @@ from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
+import six
 
 from cinder.backup import driver
 from cinder.backup import rpcapi as backup_rpcapi
@@ -298,7 +299,7 @@ class BackupManager(manager.SchedulerDependentManager):
                                       {'status': 'available'})
                 self.db.backup_update(context, backup_id,
                                       {'status': 'error',
-                                       'fail_reason': unicode(err)})
+                                       'fail_reason': six.text_type(err)})
 
         self.db.volume_update(context, volume_id, {'status': 'available'})
         backup = self.db.backup_update(context, backup_id,
@@ -406,7 +407,7 @@ class BackupManager(manager.SchedulerDependentManager):
                     self.db.backup_update(context, backup_id,
                                           {'status': 'error',
                                            'fail_reason':
-                                           unicode(err)})
+                                           six.text_type(err)})
 
         LOG.info(_LI('Delete backup started, backup: %s.'), backup_id)
         backup = self.db.backup_get(context, backup_id)
@@ -446,7 +447,7 @@ class BackupManager(manager.SchedulerDependentManager):
                     self.db.backup_update(context, backup_id,
                                           {'status': 'error',
                                            'fail_reason':
-                                           unicode(err)})
+                                           six.text_type(err)})
 
         # Get reservations
         try:
@@ -528,7 +529,7 @@ class BackupManager(manager.SchedulerDependentManager):
             backup_url = backup_service.export_record(backup)
             backup_record['backup_url'] = backup_url
         except Exception as err:
-            msg = unicode(err)
+            msg = six.text_type(err)
             raise exception.InvalidBackup(reason=msg)
 
         LOG.info(_LI('Export record finished, backup %s exported.'), backup_id)
@@ -579,7 +580,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 backup_service = self.service.get_backup_driver(context)
                 backup_options = backup_service.import_record(backup_url)
             except Exception as err:
-                msg = unicode(err)
+                msg = six.text_type(err)
                 self.db.backup_update(context,
                                       backup_id,
                                       {'status': 'error',
@@ -627,7 +628,7 @@ class BackupManager(manager.SchedulerDependentManager):
                     self.db.backup_update(context, backup_id,
                                           {'status': 'error',
                                            'fail_reason':
-                                           unicode(err)})
+                                           six.text_type(err)})
 
             LOG.info(_LI('Import record id %s metadata from driver '
                          'finished.') % backup_id)

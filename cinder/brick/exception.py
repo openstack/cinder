@@ -15,6 +15,7 @@
 """Exceptions for the Brick library."""
 
 from oslo_log import log as logging
+import six
 
 from cinder.i18n import _
 
@@ -65,7 +66,7 @@ class BrickException(Exception):
         super(BrickException, self).__init__(message)
 
     def __unicode__(self):
-        return unicode(self.msg)
+        return six.text_type(self.msg)
 
 
 class NotFound(BrickException):

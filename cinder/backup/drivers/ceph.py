@@ -493,7 +493,7 @@ class CephBackupDriver(driver.BackupDriver):
             p1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE)
         except OSError as e:
-            LOG.error(_LE("Pipe1 failed - %s ") % unicode(e))
+            LOG.error(_LE("Pipe1 failed - %s "), e)
             raise
 
         # NOTE(dosaboy): ensure that the pipe is blocking. This is to work
@@ -507,7 +507,7 @@ class CephBackupDriver(driver.BackupDriver):
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE)
         except OSError as e:
-            LOG.error(_LE("Pipe2 failed - %s ") % unicode(e))
+            LOG.error(_LE("Pipe2 failed - %s "), e)
             raise
 
         p1.stdout.close()

@@ -48,6 +48,7 @@ from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 from osprofiler import profiler
+import six
 from taskflow import exceptions as tfe
 
 from cinder import compute
@@ -942,7 +943,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self._delete_image(context, image_meta['id'], image_service)
 
             with excutils.save_and_reraise_exception():
-                payload['message'] = unicode(error)
+                payload['message'] = six.text_type(error)
         finally:
             if not volume['volume_attachment']:
                 self.db.volume_update(context, volume_id,

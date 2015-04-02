@@ -18,6 +18,8 @@
 from cinder.brick import exception
 from cinder import test
 
+import six
+
 
 class BrickExceptionTestCase(test.TestCase):
     def test_default_error_msg(self):
@@ -25,17 +27,18 @@ class BrickExceptionTestCase(test.TestCase):
             message = "default message"
 
         exc = FakeBrickException()
-        self.assertEqual(unicode(exc), 'default message')
+        self.assertEqual(six.text_type(exc), 'default message')
 
     def test_error_msg(self):
-        self.assertEqual(unicode(exception.BrickException('test')), 'test')
+        self.assertEqual(six.text_type(exception.BrickException('test')),
+                         'test')
 
     def test_default_error_msg_with_kwargs(self):
         class FakeBrickException(exception.BrickException):
             message = "default message: %(code)s"
 
         exc = FakeBrickException(code=500)
-        self.assertEqual(unicode(exc), 'default message: 500')
+        self.assertEqual(six.text_type(exc), 'default message: 500')
 
     def test_error_msg_exception_with_kwargs(self):
         # NOTE(dprince): disable format errors for this test
@@ -45,7 +48,8 @@ class BrickExceptionTestCase(test.TestCase):
             message = "default message: %(mispelled_code)s"
 
         exc = FakeBrickException(code=500)
-        self.assertEqual(unicode(exc), 'default message: %(mispelled_code)s')
+        self.assertEqual(six.text_type(exc),
+                         'default message: %(mispelled_code)s')
 
     def test_default_error_code(self):
         class FakeBrickException(exception.BrickException):
