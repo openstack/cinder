@@ -489,7 +489,7 @@ class EMCVMAXUtils(object):
 
         return foundStorageSystemInstanceName
 
-    def get_storage_group_from_volume(self, conn, volumeInstanceName):
+    def get_storage_group_from_volume(self, conn, volumeInstanceName, sgName):
         """Returns the storage group for a particular volume.
 
         Given the volume instance name get the associated storage group if it
@@ -505,14 +505,50 @@ class EMCVMAXUtils(object):
             volumeInstanceName,
             ResultClass='CIM_DeviceMaskingGroup')
 
-        if len(storageGroupInstanceNames) > 0:
-            foundStorageGroupInstanceName = storageGroupInstanceNames[0]
+        if len(storageGroupInstanceNames) > 1:
+            LOG.info(_LI(
+                "The volume belongs to more than one storage group. "
+                "Returning storage group %(sgName)s."),
+                {'sgName': sgName})
+        for storageGroupInstanceName in storageGroupInstanceNames:
+            instance = self.get_existing_instance(
+                conn, storageGroupInstanceName)
+            if instance and sgName == instance['ElementName']:
+                foundStorageGroupInstanceName = storageGroupInstanceName
+                break
 
         return foundStorageGroupInstanceName
 
-    def wrap_get_storage_group_from_volume(self, conn, volumeInstanceName):
+    def get_storage_groups_from_volume(self, conn, volumeInstanceName):
+        """Returns all the storage group for a particular volume.
+
+        Given the volume instance name get all the associated storage groups.
+
+        :param conn: connection to the ecom server
+        :param volumeInstanceName: the volume instance name
+        :returns: foundStorageGroupInstanceName
+        """
+        storageGroupInstanceNames = conn.AssociatorNames(
+            volumeInstanceName,
+            ResultClass='CIM_DeviceMaskingGroup')
+
+        if storageGroupInstanceNames:
+            LOG.debug("There are %(len)d storage groups associated "
+                      "with volume %(volumeInstanceName)s.",
+                      {'len': len(storageGroupInstanceNames),
+                       'volumeInstanceName': volumeInstanceName})
+        else:
+            LOG.debug("There are no storage groups associated "
+                      "with volume %(volumeInstanceName)s.",
+                      {'volumeInstanceName': volumeInstanceName})
+
+        return storageGroupInstanceNames
+
+    def wrap_get_storage_group_from_volume(self, conn, volumeInstanceName,
+                                           sgName):
         """Unit test aid"""
-        return self.get_storage_group_from_volume(conn, volumeInstanceName)
+        return self.get_storage_group_from_volume(conn, volumeInstanceName,
+                                                  sgName)
 
     def find_storage_masking_group(self, conn, controllerConfigService,
                                    storageGroupName):

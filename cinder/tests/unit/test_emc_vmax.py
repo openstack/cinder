@@ -24,6 +24,7 @@ from oslo_log import log as logging
 import six
 
 from cinder import exception
+from cinder.i18n import _
 from cinder.openstack.common import loopingcall
 from cinder import test
 from cinder.volume.drivers.emc import emc_vmax_common
@@ -263,7 +264,8 @@ class EMCVMAXCommonData(object):
     hardwareid_creationclass = 'EMC_StorageHardwareID'
     replicationgroup_creationclass = 'CIM_ReplicationGroup'
     storagepoolid = 'SYMMETRIX+000195900551+U+gold'
-    storagegroupname = 'OS_default_GOLD1_SG'
+    storagegroupname = 'OS-fakehost-gold-I-SG'
+    defaultstoragegroupname = 'OS_default_GOLD1_SG'
     storagevolume_creationclass = 'EMC_StorageVolume'
     policyrule = 'gold'
     poolname = 'gold'
@@ -783,12 +785,18 @@ class FakeEcomConnection(object):
 
     def _assoc_storagegroup(self):
         assocs = []
-        assoc = CIM_DeviceMaskingGroup()
-        assoc['ElementName'] = 'OS_default_GOLD1_SG'
-        assoc['SystemName'] = self.data.storage_system
-        assoc['CreationClassName'] = 'CIM_DeviceMaskingGroup'
-        assoc.path = assoc
-        assocs.append(assoc)
+        assoc1 = CIM_DeviceMaskingGroup()
+        assoc1['ElementName'] = self.data.storagegroupname
+        assoc1['SystemName'] = self.data.storage_system
+        assoc1['CreationClassName'] = 'CIM_DeviceMaskingGroup'
+        assoc1.path = assoc1
+        assocs.append(assoc1)
+        assoc2 = CIM_DeviceMaskingGroup()
+        assoc2['ElementName'] = self.data.defaultstoragegroupname
+        assoc2['SystemName'] = self.data.storage_system
+        assoc2['CreationClassName'] = 'CIM_DeviceMaskingGroup'
+        assoc2.path = assoc2
+        assocs.append(assoc2)
         return assocs
 
     def _assoc_portgroup(self):
@@ -981,8 +989,17 @@ class FakeEcomConnection(object):
 
     def _getinstance_devicemaskinggroup(self, objectpath):
         targetmaskinggroup = {}
-        targetmaskinggroup['CreationClassName'] = 'CIM_DeviceMaskingGroup'
-        targetmaskinggroup['ElementName'] = 'OS_default_GOLD1_SG'
+        if 'CreationClassName' in objectpath:
+            targetmaskinggroup['CreationClassName'] = (
+                objectpath['CreationClassName'])
+        else:
+            targetmaskinggroup['CreationClassName'] = (
+                'CIM_DeviceMaskingGroup')
+        if 'ElementName' in objectpath:
+            targetmaskinggroup['ElementName'] = objectpath['ElementName']
+        else:
+            targetmaskinggroup['ElementName'] = (
+                self.data.storagegroupname)
         return targetmaskinggroup
 
     def _getinstance_unit(self, objectpath):
@@ -1324,11 +1341,27 @@ class FakeEcomConnection(object):
 
     def _enum_storagegroup(self):
         storagegroups = []
-        storagegroup = {}
-        storagegroup['CreationClassName'] = (
+        storagegroup1 = {}
+        storagegroup1['CreationClassName'] = (
             self.data.storagegroup_creationclass)
-        storagegroup['ElementName'] = self.data.storagegroupname
-        storagegroups.append(storagegroup)
+        storagegroup1['ElementName'] = self.data.storagegroupname
+        storagegroups.append(storagegroup1)
+        storagegroup2 = {}
+        storagegroup2['CreationClassName'] = (
+            self.data.storagegroup_creationclass)
+        storagegroup2['ElementName'] = self.data.defaultstoragegroupname
+        storagegroup2['SystemName'] = self.data.storage_system
+        storagegroups.append(storagegroup2)
+        storagegroup3 = {}
+        storagegroup3['CreationClassName'] = (
+            self.data.storagegroup_creationclass)
+        storagegroup3['ElementName'] = 'OS-fakehost-SRP_1-Bronze-DSS-SG'
+        storagegroups.append(storagegroup3)
+        storagegroup4 = {}
+        storagegroup4['CreationClassName'] = (
+            self.data.storagegroup_creationclass)
+        storagegroup4['ElementName'] = 'OS-SRP_1-Bronze-DSS-SG'
+        storagegroups.append(storagegroup4)
         return storagegroups
 
     def _enum_storagevolume(self):
@@ -1658,6 +1691,90 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         hardwaretypeid = (
             self.driver.utils._get_hardware_type(bogus_initiator))
         self.assertEqual(0, hardwaretypeid)
+
+    def test_check_if_rollback_action_for_masking_required(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        extraSpecs = {'volume_backend_name': 'GOLD_BE',
+                      'isV3': False,
+                      'storagetype:fastpolicy': 'GOLD1'}
+
+        vol = EMC_StorageVolume()
+        vol['name'] = self.data.test_volume['name']
+        vol['CreationClassName'] = 'Symm_StorageVolume'
+        vol['ElementName'] = self.data.test_volume['id']
+        vol['DeviceID'] = self.data.test_volume['device_id']
+        vol['Id'] = self.data.test_volume['id']
+        vol['SystemName'] = self.data.storage_system
+        vol['NumberOfBlocks'] = self.data.test_volume['NumberOfBlocks']
+        vol['BlockSize'] = self.data.test_volume['BlockSize']
+
+        # Added vol to vol.path
+        vol['SystemCreationClassName'] = 'Symm_StorageSystem'
+        vol.path = vol
+        vol.path.classname = vol['CreationClassName']
+
+        rollbackDict = {}
+        rollbackDict['isV3'] = False
+        rollbackDict['defaultStorageGroupInstanceName'] = (
+            self.data.default_storage_group)
+        rollbackDict['sgName'] = self.data.storagegroupname
+        rollbackDict['volumeName'] = 'vol1'
+        rollbackDict['fastPolicyName'] = 'GOLD1'
+        rollbackDict['volumeInstance'] = vol
+        rollbackDict['controllerConfigService'] = controllerConfigService
+        rollbackDict['extraSpecs'] = extraSpecs
+        # Path 1 - The volume is in another storage group that isn't the
+        # default storage group
+        expectedmessage = (_("V2 rollback - Volume in another storage "
+                             "group besides default storage group."))
+        message = (
+            self.driver.common.masking.
+            _check_if_rollback_action_for_masking_required(
+                conn, rollbackDict))
+        self.assertEqual(expectedmessage, message)
+        # Path 2 - The volume is not in any storage group
+        rollbackDict['sgName'] = 'sq_not_exist'
+        expectedmessage = (_("V2 rollback, volume is not in any storage "
+                             "group."))
+        message = (
+            self.driver.common.masking.
+            _check_if_rollback_action_for_masking_required(
+                conn, rollbackDict))
+        self.assertEqual(expectedmessage, message)
+
+    def test_migrate_cleanup(self):
+        conn = self.fake_ecom_connection()
+        extraSpecs = {'volume_backend_name': 'GOLD_BE',
+                      'isV3': False,
+                      'storagetype:fastpolicy': 'GOLD1'}
+
+        vol = EMC_StorageVolume()
+        vol['name'] = self.data.test_volume['name']
+        vol['CreationClassName'] = 'Symm_StorageVolume'
+        vol['ElementName'] = self.data.test_volume['id']
+        vol['DeviceID'] = self.data.test_volume['device_id']
+        vol['Id'] = self.data.test_volume['id']
+        vol['SystemName'] = self.data.storage_system
+        vol['NumberOfBlocks'] = self.data.test_volume['NumberOfBlocks']
+        vol['BlockSize'] = self.data.test_volume['BlockSize']
+
+        # Added vol to vol.path
+        vol['SystemCreationClassName'] = 'Symm_StorageSystem'
+        vol.path = vol
+        vol.path.classname = vol['CreationClassName']
+        # The volume is already belong to default storage group
+        return_to_default = self.driver.common._migrate_cleanup(
+            conn, vol, self.data.storage_system, 'GOLD1',
+            vol['name'], extraSpecs)
+        self.assertFalse(return_to_default)
+        # The volume does not belong to default storage group
+        return_to_default = self.driver.common._migrate_cleanup(
+            conn, vol, self.data.storage_system, 'BRONZE1',
+            vol['name'], extraSpecs)
+        self.assertTrue(return_to_default)
 
     def test_wait_for_job_complete(self):
         myjob = SE_ConcreteJob()
@@ -3839,7 +3956,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
 
     def test_get_port_group_parser(self):
         self.create_fake_config_file_parse_port_group()
-        for _ in range(0, 10):
+        for _var in range(0, 10):
             self.assertEqual(
                 u'OS-PORTGROUP1-PG',
                 self.driver.utils.parse_file_to_get_port_group_name(

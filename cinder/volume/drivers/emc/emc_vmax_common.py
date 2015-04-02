@@ -803,42 +803,41 @@ class EMCVMAXCommon(object):
         :param sourceFastPolicyName: the source FAST policy name
         :param volumeName: the volume Name
         :param extraSpecs: extra specifications
+        :returns: boolean -- True/False
         """
 
         LOG.warning(_LW("_migrate_cleanup on : %(volumeName)s."),
                     {'volumeName': volumeName})
-
+        return_to_default = True
         controllerConfigurationService = (
             self.utils.find_controller_configuration_service(
                 conn, storageSystemName))
 
         # Check to see what SG it is in.
-        assocStorageGroupInstanceName = (
-            self.utils.get_storage_group_from_volume(conn,
-                                                     volumeInstance.path))
+        assocStorageGroupInstanceNames = (
+            self.utils.get_storage_groups_from_volume(conn,
+                                                      volumeInstance.path))
         # This is the SG it should be in.
         defaultStorageGroupInstanceName = (
             self.fast.get_policy_default_storage_group(
                 conn, controllerConfigurationService, sourceFastPolicyName))
 
-        # It is not in any storage group.  Must add it to default source.
-        if assocStorageGroupInstanceName is None:
-            self.add_to_default_SG(conn, volumeInstance,
-                                   storageSystemName, sourceFastPolicyName,
-                                   volumeName, extraSpecs)
-
-        # It is in the incorrect storage group.
-        if (assocStorageGroupInstanceName is not None and
-                (assocStorageGroupInstanceName !=
-                    defaultStorageGroupInstanceName)):
-            self.provision.remove_device_from_storage_group(
-                conn, controllerConfigurationService,
-                assocStorageGroupInstanceName,
-                volumeInstance.path, volumeName, extraSpecs)
-
+        for assocStorageGroupInstanceName in assocStorageGroupInstanceNames:
+            # It is in the incorrect storage group.
+            if (assocStorageGroupInstanceName !=
+                    defaultStorageGroupInstanceName):
+                self.provision.remove_device_from_storage_group(
+                    conn, controllerConfigurationService,
+                    assocStorageGroupInstanceName,
+                    volumeInstance.path, volumeName, extraSpecs)
+            else:
+                # The volume is already in the default.
+                return_to_default = False
+        if return_to_default:
             self.add_to_default_SG(
                 conn, volumeInstance, storageSystemName, sourceFastPolicyName,
                 volumeName, extraSpecs)
+        return return_to_default
 
     def _migrate_volume_fast_target(
             self, volumeInstance, storageSystemName,
@@ -1041,7 +1040,7 @@ class EMCVMAXCommon(object):
 
     def _is_valid_for_storage_assisted_migration_v3(
             self, volumeInstanceName, host, sourceArraySerialNumber,
-            sourcePoolName, volumeName, volumeStatus):
+            sourcePoolName, volumeName, volumeStatus, sgName):
         """Check if volume is suitable for storage assisted (pool) migration.
 
         :param volumeInstanceName: the volume instance id
@@ -1050,7 +1049,8 @@ class EMCVMAXCommon(object):
             the original volume
         :param sourcePoolName: the pool name of the original volume
         :param volumeName: the name of the volume to be migrated
-        :param volumeStatus: the status of the volume e.g
+        :param volumeStatus: the status of the volume
+        :param sgName: storage group name
         :returns: boolean -- True/False
         :returns: string -- targetSlo
         :returns: string -- targetWorkload
@@ -1094,7 +1094,7 @@ class EMCVMAXCommon(object):
 
         foundStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(
-                self.conn, volumeInstanceName))
+                self.conn, volumeInstanceName, sgName))
         if foundStorageGroupInstanceName is None:
             LOG.warning(_LW(
                 "Volume: %(volumeName)s is not currently "
@@ -1775,13 +1775,14 @@ class EMCVMAXCommon(object):
             controllerConfigurationService = (
                 self.utils.find_controller_configuration_service(
                     self.conn, storageSystemName))
+            defaultSgName = self.fast.format_default_sg_string(fastPolicyName)
 
             self.fast.add_volume_to_default_storage_group_for_fast_policy(
                 self.conn, controllerConfigurationService, volumeInstance,
                 volumeName, fastPolicyName, extraSpecs)
             foundStorageGroupInstanceName = (
                 self.utils.get_storage_group_from_volume(
-                    self.conn, volumeInstance.path))
+                    self.conn, volumeInstance.path, defaultSgName))
 
             if foundStorageGroupInstanceName is None:
                 exceptionMessage = (_(
@@ -2948,11 +2949,14 @@ class EMCVMAXCommon(object):
         :param extraSpecs: extra specifications
         :returns: boolean -- True if migration succeeded, False if error.
         """
+        storageGroupName = self.utils.get_v3_storage_group_name(
+            extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD])
         volumeInstanceName = volumeInstance.path
         isValid, targetSlo, targetWorkload = (
             self._is_valid_for_storage_assisted_migration_v3(
                 volumeInstanceName, host, extraSpecs[ARRAY],
-                extraSpecs[POOL], volumeName, volumeStatus))
+                extraSpecs[POOL], volumeName, volumeStatus,
+                storageGroupName))
 
         storageSystemName = volumeInstance['SystemName']
 
@@ -2998,10 +3002,12 @@ class EMCVMAXCommon(object):
         controllerConfigService = (
             self.utils.find_controller_configuration_service(
                 self.conn, storageSystemName))
+        defaultSgName = self.utils.get_v3_storage_group_name(
+            extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD])
 
         foundStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(
-                self.conn, volumeInstance.path))
+                self.conn, volumeInstance.path, defaultSgName))
         if foundStorageGroupInstanceName is None:
             LOG.warning(_LW(
                 "Volume : %(volumeName)s is not currently "
@@ -3017,7 +3023,7 @@ class EMCVMAXCommon(object):
             # Check that it has been removed.
             sgFromVolRemovedInstanceName = (
                 self.utils.wrap_get_storage_group_from_volume(
-                    self.conn, volumeInstance.path))
+                    self.conn, volumeInstance.path, defaultSgName))
             if sgFromVolRemovedInstanceName is not None:
                 LOG.error(_LE(
                     "Volume : %(volumeName)s has not been "
@@ -3044,7 +3050,7 @@ class EMCVMAXCommon(object):
         # Check that it has been added.
         sgFromVolAddedInstanceName = (
             self.utils.get_storage_group_from_volume(
-                self.conn, volumeInstance.path))
+                self.conn, volumeInstance.path, storageGroupName))
         if sgFromVolAddedInstanceName is None:
             LOG.error(_LE(
                 "Volume : %(volumeName)s has not been "
