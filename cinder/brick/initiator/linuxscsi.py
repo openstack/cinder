@@ -30,6 +30,7 @@ from cinder.openstack.common import loopingcall
 LOG = logging.getLogger(__name__)
 
 MULTIPATH_ERROR_REGEX = re.compile("\w{3} \d+ \d\d:\d\d:\d\d \|.*$")
+MULTIPATH_WWID_REGEX = re.compile("\((?P<wwid>.+)\)")
 
 
 class LinuxSCSI(executor.Executor):
@@ -182,21 +183,26 @@ class LinuxSCSI(executor.Executor):
             lines = [line for line in lines
                      if not re.match(MULTIPATH_ERROR_REGEX, line)]
             if lines:
-                line = lines[0]
-                info = line.split(" ")
-                # device line output is different depending
-                # on /etc/multipath.conf settings.
-                if info[1][:2] == "dm":
-                    mdev = "/dev/%s" % info[1]
-                    mdev_id = info[0]
-                elif info[2][:2] == "dm":
-                    mdev = "/dev/%s" % info[2]
-                    mdev_id = info[1].replace('(', '')
-                    mdev_id = mdev_id.replace(')', '')
 
-                if mdev is None:
-                    LOG.warn(_LW("Couldn't find multipath device %(line)s")
-                             % {'line': line})
+                # Use the device name, be it the WWID, mpathN or custom alias
+                # of a device to build the device path. This should be the
+                # first item on the first line of output from `multipath -l
+                # ${path}` or `multipath -l ${wwid}`..
+                mdev_name = lines[0].split(" ")[0]
+                mdev = '/dev/mapper/%s' % mdev_name
+
+                # Find the WWID for the LUN if we are using mpathN or aliases.
+                wwid_search = MULTIPATH_WWID_REGEX.search(lines[0])
+                if wwid_search is not None:
+                    mdev_id = wwid_search.group('wwid')
+                else:
+                    mdev_id = mdev_name
+
+                # Confirm that the device is present.
+                try:
+                    os.stat(mdev)
+                except OSError:
+                    LOG.warn(_LW("Couldn't find multipath device %s"), mdev)
                     return None
 
                 LOG.debug("Found multipath device = %(mdev)s"
@@ -220,6 +226,7 @@ class LinuxSCSI(executor.Executor):
         if mdev is not None:
             info = {"device": mdev,
                     "id": mdev_id,
+                    "name": mdev_name,
                     "devices": devices}
             return info
         return None
