@@ -130,7 +130,8 @@ class EMCVMAXMasking(object):
         try:
             maskingViewInstanceName, storageGroupInstanceName, errorMessage = (
                 self._validate_masking_view(conn, maskingViewDict,
-                                            defaultStorageGroupInstanceName))
+                                            defaultStorageGroupInstanceName,
+                                            extraSpecs))
             LOG.debug(
                 "The masking view in the attach operation is "
                 "%(maskingViewInstanceName)s. The storage group "
@@ -191,12 +192,14 @@ class EMCVMAXMasking(object):
         return rollbackDict
 
     def _validate_masking_view(self, conn, maskingViewDict,
-                               defaultStorageGroupInstanceName):
+                               defaultStorageGroupInstanceName,
+                               extraSpecs):
         """Validate all the individual pieces of the masking view.
 
         :param conn: the ecom connection
         :param maskingViewDict: the masking view dictionary
         :param defaultStorageGroupInstanceName: the default SG
+        :param extraSpecs: extra specifications
         :returns: maskingViewInstanceName
         :returns: storageGroupInstanceName,
         :returns: string -- errorMessage
@@ -209,22 +212,26 @@ class EMCVMAXMasking(object):
         if maskingViewInstanceName is None:
             maskingViewInstanceName, storageGroupInstanceName, errorMessage = (
                 self._validate_new_masking_view(
-                    conn, maskingViewDict, defaultStorageGroupInstanceName))
+                    conn, maskingViewDict, defaultStorageGroupInstanceName,
+                    extraSpecs))
 
         else:
             storageGroupInstanceName, errorMessage = (
                 self._validate_existing_masking_view(
-                    conn, maskingViewDict, maskingViewInstanceName))
+                    conn, maskingViewDict, maskingViewInstanceName,
+                    extraSpecs))
 
         return maskingViewInstanceName, storageGroupInstanceName, errorMessage
 
     def _validate_new_masking_view(self, conn, maskingViewDict,
-                                   defaultStorageGroupInstanceName):
+                                   defaultStorageGroupInstanceName,
+                                   extraSpecs):
         """Validate the creation of a new masking view.
 
         :param conn: the ecom connection
         :param maskingViewDict: the masking view dictionary
         :param defaultStorageGroupInstanceName: the default SG
+        :param extraSpecs: extra specifications
         :returns: maskingViewInstanceName
         :returns: storageGroupInstanceName,
         :returns: string -- errorMessage
@@ -251,7 +258,7 @@ class EMCVMAXMasking(object):
         initiatorGroupInstanceName, errorMessage = (
             self._check_initiator_group(conn, controllerConfigService,
                                         igGroupName, connector,
-                                        storageSystemName))
+                                        storageSystemName, extraSpecs))
         if errorMessage:
             return None, storageGroupInstanceName, errorMessage
 
@@ -268,18 +275,20 @@ class EMCVMAXMasking(object):
             self._check_masking_view(
                 conn, controllerConfigService,
                 maskingViewName, storageGroupInstanceName,
-                portGroupInstanceName, initiatorGroupInstanceName))
+                portGroupInstanceName, initiatorGroupInstanceName,
+                extraSpecs))
 
         return maskingViewInstanceName, storageGroupInstanceName, errorMessage
 
     def _validate_existing_masking_view(self,
                                         conn, maskingViewDict,
-                                        maskingViewInstanceName):
+                                        maskingViewInstanceName, extraSpecs):
         """Validate the components of an existing masking view.
 
         :param conn: the ecom connection
         :param maskingViewDict: the masking view dictionary
         :param maskingViewInstanceName: the masking view instance name
+        :param extraSpecs: extra specification
         :returns: storageGroupInstanceName
         :returns: string -- errorMessage
         """
@@ -294,7 +303,7 @@ class EMCVMAXMasking(object):
         # First verify that the initiator group matches the initiators.
         errorMessage = self._check_existing_initiator_group(
             conn, controllerConfigService, maskingViewName,
-            connector, storageSystemName, igGroupName)
+            connector, storageSystemName, igGroupName, extraSpecs)
 
         if errorMessage:
             return storageGroupInstanceName, errorMessage
@@ -382,7 +391,7 @@ class EMCVMAXMasking(object):
 
     def _check_initiator_group(
             self, conn, controllerConfigService, igGroupName,
-            connector, storageSystemName):
+            connector, storageSystemName, extraSpecs):
         """Check that initiator group can be either retrieved or created.
 
         :param conn: the ecom connection
@@ -390,6 +399,7 @@ class EMCVMAXMasking(object):
         :param igGroupName: the initiator group Name
         :param connector: the connector object
         :param storageSystemName: the storage system name
+        :param extraSpecs: extra specifications
         :returns: initiatorGroupInstanceName
         :returns: string -- the error message
         """
@@ -397,7 +407,7 @@ class EMCVMAXMasking(object):
         initiatorGroupInstanceName = (
             self._get_initiator_group_instance_name(
                 conn, controllerConfigService, igGroupName, connector,
-                storageSystemName))
+                storageSystemName, extraSpecs))
         if initiatorGroupInstanceName is None:
             # This may be used in exception hence _ instead of _LE.
             msg = (_(
@@ -410,7 +420,7 @@ class EMCVMAXMasking(object):
 
     def _check_existing_initiator_group(
             self, conn, controllerConfigService, maskingViewName,
-            connector, storageSystemName, igGroupName):
+            connector, storageSystemName, igGroupName, extraSpecs):
         """Check that existing initiator group in the masking view.
 
         Check if the initiators in the initiator group match those in the
@@ -422,12 +432,14 @@ class EMCVMAXMasking(object):
         :param connector: the connector object
         :param storageSystemName: the storage system name
         :param igGroupName: the initiator group name
+        :param extraSpecs: extra specification
         :returns: string -- msg, the error message
         """
         msg = None
         if not self._verify_initiator_group_from_masking_view(
                 conn, controllerConfigService, maskingViewName,
-                connector, storageSystemName, igGroupName):
+                connector, storageSystemName, igGroupName,
+                extraSpecs):
             # This may be used in exception hence _ instead of _LE.
             msg = (_(
                 "Unable to verify initiator group: %(igGroupName)s "
@@ -440,7 +452,7 @@ class EMCVMAXMasking(object):
     def _check_masking_view(
             self, conn, controllerConfigService,
             maskingViewName, storageGroupInstanceName,
-            portGroupInstanceName, initiatorGroupInstanceName):
+            portGroupInstanceName, initiatorGroupInstanceName, extraSpecs):
         """Check that masking view can be either got or created.
 
         :param conn: the ecom connection
@@ -449,6 +461,7 @@ class EMCVMAXMasking(object):
         :param storageGroupInstanceName: storage group instance name
         :param portGroupInstanceName: port group instance name
         :param initiatorGroupInstanceName: the initiator group instance name
+        :param extraSpecs: extra specifications
         :returns: maskingViewInstanceName
         :returns: string -- msg, the error message
         """
@@ -457,7 +470,7 @@ class EMCVMAXMasking(object):
             self._get_masking_view_instance_name(
                 conn, controllerConfigService, maskingViewName,
                 storageGroupInstanceName, portGroupInstanceName,
-                initiatorGroupInstanceName))
+                initiatorGroupInstanceName, extraSpecs))
         if maskingViewInstanceName is None:
             # This may be used in exception hence _ instead of _LE.
             msg = (_(
@@ -771,7 +784,7 @@ class EMCVMAXMasking(object):
 
     def _create_or_get_initiator_group(
             self, conn, controllerConfigService, igGroupName,
-            connector, storageSystemName):
+            connector, storageSystemName, extraSpecs):
         """Attempt to create a initiatorGroup.
 
         If one already exists with the same Initiator/wwns then get it.
@@ -786,6 +799,7 @@ class EMCVMAXMasking(object):
         :param igGroupName: the proposed name of the initiator group
         :param connector: the connector information to the host
         :param storageSystemName: the storage system name (String)
+        :param extraSpecs: extra specifications
         :returns: foundInitiatorGroupInstanceName
         """
         initiatorNames = self._find_initiator_names(conn, connector)
@@ -821,7 +835,7 @@ class EMCVMAXMasking(object):
 
             foundInitiatorGroupInstanceName = self._create_initiator_Group(
                 conn, controllerConfigService, igGroupName,
-                storageHardwareIDInstanceNames)
+                storageHardwareIDInstanceNames, extraSpecs)
 
             LOG.info(_LI(
                 "Created new initiator group name: %(igGroupName)s."),
@@ -982,7 +996,7 @@ class EMCVMAXMasking(object):
 
     def _create_masking_view(
             self, conn, configService, maskingViewName, deviceMaskingGroup,
-            targetMaskingGroup, initiatorMaskingGroup):
+            targetMaskingGroup, initiatorMaskingGroup, extraSpecs):
         """After creating an new initiator group find it and return it.
 
         :param conn: the connection to the ecom server
@@ -991,6 +1005,7 @@ class EMCVMAXMasking(object):
         :param deviceMaskingGroup: device(storage) masking group (instanceName)
         :param targetMaskingGroup: target(port) masking group (instanceName)
         :param initiatorMaskingGroup: initiator masking group (instanceName)
+        :param extraSpecs: extra specifications
         :returns: int -- return code
         :returns: dict -- job
         :raises: VolumeBackendAPIException
@@ -1002,7 +1017,8 @@ class EMCVMAXMasking(object):
             TargetMaskingGroup=targetMaskingGroup)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Create Masking View: %(groupName)s. "
@@ -1148,7 +1164,7 @@ class EMCVMAXMasking(object):
 
     def _get_initiator_group_instance_name(
             self, conn, controllerConfigService, igGroupName, connector,
-            storageSystemName):
+            storageSystemName, extraSpecs):
         """Gets the initiator group instance name.
 
         :param conn: the connection to the ecom server
@@ -1156,11 +1172,12 @@ class EMCVMAXMasking(object):
         :param igGroupName: the port group name
         :param connector: the connector object
         :param storageSystemName: the storage system name
+        :param extraSpecs: extra specifications
         :returns: foundInitiatorGroupInstanceName
         """
         foundInitiatorGroupInstanceName = (self._create_or_get_initiator_group(
             conn, controllerConfigService, igGroupName, connector,
-            storageSystemName))
+            storageSystemName, extraSpecs))
         if foundInitiatorGroupInstanceName is None:
             LOG.error(_LE(
                 "Cannot create or find an initiator group with "
@@ -1171,7 +1188,7 @@ class EMCVMAXMasking(object):
     def _get_masking_view_instance_name(
             self, conn, controllerConfigService, maskingViewName,
             storageGroupInstanceName, portGroupInstanceName,
-            initiatorGroupInstanceName):
+            initiatorGroupInstanceName, extraSpecs):
         """Gets the masking view instance name.
 
         :param conn: the connection to the ecom server
@@ -1180,13 +1197,14 @@ class EMCVMAXMasking(object):
         :param storageGroupInstanceName: the storage group instance name
         :param portGroupInstanceName: the port group instance name
         :param initiatorGroupInstanceName: the initiator group instance name
+        :param extraSpecs: extra specifications
         :returns: instance name foundMaskingViewInstanceName
         """
         _rc, job = (
             self._create_masking_view(
                 conn, controllerConfigService, maskingViewName,
                 storageGroupInstanceName, portGroupInstanceName,
-                initiatorGroupInstanceName))
+                initiatorGroupInstanceName, extraSpecs))
         foundMaskingViewInstanceName = self.find_new_masking_view(conn, job)
         if foundMaskingViewInstanceName is None:
             LOG.error(_LE(
@@ -1333,7 +1351,7 @@ class EMCVMAXMasking(object):
 
     def _verify_initiator_group_from_masking_view(
             self, conn, controllerConfigService, maskingViewName, connector,
-            storageSystemName, igGroupName):
+            storageSystemName, igGroupName, extraSpecs):
         """Check that the initiator group contains the correct initiators.
 
         If using an existing masking view check that the initiator group
@@ -1349,6 +1367,7 @@ class EMCVMAXMasking(object):
         :param connector: the connector dict
         :param storageSystemName: the storage System Name (string)
         :param igGroupName: the initiator group name (String)
+        :param extraSpecs: extra specifications
         :returns: boolean
         """
         initiatorNames = self._find_initiator_names(conn, connector)
@@ -1387,7 +1406,7 @@ class EMCVMAXMasking(object):
                     foundInitiatorGroupFromConnector = (
                         self._create_initiator_Group(
                             conn, controllerConfigService, igGroupName,
-                            storageHardwareIDInstanceNames))
+                            storageHardwareIDInstanceNames, extraSpecs))
                 storageGroupInstanceName = (
                     self._get_storage_group_from_masking_view(
                         conn, maskingViewName, storageSystemName))
@@ -1398,12 +1417,12 @@ class EMCVMAXMasking(object):
                         portGroupInstanceName is not None):
                     self._delete_masking_view(
                         conn, controllerConfigService, maskingViewName,
-                        maskingViewInstanceName)
+                        maskingViewInstanceName, extraSpecs)
                     newMaskingViewInstanceName = (
                         self._get_masking_view_instance_name(
                             conn, controllerConfigService, maskingViewName,
                             storageGroupInstanceName, portGroupInstanceName,
-                            foundInitiatorGroupFromConnector))
+                            foundInitiatorGroupFromConnector, extraSpecs))
                     if newMaskingViewInstanceName is not None:
                         LOG.debug(
                             "The old masking view has been replaced: "
@@ -1421,7 +1440,7 @@ class EMCVMAXMasking(object):
 
     def _create_initiator_Group(
             self, conn, controllerConfigService, igGroupName,
-            hardwareIdinstanceNames):
+            hardwareIdinstanceNames, extraSpecs):
         """Create a new initiator group.
 
         Given a list of hardwareId Instance name create a new
@@ -1431,6 +1450,7 @@ class EMCVMAXMasking(object):
         :param controllerConfigService: the controller configuration service
         :param igGroupName: the initiator group name (String)
         :param hardwareIdinstanceNames: one or more hardware id instance names
+        :param extraSpecs: extra specifications
         :returns: foundInitiatorGroupInstanceName
         :raises: VolumeBackendAPIException
         """
@@ -1440,7 +1460,8 @@ class EMCVMAXMasking(object):
             Members=[hardwareIdinstanceNames[0]])
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Create Group: %(groupName)s. "
@@ -1463,7 +1484,9 @@ class EMCVMAXMasking(object):
                     Members=[hardwareIdinstanceNames[j]])
 
                 if rc != 0L:
-                    rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+                    rc, errordesc = (
+                        self.utils.wait_for_job_complete(conn, job,
+                                                         extraSpecs))
                     if rc != 0L:
                         exceptionMessage = (_(
                             "Error adding initiator to group : %(groupName)s. "
@@ -1507,13 +1530,14 @@ class EMCVMAXMasking(object):
 
     def _delete_masking_view(
             self, conn, controllerConfigService, maskingViewName,
-            maskingViewInstanceName):
+            maskingViewInstanceName, extraSpecs):
         """Delete a masking view.
 
         :param conn: connection the ecom server
         :param controllerConfigService: the controller configuration service
         :param maskingViewName: maskingview name (String)
         :param maskingViewInstanceName: the masking view instance name
+        :param extraSpecs: extra specifications
         :raises: VolumeBackendAPIException
         """
         rc, job = conn.InvokeMethod('DeleteMaskingView',
@@ -1521,7 +1545,8 @@ class EMCVMAXMasking(object):
                                     ProtocolController=maskingViewInstanceName)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Modifying masking view : %(groupName)s. "
@@ -1843,7 +1868,7 @@ class EMCVMAXMasking(object):
 
         self._last_volume_delete_masking_view(
             conn, controllerConfigService, mvInstanceName,
-            maskingViewName)
+            maskingViewName, extraSpecs)
         if not isV3:
             isTieringPolicySupported, tierPolicyServiceInstanceName = (
                 self._get_tiering_info(conn, storageSystemInstanceName,
@@ -1920,7 +1945,7 @@ class EMCVMAXMasking(object):
 
     def _last_volume_delete_masking_view(
             self, conn, controllerConfigService, mvInstanceName,
-            maskingViewName):
+            maskingViewName, extraSpecs):
         """Delete the masking view.
 
         Delete the masking view if the volume is the last one in the
@@ -1930,6 +1955,7 @@ class EMCVMAXMasking(object):
         :param controllerConfigService: controller config service
         :param mvInstanceName: masking view instance name
         :param maskingViewName: masking view name
+        :param extraSpecs: extra specifications
         """
         LOG.debug(
             "Last volume in the storage group, deleting masking view "
@@ -1937,7 +1963,7 @@ class EMCVMAXMasking(object):
             {'maskingViewName': maskingViewName})
         self._delete_masking_view(
             conn, controllerConfigService, maskingViewName,
-            mvInstanceName)
+            mvInstanceName, extraSpecs)
 
         mvInstance = self.utils.get_existing_instance(
             conn, mvInstanceName)
@@ -2240,7 +2266,7 @@ class EMCVMAXMasking(object):
         # Delete storage group.
         self._delete_storage_group(conn, controllerConfigService,
                                    storageGroupInstanceName,
-                                   storageGroupName)
+                                   storageGroupName, extraSpecs)
         storageGroupInstance = self.utils.get_existing_instance(
             conn, storageGroupInstanceName)
         if storageGroupInstance:
@@ -2258,13 +2284,15 @@ class EMCVMAXMasking(object):
                       {'storageGroupName': storageGroupName})
 
     def _delete_storage_group(self, conn, controllerConfigService,
-                              storageGroupInstanceName, storageGroupName):
+                              storageGroupInstanceName, storageGroupName,
+                              extraSpecs):
         """Delete empty storage group
 
         :param conn: the ecom connection
         :param controllerConfigService: controller config service
         :param storageGroupInstanceName: storage group instance name
         :param storageGroupName: storage group name
+        :param extraSpecs: extra specifications
         """
         rc, job = conn.InvokeMethod(
             'DeleteGroup',
@@ -2273,7 +2301,8 @@ class EMCVMAXMasking(object):
             Force=True)
 
         if rc != 0L:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job)
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
             if rc != 0L:
                 exceptionMessage = (_(
                     "Error Deleting Group: %(storageGroupName)s. "

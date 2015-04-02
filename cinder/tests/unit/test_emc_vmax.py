@@ -1810,7 +1810,6 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def test_wait_for_sync(self):
         mysync = 'fakesync'
         conn = self.fake_ecom_connection()
-
         self.driver.utils._is_sync_complete = mock.Mock(
             return_value=True)
         rc = self.driver.utils.wait_for_sync(conn, mysync)
@@ -1820,6 +1819,40 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.assertEqual(
             True,
             self.driver.utils._is_sync_complete.return_value)
+        self.driver.utils._is_sync_complete.reset_mock()
+
+        # Save the original state and restore it after this test
+        loopingcall_orig = loopingcall.FixedIntervalLoopingCall
+        loopingcall.FixedIntervalLoopingCall = mock.Mock()
+        rc = self.driver.utils.wait_for_sync(conn, mysync)
+        self.assertIsNone(rc)
+        loopingcall.FixedIntervalLoopingCall.assert_called_once_with(
+            mock.ANY)
+        loopingcall.FixedIntervalLoopingCall.reset_mock()
+        loopingcall.FixedIntervalLoopingCall = loopingcall_orig
+
+    def test_wait_for_sync_extra_specs(self):
+        mysync = 'fakesync'
+        conn = self.fake_ecom_connection()
+        self.create_fake_config_file_no_fast_with_add_ons()
+        extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
+        extraSpecs = (
+            self.driver.common._get_job_extra_specs(self.config_file_path,
+                                                    extraSpecs))
+
+        self.driver.utils._is_sync_complete = mock.Mock(
+            return_value=True)
+        rc = self.driver.utils.wait_for_sync(conn, mysync, extraSpecs)
+        self.assertIsNone(rc)
+        self.driver.utils._is_sync_complete.assert_called_once_with(
+            conn, mysync)
+        self.assertEqual(
+            True,
+            self.driver.utils._is_sync_complete.return_value)
+        self.assertEqual(40,
+                         self.driver.utils._get_max_job_retries(extraSpecs))
+        self.assertEqual(5,
+                         self.driver.utils._get_interval_in_secs(extraSpecs))
         self.driver.utils._is_sync_complete.reset_mock()
 
         # Save the original state and restore it after this test
@@ -1891,6 +1924,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     # Bug 1403160 - make sure the masking view is cleanly deleted
     def test_last_volume_delete_masking_view(self):
+        extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
+        extraSpecs = (
+            self.driver.common._get_job_extra_specs(self.config_file_path,
+                                                    extraSpecs))
         conn = self.fake_ecom_connection()
         controllerConfigService = (
             self.driver.utils.find_controller_configuration_service(
@@ -1908,14 +1945,14 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             exception.VolumeBackendAPIException,
             self.driver.common.masking._last_volume_delete_masking_view,
             conn, controllerConfigService, maskingViewInstanceName,
-            maskingViewName)
+            maskingViewName, extraSpecs)
 
         # Deleting Masking view successful
         self.driver.common.masking.utils.get_existing_instance = mock.Mock(
             return_value=None)
         self.driver.common.masking._last_volume_delete_masking_view(
             conn, controllerConfigService, maskingViewInstanceName,
-            maskingViewName)
+            maskingViewName, extraSpecs)
 
     # Bug 1403160 - make sure the storage group is cleanly deleted
     def test_remove_last_vol_and_delete_sg(self):
