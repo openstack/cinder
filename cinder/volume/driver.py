@@ -1572,7 +1572,8 @@ class ISCSIDriver(VolumeDriver):
         # this base class and use this init data
         iscsi_properties = self._get_iscsi_properties(volume)
         return {
-            'driver_volume_type': 'iscsi',
+            'driver_volume_type':
+                self.configuration.safe_get('iscsi_protocol'),
             'data': iscsi_properties
         }
 
