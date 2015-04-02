@@ -3030,7 +3030,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
     def test_initialize_connection_with_lookup_single_nsp(self, mock_lookup):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
-        class fake_lookup_object:
+        class fake_lookup_object(object):
             def get_device_mapping_from_network(self, connector, target_wwns):
                 fake_map = {
                     'FAB_1': {
@@ -3185,7 +3185,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
     def test_terminate_connection_with_lookup(self, mock_lookup):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
-        class fake_lookup_object:
+        class fake_lookup_object(object):
             def get_device_mapping_from_network(self, connector, target_wwns):
                 fake_map = {
                     'FAB_1': {

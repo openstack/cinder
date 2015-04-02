@@ -65,7 +65,7 @@ CONF = """<?xml version="1.0" encoding="UTF-8" ?>
 """
 
 
-class SimulatedHusBackend:
+class SimulatedHusBackend(object):
     """Simulation Back end. Talks to HUS."""
 
     alloc_lun = []              # allocated LUs

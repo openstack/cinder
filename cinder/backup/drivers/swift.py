@@ -167,7 +167,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                          preauthtoken=self.context.auth_token,
                                          starting_backoff=self.swift_backoff)
 
-    class SwiftObjectWriter:
+    class SwiftObjectWriter(object):
         def __init__(self, container, object_name, conn):
             self.container = container
             self.object_name = object_name
@@ -203,7 +203,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                 raise exception.InvalidBackup(reason=err)
             return md5
 
-    class SwiftObjectReader:
+    class SwiftObjectReader(object):
         def __init__(self, container, object_name, conn):
             self.container = container
             self.object_name = object_name

@@ -400,7 +400,7 @@ def _connection_checker(func):
     return inner_connection_checker
 
 
-class NimbleAPIExecutor:
+class NimbleAPIExecutor(object):
 
     """Makes Nimble API calls."""
 

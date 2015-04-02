@@ -83,7 +83,7 @@ fake_opt = [
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa'
 
 
-class FakeImageService:
+class FakeImageService(object):
     def __init__(self, db_driver=None, image_service=None):
         pass
 

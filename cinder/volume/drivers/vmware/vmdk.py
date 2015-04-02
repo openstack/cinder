@@ -150,7 +150,7 @@ def _get_volume_type_extra_spec(type_id, spec_key, possible_values=None,
     LOG.debug("Invalid spec value: %s specified.", spec_value)
 
 
-class ImageDiskType:
+class ImageDiskType(object):
     """Supported disk types in images."""
 
     PREALLOCATED = "preallocated"

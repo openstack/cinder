@@ -59,7 +59,7 @@ ACCEPTED_REST_SERVER = re.compile(r'^http://'
                                   '(:\d+)?/[a-zA-Z0-9\-_\/]*$')
 
 
-class retry:
+class retry(object):
     SLEEP_NONE = 'none'
     SLEEP_DOUBLE = 'double'
     SLEEP_INCREMENT = 'increment'

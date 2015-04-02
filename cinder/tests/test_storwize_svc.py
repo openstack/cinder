@@ -45,7 +45,7 @@ from cinder.volume import volume_types
 LOG = logging.getLogger(__name__)
 
 
-class StorwizeSVCManagementSimulator:
+class StorwizeSVCManagementSimulator(object):
     def __init__(self, pool_name):
         self._flags = {'storwize_svc_volpool_name': pool_name}
         self._volumes_list = {}

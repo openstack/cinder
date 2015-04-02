@@ -37,7 +37,7 @@ FILTER_FUNCTION = \
     "capabilities.total_volumes < 400 && capabilities.capacity_utilization"
 
 
-class HPLeftHandBaseDriver():
+class HPLeftHandBaseDriver(object):
 
     cluster_id = 1
 

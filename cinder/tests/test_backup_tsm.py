@@ -37,7 +37,7 @@ SIM = None
 VOLUME_PATH = '/dev/null'
 
 
-class TSMBackupSimulator:
+class TSMBackupSimulator(object):
     """Simulates TSM dsmc command.
 
     The simulator simulates the execution of the 'dsmc' command.

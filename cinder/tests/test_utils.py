@@ -485,8 +485,7 @@ class GenericUtilsTestCase(test.TestCase):
 
     @mock.patch('os.stat')
     def test_get_file_mode(self, mock_stat):
-
-        class stat_result:
+        class stat_result(object):
             st_mode = 0o777
             st_gid = 33333
 
@@ -499,7 +498,7 @@ class GenericUtilsTestCase(test.TestCase):
     @mock.patch('os.stat')
     def test_get_file_gid(self, mock_stat):
 
-        class stat_result:
+        class stat_result(object):
             st_mode = 0o777
             st_gid = 33333
 
@@ -654,7 +653,7 @@ class GetBlkdevMajorMinorTestCase(test.TestCase):
     @mock.patch('os.stat')
     def test_get_file_size(self, mock_stat):
 
-        class stat_result:
+        class stat_result(object):
             st_mode = 0o777
             st_size = 1074253824
 
@@ -667,7 +666,7 @@ class GetBlkdevMajorMinorTestCase(test.TestCase):
     @mock.patch('os.stat')
     def test_get_blkdev_major_minor(self, mock_stat):
 
-        class stat_result:
+        class stat_result(object):
             st_mode = 0o60660
             st_rdev = os.makedev(253, 7)
 
@@ -688,14 +687,14 @@ class GetBlkdevMajorMinorTestCase(test.TestCase):
         test_file = '/tmp/file'
         test_disk = '/dev/made_up_disk'
 
-        class stat_result_file:
+        class stat_result_file(object):
             st_mode = 0o660
 
-        class stat_result_partition:
+        class stat_result_partition(object):
             st_mode = 0o60660
             st_rdev = os.makedev(8, 65)
 
-        class stat_result_disk:
+        class stat_result_disk(object):
             st_mode = 0o60660
             st_rdev = os.makedev(8, 64)
 
