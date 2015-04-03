@@ -19,6 +19,7 @@ Mock unit tests for the NetApp block storage library
 """
 
 
+import copy
 import uuid
 
 import mock
@@ -441,3 +442,148 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_is_lun_valid_on_storage(self):
         self.assertTrue(self.library._is_lun_valid_on_storage('lun'))
+
+    def test_initialize_connection_iscsi(self):
+        target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
+        volume = fake.ISCSI_VOLUME
+        connector = fake.ISCSI_CONNECTOR
+        self.mock_object(block_base.NetAppBlockStorageLibrary, '_map_lun',
+                         mock.Mock(return_value=fake.ISCSI_LUN['lun_id']))
+        self.zapi_client.get_iscsi_target_details.return_value = (
+            target_details_list)
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_get_preferred_target_from_list',
+                         mock.Mock(return_value=target_details_list[1]))
+        self.zapi_client.get_iscsi_service_details.return_value = (
+            fake.ISCSI_SERVICE_IQN)
+        self.mock_object(
+            na_utils, 'get_iscsi_connection_properties',
+            mock.Mock(return_value=fake.ISCSI_CONNECTION_PROPERTIES))
+
+        target_info = self.library.initialize_connection_iscsi(volume,
+                                                               connector)
+
+        self.assertEqual(fake.ISCSI_CONNECTION_PROPERTIES, target_info)
+        block_base.NetAppBlockStorageLibrary._map_lun.assert_called_once_with(
+            fake.ISCSI_VOLUME['name'], [fake.ISCSI_CONNECTOR['initiator']],
+            'iscsi', None)
+        self.zapi_client.get_iscsi_target_details.assert_called_once_with()
+        block_base.NetAppBlockStorageLibrary._get_preferred_target_from_list\
+                                            .assert_called_once_with(
+                                                target_details_list)
+        self.zapi_client.get_iscsi_service_details.assert_called_once_with()
+
+    def test_initialize_connection_iscsi_no_target_list(self):
+        volume = fake.ISCSI_VOLUME
+        connector = fake.ISCSI_CONNECTOR
+        self.mock_object(block_base.NetAppBlockStorageLibrary, '_map_lun',
+                         mock.Mock(return_value=fake.ISCSI_LUN['lun_id']))
+        self.zapi_client.get_iscsi_target_details.return_value = None
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_get_preferred_target_from_list')
+        self.mock_object(
+            na_utils, 'get_iscsi_connection_properties',
+            mock.Mock(return_value=fake.ISCSI_CONNECTION_PROPERTIES))
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library.initialize_connection_iscsi,
+                          volume, connector)
+
+        self.assertEqual(
+            0, block_base.NetAppBlockStorageLibrary
+                         ._get_preferred_target_from_list.call_count)
+        self.assertEqual(
+            0, self.zapi_client.get_iscsi_service_details.call_count)
+        self.assertEqual(
+            0, na_utils.get_iscsi_connection_properties.call_count)
+
+    def test_initialize_connection_iscsi_no_preferred_target(self):
+        volume = fake.ISCSI_VOLUME
+        connector = fake.ISCSI_CONNECTOR
+        self.mock_object(block_base.NetAppBlockStorageLibrary, '_map_lun',
+                         mock.Mock(return_value=fake.ISCSI_LUN['lun_id']))
+        self.zapi_client.get_iscsi_target_details.return_value = None
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_get_preferred_target_from_list',
+                         mock.Mock(return_value=None))
+        self.mock_object(na_utils, 'get_iscsi_connection_properties')
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library.initialize_connection_iscsi,
+                          volume, connector)
+
+        self.assertEqual(0, self.zapi_client
+                                .get_iscsi_service_details.call_count)
+        self.assertEqual(0, na_utils.get_iscsi_connection_properties
+                                    .call_count)
+
+    def test_initialize_connection_iscsi_no_iscsi_service_details(self):
+        target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
+        volume = fake.ISCSI_VOLUME
+        connector = fake.ISCSI_CONNECTOR
+        self.mock_object(block_base.NetAppBlockStorageLibrary, '_map_lun',
+                         mock.Mock(return_value=fake.ISCSI_LUN['lun_id']))
+        self.zapi_client.get_iscsi_target_details.return_value = (
+            target_details_list)
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_get_preferred_target_from_list',
+                         mock.Mock(return_value=target_details_list[1]))
+        self.zapi_client.get_iscsi_service_details.return_value = None
+        self.mock_object(na_utils, 'get_iscsi_connection_properties')
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library.initialize_connection_iscsi,
+                          volume,
+                          connector)
+
+        block_base.NetAppBlockStorageLibrary._map_lun.assert_called_once_with(
+            fake.ISCSI_VOLUME['name'], [fake.ISCSI_CONNECTOR['initiator']],
+            'iscsi', None)
+        self.zapi_client.get_iscsi_target_details.assert_called_once_with()
+        block_base.NetAppBlockStorageLibrary._get_preferred_target_from_list\
+                  .assert_called_once_with(target_details_list)
+
+    def test_get_target_details_list(self):
+        target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
+
+        result = self.library._get_preferred_target_from_list(
+            target_details_list)
+
+        self.assertEqual(target_details_list[0], result)
+
+    def test_get_preferred_target_from_empty_list(self):
+        target_details_list = []
+
+        result = self.library._get_preferred_target_from_list(
+            target_details_list)
+
+        self.assertEqual(None, result)
+
+    def test_get_preferred_target_from_list_with_one_interface_disabled(self):
+        target_details_list = copy.deepcopy(fake.ISCSI_TARGET_DETAILS_LIST)
+        target_details_list[0]['interface-enabled'] = 'false'
+
+        result = self.library._get_preferred_target_from_list(
+            target_details_list)
+
+        self.assertEqual(target_details_list[1], result)
+
+    def test_get_preferred_target_from_list_with_all_interfaces_disabled(self):
+        target_details_list = copy.deepcopy(fake.ISCSI_TARGET_DETAILS_LIST)
+        for target in target_details_list:
+            target['interface-enabled'] = 'false'
+
+        result = self.library._get_preferred_target_from_list(
+            target_details_list)
+
+        self.assertEqual(target_details_list[0], result)
+
+    def test_get_preferred_target_from_list_with_filter(self):
+        target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
+        filter = [target_detail['address']
+                  for target_detail in target_details_list[1:]]
+
+        result = self.library._get_preferred_target_from_list(
+            target_details_list, filter)
+
+        self.assertEqual(target_details_list[1], result)

@@ -364,3 +364,10 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
                           self.library._check_volume_type_for_lun,
                           {'vol': 'vol'}, mock_lun, {'ref': 'ref'})
         get_specs.assert_called_once_with({'vol': 'vol'})
+
+    def test_get_preferred_target_from_list(self):
+
+        result = self.library._get_preferred_target_from_list(
+            fake.ISCSI_TARGET_DETAILS_LIST)
+
+        self.assertEqual(fake.ISCSI_TARGET_DETAILS_LIST[0], result)

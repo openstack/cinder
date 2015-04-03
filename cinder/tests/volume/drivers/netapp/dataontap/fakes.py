@@ -20,7 +20,6 @@ METADATA = {'OsType': 'linux', 'SpaceReserved': 'true'}
 
 UUID1 = '12345678-1234-5678-1234-567812345678'
 LUN1 = '/vol/vol0/lun1'
-IGROUP1_NAME = 'openstack-igroup1'
 VSERVER1_NAME = 'openstack-vserver'
 
 FC_VOLUME = {'name': 'fake_volume'}
@@ -70,6 +69,45 @@ FC_TARGET_INFO_UNMAP = {'driver_volume_type': 'fibre_channel',
                         'data': {'target_wwn': FC_TARGET_WWPNS,
                                  'initiator_target_map': FC_I_T_MAP}}
 
-IGROUP1 = {'initiator-group-os-type': 'linux',
-           'initiator-group-type': 'fcp',
-           'initiator-group-name': IGROUP1_NAME}
+IGROUP1_NAME = 'openstack-igroup1'
+
+IGROUP1 = {
+    'initiator-group-os-type': 'linux',
+    'initiator-group-type': 'fcp',
+    'initiator-group-name': IGROUP1_NAME,
+}
+
+ISCSI_VOLUME = {
+    'name': 'fake_volume', 'id': 'fake_id',
+    'provider_auth': 'fake provider auth',
+}
+
+ISCSI_LUN = {'name': ISCSI_VOLUME, 'lun_id': 42}
+
+ISCSI_SERVICE_IQN = 'fake_iscsi_service_iqn'
+
+ISCSI_CONNECTION_PROPERTIES = {
+    'data': {
+        'auth_method': 'fake',
+        'auth_password': 'auth',
+        'auth_username': 'provider',
+        'target_discovered': False,
+        'target_iqn': ISCSI_SERVICE_IQN,
+        'target_lun': 42,
+        'target_portal': '1.2.3.4:3260',
+        'volume_id': 'fake_id',
+    },
+    'driver_volume_type': 'iscsi',
+}
+
+ISCSI_CONNECTOR = {
+    'ip': '1.1.1.1',
+    'host': 'fake_host',
+    'initiator': 'fake_initiator_iqn',
+}
+
+ISCSI_TARGET_DETAILS_LIST = [
+    {'address': '5.6.7.8', 'port': '3260'},
+    {'address': '1.2.3.4', 'port': '3260'},
+    {'address': '99.98.97.96', 'port': '3260'},
+]

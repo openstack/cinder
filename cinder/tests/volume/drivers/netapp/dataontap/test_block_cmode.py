@@ -261,3 +261,16 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.zapi_client.set_lun_qos_policy_group.assert_called_once_with(
             '/vol/lun', 'qos')
         self.assertEqual(1, driver_log.call_count)
+
+    def test_get_preferred_target_from_list(self):
+        target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
+        operational_addresses = [
+            target['address']
+            for target in target_details_list[2:]]
+        self.zapi_client.get_operational_network_interface_addresses = (
+            mock.Mock(return_value=operational_addresses))
+
+        result = self.library._get_preferred_target_from_list(
+            target_details_list)
+
+        self.assertEqual(target_details_list[2], result)
