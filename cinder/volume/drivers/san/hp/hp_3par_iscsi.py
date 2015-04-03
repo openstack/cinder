@@ -84,10 +84,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.14 - Do not allow a different iSCSI IP (hp3par_iscsi_ips) to be
                  used during live-migration.  bug #1423958
         2.0.15 - Added support for updated detach_volume attachment.
+        2.0.16 - Added encrypted property to initialize_connection #1439917
 
     """
 
-    VERSION = "2.0.15"
+    VERSION = "2.0.16"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -266,6 +267,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             {
                 'driver_volume_type': 'iscsi'
                 'data': {
+                    'encrypted': False,
                     'target_discovered': True,
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_protal': '127.0.0.1:3260',
@@ -332,6 +334,9 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 info['data']['auth_method'] = 'CHAP'
                 info['data']['auth_username'] = username
                 info['data']['auth_password'] = password
+
+            encryption_key_id = volume.get('encryption_key_id', None)
+            info['data']['encrypted'] = encryption_key_id is not None
 
             return info
         finally:

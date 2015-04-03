@@ -77,10 +77,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.13 - Fix missing host name during attach bug #1398206
         2.0.14 - Removed usage of host name cache #1398914
         2.0.15 - Added support for updated detach_volume attachment.
+        2.0.16 - Added encrypted property to initialize_connection #1439917
 
     """
 
-    VERSION = "2.0.15"
+    VERSION = "2.0.16"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -194,6 +195,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
             {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
+                    'encrypted': False,
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '1234567890123',
@@ -205,6 +207,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
              {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
+                    'encrypted': False,
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': ['1234567890123', '0987654321321'],
@@ -242,6 +245,10 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                              'target_discovered': True,
                              'target_wwn': target_wwns,
                              'initiator_target_map': init_targ_map}}
+
+            encryption_key_id = volume.get('encryption_key_id', None)
+            info['data']['encrypted'] = encryption_key_id is not None
+
             return info
         finally:
             self._logout(common)
