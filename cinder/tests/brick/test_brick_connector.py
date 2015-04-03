@@ -27,6 +27,7 @@ from cinder.brick import exception
 from cinder.brick.initiator import connector
 from cinder.brick.initiator import host_driver
 from cinder.brick.initiator import linuxfc
+from cinder.brick.initiator import linuxscsi
 from cinder.i18n import _LE
 from cinder.openstack.common import loopingcall
 from cinder import test
@@ -267,12 +268,17 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
 
     @test.testtools.skipUnless(os.path.exists('/dev/disk/by-path'),
                                'Test requires /dev/disk/by-path')
-    def test_connect_volume(self):
+    @mock.patch.object(linuxscsi.LinuxSCSI, 'wait_for_volume_removal',
+                       return_value=None)
+    def test_connect_volume(self, mock_wait_for_vol_rem):
         self._test_connect_volume({}, [])
 
     @test.testtools.skipUnless(os.path.exists('/dev/disk/by-path'),
                                'Test requires /dev/disk/by-path')
-    def test_connect_volume_with_alternative_targets(self):
+    @mock.patch.object(linuxscsi.LinuxSCSI, 'wait_for_volume_removal',
+                       return_value=None)
+    def test_connect_volume_with_alternative_targets(self,
+                                                     mock_wait_for_vol_rem):
         location = '10.0.2.15:3260'
         location2 = '10.0.3.15:3260'
         iqn = 'iqn.2010-10.org.openstack:volume-00000001'
@@ -295,8 +301,10 @@ class ISCSIConnectorTestCase(ConnectorTestCase):
                                'Test requires /dev/disk/by-path')
     @mock.patch.object(os.path, 'exists')
     @mock.patch.object(connector.ISCSIConnector, '_run_iscsiadm')
+    @mock.patch.object(linuxscsi.LinuxSCSI, 'wait_for_volume_removal',
+                       return_value=None)
     def test_connect_volume_with_alternative_targets_primary_error(
-            self, mock_iscsiadm, mock_exists):
+            self, mock_wait_for_vol_rem, mock_iscsiadm, mock_exists):
         location = '10.0.2.15:3260'
         location2 = '10.0.3.15:3260'
         name = 'volume-00000001'
