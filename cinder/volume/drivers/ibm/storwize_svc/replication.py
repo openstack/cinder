@@ -135,35 +135,44 @@ class StorwizeSVCReplicationStretchedCluster(StorwizeSVCReplication):
 
         primary = copies.get('primary', None)
         secondary = copies.get('secondary', None)
-        status = None
 
-        # Check status of primary copy
+        # Check status of primary copy, set status 'error' as default
+        status = 'error'
         if not primary:
             primary = {'status': 'not found',
                        'sync': 'no'}
-        if primary['status'] != 'online':
-            status = 'error'
         else:
-            status = 'active'
+            if primary['status'] == 'online':
+                status = 'active'
 
         extended1 = (_('Primary copy status: %(status)s'
                        ' and synchronized: %(sync)s') %
                      {'status': primary['status'],
                       'sync': primary['sync']})
+
         # Check status of secondary copy
         if not secondary:
             secondary = {'status': 'not found',
                          'sync': 'no',
                          'sync_progress': '0'}
-
-        if secondary['status'] != 'online':
             status = 'error'
         else:
-            if secondary['sync'] == 'yes':
-                status = 'active'
-                secondary['sync_progress'] = '100'
+            if secondary['status'] != 'online':
+                status = 'error'
             else:
-                status = 'copying'
+                if secondary['sync'] == 'yes':
+                    secondary['sync_progress'] = '100'
+                    # Only change the status if not in error state
+                    if status != 'error':
+                        status = 'active'
+                    else:
+                        # Primary offline, secondary online, data consistent,
+                        # stop copying
+                        status = 'active-stop'
+                else:
+                    # Primary and secondary both online, the status is copying
+                    if status != 'error':
+                        status = 'copying'
 
         extended2 = (_('Secondary copy status: %(status)s'
                        ' and synchronized: %(sync)s,'

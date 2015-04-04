@@ -1669,6 +1669,15 @@ port_speed!N/A
     def error_injection(self, cmd, error):
         self._next_cmd_error[cmd] = error
 
+    def change_vdiskcopy_attr(self, vol_name, key, value, copy="primary"):
+        if copy == 'primary':
+            self._volumes_list[vol_name]['copies']['0'][key] = value
+        elif copy == 'secondary':
+            self._volumes_list[vol_name]['copies']['1'][key] = value
+        else:
+            msg = _("The copy should be primary or secondary")
+            raise exception.InvalidInput(reason=msg)
+
 
 class StorwizeSVCFakeDriver(storwize_svc.StorwizeSVCDriver):
     def __init__(self, *args, **kwargs):
@@ -3230,13 +3239,69 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         model_update = self.driver.get_replication_status(self.ctxt, volume)
         self.assertEqual('copying', model_update['replication_status'])
 
+        # Primary copy offline, secondary copy online, data consistent
+        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'offline')
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertEqual('active-stop', model_update['replication_status'])
+
+        # Primary copy offline, secondary copy online, data inconsistent
+        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'No',
+                                       copy="secondary")
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertEqual('error', model_update['replication_status'])
+
+        # Primary copy online, secondary copy offline, data consistent
+        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'yes',
+                                       copy="secondary")
+        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'offline',
+                                       copy="secondary")
+        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'online')
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertEqual('error', model_update['replication_status'])
+
+        # Primary copy online, secondary copy offline, data inconsistent
+        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'no',
+                                       copy="secondary")
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertEqual('error', model_update['replication_status'])
+
+        # Primary copy offline, secondary copy offline, data consistent
+        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'yes',
+                                       copy="secondary")
+        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'offline',
+                                       copy="primary")
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertEqual('error', model_update['replication_status'])
+
+        # Primary copy offline, secondary copy offline, data inconsistent
+        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'no',
+                                       copy="secondary")
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertEqual('error', model_update['replication_status'])
+
+        # Primary copy online, secondary copy online, data inconsistent
+        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'online',
+                                       copy="secondary")
+        self.sim.change_vdiskcopy_attr(volume['name'], 'status', 'online',
+                                       copy="primary")
+        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'no',
+                                       copy="secondary")
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertEqual('copying', model_update['replication_status'])
+
+        # Primary copy online, secondary copy online, data consistent
+        self.sim.change_vdiskcopy_attr(volume['name'], 'sync', 'yes',
+                                       copy="secondary")
+        model_update = self.driver.get_replication_status(self.ctxt, volume)
+        self.assertEqual('active', model_update['replication_status'])
+
         # Check the volume copy created on pool opentack2.
         attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
         self.assertIn('openstack2', attrs['mdisk_grp_name'])
 
         primary_status = attrs['primary']
-
         self.driver.promote_replica(self.ctxt, volume)
+
         # After promote_replica, primary copy should be swiched.
         attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
         self.assertEqual(primary_status[0], attrs['primary'][1])
