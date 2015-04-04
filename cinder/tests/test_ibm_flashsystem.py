@@ -41,7 +41,7 @@ from cinder.volume import volume_types
 LOG = logging.getLogger(__name__)
 
 
-class FlashSystemManagementSimulator:
+class FlashSystemManagementSimulator(object):
     def __init__(self):
         # Default protocol is FC
         self._protocol = 'FC'

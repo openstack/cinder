@@ -54,7 +54,7 @@ Epoch Time           Version
 """
 
 
-class FakeImageService:
+class FakeImageService(object):
     def download(self, context, image_id, path):
         pass
 
@@ -117,7 +117,7 @@ class SheepdogTestCase(test.TestCase):
     def test_copy_image_to_volume(self):
         @contextlib.contextmanager
         def fake_temp_file():
-            class FakeTmp:
+            class FakeTmp(object):
                 def __init__(self, name):
                     self.name = name
             yield FakeTmp('test').name

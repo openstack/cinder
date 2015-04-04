@@ -96,7 +96,7 @@ class SE_ReplicationSettingData(dict):
         self.DesiredCopyMethodology = 0
 
 
-class Fake_CIMProperty():
+class Fake_CIMProperty(object):
 
     def fake_getCIMProperty(self):
         cimproperty = Fake_CIMProperty()
@@ -144,7 +144,7 @@ class Fake_CIMProperty():
         return cimproperty
 
 
-class Fake_CIM_TierPolicyServiceCapabilities():
+class Fake_CIM_TierPolicyServiceCapabilities(object):
 
     def fake_getpolicyinstance(self):
         classinstance = Fake_CIM_TierPolicyServiceCapabilities()
@@ -169,7 +169,7 @@ class FakeCIMInstanceName(dict):
         return instancename
 
 
-class FakeDB():
+class FakeDB(object):
 
     def volume_update(self, context, volume_id, model_update):
         pass
@@ -200,7 +200,7 @@ class FakeDB():
         return snapshots
 
 
-class EMCVMAXCommonData():
+class EMCVMAXCommonData(object):
     wwpn1 = "123456789012345"
     wwpn2 = "123456789054321"
     connector = {'ip': '10.0.0.2',
@@ -433,12 +433,12 @@ class EMCVMAXCommonData():
                    'isV3': True}
 
 
-class FakeLookupService():
+class FakeLookupService(object):
     def get_device_mapping_from_network(self, initiator_wwns, target_wwns):
         return EMCVMAXCommonData.device_map
 
 
-class FakeEcomConnection():
+class FakeEcomConnection(object):
 
     def __init__(self, *args, **kwargs):
         self.data = EMCVMAXCommonData()

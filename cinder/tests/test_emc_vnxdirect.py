@@ -33,7 +33,7 @@ FAKE_ERROR_RETURN = ("FAKE ERROR", 255)
 VERSION = emc_vnx_cli.EMCVnxCliBase.VERSION
 
 
-class EMCVNXCLIDriverTestData():
+class EMCVNXCLIDriverTestData(object):
 
     test_volume = {
         'name': 'vol1',
@@ -3666,7 +3666,7 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         fake_cli.assert_has_calls(expect_cmd)
 
 
-class EMCVNXCLIToggleSPTestData():
+class EMCVNXCLIToggleSPTestData(object):
     def FAKE_COMMAND_PREFIX(self, sp_address):
         return ('/opt/Navisphere/bin/naviseccli', '-address', sp_address,
                 '-user', 'sysadmin', '-password', 'sysadmin',

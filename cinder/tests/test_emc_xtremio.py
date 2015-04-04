@@ -166,7 +166,7 @@ class D(dict):
         return dict.update(self, *args, **kwargs)
 
 
-class CommonData():
+class CommonData(object):
     connector = {'ip': '10.0.0.2',
                  'initiator': 'iqn.1993-08.org.debian:01:222',
                  'wwpns': ["123456789012345", "123456789054321"],

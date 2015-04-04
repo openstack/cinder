@@ -54,7 +54,7 @@ MOCK_image_id = '9999'
 CALLED = {}
 
 
-class MockVDiskController():
+class MockVDiskController(object):
 
     def create_volume(self, location, size):
         CALLED['create_volume'] = {'location': location, 'size': size}
@@ -84,20 +84,20 @@ class MockVDiskController():
                 'diskguid': diskguid}
 
 
-class MockStorageRouter():
+class MockStorageRouter(object):
     name = MOCK_hostname
 
 
-class MockStorageDriver():
+class MockStorageDriver(object):
     storagerouter = MockStorageRouter()
     mountpoint = MOCK_mountpoint
 
 
-class MockVPool():
+class MockVPool(object):
     storagedrivers = [MockStorageDriver()]
 
 
-class MockVDisk():
+class MockVDisk(object):
     vpool = MockVPool()
     cinder_id = None
     snapshots = []
@@ -121,7 +121,7 @@ class MockVDisk():
         pass
 
 
-class MockPMachine():
+class MockPMachine(object):
     guid = MOCK_pmachine_guid
     storagerouters = [MockStorageRouter()]
 
@@ -129,13 +129,13 @@ class MockPMachine():
         pass
 
 
-class MockVPoolList():
+class MockVPoolList(object):
 
     def get_vpool_by_name(self, name):
         return MockVPool()
 
 
-class MockVDiskList():
+class MockVDiskList(object):
 
     def __init__(self, vdisks = None):
         self.vdisks = vdisks
@@ -146,13 +146,13 @@ class MockVDiskList():
         return self.vdisks
 
 
-class MockPMachineList():
+class MockPMachineList(object):
 
     def get_pmachines(self):
         return [MockPMachine()]
 
 
-class MOCK_log():
+class MOCK_log(object):
 
     def debug(self, *args, **kwargs):
         pass
@@ -167,21 +167,21 @@ class MOCK_log():
         pass
 
 
-class MOCK_Context():
+class MOCK_Context(object):
     pass
 
 
-class MOCK_ImageService():
+class MOCK_ImageService(object):
     pass
 
 
-class MOCK_ImageUtils():
+class MOCK_ImageUtils(object):
     def fetch_to_raw(self, context, image_service, image_id, destination_path,
                      block_size, size, run_as_root=False):
         CALLED['ImageUtils_fetch_to_raw'] = (destination_path, size)
 
 
-class MOCK_volume():
+class MOCK_volume(object):
     host = MOCK_hostname
     size = MOCK_volume_size
     volume_type_id = MOCK_volume_type_id
@@ -205,31 +205,31 @@ class MOCK_volume():
         return getattr(self, attribute)
 
 
-class MOCK_snapshot():
+class MOCK_snapshot(object):
     volume = MOCK_volume()
     display_name = MOCK_snapshot_display_name
     id = MOCK_snapshot_id
 
 
 # Fake Modules
-class vdiskhybrid():
+class vdiskhybrid(object):
     VDisk = MockVDisk
 
 
-class pmachinelist():
+class pmachinelist(object):
     PMachineList = MockPMachineList()
 
 
-class vdisklist():
+class vdisklist(object):
     def __init__(self, vdisks):
         self.VDiskList = MockVDiskList(vdisks)
 
 
-class vpoollist():
+class vpoollist(object):
     VPoolList = MockVPoolList()
 
 
-class vdisklib():
+class vdisklib(object):
     VDiskController = MockVDiskController()
 
 
