@@ -776,7 +776,6 @@ class EMCVMAXMasking(object):
         :param storageSystemName: the storage system name (String)
         :returns: foundInitiatorGroupInstanceName
         """
-        failedRet = None
         initiatorNames = self._find_initiator_names(conn, connector)
         LOG.debug("The initiator name(s) are: %(initiatorNames)s.",
                   {'initiatorNames': initiatorNames})
@@ -793,12 +792,20 @@ class EMCVMAXMasking(object):
                 self._get_storage_hardware_id_instance_names(
                     conn, initiatorNames, storageSystemName))
             if not storageHardwareIDInstanceNames:
-                LOG.error(_LE(
+                LOG.info(_LI(
                     "Initiator Name(s) %(initiatorNames)s are not on array "
                     "%(storageSystemName)s."),
                     {'initiatorNames': initiatorNames,
                      'storageSystemName': storageSystemName})
-                return failedRet
+                storageHardwareIDInstanceNames = (
+                    self._create_hardware_ids(conn, initiatorNames,
+                                              storageSystemName))
+                if not storageHardwareIDInstanceNames:
+                    msg = (_("Failed to create hardware id(s) on "
+                             "%(storageSystemName)s.")
+                           % {'storageSystemName': storageSystemName})
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
 
             foundInitiatorGroupInstanceName = self._create_initiator_Group(
                 conn, controllerConfigService, igGroupName,
@@ -1343,12 +1350,20 @@ class EMCVMAXMasking(object):
                         self._get_storage_hardware_id_instance_names(
                             conn, initiatorNames, storageSystemName))
                     if not storageHardwareIDInstanceNames:
-                        LOG.error(_LE(
+                        LOG.info(_LI(
                             "Initiator Name(s) %(initiatorNames)s are not on "
-                            "array %(storageSystemName)s."),
+                            "array %(storageSystemName)s. "),
                             {'initiatorNames': initiatorNames,
                              'storageSystemName': storageSystemName})
-                        return False
+                        storageHardwareIDInstanceNames = (
+                            self._create_hardware_ids(conn, initiatorNames,
+                                                      storageSystemName))
+                        if not storageHardwareIDInstanceNames:
+                            LOG.error(_LE(
+                                "Failed to create hardware id(s) on "
+                                "%(storageSystemName)s."),
+                                {'storageSystemName': storageSystemName})
+                            return False
 
                     foundInitiatorGroupFromConnector = (
                         self._create_initiator_Group(
@@ -2247,3 +2262,28 @@ class EMCVMAXMasking(object):
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
+
+    def _create_hardware_ids(
+            self, conn, initiatorNames, storageSystemName):
+        """Create hardwareIds for initiator(s).
+
+        :param conn: the connection to the ecom server
+        :param initiatorNames: the list of initiator names
+        :param storageSystemName: the storage system name
+        :returns: list -- foundHardwareIDsInstanceNames
+        """
+        foundHardwareIDsInstanceNames = []
+
+        hardwareIdManagementService = (
+            self.utils.find_storage_hardwareid_service(
+                conn, storageSystemName))
+        for initiatorName in initiatorNames:
+            hardwareIdInstanceName = (
+                self.utils.create_storage_hardwareId_instance_name(
+                    conn, hardwareIdManagementService, initiatorName))
+            LOG.debug(
+                "Created hardwareId Instance: %(hardwareIdInstanceName)s.",
+                {'hardwareIdInstanceName': hardwareIdInstanceName})
+            foundHardwareIDsInstanceNames.append(hardwareIdInstanceName)
+
+        return foundHardwareIDsInstanceNames

@@ -3480,7 +3480,7 @@ class EMCVMAXCommon(object):
                     baseVolumeName = "TargetBaseVol"
                     volume = {'size': int(self.utils.convert_bits_to_gbs(
                         volumeSizeInbits))}
-                    rc, baseVolumeDict, storageSystemName = (
+                    _rc, baseVolumeDict, storageSystemName = (
                         self._create_composite_volume(
                             volume, baseVolumeName, volumeSizeInbits,
                             extraSpecs))
@@ -3518,7 +3518,7 @@ class EMCVMAXCommon(object):
                             self.conn, storageSystemName))
                     compositeType = self.utils.get_composite_type(
                         extraSpecs[COMPOSITETYPE])
-                    rc, modifiedVolumeDict = (
+                    _rc, modifiedVolumeDict = (
                         self._modify_and_get_composite_volume_instance(
                             self.conn,
                             elementCompositionService,

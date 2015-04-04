@@ -184,7 +184,8 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         :returns: dict -- the target_wwns and initiator_target_map if the
             zone is to be removed, otherwise empty
         """
-        data = {}
+        data = {'driver_volume_type': 'fibre_channel',
+                'data': {}}
         loc = volume['provider_location']
         name = eval(loc)
         storage_system = name['keybindings']['SystemName']
@@ -193,8 +194,6 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
 
         mvInstanceName = self.common.get_masking_view_by_volume(
             volume, connector)
-        data = {'driver_volume_type': 'fibre_channel',
-                'data': {}}
         if mvInstanceName is not None:
             portGroupInstanceName = (
                 self.common.get_port_group_from_masking_view(

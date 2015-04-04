@@ -240,7 +240,7 @@ class EMCVMAXCommonData(object):
     initiatorgroup_name = \
         'OS-fakehost-IG'
     initiatorgroup_creationclass = 'SE_InitiatorMaskingGroup'
-
+    iscsi_initiator = 'iqn.1993-08.org.debian'
     storageextent_creationclass = 'CIM_StorageExtent'
     initiator1 = 'iqn.1993-08.org.debian: 01: 1a2b3c4d5f6g'
     stconf_service_creationclass = 'Symm_StorageConfigurationService'
@@ -462,7 +462,7 @@ class FakeEcomConnection(object):
                      Type=None, EMCSRP=None, EMCSLO=None, EMCWorkload=None,
                      EMCCollections=None, InitiatorMaskingGroup=None,
                      DeviceMaskingGroup=None, TargetMaskingGroup=None,
-                     ProtocolController=None):
+                     ProtocolController=None, StorageID=None, IDType=None):
 
         rc = 0L
         myjob = SE_ConcreteJob()
@@ -510,6 +510,12 @@ class FakeEcomConnection(object):
             rsd = SE_ReplicationSettingData()
             rsd['DefaultInstance'] = SE_ReplicationSettingData()
             return rc, rsd
+        if MethodName == 'CreateStorageHardwareID':
+            ret = {}
+            rc = 0L
+            ret['HardwareID'] = self.data.iscsi_initiator
+            return rc, ret
+
         job = {'Job': myjob}
         return rc, job
 
@@ -1610,6 +1616,20 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     def fake_is_v3(self, conn, serialNumber):
         return False
+
+    def test_create_hardware_ids(self):
+        conn = self.fake_ecom_connection()
+        connector = {
+            'ip': '10.0.0.2',
+            'initiator': self.data.iscsi_initiator,
+            'host': 'fakehost'}
+        initiatorNames = (
+            self.driver.common.masking._find_initiator_names(conn, connector))
+        storageHardwareIDInstanceNames = (
+            self.driver.common.masking._create_hardware_ids(
+                conn, initiatorNames, self.data.storage_system))
+        self.assertEqual(storageHardwareIDInstanceNames[0],
+                         self.data.iscsi_initiator)
 
     def test_format_system_name(self):
         v2array = ['SYMMETRIX', '000195900551', 'U', 'gold']
