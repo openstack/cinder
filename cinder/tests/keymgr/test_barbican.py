@@ -45,6 +45,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
         # Create fake auth_token
         self.ctxt = mock.Mock()
         self.ctxt.auth_token = "fake_token"
+        self.ctxt.project_id = "fake_project_id"
 
         # Create mock barbican client
         self._build_mock_barbican()
@@ -229,3 +230,44 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
         self.key_mgr._barbican_client = None
         self.assertRaises(exception.NotAuthorized,
                           self.key_mgr.store_key, None, None)
+
+    def test_null_project_id(self):
+        self.key_mgr._barbican_client = None
+        self.ctxt.project_id = None
+        self.assertRaises(exception.KeyManagerError,
+                          self.key_mgr.create_key, self.ctxt)
+
+    def test_ctxt_without_project_id(self):
+        self.key_mgr._barbican_client = None
+        del self.ctxt.project_id
+        self.assertRaises(exception.KeyManagerError,
+                          self.key_mgr.create_key, self.ctxt)
+
+    @mock.patch('cinder.keymgr.barbican.identity.v3.Token')
+    @mock.patch('cinder.keymgr.barbican.session.Session')
+    @mock.patch('cinder.keymgr.barbican.barbican_client.Client')
+    def test_ctxt_with_project_id(self, mock_client, mock_session,
+                                  mock_token):
+        # set client to None so that client creation will occur
+        self.key_mgr._barbican_client = None
+
+        # mock the return values
+        mock_auth = mock.Mock()
+        mock_token.return_value = mock_auth
+        mock_sess = mock.Mock()
+        mock_session.return_value = mock_sess
+
+        # mock the endpoint
+        mock_endpoint = mock.Mock()
+        self.key_mgr._barbican_endpoint = mock_endpoint
+
+        self.key_mgr.create_key(self.ctxt)
+
+        # assert proper calls occured, including with project_id
+        mock_token.assert_called_once_with(
+            auth_url=CONF.keymgr.encryption_auth_url,
+            token=self.ctxt.auth_token,
+            project_id=self.ctxt.project_id)
+        mock_session.assert_called_once_with(auth=mock_auth)
+        mock_client.assert_called_once_with(session=mock_sess,
+                                            endpoint=mock_endpoint)
