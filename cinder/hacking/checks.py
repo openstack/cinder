@@ -46,6 +46,7 @@ no_audit_log = re.compile(r"(.)*LOG\.audit(.)*")
 # imports, we will need to add them to the regex below.
 oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](concurrency|db"
                                     "|config|utils|serialization|log)")
+no_contextlib_nested = re.compile(r"\s*with (contextlib\.)?nested\(")
 
 log_translation_LI = re.compile(
     r"(.)*LOG\.(info)\(\s*(_\(|'|\")")
@@ -184,7 +185,7 @@ def check_no_contextlib_nested(logical_line):
            "the with-statement supports multiple nested objects. See https://"
            "docs.python.org/2/library/contextlib.html#contextlib.nested "
            "for more information.")
-    if "with contextlib.nested" in logical_line:
+    if no_contextlib_nested.match(logical_line):
         yield(0, msg)
 
 
