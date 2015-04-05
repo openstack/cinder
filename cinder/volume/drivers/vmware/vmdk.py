@@ -58,6 +58,8 @@ CREATE_PARAM_ADAPTER_TYPE = 'adapter_type'
 CREATE_PARAM_DISK_LESS = 'disk_less'
 CREATE_PARAM_BACKING_NAME = 'name'
 
+TMP_IMAGES_DATASTORE_FOLDER_PATH = "cinder_temp/"
+
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
                default=None,
@@ -564,7 +566,22 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     def _relocate_backing(self, volume, backing, host):
         pass
 
-    def _select_ds_for_volume(self, volume, host=None):
+    def _select_datastore(self, req, host=None):
+        """Selects datastore satisfying the given requirements.
+
+        :return: (host, resource_pool, summary)
+        """
+
+        hosts = [host] if host else None
+        best_candidate = self.ds_sel.select_datastore(req, hosts=hosts)
+        if not best_candidate:
+            LOG.error(_LE("There is no valid datastore satisfying "
+                          "requirements: %s."), req)
+            raise vmdk_exceptions.NoValidDatastoreException()
+
+        return best_candidate
+
+    def _select_ds_for_volume(self, volume, host=None, create_params=None):
         """Select datastore that can accommodate the given volume's backing.
 
         Returns the selected datastore summary along with a compute host and
@@ -577,16 +594,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         req[hub.DatastoreSelector.PROFILE_NAME] = self._get_storage_profile(
             volume)
 
-        # Select datastore satisfying the requirements.
-        hosts = [host] if host else None
-        best_candidate = self.ds_sel.select_datastore(req, hosts=hosts)
-        if not best_candidate:
-            LOG.error(_LE("There is no valid datastore to create backing for "
-                          "volume: %s."),
-                      volume['name'])
-            raise vmdk_exceptions.NoValidDatastoreException()
-
-        (host_ref, resource_pool, summary) = best_candidate
+        (host_ref, resource_pool, summary) = self._select_datastore(req, host)
         dc = self.volumeops.get_dc(resource_pool)
         folder = self._get_volume_group_folder(dc)
 
@@ -906,13 +914,14 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                      descriptor_ds_file_path,
                      exc_info=True)
 
-    def _copy_temp_virtual_disk(self, dc_ref, src_path, dest_path):
+    def _copy_temp_virtual_disk(self, src_dc_ref, src_path, dest_dc_ref,
+                                dest_path):
         """Clones a temporary virtual disk and deletes it finally."""
 
         try:
             self.volumeops.copy_vmdk_file(
-                dc_ref, src_path.get_descriptor_ds_file_path(),
-                dest_path.get_descriptor_ds_file_path())
+                src_dc_ref, src_path.get_descriptor_ds_file_path(),
+                dest_path.get_descriptor_ds_file_path(), dest_dc_ref)
         except exceptions.VimException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Error occurred while copying %(src)s to "
@@ -922,7 +931,29 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         finally:
             # Delete temporary disk.
             self._delete_temp_disk(src_path.get_descriptor_ds_file_path(),
-                                   dc_ref)
+                                   src_dc_ref)
+
+    def _get_temp_image_folder(self, image_size_in_bytes):
+        """Get datastore folder for downloading temporary images."""
+        # Form requirements for datastore selection.
+        req = {}
+        req[hub.DatastoreSelector.SIZE_BYTES] = image_size_in_bytes
+        # vSAN datastores don't support virtual disk with
+        # flat extent; skip such datastores.
+        req[hub.DatastoreSelector.HARD_AFFINITY_DS_TYPE] = (
+            hub.DatastoreType.get_all_types() - {hub.DatastoreType.VSAN})
+
+        # Select datastore satisfying the requirements.
+        (host_ref, _resource_pool, summary) = self._select_datastore(req)
+
+        ds_name = summary.name
+        dc_ref = self.volumeops.get_dc(host_ref)
+
+        # Create temporary datastore folder.
+        folder_path = TMP_IMAGES_DATASTORE_FOLDER_PATH
+        self.volumeops.create_datastore_folder(ds_name, folder_path, dc_ref)
+
+        return (dc_ref, ds_name, folder_path)
 
     def _create_virtual_disk_from_sparse_image(
             self, context, image_service, image_id, image_size_in_bytes,
@@ -947,19 +978,42 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         dest_path = volumeops.FlatExtentVirtualDiskPath(ds_name,
                                                         folder_path,
                                                         disk_name)
-        self._copy_temp_virtual_disk(dc_ref, src_path, dest_path)
+        self._copy_temp_virtual_disk(dc_ref, src_path, dc_ref, dest_path)
         LOG.debug("Created virtual disk: %s from sparse vmdk image.",
                   dest_path.get_descriptor_ds_file_path())
         return dest_path
 
     def _create_virtual_disk_from_preallocated_image(
             self, context, image_service, image_id, image_size_in_bytes,
-            dc_ref, ds_name, folder_path, disk_name, adapter_type):
+            dest_dc_ref, dest_ds_name, dest_folder_path, dest_disk_name,
+            adapter_type):
         """Creates virtual disk from an image which is a flat extent."""
 
-        path = volumeops.FlatExtentVirtualDiskPath(ds_name,
-                                                   folder_path,
-                                                   disk_name)
+        # Upload the image and use it as a flat extent to create a virtual
+        # disk. First, find the datastore folder to download the image.
+        (dc_ref, ds_name,
+         folder_path) = self._get_temp_image_folder(image_size_in_bytes)
+
+        # pylint: disable=E1101
+        if ds_name == dest_ds_name and dc_ref.value == dest_dc_ref.value:
+            # Temporary image folder and destination path are on the same
+            # datastore. We can directly download the image to the destination
+            # folder to save one virtual disk copy.
+            path = volumeops.FlatExtentVirtualDiskPath(dest_ds_name,
+                                                       dest_folder_path,
+                                                       dest_disk_name)
+            dest_path = path
+        else:
+            # Use the image to create a temporary virtual disk which is then
+            # copied to the destination folder.
+            disk_name = uuidutils.generate_uuid()
+            path = volumeops.FlatExtentVirtualDiskPath(ds_name,
+                                                       folder_path,
+                                                       disk_name)
+            dest_path = volumeops.FlatExtentVirtualDiskPath(dest_ds_name,
+                                                            dest_folder_path,
+                                                            dest_disk_name)
+
         LOG.debug("Creating virtual disk: %(path)s from (flat extent) image: "
                   "%(image_id)s.",
                   {'path': path.get_descriptor_ds_file_path(),
@@ -992,9 +1046,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                              path.get_descriptor_ds_file_path(),
                              exc_info=True)
 
+        if dest_path != path:
+            # Copy temporary disk to given destination.
+            self._copy_temp_virtual_disk(dc_ref, path, dest_dc_ref, dest_path)
+
         LOG.debug("Created virtual disk: %s from flat extent image.",
-                  path.get_descriptor_ds_file_path())
-        return path
+                  dest_path.get_descriptor_ds_file_path())
+        return dest_path
 
     def _check_disk_conversion(self, image_disk_type, extra_spec_disk_type):
         """Check if disk type conversion is needed."""

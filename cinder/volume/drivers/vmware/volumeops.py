@@ -1183,6 +1183,28 @@ class VMwareVolumeOps(object):
         self._session.wait_for_task(task)
         LOG.info(_LI("Successfully deleted file: %s."), file_path)
 
+    def create_datastore_folder(self, ds_name, folder_path, datacenter):
+        """Creates a datastore folder.
+
+        This method returns silently if the folder already exists.
+
+        :param ds_name: datastore name
+        :param folder_path: path of folder to create
+        :param datacenter: datacenter of target datastore
+        """
+        fileManager = self._session.vim.service_content.fileManager
+        ds_folder_path = "[%s] %s" % (ds_name, folder_path)
+        LOG.debug("Creating datastore folder: %s.", ds_folder_path)
+        try:
+            self._session.invoke_api(self._session.vim,
+                                     'MakeDirectory',
+                                     fileManager,
+                                     name=ds_folder_path,
+                                     datacenter=datacenter)
+            LOG.info(_LI("Created datastore folder: %s."), folder_path)
+        except exceptions.FileAlreadyExistsException:
+            LOG.debug("Datastore folder: %s already exists.", folder_path)
+
     def get_path_name(self, backing):
         """Get path name of the backing.
 
@@ -1308,26 +1330,31 @@ class VMwareVolumeOps(object):
         LOG.debug("Created descriptor: %s.",
                   path.get_descriptor_ds_file_path())
 
-    def copy_vmdk_file(self, dc_ref, src_vmdk_file_path, dest_vmdk_file_path):
+    def copy_vmdk_file(self, src_dc_ref, src_vmdk_file_path,
+                       dest_vmdk_file_path, dest_dc_ref=None):
         """Copy contents of the src vmdk file to dest vmdk file.
 
-        During the copy also coalesce snapshots of src if present.
-        dest_vmdk_file_path will be created if not already present.
-
-        :param dc_ref: Reference to datacenter containing src and dest
+        :param src_dc_ref: Reference to datacenter containing src datastore
         :param src_vmdk_file_path: Source vmdk file path
         :param dest_vmdk_file_path: Destination vmdk file path
+        :param dest_dc_ref: Reference to datacenter of dest datastore.
+                            If unspecified, source datacenter is used.
         """
-        LOG.debug('Copying disk data before snapshot of the VM')
+        LOG.debug('Copying disk: %(src)s to %(dest)s.',
+                  {'src': src_vmdk_file_path,
+                   'dest': dest_vmdk_file_path})
+
+        dest_dc_ref = dest_dc_ref or src_dc_ref
         diskMgr = self._session.vim.service_content.virtualDiskManager
         task = self._session.invoke_api(self._session.vim,
                                         'CopyVirtualDisk_Task',
                                         diskMgr,
                                         sourceName=src_vmdk_file_path,
-                                        sourceDatacenter=dc_ref,
+                                        sourceDatacenter=src_dc_ref,
                                         destName=dest_vmdk_file_path,
-                                        destDatacenter=dc_ref,
+                                        destDatacenter=dest_dc_ref,
                                         force=True)
+
         LOG.debug("Initiated copying disk data via task: %s.", task)
         self._session.wait_for_task(task)
         LOG.info(_LI("Successfully copied disk at: %(src)s to: %(dest)s."),

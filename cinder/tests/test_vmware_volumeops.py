@@ -1174,6 +1174,63 @@ class VolumeOpsTestCase(test.TestCase):
                                            datacenter=datacenter)
         self.session.wait_for_task.assert_called_once_with(task)
 
+    def test_create_datastore_folder(self):
+        file_manager = mock.sentinel.file_manager
+        self.session.vim.service_content.fileManager = file_manager
+        invoke_api = self.session.invoke_api
+
+        ds_name = "nfs"
+        folder_path = "test/"
+        datacenter = mock.sentinel.datacenter
+
+        self.vops.create_datastore_folder(ds_name, folder_path, datacenter)
+        invoke_api.assert_called_once_with(self.session.vim,
+                                           'MakeDirectory',
+                                           file_manager,
+                                           name="[nfs] test/",
+                                           datacenter=datacenter)
+
+    def test_create_datastore_folder_with_existing_folder(self):
+        file_manager = mock.sentinel.file_manager
+        self.session.vim.service_content.fileManager = file_manager
+        invoke_api = self.session.invoke_api
+        invoke_api.side_effect = exceptions.FileAlreadyExistsException
+
+        ds_name = "nfs"
+        folder_path = "test/"
+        datacenter = mock.sentinel.datacenter
+
+        self.vops.create_datastore_folder(ds_name, folder_path, datacenter)
+        invoke_api.assert_called_once_with(self.session.vim,
+                                           'MakeDirectory',
+                                           file_manager,
+                                           name="[nfs] test/",
+                                           datacenter=datacenter)
+        invoke_api.side_effect = None
+
+    def test_create_datastore_folder_with_invoke_api_error(self):
+        file_manager = mock.sentinel.file_manager
+        self.session.vim.service_content.fileManager = file_manager
+        invoke_api = self.session.invoke_api
+        invoke_api.side_effect = exceptions.VimFaultException(
+            ["FileFault"], "error")
+
+        ds_name = "nfs"
+        folder_path = "test/"
+        datacenter = mock.sentinel.datacenter
+
+        self.assertRaises(exceptions.VimFaultException,
+                          self.vops.create_datastore_folder,
+                          ds_name,
+                          folder_path,
+                          datacenter)
+        invoke_api.assert_called_once_with(self.session.vim,
+                                           'MakeDirectory',
+                                           file_manager,
+                                           name="[nfs] test/",
+                                           datacenter=datacenter)
+        invoke_api.side_effect = None
+
     def test_get_path_name(self):
         path = mock.Mock(spec=object)
         path_name = mock.sentinel.vm_path_name
@@ -1298,19 +1355,44 @@ class VolumeOpsTestCase(test.TestCase):
         task = mock.sentinel.task
         invoke_api = self.session.invoke_api
         invoke_api.return_value = task
+
         disk_mgr = self.session.vim.service_content.virtualDiskManager
-        dc_ref = self.session.dc_ref
-        src_vmdk_file_path = self.session.src
-        dest_vmdk_file_path = self.session.dest
-        self.vops.copy_vmdk_file(dc_ref, src_vmdk_file_path,
-                                 dest_vmdk_file_path)
+        src_dc_ref = mock.sentinel.src_dc_ref
+        src_vmdk_file_path = mock.sentinel.src_vmdk_file_path
+        dest_dc_ref = mock.sentinel.dest_dc_ref
+        dest_vmdk_file_path = mock.sentinel.dest_vmdk_file_path
+        self.vops.copy_vmdk_file(src_dc_ref, src_vmdk_file_path,
+                                 dest_vmdk_file_path, dest_dc_ref)
+
         invoke_api.assert_called_once_with(self.session.vim,
                                            'CopyVirtualDisk_Task',
                                            disk_mgr,
                                            sourceName=src_vmdk_file_path,
-                                           sourceDatacenter=dc_ref,
+                                           sourceDatacenter=src_dc_ref,
                                            destName=dest_vmdk_file_path,
-                                           destDatacenter=dc_ref,
+                                           destDatacenter=dest_dc_ref,
+                                           force=True)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+    def test_copy_vmdk_file_with_default_dest_datacenter(self):
+        task = mock.sentinel.task
+        invoke_api = self.session.invoke_api
+        invoke_api.return_value = task
+
+        disk_mgr = self.session.vim.service_content.virtualDiskManager
+        src_dc_ref = mock.sentinel.src_dc_ref
+        src_vmdk_file_path = mock.sentinel.src_vmdk_file_path
+        dest_vmdk_file_path = mock.sentinel.dest_vmdk_file_path
+        self.vops.copy_vmdk_file(src_dc_ref, src_vmdk_file_path,
+                                 dest_vmdk_file_path)
+
+        invoke_api.assert_called_once_with(self.session.vim,
+                                           'CopyVirtualDisk_Task',
+                                           disk_mgr,
+                                           sourceName=src_vmdk_file_path,
+                                           sourceDatacenter=src_dc_ref,
+                                           destName=dest_vmdk_file_path,
+                                           destDatacenter=src_dc_ref,
                                            force=True)
         self.session.wait_for_task.assert_called_once_with(task)
 
