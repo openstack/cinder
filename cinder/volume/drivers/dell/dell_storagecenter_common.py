@@ -330,8 +330,8 @@ class DellCommonDriver(san.SanDriver):
             data['driver_version'] = self.VERSION
             data['storage_protocol'] = 'iSCSI'
             data['reserved_percentage'] = 0
-            # in theory if storageusage is None then we should have
-            # blown up getting it.  If not just report inifinite.
+            # In theory if storageusage is None then we should have
+            # blown up getting it.  If not just report unavailable.
             if storageusage is not None:
                 totalcapacity = storageusage.get('availableSpace')
                 totalcapacitygb = self._bytes_to_gb(totalcapacity)

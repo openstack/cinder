@@ -80,7 +80,7 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
 
                         if multipath:
                             # Just return our properties with all the mappings
-                            iscsiproperties = (
+                            idx, iscsiproperties = (
                                 api.find_iscsi_properties(scvolume,
                                                           None,
                                                           None))
@@ -90,7 +90,7 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
                             # Only return the iqn for the user specified port.
                             ip = self.configuration.iscsi_ip_address
                             port = self.configuration.iscsi_port
-                            iscsiproperties = (
+                            idx, iscsiproperties = (
                                 api.find_iscsi_properties(scvolume,
                                                           ip,
                                                           port))
@@ -101,11 +101,11 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
                             # one listed we can assume that we found what
                             # we are looking for.  Otherwise error.
                             if len(portals) > 0:
-                                properties['target_portal'] = portals[0]
+                                properties['target_portal'] = portals[idx]
                                 properties['target_iqn'] = (
-                                    iscsiproperties['target_iqns'][0])
+                                    iscsiproperties['target_iqns'][idx])
                                 properties['target_lun'] = (
-                                    iscsiproperties['target_luns'][0])
+                                    iscsiproperties['target_luns'][idx])
                                 properties['access_mode'] = (
                                     iscsiproperties['access_mode'])
                                 LOG.debug(properties)

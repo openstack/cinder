@@ -358,6 +358,10 @@ class StorageCenterApi(object):
             scservers = self._get_json(r)
             # Sort through the servers looking for one with connectivity.
             for scserver in scservers:
+                # TODO(tom_swanson): Add check for server type.
+                # This needs to be either a physical or virtual server.
+                # Outside of tempest tests this should not matter as we only
+                # "init" a volume to allow snapshotting of an empty volume.
                 if scserver.get('status', '').lower() != 'down':
                     # Map to actually create the volume
                     self.map_volume(scvolume,
@@ -795,23 +799,42 @@ class StorageCenterApi(object):
         # pretend we succeeded.
         return lun, wwns, itmap
 
+    def _find_active_controller(self, scvolume):
+        LOG.debug('find_active_controller')
+        activecontroller = None
+        r = self.client.get('StorageCenter/ScVolume/%s/VolumeConfiguration'
+                            % self._get_id(scvolume))
+        if r.status_code == 200:
+            volumeconfiguration = self._first_result(r)
+            controller = volumeconfiguration.get('controller')
+            activecontroller = self._get_id(controller)
+        LOG.debug('activecontroller %s', activecontroller)
+        return activecontroller
+
     def find_iscsi_properties(self, scvolume, ip=None, port=None):
+        LOG.debug('enter find_iscsi_properties')
+        LOG.debug('scvolume: %s', scvolume)
+        activeindex = -1
         luns = []
         iqns = []
         portals = []
         access_mode = 'rw'
         mappings = self._find_mappings(scvolume)
+        activecontroller = self._find_active_controller(scvolume)
         if len(mappings) > 0:
             for mapping in mappings:
+                LOG.debug('mapping: %s', mapping)
                 # find the controller port for this mapping
                 cport = mapping.get('controllerPort')
                 cportid = self._get_id(cport)
                 domains = self._find_domains(cportid)
                 if domains:
                     controllerport = self._find_controller_port(cportid)
+                    LOG.debug('controllerport: %s', controllerport)
                     if controllerport is not None:
                         appendproperties = False
                         for d in domains:
+                            LOG.debug('domain: %s', d)
                             ipaddress = d.get('targetIpv4Address',
                                               d.get('wellKnownIpAddress'))
                             portnumber = d.get('portNumber')
@@ -825,6 +848,9 @@ class StorageCenterApi(object):
                                 if portals.count(portal) == 0:
                                     appendproperties = True
                                     portals.append(portal)
+                                else:
+                                    LOG.debug('Domain %s has two portals.',
+                                              self._get_id(d))
                         # We do not report lun and iqn info unless it is for
                         # the configured port OR the user has not enabled
                         # multipath.  (In which case ip and port sent in
@@ -832,8 +858,17 @@ class StorageCenterApi(object):
                         if appendproperties is True:
                             iqns.append(controllerport.get('iscsiName'))
                             luns.append(mapping.get('lun'))
+                            if activeindex == -1:
+                                controller = controllerport.get('controller')
+                                controllerid = self._get_id(controller)
+                                if controllerid == activecontroller:
+                                    activeindex = len(iqns) - 1
                         if mapping['readOnly'] is True:
                             access_mode = 'ro'
+
+        if activeindex == -1:
+            LOG.debug('Volume is not yet active on any controller.')
+            activeindex = 0
 
         data = {'target_discovered': False,
                 'target_iqns': iqns,
@@ -841,8 +876,9 @@ class StorageCenterApi(object):
                 'target_luns': luns,
                 'access_mode': access_mode
                 }
+        LOG.debug('find_iscsi_properties return: %s', data)
 
-        return data
+        return activeindex, data
 
     def map_volume(self, scvolume, scserver):
         '''map_volume
