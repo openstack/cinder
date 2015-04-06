@@ -56,6 +56,13 @@ class TestSnapshot(test_objects._LocalTest):
         self.assertEqual(fake_snapshot['id'], snapshot.id)
         self.assertEqual(fake_snapshot['volume_id'], snapshot.volume_id)
 
+    @mock.patch('cinder.db.snapshot_create',
+                return_value=dict(provider_id='1111-aaaa', **fake_snapshot))
+    def test_create_with_provider_id(self, snapshot_create):
+        snapshot = snapshot_obj.Snapshot(context=self.context)
+        snapshot.create()
+        self.assertEqual('1111-aaaa', snapshot.provider_id)
+
     @mock.patch('cinder.db.snapshot_update')
     def test_save(self, snapshot_update):
         snapshot = snapshot_obj.Snapshot._from_db_object(
