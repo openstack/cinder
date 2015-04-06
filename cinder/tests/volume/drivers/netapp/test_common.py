@@ -19,6 +19,7 @@ from cinder import exception
 from cinder import test
 import cinder.tests.volume.drivers.netapp.fakes as na_fakes
 import cinder.volume.drivers.netapp.common as na_common
+import cinder.volume.drivers.netapp.dataontap.fc_cmode as fc_cmode
 import cinder.volume.drivers.netapp.utils as na_utils
 
 
@@ -95,6 +96,16 @@ class NetAppDriverFactoryTestCase(test.TestCase):
                 driver = na_common.NetAppDriver.create_driver(
                     family, protocol, **kwargs)
                 self.assertEqual(full_class_name, get_full_class_name(driver))
+
+    def test_create_driver_case_insensitive(self):
+
+        kwargs = {'configuration': na_fakes.create_configuration(),
+                  'app_version': 'fake_info'}
+
+        driver = na_common.NetAppDriver.create_driver('ONTAP_CLUSTER', 'FC',
+                                                      **kwargs)
+
+        self.assertIsInstance(driver, fc_cmode.NetAppCmodeFibreChannelDriver)
 
     def test_create_driver_invalid_family(self):
 
