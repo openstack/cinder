@@ -1215,7 +1215,9 @@ def volume_detached(context, volume_id, attachment_id):
         volume_ref = _volume_get(context, volume_id, session=session)
         if not remain_attachment:
             # Hide status update from user if we're performing volume migration
-            if not volume_ref['migration_status']:
+            # or uploading it to image
+            if (not volume_ref['migration_status'] and
+                    not (volume_ref['status'] == 'uploading')):
                 volume_ref['status'] = 'available'
 
             volume_ref['attach_status'] = 'detached'
