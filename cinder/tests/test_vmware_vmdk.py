@@ -1328,6 +1328,20 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                           get_volume_group_folder, generate_uuid,
                           delete_temp_backing)
 
+    def test_in_use(self):
+        # Test with in-use volume.
+        vol = {'size': 1, 'status': 'in-use', 'name': 'vol-1',
+               'volume_type_id': 'def'}
+        vol['volume_attachment'] = [mock.sentinel.volume_attachment]
+        self.assertTrue(self._driver._in_use(vol))
+
+        # Test with available volume.
+        vol['status'] = 'available'
+        vol['volume_attachment'] = None
+        self.assertFalse(self._driver._in_use(vol))
+        vol['volume_attachment'] = []
+        self.assertFalse(self._driver._in_use(vol))
+
     def _test_retype(self, ds_sel, vops, get_volume_type_extra_specs,
                      get_volume_group_folder, genereate_uuid,
                      delete_temp_backing):
@@ -1339,13 +1353,14 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         # Test with in-use volume.
         vol = {'size': 1, 'status': 'retyping', 'name': 'vol-1',
-               'volume_type_id': 'def', 'instance_uuid': '583a8dbb'}
+               'volume_type_id': 'def'}
+        vol['volume_attachment'] = [mock.sentinel.volume_attachment]
         self.assertFalse(self._driver.retype(context, vol, new_type, diff,
                                              host))
 
         # Test with no backing.
         vops.get_backing.return_value = None
-        vol['instance_uuid'] = None
+        vol['volume_attachment'] = None
         self.assertTrue(self._driver.retype(context, vol, new_type, diff,
                                             host))
 

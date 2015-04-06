@@ -1409,7 +1409,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
     def _in_use(self, volume):
         """Check if the given volume is in use."""
-        return volume['instance_uuid'] is not None
+        return (volume['volume_attachment'] and
+                len(volume['volume_attachment']) > 0)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
