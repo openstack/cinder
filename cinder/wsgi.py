@@ -438,16 +438,16 @@ class Debug(Middleware):
 
     @webob.dec.wsgify(RequestClass=Request)
     def __call__(self, req):
-        print(('*' * 40) + ' REQUEST ENVIRON')
+        print(('*' * 40) + ' REQUEST ENVIRON')  # noqa
         for key, value in req.environ.items():
-            print(key, '=', value)
-        print()
+            print(key, '=', value)  # noqa
+        print()  # noqa
         resp = req.get_response(self.application)
 
-        print(('*' * 40) + ' RESPONSE HEADERS')
+        print(('*' * 40) + ' RESPONSE HEADERS')  # noqa
         for (key, value) in resp.headers.iteritems():
-            print(key, '=', value)
-        print()
+            print(key, '=', value)  # noqa
+        print()  # noqa
 
         resp.app_iter = self.print_generator(resp.app_iter)
 
@@ -456,12 +456,12 @@ class Debug(Middleware):
     @staticmethod
     def print_generator(app_iter):
         """Iterator that prints the contents of a wrapper string."""
-        print(('*' * 40) + ' BODY')
+        print(('*' * 40) + ' BODY')  # noqa
         for part in app_iter:
             sys.stdout.write(part)
             sys.stdout.flush()
             yield part
-        print()
+        print()  # noqa
 
 
 class Router(object):

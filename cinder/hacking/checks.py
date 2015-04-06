@@ -41,6 +41,7 @@ underscore_import_check = re.compile(r"(.)*i18n\s+import\s+_(.)*")
 # We need this for cases where they have created their own _ function.
 custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
 no_audit_log = re.compile(r"(.)*LOG\.audit(.)*")
+no_print_statements = re.compile(r"\s*print\s*\(.+\).*")
 
 # NOTE(jsbryant): When other oslo libraries switch over non-namespaced
 # imports, we will need to add them to the regex below.
@@ -207,6 +208,18 @@ def check_unicode_usage(logical_line, noqa):
         yield(0, msg)
 
 
+def check_no_print_statements(logical_line, filename, noqa):
+    # The files in cinder/cmd do need to use 'print()' so
+    # we don't need to check those files.  Other exemptions
+    # should use '# noqa' to avoid failing here.
+    if "cinder/cmd" not in filename and not noqa:
+        if re.match(no_print_statements, logical_line):
+            msg = ("C303: print() should not be used. "
+                   "Please use LOG.[info|error|warning|exception|debug]. "
+                   "If print() must be used, use '# noqa' to skip this check.")
+            yield(0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
@@ -219,3 +232,4 @@ def factory(register):
     register(check_datetime_now)
     register(validate_log_translations)
     register(check_unicode_usage)
+    register(check_no_print_statements)
