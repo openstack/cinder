@@ -75,7 +75,7 @@ class ServiceManagerTestCase(test.TestCase):
                                'test',
                                'cinder.tests.test_service.FakeManager')
         serv.start()
-        self.assertEqual(serv.test_method(), 'manager')
+        self.assertEqual('manager', serv.test_method())
 
     def test_override_manager_method(self):
         serv = ExtendedService('test',
@@ -83,7 +83,7 @@ class ServiceManagerTestCase(test.TestCase):
                                'test',
                                'cinder.tests.test_service.FakeManager')
         serv.start()
-        self.assertEqual(serv.test_method(), 'service')
+        self.assertEqual('service', serv.test_method())
 
 
 class ServiceFlagsTestCase(test.TestCase):
@@ -204,7 +204,7 @@ class ServiceTestCase(test.TestCase):
         self.override_config('report_interval', 10)
         service.Service.create(binary="test_service",
                                manager="cinder.tests.test_service.FakeManager")
-        self.assertEqual(CONF.service_down_time, 25)
+        self.assertEqual(25, CONF.service_down_time)
 
 
 class TestWSGIService(test.TestCase):
@@ -223,20 +223,20 @@ class TestWSGIService(test.TestCase):
     @mock.patch('cinder.wsgi.Server')
     def test_workers_set_default(self, wsgi_server):
         test_service = service.WSGIService("osapi_volume")
-        self.assertEqual(test_service.workers, processutils.get_worker_count())
+        self.assertEqual(processutils.get_worker_count(), test_service.workers)
 
     @mock.patch('cinder.wsgi.Server')
     def test_workers_set_good_user_setting(self, wsgi_server):
         self.override_config('osapi_volume_workers', 8)
         test_service = service.WSGIService("osapi_volume")
-        self.assertEqual(test_service.workers, 8)
+        self.assertEqual(8, test_service.workers)
 
     @mock.patch('cinder.wsgi.Server')
     def test_workers_set_zero_user_setting(self, wsgi_server):
         self.override_config('osapi_volume_workers', 0)
         test_service = service.WSGIService("osapi_volume")
         # If a value less than 1 is used, defaults to number of procs available
-        self.assertEqual(test_service.workers, processutils.get_worker_count())
+        self.assertEqual(processutils.get_worker_count(), test_service.workers)
 
     @mock.patch('cinder.wsgi.Server')
     def test_workers_set_negative_user_setting(self, wsgi_server):
@@ -258,11 +258,9 @@ class OSCompatibilityTestCase(test.TestCase):
                             fake_process_launcher):
                 launcher = service.get_launcher()
                 if fake_os == 'nt':
-                    self.assertEqual(type(launcher),
-                                     service.Launcher)
+                    self.assertEqual(service.Launcher, type(launcher))
                 else:
-                    self.assertEqual(launcher,
-                                     fake_process_launcher())
+                    self.assertEqual(fake_process_launcher(), launcher)
 
     def test_process_launcher_on_windows(self):
         self._test_service_launcher('nt')
