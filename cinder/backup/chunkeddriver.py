@@ -80,7 +80,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
             pass
 
         err = _('unsupported compression algorithm: %s') % algorithm
-        raise ValueError(unicode(err))
+        raise ValueError(err)
 
     def __init__(self, context, chunk_size_bytes, sha_block_size_bytes,
                  backup_default_container, enable_progress_timer,

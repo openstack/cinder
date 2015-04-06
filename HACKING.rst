@@ -19,6 +19,7 @@ Cinder Specific Commandments
 - [N333] Ensure that oslo namespaces are used for namespaced libraries.
 - [N339] Prevent use of deprecated contextlib.nested.
 - [C301] timeutils.utcnow() from oslo_utils should be used instead of datetime.now().
+- [C302] six.text_type should be used instead of unicode
 
 
 General

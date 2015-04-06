@@ -13,6 +13,7 @@
 #    under the License.
 
 from oslo_log import log as logging
+import six
 import webob
 from webob import exc
 
@@ -76,7 +77,7 @@ class VolumeReplicationController(wsgi.Controller):
             msg = _("Volume could not be found")
             raise exc.HTTPNotFound(explanation=msg)
         except exception.ReplicationError as error:
-            raise exc.HTTPBadRequest(explanation=unicode(error))
+            raise exc.HTTPBadRequest(explanation=six.text_type(error))
         return webob.Response(status_int=202)
 
     @wsgi.response(202)
@@ -94,7 +95,7 @@ class VolumeReplicationController(wsgi.Controller):
             msg = _("Volume could not be found")
             raise exc.HTTPNotFound(explanation=msg)
         except exception.ReplicationError as error:
-            raise exc.HTTPBadRequest(explanation=unicode(error))
+            raise exc.HTTPBadRequest(explanation=six.text_type(error))
         return webob.Response(status_int=202)
 
 

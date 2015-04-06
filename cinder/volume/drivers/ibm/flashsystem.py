@@ -161,8 +161,8 @@ class FlashSystemDriver(san.SanDriver):
                 invalid_ch_in_host = invalid_ch_in_host + ch
 
         host_name = connector['host']
-        if isinstance(host_name, unicode):
-            unicode_host_name_filter = dict((ord(unicode(char)), u'-')
+        if isinstance(host_name, six.text_type):
+            unicode_host_name_filter = dict((ord(six.text_type(char)), u'-')
                                             for char in invalid_ch_in_host)
             host_name = host_name.translate(unicode_host_name_filter)
         elif isinstance(host_name, str):

@@ -203,3 +203,9 @@ class HackingTestCase(test.TestCase):
             "LOG.error(_LE('foo')", "foo.py"))))
         self.assertEqual(0, len(list(checks.validate_log_translations(
             "LOG.exception(_LE('foo')", "foo.py"))))
+
+    def test_check_unicode_usage(self):
+        self.assertEqual(1, len(list(checks.check_unicode_usage(
+            "unicode(msg)", False))))
+        self.assertEqual(0, len(list(checks.check_unicode_usage(
+            "unicode(msg)  # noqa", True))))

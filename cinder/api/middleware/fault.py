@@ -15,6 +15,7 @@
 #    under the License.
 
 from oslo_log import log as logging
+import six
 import webob.dec
 import webob.exc
 
@@ -64,7 +65,7 @@ class FaultWrapper(base_wsgi.Middleware):
         # including those that are safe to expose, see bug 1021373
         if safe:
             msg = (inner.msg if isinstance(inner, exception.CinderException)
-                   else unicode(inner))
+                   else six.text_type(inner))
             params = {'exception': inner.__class__.__name__,
                       'explanation': msg}
             outer.explanation = _('%(exception)s: %(explanation)s') % params

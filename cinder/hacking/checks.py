@@ -197,6 +197,16 @@ def check_datetime_now(logical_line, noqa):
         yield(0, msg)
 
 
+def check_unicode_usage(logical_line, noqa):
+    if noqa:
+        return
+
+    msg = "C302: Found unicode() call. Please use six.text_type()."
+
+    if 'unicode(' in logical_line:
+        yield(0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
@@ -208,3 +218,4 @@ def factory(register):
     register(check_no_contextlib_nested)
     register(check_datetime_now)
     register(validate_log_translations)
+    register(check_unicode_usage)

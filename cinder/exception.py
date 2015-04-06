@@ -112,7 +112,7 @@ class CinderException(Exception):
         return self.kwargs['message'] is None or '%(message)' in self.message
 
     def __unicode__(self):
-        return unicode(self.msg)
+        return six.text_type(self.msg)
 
 
 class VolumeBackendAPIException(CinderException):
