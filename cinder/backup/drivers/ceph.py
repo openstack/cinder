@@ -138,8 +138,7 @@ class VolumeMetadataBackup(object):
         """
         meta_obj = rados.Object(self._client.ioctx, self.name)
         if not self._exists(meta_obj):
-            msg = "Metadata backup object %s does not exist" % self.name
-            LOG.debug(msg)
+            LOG.debug("Metadata backup object %s does not exist", self.name)
             return None
 
         return meta_obj.read()
@@ -149,9 +148,8 @@ class VolumeMetadataBackup(object):
         try:
             meta_obj.remove()
         except rados.ObjectNotFound:
-            msg = ("Metadata backup object '%s' not found - ignoring" %
-                   self.name)
-            LOG.debug(msg)
+            LOG.debug("Metadata backup object '%s' not found - ignoring",
+                      self.name)
 
 
 class CephBackupDriver(driver.BackupDriver):
@@ -279,7 +277,7 @@ class CephBackupDriver(driver.BackupDriver):
         and pad with zeroes.
         """
         if length:
-            LOG.debug("Discarding %(length)s bytes from offset %(offset)s" %
+            LOG.debug("Discarding %(length)s bytes from offset %(offset)s",
                       {'length': length, 'offset': offset})
             if self._file_is_rbd(volume):
                 volume.rbd_image.discard(offset, length)
@@ -287,7 +285,7 @@ class CephBackupDriver(driver.BackupDriver):
                 zeroes = '\0' * length
                 chunks = int(length / self.chunk_size)
                 for chunk in xrange(0, chunks):
-                    LOG.debug("Writing zeroes chunk %d" % chunk)
+                    LOG.debug("Writing zeroes chunk %d", chunk)
                     volume.write(zeroes)
                     volume.flush()
                     # yield to any other pending backups
@@ -301,11 +299,11 @@ class CephBackupDriver(driver.BackupDriver):
 
     def _transfer_data(self, src, src_name, dest, dest_name, length):
         """Transfer data between files (Python IO objects)."""
-        LOG.debug("Transferring data between '%(src)s' and '%(dest)s'" %
+        LOG.debug("Transferring data between '%(src)s' and '%(dest)s'",
                   {'src': src_name, 'dest': dest_name})
 
         chunks = int(length / self.chunk_size)
-        LOG.debug("%(chunks)s chunks of %(bytes)s bytes to be transferred" %
+        LOG.debug("%(chunks)s chunks of %(bytes)s bytes to be transferred",
                   {'chunks': chunks, 'bytes': self.chunk_size})
 
         for chunk in xrange(0, chunks):
@@ -324,17 +322,18 @@ class CephBackupDriver(driver.BackupDriver):
             dest.flush()
             delta = (time.time() - before)
             rate = (self.chunk_size / delta) / 1024
-            LOG.debug((_("Transferred chunk %(chunk)s of %(chunks)s "
-                         "(%(rate)dK/s)") %
-                       {'chunk': chunk + 1, 'chunks': chunks,
-                        'rate': rate}))
+            LOG.debug("Transferred chunk %(chunk)s of %(chunks)s "
+                      "(%(rate)dK/s)",
+                      {'chunk': chunk + 1,
+                       'chunks': chunks,
+                       'rate': rate})
 
             # yield to any other pending backups
             eventlet.sleep(0)
 
         rem = int(length % self.chunk_size)
         if rem:
-            LOG.debug("Transferring remaining %s bytes" % rem)
+            LOG.debug("Transferring remaining %s bytes", rem)
             data = src.read(rem)
             if data == '':
                 if CONF.restore_discard_excess_bytes:
@@ -350,7 +349,7 @@ class CephBackupDriver(driver.BackupDriver):
 
         This will be the base image used for storing differential exports.
         """
-        LOG.debug("Creating base image '%s'" % name)
+        LOG.debug("Creating base image '%s'", name)
         old_format, features = self._get_rbd_support()
         self.rbd.RBD().create(ioctx=rados_client.ioctx,
                               name=name,
@@ -377,7 +376,7 @@ class CephBackupDriver(driver.BackupDriver):
             snap_name = self._get_backup_snap_name(base_rbd, base_name,
                                                    backup_id)
             if snap_name:
-                LOG.debug("Deleting backup snapshot='%s'" % snap_name)
+                LOG.debug("Deleting backup snapshot='%s'", snap_name)
                 base_rbd.remove_snap(snap_name)
             else:
                 LOG.debug("No backup snapshot to delete")
@@ -417,7 +416,7 @@ class CephBackupDriver(driver.BackupDriver):
 
             base_name = self._get_backup_base_name(volume_id, backup_id)
             LOG.debug("Trying diff format basename='%(basename)s' for "
-                      "backup base image of volume %(volume)s." %
+                      "backup base image of volume %(volume)s.",
                       {'basename': base_name, 'volume': volume_id})
 
         with rbd_driver.RADOSClient(self) as client:
@@ -433,25 +432,25 @@ class CephBackupDriver(driver.BackupDriver):
                 snap, rem = self._delete_backup_snapshot(client, base_name,
                                                          backup_id)
                 if rem:
-                    msg = (_LI("Backup base image of volume %(volume)s still "
-                               "has %(snapshots)s snapshots so skipping base "
-                               "image delete.") %
-                           {'snapshots': rem, 'volume': volume_id})
-                    LOG.info(msg)
+                    LOG.info(
+                        _LI("Backup base image of volume %(volume)s still "
+                            "has %(snapshots)s snapshots so skipping base "
+                            "image delete."),
+                        {'snapshots': rem, 'volume': volume_id})
                     return
 
                 LOG.info(_LI("Deleting backup base image='%(basename)s' of "
-                             "volume %(volume)s.") %
+                             "volume %(volume)s."),
                          {'basename': base_name, 'volume': volume_id})
                 # Delete base if no more snapshots
                 try:
                     self.rbd.RBD().remove(client.ioctx, base_name)
-                except self.rbd.ImageBusy as exc:
+                except self.rbd.ImageBusy:
                     # Allow a retry if the image is busy
                     if retries > 0:
                         LOG.info(_LI("Backup image of volume %(volume)s is "
                                      "busy, retrying %(retries)s more time(s) "
-                                     "in %(delay)ss.") %
+                                     "in %(delay)ss."),
                                  {'retries': retries,
                                   'delay': delay,
                                   'volume': volume_id})
@@ -459,13 +458,13 @@ class CephBackupDriver(driver.BackupDriver):
                     else:
                         LOG.error(_LE("Max retries reached deleting backup "
                                       "%(basename)s image of volume "
-                                      "%(volume)s.")
-                                  % {'volume': volume_id,
-                                     'basename': base_name})
-                        raise exc
+                                      "%(volume)s."),
+                                  {'volume': volume_id,
+                                   'basename': base_name})
+                        raise
                 else:
                     LOG.debug("Base backup image='%(basename)s' of volume "
-                              "%(volume)s deleted." %
+                              "%(volume)s deleted.",
                               {'basename': base_name, 'volume': volume_id})
                     retries = 0
                 finally:
@@ -476,7 +475,7 @@ class CephBackupDriver(driver.BackupDriver):
             src_name = encodeutils.safe_encode(volume_id)
             if src_name in self.rbd.RBD().list(client.ioctx):
                 LOG.debug("Deleting source volume snapshot '%(snapshot)s' "
-                          "for backup %(basename)s." %
+                          "for backup %(basename)s.",
                           {'snapshot': snap, 'basename': base_name})
                 src_rbd = self.rbd.Image(client.ioctx, src_name)
                 try:
@@ -486,14 +485,14 @@ class CephBackupDriver(driver.BackupDriver):
 
     def _piped_execute(self, cmd1, cmd2):
         """Pipe output of cmd1 into cmd2."""
-        LOG.debug("Piping cmd1='%s' into..." % ' '.join(cmd1))
-        LOG.debug("cmd2='%s'" % ' '.join(cmd2))
+        LOG.debug("Piping cmd1='%s' into...", ' '.join(cmd1))
+        LOG.debug("cmd2='%s'", ' '.join(cmd2))
 
         try:
             p1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE)
         except OSError as e:
-            LOG.error(_LE("Pipe1 failed - %s ") % unicode(e))
+            LOG.error(_LE("Pipe1 failed - %s "), e)
             raise
 
         # NOTE(dosaboy): ensure that the pipe is blocking. This is to work
@@ -507,7 +506,7 @@ class CephBackupDriver(driver.BackupDriver):
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE)
         except OSError as e:
-            LOG.error(_LE("Pipe2 failed - %s ") % unicode(e))
+            LOG.error(_LE("Pipe2 failed - %s "), e)
             raise
 
         p1.stdout.close()
@@ -524,7 +523,7 @@ class CephBackupDriver(driver.BackupDriver):
         changed since the snapshot was created.
         """
         LOG.debug("Performing differential transfer from '%(src)s' to "
-                  "'%(dest)s'" %
+                  "'%(dest)s'",
                   {'src': src_name, 'dest': dest_name})
 
         # NOTE(dosaboy): Need to be tolerant of clusters/clients that do
@@ -561,13 +560,11 @@ class CephBackupDriver(driver.BackupDriver):
         """Return tuple (exists, name)."""
         rbds = self.rbd.RBD().list(client.ioctx)
         if name not in rbds:
-            msg = "Image '%s' not found - trying diff format name" % name
-            LOG.debug(msg)
+            LOG.debug("Image '%s' not found - trying diff format name", name)
             if try_diff_format:
                 name = self._get_backup_base_name(volume_id, diff_format=True)
                 if name not in rbds:
-                    msg = "Diff format image '%s' not found" % name
-                    LOG.debug(msg)
+                    LOG.debug("Diff format image '%s' not found", name)
                     return False, name
             else:
                 return False, name
@@ -602,7 +599,7 @@ class CephBackupDriver(driver.BackupDriver):
         # Identify our --from-snap point (if one exists)
         from_snap = self._get_most_recent_snap(source_rbd_image)
         LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
-                  "volume %(volume)s." %
+                  "volume %(volume)s.",
                   {'snap': from_snap, 'volume': volume_id})
 
         base_name = self._get_backup_base_name(volume_id, diff_format=True)
@@ -619,7 +616,7 @@ class CephBackupDriver(driver.BackupDriver):
                 # ignore it since it is stale and waiting to be cleaned up.
                 if from_snap:
                     LOG.debug("Source snapshot '%(snapshot)s' of volume "
-                              "%(volume)s is stale so deleting." %
+                              "%(volume)s is stale so deleting.",
                               {'snapshot': from_snap, 'volume': volume_id})
                     source_rbd_image.remove_snap(from_snap)
                     from_snap = None
@@ -642,7 +639,7 @@ class CephBackupDriver(driver.BackupDriver):
 
         # Snapshot source volume so that we have a new point-in-time
         new_snap = self._get_new_snap_name(backup_id)
-        LOG.debug("Creating backup snapshot='%s'" % new_snap)
+        LOG.debug("Creating backup snapshot='%s'", new_snap)
         source_rbd_image.create_snap(new_snap)
 
         # Attempt differential backup. If this fails, perhaps because librbd
@@ -662,7 +659,7 @@ class CephBackupDriver(driver.BackupDriver):
                                     src_snap=new_snap,
                                     from_snap=from_snap)
 
-            LOG.debug("Differential backup transfer completed in %.4fs" %
+            LOG.debug("Differential backup transfer completed in %.4fs",
                       (time.time() - before))
 
             # We don't need the previous snapshot (if there was one) anymore so
@@ -681,7 +678,7 @@ class CephBackupDriver(driver.BackupDriver):
 
                 # Delete snapshot
                 LOG.debug("Deleting diff backup snapshot='%(snapshot)s' of "
-                          "source volume='%(volume)s'." %
+                          "source volume='%(volume)s'.",
                           {'snapshot': new_snap, 'volume': volume_id})
                 source_rbd_image.remove_snap(new_snap)
 
@@ -702,8 +699,8 @@ class CephBackupDriver(driver.BackupDriver):
             # First create base backup image
             old_format, features = self._get_rbd_support()
             LOG.debug("Creating backup base image='%(name)s' for volume "
-                      "%(volume)s."
-                      % {'name': backup_name, 'volume': volume_id})
+                      "%(volume)s.",
+                      {'name': backup_name, 'volume': volume_id})
             self.rbd.RBD().create(ioctx=client.ioctx,
                                   name=backup_name,
                                   size=length,
@@ -712,7 +709,7 @@ class CephBackupDriver(driver.BackupDriver):
                                   stripe_unit=self.rbd_stripe_unit,
                                   stripe_count=self.rbd_stripe_count)
 
-            LOG.debug("Copying data from volume %s." % volume_id)
+            LOG.debug("Copying data from volume %s.", volume_id)
             dest_rbd = self.rbd.Image(client.ioctx, backup_name)
             try:
                 rbd_meta = rbd_driver.RBDImageMetadata(dest_rbd,
@@ -773,17 +770,17 @@ class CephBackupDriver(driver.BackupDriver):
         """
         snaps = self.get_backup_snaps(rbd_image)
 
-        LOG.debug("Looking for snapshot of backup base '%s'" % name)
+        LOG.debug("Looking for snapshot of backup base '%s'", name)
 
         if not snaps:
-            LOG.debug("Backup base '%s' has no snapshots" % name)
+            LOG.debug("Backup base '%s' has no snapshots", name)
             return None
 
         snaps = [snap['name'] for snap in snaps
                  if snap['backup_id'] == backup_id]
 
         if not snaps:
-            LOG.debug("Backup '%s' has no snapshot" % backup_id)
+            LOG.debug("Backup '%s' has no snapshot", backup_id)
             return None
 
         if len(snaps) > 1:
@@ -792,7 +789,7 @@ class CephBackupDriver(driver.BackupDriver):
             LOG.error(msg)
             raise exception.BackupOperationError(msg)
 
-        LOG.debug("Found snapshot '%s'" % (snaps[0]))
+        LOG.debug("Found snapshot '%s'", snaps[0])
         return snaps[0]
 
     def _get_most_recent_snap(self, rbd_image):
@@ -828,11 +825,11 @@ class CephBackupDriver(driver.BackupDriver):
         """
         json_meta = self.get_metadata(backup['volume_id'])
         if not json_meta:
-            LOG.debug("No metadata to backup for volume %s." %
+            LOG.debug("No metadata to backup for volume %s.",
                       backup['volume_id'])
             return
 
-        LOG.debug("Backing up metadata for volume %s." %
+        LOG.debug("Backing up metadata for volume %s.",
                   backup['volume_id'])
         try:
             with rbd_driver.RADOSClient(self) as client:
@@ -854,7 +851,7 @@ class CephBackupDriver(driver.BackupDriver):
         volume_id = volume['id']
         volume_name = volume['name']
 
-        LOG.debug("Starting backup of volume='%s'." % volume_id)
+        LOG.debug("Starting backup of volume='%s'.", volume_id)
 
         # Ensure we are at the beginning of the volume
         volume_file.seek(0)
@@ -867,7 +864,7 @@ class CephBackupDriver(driver.BackupDriver):
                 self._backup_rbd(backup_id, volume_id, volume_file,
                                  volume_name, length)
             except exception.BackupRBDOperationFailed:
-                LOG.debug("Forcing full backup of volume %s." % volume_id)
+                LOG.debug("Forcing full backup of volume %s.", volume_id)
                 do_full_backup = True
         else:
             do_full_backup = True
@@ -887,8 +884,8 @@ class CephBackupDriver(driver.BackupDriver):
                     # Cleanup.
                     self.delete(backup)
 
-        LOG.debug("Backup '%(backup_id)s' of volume %(volume_id)s finished."
-                  % {'backup_id': backup_id, 'volume_id': volume_id})
+        LOG.debug("Backup '%(backup_id)s' of volume %(volume_id)s finished.",
+                  {'backup_id': backup_id, 'volume_id': volume_id})
 
     def _full_restore(self, backup_id, volume_id, dest_file, dest_name,
                       length, src_snap=None):
@@ -960,7 +957,7 @@ class CephBackupDriver(driver.BackupDriver):
         rbd_conf = restore_file.rbd_conf
 
         LOG.debug("Attempting incremental restore from base='%(base)s' "
-                  "snap='%(snap)s'" %
+                  "snap='%(snap)s'",
                   {'base': base_name, 'snap': restore_point})
         before = time.time()
         try:
@@ -982,7 +979,7 @@ class CephBackupDriver(driver.BackupDriver):
         self._check_restore_vol_size(base_name, restore_name, restore_length,
                                      rbd_pool)
 
-        LOG.debug("Restore transfer completed in %.4fs" %
+        LOG.debug("Restore transfer completed in %.4fs",
                   (time.time() - before))
 
     def _num_backup_snaps(self, backup_base_name):
@@ -1031,7 +1028,7 @@ class CephBackupDriver(driver.BackupDriver):
         rbd_volume.diff_iterate(0, rbd_volume.size(), None, iter_cb)
 
         if extents:
-            LOG.debug("RBD has %s extents" % sum(extents))
+            LOG.debug("RBD has %s extents", sum(extents))
             return True
 
         return False
@@ -1068,9 +1065,8 @@ class CephBackupDriver(driver.BackupDriver):
             # made from, force a full restore since a diff will not work in
             # this case.
             if volume['id'] == backup['volume_id']:
-                msg = ("Destination volume is same as backup source volume "
-                       "%s - forcing full copy." % volume['id'])
-                LOG.debug(msg)
+                LOG.debug("Destination volume is same as backup source volume "
+                          "%s - forcing full copy.", volume['id'])
                 return False, restore_point
 
             if restore_point:
@@ -1086,7 +1082,7 @@ class CephBackupDriver(driver.BackupDriver):
             else:
                 LOG.info(_LI("No restore point found for "
                              "backup='%(backup)s' of "
-                             "volume %(volume)s - forcing full copy.") %
+                             "volume %(volume)s - forcing full copy."),
                          {'backup': backup['id'],
                           'volume': backup['volume_id']})
 
@@ -1118,7 +1114,7 @@ class CephBackupDriver(driver.BackupDriver):
                                        restore_point, length)
                 do_full_restore = False
             except exception.BackupRBDOperationFailed:
-                LOG.debug("Forcing full restore to volume %s." %
+                LOG.debug("Forcing full restore to volume %s.",
                           volume['id'])
 
         if do_full_restore:
@@ -1139,7 +1135,7 @@ class CephBackupDriver(driver.BackupDriver):
                 if meta is not None:
                     self.put_metadata(volume_id, meta)
                 else:
-                    LOG.debug("Volume %s has no backed up metadata." %
+                    LOG.debug("Volume %s has no backed up metadata.",
                               backup['volume_id'])
         except exception.BackupMetadataUnsupportedVersion:
             msg = _("Metadata restore failed due to incompatible version")
@@ -1153,7 +1149,7 @@ class CephBackupDriver(driver.BackupDriver):
         """
         target_volume = self.db.volume_get(self.context, volume_id)
         LOG.debug('Starting restore from Ceph backup=%(src)s to '
-                  'volume=%(dest)s' %
+                  'volume=%(dest)s',
                   {'src': backup['id'], 'dest': target_volume['name']})
 
         try:
@@ -1170,25 +1166,25 @@ class CephBackupDriver(driver.BackupDriver):
 
             self._restore_metadata(backup, volume_id)
 
-            LOG.debug('Restore to volume %s finished successfully.' %
+            LOG.debug('Restore to volume %s finished successfully.',
                       volume_id)
         except exception.BackupOperationError as e:
             LOG.error(_LE('Restore to volume %(volume)s finished with error - '
-                          '%(error)s.') % {'error': e, 'volume': volume_id})
+                          '%(error)s.'), {'error': e, 'volume': volume_id})
             raise
 
     def delete(self, backup):
         """Delete the given backup from Ceph object store."""
-        LOG.debug('Delete started for backup=%s' % backup['id'])
+        LOG.debug('Delete started for backup=%s', backup['id'])
 
         delete_failed = False
         try:
             self._try_delete_base_image(backup['id'], backup['volume_id'])
         except self.rbd.ImageNotFound:
-            msg = (_LW("RBD image for backup %(backup)s of volume %(volume)s "
-                       "not found. Deleting backup metadata.")
-                   % {'backup': backup['id'], 'volume': backup['volume_id']})
-            LOG.warning(msg)
+            LOG.warning(
+                _LW("RBD image for backup %(backup)s of volume %(volume)s "
+                    "not found. Deleting backup metadata."),
+                {'backup': backup['id'], 'volume': backup['volume_id']})
             delete_failed = True
 
         with rbd_driver.RADOSClient(self) as client:
@@ -1197,11 +1193,11 @@ class CephBackupDriver(driver.BackupDriver):
         if delete_failed:
             LOG.info(_LI("Delete of backup '%(backup)s' "
                          "for volume '%(volume)s' "
-                         "finished with warning.") %
+                         "finished with warning."),
                      {'backup': backup['id'], 'volume': backup['volume_id']})
         else:
             LOG.debug("Delete of backup '%(backup)s' for volume "
-                      "'%(volume)s' finished." %
+                      "'%(volume)s' finished.",
                       {'backup': backup['id'], 'volume': backup['volume_id']})
 
 
