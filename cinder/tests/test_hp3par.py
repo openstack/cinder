@@ -123,6 +123,15 @@ class HP3PARBaseDriver(object):
               'volume_type': None,
               'volume_type_id': None}
 
+    volume_encrypted = {'name': VOLUME_NAME,
+                        'id': VOLUME_ID,
+                        'display_name': 'Foo Volume',
+                        'size': 2,
+                        'host': FAKE_CINDER_HOST,
+                        'volume_type': None,
+                        'volume_type_id': None,
+                        'encryption_key_id': 'fake_key'}
+
     volume_dedup = {'name': VOLUME_NAME,
                     'id': VOLUME_ID,
                     'display_name': 'Foo Volume',
@@ -2923,6 +2932,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
     properties = {
         'driver_volume_type': 'fibre_channel',
         'data': {
+            'encrypted': False,
             'target_lun': 90,
             'target_wwn': ['0987654321234', '123456789000987'],
             'target_discovered': True,
@@ -3079,6 +3089,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         expected_properties = {
             'driver_volume_type': 'fibre_channel',
             'data': {
+                'encrypted': False,
                 'target_lun': 90,
                 'target_wwn': ['0987654321234'],
                 'target_discovered': True,
@@ -3111,6 +3122,77 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
+            self.assertDictMatch(result, expected_properties)
+
+    def test_initialize_connection_encrypted(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.getHost.side_effect = [
+            hpexceptions.HTTPNotFound('fake'),
+            {'name': self.FAKE_HOST,
+                'FCPaths': [{'driverVersion': None,
+                             'firmwareVersion': None,
+                             'hostSpeed': 0,
+                             'model': None,
+                             'portPos': {'cardPort': 1, 'node': 1,
+                                         'slot': 2},
+                             'vendor': None,
+                             'wwn': self.wwn[0]},
+                            {'driverVersion': None,
+                             'firmwareVersion': None,
+                             'hostSpeed': 0,
+                             'model': None,
+                             'portPos': {'cardPort': 1, 'node': 0,
+                                         'slot': 2},
+                             'vendor': None,
+                             'wwn': self.wwn[1]}]}]
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': self.FAKE_HOST
+            }]
+        }
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': 90, 'type': 0}]
+        location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
+                    {'volume_name': self.VOLUME_3PAR_NAME,
+                     'lun_id': 90,
+                     'host': self.FAKE_HOST,
+                     'nsp': 'something'})
+        mock_client.createVLUN.return_value = location
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            result = self.driver.initialize_connection(
+                self.volume_encrypted,
+                self.connector)
+
+            expected = [
+                mock.call.getVolume(self.VOLUME_3PAR_NAME),
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(wwns=['123456789012345',
+                                          '123456789054321']),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.getPorts(),
+                mock.call.createVLUN(
+                    self.VOLUME_3PAR_NAME,
+                    auto=True,
+                    hostname=self.FAKE_HOST),
+                mock.call.getHostVLUNs(self.FAKE_HOST)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            expected_properties = self.properties
+            expected_properties['data']['encrypted'] = True
             self.assertDictMatch(result, expected_properties)
 
     def test_terminate_connection(self):
@@ -3601,7 +3683,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
     properties = {
         'driver_volume_type': 'iscsi',
         'data':
-        {'target_discovered': True,
+        {'encrypted': False,
+            'target_discovered': True,
             'target_iqn': TARGET_IQN,
             'target_lun': TARGET_LUN,
             'target_portal': '1.1.1.2:1234'}}
@@ -3691,6 +3774,64 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
+            self.assertDictMatch(result, self.properties)
+
+    def test_initialize_connection_encrypted(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.getHost.side_effect = [
+            hpexceptions.HTTPNotFound('fake'),
+            {'name': self.FAKE_HOST}]
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': self.FAKE_HOST
+            }]
+        }
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': self.TARGET_LUN, 'type': 0}]
+        mock_client.getVLUN.return_value = {
+            'lun': self.TARGET_LUN,
+            'portPos': {'node': 8, 'slot': 1, 'cardPort': 1}}
+        location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
+                    {'volume_name': self.VOLUME_3PAR_NAME,
+                     'lun_id': self.TARGET_LUN,
+                     'host': self.FAKE_HOST,
+                     'nsp': 'something'})
+        mock_client.createVLUN.return_value = location
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            result = self.driver.initialize_connection(
+                self.volume_encrypted,
+                self.connector)
+
+            expected = [
+                mock.call.getVolume(self.VOLUME_3PAR_NAME),
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.getVLUN(self.VOLUME_3PAR_NAME),
+                mock.call.createVLUN(
+                    self.VOLUME_3PAR_NAME,
+                    auto=True,
+                    hostname='fakehost',
+                    portPos={'node': 8, 'slot': 1, 'cardPort': 1}),
+                mock.call.getHostVLUNs(self.FAKE_HOST)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            expected_properties = self.properties
+            expected_properties['data']['encrypted'] = True
             self.assertDictMatch(result, self.properties)
 
     def test_get_volume_stats(self):
