@@ -1213,6 +1213,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # I think
         new_vol_values['migration_status'] = 'target:%s' % volume['id']
         new_vol_values['attach_status'] = 'detached'
+        new_vol_values['volume_attachment'] = []
         new_volume = self.db.volume_create(ctxt, new_vol_values)
         rpcapi.create_volume(ctxt, new_volume, host['host'],
                              None, None, allow_reschedule=False)
@@ -1329,7 +1330,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Delete the source volume (if it fails, don't fail the migration)
         try:
             if orig_volume_status == 'in-use':
-                self.detach_volume(ctxt, volume_id)
+                attachments = volume['volume_attachment']
+                for attachment in attachments:
+                    self.detach_volume(ctxt, volume_id, attachment['id'])
             self.delete_volume(ctxt, volume_id)
         except Exception as ex:
             msg = _("Failed to delete migration source vol %(vol)s: %(err)s")
