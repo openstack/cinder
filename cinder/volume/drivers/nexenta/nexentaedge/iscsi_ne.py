@@ -80,10 +80,18 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             protocol, auto = 'http', True
         else:
             protocol, auto = self.restapi_protocol, False
+
         self.restapi = jsonrpc.NexentaEdgeJSONProxy(
             protocol, self.restapi_host, self.restapi_port, '/',
             self.restapi_user, self.restapi_password, auto=auto)
-        rsp = self.restapi.get('sysconfig/iscsi/status')
+
+        try:
+            rsp = self.restapi.get('sysconfig/iscsi/status')
+        except Exception as exc:
+            LOG.error(__('Error reaching NexentaEdge host: %s') % self.restapi_host)
+            LOG.error(str(exc));
+            return exc
+
         self.target_name = rsp['value'].split('\n', 1)[0].split(' ')[2]
         self.name_map = self._get_bucket_name_map()
 
