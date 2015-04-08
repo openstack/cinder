@@ -371,9 +371,20 @@ class RBDDriver(driver.VolumeDriver):
 
         try:
             with RADOSClient(self) as client:
-                new_stats = client.cluster.get_cluster_stats()
-            stats['total_capacity_gb'] = new_stats['kb'] / units.Mi
-            stats['free_capacity_gb'] = new_stats['kb_avail'] / units.Mi
+                ret, outbuf, _outs = client.cluster.mon_command(
+                    '{"prefix":"df", "format":"json"}', '')
+                if ret != 0:
+                    LOG.warning(_LW('Unable to get rados pool stats.'))
+                else:
+                    outbuf = json.loads(outbuf)
+                    pool_stats = [pool for pool in outbuf['pools'] if
+                                  pool['name'] ==
+                                  self.configuration.rbd_pool][0]['stats']
+                    stats['free_capacity_gb'] = (
+                        pool_stats['max_avail'] / units.Gi)
+                    used_capacity_gb = pool_stats['bytes_used'] / units.Gi
+                    stats['total_capacity_gb'] = (stats['free_capacity_gb']
+                                                  + used_capacity_gb)
         except self.rados.Error:
             # just log and return unknown capacities
             LOG.exception(_LE('error refreshing volume stats'))
