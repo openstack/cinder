@@ -127,7 +127,9 @@ class API(base.Base):
         volume = self.volume_api.get(context, volume_id)
 
         if volume['status'] != "available":
-            msg = _('Volume to be backed up must be available')
+            msg = (_('Volume to be backed up must be available '
+                     'but the current status is "%s".')
+                   % volume['status'])
             raise exception.InvalidVolume(reason=msg)
 
         volume_host = volume_utils.extract_host(volume['host'], 'host')
