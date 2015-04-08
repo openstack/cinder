@@ -115,19 +115,6 @@ def check_explicit_underscore_import(logical_line, filename):
         yield(0, "N323: Found use of _() without explicit import of _ !")
 
 
-def check_no_log_audit(logical_line):
-    """Ensure that we are not using LOG.audit messages
-
-    Plans are in place going forward as discussed in the following
-    spec (https://review.openstack.org/#/c/91446/) to take out
-    LOG.audit messages.  Given that audit was a concept invented
-    for OpenStack we can enforce not using it.
-    """
-
-    if no_audit_log.match(logical_line):
-        yield(0, "N324: Found LOG.audit.  Use LOG.info instead.")
-
-
 def check_assert_called_once(logical_line, filename):
     msg = ("N327: assert_called_once is a no-op. please use assert_called_"
            "once_with to test with explicit parameters or an assertEqual with"
@@ -179,15 +166,6 @@ def check_oslo_namespace_imports(logical_line):
         yield(0, msg)
 
 
-def check_no_contextlib_nested(logical_line):
-    msg = ("N339: contextlib.nested is deprecated. With Python 2.7 and later "
-           "the with-statement supports multiple nested objects. See https://"
-           "docs.python.org/2/library/contextlib.html#contextlib.nested "
-           "for more information.")
-    if no_contextlib_nested.match(logical_line):
-        yield(0, msg)
-
-
 def check_datetime_now(logical_line, noqa):
     if noqa:
         return
@@ -220,16 +198,38 @@ def check_no_print_statements(logical_line, filename, noqa):
             yield(0, msg)
 
 
+def check_no_log_audit(logical_line):
+    """Ensure that we are not using LOG.audit messages
+
+    Plans are in place going forward as discussed in the following
+    spec (https://review.openstack.org/#/c/91446/) to take out
+    LOG.audit messages.  Given that audit was a concept invented
+    for OpenStack we can enforce not using it.
+    """
+
+    if no_audit_log.match(logical_line):
+        yield(0, "C304: Found LOG.audit.  Use LOG.info instead.")
+
+
+def check_no_contextlib_nested(logical_line):
+    msg = ("C305: contextlib.nested is deprecated. With Python 2.7 and later "
+           "the with-statement supports multiple nested objects. See https://"
+           "docs.python.org/2/library/contextlib.html#contextlib.nested "
+           "for more information.")
+    if no_contextlib_nested.match(logical_line):
+        yield(0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
     register(no_mutable_default_args)
     register(check_explicit_underscore_import)
-    register(check_no_log_audit)
     register(check_assert_called_once)
     register(check_oslo_namespace_imports)
-    register(check_no_contextlib_nested)
     register(check_datetime_now)
     register(validate_log_translations)
     register(check_unicode_usage)
     register(check_no_print_statements)
+    register(check_no_log_audit)
+    register(check_no_contextlib_nested)
