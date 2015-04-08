@@ -20,6 +20,7 @@ Cinder Specific Commandments
 - [N339] Prevent use of deprecated contextlib.nested.
 - [C301] timeutils.utcnow() from oslo_utils should be used instead of datetime.now().
 - [C302] six.text_type should be used instead of unicode
+- [C303] Ensure that there are no 'print()' statements in code that is being committed.
 
 
 General

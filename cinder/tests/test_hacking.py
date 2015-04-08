@@ -209,3 +209,20 @@ class HackingTestCase(test.TestCase):
             "unicode(msg)", False))))
         self.assertEqual(0, len(list(checks.check_unicode_usage(
             "unicode(msg)  # noqa", True))))
+
+    def test_no_print_statements(self):
+        self.assertEqual(0, len(list(checks.check_no_print_statements(
+            "a line with no print statement",
+            "cinder/file.py", False))))
+        self.assertEqual(1, len(list(checks.check_no_print_statements(
+            "print('My print statement')",
+            "cinder/file.py", False))))
+        self.assertEqual(0, len(list(checks.check_no_print_statements(
+            "print('My print statement in cinder/cmd, which is ok.')",
+            "cinder/cmd/file.py", False))))
+        self.assertEqual(0, len(list(checks.check_no_print_statements(
+            "print('My print statement that I just must have.')",
+            "cinder/tests/file.py", True))))
+        self.assertEqual(1, len(list(checks.check_no_print_statements(
+            "print ('My print with space')",
+            "cinder/volume/anotherFile.py", False))))
