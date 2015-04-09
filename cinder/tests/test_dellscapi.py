@@ -2803,7 +2803,7 @@ class DellSCSanAPITestCase(test.TestCase):
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
-                       return_value='64702.5764839588723736131.91')
+                       return_value='64702.64702')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
@@ -2839,7 +2839,7 @@ class DellSCSanAPITestCase(test.TestCase):
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
-                       return_value='64702.5764839588723736131.91')
+                       return_value='64702.64702')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
@@ -2873,21 +2873,16 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertEqual(expected, res, 'Wrong Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_find_active_controller',
-                       return_value='64702.5764839588723736131.91')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=[])
     def test_find_iscsi_properties_no_mapping(self,
                                               mock_find_mappings,
-                                              mock_find_active_controller,
                                               mock_close_connection,
                                               mock_open_connection,
                                               mock_init):
         # Test case where there are no ScMapping(s)
         res = self.scapi.find_iscsi_properties(self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_active_controller.called)
         expected = (0,
                     {'access_mode': 'rw',
                      'target_discovered': False,
@@ -2898,7 +2893,7 @@ class DellSCSanAPITestCase(test.TestCase):
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
-                       return_value='64702.5764839588723736131.91')
+                       return_value='64702.64702')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
@@ -2920,7 +2915,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.find_iscsi_properties(self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
-        self.assertFalse(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
         expected = (0,
                     {'access_mode': 'rw',
@@ -2932,7 +2927,7 @@ class DellSCSanAPITestCase(test.TestCase):
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
-                       return_value='64702.5764839588723736131.91')
+                       return_value='64702.64702')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=None)
@@ -2966,7 +2961,7 @@ class DellSCSanAPITestCase(test.TestCase):
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
-                       return_value='64702.5764839588723736131.91')
+                       return_value='64702.64702')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
@@ -3001,7 +2996,7 @@ class DellSCSanAPITestCase(test.TestCase):
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
-                       return_value='64702.5764839588723736131.91')
+                       return_value='64702.64702')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_controller_port',
                        return_value=ISCSI_CTRLR_PORT)
@@ -3025,14 +3020,20 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = (0,
+        expected = (3,
                     {'access_mode': 'rw',
                      'target_discovered': False,
                      'target_iqns':
-                        [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
-                     'target_luns': [1],
+                        [u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                     'target_luns': [1, 1, 1, 1],
                      'target_portals':
-                        [u'192.168.0.21:3260', u'192.168.0.25:3260']})
+                        [u'192.168.0.21:3260',
+                         u'192.168.0.25:3260',
+                         u'192.168.0.21:3260',
+                         u'192.168.0.25:3260']})
         self.assertEqual(expected, res, 'Wrong Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
