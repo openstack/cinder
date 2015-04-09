@@ -46,7 +46,7 @@ from cinder import compute
 from cinder import context
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import glance
 from cinder import manager
 from cinder.openstack.common import excutils
@@ -403,7 +403,22 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     @locked_volume_operation
     def delete_volume(self, context, volume_id, unmanage_only=False):
-        """Deletes and unexports volume."""
+        """Deletes and unexports volume.
+
+        1. Delete a volume(normal case)
+           Delete a volume and update quotas.
+
+        2. Delete a migration source volume
+           If deleting the source volume in a migration, we want to skip
+           quotas. Also we want to skip other database updates for source
+           volume because these update will be handled at
+           migrate_volume_completion properly.
+
+        3. Delete a migration destination volume
+           If deleting the destination volume in a migration, we want to
+           skip quotas but we need database updates for the volume.
+      """
+
         context = context.elevated()
 
         try:
@@ -454,50 +469,62 @@ class VolumeManager(manager.SchedulerDependentManager):
                                       volume_ref['id'],
                                       {'status': 'error_deleting'})
 
-        # If deleting the source volume in a migration, we want to skip quotas
-        # and other database updates.
-        if volume_ref['migration_status']:
-            return True
+        is_migrating = volume_ref['migration_status'] is not None
+        is_migrating_dest = (is_migrating and
+                             volume_ref['migration_status'].startswith(
+                                 'target:'))
 
-        # Get reservations
-        try:
-            reserve_opts = {'volumes': -1, 'gigabytes': -volume_ref['size']}
-            QUOTAS.add_volume_type_opts(context,
-                                        reserve_opts,
-                                        volume_ref.get('volume_type_id'))
-            reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
-                                          **reserve_opts)
-        except Exception:
-            reservations = None
-            LOG.exception(_("Failed to update usages deleting volume"))
+        # If deleting source/destination volume in a migration, we should
+        # skip quotas.
+        if not is_migrating:
+            # Get reservations
+            try:
+                reserve_opts = {'volumes': -1,
+                                'gigabytes': -volume_ref['size']}
+                QUOTAS.add_volume_type_opts(context,
+                                            reserve_opts,
+                                            volume_ref.get('volume_type_id'))
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              **reserve_opts)
+            except Exception:
+                reservations = None
+                LOG.exception(_LE("Failed to update usages deleting volume"))
 
-        # Delete glance metadata if it exists
-        self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
+        # If deleting the source volume in a migration, we should skip database
+        # update here. In other cases, continue to update database entries.
+        if not is_migrating or is_migrating_dest:
 
-        self.db.volume_destroy(context, volume_id)
-        LOG.info(_("volume %s: deleted successfully"), volume_ref['id'])
-        self._notify_about_volume_usage(context, volume_ref, "delete.end")
+            # Delete glance metadata if it exists
+            self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
 
-        # Commit the reservations
-        if reservations:
-            QUOTAS.commit(context, reservations, project_id=project_id)
+            self.db.volume_destroy(context, volume_id)
+            LOG.info(_LI("volume %s: deleted successfully"), volume_ref['id'])
 
-        pool = vol_utils.extract_host(volume_ref['host'], 'pool')
-        if pool is None:
-            # Legacy volume, put them into default pool
-            pool = self.driver.configuration.safe_get(
-                'volume_backend_name') or vol_utils.extract_host(
-                    volume_ref['host'], 'pool', True)
-        size = volume_ref['size']
+        # If deleting source/destination volume in a migration, we should
+        # skip quotas.
+        if not is_migrating:
+            self._notify_about_volume_usage(context, volume_ref, "delete.end")
 
-        try:
-            self.stats['pools'][pool]['allocated_capacity_gb'] -= size
-        except KeyError:
-            self.stats['pools'][pool] = dict(
-                allocated_capacity_gb=-size)
+            # Commit the reservations
+            if reservations:
+                QUOTAS.commit(context, reservations, project_id=project_id)
 
-        self.publish_service_capabilities(context)
+            pool = vol_utils.extract_host(volume_ref['host'], 'pool')
+            if pool is None:
+                # Legacy volume, put them into default pool
+                pool = self.driver.configuration.safe_get(
+                    'volume_backend_name') or vol_utils.extract_host(
+                        volume_ref['host'], 'pool', True)
+            size = volume_ref['size']
+
+            try:
+                self.stats['pools'][pool]['allocated_capacity_gb'] -= size
+            except KeyError:
+                self.stats['pools'][pool] = dict(
+                    allocated_capacity_gb=-size)
+
+            self.publish_service_capabilities(context)
 
         return True
 
@@ -1046,11 +1073,30 @@ class VolumeManager(manager.SchedulerDependentManager):
                 LOG.error(msg % {'vol1': volume['id'],
                                  'vol2': new_volume['id']})
                 volume = self.db.volume_get(ctxt, volume['id'])
-                # If we're in the completing phase don't delete the target
-                # because we may have already deleted the source!
+
+                # If we're in the migrating phase, we need to cleanup
+                # destination volume because source volume is remaining
                 if volume['migration_status'] == 'migrating':
                     rpcapi.delete_volume(ctxt, new_volume)
-                new_volume['migration_status'] = None
+                else:
+                    # If we're in the completing phase don't delete the
+                    # destination because we may have already deleted the
+                    # source! But the migration_status in database should
+                    # be cleared to handle volume after migration failure
+                    try:
+                        updates = {'migration_status': None}
+                        self.db.volume_update(ctxt, new_volume['id'], updates)
+                    except exception.VolumeNotFound:
+                        LOG.info(_LI("Couldn't find destination volume "
+                                     "%(vol)s in database. The entry might be "
+                                     "successfully deleted during migration "
+                                     "completion phase."),
+                                 {'vol': new_volume['id']})
+
+                    LOG.warn(_LW("Failed to migrate volume. The destination "
+                                 "volume %(vol)s is not deleted since the "
+                                 "source volume may have already deleted."),
+                             {'vol': new_volume['id']})
 
     def _get_original_status(self, volume):
         if (volume['instance_uuid'] is None and
@@ -1085,7 +1131,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                     "for volume %(vol1)s (temporary volume %(vol2)s")
             LOG.info(msg % {'vol1': volume['id'],
                             'vol2': new_volume['id']})
-            new_volume['migration_status'] = None
             rpcapi.delete_volume(ctxt, new_volume)
             updates = {'migration_status': None, 'status': orig_volume_status}
             self.db.volume_update(ctxt, volume_id, updates)
@@ -1166,10 +1211,16 @@ class VolumeManager(manager.SchedulerDependentManager):
                     updates = {'migration_status': None}
                     if status_update:
                         updates.update(status_update)
-                    model_update = self.driver.create_export(ctxt, volume_ref)
-                    if model_update:
-                        updates.update(model_update)
-                    self.db.volume_update(ctxt, volume_ref['id'], updates)
+                    try:
+                        model_update = self.driver.create_export(ctxt,
+                                                                 volume_ref)
+                        if model_update:
+                            updates.update(model_update)
+                    except Exception:
+                        LOG.exception(_LE("Failed to create export for "
+                                          "volume: %s"), volume_ref['id'])
+                    finally:
+                        self.db.volume_update(ctxt, volume_ref['id'], updates)
         if not moved:
             try:
                 self._migrate_volume_generic(ctxt, volume_ref, host,
@@ -1179,10 +1230,16 @@ class VolumeManager(manager.SchedulerDependentManager):
                     updates = {'migration_status': None}
                     if status_update:
                         updates.update(status_update)
-                    model_update = self.driver.create_export(ctxt, volume_ref)
-                    if model_update:
-                        updates.update(model_update)
-                    self.db.volume_update(ctxt, volume_ref['id'], updates)
+                    try:
+                        model_update = self.driver.create_export(ctxt,
+                                                                 volume_ref)
+                        if model_update:
+                            updates.update(model_update)
+                    except Exception:
+                        LOG.exception(_LE("Failed to create export for "
+                                          "volume: %s"), volume_ref['id'])
+                    finally:
+                        self.db.volume_update(ctxt, volume_ref['id'], updates)
 
     @periodic_task.periodic_task
     def _report_driver_status(self, context):
