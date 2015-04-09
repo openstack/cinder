@@ -910,6 +910,17 @@ class DBAPIVolumeTestCase(BaseTest):
         metadata.pop('c')
         self.assertEqual(metadata, db.volume_metadata_get(self.ctxt, 1))
 
+    def test_volume_glance_metadata_create(self):
+        volume = db.volume_create(self.ctxt, {'host': 'h1'})
+        db.volume_glance_metadata_create(self.ctxt, volume['id'],
+                                         'image_name',
+                                         u'\xe4\xbd\xa0\xe5\xa5\xbd')
+        glance_meta = db.volume_glance_metadata_get(self.ctxt, volume['id'])
+        for meta_entry in glance_meta:
+            if meta_entry.key == 'image_name':
+                image_name = meta_entry.value
+        self.assertEqual(u'\xe4\xbd\xa0\xe5\xa5\xbd', image_name)
+
 
 class DBAPISnapshotTestCase(BaseTest):
 
