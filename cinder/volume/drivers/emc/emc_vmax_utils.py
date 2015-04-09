@@ -1891,3 +1891,32 @@ class EMCVMAXUtils(object):
                     LOG.debug("Clone is licensed and enabled.")
                     return True
         return False
+
+    def create_storage_hardwareId_instance_name(
+            self, conn, hardwareIdManagementService, initiator):
+        """Create storage hardware ID instance name based on the given wwpn.
+
+        :param conn: connection to the ecom server
+        :param hardwareIdManagementService: the hardware ID management service
+        :param initiator: initiator(IQN or WWPN) to create the hardware ID
+            instance
+        :returns: hardwareIdList
+        """
+        hardwareIdList = None
+        hardwareIdType = 2
+        rc, ret = conn.InvokeMethod(
+            'CreateStorageHardwareID',
+            hardwareIdManagementService,
+            StorageID=initiator,
+            IDType=self.get_num(hardwareIdType, '16'))
+
+        if 'HardwareID' in ret:
+            LOG.debug("Created hardware ID instance for initiator:"
+                      "%(initiator)s rc=%(rc)d, ret=%(ret)s",
+                      {'initiator': initiator, 'rc': rc, 'ret': ret})
+            hardwareIdList = ret['HardwareID']
+        else:
+            LOG.warn(_LW("CreateStorageHardwareID failed. initiator: "
+                         "%(initiator)s, rc=%(rc)d, ret=%(ret)s."),
+                     {'initiator': initiator, 'rc': rc, 'ret': ret})
+        return hardwareIdList
