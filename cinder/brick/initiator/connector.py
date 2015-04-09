@@ -115,7 +115,8 @@ class InitiatorConnector(executor.Executor):
                 arch=platform.machine(),
                 *args, **kwargs):
         """Build a Connector object based upon protocol and architecture."""
-        LOG.debug("Factory for %s on %s" % (protocol, arch))
+        LOG.debug("Factory for %(proto)s on %(arch)s",
+                  {'proto': protocol, 'arch': arch})
         protocol = protocol.upper()
         if protocol == "ISCSI":
             return ISCSIConnector(root_helper=root_helper,
@@ -189,7 +190,7 @@ class InitiatorConnector(executor.Executor):
                                       root_helper=self._root_helper)
         except putils.ProcessExecutionError as e:
             LOG.error(_LE("Failed to access the device on the path "
-                          "%(path)s: %(error)s %(info)s.") %
+                          "%(path)s: %(error)s %(info)s."),
                       {"path": path, "error": e.stderr,
                        "info": info})
             return False
@@ -305,7 +306,7 @@ class ISCSIConnector(InitiatorConnector):
                     target_props = props
                     break
                 else:
-                    LOG.warn(_LW(
+                    LOG.warning(_LW(
                         'Failed to login to any of the iSCSI targets.'))
 
             host_devices = self._get_device_path(target_props)
@@ -318,10 +319,10 @@ class ISCSIConnector(InitiatorConnector):
             if tries >= self.device_scan_attempts:
                 raise exception.VolumeDeviceNotFound(device=host_devices)
 
-            LOG.warn(_LW("ISCSI volume not yet found at: %(host_devices)s. "
-                         "Will rescan & retry.  Try number: %(tries)s"),
-                     {'host_devices': host_devices,
-                      'tries': tries})
+            LOG.warning(_LW("ISCSI volume not yet found at: %(host_devices)s. "
+                            "Will rescan & retry.  Try number: %(tries)s"),
+                        {'host_devices': host_devices,
+                         'tries': tries})
 
             # The rescan isn't documented as being necessary(?), but it helps
             if self.use_multipath:
@@ -437,9 +438,8 @@ class ISCSIConnector(InitiatorConnector):
                 if l.startswith('InitiatorName='):
                     return l[l.index('=') + 1:].strip()
         except putils.ProcessExecutionError:
-            msg = (_("Could not find the iSCSI Initiator File %s")
-                   % file_path)
-            LOG.warn(msg)
+            LOG.warning(_LW("Could not find the iSCSI Initiator File %s"),
+                        file_path)
             return None
 
     def _run_iscsiadm(self, connection_properties, iscsi_command, **kwargs):
@@ -451,8 +451,8 @@ class ISCSIConnector(InitiatorConnector):
                                    *iscsi_command, run_as_root=True,
                                    root_helper=self._root_helper,
                                    check_exit_code=check_exit_code)
-        LOG.debug("iscsiadm %s: stdout=%s stderr=%s" %
-                  (iscsi_command, out, err))
+        LOG.debug("iscsiadm %(cmd)s: stdout=%(out)s stderr=%(err)s",
+                  {'cmd': iscsi_command, 'out': out, 'err': err})
         return (out, err)
 
     def _iscsiadm_update(self, connection_properties, property_key,
@@ -469,7 +469,7 @@ class ISCSIConnector(InitiatorConnector):
     def _disconnect_volume_multipath_iscsi(self, connection_properties,
                                            multipath_name):
         """This removes a multipath device and it's LUNs."""
-        LOG.debug("Disconnect multipath device %s" % multipath_name)
+        LOG.debug("Disconnect multipath device %s", multipath_name)
         block_devices = self.driver.get_all_block_devices()
         devices = []
         for dev in block_devices:
@@ -566,11 +566,12 @@ class ISCSIConnector(InitiatorConnector):
                 # exit_code=15 means the session already exists, so it should
                 # be regarded as successful login.
                 if err.exit_code not in [15]:
-                    LOG.warn(_LW('Failed to login iSCSI target %(iqn)s '
-                                 'on portal %(portal)s (exit code %(err)s).'),
-                             {'iqn': connection_properties['target_iqn'],
-                              'portal': connection_properties['target_portal'],
-                              'err': err.exit_code})
+                    LOG.warning(
+                        _LW('Failed to login iSCSI target %(iqn)s on portal '
+                            '%(portal)s (exit code %(err)s).'),
+                        {'iqn': connection_properties['target_iqn'],
+                         'portal': connection_properties['target_portal'],
+                         'err': err.exit_code})
                     return False
 
             self._iscsiadm_update(connection_properties,
@@ -630,8 +631,8 @@ class ISCSIConnector(InitiatorConnector):
                                    run_as_root=True,
                                    root_helper=self._root_helper,
                                    check_exit_code=check_exit_code)
-        LOG.debug("iscsiadm %s: stdout=%s stderr=%s" %
-                  (iscsi_command, out, err))
+        LOG.debug("iscsiadm %(cmd)s: stdout=%(out)s stderr=%(err)s",
+                  {'cmd': iscsi_command, 'out': out, 'err': err})
         return (out, err)
 
     def _run_multipath(self, multipath_command, **kwargs):
@@ -641,8 +642,8 @@ class ISCSIConnector(InitiatorConnector):
                                    run_as_root=True,
                                    root_helper=self._root_helper,
                                    check_exit_code=check_exit_code)
-        LOG.debug("multipath %s: stdout=%s stderr=%s" %
-                  (multipath_command, out, err))
+        LOG.debug("multipath %(cmd)s: stdout=%(out)s stderr=%(err)s",
+                  {'cmd': multipath_command, 'out': out, 'err': err})
         return (out, err)
 
     def _rescan_iscsi(self):
@@ -694,7 +695,7 @@ class FibreChannelConnector(InitiatorConnector):
         target_iqn - iSCSI Qualified Name
         target_lun - LUN id of the volume
         """
-        LOG.debug("execute = %s" % self._execute)
+        LOG.debug("execute = %s", self._execute)
         device_info = {'type': 'block'}
 
         hbas = self._linuxfc.get_fc_hbas_info()
@@ -706,8 +707,8 @@ class FibreChannelConnector(InitiatorConnector):
 
         if len(host_devices) == 0:
             # this is empty because we don't have any FC HBAs
-            msg = _("We are unable to locate any Fibre Channel devices")
-            LOG.warn(msg)
+            LOG.warning(_LW("We are unable to locate any Fibre Channel "
+                            "devices"))
             raise exception.NoFibreChannelHostsFound()
 
         # The /dev/disk/by-path/... node is not always present immediately
@@ -726,13 +727,12 @@ class FibreChannelConnector(InitiatorConnector):
                     raise loopingcall.LoopingCallDone()
 
             if self.tries >= self.device_scan_attempts:
-                msg = _("Fibre Channel volume device not found.")
-                LOG.error(msg)
+                LOG.error(_LE("Fibre Channel volume device not found."))
                 raise exception.NoFibreChannelVolumeDeviceFound()
 
-            LOG.warn(_LW("Fibre volume not yet found. "
-                         "Will rescan & retry.  Try number: %(tries)s"),
-                     {'tries': tries})
+            LOG.warning(_LW("Fibre volume not yet found. "
+                            "Will rescan & retry. Try number: %(tries)s"),
+                        {'tries': tries})
 
             self._linuxfc.rescan_hosts(hbas)
             self.tries = self.tries + 1
@@ -755,8 +755,8 @@ class FibreChannelConnector(InitiatorConnector):
         if self.use_multipath:
             mdev_info = self._linuxscsi.find_multipath_device(self.device_name)
             if mdev_info is not None:
-                LOG.debug("Multipath device discovered %(device)s"
-                          % {'device': mdev_info['device']})
+                LOG.debug("Multipath device discovered %(device)s",
+                          {'device': mdev_info['device']})
                 device_path = mdev_info['device']
                 devices = mdev_info['devices']
                 device_info['multipath_id'] = mdev_info['id']
@@ -836,7 +836,7 @@ class FibreChannelConnector(InitiatorConnector):
             multipath_id = device_info['multipath_id']
             mdev_info = self._linuxscsi.find_multipath_device(multipath_id)
             devices = mdev_info['devices']
-            LOG.debug("devices to remove = %s" % devices)
+            LOG.debug("devices to remove = %s", devices)
             self._linuxscsi.flush_multipath_device(multipath_id)
 
         self._remove_devices(connection_properties, devices)
@@ -984,10 +984,10 @@ class AoEConnector(InitiatorConnector):
             if waiting_status['tries'] >= self.device_scan_attempts:
                 raise exception.VolumeDeviceNotFound(device=aoe_path)
 
-            LOG.warn(_LW("AoE volume not yet found at: %(path)s. "
-                         "Try number: %(tries)s"),
-                     {'path': aoe_device,
-                      'tries': waiting_status['tries']})
+            LOG.warning(_LW("AoE volume not yet found at: %(path)s. "
+                            "Try number: %(tries)s"),
+                        {'path': aoe_device,
+                         'tries': waiting_status['tries']})
 
             self._aoe_discover()
             waiting_status['tries'] += 1
@@ -1023,7 +1023,7 @@ class AoEConnector(InitiatorConnector):
                                    root_helper=self._root_helper,
                                    check_exit_code=0)
 
-        LOG.debug('aoe-discover: stdout=%(out)s stderr%(err)s' %
+        LOG.debug('aoe-discover: stdout=%(out)s stderr%(err)s',
                   {'out': out, 'err': err})
 
     def _aoe_revalidate(self, aoe_device):
@@ -1033,7 +1033,7 @@ class AoEConnector(InitiatorConnector):
                                    root_helper=self._root_helper,
                                    check_exit_code=0)
 
-        LOG.debug('aoe-revalidate %(dev)s: stdout=%(out)s stderr%(err)s' %
+        LOG.debug('aoe-revalidate %(dev)s: stdout=%(out)s stderr%(err)s',
                   {'dev': aoe_device, 'out': out, 'err': err})
 
     def _aoe_flush(self, aoe_device):
@@ -1042,7 +1042,7 @@ class AoEConnector(InitiatorConnector):
                                    run_as_root=True,
                                    root_helper=self._root_helper,
                                    check_exit_code=0)
-        LOG.debug('aoe-flush %(dev)s: stdout=%(out)s stderr%(err)s' %
+        LOG.debug('aoe-flush %(dev)s: stdout=%(out)s stderr%(err)s',
                   {'dev': aoe_device, 'out': out, 'err': err})
 
 
@@ -1066,8 +1066,8 @@ class RemoteFsConnector(InitiatorConnector):
                     kwargs.get('glusterfs_mount_point_base') or\
                     mount_point_base
         else:
-            LOG.warn(_LW("Connection details not present."
-                         " RemoteFsClient may not initialize properly."))
+            LOG.warning(_LW("Connection details not present."
+                            " RemoteFsClient may not initialize properly."))
         self._remotefsclient = remotefs.RemoteFsClient(mount_type, root_helper,
                                                        execute=execute,
                                                        *args, **kwargs)
@@ -1150,8 +1150,8 @@ class HuaweiStorHyperConnector(InitiatorConnector):
         self.cli_path = os.getenv('HUAWEISDSHYPERVISORCLI_PATH')
         if not self.cli_path:
             self.cli_path = '/usr/local/bin/sds/sds_cli'
-            LOG.debug("CLI path is not configured, using default %s."
-                      % self.cli_path)
+            LOG.debug("CLI path is not configured, using default %s.",
+                      self.cli_path)
         if not os.path.isfile(self.cli_path):
             self.iscliexist = False
             LOG.error(_LE('SDS CLI file not found, '
@@ -1164,8 +1164,8 @@ class HuaweiStorHyperConnector(InitiatorConnector):
     @synchronized('connect_volume')
     def connect_volume(self, connection_properties):
         """Connect to a volume."""
-        LOG.debug("Connect_volume connection properties: %s."
-                  % connection_properties)
+        LOG.debug("Connect_volume connection properties: %s.",
+                  connection_properties)
         out = self._attach_volume(connection_properties['volume_id'])
         if not out or int(out['ret_code']) not in (self.attached_success_code,
                                                    self.has_been_attached_code,
@@ -1186,7 +1186,7 @@ class HuaweiStorHyperConnector(InitiatorConnector):
     @synchronized('connect_volume')
     def disconnect_volume(self, connection_properties, device_info):
         """Disconnect a volume from the local host."""
-        LOG.debug("Disconnect_volume: %s." % connection_properties)
+        LOG.debug("Disconnect_volume: %s.", connection_properties)
         out = self._detach_volume(connection_properties['volume_id'])
         if not out or int(out['ret_code']) not in (self.attached_success_code,
                                                    self.vbs_unnormal_code,
@@ -1196,9 +1196,9 @@ class HuaweiStorHyperConnector(InitiatorConnector):
             raise exception.BrickException(msg=msg)
 
     def is_volume_connected(self, volume_name):
-        """Check if volume already connected to host"""
-        LOG.debug('Check if volume %s already connected to a host.'
-                  % volume_name)
+        """Check if volume already connected to host."""
+        LOG.debug('Check if volume %s already connected to a host.',
+                  volume_name)
         out = self._query_attached_volume(volume_name)
         if out:
             return int(out['ret_code']) == 0
@@ -1225,11 +1225,10 @@ class HuaweiStorHyperConnector(InitiatorConnector):
         out, clilog = self._execute(*cmd, run_as_root=False,
                                     root_helper=self._root_helper)
         analyse_result = self._analyze_output(out)
-        LOG.debug('%(method)s volume returns %(analyse_result)s.'
-                  % {'method': method, 'analyse_result': analyse_result})
+        LOG.debug('%(method)s volume returns %(analyse_result)s.',
+                  {'method': method, 'analyse_result': analyse_result})
         if clilog:
-            LOG.error(_LE("SDS CLI output some log: %s.")
-                      % clilog)
+            LOG.error(_LE("SDS CLI output some log: %s."), clilog)
         return analyse_result
 
     def _analyze_output(self, out):
@@ -1238,10 +1237,10 @@ class HuaweiStorHyperConnector(InitiatorConnector):
             analyse_result = {}
             out_temp = out.split('\n')
             for line in out_temp:
-                LOG.debug("Line is %s." % line)
+                LOG.debug("Line is %s.", line)
                 if line.find('=') != -1:
                     key, val = line.split('=', 1)
-                    LOG.debug(key + " = " + val)
+                    LOG.debug("key %(k)s = %(v)s", {'k': key, 'v': val})
                     if key in ['ret_code', 'ret_desc', 'dev_addr']:
                         analyse_result[key] = val
             return analyse_result

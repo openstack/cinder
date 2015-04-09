@@ -17,7 +17,7 @@
 from oslo_log import log as logging
 import six
 
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 
 
 LOG = logging.getLogger(__name__)
@@ -51,11 +51,11 @@ class BrickException(Exception):
             except Exception:
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                msg = (_("Exception in string format operation.  msg='%s'")
-                       % self.message)
-                LOG.exception(msg)
+                LOG.exception(_LE("Exception in string format operation. "
+                                  "msg='%s'"),
+                              self.message)
                 for name, value in kwargs.iteritems():
-                    LOG.error("%s: %s" % (name, value))
+                    LOG.error(_LE("%(n)s: %(v)s"), {'n': name, 'v': value})
 
                 # at least get the core message out if something happened
                 message = self.message

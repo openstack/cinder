@@ -24,7 +24,7 @@ from oslo_log import log as logging
 
 from cinder.brick import exception
 from cinder.brick import executor
-from cinder.i18n import _, _LW, _LE
+from cinder.i18n import _LW, _LE
 from cinder.openstack.common import loopingcall
 
 LOG = logging.getLogger(__name__)
@@ -65,7 +65,8 @@ class LinuxSCSI(executor.Executor):
             # flush any outstanding IO first
             self.flush_device_io(device)
 
-            LOG.debug("Remove SCSI device(%s) with %s" % (device, path))
+            LOG.debug("Remove SCSI device(%(dev)s) with %(path)s",
+                      {'dev': device, 'path': path})
             self.echo_scsi_command(path, "1")
 
     def wait_for_volume_removal(self, volume_path):
@@ -76,9 +77,8 @@ class LinuxSCSI(executor.Executor):
                       volume_path)
             if os.path.exists(volume_path):
                 if self.tries >= self.scan_attempts:
-                    msg = _LE("Exceeded the number of attempts to detect "
-                              "volume removal.")
-                    LOG.error(msg)
+                    LOG.error(_LE("Exceeded the number of attempts to detect "
+                                  "volume removal."))
                     raise exception.VolumePathNotRemoved(
                         volume_path=volume_path)
 
@@ -122,11 +122,11 @@ class LinuxSCSI(executor.Executor):
         and the multipath device itself.
         """
 
-        LOG.debug("remove multipath device %s" % multipath_name)
+        LOG.debug("remove multipath device %s", multipath_name)
         mpath_dev = self.find_multipath_device(multipath_name)
         if mpath_dev:
             devices = mpath_dev['devices']
-            LOG.debug("multipath LUNs to remove %s" % devices)
+            LOG.debug("multipath LUNs to remove %s", devices)
             for device in devices:
                 self.remove_scsi_device(device['device'])
             self.flush_multipath_device(mpath_dev['id'])
@@ -134,30 +134,30 @@ class LinuxSCSI(executor.Executor):
     def flush_device_io(self, device):
         """This is used to flush any remaining IO in the buffers."""
         try:
-            LOG.debug("Flushing IO for device %s" % device)
+            LOG.debug("Flushing IO for device %s", device)
             self._execute('blockdev', '--flushbufs', device, run_as_root=True,
                           root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
-            msg = _("Failed to flush IO buffers prior to removing"
-                    " device: (%(code)s)") % {'code': exc.exit_code}
-            LOG.warn(msg)
+            LOG.warning(_LW("Failed to flush IO buffers prior to removing"
+                            " device: (%(code)s)"),
+                        {'code': exc.exit_code})
 
     def flush_multipath_device(self, device):
         try:
-            LOG.debug("Flush multipath device %s" % device)
+            LOG.debug("Flush multipath device %s", device)
             self._execute('multipath', '-f', device, run_as_root=True,
                           root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
-            LOG.warn(_LW("multipath call failed exit (%(code)s)")
-                     % {'code': exc.exit_code})
+            LOG.warning(_LW("multipath call failed exit (%(code)s)"),
+                        {'code': exc.exit_code})
 
     def flush_multipath_devices(self):
         try:
             self._execute('multipath', '-F', run_as_root=True,
                           root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
-            LOG.warn(_LW("multipath call failed exit (%(code)s)")
-                     % {'code': exc.exit_code})
+            LOG.warning(_LW("multipath call failed exit (%(code)s)"),
+                        {'code': exc.exit_code})
 
     def find_multipath_device(self, device):
         """Find a multipath device associated with a LUN device name.
@@ -173,8 +173,8 @@ class LinuxSCSI(executor.Executor):
                                         run_as_root=True,
                                         root_helper=self._root_helper)
         except putils.ProcessExecutionError as exc:
-            LOG.warn(_LW("multipath call failed exit (%(code)s)")
-                     % {'code': exc.exit_code})
+            LOG.warning(_LW("multipath call failed exit (%(code)s)"),
+                        {'code': exc.exit_code})
             return None
 
         if out:
@@ -202,11 +202,11 @@ class LinuxSCSI(executor.Executor):
                 try:
                     os.stat(mdev)
                 except OSError:
-                    LOG.warn(_LW("Couldn't find multipath device %s"), mdev)
+                    LOG.warning(_LW("Couldn't find multipath device %s"), mdev)
                     return None
 
-                LOG.debug("Found multipath device = %(mdev)s"
-                          % {'mdev': mdev})
+                LOG.debug("Found multipath device = %(mdev)s",
+                          {'mdev': mdev})
                 device_lines = lines[3:]
                 for dev_line in device_lines:
                     if dev_line.find("policy") != -1:
