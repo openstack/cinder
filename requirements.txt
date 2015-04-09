@@ -10,7 +10,7 @@ eventlet>=0.15.1,<=0.15.2
 greenlet>=0.3.2,<=0.4.2
 iso8601>=0.1.9,<=0.1.10
 keystonemiddleware>=1.0.0,<1.4.0
-kombu==3.0.7
+kombu>=2.5.0,<=3.0.7
 lxml>=2.3,<=3.3.3
 netaddr>=0.7.12,<=0.7.13
 oslo.config>=1.4.0,<=1.6.0 # Apache-2.0
@@ -26,7 +26,7 @@ python-barbicanclient>=2.1.0,!=3.0.0,<3.0.2
 python-glanceclient>=0.14.0,<=0.15.0
 python-novaclient>=2.18.0,<=2.20.0
 python-swiftclient>=2.2.0,<=2.3.1
-requests>=1.2.1,!=2.4.0,<=2.2.1
+requests>=2.1.0,!=2.4.0,<=2.2.1
 Routes>=1.12.3,!=2.0,<=2.1
 taskflow>=0.4,<0.7.0
 rtslib-fb>=2.1.39,<=2.1.51
