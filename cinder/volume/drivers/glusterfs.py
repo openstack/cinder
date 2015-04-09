@@ -223,7 +223,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
     @locked_volume_id_operation
     def create_volume_from_snapshot(self, volume, snapshot):
-        self._create_volume_from_snapshot(volume, snapshot)
+        return self._create_volume_from_snapshot(volume, snapshot)
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
         """Copy data from snapshot to destination volume.
