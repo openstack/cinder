@@ -114,7 +114,11 @@ loc_opts = [
                 'By default, the value is False.'),
     cfg.BoolOpt('force_delete_lun_in_storagegroup',
                 default=False,
-                help='Delete a LUN even if it is in Storage Groups.')
+                help='Delete a LUN even if it is in Storage Groups.'),
+    cfg.BoolOpt('ignore_pool_full_threshold',
+                default=False,
+                help='Force LUN creation even if '
+                'the full threshold of pool is reached.')
 ]
 
 CONF.register_opts(loc_opts)
@@ -246,8 +250,16 @@ class CommandLineHelper(object):
         'Total Subscribed Capacity *\(GBs\) *:\s*(.*)\s*',
         'provisioned_capacity_gb',
         float)
+    POOL_FULL_THRESHOLD = PropertyDescriptor(
+        '-prcntFullThreshold',
+        'Percent Full Threshold:\s*(.*)\s*',
+        'pool_full_threshold',
+        lambda value: int(value))
 
-    POOL_ALL = [POOL_TOTAL_CAPACITY, POOL_FREE_CAPACITY, POOL_STATE]
+    POOL_ALL = [POOL_TOTAL_CAPACITY,
+                POOL_FREE_CAPACITY,
+                POOL_STATE,
+                POOL_FULL_THRESHOLD]
 
     MAX_POOL_LUNS = PropertyDescriptor(
         '-maxPoolLUNs',
@@ -377,6 +389,7 @@ class CommandLineHelper(object):
     def create_lun_with_advance_feature(self, pool, name, size,
                                         provisioning, tiering,
                                         consistencygroup_id=None,
+                                        ignore_thresholds=False,
                                         poll=True):
         command_create_lun = ['lun', '-create',
                               '-capacity', size,
@@ -391,6 +404,8 @@ class CommandLineHelper(object):
         # tiering
         if tiering:
             command_create_lun.extend(self.tiering_values[tiering])
+        if ignore_thresholds:
+            command_create_lun.append('-ignoreThresholds')
 
         # create lun
         data = self.create_lun_by_cmd(command_create_lun, name)
@@ -1710,8 +1725,16 @@ class EMCVnxCliBase(object):
             self.configuration.force_delete_lun_in_storagegroup)
         if self.force_delete_lun_in_sg:
             LOG.warning(_LW("force_delete_lun_in_storagegroup=True"))
+
         self.max_over_subscription_ratio = (
             self.configuration.max_over_subscription_ratio)
+        self.ignore_pool_full_threshold = (
+            self.configuration.ignore_pool_full_threshold)
+        if self.ignore_pool_full_threshold:
+            LOG.warning(_LW("ignore_pool_full_threshold: True. "
+                            "LUN creation will still be forced "
+                            "even if the pool full threshold is exceeded."))
+        self.reserved_percentage = self.configuration.reserved_percentage
 
     def _get_managed_storage_pools(self, pools):
         storage_pools = set()
@@ -1769,7 +1792,8 @@ class EMCVnxCliBase(object):
                 'provisioning': provisioning,
                 'tiering': tiering,
                 'volume_size': volume_size,
-                'client': self._client
+                'client': self._client,
+                'ignore_pool_full_threshold': self.ignore_pool_full_threshold
             }
             return store_spec
 
@@ -1799,7 +1823,9 @@ class EMCVnxCliBase(object):
 
         data = self._client.create_lun_with_advance_feature(
             pool, volume_name, volume_size,
-            provisioning, tiering, volume['consistencygroup_id'], False)
+            provisioning, tiering, volume['consistencygroup_id'],
+            ignore_thresholds=self.ignore_pool_full_threshold,
+            poll=False)
         model_update = {'provider_location':
                         self._build_provider_location_for_lun(data['lun_id'])}
 
@@ -2038,7 +2064,8 @@ class EMCVnxCliBase(object):
 
         data = self._client.create_lun_with_advance_feature(
             target_pool_name, new_volume_name, volume['size'],
-            provisioning, tiering)
+            provisioning, tiering,
+            ignore_thresholds=self.ignore_pool_full_threshold)
 
         dst_id = data['lun_id']
         moved = self._client.migrate_lun_with_verification(
@@ -2126,7 +2153,6 @@ class EMCVnxCliBase(object):
         pool_stats['total_capacity_gb'] = pool['total_capacity_gb']
         pool_stats['provisioned_capacity_gb'] = (
             pool['provisioned_capacity_gb'])
-        pool_stats['reserved_percentage'] = 0
 
         # Handle pool state Initializing, Ready, Faulted, Offline or Deleting.
         if pool['state'] in ('Initializing', 'Offline', 'Deleting'):
@@ -2136,16 +2162,6 @@ class EMCVnxCliBase(object):
                          'state': pool['state']})
         else:
             pool_stats['free_capacity_gb'] = pool['free_capacity_gb']
-            # Some extra capacity will be used by meta data of pool LUNs.
-            # The overhead is about LUN_Capacity * 0.02 + 3 GB
-            # reserved_percentage will be used to make sure the scheduler
-            # takes the overhead into consideration.
-            # Assume that all the remaining capacity is to be used to create
-            # a thick LUN, reserved_percentage is estimated as follows:
-            reserved = (((0.02 * pool['free_capacity_gb'] + 3) /
-                         (1.02 * pool['total_capacity_gb'])) * 100)
-            pool_stats['reserved_percentage'] = int(math.ceil
-                                                    (min(reserved, 100)))
             if self.check_max_pool_luns_threshold:
                 pool_feature = self._client.get_pool_feature_properties(
                     poll=False) if not pool_feature else pool_feature
@@ -2156,6 +2172,26 @@ class EMCVnxCliBase(object):
                                     "No more LUN creation can be done."),
                                 pool_feature['max_pool_luns'])
                     pool_stats['free_capacity_gb'] = 0
+
+        if not self.reserved_percentage:
+            # Since the admin is not sure of what value is proper,
+            # the driver will calculate the recommended value.
+
+            # Some extra capacity will be used by meta data of pool LUNs.
+            # The overhead is about LUN_Capacity * 0.02 + 3 GB
+            # reserved_percentage will be used to make sure the scheduler
+            # takes the overhead into consideration.
+            # Assume that all the remaining capacity is to be used to create
+            # a thick LUN, reserved_percentage is estimated as follows:
+            reserved = (((0.02 * pool['free_capacity_gb'] + 3) /
+                         (1.02 * pool['total_capacity_gb'])) * 100)
+            # Take pool full threshold into consideration
+            if not self.ignore_pool_full_threshold:
+                reserved += 100 - pool['pool_full_threshold']
+            pool_stats['reserved_percentage'] = int(math.ceil(min(reserved,
+                                                                  100)))
+        else:
+            pool_stats['reserved_percentage'] = self.reserved_percentage
 
         array_serial = self.get_array_serial()
         pool_stats['location_info'] = ('%(pool_name)s|%(array_serial)s' %
@@ -3104,6 +3140,7 @@ class EMCVnxCliBase(object):
                 'volume_size': volume['size'],
                 'provisioning': provisioning,
                 'tiering': tiering,
+                'ignore_pool_full_threshold': self.ignore_pool_full_threshold
             }
             work_flow.add(
                 CreateSMPTask(name="CreateSMPTask%s" % i,
@@ -3203,17 +3240,14 @@ class EMCVnxCliBase(object):
         if self.protocol == 'iSCSI':
             self.iscsi_targets = self._client.get_iscsi_targets(poll=False)
 
+        properties = [self._client.POOL_FREE_CAPACITY,
+                      self._client.POOL_TOTAL_CAPACITY,
+                      self._client.POOL_STATE,
+                      self._client.POOL_SUBSCRIBED_CAPACITY,
+                      self._client.POOL_FULL_THRESHOLD]
         if '-FASTCache' in self.enablers:
-            properties = [self._client.POOL_FREE_CAPACITY,
-                          self._client.POOL_TOTAL_CAPACITY,
-                          self._client.POOL_FAST_CACHE,
-                          self._client.POOL_STATE,
-                          self._client.POOL_SUBSCRIBED_CAPACITY]
-        else:
-            properties = [self._client.POOL_FREE_CAPACITY,
-                          self._client.POOL_TOTAL_CAPACITY,
-                          self._client.POOL_STATE,
-                          self._client.POOL_SUBSCRIBED_CAPACITY]
+            properties.append(self._client.POOL_FAST_CACHE)
+
         pool_list = self._client.get_pool_list(properties, False)
 
         if self.storage_pools:
@@ -3289,11 +3323,13 @@ class CreateDestLunTask(task.Task):
                                                 inject=inject)
 
     def execute(self, client, pool_name, dest_vol_name, volume_size,
-                provisioning, tiering, *args, **kwargs):
+                provisioning, tiering, ignore_pool_full_threshold,
+                *args, **kwargs):
         LOG.debug('CreateDestLunTask.execute')
         data = client.create_lun_with_advance_feature(
             pool_name, dest_vol_name, volume_size,
-            provisioning, tiering)
+            provisioning, tiering,
+            ignore_thresholds=ignore_pool_full_threshold)
         return data
 
     def revert(self, result, client, dest_vol_name, *args, **kwargs):
