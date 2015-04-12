@@ -381,19 +381,19 @@ class EMCVNXCLIDriverTestData(object):
                '123456789054321': ['1122334455667777']}
 
     POOL_PROPERTY_CMD = ('storagepool', '-list', '-name', 'unit_test_pool',
-                         '-userCap', '-availableCap')
+                         '-userCap', '-availableCap', '-state')
 
     POOL_PROPERTY_W_FASTCACHE_CMD = ('storagepool', '-list', '-name',
                                      'unit_test_pool', '-availableCap',
-                                     '-userCap', '-fastcache')
+                                     '-userCap', '-fastcache', '-state')
 
     def POOL_GET_ALL_CMD(self, withfastcache=False):
         if withfastcache:
             return ('storagepool', '-list', '-availableCap',
-                    '-userCap', '-fastcache')
+                    '-userCap', '-fastcache', '-state')
         else:
             return ('storagepool', '-list', '-availableCap',
-                    '-userCap')
+                    '-userCap', '-state')
 
     def POOL_GET_ALL_RESULT(self, withfastcache=False):
         if withfastcache:
@@ -404,6 +404,7 @@ class EMCVNXCLIDriverTestData(object):
                     "Available Capacity (Blocks):  6512292864\n"
                     "Available Capacity (GBs):  3105.303\n"
                     "FAST Cache:  Enabled\n"
+                    "State: Ready\n"
                     "\n"
                     "Pool Name:  unit test pool 2\n"
                     "Pool ID:  1\n"
@@ -411,7 +412,8 @@ class EMCVNXCLIDriverTestData(object):
                     "User Capacity (GBs):  4099.992\n"
                     "Available Capacity (Blocks):  8356663296\n"
                     "Available Capacity (GBs):  3984.768\n"
-                    "FAST Cache:  Disabled\n", 0)
+                    "FAST Cache:  Disabled\n"
+                    "State: Ready\n", 0)
         else:
             return ("Pool Name:  unit_test_pool1\n"
                     "Pool ID:  0\n"
@@ -419,13 +421,29 @@ class EMCVNXCLIDriverTestData(object):
                     "User Capacity (GBs):  3281.146\n"
                     "Available Capacity (Blocks):  6512292864\n"
                     "Available Capacity (GBs):  3105.303\n"
+                    "State: Ready\n"
                     "\n"
                     "Pool Name:  unit test pool 2\n"
                     "Pool ID:  1\n"
                     "User Capacity (Blocks):  8598306816\n"
                     "User Capacity (GBs):  4099.992\n"
                     "Available Capacity (Blocks):  8356663296\n"
-                    "Available Capacity (GBs):  3984.768\n", 0)
+                    "Available Capacity (GBs):  3984.768\n"
+                    "State: Ready\n", 0)
+
+    def POOL_GET_ALL_STATES_TEST(self, states=['Ready']):
+        output = ""
+        for i, stat in enumerate(states):
+            out = ("Pool Name:  Pool_" + str(i) + "\n"
+                   "Pool ID:  " + str(i) + "\n"
+                   "User Capacity (Blocks):  8598306816\n"
+                   "User Capacity (GBs):  4099.992\n"
+                   "Available Capacity (Blocks):  8356663296\n"
+                   "Available Capacity (GBs):  3984.768\n"
+                   "FAST Cache:  Enabled\n"
+                   "State: " + stat + "\n\n")
+            output += out
+        return (output, 0)
 
     NDU_LIST_CMD = ('ndu', '-list')
     NDU_LIST_RESULT = ("Name of the software package:   -Compression " +
@@ -653,6 +671,7 @@ User Capacity (Blocks):  6881061888
 User Capacity (GBs):  3281.146
 Available Capacity (Blocks):  6832207872
 Available Capacity (GBs):  3257.851
+State: Ready
 
 """, 0)
 
@@ -663,7 +682,8 @@ Available Capacity (GBs):  3257.851
         "User Capacity (GBs):  3281.146\n"
         "Available Capacity (Blocks):  6832207872\n"
         "Available Capacity (GBs):  3257.851\n"
-        "FAST Cache:  Enabled\n\n", 0)
+        "FAST Cache:  Enabled\n"
+        "State: Ready\n\n", 0)
 
     ALL_PORTS = ("SP:  A\n" +
                  "Port ID:  4\n" +
@@ -2857,7 +2877,8 @@ Time Remaining:  0 second(s)
             'total_capacity_gb': 10,
             'free_capacity_gb': 5,
             'pool_name': "unit_test_pool",
-            'fast_cache_enabled': 'True'})
+            'fast_cache_enabled': 'True',
+            'state': 'Ready'})
 
         self.driver.update_volume_stats()
         self.driver.create_volume(self.testData.test_volume_with_type)
@@ -3312,6 +3333,29 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'fast_cache_enabled': 'False',
             'fast_support': 'False'}
         self.assertEqual(expected_pool_stats2, pool_stats2)
+
+    def test_get_volume_stats_storagepool_states(self):
+        commands = [self.testData.POOL_GET_ALL_CMD(False)]
+        results = [self.testData.POOL_GET_ALL_STATES_TEST
+                   (['Initializing', 'Ready', 'Faulted',
+                     'Offline', 'Deleting'])]
+        self.driverSetup(commands, results)
+        stats = self.driver.get_volume_stats(True)
+        self.assertTrue(
+            stats['pools'][0]['free_capacity_gb'] == 0,
+            "free_capacity_gb is incorrect")
+        self.assertTrue(
+            stats['pools'][1]['free_capacity_gb'] != 0,
+            "free_capacity_gb is incorrect")
+        self.assertTrue(
+            stats['pools'][2]['free_capacity_gb'] != 0,
+            "free_capacity_gb is incorrect")
+        self.assertTrue(
+            stats['pools'][3]['free_capacity_gb'] == 0,
+            "free_capacity_gb is incorrect")
+        self.assertTrue(
+            stats['pools'][4]['free_capacity_gb'] == 0,
+            "free_capacity_gb is incorrect")
 
     @mock.patch(
         "eventlet.event.Event.wait",

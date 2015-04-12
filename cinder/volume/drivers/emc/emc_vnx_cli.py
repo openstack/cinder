@@ -217,6 +217,10 @@ class CommandLineHelper(object):
     LUN_WITH_POOL = [LUN_STATE, LUN_CAPACITY, LUN_OWNER,
                      LUN_ATTACHEDSNAP, LUN_POOL]
 
+    POOL_STATE = PropertyDescriptor(
+        '-state',
+        'State:\s*(.*)\s*',
+        'state')
     POOL_TOTAL_CAPACITY = PropertyDescriptor(
         '-userCap',
         'User Capacity \(GBs\):\s*(.*)\s*',
@@ -237,7 +241,7 @@ class CommandLineHelper(object):
         'Pool Name:\s*(.*)\s*',
         'pool_name')
 
-    POOL_ALL = [POOL_TOTAL_CAPACITY, POOL_FREE_CAPACITY]
+    POOL_ALL = [POOL_TOTAL_CAPACITY, POOL_FREE_CAPACITY, POOL_STATE]
 
     MAX_POOL_LUNS = PropertyDescriptor(
         '-maxPoolLUNs',
@@ -1652,7 +1656,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.03.05'
+    VERSION = '05.03.06'
     stats = {'driver_version': VERSION,
              'storage_protocol': None,
              'vendor_name': 'EMC',
@@ -2055,25 +2059,35 @@ class EMCVnxCliBase(object):
         pool_stats['pool_name'] = pool['pool_name']
         pool_stats['total_capacity_gb'] = pool['total_capacity_gb']
         pool_stats['reserved_percentage'] = 0
-        pool_stats['free_capacity_gb'] = pool['free_capacity_gb']
-        # Some extra capacity will be used by meta data of pool LUNs.
-        # The overhead is about LUN_Capacity * 0.02 + 3 GB
-        # reserved_percentage will be used to make sure the scheduler
-        # takes the overhead into consideration.
-        # Assume that all the remaining capacity is to be used to create
-        # a thick LUN, reserved_percentage is estimated as follows:
-        reserved = (((0.02 * pool['free_capacity_gb'] + 3) /
-                     (1.02 * pool['total_capacity_gb'])) * 100)
-        pool_stats['reserved_percentage'] = int(math.ceil(min(reserved, 100)))
-        if self.check_max_pool_luns_threshold:
-            pool_feature = self._client.get_pool_feature_properties(poll=False)
-            if (pool_feature['max_pool_luns']
-                    <= pool_feature['total_pool_luns']):
-                LOG.warning(_LW("Maximum number of Pool LUNs, %s, "
-                                "have been created. "
-                                "No more LUN creation can be done."),
-                            pool_feature['max_pool_luns'])
-                pool_stats['free_capacity_gb'] = 0
+
+        # Handle pool state Initializing, Ready, Faulted, Offline or Deleting.
+        if pool['state'] in ('Initializing', 'Offline', 'Deleting'):
+            pool_stats['free_capacity_gb'] = 0
+            LOG.warning(_LW("Storage Pool '%(pool)s' is '%(state)s'."),
+                        {'pool': pool_stats['pool_name'],
+                         'state': pool['state']})
+        else:
+            pool_stats['free_capacity_gb'] = pool['free_capacity_gb']
+            # Some extra capacity will be used by meta data of pool LUNs.
+            # The overhead is about LUN_Capacity * 0.02 + 3 GB
+            # reserved_percentage will be used to make sure the scheduler
+            # takes the overhead into consideration.
+            # Assume that all the remaining capacity is to be used to create
+            # a thick LUN, reserved_percentage is estimated as follows:
+            reserved = (((0.02 * pool['free_capacity_gb'] + 3) /
+                         (1.02 * pool['total_capacity_gb'])) * 100)
+            pool_stats['reserved_percentage'] = int(math.ceil
+                                                    (min(reserved, 100)))
+            if self.check_max_pool_luns_threshold:
+                pool_feature = self._client.get_pool_feature_properties(
+                    poll=False)
+                if (pool_feature['max_pool_luns'] <=
+                        pool_feature['total_pool_luns']):
+                    LOG.warning(_LW("Maximum number of Pool LUNs, %s, "
+                                    "have been created. "
+                                    "No more LUN creation can be done."),
+                                pool_feature['max_pool_luns'])
+                    pool_stats['free_capacity_gb'] = 0
 
         array_serial = self.get_array_serial()
         pool_stats['location_info'] = ('%(pool_name)s|%(array_serial)s' %
@@ -3010,10 +3024,12 @@ class EMCVnxCliPool(EMCVnxCliBase):
         if '-FASTCache' in self.enablers:
             properties = [self._client.POOL_FREE_CAPACITY,
                           self._client.POOL_TOTAL_CAPACITY,
-                          self._client.POOL_FAST_CACHE]
+                          self._client.POOL_FAST_CACHE,
+                          self._client.POOL_STATE]
         else:
             properties = [self._client.POOL_FREE_CAPACITY,
-                          self._client.POOL_TOTAL_CAPACITY]
+                          self._client.POOL_TOTAL_CAPACITY,
+                          self._client.POOL_STATE]
 
         pool = self._client.get_pool(self.storage_pool,
                                      properties=properties,
@@ -3069,10 +3085,12 @@ class EMCVnxCliArray(EMCVnxCliBase):
         if '-FASTCache' in self.enablers:
             properties = [self._client.POOL_FREE_CAPACITY,
                           self._client.POOL_TOTAL_CAPACITY,
-                          self._client.POOL_FAST_CACHE]
+                          self._client.POOL_FAST_CACHE,
+                          self._client.POOL_STATE]
         else:
             properties = [self._client.POOL_FREE_CAPACITY,
-                          self._client.POOL_TOTAL_CAPACITY]
+                          self._client.POOL_TOTAL_CAPACITY,
+                          self._client.POOL_STATE]
         pool_list = self._client.get_pool_list(properties, False)
 
         self.stats['pools'] = map(lambda pool: self._build_pool_stats(pool),
