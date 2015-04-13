@@ -557,7 +557,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                   executor=self._execute,
                                   lvm_conf=lvm_conf_file)
 
-            self.remove_export(ctxt, volume)
             self._create_volume(volume['name'],
                                 self._sizestr(volume['size']),
                                 lvm_type,
@@ -570,9 +569,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                  self.configuration.volume_dd_blocksize,
                                  execute=self._execute)
             self._delete_volume(volume)
-            model_update = self.create_export(ctxt, volume, vg=dest_vg)
 
-            return (True, model_update)
+            return (True, None)
         else:
             message = (_("Refusing to migrate volume ID: %(id)s. Please "
                          "check your configuration because source and "
