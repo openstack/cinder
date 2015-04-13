@@ -441,7 +441,6 @@ class BrcdFCZoneClientCLI(object):
                     attempts -= 1
                     try:
                         stdin, stdout, stderr = ssh.exec_command(command)
-                        greenthread.sleep(random.randint(20, 500) / 100.0)
                         stdin.write("%s\n" % ZoneConstant.YES)
                         channel = stdout.channel
                         exit_status = channel.recv_exit_status()
