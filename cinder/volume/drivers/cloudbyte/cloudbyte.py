@@ -15,8 +15,8 @@
 
 import httplib
 import json
-import time
 import urllib
+import uuid
 
 from oslo_log import log as logging
 from oslo_utils import units
@@ -459,7 +459,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         self._api_request_for_cloudbyte(
             'updateVolumeiSCSIService', params)
 
-    def _get_cb_snapshot_path(self, snapshot, volume_id):
+    def _get_cb_snapshot_path(self, snapshot_name, volume_id):
         """Find CloudByte snapshot path."""
 
         params = {"id": volume_id}
@@ -479,7 +479,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
         # Filter snapshot path
         for snap in cb_snapshot:
-            if snap['name'] == snapshot['display_name']:
+            if snap['name'] == snapshot_name:
                 path = snap['path']
                 break
 
@@ -527,20 +527,6 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
                 break
 
         return volume_id
-
-    def _generate_clone_name(self):
-        """Generates clone name when it is not provided."""
-
-        clone_name = ("clone_" + time.strftime("%d%m%Y") +
-                      time.strftime("%H%M%S"))
-        return clone_name
-
-    def _generate_snapshot_name(self):
-        """Generates snapshot_name when it is not provided."""
-
-        snapshot_name = ("snap_" + time.strftime("%d%m%Y") +
-                         time.strftime("%H%M%S"))
-        return snapshot_name
 
     def _get_storage_info(self, tsmname):
         """Get CloudByte TSM that is associated with OpenStack backend."""
@@ -716,12 +702,8 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
         if cb_volume_id is not None:
 
-            snapshot_name = snapshot['display_name']
-            if snapshot_name is None or snapshot_name == '':
-                # Generate the snapshot name
-                snapshot_name = self._generate_snapshot_name()
-                # Update the snapshot dict for later use
-                snapshot['display_name'] = snapshot_name
+            # Set backend storage snapshot name using OpenStack snapshot id
+            snapshot_name = "snap_" + snapshot['id'].replace("-", "")
 
             params = {
                 "name": snapshot_name,
@@ -739,7 +721,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
             self._api_request_for_cloudbyte('createStorageSnapshot', params)
 
             # Get the snapshot path from CloudByte
-            path = self._get_cb_snapshot_path(snapshot, cb_volume_id)
+            path = self._get_cb_snapshot_path(snapshot_name, cb_volume_id)
 
             LOG.info(
                 _LI("Created CloudByte snapshot [%(cb_snap)s] "
@@ -770,18 +752,14 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         # Extract necessary information from input params
         parent_volume_id = cloned_volume.get('source_volid')
 
-        # Generating name and id for snapshot
+        # Generating id for snapshot
         # as this is not user entered in this particular usecase
-        snapshot_name = self._generate_snapshot_name()
-
-        snapshot_id = (six.text_type(parent_volume_id) + "_" +
-                       time.strftime("%d%m%Y") + time.strftime("%H%M%S"))
+        snapshot_id = six.text_type(uuid.uuid1())
 
         # Prepare the params for create_snapshot
         # as well as create_volume_from_snapshot method
         snapshot_params = {
             'id': snapshot_id,
-            'display_name': snapshot_name,
             'volume_id': parent_volume_id,
             'volume': src_volume,
         }
