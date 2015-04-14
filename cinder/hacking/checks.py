@@ -131,7 +131,6 @@ def validate_log_translations(logical_line, filename):
     # of patches are done to address these issues. It should be
     # removed completely when bug 1433216 is closed.
     ignore_dirs = [
-        "cinder/brick",
         "cinder/db",
         "cinder/openstack",
         "cinder/scheduler",

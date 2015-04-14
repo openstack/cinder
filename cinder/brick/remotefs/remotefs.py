@@ -93,7 +93,7 @@ class RemoteFsClient(object):
         mount_path = self.get_mount_point(share)
 
         if mount_path in self._read_mounts():
-            LOG.info(_LI('Already mounted: %s') % mount_path)
+            LOG.info(_LI('Already mounted: %s'), mount_path)
             return
 
         self._execute('mkdir', '-p', mount_path, check_exit_code=0)
@@ -127,8 +127,8 @@ class RemoteFsClient(object):
             options = self._nfs_mount_type_opts[mnt_type]
             try:
                 self._do_mount('nfs', nfs_share, mount_path, options, flags)
-                LOG.debug('Mounted %(sh)s using %(mnt_type)s.'
-                          % {'sh': nfs_share, 'mnt_type': mnt_type})
+                LOG.debug('Mounted %(sh)s using %(mnt_type)s.',
+                          {'sh': nfs_share, 'mnt_type': mnt_type})
                 return
             except Exception as e:
                 mnt_errors[mnt_type] = six.text_type(e)
