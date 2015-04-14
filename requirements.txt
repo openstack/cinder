@@ -12,7 +12,7 @@ netaddr>=0.7.6,<=0.7.14
 oslo.config>=1.2.0,<1.5
 oslo.messaging>=1.3.0,<1.5
 oslo.rootwrap<1.4
-paramiko>=1.9.0
+paramiko>=1.9.0,<=1.15.2
 Paste
 PasteDeploy>=1.5.0,<=1.5.2
 python-glanceclient>=0.9.0,!=0.14.0,<=0.14.2
