@@ -47,8 +47,7 @@ class EMCVNXCLIDriverTestData(object):
         'display_name': 'vol1',
         'display_description': 'test volume',
         'volume_type_id': None,
-        'consistencygroup_id': None,
-        'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]
+        'consistencygroup_id': None
     }
 
     test_legacy_volume = {
@@ -63,8 +62,7 @@ class EMCVNXCLIDriverTestData(object):
         'display_name': 'vol1',
         'display_description': 'test volume',
         'volume_type_id': None,
-        'consistencygroup_id': None,
-        'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]
+        'consistencygroup_id': None
     }
 
     test_volume_clone_cg = {
@@ -78,8 +76,7 @@ class EMCVNXCLIDriverTestData(object):
         'display_name': 'vol1',
         'display_description': 'test volume',
         'volume_type_id': None,
-        'consistencygroup_id': None,
-        'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]
+        'consistencygroup_id': None
     }
 
     test_volume_cg = {
@@ -93,8 +90,7 @@ class EMCVNXCLIDriverTestData(object):
         'display_name': 'vol1',
         'display_description': 'test volume',
         'volume_type_id': None,
-        'consistencygroup_id': 'cg_id',
-        'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]
+        'consistencygroup_id': 'cg_id'
     }
 
     test_volume_rw = {
@@ -109,8 +105,6 @@ class EMCVNXCLIDriverTestData(object):
         'display_description': 'test volume',
         'volume_type_id': None,
         'consistencygroup_id': None,
-        'volume_admin_metadata': [{'key': 'attached_mode', 'value': 'rw'},
-                                  {'key': 'readonly', 'value': 'False'}],
         'provider_location': 'system^FNM11111|type^lun|id^1|version^05.03.00',
     }
 
@@ -259,7 +253,6 @@ class EMCVNXCLIDriverTestData(object):
         'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce24',
         'name': 'vol3',
         'size': 2,
-        'volume_admin_metadata': [],
         'status': 'available',
         'volume_type_id':
         '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
@@ -294,7 +287,6 @@ class EMCVNXCLIDriverTestData(object):
                     'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce24',
                     'name': 'vol4',
                     'size': 2L,
-                    'volume_admin_metadata': [],
                     'status': 'available',
                     'volume_type_id':
                     '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
@@ -313,7 +305,6 @@ class EMCVNXCLIDriverTestData(object):
                     'name_id': '1181d1b2-cea3-4f55-8fa8-3360d026ce25',
                     'name': 'vol5',
                     'size': 1,
-                    'volume_admin_metadata': [],
                     'status': 'available',
                     'volume_type_id':
                     '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
@@ -697,19 +688,8 @@ State: Ready
                  "Port WWN:  iqn.1992-04.com.emc:cx.fnm00124000215.a5\n" +
                  "iSCSI Alias:  0215.a5\n", 0)
 
-    iscsi_connection_info_ro = \
-        {'data': {'access_mode': 'ro',
-                  'target_discovered': True,
-                  'target_iqn':
-                  'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
-                  'target_lun': 2,
-                  'target_portal': '10.244.214.118:3260',
-                  'volume_id': '1'},
-         'driver_volume_type': 'iscsi'}
-
-    iscsi_connection_info_rw = \
-        {'data': {'access_mode': 'rw',
-                  'target_discovered': True,
+    iscsi_connection_info = \
+        {'data': {'target_discovered': True,
                   'target_iqn':
                   'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
                   'target_lun': 2,
@@ -718,8 +698,7 @@ State: Ready
          'driver_volume_type': 'iscsi'}
 
     iscsi_connection_info_mp = \
-        {'data': {'access_mode': 'rw',
-                  'target_discovered': True,
+        {'data': {'target_discovered': True,
                   'target_iqns': [
                       'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
                       'iqn.1992-04.com.emc:cx.fnm00124000215.a5'],
@@ -1595,7 +1574,7 @@ Time Remaining:  0 second(s)
             self.testData.test_volume,
             self.testData.connector)
 
-        self.assertEqual(self.testData.iscsi_connection_info_ro,
+        self.assertEqual(self.testData.iscsi_connection_info,
                          connection_info)
 
         expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
@@ -1634,7 +1613,7 @@ Time Remaining:  0 second(s)
             test_volume_rw,
             self.testData.connector)
 
-        self.assertEqual(self.testData.iscsi_connection_info_rw,
+        self.assertEqual(self.testData.iscsi_connection_info,
                          connection_info)
 
         expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
@@ -1668,7 +1647,7 @@ Time Remaining:  0 second(s)
             test_volume_rw,
             self.testData.connector)
 
-        self.assertEqual(self.testData.iscsi_connection_info_rw,
+        self.assertEqual(self.testData.iscsi_connection_info,
                          connection_info)
 
         expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
@@ -2908,8 +2887,7 @@ Time Remaining:  0 second(s)
             'project_id': 'project',
             'display_name': 'vol_01',
             'display_description': 'test volume',
-            'volume_type_id': None,
-            'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]}
+            'volume_type_id': None}
         self.assertEqual(4, self.driver.cli.get_lun_id(volume_01))
 
     @mock.patch(
@@ -2928,8 +2906,7 @@ Time Remaining:  0 second(s)
             'project_id': 'project',
             'display_name': 'vol_02',
             'display_description': 'test volume',
-            'volume_type_id': None,
-            'volume_admin_metadata': [{'key': 'readonly', 'value': 'True'}]}
+            'volume_type_id': None}
         self.assertEqual(2, self.driver.cli.get_lun_id(volume_02))
 
     def test_create_consistency_group(self):
