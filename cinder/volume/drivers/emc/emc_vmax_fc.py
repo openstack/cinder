@@ -34,9 +34,10 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
                 performance enhancement.
         2.0.0 - Add driver requirement functions
         2.1.0 - Add consistency group functions
+        2.1.1 - Fixed issue with mismatched config (bug #1442376)
     """
 
-    VERSION = "2.1.0"
+    VERSION = "2.1.1"
 
     def __init__(self, *args, **kwargs):
 
