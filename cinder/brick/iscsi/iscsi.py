@@ -49,7 +49,7 @@ class TargetAdmin(executor.Executor):
     def _run(self, *args, **kwargs):
         self._execute(self._cmd, *args, run_as_root=True, **kwargs)
 
-    def _get_target_chap_auth(self, volume_id):
+    def _get_target_chap_auth(self, context, volume_id):
         """Get the current chap auth username and password."""
         return None
 
@@ -165,7 +165,7 @@ class TgtAdm(TargetAdmin):
                         "id:%(vol_id)s: %(e)s")
                       % {'vol_id': name, 'e': e})
 
-    def _get_target_chap_auth(self, name):
+    def _get_target_chap_auth(self, context, name):
         volumes_dir = self.volumes_dir
         vol_id = name.split(':')[1]
         volume_path = os.path.join(volumes_dir, vol_id)
