@@ -1449,16 +1449,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                     updates = {'migration_status': None}
                     if status_update:
                         updates.update(status_update)
-                    try:
-                        model_update = self.driver.create_export(ctxt,
-                                                                 volume_ref)
-                        if model_update:
-                            updates.update(model_update)
-                    except Exception:
-                        LOG.exception(_LE("Failed to create export for "
-                                          "volume: %s"), volume_ref['id'])
-                    finally:
-                        self.db.volume_update(ctxt, volume_ref['id'], updates)
+                    self.db.volume_update(ctxt, volume_ref['id'], updates)
         if not moved:
             try:
                 self._migrate_volume_generic(ctxt, volume_ref, host,
@@ -1468,16 +1459,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                     updates = {'migration_status': None}
                     if status_update:
                         updates.update(status_update)
-                    try:
-                        model_update = self.driver.create_export(ctxt,
-                                                                 volume_ref)
-                        if model_update:
-                            updates.update(model_update)
-                    except Exception:
-                        LOG.exception(_LE("Failed to create export for "
-                                          "volume: %s"), volume_ref['id'])
-                    finally:
-                        self.db.volume_update(ctxt, volume_ref['id'], updates)
+                    self.db.volume_update(ctxt, volume_ref['id'], updates)
 
     @periodic_task.periodic_task
     def _report_driver_status(self, context):
