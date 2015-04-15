@@ -1688,7 +1688,33 @@ def volume_attachment_update(context, attachment_id, values):
         return volume_attachment_ref
 
 
+def volume_update_status_based_on_attachment(context, volume_id):
+    """Update volume status based on attachment.
+
+    Get volume and check if 'volume_attachment' parameter is present in volume.
+    If 'volume_attachment' is None then set volume status to 'available'
+    else set volume status to 'in-use'.
+
+    :param context: context to query under
+    :param volume_id: id of volume to be updated
+    :returns: updated volume
+    """
+    session = get_session()
+    with session.begin():
+        volume_ref = _volume_get(context, volume_id, session=session)
+        # We need to get and update volume using same session because
+        # there is possibility that instance is deleted between the 'get'
+        # and 'update' volume call.
+        if not volume_ref['volume_attachment']:
+            volume_ref.update({'status': 'available'})
+        else:
+            volume_ref.update({'status': 'in-use'})
+
+        return volume_ref
+
+
 ####################
+
 
 def _volume_x_metadata_get_query(context, volume_id, model, session=None):
     return model_query(context, model, session=session, read_deleted="no").\

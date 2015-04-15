@@ -262,6 +262,11 @@ def volume_attachment_get_by_instance_uuid(context, volume_id, instance_uuid):
                                                        instance_uuid)
 
 
+def volume_update_status_based_on_attachment(context, volume_id):
+    """Update volume status according to attached instance id"""
+    return IMPL.volume_update_status_based_on_attachment(context, volume_id)
+
+
 ####################
 
 

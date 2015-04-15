@@ -962,12 +962,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             with excutils.save_and_reraise_exception():
                 payload['message'] = six.text_type(error)
         finally:
-            if not volume['volume_attachment']:
-                self.db.volume_update(context, volume_id,
-                                      {'status': 'available'})
-            else:
-                self.db.volume_update(context, volume_id,
-                                      {'status': 'in-use'})
+            self.db.volume_update_status_based_on_attachment(context,
+                                                             volume_id)
 
     def _delete_image(self, context, image_id, image_service):
         """Deletes an image stuck in queued or saving state."""
