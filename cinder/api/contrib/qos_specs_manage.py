@@ -137,7 +137,7 @@ class QoSSpecsController(wsgi.Controller):
             spec = qos_specs.get_qos_specs_by_name(context, name)
             notifier_info = dict(name=name, specs=specs)
             rpc.get_notifier('QoSSpecs').info(context,
-                                              'QoSSpecs.create',
+                                              'qos_specs.create',
                                               notifier_info)
         except exception.InvalidInput as err:
             notifier_err = dict(name=name, error_message=err)
