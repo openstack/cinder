@@ -138,6 +138,7 @@ class RBDTestCase(test.TestCase):
 
         self.cfg = mock.Mock(spec=conf.Configuration)
         self.cfg.volume_tmp_dir = None
+        self.cfg.rbd_cluster_name = 'nondefault'
         self.cfg.rbd_pool = 'rbd'
         self.cfg.rbd_ceph_conf = None
         self.cfg.rbd_secret_uuid = None
