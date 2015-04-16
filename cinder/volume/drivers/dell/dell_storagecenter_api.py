@@ -800,75 +800,105 @@ class StorageCenterApi(object):
         return lun, wwns, itmap
 
     def _find_active_controller(self, scvolume):
-        LOG.debug('find_active_controller')
-        activecontroller = None
+        # Find the controller on which scvolume is active.
+        actvctrl = None
         r = self.client.get('StorageCenter/ScVolume/%s/VolumeConfiguration'
                             % self._get_id(scvolume))
         if r.status_code == 200:
-            volumeconfiguration = self._first_result(r)
-            controller = volumeconfiguration.get('controller')
-            activecontroller = self._get_id(controller)
-        LOG.debug('activecontroller %s', activecontroller)
-        return activecontroller
+            volconfig = self._first_result(r)
+            controller = volconfig.get('controller')
+            actvctrl = self._get_id(controller)
+        else:
+            LOG.debug('VolumeConfiguration error: %(c)d %(r)s',
+                      {'c': r.status_code,
+                       'r': r.reason})
+            LOG.error(_LE('Unable to retrieve VolumeConfiguration: %s'),
+                      self._get_id(scvolume))
+        LOG.debug('activecontroller %s', actvctrl)
+        return actvctrl
+
+    def _get_controller_id(self, mapping):
+        # The mapping lists the associated controller.
+        return self._get_id(mapping.get('controller'))
+
+    def _get_domains(self, mapping):
+        # Return a list of domains associated with this controller port.
+        return self._find_domains(self._get_id(mapping.get('controllerPort')))
+
+    def _get_iqn(self, mapping):
+        # Get our iqn from our controller port.
+        iqn = None
+        cportid = self._get_id(mapping.get('controllerPort'))
+        controllerport = self._find_controller_port(cportid)
+        LOG.debug('controllerport: %s', controllerport)
+        if controllerport:
+            iqn = controllerport.get('iscsiName')
+        return iqn
 
     def find_iscsi_properties(self, scvolume, ip=None, port=None):
         LOG.debug('enter find_iscsi_properties')
         LOG.debug('scvolume: %s', scvolume)
-        activeindex = -1
+        active = -1
+        up = -1
+        access_mode = 'rw'
+        portals = []
         luns = []
         iqns = []
-        portals = []
-        access_mode = 'rw'
         mappings = self._find_mappings(scvolume)
-        activecontroller = self._find_active_controller(scvolume)
         if len(mappings) > 0:
+            # In multipath (per Liberty) we will return all paths.  But
+            # if multipath is not set (ip and port are None) then we need
+            # to return a mapping from the controller on which the volume
+            # is active.  So find that controller.
+            actvctrl = self._find_active_controller(scvolume)
             for mapping in mappings:
+                # The lun, ro mode and status are in the mapping.
                 LOG.debug('mapping: %s', mapping)
-                # find the controller port for this mapping
-                cport = mapping.get('controllerPort')
-                cportid = self._get_id(cport)
-                domains = self._find_domains(cportid)
-                if domains:
-                    controllerport = self._find_controller_port(cportid)
-                    LOG.debug('controllerport: %s', controllerport)
-                    if controllerport is not None:
-                        appendproperties = False
-                        for d in domains:
-                            LOG.debug('domain: %s', d)
-                            ipaddress = d.get('targetIpv4Address',
-                                              d.get('wellKnownIpAddress'))
-                            portnumber = d.get('portNumber')
-                            if ((ip is None or ip == ipaddress) and
-                                    (port is None or port == portnumber)):
-                                portal = (ipaddress + ':' +
-                                          six.text_type(portnumber))
-                                # I'm not sure when we can have more than
-                                # one portal for a domain but since it is an
-                                # array being returned it is best to check.
-                                if portals.count(portal) == 0:
-                                    appendproperties = True
-                                    portals.append(portal)
-                                else:
-                                    LOG.debug('Domain %s has two portals.',
-                                              self._get_id(d))
-                        # We do not report lun and iqn info unless it is for
-                        # the configured port OR the user has not enabled
-                        # multipath.  (In which case ip and port sent in
-                        # will be None).
-                        if appendproperties is True:
-                            iqns.append(controllerport.get('iscsiName'))
-                            luns.append(mapping.get('lun'))
-                            if activeindex == -1:
-                                controller = controllerport.get('controller')
-                                controllerid = self._get_id(controller)
-                                if controllerid == activecontroller:
-                                    activeindex = len(iqns) - 1
-                        if mapping['readOnly'] is True:
-                            access_mode = 'ro'
+                lun = mapping.get('lun')
+                ro = mapping.get('readOnly', False)
+                status = mapping.get('status')
+                # Dig a bit to get our domains,IQN and controller id.
+                domains = self._get_domains(mapping)
+                iqn = self._get_iqn(mapping)
+                ctrlid = self._get_controller_id(mapping)
+                if domains and iqn is not None:
+                    for d in domains:
+                        LOG.debug('domain: %s', d)
+                        ipaddress = d.get('targetIpv4Address',
+                                          d.get('wellKnownIpAddress'))
+                        portnumber = d.get('portNumber')
+                        # We've all the information.  Do we want to return
+                        # it?
+                        if ((ip is None or ip == ipaddress) and
+                                (port is None or port == portnumber)):
+                            portals.append(ipaddress + ':' +
+                                           six.text_type(portnumber))
+                            iqns.append(iqn)
+                            luns.append(lun)
 
-        if activeindex == -1:
+                            # We need to point to the best link.
+                            # So state active and status up is preferred
+                            # but we don't actually need the state to be
+                            # up at this point.
+                            if up == -1:
+                                access_mode = 'rw' if ro is False else 'ro'
+                                if actvctrl == ctrlid:
+                                    active = len(iqns) - 1
+                                    if status == 'Up':
+                                        up = active
+
+        # Make sure we point to the best portal we can.  This means it is
+        # on the active controller and, preferably, up.  If it isn't return
+        # what we have.
+        if up != -1:
+            # We found a connection that is already up.  Return that.
+            active = up
+        elif active == -1:
+            # This shouldn't be able to happen.  Maybe a controller went
+            # down in the middle of this so just return the first one and
+            # hope the ports are up by the time the connection is attempted.
             LOG.debug('Volume is not yet active on any controller.')
-            activeindex = 0
+            active = 0
 
         data = {'target_discovered': False,
                 'target_iqns': iqns,
@@ -876,9 +906,12 @@ class StorageCenterApi(object):
                 'target_luns': luns,
                 'access_mode': access_mode
                 }
-        LOG.debug('find_iscsi_properties return: %s', data)
 
-        return activeindex, data
+        LOG.debug('find_iscsi_properties return: %(a)d %(d)s',
+                  {'a': active,
+                   'd': data})
+
+        return active, data
 
     def map_volume(self, scvolume, scserver):
         '''map_volume

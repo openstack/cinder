@@ -18,7 +18,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LI
 from cinder.volume.drivers.dell import dell_storagecenter_common
 from cinder.volume.drivers import san
 
@@ -48,9 +48,9 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
         volume_name = volume.get('id')
         initiator_name = connector.get('initiator')
         multipath = connector.get('multipath', False)
-        LOG.debug('initialize_ connection: %(n)s:%(i)s',
-                  {'n': volume_name,
-                   'i': initiator_name})
+        LOG.info(_LI('initialize_ connection: %(n)s:%(i)s'),
+                 {'n': volume_name,
+                  'i': initiator_name})
 
         with self._client.open_connection() as api:
             try:
