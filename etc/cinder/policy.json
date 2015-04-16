@@ -18,6 +18,7 @@
     "volume:extend": "",
     "volume:update_readonly_flag": "",
     "volume:retype": "",
+    "volume:update": "",
 
     "volume_extension:types_manage": "rule:admin_api",
     "volume_extension:types_extra_specs": "rule:admin_api",
