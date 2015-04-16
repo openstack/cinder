@@ -44,6 +44,9 @@ except ImportError:
 LOG = logging.getLogger(__name__)
 
 rbd_opts = [
+    cfg.StrOpt('rbd_cluster_name',
+               default='ceph',
+               help='The name of ceph cluster'),
     cfg.StrOpt('rbd_pool',
                default='rbd',
                help='The RADOS pool where rbd volumes are stored'),
@@ -270,7 +273,8 @@ class RBDDriver(driver.VolumeDriver):
 
         # All string args used with librbd must be None or utf-8 otherwise
         # librbd will break.
-        for attr in ['rbd_user', 'rbd_ceph_conf', 'rbd_pool']:
+        for attr in ['rbd_cluster_name', 'rbd_user',
+                     'rbd_ceph_conf', 'rbd_pool']:
             val = getattr(self.configuration, attr)
             if val is not None:
                 setattr(self.configuration, attr, encodeutils.safe_encode(val))
@@ -299,8 +303,10 @@ class RBDDriver(driver.VolumeDriver):
         LOG.debug("opening connection to ceph cluster (timeout=%s)." %
                   (self.configuration.rados_connect_timeout))
 
-        client = self.rados.Rados(rados_id=self.configuration.rbd_user,
-                                  conffile=self.configuration.rbd_ceph_conf)
+        client = self.rados.Rados(
+            rados_id=self.configuration.rbd_user,
+            clustername=self.configuration.rbd_cluster_name,
+            conffile=self.configuration.rbd_ceph_conf)
         if pool is not None:
             pool = encodeutils.safe_encode(pool)
         else:
