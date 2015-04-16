@@ -37,6 +37,11 @@ TEST_VAR_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                'var'))
 
 
+def open_no_proxy(*args, **kwargs):
+    opener = urllib2.build_opener(urllib2.ProxyHandler({}))
+    return opener.open(*args, **kwargs)
+
+
 class TestLoaderNothingExists(test.TestCase):
     """Loader tests where os.path.exists always returns False."""
 
@@ -142,7 +147,7 @@ class TestWSGIServer(test.TestCase):
         server = cinder.wsgi.Server("test_app", hello_world)
         server.start()
 
-        response = urllib2.urlopen('http://127.0.0.1:%d/' % server.port)
+        response = open_no_proxy('http://127.0.0.1:%d/' % server.port)
         self.assertEqual(greetings, response.read())
 
         server.stop()
@@ -162,7 +167,7 @@ class TestWSGIServer(test.TestCase):
         server = cinder.wsgi.Server("test_app", hello_world)
         server.start()
 
-        response = urllib2.urlopen('https://127.0.0.1:%d/' % server.port)
+        response = open_no_proxy('https://127.0.0.1:%d/' % server.port)
         self.assertEqual(greetings, response.read())
 
         server.stop()
@@ -187,7 +192,7 @@ class TestWSGIServer(test.TestCase):
                                     port=0)
         server.start()
 
-        response = urllib2.urlopen('https://[::1]:%d/' % server.port)
+        response = open_no_proxy('https://[::1]:%d/' % server.port)
         self.assertEqual(greetings, response.read())
 
         server.stop()
