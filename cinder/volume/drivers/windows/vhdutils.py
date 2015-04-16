@@ -163,6 +163,12 @@ GET_VIRTUAL_DISK_INFO_VIRTUAL_STORAGE_TYPE = 6
 GET_VIRTUAL_DISK_INFO_PROVIDER_SUBTYPE = 7
 SET_VIRTUAL_DISK_INFO_PARENT_PATH = 1
 
+FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
+FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100
+FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
+
+ERROR_VHD_INVALID_TYPE = 0xC03A001B
+
 
 class VHDUtils(object):
 
@@ -187,6 +193,39 @@ class VHDUtils(object):
             self._msft_vendor_id = (
                 self.get_WIN32_VIRTUAL_STORAGE_TYPE_VENDOR_MSFT())
 
+    def _run_and_check_output(self, func, *args, **kwargs):
+        """Convenience helper method for running Win32 API methods."""
+        ignored_error_codes = kwargs.pop('ignored_error_codes', [])
+
+        ret_val = func(*args, **kwargs)
+
+        # The VHD Win32 API functions return non-zero error codes
+        # in case of failure.
+        if ret_val and ret_val not in ignored_error_codes:
+            error_message = self._get_error_message(ret_val)
+            func_name = getattr(func, '__name__', '')
+            err = (_("Executing Win32 API function %(func_name)s failed. "
+                     "Error code: %(error_code)s. "
+                     "Error message: %(error_message)s") %
+                   {'func_name': func_name,
+                    'error_code': ret_val,
+                    'error_message': error_message})
+            LOG.exception(err)
+            raise exception.VolumeBackendAPIException(err)
+
+    @staticmethod
+    def _get_error_message(error_code):
+        message_buffer = ctypes.c_char_p()
+
+        kernel32.FormatMessageA(
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER |
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+            None, error_code, 0, ctypes.byref(message_buffer), 0, None)
+
+        error_message = message_buffer.value
+        kernel32.LocalFree(message_buffer)
+        return error_message
+
     @staticmethod
     def get_WIN32_VIRTUAL_STORAGE_TYPE_VENDOR_MSFT():
         guid = Win32_GUID()
@@ -208,15 +247,13 @@ class VHDUtils(object):
 
         handle = wintypes.HANDLE()
 
-        ret_val = virtdisk.OpenVirtualDisk(ctypes.byref(vst),
-                                           ctypes.c_wchar_p(vhd_path),
-                                           open_access_mask,
-                                           open_flag,
-                                           open_params,
-                                           ctypes.byref(handle))
-        if ret_val:
-            raise exception.VolumeBackendAPIException(
-                _("Opening virtual disk failed with error: %s") % ret_val)
+        self._run_and_check_output(virtdisk.OpenVirtualDisk,
+                                   ctypes.byref(vst),
+                                   ctypes.c_wchar_p(vhd_path),
+                                   open_access_mask,
+                                   open_flag,
+                                   open_params,
+                                   ctypes.byref(handle))
         return handle
 
     def _close(self, handle):
@@ -237,15 +274,14 @@ class VHDUtils(object):
         params.Version = RESIZE_VIRTUAL_DISK_VERSION_1
         params.NewSize = new_max_size
 
-        ret_val = virtdisk.ResizeVirtualDisk(
-            handle,
-            RESIZE_VIRTUAL_DISK_FLAG_NONE,
-            ctypes.byref(params),
-            None)
-        self._close(handle)
-        if ret_val:
-            raise exception.VolumeBackendAPIException(
-                _("Virtual disk resize failed with error: %s") % ret_val)
+        try:
+            self._run_and_check_output(virtdisk.ResizeVirtualDisk,
+                                       handle,
+                                       RESIZE_VIRTUAL_DISK_FLAG_NONE,
+                                       ctypes.byref(params),
+                                       None)
+        finally:
+            self._close(handle)
 
     def merge_vhd(self, vhd_path):
         open_params = Win32_OPEN_VIRTUAL_DISK_PARAMETERS_V1()
@@ -259,15 +295,14 @@ class VHDUtils(object):
         params.Version = MERGE_VIRTUAL_DISK_VERSION_1
         params.MergeDepth = 1
 
-        ret_val = virtdisk.MergeVirtualDisk(
-            handle,
-            MERGE_VIRTUAL_DISK_FLAG_NONE,
-            ctypes.byref(params),
-            None)
-        self._close(handle)
-        if ret_val:
-            raise exception.VolumeBackendAPIException(
-                _("Virtual disk merge failed with error: %s") % ret_val)
+        try:
+            self._run_and_check_output(virtdisk.MergeVirtualDisk,
+                                       handle,
+                                       MERGE_VIRTUAL_DISK_FLAG_NONE,
+                                       ctypes.byref(params),
+                                       None)
+        finally:
+            self._close(handle)
 
     def _create_vhd(self, new_vhd_path, new_vhd_type, src_path=None,
                     max_internal_size=0, parent_path=None):
@@ -300,21 +335,19 @@ class VHDUtils(object):
         create_virtual_disk_flag = self.create_virtual_disk_flags.get(
             new_vhd_type)
 
-        ret_val = virtdisk.CreateVirtualDisk(
-            ctypes.byref(vst),
-            ctypes.c_wchar_p(new_vhd_path),
-            VIRTUAL_DISK_ACCESS_NONE,
-            None,
-            create_virtual_disk_flag,
-            0,
-            ctypes.byref(params),
-            None,
-            ctypes.byref(handle))
-        self._close(handle)
-
-        if ret_val:
-            raise exception.VolumeBackendAPIException(
-                _("Virtual disk creation failed with error: %s") % ret_val)
+        try:
+            self._run_and_check_output(virtdisk.CreateVirtualDisk,
+                                       ctypes.byref(vst),
+                                       ctypes.c_wchar_p(new_vhd_path),
+                                       VIRTUAL_DISK_ACCESS_NONE,
+                                       None,
+                                       create_virtual_disk_flag,
+                                       0,
+                                       ctypes.byref(params),
+                                       None,
+                                       ctypes.byref(handle))
+        finally:
+            self._close(handle)
 
     def get_vhd_info(self, vhd_path, info_members=None):
         vhd_info = {}
@@ -323,11 +356,13 @@ class VHDUtils(object):
         handle = self._open(vhd_path,
                             open_access_mask=VIRTUAL_DISK_ACCESS_GET_INFO)
 
-        for member in info_members:
-            info = self._get_vhd_info_member(handle, member)
-            vhd_info = dict(vhd_info.items() + info.items())
+        try:
+            for member in info_members:
+                info = self._get_vhd_info_member(handle, member)
+                vhd_info = dict(vhd_info.items() + info.items())
+        finally:
+            self._close(handle)
 
-        self._close(handle)
         return vhd_info
 
     def _get_vhd_info_member(self, vhd_file, info_member):
@@ -338,18 +373,18 @@ class VHDUtils(object):
 
         virtdisk.GetVirtualDiskInformation.restype = wintypes.DWORD
 
-        ret_val = virtdisk.GetVirtualDiskInformation(
-            vhd_file, ctypes.byref(ctypes.c_ulong(infoSize)),
-            ctypes.byref(virt_disk_info), 0)
+        # Note(lpetrut): If the vhd has no parent image, this will
+        # return an error. No need to raise an exception in this case.
+        ignored_error_codes = []
+        if info_member == GET_VIRTUAL_DISK_INFO_PARENT_LOCATION:
+            ignored_error_codes.append(ERROR_VHD_INVALID_TYPE)
 
-        if (ret_val and info_member !=
-                GET_VIRTUAL_DISK_INFO_PARENT_LOCATION):
-            # Note(lpetrut): If the vhd has no parent image, this will
-            # return an non-zero exit code. No need to raise an exception
-            # in this case.
-            self._close(vhd_file)
-            raise exception.VolumeBackendAPIException(
-                "Error getting vhd info. Error code: %s" % ret_val)
+        self._run_and_check_output(virtdisk.GetVirtualDiskInformation,
+                                   vhd_file,
+                                   ctypes.byref(ctypes.c_ulong(infoSize)),
+                                   ctypes.byref(virt_disk_info),
+                                   0,
+                                   ignored_error_codes=ignored_error_codes)
 
         return self._parse_vhd_info(virt_disk_info, info_member)
 
@@ -412,11 +447,9 @@ class VHDUtils(object):
         params.Version = SET_VIRTUAL_DISK_INFO_PARENT_PATH
         params.ParentFilePath = parent_path
 
-        ret_val = virtdisk.SetVirtualDiskInformation(
-            handle,
-            ctypes.byref(params))
-        self._close(handle)
-
-        if ret_val:
-            raise exception.VolumeBackendAPIException(
-                _("Virtual disk reconnect failed with error: %s") % ret_val)
+        try:
+            self._run_and_check_output(virtdisk.SetVirtualDiskInformation,
+                                       handle,
+                                       ctypes.byref(params))
+        finally:
+            self._close(handle)
