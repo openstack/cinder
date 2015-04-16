@@ -105,6 +105,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         return super(SmbfsDriver, self)._qemu_img_info_base(
             path, volume_name, self.configuration.smbfs_mount_point_base)
 
+    @remotefs_drv.locked_volume_id_operation
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
 
@@ -220,7 +221,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         return volume_format
 
-    @utils.synchronized('smbfs', external=False)
+    @remotefs_drv.locked_volume_id_operation
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         if not volume['provider_location']:
@@ -387,12 +388,6 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
             return False
         return True
 
-    @utils.synchronized('smbfs', external=False)
-    def create_snapshot(self, snapshot):
-        """Apply locking to the create snapshot operation."""
-
-        return self._create_snapshot(snapshot)
-
     def _create_snapshot_online(self, snapshot, backing_filename,
                                 new_snap_path):
         msg = _("This driver does not support snapshotting in-use volumes.")
@@ -415,13 +410,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
                         "format: %s") % volume_format
             raise exception.InvalidVolume(err_msg)
 
-    @utils.synchronized('smbfs', external=False)
-    def delete_snapshot(self, snapshot):
-        """Apply locking to the delete snapshot operation."""
-
-        return self._delete_snapshot(snapshot)
-
-    @utils.synchronized('smbfs', external=False)
+    @remotefs_drv.locked_volume_id_operation
     def extend_volume(self, volume, size_gb):
         LOG.info(_LI('Extending volume %s.'), volume['id'])
         self._extend_volume(volume, size_gb)
@@ -472,14 +461,6 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
             raise exception.ExtendVolumeError(reason='Insufficient space to '
                                               'extend volume %s to %sG.'
                                               % (volume['id'], size_gb))
-
-    @utils.synchronized('smbfs', external=False)
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        self._copy_volume_to_image(context, volume, image_service, image_meta)
-
-    @utils.synchronized('smbfs', external=False)
-    def create_volume_from_snapshot(self, volume, snapshot):
-        return self._create_volume_from_snapshot(volume, snapshot)
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
         """Copy data from snapshot to destination volume.
@@ -547,11 +528,6 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
                 image_id=image_id,
                 reason=(_("Expected volume size was %d") % volume['size'])
                 + (_(" but size is now %d.") % virt_size))
-
-    @utils.synchronized('smbfs', external=False)
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
-        return self._create_cloned_volume(volume, src_vref)
 
     def _ensure_share_mounted(self, smbfs_share):
         mnt_flags = []
