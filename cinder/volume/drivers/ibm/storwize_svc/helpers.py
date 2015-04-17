@@ -153,7 +153,7 @@ class StorwizeHelpers(object):
             resp = self.ssh.lsnode(node_id=node['id'])
             wwpns = set(node['WWPN'])
             for i, s in resp.select('port_id', 'port_status'):
-                if 'unconfigured' != s:
+                if 'active' == s:
                     wwpns.add(i)
             node['WWPN'] = list(wwpns)
             LOG.info(_LI('WWPN on node %(node)s: %(wwpn)s')
