@@ -25,6 +25,7 @@ import uuid
 import mock
 
 from cinder import exception
+from cinder.i18n import _
 from cinder import test
 from cinder.tests.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.volume.drivers.netapp.dataontap import block_base
@@ -99,8 +100,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def test_map_lun(self, mock_get_or_create_igroup, mock_get_lun_attr):
         os = 'linux'
         protocol = 'fcp'
+        self.library.host_type = 'linux'
         mock_get_lun_attr.return_value = {'Path': fake.LUN1, 'OsType': os}
-        mock_get_or_create_igroup.return_value = fake.IGROUP1_NAME
+        mock_get_or_create_igroup.return_value = (fake.IGROUP1_NAME, os,
+                                                  'iscsi')
         self.zapi_client.map_lun.return_value = '1'
 
         lun_id = self.library._map_lun('fake_volume',
@@ -113,6 +116,28 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.zapi_client.map_lun.assert_called_once_with(
             fake.LUN1, fake.IGROUP1_NAME, lun_id=None)
 
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_get_lun_attr')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
+                       '_get_or_create_igroup')
+    @mock.patch.object(block_base, 'LOG', mock.Mock())
+    def test_map_lun_mismatch_host_os(
+            self, mock_get_or_create_igroup, mock_get_lun_attr):
+        os = 'windows'
+        protocol = 'fcp'
+        self.library.host_type = 'linux'
+        mock_get_lun_attr.return_value = {'Path': fake.LUN1, 'OsType': os}
+        mock_get_or_create_igroup.return_value = (fake.IGROUP1_NAME, os,
+                                                  'iscsi')
+        self.library._map_lun('fake_volume',
+                              fake.FC_FORMATTED_INITIATORS,
+                              protocol, None)
+        mock_get_or_create_igroup.assert_called_once_with(
+            fake.FC_FORMATTED_INITIATORS, protocol,
+            self.library.host_type)
+        self.zapi_client.map_lun.assert_called_once_with(
+            fake.LUN1, fake.IGROUP1_NAME, lun_id=None)
+        self.assertEqual(1, block_base.LOG.warning.call_count)
+
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_get_lun_attr')
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
@@ -124,7 +149,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         os = 'linux'
         protocol = 'fcp'
         mock_get_lun_attr.return_value = {'Path': fake.LUN1, 'OsType': os}
-        mock_get_or_create_igroup.return_value = fake.IGROUP1_NAME
+        mock_get_or_create_igroup.return_value = (fake.IGROUP1_NAME, os,
+                                                  'iscsi')
         mock_find_mapped_lun_igroup.return_value = (fake.IGROUP1_NAME, '2')
         self.zapi_client.map_lun.side_effect = netapp_api.NaApiError
 
@@ -146,7 +172,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         os = 'linux'
         protocol = 'fcp'
         mock_get_lun_attr.return_value = {'Path': fake.LUN1, 'OsType': os}
-        mock_get_or_create_igroup.return_value = fake.IGROUP1_NAME
+        mock_get_or_create_igroup.return_value = (fake.IGROUP1_NAME, os,
+                                                  'iscsi')
         mock_find_mapped_lun_igroup.return_value = (None, None)
         self.zapi_client.map_lun.side_effect = netapp_api.NaApiError
 
@@ -179,19 +206,24 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_get_or_create_igroup_preexisting(self):
         self.zapi_client.get_igroup_by_initiators.return_value = [fake.IGROUP1]
-
-        igroup_name = self.library._get_or_create_igroup(
+        self.library._create_igroup_add_initiators = mock.Mock()
+        igroup_name, host_os, ig_type = self.library._get_or_create_igroup(
             fake.FC_FORMATTED_INITIATORS, 'fcp', 'linux')
 
-        self.assertEqual(igroup_name, fake.IGROUP1_NAME)
+        self.assertEqual(fake.IGROUP1_NAME, igroup_name)
+        self.assertEqual('linux', host_os)
+        self.assertEqual('fcp', ig_type)
         self.zapi_client.get_igroup_by_initiators.assert_called_once_with(
             fake.FC_FORMATTED_INITIATORS)
+        self.assertEqual(
+            0, self.library._create_igroup_add_initiators.call_count)
 
     @mock.patch.object(uuid, 'uuid4', mock.Mock(return_value=fake.UUID1))
     def test_get_or_create_igroup_none_preexisting(self):
+        """This method also tests _create_igroup_add_initiators."""
         self.zapi_client.get_igroup_by_initiators.return_value = []
 
-        igroup_name = self.library._get_or_create_igroup(
+        igroup_name, os, ig_type = self.library._get_or_create_igroup(
             fake.FC_FORMATTED_INITIATORS, 'fcp', 'linux')
 
         self.assertEqual(igroup_name, 'openstack-' + fake.UUID1)
@@ -199,6 +231,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             igroup_name, 'fcp', 'linux')
         self.assertEqual(len(fake.FC_FORMATTED_INITIATORS),
                          self.zapi_client.add_igroup_initiator.call_count)
+        self.assertEqual('linux', os)
+        self.assertEqual('fcp', ig_type)
 
     def test_get_fc_target_wwpns(self):
         self.assertRaises(NotImplementedError,
@@ -354,10 +388,22 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         na_utils.LOG.warning.assert_called_once_with(warn_msg)
 
     @mock.patch.object(na_utils, 'check_flags')
-    def test_do_setup(self, mock_check_flags):
+    def test_do_setup_san_configured(self, mock_check_flags):
+        self.library.configuration.netapp_lun_ostype = 'windows'
+        self.library.configuration.netapp_host_type = 'solaris'
         self.library.do_setup(mock.Mock())
-
         self.assertTrue(mock_check_flags.called)
+        self.assertEqual('windows', self.library.lun_ostype)
+        self.assertEqual('solaris', self.library.host_type)
+
+    @mock.patch.object(na_utils, 'check_flags')
+    def test_do_setup_san_unconfigured(self, mock_check_flags):
+        self.library.configuration.netapp_lun_ostype = None
+        self.library.configuration.netapp_host_type = None
+        self.library.do_setup(mock.Mock())
+        self.assertTrue(mock_check_flags.called)
+        self.assertEqual('linux', self.library.lun_ostype)
+        self.assertEqual('linux', self.library.host_type)
 
     def test_get_existing_vol_manage_missing_id_path(self):
         self.assertRaises(exception.ManageExistingInvalidReference,
@@ -587,3 +633,48 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             target_details_list, filter)
 
         self.assertEqual(target_details_list[1], result)
+
+    @mock.patch.object(na_utils, 'check_flags', mock.Mock())
+    @mock.patch.object(block_base, 'LOG', mock.Mock())
+    def test_setup_error_invalid_lun_os(self):
+        self.library.configuration.netapp_lun_ostype = 'unknown'
+        self.library.do_setup(mock.Mock())
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.check_for_setup_error)
+        msg = _("Invalid value for NetApp configuration"
+                " option netapp_lun_ostype.")
+        block_base.LOG.error.assert_called_once_with(msg)
+
+    @mock.patch.object(na_utils, 'check_flags', mock.Mock())
+    @mock.patch.object(block_base, 'LOG', mock.Mock())
+    def test_setup_error_invalid_host_type(self):
+        self.library.configuration.netapp_lun_ostype = 'linux'
+        self.library.configuration.netapp_host_type = 'future_os'
+        self.library.do_setup(mock.Mock())
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.check_for_setup_error)
+        msg = _("Invalid value for NetApp configuration"
+                " option netapp_host_type.")
+        block_base.LOG.error.assert_called_once_with(msg)
+
+    @mock.patch.object(na_utils, 'check_flags', mock.Mock())
+    def test_check_for_setup_error_both_config(self):
+        self.library.configuration.netapp_lun_ostype = 'linux'
+        self.library.configuration.netapp_host_type = 'linux'
+        self.library.do_setup(mock.Mock())
+        self.zapi_client.get_lun_list.return_value = ['lun1']
+        self.library._extract_and_populate_luns = mock.Mock()
+        self.library.check_for_setup_error()
+        self.library._extract_and_populate_luns.assert_called_once_with(
+            ['lun1'])
+
+    @mock.patch.object(na_utils, 'check_flags', mock.Mock())
+    def test_check_for_setup_error_no_os_host(self):
+        self.library.configuration.netapp_lun_ostype = None
+        self.library.configuration.netapp_host_type = None
+        self.library.do_setup(mock.Mock())
+        self.zapi_client.get_lun_list.return_value = ['lun1']
+        self.library._extract_and_populate_luns = mock.Mock()
+        self.library.check_for_setup_error()
+        self.library._extract_and_populate_luns.assert_called_once_with(
+            ['lun1'])

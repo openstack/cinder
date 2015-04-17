@@ -73,6 +73,14 @@ class NetAppBlockStorageLibrary(object):
     IGROUP_PREFIX = 'openstack-'
     REQUIRED_FLAGS = ['netapp_login', 'netapp_password',
                       'netapp_server_hostname']
+    ALLOWED_LUN_OS_TYPES = ['linux', 'aix', 'hpux', 'image', 'windows',
+                            'windows_2008', 'windows_gpt', 'solaris',
+                            'solaris_efi', 'netware', 'openvms', 'hyper_v']
+    ALLOWED_IGROUP_HOST_TYPES = ['linux', 'aix', 'hpux', 'windows', 'solaris',
+                                 'netware', 'default', 'vmware', 'openvms',
+                                 'xen', 'hyper_v']
+    DEFAULT_LUN_OS = 'linux'
+    DEFAULT_HOST_TYPE = 'linux'
 
     def __init__(self, driver_name, driver_protocol, **kwargs):
 
@@ -83,6 +91,8 @@ class NetAppBlockStorageLibrary(object):
         self.zapi_client = None
         self._stats = {}
         self.lun_table = {}
+        self.lun_ostype = None
+        self.host_type = None
         self.lookup_service = fczm_utils.create_lookup_service()
         self.app_version = kwargs.get("app_version", "unknown")
         self.db = kwargs.get('db')
@@ -93,16 +103,30 @@ class NetAppBlockStorageLibrary(object):
         self.configuration.append_config_values(na_opts.netapp_transport_opts)
         self.configuration.append_config_values(
             na_opts.netapp_provisioning_opts)
+        self.configuration.append_config_values(na_opts.netapp_san_opts)
 
     def do_setup(self, context):
         na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
+        self.lun_ostype = (self.configuration.netapp_lun_ostype
+                           or self.DEFAULT_LUN_OS)
+        self.host_type = (self.configuration.netapp_host_type
+                          or self.DEFAULT_HOST_TYPE)
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate.
 
         Discovers the LUNs on the NetApp server.
         """
-
+        if self.lun_ostype not in self.ALLOWED_LUN_OS_TYPES:
+            msg = _("Invalid value for NetApp configuration"
+                    " option netapp_lun_ostype.")
+            LOG.error(msg)
+            raise exception.NetAppDriverException(msg)
+        if self.host_type not in self.ALLOWED_IGROUP_HOST_TYPES:
+            msg = _("Invalid value for NetApp configuration"
+                    " option netapp_host_type.")
+            LOG.error(msg)
+            raise exception.NetAppDriverException(msg)
         lun_list = self.zapi_client.get_lun_list()
         self._extract_and_populate_luns(lun_list)
         LOG.debug("Success getting list of LUNs from server.")
@@ -137,7 +161,7 @@ class NetAppBlockStorageLibrary(object):
         size = default_size if not int(volume['size'])\
             else int(volume['size']) * units.Gi
 
-        metadata = {'OsType': 'linux',
+        metadata = {'OsType': self.lun_ostype,
                     'SpaceReserved': 'true',
                     'Path': '/vol/%s/%s' % (ontap_volume_name, lun_name)}
 
@@ -257,14 +281,16 @@ class NetAppBlockStorageLibrary(object):
     def _map_lun(self, name, initiator_list, initiator_type, lun_id=None):
         """Maps LUN to the initiator(s) and returns LUN ID assigned."""
         metadata = self._get_lun_attr(name, 'metadata')
-        os = metadata['OsType']
         path = metadata['Path']
-        if self._check_allowed_os(os):
-            os = os
-        else:
-            os = 'default'
-        igroup_name = self._get_or_create_igroup(initiator_list,
-                                                 initiator_type, os)
+        igroup_name, ig_host_os, ig_type = self._get_or_create_igroup(
+            initiator_list, initiator_type, self.host_type)
+        if ig_host_os != self.host_type:
+            LOG.warning(_LW("LUN misalignment may occur for current"
+                            " initiator group %(ig_nm)s) with host OS type"
+                            " %(ig_os)s. Please configure initiator group"
+                            " manually according to the type of the"
+                            " host OS."),
+                        {'ig_nm': igroup_name, 'ig_os': ig_host_os})
         try:
             return self.zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
         except na_api.NaApiError:
@@ -290,38 +316,36 @@ class NetAppBlockStorageLibrary(object):
         """Checks whether any LUNs are mapped to the given initiator(s)."""
         return self.zapi_client.has_luns_mapped_to_initiators(initiator_list)
 
-    def _get_or_create_igroup(self, initiator_list, initiator_type,
-                              os='default'):
+    def _get_or_create_igroup(self, initiator_list, initiator_group_type,
+                              host_os_type):
         """Checks for an igroup for a set of one or more initiators.
 
-        Creates igroup if not found.
+        Creates igroup if not already present with given host os type,
+        igroup type and adds initiators.
         """
-
         igroups = self.zapi_client.get_igroup_by_initiators(initiator_list)
-
         igroup_name = None
-        for igroup in igroups:
-            if igroup['initiator-group-os-type'] == os:
-                if igroup['initiator-group-type'] == initiator_type or \
-                        igroup['initiator-group-type'] == 'mixed':
-                    if igroup['initiator-group-name'].startswith(
-                            self.IGROUP_PREFIX):
-                        igroup_name = igroup['initiator-group-name']
-                        break
-        if not igroup_name:
-            igroup_name = self.IGROUP_PREFIX + six.text_type(uuid.uuid4())
-            self.zapi_client.create_igroup(igroup_name, initiator_type, os)
-            for initiator in initiator_list:
-                self.zapi_client.add_igroup_initiator(igroup_name, initiator)
-        return igroup_name
 
-    def _check_allowed_os(self, os):
-        """Checks if the os type supplied is NetApp supported."""
-        if os in ['linux', 'aix', 'hpux', 'windows', 'solaris',
-                  'netware', 'vmware', 'openvms', 'xen', 'hyper_v']:
-            return True
-        else:
-            return False
+        if igroups:
+            igroup = igroups[0]
+            igroup_name = igroup['initiator-group-name']
+            host_os_type = igroup['initiator-group-os-type']
+            initiator_group_type = igroup['initiator-group-type']
+
+        if not igroup_name:
+            igroup_name = self._create_igroup_add_initiators(
+                initiator_group_type, host_os_type, initiator_list)
+        return igroup_name, host_os_type, initiator_group_type
+
+    def _create_igroup_add_initiators(self, initiator_group_type,
+                                      host_os_type, initiator_list):
+        """Creates igroup and adds initiators."""
+        igroup_name = self.IGROUP_PREFIX + six.text_type(uuid.uuid4())
+        self.zapi_client.create_igroup(igroup_name, initiator_group_type,
+                                       host_os_type)
+        for initiator in initiator_list:
+            self.zapi_client.add_igroup_initiator(igroup_name, initiator)
+        return igroup_name
 
     def _add_lun_to_table(self, lun):
         """Adds LUN to cache table."""
@@ -609,7 +633,7 @@ class NetAppBlockStorageLibrary(object):
         name = volume['name']
         lun_id = self._map_lun(name, [initiator_name], 'iscsi', None)
 
-        msg = _("Mapped LUN %(name)s to the initiator %(initiator_name)s")
+        msg = "Mapped LUN %(name)s to the initiator %(initiator_name)s"
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)
 
@@ -618,8 +642,8 @@ class NetAppBlockStorageLibrary(object):
             msg = _('Failed to get LUN target list for the LUN %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
 
-        msg = _("Successfully fetched target list for LUN %(name)s and "
-                "initiator %(initiator_name)s")
+        msg = ("Successfully fetched target list for LUN %(name)s and "
+               "initiator %(initiator_name)s")
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)
 

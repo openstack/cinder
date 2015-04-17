@@ -50,6 +50,7 @@ CONF.register_opts(na_opts.netapp_basicauth_opts)
 CONF.register_opts(na_opts.netapp_connection_opts)
 CONF.register_opts(na_opts.netapp_eseries_opts)
 CONF.register_opts(na_opts.netapp_transport_opts)
+CONF.register_opts(na_opts.netapp_san_opts)
 
 
 class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
@@ -93,6 +94,8 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
     SSC_UPDATE_INTERVAL = 60  # seconds
     WORLDWIDENAME = 'worldWideName'
 
+    DEFAULT_HOST_TYPE = 'linux_dm_mp'
+
     def __init__(self, *args, **kwargs):
         super(NetAppEseriesISCSIDriver, self).__init__(*args, **kwargs)
         na_utils.validate_instantiation(**kwargs)
@@ -101,6 +104,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
             na_opts.netapp_connection_opts)
         self.configuration.append_config_values(na_opts.netapp_transport_opts)
         self.configuration.append_config_values(na_opts.netapp_eseries_opts)
+        self.configuration.append_config_values(na_opts.netapp_san_opts)
         self._backend_name = self.configuration.safe_get(
             "volume_backend_name") or "NetApp_ESeries"
         self._objects = {'disk_pool_refs': [], 'pools': [],
@@ -143,9 +147,9 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         self._start_periodic_tasks()
 
     def _check_host_type(self):
-        self.host_type =\
-            self.HOST_TYPES.get(self.configuration.netapp_eseries_host_type,
-                                None)
+        host_type = (self.configuration.netapp_host_type
+                     or self.DEFAULT_HOST_TYPE)
+        self.host_type = self.HOST_TYPES.get(host_type)
         if not self.host_type:
             raise exception.NetAppDriverException(
                 _('Configured host type is not supported.'))
