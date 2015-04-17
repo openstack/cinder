@@ -264,40 +264,49 @@ class NetAppDirectISCSIDriver(driver.ISCSIDriver):
         initiator_name = connector['initiator']
         name = volume['name']
         lun_id = self._map_lun(name, initiator_name, 'iscsi', None)
+
         msg = _("Mapped LUN %(name)s to the initiator %(initiator_name)s")
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)
-        iqn = self._get_iscsi_service_details()
-        if not iqn:
-            msg = _('Failed to get target IQN for the LUN %s')
+
+        target_list = self._get_target_details()
+        if not target_list:
+            msg = _('No iscsi target details were found for LUN %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
 
-        target_details_list = self._get_target_details()
         msg = _("Successfully fetched target details for LUN %(name)s and "
                 "initiator %(initiator_name)s")
         msg_fmt = {'name': name, 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)
 
-        if not target_details_list:
-            msg = _('No iscsi target details were found for LUN %s')
-            raise exception.VolumeBackendAPIException(data=msg % name)
-        target_details = None
-        for tgt_detail in target_details_list:
-            if tgt_detail.get('interface-enabled', 'true') == 'true':
-                target_details = tgt_detail
-                break
-        if not target_details:
-            target_details = target_details_list[0]
-
-        if not target_details['address'] and target_details['port']:
+        preferred_target = self._get_preferred_target_from_list(
+            target_list)
+        if preferred_target is None:
             msg = _('Failed to get target portal for the LUN %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
+        (address, port) = (preferred_target['address'],
+                           preferred_target['port'])
 
-        address = target_details['address']
-        port = target_details['port']
+        iqn = self._get_iscsi_service_details()
+        if not iqn:
+            msg = _('Failed to get target IQN for the LUN %s')
+            raise exception.VolumeBackendAPIException(data=msg % name)
 
         return na_utils.get_iscsi_connection_properties(address, port, iqn,
                                                         lun_id, volume)
+
+    def _get_preferred_target_from_list(self, target_details_list,
+                                        filter=None):
+        preferred_target = None
+        for target in target_details_list:
+            if filter and target['address'] not in filter:
+                continue
+            if target.get('interface-enabled', 'true') == 'true':
+                preferred_target = target
+                break
+        if preferred_target is None and len(target_details_list) > 0:
+            preferred_target = target_details_list[0]
+        return preferred_target
 
     def create_snapshot(self, snapshot):
         """Driver entry point for creating a snapshot.
@@ -1152,6 +1161,51 @@ class NetAppDirectCmodeISCSIDriver(NetAppDirectISCSIDriver):
             self._update_stale_vols(
                 volume=ssc_utils.NetAppVolume(netapp_vol, self.vserver))
 
+    def _get_preferred_target_from_list(self, target_details_list):
+        # cDOT iSCSI LIFs do not migrate from controller to controller
+        # in failover.  Rather, an iSCSI LIF must be configured on each
+        # controller and the initiator has to take responsibility for
+        # using a LIF that is UP.  In failover, the iSCSI LIF on the
+        # downed controller goes DOWN until the controller comes back up.
+        #
+        # Currently Nova only accepts a single target when obtaining
+        # target details from Cinder, so we pass back the first portal
+        # with an UP iSCSI LIF.  There are plans to have Nova accept
+        # and try multiple targets.  When that happens, we can and should
+        # remove this filter and return all targets since their operational
+        # state could change between the time we test here and the time
+        # Nova uses the target.
+
+        operational_addresses = (
+            self._get_operational_network_interface_addresses())
+
+        return (super(NetAppDirectCmodeISCSIDriver, self)
+                ._get_preferred_target_from_list(target_details_list,
+                                                 filter=operational_addresses))
+
+    def _get_operational_network_interface_addresses(self):
+        """Gets the IP addresses of operational LIFs on the vserver."""
+
+        api_args = {
+            'query': {
+                'net-interface-info': {
+                    'operational-status': 'up'
+                }
+            },
+            'desired-attributes': {
+                'net-interface-info': {
+                    'address': None,
+                }
+            }
+        }
+        result = self.client.send_request('net-interface-get-iter', api_args)
+
+        lif_info_list = result.get_child_by_name(
+            'attributes-list') or NaElement('none')
+
+        return [lif_info.get_child_content('address') for lif_info in
+                lif_info_list.get_children()]
+
 
 class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
     """NetApp 7-mode iSCSI volume driver."""
@@ -1573,3 +1627,12 @@ class NetAppDirect7modeISCSIDriver(NetAppDirectISCSIDriver):
         """Driver entry point for destroying existing volumes."""
         super(NetAppDirect7modeISCSIDriver, self).delete_volume(volume)
         self.vol_refresh_voluntary = True
+
+    def _get_preferred_target_from_list(self, target_details_list):
+        # 7-mode iSCSI LIFs migrate from controller to controller
+        # in failover and flap operational state in transit, so
+        # we  don't filter these on operational state.
+
+        return (super(NetAppDirect7modeISCSIDriver, self)
+                ._get_preferred_target_from_list(target_details_list,
+                                                 filter=None))

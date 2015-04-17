@@ -56,6 +56,13 @@ class NaServer(object):
         self._password = password
         self._refresh_conn = True
 
+    def send_request(self, api_name, api_args=None, enable_tunneling=True):
+        """Sends request to Ontapi."""
+        request = NaElement(api_name)
+        if api_args:
+            request.translate_struct(api_args)
+        return self.invoke_successfully(request, enable_tunneling)
+
     def get_transport_type(self):
         """Get the transport type protocol."""
         return self._protocol
