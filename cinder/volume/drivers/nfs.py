@@ -133,14 +133,13 @@ class NfsDriver(remotefs.RemoteFSDriver):
                     "%s") % self.configuration.nfs_oversub_ratio
 
             LOG.error(msg)
-            raise exception.NfsException(msg)
-
-        if ((not self.configuration.nfs_used_ratio > 0) and
+            raise exception.InvalidConfigurationValue(msg)
+        if not ((self.configuration.nfs_used_ratio > 0) and
                 (self.configuration.nfs_used_ratio <= 1)):
             msg = _("NFS config 'nfs_used_ratio' invalid.  Must be > 0 "
                     "and <= 1.0: %s") % self.configuration.nfs_used_ratio
             LOG.error(msg)
-            raise exception.NfsException(msg)
+            raise exception.InvalidConfigurationValue(msg)
 
         self.shares = {}  # address : options
 
