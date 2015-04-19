@@ -757,9 +757,13 @@ def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
 
     volume_flow.add(ExtractVolumeRefTask(db, host))
 
-    if allow_reschedule and request_spec:
+    retry = filter_properties.get('retry', None)
+    if allow_reschedule and request_spec and retry:
         volume_flow.add(OnFailureRescheduleTask(reschedule_context,
                                                 db, scheduler_rpcapi))
+
+    LOG.debug("Volume reschedule parameters: %(allow)s "
+              "retry: %(retry)s", {'allow': allow_reschedule, 'retry': retry})
 
     volume_flow.add(ExtractVolumeSpecTask(db),
                     NotifyVolumeActionTask(db, "create.start"),
