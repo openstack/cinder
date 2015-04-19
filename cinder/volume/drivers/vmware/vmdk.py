@@ -1299,8 +1299,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         # Validate container format; only 'bare' is supported currently.
         container_format = metadata.get('container_format')
         if (container_format and container_format != 'bare'):
-            msg = _("Container format: %s is unsupported, only 'bare' is "
-                    "supported.") % container_format
+            msg = _("Container format: %s is unsupported by the VMDK driver, "
+                    "only 'bare' is supported.") % container_format
             LOG.error(msg)
             raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
 
