@@ -11,6 +11,7 @@ Cinder Specific Commandments
 - [N319] Validate that debug level logs are not translated
 - [N322] Ensure default arguments are not mutable.
 - [N323] Add check for explicit import of _() to ensure proper translation.
+- [N325] str() and unicode() cannot be used on an exception.  Remove or use six.text_type().
 - [N327] assert_called_once is not a valid Mock method.
 - [N328] LOG.info messages require translations `_LI()`.
 - [N329] LOG.exception and LOG.error messages require translations `_LE()`.

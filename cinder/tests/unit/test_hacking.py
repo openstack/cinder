@@ -12,6 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import textwrap
+
+import mock
+import pep8
+
 from cinder.hacking import checks
 from cinder import test
 
@@ -113,6 +118,94 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "LOG.info('My info message')",
             "cinder.tests.unit/other_files4.py"))))
+
+    # We are patching pep8 so that only the check under test is actually
+    # installed.
+    @mock.patch('pep8._checks',
+                {'physical_line': {}, 'logical_line': {}, 'tree': {}})
+    def _run_check(self, code, checker, filename=None):
+        pep8.register_check(checker)
+
+        lines = textwrap.dedent(code).strip().splitlines(True)
+
+        checker = pep8.Checker(filename=filename, lines=lines)
+        checker.check_all()
+        checker.report._deferred_print.sort()
+        return checker.report._deferred_print
+
+    def _assert_has_errors(self, code, checker, expected_errors=None,
+                           filename=None):
+        actual_errors = [e[:3] for e in
+                         self._run_check(code, checker, filename)]
+        self.assertEqual(expected_errors or [], actual_errors)
+
+    def _assert_has_no_errors(self, code, checker, filename=None):
+        self._assert_has_errors(code, checker, filename=filename)
+
+    def test_str_unicode_exception(self):
+
+        checker = checks.CheckForStrUnicodeExc
+        code = """
+               def f(a, b):
+                   try:
+                       p = str(a) + str(b)
+                   except ValueError as e:
+                       p = str(e)
+                   return p
+               """
+        errors = [(5, 16, 'N325')]
+        self._assert_has_errors(code, checker, expected_errors=errors)
+
+        code = """
+               def f(a, b):
+                   try:
+                       p = unicode(a) + str(b)
+                   except ValueError as e:
+                       p = e
+                   return p
+               """
+        self._assert_has_no_errors(code, checker)
+
+        code = """
+               def f(a, b):
+                   try:
+                       p = str(a) + str(b)
+                   except ValueError as e:
+                       p = unicode(e)
+                   return p
+               """
+        errors = [(5, 20, 'N325')]
+        self._assert_has_errors(code, checker, expected_errors=errors)
+
+        code = """
+               def f(a, b):
+                   try:
+                       p = str(a) + str(b)
+                   except ValueError as e:
+                       try:
+                           p  = unicode(a) + unicode(b)
+                       except ValueError as ve:
+                           p = str(e) + str(ve)
+                       p = e
+                   return p
+               """
+        errors = [(8, 20, 'N325'), (8, 29, 'N325')]
+        self._assert_has_errors(code, checker, expected_errors=errors)
+
+        code = """
+               def f(a, b):
+                   try:
+                       p = str(a) + str(b)
+                   except ValueError as e:
+                       try:
+                           p  = unicode(a) + unicode(b)
+                       except ValueError as ve:
+                           p = str(e) + unicode(ve)
+                       p = str(e)
+                   return p
+               """
+        errors = [(8, 20, 'N325'), (8, 33, 'N325'), (9, 16, 'N325')]
+        self._assert_has_errors(code, checker, expected_errors=errors)
 
     def test_check_no_log_audit(self):
         self.assertEqual(1, len(list(checks.check_no_log_audit(
