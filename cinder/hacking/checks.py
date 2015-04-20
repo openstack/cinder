@@ -120,7 +120,7 @@ def check_assert_called_once(logical_line, filename):
            "once_with to test with explicit parameters or an assertEqual with"
            " call_count.")
 
-    if 'cinder/tests/' in filename:
+    if 'cinder.functional/tests/' or 'cinder.unit/tests' in filename:
         pos = logical_line.find('.assert_called_once(')
         if pos != -1:
             yield (pos, msg)

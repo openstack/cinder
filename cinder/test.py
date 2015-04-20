@@ -46,8 +46,8 @@ from cinder import i18n
 from cinder import objects
 from cinder import rpc
 from cinder import service
-from cinder.tests import conf_fixture
-from cinder.tests import fake_notifier
+from cinder.tests.unit import conf_fixture
+from cinder.tests.unit import fake_notifier
 
 test_opts = [
     cfg.StrOpt('sqlite_clean_db',
@@ -165,7 +165,7 @@ class TestCase(testtools.TestCase):
                                                    format=log_format,
                                                    level=level))
 
-        rpc.add_extra_exmods("cinder.tests")
+        rpc.add_extra_exmods("cinder.tests.unit")
         self.addCleanup(rpc.clear_extra_exmods)
         self.addCleanup(rpc.cleanup)
 
@@ -225,7 +225,7 @@ class TestCase(testtools.TestCase):
                                          '..',
                                      )
                                  ),
-                                 'cinder/tests/policy.json'))
+                                 'cinder/tests/unit/policy.json'))
 
     def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""
