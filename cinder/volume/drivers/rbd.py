@@ -297,6 +297,8 @@ class RBDDriver(driver.VolumeDriver):
             args.extend(['--id', self.configuration.rbd_user])
         if self.configuration.rbd_ceph_conf:
             args.extend(['--conf', self.configuration.rbd_ceph_conf])
+        if self.configuration.rbd_cluster_name:
+            args.extend(['--cluster', self.configuration.rbd_cluster_name])
         return args
 
     def _connect_to_rados(self, pool=None):
