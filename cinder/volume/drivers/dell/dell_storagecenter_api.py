@@ -65,7 +65,7 @@ class HttpClient(object):
         self.session.auth = (user, password)
         self.header = {}
         self.header['Content-Type'] = 'application/json; charset=utf-8'
-        self.header['x-dell-api-version'] = '1.5'
+        self.header['x-dell-api-version'] = '2.0'
         self.verify = False
 
     def __enter__(self):
