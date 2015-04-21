@@ -445,7 +445,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_delete_files_till_bytes_free')
         mox.StubOutWithMock(drv, '_get_capacity_info')
 
-        drv._get_capacity_info('testshare').AndReturn((100, 19, 81))
+        drv._get_capacity_info('testshare').AndReturn((100, 19))
         drv._find_old_cache_files('testshare').AndReturn(['f1', 'f2'])
         drv._delete_files_till_bytes_free(
             ['f1', 'f2'], 'testshare', bytes_to_free=31)

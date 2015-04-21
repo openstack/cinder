@@ -17,9 +17,11 @@ Mock unit tests for the NetApp nfs storage driver
 """
 
 import mock
+from oslo_utils import units
 
 from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import test
+from cinder.tests.volume.drivers.netapp.dataontap import fakes as fake
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -31,6 +33,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
         super(NetAppNfsDriverTestCase, self).setUp()
         configuration = mock.Mock()
         configuration.nfs_mount_point_base = '/mnt/test'
+        configuration.nfs_used_ratio = 0.89
+        configuration.nfs_oversub_ratio = 3.0
 
         kwargs = {'configuration': configuration}
 
@@ -47,3 +51,50 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
         self.assertTrue(mock_check_flags.called)
         self.assertTrue(mock_super_do_setup.called)
+
+    def test_get_share_capacity_info(self):
+        mock_get_capacity = self.mock_object(self.driver, '_get_capacity_info')
+        mock_get_capacity.return_value = fake.CAPACITY_VALUES
+        expected_total_capacity_gb = (na_utils.round_down(
+            (fake.TOTAL_BYTES *
+             self.driver.configuration.nfs_oversub_ratio) /
+            units.Gi, '0.01'))
+        expected_free_capacity_gb = (na_utils.round_down(
+            (fake.AVAILABLE_BYTES *
+             self.driver.configuration.nfs_oversub_ratio) /
+            units.Gi, '0.01'))
+        expected_reserved_percentage = round(
+            100 * (1 - self.driver.configuration.nfs_used_ratio))
+
+        result = self.driver._get_share_capacity_info(fake.NFS_SHARE)
+
+        self.assertEqual(expected_total_capacity_gb,
+                         result['total_capacity_gb'])
+        self.assertEqual(expected_free_capacity_gb,
+                         result['free_capacity_gb'])
+        self.assertEqual(expected_reserved_percentage,
+                         result['reserved_percentage'])
+
+    def test_get_capacity_info_ipv4_share(self):
+        expected = fake.CAPACITY_VALUES
+        self.driver.zapi_client = mock.Mock()
+        get_capacity = self.driver.zapi_client.get_flexvol_capacity
+        get_capacity.return_value = fake.CAPACITY_VALUES
+
+        result = self.driver._get_capacity_info(fake.NFS_SHARE_IPV4)
+
+        self.assertEqual(expected, result)
+        get_capacity.assert_has_calls([
+            mock.call(fake.EXPORT_PATH)])
+
+    def test_get_capacity_info_ipv6_share(self):
+        expected = fake.CAPACITY_VALUES
+        self.driver.zapi_client = mock.Mock()
+        get_capacity = self.driver.zapi_client.get_flexvol_capacity
+        get_capacity.return_value = fake.CAPACITY_VALUES
+
+        result = self.driver._get_capacity_info(fake.NFS_SHARE_IPV6)
+
+        self.assertEqual(expected, result)
+        get_capacity.assert_has_calls([
+            mock.call(fake.EXPORT_PATH)])

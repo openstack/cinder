@@ -399,3 +399,20 @@ class Client(client_base.Client):
     def get_ifconfig(self):
         ifconfig = netapp_api.NaElement('net-ifconfig-get')
         return self.connection.invoke_successfully(ifconfig)
+
+    def get_flexvol_capacity(self, flexvol_path):
+        """Gets total capacity and free capacity, in bytes, of the flexvol."""
+
+        api_args = {'volume': flexvol_path, 'verbose': 'false'}
+
+        result = self.send_request('volume-list-info', api_args)
+
+        flexvol_info_list = result.get_child_by_name('volumes')
+        flexvol_info = flexvol_info_list.get_children()[0]
+
+        total_bytes = float(
+            flexvol_info.get_child_content('size-total'))
+        available_bytes = float(
+            flexvol_info.get_child_content('size-available'))
+
+        return total_bytes, available_bytes

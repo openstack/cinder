@@ -483,3 +483,39 @@ class Client(client_base.Client):
 
         return [lif_info.get_child_content('address') for lif_info in
                 lif_info_list.get_children()]
+
+    def get_flexvol_capacity(self, flexvol_path):
+        """Gets total capacity and free capacity, in bytes, of the flexvol."""
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'junction-path': flexvol_path
+                    }
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-space-attributes': {
+                        'size-available': None,
+                        'size-total': None,
+                    }
+                }
+            },
+        }
+
+        result = self.send_request('volume-get-iter', api_args)
+
+        attributes_list = result.get_child_by_name('attributes-list')
+        volume_attributes = attributes_list.get_child_by_name(
+            'volume-attributes')
+        volume_space_attributes = volume_attributes.get_child_by_name(
+            'volume-space-attributes')
+
+        size_available = float(
+            volume_space_attributes.get_child_content('size-available'))
+        size_total = float(
+            volume_space_attributes.get_child_content('size-total'))
+
+        return size_total, size_available
