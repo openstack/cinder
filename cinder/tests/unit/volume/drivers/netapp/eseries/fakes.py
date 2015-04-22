@@ -78,6 +78,7 @@ VOLUME = {
 
 INITIATOR_NAME = 'iqn.1998-01.com.vmware:localhost-28a58148'
 INITIATOR_NAME_2 = 'iqn.1998-01.com.vmware:localhost-28a58149'
+INITIATOR_NAME_3 = 'iqn.1998-01.com.vmware:localhost-28a58150'
 
 HOST = {
     'isSAControlled': False,
@@ -108,6 +109,22 @@ HOST_2 = {
         'label': 'NewStore', 'type': 'iscsi',
         'address': INITIATOR_NAME_2}]
 }
+# HOST_3 has all lun_ids in use.
+HOST_3 = {
+    'isSAControlled': False,
+    'confirmLUNMappingCreation': False,
+    'label': 'stlrx300s7-55',
+    'isLargeBlockFormatHost': False,
+    'clusterRef': '8500000060080E500023C73400360351515B78FC',
+    'protectionInformationCapableAccessMethod': False,
+    'ports': [],
+    'hostRef': '8400000060080E501023C73400800381515BFBA5',
+    'hostTypeIndex': 6,
+    'hostSidePorts': [{
+        'label': 'NewStore', 'type': 'iscsi',
+        'address': INITIATOR_NAME_3}],
+}
+
 
 VOLUME_MAPPING = {
     'lunMappingRef': '8800000000000000000000000000000000000000',
@@ -117,6 +134,16 @@ VOLUME_MAPPING = {
     'volumeRef': VOLUME['volumeRef'],
     'type': 'all',
     'mapRef': HOST['hostRef']
+}
+# VOLUME_MAPPING_3 corresponding to HOST_3 has all lun_ids in use.
+VOLUME_MAPPING_3 = {
+    'lunMappingRef': '8800000000000000000000000000000000000000',
+    'lun': range(255),
+    'ssid': 16384,
+    'perms': 15,
+    'volumeRef': VOLUME['volumeRef'],
+    'type': 'all',
+    'mapRef': HOST_3['hostRef'],
 }
 
 VOLUME_MAPPING_TO_MULTIATTACH_GROUP = copy.deepcopy(VOLUME_MAPPING)

@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
+﻿# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,8 +16,10 @@
 Groups.
 """
 
+import collections
+import random
+
 from oslo_log import log as logging
-from six.moves import xrange
 
 from cinder import exception
 from cinder.i18n import _
@@ -31,14 +33,13 @@ LOG = logging.getLogger(__name__)
 
 @cinder_utils.synchronized('map_es_volume')
 def map_volume_to_single_host(client, volume, eseries_vol, host,
-                              vol_map):
+                              vol_map, multiattach_enabled):
     """Maps the e-series volume to host with initiator."""
     LOG.debug("Attempting to map volume %s to single host.", volume['id'])
 
     # If volume is not mapped on the backend, map directly to host
     if not vol_map:
-        mappings = _get_vol_mapping_for_host_frm_array(client, host['hostRef'])
-        lun = _get_free_lun(client, host, mappings)
+        lun = _get_free_lun(client, host, multiattach_enabled)
         return client.create_volume_mapping(eseries_vol['volumeRef'],
                                             host['hostRef'], lun)
 
@@ -65,9 +66,7 @@ def map_volume_to_single_host(client, volume, eseries_vol, host,
             LOG.debug("Volume %(vol)s is not currently attached, moving "
                       "existing mapping to host %(host)s.",
                       {'vol': volume['id'], 'host': host['label']})
-            mappings = _get_vol_mapping_for_host_frm_array(
-                client, host['hostRef'])
-            lun = _get_free_lun(client, host, mappings)
+            lun = _get_free_lun(client, host, multiattach_enabled)
             return client.move_volume_mapping_via_symbol(
                 vol_map.get('mapRef'), host['hostRef'], lun
             )
@@ -151,20 +150,64 @@ def map_volume_to_multiple_hosts(client, volume, eseries_vol, target_host,
     return mapping
 
 
-def _get_free_lun(client, host, maps=None):
-    """Gets free LUN for given host."""
-    ref = host['hostRef']
-    luns = maps or _get_vol_mapping_for_host_frm_array(client, ref)
-    if host['clusterRef'] != utils.NULL_REF:
-        host_group_maps = _get_vol_mapping_for_host_group_frm_array(
-            client, host['clusterRef'])
-        luns.extend(host_group_maps)
-    used_luns = set(map(lambda lun: int(lun['lun']), luns))
-    for lun in xrange(utils.MAX_LUNS_PER_HOST):
-        if lun not in used_luns:
-            return lun
-    msg = _("No free LUNs. Host might have exceeded max number of LUNs.")
-    raise exception.NetAppDriverException(msg)
+def _get_free_lun(client, host, multiattach_enabled):
+    """Returns least used LUN ID available on the given host."""
+    mappings = client.get_volume_mappings()
+    if not _is_host_full(client, host):
+        unused_luns = _get_unused_lun_ids(mappings)
+        if unused_luns:
+            chosen_lun = random.sample(unused_luns, 1)
+            return chosen_lun[0]
+        elif multiattach_enabled:
+            msg = _("No unused LUN IDs are available on the host; "
+                    "multiattach is enabled which requires that all LUN IDs "
+                    "to be unique across the entire host group.")
+            raise exception.NetAppDriverException(msg)
+        used_lun_counts = _get_used_lun_id_counter(mappings)
+        # most_common returns an arbitrary tuple of members with same frequency
+        for lun_id, __ in reversed(used_lun_counts.most_common()):
+            if _is_lun_id_available_on_host(client, host, lun_id):
+                return lun_id
+    msg = _("No free LUN IDs left. Maximum number of volumes that can be "
+            "attached to host (%s) has been exceeded.")
+    raise exception.NetAppDriverException(msg % utils.MAX_LUNS_PER_HOST)
+
+
+def _get_unused_lun_ids(mappings):
+    """Returns unused LUN IDs given mappings."""
+    used_luns = _get_used_lun_ids_for_mappings(mappings)
+
+    unused_luns = (set(range(utils.MAX_LUNS_PER_HOST)) - set(used_luns))
+    return unused_luns
+
+
+def _get_used_lun_id_counter(mapping):
+    """Returns used LUN IDs with count as a dictionary."""
+    used_luns = _get_used_lun_ids_for_mappings(mapping)
+    used_lun_id_counter = collections.Counter(used_luns)
+    return used_lun_id_counter
+
+
+def _is_host_full(client, host):
+    """Checks whether maximum volumes attached to a host have been reached."""
+    luns = _get_vol_mapping_for_host_frm_array(client, host['hostRef'])
+    return len(luns) >= utils.MAX_LUNS_PER_HOST
+
+
+def _is_lun_id_available_on_host(client, host, lun_id):
+    """Returns a boolean value depending on whether a LUN ID is available."""
+    mapping = _get_vol_mapping_for_host_frm_array(client, host['hostRef'])
+    used_lun_ids = _get_used_lun_ids_for_mappings(mapping)
+    return lun_id not in used_lun_ids
+
+
+def _get_used_lun_ids_for_mappings(mappings):
+    """Returns used LUNs when provided with mappings."""
+    used_luns = set(map(lambda lun: int(lun['lun']), mappings))
+    # E-Series uses LUN ID 0 for special purposes and should not be
+    # assigned for general use
+    used_luns.add(0)
+    return used_luns
 
 
 def _get_vol_mapping_for_host_frm_array(client, host_ref):

@@ -614,11 +614,9 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                                                                host,
                                                                current_map)
         else:
-            mapping = host_mapper.map_volume_to_single_host(self._client,
-                                                            volume,
-                                                            eseries_vol,
-                                                            host,
-                                                            current_map)
+            mapping = host_mapper.map_volume_to_single_host(
+                self._client, volume, eseries_vol, host, current_map,
+                self.configuration.netapp_enable_multiattach)
 
         lun_id = mapping['lun']
         msg_fmt = {'id': volume['id'], 'initiator_name': initiator_name}
