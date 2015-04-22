@@ -16,7 +16,7 @@ paramiko>=1.9.0,<=1.15.2
 Paste
 PasteDeploy>=1.5.0,<=1.5.2
 python-glanceclient>=0.9.0,!=0.14.0,<=0.14.2
-python-keystoneclient>=0.7.0,<=0.11.2
+python-keystoneclient>=0.7.0,<0.12.0
 python-novaclient>=2.17.0,<2.21
 python-swiftclient>=1.6,<=2.3.1
 requests>=1.1,<=2.6.0
@@ -26,7 +26,7 @@ rtslib-fb>=2.1.39
 six>=1.6.0,<=1.9.0
 SQLAlchemy>=0.7.8,!=0.9.5,<=0.9.99
 sqlalchemy-migrate>=0.8.2,!=0.8.4,<=0.9.1
-stevedore>=0.14,<1.2
+stevedore>=0.14
 suds==0.4
 WebOb>=1.2.3,<=1.4
 wsgiref>=0.1.2
