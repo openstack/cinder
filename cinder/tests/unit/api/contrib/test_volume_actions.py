@@ -513,7 +513,7 @@ class VolumeImageActionsTest(test.TestCase):
                        "copy_volume_to_image",
                        stub_upload_volume_to_image_service)
 
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
                "image_name": 'image_name',
@@ -540,7 +540,7 @@ class VolumeImageActionsTest(test.TestCase):
 
         self.stubs.Set(volume_api.API, 'get', stub_volume_get_raise_exc)
 
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
                "image_name": 'image_name',
@@ -561,7 +561,7 @@ class VolumeImageActionsTest(test.TestCase):
                        "copy_volume_to_image",
                        stub_upload_volume_to_image_service_raise)
 
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
                "image_name": 'image_name',
@@ -582,7 +582,7 @@ class VolumeImageActionsTest(test.TestCase):
                        "copy_volume_to_image",
                        stub_upload_volume_to_image_service_raise)
 
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
                "image_name": 'image_name',
@@ -603,7 +603,7 @@ class VolumeImageActionsTest(test.TestCase):
                        "copy_volume_to_image",
                        stub_upload_volume_to_image_service_raise)
 
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
                "image_name": 'image_name',
@@ -617,7 +617,7 @@ class VolumeImageActionsTest(test.TestCase):
                           body)
 
     def test_volume_upload_image_typeerror(self):
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
         body = {"os-volume_upload_image_fake": "fake"}
         req = webob.Request.blank('/v2/tenant1/volumes/%s/action' % id)
         req.method = 'POST'
@@ -627,7 +627,7 @@ class VolumeImageActionsTest(test.TestCase):
         self.assertEqual(res.status_int, 400)
 
     def test_volume_upload_image_without_type(self):
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
                "image_name": None,
@@ -641,7 +641,7 @@ class VolumeImageActionsTest(test.TestCase):
         self.assertEqual(res.status_int, 400)
 
     def test_extend_volume_valueerror(self):
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
         body = {'os-extend': {'new_size': 'fake'}}
         req = fakes.HTTPRequest.blank('/v2/tenant1/volumes/%s/action' % id)
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -651,7 +651,7 @@ class VolumeImageActionsTest(test.TestCase):
                           body)
 
     def test_copy_volume_to_image_notimagename(self):
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
                "image_name": None,
@@ -666,7 +666,7 @@ class VolumeImageActionsTest(test.TestCase):
 
     def test_copy_volume_to_image_with_protected_prop(self):
         """Test create image from volume with protected properties."""
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
 
         def fake_get_volume_image_metadata(*args):
             meta_dict = {
@@ -726,7 +726,7 @@ class VolumeImageActionsTest(test.TestCase):
         In this case volume glance metadata will not be available for this
         volume.
         """
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
 
         def fake_get_volume_image_metadata_raise(*args):
             raise exception.GlanceMetadataNotFound(id=id)
@@ -778,7 +778,7 @@ class VolumeImageActionsTest(test.TestCase):
 
     def test_copy_volume_to_image_without_protected_prop(self):
         """Test protected property is not defined with the root image."""
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
 
         def fake_get_volume_image_metadata(*args):
             return []
@@ -831,7 +831,7 @@ class VolumeImageActionsTest(test.TestCase):
 
     def test_copy_volume_to_image_without_core_prop(self):
         """Test glance_core_properties defined in cinder.conf is empty."""
-        id = 1
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
 
         # Need to mock create, update, copy_volume_to_image
         with mock.patch.object(glance.GlanceImageService, "create") \
