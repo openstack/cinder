@@ -656,9 +656,12 @@ class PureISCSIDriverTestCase(test.TestCase):
         self.assertFalse(self.array.list_host_connections.called)
         self.assertFalse(self.array.delete_host.called)
 
+    @mock.patch(DRIVER_OBJ + ".get_filter_function", autospec=True)
     @mock.patch(DRIVER_OBJ + "._get_provisioned_space", autospec=True)
-    def test_get_volume_stats(self, mock_space):
-        mock_space.return_value = PROVISIONED_CAPACITY * units.Gi
+    def test_get_volume_stats(self, mock_space, mock_filter):
+        filter_function = "capabilities.total_volumes < 10"
+        mock_space.return_value = (PROVISIONED_CAPACITY * units.Gi, 100)
+        mock_filter.return_value = filter_function
         self.assertEqual(self.driver.get_volume_stats(), {})
         self.array.get.return_value = SPACE_INFO
         result = {"volume_backend_name": VOLUME_BACKEND_NAME,
@@ -672,15 +675,20 @@ class PureISCSIDriverTestCase(test.TestCase):
                   "thin_provisioning_support": True,
                   "provisioned_capacity": PROVISIONED_CAPACITY,
                   "max_over_subscription_ratio": (PROVISIONED_CAPACITY /
-                                                  USED_SPACE)
+                                                  USED_SPACE),
+                  "total_volumes": 100,
+                  "filter_function": filter_function
                   }
         real_result = self.driver.get_volume_stats(refresh=True)
         self.assertDictMatch(result, real_result)
         self.assertDictMatch(result, self.driver._stats)
 
+    @mock.patch(DRIVER_OBJ + ".get_filter_function", autospec=True)
     @mock.patch(DRIVER_OBJ + "._get_provisioned_space", autospec=True)
-    def test_get_volume_stats_empty_array(self, mock_space):
-        mock_space.return_value = PROVISIONED_CAPACITY * units.Gi
+    def test_get_volume_stats_empty_array(self, mock_space, mock_filter):
+        filter_function = "capabilities.total_volumes < 10"
+        mock_space.return_value = (PROVISIONED_CAPACITY * units.Gi, 100)
+        mock_filter.return_value = filter_function
         self.assertEqual(self.driver.get_volume_stats(), {})
         self.array.get.return_value = SPACE_INFO_EMPTY
         result = {"volume_backend_name": VOLUME_BACKEND_NAME,
@@ -693,15 +701,21 @@ class PureISCSIDriverTestCase(test.TestCase):
                   "consistencygroup_support": True,
                   "thin_provisioning_support": True,
                   "provisioned_capacity": PROVISIONED_CAPACITY,
-                  "max_over_subscription_ratio": DEFAULT_OVER_SUBSCRIPTION
+                  "max_over_subscription_ratio": DEFAULT_OVER_SUBSCRIPTION,
+                  "total_volumes": 100,
+                  "filter_function": filter_function
                   }
         real_result = self.driver.get_volume_stats(refresh=True)
         self.assertDictMatch(result, real_result)
         self.assertDictMatch(result, self.driver._stats)
 
+    @mock.patch(DRIVER_OBJ + ".get_filter_function", autospec=True)
     @mock.patch(DRIVER_OBJ + "._get_provisioned_space", autospec=True)
-    def test_get_volume_stats_nothing_provisioned(self, mock_space):
-        mock_space.return_value = 0
+    def test_get_volume_stats_nothing_provisioned(self, mock_space,
+                                                  mock_filter):
+        filter_function = "capabilities.total_volumes < 10"
+        mock_space.return_value = (0, 0)
+        mock_filter.return_value = filter_function
         self.assertEqual(self.driver.get_volume_stats(), {})
         self.array.get.return_value = SPACE_INFO
         result = {"volume_backend_name": VOLUME_BACKEND_NAME,
@@ -714,7 +728,9 @@ class PureISCSIDriverTestCase(test.TestCase):
                   "consistencygroup_support": True,
                   "thin_provisioning_support": True,
                   "provisioned_capacity": 0,
-                  "max_over_subscription_ratio": DEFAULT_OVER_SUBSCRIPTION
+                  "max_over_subscription_ratio": DEFAULT_OVER_SUBSCRIPTION,
+                  "total_volumes": 0,
+                  "filter_function": filter_function
                   }
         real_result = self.driver.get_volume_stats(refresh=True)
         self.assertDictMatch(result, real_result)

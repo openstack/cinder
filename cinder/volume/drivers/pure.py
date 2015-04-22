@@ -465,7 +465,8 @@ class PureISCSIDriver(san.SanISCSIDriver):
         total_capacity = float(info["capacity"]) / units.Gi
         used_space = float(info["total"]) / units.Gi
         free_space = float(total_capacity - used_space)
-        provisioned_space = float(self._get_provisioned_space()) / units.Gi
+        prov_space, total_vols = self._get_provisioned_space()
+        provisioned_space = float(prov_space) / units.Gi
         # If array is empty we can not calculate a max oversubscription ratio.
         # In this case we choose 20 as a default value for the ratio.  Once
         # some volumes are actually created and some data is stored on the
@@ -485,14 +486,16 @@ class PureISCSIDriver(san.SanISCSIDriver):
                 "consistencygroup_support": True,
                 "thin_provisioning_support": True,
                 "provisioned_capacity": provisioned_space,
-                "max_over_subscription_ratio": thin_provisioning
+                "max_over_subscription_ratio": thin_provisioning,
+                "total_volumes": total_vols,
+                "filter_function": self.get_filter_function()
                 }
         self._stats = data
 
     def _get_provisioned_space(self):
         """Sum up provisioned size of all volumes on array"""
         volumes = self._array.list_volumes(pending=True)
-        return sum(item["size"] for item in volumes)
+        return sum(item["size"] for item in volumes), len(volumes)
 
     def extend_volume(self, volume, new_size):
         """Extend volume to new_size."""
