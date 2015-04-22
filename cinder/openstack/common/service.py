@@ -234,15 +234,12 @@ class ProcessLauncher(object):
 
     def _child_process_handle_signal(self):
         # Setup child signal handlers differently
-        def _sigterm(*args):
-            signal.signal(signal.SIGTERM, signal.SIG_DFL)
-            raise SignalExit(signal.SIGTERM)
-
         def _sighup(*args):
             signal.signal(signal.SIGHUP, signal.SIG_DFL)
             raise SignalExit(signal.SIGHUP)
 
-        signal.signal(signal.SIGTERM, _sigterm)
+        # Parent signals with SIGTERM when it wants us to go away.
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         if _sighup_supported():
             signal.signal(signal.SIGHUP, _sighup)
         # Block SIGINT and let the parent send us a SIGTERM
