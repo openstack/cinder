@@ -1888,11 +1888,15 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Make sure if the attachment id isn't found we raise."""
         attachment_id = "notfoundid"
         volume_id = "abc123"
-        self.assertRaises(exception.VolumeAttachmentNotFound,
-                          self.volume.detach_volume,
-                          self.context,
-                          volume_id,
-                          attachment_id)
+        fake_volume = {'id': volume_id,
+                       'status': 'available'}
+        with mock.patch.object(db, 'volume_get') as mock_volume_get:
+            mock_volume_get.return_value = fake_volume
+            self.assertRaises(exception.VolumeAttachmentNotFound,
+                              self.volume.detach_volume,
+                              self.context,
+                              volume_id,
+                              attachment_id)
 
     def test_detach_no_attachments(self):
         volume = tests_utils.create_volume(self.context,
