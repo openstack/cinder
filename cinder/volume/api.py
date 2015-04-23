@@ -51,6 +51,12 @@ from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
 
+allow_force_upload = cfg.BoolOpt('enable_force_upload',
+                                 default=False,
+                                 help='Enables the Force option on '
+                                      'upload_to_image. This enables '
+                                      'running upload_volume on in-use '
+                                      'volumes for backends that support it.')
 volume_host_opt = cfg.BoolOpt('snapshot_same_host',
                               default=True,
                               help='Create volume from snapshot at the host '
@@ -66,6 +72,7 @@ az_cache_time_opt = cfg.IntOpt('az_cache_duration',
                                     'seconds')
 
 CONF = cfg.CONF
+CONF.register_opt(allow_force_upload)
 CONF.register_opt(volume_host_opt)
 CONF.register_opt(volume_same_az_opt)
 CONF.register_opt(az_cache_time_opt)
@@ -1089,6 +1096,13 @@ class API(base.Base):
     @wrap_check_policy
     def copy_volume_to_image(self, context, volume, metadata, force):
         """Create a new image from the specified volume."""
+
+        if not CONF.enable_force_upload and force:
+            LOG.info(_LI("Force upload to image is disabled, "
+                         "Force option will be ignored."),
+                     resource={'type': 'volume', 'id': volume['id']})
+            force = False
+
         self._check_volume_availability(volume, force)
         glance_core_properties = CONF.glance_core_properties
         if glance_core_properties:
