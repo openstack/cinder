@@ -172,10 +172,11 @@ class HP3PARCommon(object):
         2.0.38 - Add stats for hp3par goodness_function and filter_function
         2.0.39 - Added support for updated detach_volume attachment.
         2.0.40 - Make the 3PAR drivers honor the pool in create  bug #1432876
+        2.0.41 - Only log versions at startup.  bug #1447697
 
     """
 
-    VERSION = "2.0.40"
+    VERSION = "2.0.41"
 
     stats = {}
 
@@ -267,9 +268,8 @@ class HP3PARCommon(object):
             known_hosts_file=known_hosts_file)
 
     def client_logout(self):
-        LOG.info(_LI("Disconnect from 3PAR REST and SSH %s"), self.uuid)
+        LOG.debug("Disconnect from 3PAR REST and SSH %s", self.uuid)
         self.client.logout()
-        LOG.info(_LI("logout Done %s"), self.uuid)
 
     def do_setup(self, context):
         if hp3parclient is None:
@@ -281,9 +281,13 @@ class HP3PARCommon(object):
             self.API_VERSION = wsapi_version['build']
         except hpexceptions.UnsupportedVersion as ex:
             raise exception.InvalidInput(ex)
-        LOG.info(_LI("HP3PARCommon %(common_ver)s, hp3parclient %(rest_ver)s"),
-                 {"common_ver": self.VERSION,
-                  "rest_ver": hp3parclient.get_version_string()})
+
+        if context:
+            # The context is None except at driver startup.
+            LOG.info(_LI("HP3PARCommon %(common_ver)s,"
+                         "hp3parclient %(rest_ver)s"),
+                     {"common_ver": self.VERSION,
+                      "rest_ver": hp3parclient.get_version_string()})
         if self.config.hp3par_debug:
             self.client.debug_rest(True)
 
