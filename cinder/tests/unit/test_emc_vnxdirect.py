@@ -376,15 +376,16 @@ class EMCVNXCLIDriverTestData(object):
 
     POOL_PROPERTY_W_FASTCACHE_CMD = ('storagepool', '-list', '-name',
                                      'unit_test_pool', '-availableCap',
-                                     '-userCap', '-fastcache', '-state')
+                                     '-userCap', '-fastcache', '-state',
+                                     '-subscribedCap')
 
     def POOL_GET_ALL_CMD(self, withfastcache=False):
         if withfastcache:
             return ('storagepool', '-list', '-availableCap',
-                    '-userCap', '-fastcache', '-state')
+                    '-userCap', '-fastcache', '-state', '-subscribedCap')
         else:
             return ('storagepool', '-list', '-availableCap',
-                    '-userCap', '-state')
+                    '-userCap', '-state', '-subscribedCap')
 
     def POOL_GET_ALL_RESULT(self, withfastcache=False):
         if withfastcache:
@@ -394,6 +395,7 @@ class EMCVNXCLIDriverTestData(object):
                     "User Capacity (GBs):  3281.146\n"
                     "Available Capacity (Blocks):  6512292864\n"
                     "Available Capacity (GBs):  3105.303\n"
+                    "Total Subscribed Capacity (GBs):  536.140\n"
                     "FAST Cache:  Enabled\n"
                     "State: Ready\n"
                     "\n"
@@ -403,6 +405,7 @@ class EMCVNXCLIDriverTestData(object):
                     "User Capacity (GBs):  4099.992\n"
                     "Available Capacity (Blocks):  8356663296\n"
                     "Available Capacity (GBs):  3984.768\n"
+                    "Total Subscribed Capacity (GBs):  636.240\n"
                     "FAST Cache:  Disabled\n"
                     "State: Ready\n", 0)
         else:
@@ -412,6 +415,7 @@ class EMCVNXCLIDriverTestData(object):
                     "User Capacity (GBs):  3281.146\n"
                     "Available Capacity (Blocks):  6512292864\n"
                     "Available Capacity (GBs):  3105.303\n"
+                    "Total Subscribed Capacity (GBs):  536.140\n"
                     "State: Ready\n"
                     "\n"
                     "Pool Name:  unit test pool 2\n"
@@ -420,6 +424,7 @@ class EMCVNXCLIDriverTestData(object):
                     "User Capacity (GBs):  4099.992\n"
                     "Available Capacity (Blocks):  8356663296\n"
                     "Available Capacity (GBs):  3984.768\n"
+                    "Total Subscribed Capacity (GBs):  636.240\n"
                     "State: Ready\n", 0)
 
     def POOL_GET_ALL_STATES_TEST(self, states=['Ready']):
@@ -673,6 +678,7 @@ State: Ready
         "User Capacity (GBs):  3281.146\n"
         "Available Capacity (Blocks):  6832207872\n"
         "Available Capacity (GBs):  3257.851\n"
+        "Total Subscribed Capacity (GBs):  636.240\n"
         "FAST Cache:  Enabled\n"
         "State: Ready\n\n", 0)
 
@@ -1116,6 +1122,65 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch(
+        'cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+        new=utils.ZeroIntervalLoopingCall)
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={'provisioning:type': 'thin',
+                                'storagetype:provisioning': 'thick'}))
+    def test_create_volume_thin(self):
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+                    self.testData.NDU_LIST_CMD]
+        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
+                   self.testData.NDU_LIST_RESULT]
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.cli.enablers = ['-Compression',
+                                    '-Deduplication',
+                                    '-ThinProvisioning',
+                                    '-FAST']
+        # case
+        self.driver.create_volume(self.testData.test_volume_with_type)
+        # verification
+        expect_cmd = [
+            mock.call(*self.testData.LUN_CREATION_CMD(
+                'vol_with_type', 1,
+                'unit_test_pool',
+                'thin', None, False)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                'vol_with_type'), poll=False)]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    @mock.patch(
+        'cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+        new=utils.ZeroIntervalLoopingCall)
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={'provisioning:type': 'thick'}))
+    def test_create_volume_thick(self):
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+                    self.testData.NDU_LIST_CMD]
+        results = [self.testData.LUN_PROPERTY('vol_with_type', False),
+                   self.testData.NDU_LIST_RESULT]
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.cli.enablers = ['-Compression',
+                                    '-Deduplication',
+                                    '-ThinProvisioning',
+                                    '-FAST']
+        # case
+        self.driver.create_volume(self.testData.test_volume_with_type)
+        # verification
+        expect_cmd = [
+            mock.call(*self.testData.LUN_CREATION_CMD(
+                'vol_with_type', 1,
+                'unit_test_pool',
+                'thick', None, False)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                'vol_with_type'), poll=False)]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    @mock.patch(
         "eventlet.event.Event.wait",
         mock.Mock(return_value=None))
     @mock.patch(
@@ -1276,9 +1341,12 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
             'reserved_percentage': 3,
             'location_info': 'unit_test_pool|fakeSerial',
             'total_capacity_gb': 3281.146,
+            'provisioned_capacity_gb': 636.240,
             'compression_support': 'True',
             'deduplication_support': 'True',
-            'thinprovisioning_support': 'True',
+            'thin_provisioning_support': True,
+            'thick_provisioning_support': True,
+            'max_over_subscription_ratio': 20.0,
             'consistencygroup_support': 'True',
             'pool_name': 'unit_test_pool',
             'fast_cache_enabled': 'True',
@@ -2831,6 +2899,7 @@ Time Remaining:  0 second(s)
             'lun_nums': 1000,
             'total_capacity_gb': 10,
             'free_capacity_gb': 5,
+            'provisioned_capacity_gb': 8,
             'pool_name': "unit_test_pool",
             'fast_cache_enabled': 'True',
             'state': 'Ready'})
@@ -3223,11 +3292,14 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'reserved_percentage': 2,
             'location_info': 'unit_test_pool1|fakeSerial',
             'total_capacity_gb': 3281.146,
+            'provisioned_capacity_gb': 536.140,
             'compression_support': 'True',
             'deduplication_support': 'True',
-            'thinprovisioning_support': 'True',
+            'thin_provisioning_support': True,
+            'thick_provisioning_support': True,
             'consistencygroup_support': 'True',
             'pool_name': 'unit_test_pool1',
+            'max_over_subscription_ratio': 20.0,
             'fast_cache_enabled': 'True',
             'fast_support': 'True'}
         self.assertEqual(expected_pool_stats1, pool_stats1)
@@ -3238,11 +3310,14 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'reserved_percentage': 2,
             'location_info': 'unit test pool 2|fakeSerial',
             'total_capacity_gb': 4099.992,
+            'provisioned_capacity_gb': 636.240,
             'compression_support': 'True',
             'deduplication_support': 'True',
-            'thinprovisioning_support': 'True',
+            'thin_provisioning_support': True,
+            'thick_provisioning_support': True,
             'consistencygroup_support': 'True',
             'pool_name': 'unit test pool 2',
+            'max_over_subscription_ratio': 20.0,
             'fast_cache_enabled': 'False',
             'fast_support': 'True'}
         self.assertEqual(expected_pool_stats2, pool_stats2)
@@ -3263,11 +3338,14 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'reserved_percentage': 2,
             'location_info': 'unit_test_pool1|fakeSerial',
             'total_capacity_gb': 3281.146,
+            'provisioned_capacity_gb': 536.140,
             'compression_support': 'False',
             'deduplication_support': 'False',
-            'thinprovisioning_support': 'False',
+            'thin_provisioning_support': False,
+            'thick_provisioning_support': True,
             'consistencygroup_support': 'False',
             'pool_name': 'unit_test_pool1',
+            'max_over_subscription_ratio': 20.0,
             'fast_cache_enabled': 'False',
             'fast_support': 'False'}
         self.assertEqual(expected_pool_stats1, pool_stats1)
@@ -3278,11 +3356,14 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'reserved_percentage': 2,
             'location_info': 'unit test pool 2|fakeSerial',
             'total_capacity_gb': 4099.992,
+            'provisioned_capacity_gb': 636.240,
             'compression_support': 'False',
             'deduplication_support': 'False',
-            'thinprovisioning_support': 'False',
+            'thin_provisioning_support': False,
+            'thick_provisioning_support': True,
             'consistencygroup_support': 'False',
             'pool_name': 'unit test pool 2',
+            'max_over_subscription_ratio': 20.0,
             'fast_cache_enabled': 'False',
             'fast_support': 'False'}
         self.assertEqual(expected_pool_stats2, pool_stats2)
@@ -3670,9 +3751,12 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
             'reserved_percentage': 3,
             'location_info': 'unit_test_pool|fakeSerial',
             'total_capacity_gb': 3281.146,
+            'provisioned_capacity_gb': 636.24,
             'compression_support': 'True',
             'deduplication_support': 'True',
-            'thinprovisioning_support': 'True',
+            'thin_provisioning_support': True,
+            'thick_provisioning_support': True,
+            'max_over_subscription_ratio': 20.0,
             'consistencygroup_support': 'True',
             'pool_name': 'unit_test_pool',
             'fast_cache_enabled': 'True',
