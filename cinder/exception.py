@@ -914,6 +914,12 @@ class StorPoolConfigurationInvalid(CinderException):
                 "of the /etc/storpool.conf file: %(error)s")
 
 
+# Infortrend EonStor DS Driver
+class InfortrendCliException(CinderException):
+    message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
+                "(Return Code: %(rc)s) (Output: %(out)s)")
+
+
 # DOTHILL drivers
 class DotHillInvalidBackend(CinderException):
     message = _("Backend doesn't exist (%(backend)s)")
