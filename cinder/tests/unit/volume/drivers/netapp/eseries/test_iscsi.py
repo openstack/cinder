@@ -18,44 +18,52 @@
 Mock unit tests for the NetApp E-series iscsi driver
 """
 
-import mock
+import copy
 
+import mock
+import six
+
+from cinder import exception
 from cinder import test
-from cinder.tests.unit.volume.drivers.netapp import fakes as na_fakes
+from cinder.tests.unit.volume.drivers.netapp.eseries import fakes as \
+    eseries_fakes
 from cinder.volume.drivers.netapp.eseries import client as es_client
+from cinder.volume.drivers.netapp.eseries import host_mapper
 from cinder.volume.drivers.netapp.eseries import iscsi as es_iscsi
+from cinder.volume.drivers.netapp.eseries import utils
 from cinder.volume.drivers.netapp import utils as na_utils
+
+
+def get_fake_volume():
+    return {
+        'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef', 'size': 1,
+        'volume_name': 'lun1', 'host': 'hostname@backend#DDP',
+        'os_type': 'linux', 'provider_location': 'lun1',
+        'name_id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+        'provider_auth': 'provider a b', 'project_id': 'project',
+        'display_name': None, 'display_description': 'lun1',
+        'volume_type_id': None, 'migration_status': None, 'attach_status':
+        "detached"
+    }
 
 
 class NetAppEseriesISCSIDriverTestCase(test.TestCase):
     def setUp(self):
         super(NetAppEseriesISCSIDriverTestCase, self).setUp()
 
-        kwargs = {'configuration': self.get_config_eseries()}
+        kwargs = {'configuration':
+                  eseries_fakes.create_configuration_eseries()}
 
         self.driver = es_iscsi.NetAppEseriesISCSIDriver(**kwargs)
-        self.driver._client = mock.Mock()
+        self.driver._client = eseries_fakes.FakeEseriesClient()
+        self.driver.check_for_setup_error()
 
-    def get_config_eseries(self):
-        config = na_fakes.create_configuration_eseries()
-        config.netapp_storage_protocol = 'iscsi'
-        config.netapp_login = 'rw'
-        config.netapp_password = 'rw'
-        config.netapp_server_hostname = '127.0.0.1'
-        config.netapp_transport_type = 'http'
-        config.netapp_server_port = '8080'
-        config.netapp_storage_pools = 'DDP'
-        config.netapp_storage_family = 'eseries'
-        config.netapp_sa_password = 'saPass'
-        config.netapp_controller_ips = '10.11.12.13,10.11.12.14'
-        config.netapp_webservice_path = '/devmgr/v2'
-        return config
-
-    @mock.patch.object(es_iscsi.NetAppEseriesISCSIDriver,
-                       '_check_mode_get_or_register_storage_system')
-    @mock.patch.object(es_client, 'RestClient', mock.Mock())
-    @mock.patch.object(na_utils, 'check_flags', mock.Mock())
-    def test_do_setup(self, mock_check_flags):
+    def test_do_setup(self):
+        self.mock_object(es_iscsi.NetAppEseriesISCSIDriver,
+                         '_check_mode_get_or_register_storage_system')
+        self.mock_object(es_client, 'RestClient',
+                         eseries_fakes.FakeEseriesClient)
+        mock_check_flags = self.mock_object(na_utils, 'check_flags')
         self.driver.do_setup(mock.Mock())
 
         self.assertTrue(mock_check_flags.called)
@@ -199,3 +207,218 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         self.assertEqual({'test_vg1': {'netapp_disk_encryption': 'false'},
                           'test_vg2': {'netapp_disk_encryption': 'true'}},
                          ssc_stats)
+
+    def test_terminate_connection_no_hosts(self):
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+
+        self.mock_object(self.driver._client, 'list_hosts',
+                         mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.NotFound,
+                          self.driver.terminate_connection,
+                          get_fake_volume(),
+                          connector)
+
+    def test_terminate_connection_volume_not_mapped(self):
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        err = self.assertRaises(exception.NetAppDriverException,
+                                self.driver.terminate_connection,
+                                get_fake_volume(),
+                                connector)
+        self.assertIn("not currently mapped to host", six.text_type(err))
+
+    def test_terminate_connection_volume_mapped(self):
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
+        fake_eseries_volume['listOfMappings'] = [
+            eseries_fakes.VOLUME_MAPPING
+        ]
+        self.mock_object(self.driver._client, 'list_volumes',
+                         mock.Mock(return_value=[fake_eseries_volume]))
+        self.mock_object(host_mapper, 'unmap_volume_from_host')
+
+        self.driver.terminate_connection(get_fake_volume(), connector)
+
+        self.assertTrue(host_mapper.unmap_volume_from_host.called)
+
+    def test_terminate_connection_volume_not_mapped_initiator_does_not_exist(
+            self):
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        self.mock_object(self.driver._client, 'list_hosts',
+                         mock.Mock(return_value=[eseries_fakes.HOST_2]))
+        self.assertRaises(exception.NotFound,
+                          self.driver.terminate_connection,
+                          get_fake_volume(),
+                          connector)
+
+    def test_initialize_connection_volume_not_mapped(self):
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        self.mock_object(self.driver._client, 'get_volume_mappings',
+                         mock.Mock(return_value=[]))
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             return_value=eseries_fakes.VOLUME_MAPPING))
+
+        self.driver.initialize_connection(get_fake_volume(), connector)
+
+        self.assertTrue(self.driver._client.get_volume_mappings.called)
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+
+    def test_initialize_connection_volume_not_mapped_host_does_not_exist(self):
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        self.mock_object(self.driver._client, 'get_volume_mappings',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.driver._client, 'list_hosts',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.driver._client, 'create_host_with_port',
+                         mock.Mock(return_value=eseries_fakes.HOST))
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             return_value=eseries_fakes.VOLUME_MAPPING))
+
+        self.driver.initialize_connection(get_fake_volume(), connector)
+
+        self.assertTrue(self.driver._client.get_volume_mappings.called)
+        self.assertTrue(self.driver._client.list_hosts.called)
+        self.assertTrue(self.driver._client.create_host_with_port.called)
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+
+    def test_initialize_connection_volume_already_mapped_to_target_host(self):
+        """Should be a no-op"""
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             return_value=eseries_fakes.VOLUME_MAPPING))
+
+        self.driver.initialize_connection(get_fake_volume(), connector)
+
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+
+    def test_initialize_connection_volume_mapped_to_another_host(self):
+        """Should raise error saying multiattach not enabled"""
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        fake_mapping_to_other_host = copy.deepcopy(
+            eseries_fakes.VOLUME_MAPPING)
+        fake_mapping_to_other_host['mapRef'] = eseries_fakes.HOST_2[
+            'hostRef']
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             side_effect=exception.NetAppDriverException))
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.driver.initialize_connection,
+                          get_fake_volume(), connector)
+
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+
+
+class NetAppEseriesISCSIDriverMultiAttachTestCase(test.TestCase):
+    """Test driver behavior when the netapp_enable_multiattach
+    configuration option is True.
+    """
+
+    def setUp(self):
+        super(NetAppEseriesISCSIDriverMultiAttachTestCase, self).setUp()
+        config = eseries_fakes.create_configuration_eseries()
+        config.netapp_enable_multiattach = True
+
+        kwargs = {'configuration': config}
+
+        self.driver = es_iscsi.NetAppEseriesISCSIDriver(**kwargs)
+        self.driver._client = eseries_fakes.FakeEseriesClient()
+        self.driver.check_for_setup_error()
+
+    def test_do_setup_host_group_already_exists(self):
+        mock_check_flags = self.mock_object(na_utils, 'check_flags')
+        self.mock_object(es_iscsi.NetAppEseriesISCSIDriver,
+                         '_check_mode_get_or_register_storage_system')
+        fake_rest_client = eseries_fakes.FakeEseriesClient()
+        self.mock_object(self.driver, '_create_rest_client',
+                         mock.Mock(return_value=fake_rest_client))
+        mock_create = self.mock_object(fake_rest_client, 'create_host_group')
+
+        self.driver.do_setup(mock.Mock())
+
+        self.assertTrue(mock_check_flags.called)
+        self.assertFalse(mock_create.call_count)
+
+    def test_do_setup_host_group_does_not_exist(self):
+        mock_check_flags = self.mock_object(na_utils, 'check_flags')
+        fake_rest_client = eseries_fakes.FakeEseriesClient()
+        self.mock_object(self.driver, '_create_rest_client',
+                         mock.Mock(return_value=fake_rest_client))
+        mock_get_host_group = self.mock_object(
+            fake_rest_client, "get_host_group_by_name",
+            mock.Mock(side_effect=exception.NotFound))
+        self.mock_object(es_iscsi.NetAppEseriesISCSIDriver,
+                         '_check_mode_get_or_register_storage_system')
+
+        self.driver.do_setup(mock.Mock())
+
+        self.assertTrue(mock_check_flags.called)
+        self.assertTrue(mock_get_host_group.call_count)
+
+    def test_create_volume(self):
+        self.driver._client.create_volume = mock.Mock(
+            return_value=eseries_fakes.VOLUME)
+
+        self.driver.create_volume(get_fake_volume())
+        self.assertTrue(self.driver._client.create_volume.call_count)
+
+    def test_create_volume_too_many_volumes(self):
+        self.driver._client.list_volumes = mock.Mock(
+            return_value=[eseries_fakes.VOLUME for __ in
+                          range(utils.MAX_LUNS_PER_HOST_GROUP + 1)])
+        self.driver._client.create_volume = mock.Mock(
+            return_value=eseries_fakes.VOLUME)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.driver.create_volume,
+                          get_fake_volume())
+        self.assertFalse(self.driver._client.create_volume.call_count)
+
+    def test_initialize_connection_volume_not_mapped(self):
+        """Map the volume directly to destination host.
+        """
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME_2}
+        self.mock_object(self.driver._client, 'get_volume_mappings',
+                         mock.Mock(return_value=[]))
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             return_value=eseries_fakes.VOLUME_MAPPING))
+
+        self.driver.initialize_connection(get_fake_volume(), connector)
+
+        self.assertTrue(self.driver._client.get_volume_mappings.called)
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+
+    def test_initialize_connection_volume_not_mapped_host_does_not_exist(self):
+        """Should create the host map directly to the host."""
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME_2}
+        self.mock_object(self.driver._client, 'list_hosts',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.driver._client, 'create_host_with_port',
+                         mock.Mock(
+                             return_value=eseries_fakes.HOST_2))
+        self.mock_object(self.driver._client, 'get_volume_mappings',
+                         mock.Mock(return_value=[]))
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             return_value=eseries_fakes.VOLUME_MAPPING))
+
+        self.driver.initialize_connection(get_fake_volume(), connector)
+
+        self.assertTrue(self.driver._client.create_host_with_port.called)
+        self.assertTrue(self.driver._client.get_volume_mappings.called)
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+
+    def test_initialize_connection_volume_already_mapped(self):
+        """Should be a no-op."""
+        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        self.mock_object(host_mapper, 'map_volume_to_multiple_hosts',
+                         mock.Mock(
+                             return_value=eseries_fakes.VOLUME_MAPPING))
+
+        self.driver.initialize_connection(get_fake_volume(), connector)
+
+        self.assertTrue(host_mapper.map_volume_to_multiple_hosts.called)

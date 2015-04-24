@@ -36,6 +36,8 @@ from cinder.openstack.common import loopingcall
 from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import client
+from cinder.volume.drivers.netapp.eseries import exception as eseries_exc
+from cinder.volume.drivers.netapp.eseries import host_mapper
 from cinder.volume.drivers.netapp.eseries import utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -61,7 +63,6 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                       'netapp_login', 'netapp_password',
                       'netapp_storage_pools']
     SLEEP_SECS = 5
-    MAX_LUNS_PER_HOST = 255
     HOST_TYPES = {'aix': 'AIX MPIO',
                   'avt': 'AVT_4M',
                   'factoryDefault': 'FactoryDefault',
@@ -117,22 +118,27 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         self.context = context
         na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
 
-        port = self.configuration.netapp_server_port
-        scheme = self.configuration.netapp_transport_type.lower()
+        self._client = self._create_rest_client(self.configuration)
+        self._check_mode_get_or_register_storage_system()
+        if self.configuration.netapp_enable_multiattach:
+            self._ensure_multi_attach_host_group_exists()
+
+    def _create_rest_client(self, configuration):
+        port = configuration.netapp_server_port
+        scheme = configuration.netapp_transport_type.lower()
         if port is None:
             if scheme == 'http':
                 port = 8080
             elif scheme == 'https':
                 port = 8443
 
-        self._client = client.RestClient(
+        return client.RestClient(
             scheme=scheme,
-            host=self.configuration.netapp_server_hostname,
+            host=configuration.netapp_server_hostname,
             port=port,
-            service_path=self.configuration.netapp_webservice_path,
-            username=self.configuration.netapp_login,
-            password=self.configuration.netapp_password)
-        self._check_mode_get_or_register_storage_system()
+            service_path=configuration.netapp_webservice_path,
+            username=configuration.netapp_login,
+            password=configuration.netapp_password)
 
     def _start_periodic_tasks(self):
         ssc_periodic_task = loopingcall.FixedIntervalLoopingCall(
@@ -162,6 +168,20 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                       '"True".') % {'backend': self._backend_name,
                                     'mpflag': 'use_multipath_for_image_xfer'}
             LOG.warning(msg)
+
+    def _ensure_multi_attach_host_group_exists(self):
+        try:
+            host_group = self._client.get_host_group_by_name(
+                utils.MULTI_ATTACH_HOST_GROUP_NAME)
+            msg = _LI("The multi-attach E-Series host group '%(label)s' "
+                      "already exists with clusterRef %(clusterRef)s")
+            LOG.info(msg % host_group)
+        except exception.NotFound:
+            host_group = self._client.create_host_group(
+                utils.MULTI_ATTACH_HOST_GROUP_NAME)
+            msg = _LI("Created multi-attach E-Series host group '%(label)s' "
+                      "with clusterRef %(clusterRef)s")
+            LOG.info(msg % host_group)
 
     def _check_mode_get_or_register_storage_system(self):
         """Does validity checks for storage system registry and health."""
@@ -280,16 +300,6 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
             sn_gp[group_id]['images'] = sn_gp[group_id].get('images') or []
             sn_gp[group_id]['images'].append(image)
 
-    def _cache_vol_mapping(self, mapping):
-        """Caches volume mapping in volume object."""
-        vol_id = mapping['volumeRef']
-        volume = self._objects['volumes']['ref_vol'][vol_id]
-        volume['listOfMappings'] = volume.get('listOfMappings') or []
-        for mapp in volume['listOfMappings']:
-            if mapp['lunMappingRef'] == mapping['lunMappingRef']:
-                return
-        volume['listOfMappings'].append(mapping)
-
     def _del_volume_frm_cache(self, label):
         """Deletes volume from cache."""
         vol_id = self._objects['volumes']['label_ref'].get(label)
@@ -308,17 +318,6 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         else:
             LOG.debug("Snapshot %s not cached.", obj_name)
 
-    def _del_vol_mapping_frm_cache(self, mapping):
-        """Deletes volume mapping under cached volume."""
-        vol_id = mapping['volumeRef']
-        volume = self._objects['volumes']['ref_vol'].get(vol_id) or {}
-        mappings = volume.get('listOfMappings') or []
-        try:
-            mappings.remove(mapping)
-        except ValueError:
-            LOG.debug("Mapping with id %s already removed.",
-                      mapping['lunMappingRef'])
-
     def _get_volume(self, uid):
         label = utils.convert_uuid_to_es_fmt(uid)
         return self._get_volume_with_label_wwn(label)
@@ -328,19 +327,20 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         if not (label or wwn):
             raise exception.InvalidInput(_('Either volume label or wwn'
                                            ' is required as input.'))
-        try:
-            return self._get_cached_volume(label)
-        except KeyError:
-            wwn = wwn.replace(':', '').upper() if wwn else None
-            for vol in self._client.list_volumes():
-                if label and vol.get('label') != label:
-                    continue
-                if wwn and vol.get(self.WORLDWIDENAME).upper() != wwn:
-                    continue
-                self._cache_volume(vol)
-                label = vol.get('label')
-                break
-            return self._get_cached_volume(label)
+        wwn = wwn.replace(':', '').upper() if wwn else None
+        eseries_volume = None
+        for vol in self._client.list_volumes():
+            if label and vol.get('label') != label:
+                continue
+            if wwn and vol.get(self.WORLDWIDENAME).upper() != wwn:
+                continue
+            eseries_volume = vol
+            self._cache_volume(vol)
+            break
+
+        if not eseries_volume:
+            raise KeyError()
+        return eseries_volume
 
     def _get_cached_volume(self, label):
         vol_id = self._objects['volumes']['label_ref'][label]
@@ -405,6 +405,17 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
     def _create_volume(self, eseries_pool_label, eseries_volume_label,
                        size_gb):
         """Creates volume with given label and size."""
+
+        if self.configuration.netapp_enable_multiattach:
+            volumes = self._client.list_volumes()
+            # NOTE(ameade): Ensure we do not create more volumes than we could
+            # map to the multi attach ESeries host group.
+            if len(volumes) > utils.MAX_LUNS_PER_HOST_GROUP:
+                msg = (_("Cannot create more than %(req)s volumes on the "
+                         "ESeries array when 'netapp_enable_multiattach' is "
+                         "set to true.") %
+                       {'req': utils.MAX_LUNS_PER_HOST_GROUP})
+                raise exception.NetAppDriverException(msg)
 
         target_pool = None
 
@@ -589,15 +600,35 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         initiator_name = connector['initiator']
-        vol = self._get_volume(volume['name_id'])
-        iscsi_details = self._get_iscsi_service_details()
-        iscsi_portal = self._get_iscsi_portal_for_vol(vol, iscsi_details)
-        mapping = self._map_volume_to_host(vol, initiator_name)
+        eseries_vol = self._get_volume(volume['name_id'])
+        existing_maps = host_mapper.get_host_mapping_for_vol_frm_array(
+            self._client, eseries_vol)
+        host = self._get_or_create_host(initiator_name, self.host_type)
+        # There can only be one or zero mappings on a volume in E-Series
+        current_map = existing_maps[0] if existing_maps else None
+
+        if self.configuration.netapp_enable_multiattach and current_map:
+            self._ensure_multi_attach_host_group_exists()
+            mapping = host_mapper.map_volume_to_multiple_hosts(self._client,
+                                                               volume,
+                                                               eseries_vol,
+                                                               host,
+                                                               current_map)
+        else:
+            mapping = host_mapper.map_volume_to_single_host(self._client,
+                                                            volume,
+                                                            eseries_vol,
+                                                            host,
+                                                            current_map)
+
         lun_id = mapping['lun']
-        self._cache_vol_mapping(mapping)
         msg = _("Mapped volume %(id)s to the initiator %(initiator_name)s.")
         msg_fmt = {'id': volume['id'], 'initiator_name': initiator_name}
         LOG.debug(msg % msg_fmt)
+
+        iscsi_details = self._get_iscsi_service_details()
+        iscsi_portal = self._get_iscsi_portal_for_vol(eseries_vol,
+                                                      iscsi_details)
         msg = _("Successfully fetched target details for volume %(id)s and "
                 "initiator %(initiator_name)s.")
         LOG.debug(msg % msg_fmt)
@@ -647,38 +678,20 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         raise exception.NetAppDriverException(
             msg % self._client.get_system_id())
 
-    @cinder_utils.synchronized('map_es_volume')
-    def _map_volume_to_host(self, vol, initiator):
-        """Maps the e-series volume to host with initiator."""
-        host = self._get_or_create_host(initiator, self.host_type)
-        vol_maps = self._get_host_mapping_for_vol_frm_array(vol)
-        for vol_map in vol_maps:
-            if vol_map.get('mapRef') == host['hostRef']:
-                return vol_map
-            else:
-                self._client.delete_volume_mapping(vol_map['lunMappingRef'])
-                self._del_vol_mapping_frm_cache(vol_map)
-        mappings = self._get_vol_mapping_for_host_frm_array(host['hostRef'])
-        lun = self._get_free_lun(host, mappings)
-        return self._client.create_volume_mapping(vol['volumeRef'],
-                                                  host['hostRef'], lun)
-
     def _get_or_create_host(self, port_id, host_type):
         """Fetch or create a host by given port."""
         try:
             host = self._get_host_with_port(port_id)
             ht_def = self._get_host_type_definition(host_type)
-            if host.get('hostTypeIndex') == ht_def.get('index'):
-                return host
-            else:
+            if host.get('hostTypeIndex') != ht_def.get('index'):
                 try:
-                    return self._client.update_host_type(
+                    host = self._client.update_host_type(
                         host['hostRef'], ht_def)
                 except exception.NetAppDriverException as e:
                     msg = _LW("Unable to update host type for host with "
                               "label %(l)s. %(e)s")
                     LOG.warning(msg % {'l': host['label'], 'e': e.msg})
-                    return host
+            return host
         except exception.NotFound as e:
             LOG.warning(_LW("Message - %s."), e.msg)
             return self._create_host(port_id, host_type)
@@ -696,14 +709,15 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         msg = _("Host with port %(port)s not found.")
         raise exception.NotFound(msg % {'port': port_id})
 
-    def _create_host(self, port_id, host_type):
+    def _create_host(self, port_id, host_type, host_group=None):
         """Creates host on system with given initiator as port_id."""
         LOG.info(_LI("Creating host with port %s."), port_id)
         label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
         port_label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
         host_type = self._get_host_type_definition(host_type)
         return self._client.create_host_with_port(label, host_type,
-                                                  port_id, port_label)
+                                                  port_id, port_label,
+                                                  group_id=host_group)
 
     def _get_host_type_definition(self, host_type):
         """Gets supported host type if available on storage system."""
@@ -713,47 +727,20 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                 return ht
         raise exception.NotFound(_("Host type %s not supported.") % host_type)
 
-    def _get_free_lun(self, host, maps=None):
-        """Gets free LUN for given host."""
-        ref = host['hostRef']
-        luns = maps or self._get_vol_mapping_for_host_frm_array(ref)
-        used_luns = set(map(lambda lun: int(lun['lun']), luns))
-        for lun in xrange(self.MAX_LUNS_PER_HOST):
-            if lun not in used_luns:
-                return lun
-        msg = _("No free LUNs. Host might exceeded max LUNs.")
-        raise exception.NetAppDriverException(msg)
-
-    def _get_vol_mapping_for_host_frm_array(self, host_ref):
-        """Gets all volume mappings for given host from array."""
-        mappings = self._client.get_volume_mappings() or []
-        host_maps = filter(lambda x: x.get('mapRef') == host_ref, mappings)
-        return host_maps
-
-    def _get_host_mapping_for_vol_frm_array(self, volume):
-        """Gets all host mappings for given volume from array."""
-        mappings = self._client.get_volume_mappings() or []
-        host_maps = filter(lambda x: x.get('volumeRef') == volume['volumeRef'],
-                           mappings)
-        return host_maps
-
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
-        vol = self._get_volume(volume['name_id'])
-        host = self._get_host_with_port(connector['initiator'])
-        mapping = self._get_cached_vol_mapping_for_host(vol, host)
-        self._client.delete_volume_mapping(mapping['lunMappingRef'])
-        self._del_vol_mapping_frm_cache(mapping)
+        eseries_vol = self._get_volume(volume['name_id'])
+        initiator = connector['initiator']
+        host = self._get_host_with_port(initiator)
+        mappings = eseries_vol.get('listOfMappings', [])
 
-    def _get_cached_vol_mapping_for_host(self, volume, host):
-        """Gets cached volume mapping for given host."""
-        mappings = volume.get('listOfMappings') or []
-        for mapping in mappings:
-            if mapping.get('mapRef') == host['hostRef']:
-                return mapping
-        msg = _("Mapping not found for %(vol)s to host %(ht)s.")
-        raise exception.NotFound(msg % {'vol': volume['volumeRef'],
-                                        'ht': host['hostRef']})
+        # There can only be one or zero mappings on a volume in E-Series
+        mapping = mappings[0] if mappings else None
+
+        if not mapping:
+            raise eseries_exc.VolumeNotMapped(volume_id=volume['id'],
+                                              host=host['label'])
+        host_mapper.unmap_volume_from_host(self._client, volume, host, mapping)
 
     def get_volume_stats(self, refresh=False):
         """Return the current state of the volume service."""

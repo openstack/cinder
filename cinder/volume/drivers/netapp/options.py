@@ -159,7 +159,17 @@ netapp_eseries_opts = [
                      'specified storage pools. Only dynamic disk pools are '
                      'currently supported. Specify the value of this option to'
                      ' be a comma separated list of disk pool names to be used'
-                     ' for provisioning.')), ]
+                     ' for provisioning.')),
+    cfg.BoolOpt('netapp_enable_multiattach',
+                default=True,
+                help='This option specifies whether the driver should allow '
+                     'operations that require multiple attachments to a '
+                     'volume. An example would be live migration of servers '
+                     'that have volumes attached. When enabled, this backend '
+                     'is limited to 256 total volumes in order to '
+                     'guarantee volumes can be accessed by more than one '
+                     'host.'),
+]
 netapp_nfs_extra_opts = [
     cfg.StrOpt('netapp_copyoffload_tool_path',
                default=None,

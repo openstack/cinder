@@ -27,6 +27,7 @@ import six.moves.urllib.parse as urlparse
 
 from cinder import exception
 from cinder.i18n import _, _LE
+from cinder.volume.drivers.netapp.eseries import utils
 
 
 LOG = logging.getLogger(__name__)
@@ -203,9 +204,51 @@ class RestClient(WebserviceClient):
         path = "/storage-systems/{system-id}/volume-mappings/{object-id}"
         return self._invoke('DELETE', path, **{'object-id': map_object_id})
 
+    def move_volume_mapping_via_symbol(self, map_ref, to_ref, lun_id):
+        """Moves a map from one host/host_group object to another."""
+
+        path = "/storage-systems/{system-id}/symbol/moveLUNMapping"
+        data = {'lunMappingRef': map_ref,
+                'lun': int(lun_id),
+                'mapRef': to_ref}
+        return_code = self._invoke('POST', path, data)
+        if return_code == 'ok':
+            return {'lun': lun_id}
+        msg = _("Failed to move LUN mapping.  Return code: %s") % return_code
+        raise exception.NetAppDriverException(msg)
+
     def list_hardware_inventory(self):
         """Lists objects in the hardware inventory."""
         path = "/storage-systems/{system-id}/hardware-inventory"
+        return self._invoke('GET', path)
+
+    def create_host_group(self, label):
+        """Creates a host group on the array."""
+        path = "/storage-systems/{system-id}/host-groups"
+        data = {'name': label}
+        return self._invoke('POST', path, data)
+
+    def get_host_group(self, host_group_ref):
+        """Gets a single host group from the array."""
+        path = "/storage-systems/{system-id}/host-groups/{object-id}"
+        try:
+            return self._invoke('GET', path, **{'object-id': host_group_ref})
+        except exception.NetAppDriverException:
+            raise exception.NotFound(_("Host group with ref %s not found") %
+                                     host_group_ref)
+
+    def get_host_group_by_name(self, name):
+        """Gets a single host group by name from the array."""
+        host_groups = self.list_host_groups()
+        matching = [host_group for host_group in host_groups
+                    if host_group['label'] == name]
+        if len(matching):
+            return matching[0]
+        raise exception.NotFound(_("Host group with name %s not found") % name)
+
+    def list_host_groups(self):
+        """Lists host groups on the array."""
+        path = "/storage-systems/{system-id}/host-groups"
         return self._invoke('GET', path)
 
     def list_hosts(self):
@@ -227,11 +270,25 @@ class RestClient(WebserviceClient):
         port = {'type': port_type, 'port': port_id, 'label': port_label}
         return self.create_host(label, host_type, [port], group_id)
 
-    def update_host_type(self, host_ref, host_type):
+    def update_host(self, host_ref, data):
         """Updates host type for a given host."""
         path = "/storage-systems/{system-id}/hosts/{object-id}"
-        data = {'hostType': host_type}
         return self._invoke('POST', path, data, **{'object-id': host_ref})
+
+    def get_host(self, host_ref):
+        """Gets a single host from the array."""
+        path = "/storage-systems/{system-id}/hosts/{object-id}"
+        return self._invoke('GET', path, **{'object-id': host_ref})
+
+    def update_host_type(self, host_ref, host_type):
+        """Updates host type for a given host."""
+        data = {'hostType': host_type}
+        return self.update_host(host_ref, data)
+
+    def set_host_group_for_host(self, host_ref, host_group_ref=utils.NULL_REF):
+        """Sets or clears which host group a host is in."""
+        data = {'groupId': host_group_ref}
+        self.update_host(host_ref, data)
 
     def list_host_types(self):
         """Lists host types in storage system."""
