@@ -1111,25 +1111,6 @@ class CommandLineHelper(object):
             else:
                 self._raise_cli_error(command_remove_hlu, rc, out)
 
-    def get_iscsi_protocol_endpoints(self, device_sp):
-
-        command_get_port = ('connection', '-getport',
-                            '-sp', device_sp)
-
-        out, rc = self.command_execute(*command_get_port)
-        if rc != 0:
-            self._raise_cli_error(command_get_port, rc, out)
-
-        re_port_wwn = 'Port WWN:\s*(.*)\s*'
-        initiator_address = re.findall(re_port_wwn, out)
-
-        return initiator_address
-
-    def get_pool_name_of_lun(self, lun_name, poll=True):
-        data = self.get_lun_properties(
-            ('-name', lun_name), self.LUN_WITH_POOL, poll=poll)
-        return data.get('pool', '')
-
     def get_lun_by_name(self, name, properties=LUN_ALL, poll=True):
         data = self.get_lun_properties(('-name', name),
                                        properties,
@@ -1560,21 +1541,6 @@ class CommandLineHelper(object):
 
         return out, rc
 
-    def _is_sp_alive(self, ipaddr):
-        ping_cmd = ('ping', '-c', 1, ipaddr)
-        try:
-            out, err = utils.execute(*ping_cmd,
-                                     check_exit_code=True)
-        except processutils.ProcessExecutionError as pe:
-            out = pe.stdout
-            rc = pe.exit_code
-            if rc != 0:
-                LOG.debug('%s is unavaialbe', ipaddr)
-                return False
-        LOG.debug('Ping SP %(spip)s Command Result: %(result)s.',
-                  {'spip': self.active_storage_ip, 'result': out})
-        return True
-
     def _toggle_sp(self):
         """This function toggles the storage IP
         Address between primary IP and secondary IP, if no SP IP address has
@@ -1634,22 +1600,6 @@ class CommandLineHelper(object):
                               '-o')
         out, rc = self.command_execute(*command_deregister)
         return rc, out
-
-    def is_pool_fastcache_enabled(self, storage_pool, poll=False):
-        command_check_fastcache = ('storagepool', '-list', '-name',
-                                   storage_pool, '-fastcache')
-        out, rc = self.command_execute(*command_check_fastcache, poll=poll)
-
-        if 0 != rc:
-            self._raise_cli_error(command_check_fastcache, rc, out)
-        else:
-            re_fastcache = 'FAST Cache:\s*(.*)\s*'
-            m = re.search(re_fastcache, out)
-            if m is not None:
-                result = True if 'Enabled' == m.group(1) else False
-            else:
-                LOG.error(_LE("Error parsing output for FastCache Command."))
-        return result
 
 
 @decorate_all_methods(log_enter_exit)
@@ -2040,9 +1990,6 @@ class EMCVnxCliBase(object):
             tiering_change = True
         return migration, tiering_change
 
-    def get_specific_extra_spec(self, specs, key):
-        return specs.get(key, None)
-
     def determine_all_enablers_exist(self, enablers):
         """Determine all wanted enablers whether exist."""
         wanted = ['-ThinProvisioning',
@@ -2409,10 +2356,6 @@ class EMCVnxCliBase(object):
 
         return model_update, snapshots
 
-    def get_lun_id_by_name(self, volume_name):
-        data = self._client.get_lun_by_name(volume_name)
-        return data['lun_id']
-
     def get_lun_id(self, volume):
         lun_id = None
         try:
@@ -2436,10 +2379,6 @@ class EMCVnxCliBase(object):
     def get_lun_map(self, storage_group):
         data = self._client.get_storage_group(storage_group)
         return data['lunmap']
-
-    def get_storage_group_uid(self, name):
-        data = self._client.get_storage_group(name)
-        return data['storage_group_uid']
 
     def assure_storage_group(self, storage_group):
         self._client.create_storage_group(storage_group)
@@ -2956,10 +2895,6 @@ class EMCVnxCliBase(object):
                         self._build_provider_location_for_lun(ref['id'])}
 
         return model_update
-
-    def find_iscsi_protocol_endpoints(self, device_sp):
-        """Returns the iSCSI initiators for a SP."""
-        return self._client.get_iscsi_protocol_endpoints(device_sp)
 
     def get_login_ports(self, connector):
         return self._client.get_login_ports(connector['host'],
