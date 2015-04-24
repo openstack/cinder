@@ -136,3 +136,9 @@ CONCAT_FILES=$(ls $BASEDIR/tools/config/*.conf.sample 2>/dev/null)
 for CONCAT_FILE in $CONCAT_FILES; do
     cat $CONCAT_FILE >> $OUTPUTFILE
 done
+
+# Now we need to get externals
+oslo-config-generator \
+--namespace oslo_concurrency --namespace oslo_db \
+--namespace oslo_messaging --namespace policy \
+--namespace keystonemiddleware.auth_token  >> $OUTPUTFILE
