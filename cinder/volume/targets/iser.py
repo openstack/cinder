@@ -27,7 +27,7 @@ class ISERTgtAdm(tgt.TgtAdm):
 
         LOG.warning(_LW('ISERTgtAdm is deprecated, you should '
                         'now just use LVMVolumeDriver and specify '
-                        'target_helper for the target driver you '
+                        'iscsi_helper for the target driver you '
                         'wish to use. In order to enable iser, please '
                         'set iscsi_protocol=iser with lioadm or tgtadm '
                         'target helpers.'))
