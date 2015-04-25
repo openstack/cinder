@@ -353,7 +353,9 @@ class ViewBuilder(object):
         url_parts = list(urlparse.urlsplit(orig_url))
         prefix_parts = list(urlparse.urlsplit(prefix))
         url_parts[0:2] = prefix_parts[0:2]
-        return urlparse.urlunsplit(url_parts)
+        url_parts[2] = prefix_parts[2] + url_parts[2]
+
+        return urlparse.urlunsplit(url_parts).rstrip('/')
 
 
 class MetadataDeserializer(wsgi.MetadataXMLDeserializer):
