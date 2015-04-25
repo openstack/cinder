@@ -31,6 +31,7 @@ from cinder.volume.drivers.emc import emc_vmax_fast
 from cinder.volume.drivers.emc import emc_vmax_fc
 from cinder.volume.drivers.emc import emc_vmax_iscsi
 from cinder.volume.drivers.emc import emc_vmax_masking
+from cinder.volume.drivers.emc import emc_vmax_provision
 from cinder.volume.drivers.emc import emc_vmax_provision_v3
 from cinder.volume.drivers.emc import emc_vmax_utils
 from cinder.volume import volume_types
@@ -1112,7 +1113,7 @@ class FakeEcomConnection(object):
         vols = []
 
         vol = EMC_StorageVolume()
-        vol['name'] = self.data.test_volume['name']
+        vol['Name'] = self.data.test_volume['name']
         vol['CreationClassName'] = 'Symm_StorageVolume'
         vol['ElementName'] = self.data.test_volume['id']
         vol['DeviceID'] = self.data.test_volume['device_id']
@@ -2545,12 +2546,60 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.driver.create_cloned_volume(self.data.test_volume,
                                          EMCVMAXCommonData.test_source_volume)
 
-    def test_create_clone_no_fast_failed(self):
+    # Bug https://bugs.launchpad.net/cinder/+bug/1440154
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_volume_meta_head',
+        return_value=[EMCVMAXCommonData.test_volume])
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_meta_members_capacity_in_bit',
+        return_value=[1234567, 7654321])
+    @mock.patch.object(
+        FakeDB,
+        'volume_get',
+        return_value=EMCVMAXCommonData.test_source_volume)
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSINoFAST'})
+    @mock.patch.object(
+        emc_vmax_provision.EMCVMAXProvision,
+        'create_element_replica')
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'find_sync_sv_by_target',
+        return_value=(None, None))
+    def test_create_clone_assert_clean_up_target_volume(
+            self, mock_sync, mock_create_replica, mock_volume_type,
+            mock_volume, mock_capacities, mock_pool, mock_meta_volume):
         self.data.test_volume['volume_name'] = "vmax-1234567"
+        e = exception.VolumeBackendAPIException('CreateElementReplica Ex')
+        common = self.driver.common
+        common._delete_from_pool = mock.Mock(return_value=0L)
+        conn = self.fake_ecom_connection()
+        storageConfigService = (
+            common.utils.find_storage_configuration_service(
+                conn, self.data.storage_system))
+        mock_create_replica.side_effect = e
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cloned_volume,
                           self.data.test_volume,
                           EMCVMAXCommonData.test_source_volume)
+        extraSpecs = common._initial_setup(self.data.test_volume)
+        fastPolicy = extraSpecs['storagetype:fastpolicy']
+        targetInstance = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        common._delete_from_pool.assert_called_with(storageConfigService,
+                                                    targetInstance,
+                                                    targetInstance['Name'],
+                                                    targetInstance['DeviceID'],
+                                                    fastPolicy,
+                                                    extraSpecs)
 
     @mock.patch.object(
         volume_types,
@@ -4695,7 +4744,6 @@ class EMCV3DriverTestCase(test.TestCase):
     def test_create_cloned_volume_v3_success(
             self, mock_volume_db, mock_type, moke_pool, mock_size):
         self.data.test_volume['volume_name'] = "vmax-1234567"
-
         cloneVol = {}
         cloneVol['name'] = 'vol1'
         cloneVol['id'] = '10'
@@ -4707,18 +4755,6 @@ class EMCV3DriverTestCase(test.TestCase):
         cloneVol['provider_location'] = None
         cloneVol['NumberOfBlocks'] = 100
         cloneVol['BlockSize'] = 512
-        name = {}
-        name['classname'] = 'Symm_StorageVolume'
-        keys = {}
-        keys['CreationClassName'] = cloneVol['CreationClassName']
-        keys['SystemName'] = cloneVol['SystemName']
-        keys['DeviceID'] = cloneVol['DeviceID']
-        keys['NumberOfBlocks'] = cloneVol['NumberOfBlocks']
-        keys['BlockSize'] = cloneVol['BlockSize']
-        keys['SystemCreationClassName'] = \
-            cloneVol['SystemCreationClassName']
-        name['keybindings'] = keys
-
         self.driver.create_cloned_volume(cloneVol, self.data.test_volume)
 
     @mock.patch.object(
@@ -4931,6 +4967,67 @@ class EMCV3DriverTestCase(test.TestCase):
             EMCVMAXCommonData.storage_system, EMCVMAXCommonData.connector)
         numTargetWwns = len(EMCVMAXCommonData.target_wwns)
         self.assertEqual(numTargetWwns, len(data['data']))
+
+    # Bug https://bugs.launchpad.net/cinder/+bug/1440154
+    @mock.patch.object(
+        emc_vmax_provision_v3.EMCVMAXProvisionV3,
+        '_get_supported_size_range_for_SLO',
+        return_value={'MaximumVolumeSize': '30000000000',
+                      'MinimumVolumeSize': '100000'})
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'V3_BE'})
+    @mock.patch.object(
+        FakeDB,
+        'volume_get',
+        return_value=EMCVMAXCommonData.test_source_volume)
+    @mock.patch.object(
+        emc_vmax_provision_v3.EMCVMAXProvisionV3,
+        'create_element_replica')
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'find_sync_sv_by_target',
+        return_value=(None, None))
+    def test_create_clone_v3_assert_clean_up_target_volume(
+            self, mock_sync, mock_create_replica, mock_volume_db,
+            mock_type, moke_pool, mock_size):
+        self.data.test_volume['volume_name'] = "vmax-1234567"
+        e = exception.VolumeBackendAPIException('CreateElementReplica Ex')
+        common = self.driver.common
+        volumeDict = {'classname': u'Symm_StorageVolume',
+                      'keybindings': EMCVMAXCommonData.keybindings}
+        common._create_v3_volume = (
+            mock.Mock(return_value=(0L, volumeDict, self.data.storage_system)))
+        conn = self.fake_ecom_connection()
+        storageConfigService = []
+        storageConfigService = {}
+        storageConfigService['SystemName'] = EMCVMAXCommonData.storage_system
+        storageConfigService['CreationClassName'] = \
+            self.data.stconf_service_creationclass
+        common._delete_from_pool_v3 = mock.Mock(return_value=0L)
+        mock_create_replica.side_effect = e
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          self.data.test_volume,
+                          EMCVMAXCommonData.test_source_volume)
+        extraSpecs = common._initial_setup(self.data.test_volume)
+        targetInstance = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        storageGroupName = common.utils.get_v3_storage_group_name('SRP_1',
+                                                                  'Bronze',
+                                                                  'DSS')
+        deviceID = targetInstance['DeviceID']
+        common._delete_from_pool_v3.assert_called_with(storageConfigService,
+                                                       targetInstance,
+                                                       targetInstance['Name'],
+                                                       deviceID,
+                                                       storageGroupName,
+                                                       extraSpecs)
 
     def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)

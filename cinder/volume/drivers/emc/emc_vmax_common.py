@@ -3512,6 +3512,10 @@ class EMCVMAXCommon(object):
                         exceptionMessage = (_(
                             "Error Creating unbound volume."))
                         LOG.error(exceptionMessage)
+                        # Remove target volume
+                        self._delete_target_volume_v2(storageConfigService,
+                                                      baseTargetVolumeInstance,
+                                                      extraSpecs)
                         raise exception.VolumeBackendAPIException(
                             data=exceptionMessage)
 
@@ -3519,26 +3523,43 @@ class EMCVMAXCommon(object):
                     # base target composite volume.
                     baseTargetVolumeInstance = self.utils.find_volume_instance(
                         self.conn, baseVolumeDict, baseVolumeName)
-                    elementCompositionService = (
-                        self.utils.find_element_composition_service(
-                            self.conn, storageSystemName))
-                    compositeType = self.utils.get_composite_type(
-                        extraSpecs[COMPOSITETYPE])
-                    _rc, modifiedVolumeDict = (
-                        self._modify_and_get_composite_volume_instance(
-                            self.conn,
-                            elementCompositionService,
-                            baseTargetVolumeInstance,
-                            unboundVolumeInstance.path,
-                            targetVolumeName,
-                            compositeType,
-                            extraSpecs))
-                    if modifiedVolumeDict is None:
+                    try:
+                        elementCompositionService = (
+                            self.utils.find_element_composition_service(
+                                self.conn, storageSystemName))
+                        compositeType = self.utils.get_composite_type(
+                            extraSpecs[COMPOSITETYPE])
+                        _rc, modifiedVolumeDict = (
+                            self._modify_and_get_composite_volume_instance(
+                                self.conn,
+                                elementCompositionService,
+                                baseTargetVolumeInstance,
+                                unboundVolumeInstance.path,
+                                targetVolumeName,
+                                compositeType,
+                                extraSpecs))
+                        if modifiedVolumeDict is None:
+                            exceptionMessage = (_(
+                                "Error appending volume %(volumename)s to "
+                                "target base volume.")
+                                % {'volumename': targetVolumeName})
+                            LOG.error(exceptionMessage)
+                            raise exception.VolumeBackendAPIException(
+                                data=exceptionMessage)
+                    except Exception:
                         exceptionMessage = (_(
-                            "Error appending volume %(volumename)s to "
-                            "target base volume.")
-                            % {'volumename': targetVolumeName})
+                            "Exception appending meta volume to target volume "
+                            "%(volumename)s.")
+                            % {'volumename': baseVolumeName})
                         LOG.error(exceptionMessage)
+                        # Remove append volume and target base volume
+                        self._delete_target_volume_v2(
+                            storageConfigService, unboundVolumeInstance,
+                            extraSpecs)
+                        self._delete_target_volume_v2(
+                            storageConfigService, baseTargetVolumeInstance,
+                            extraSpecs)
+
                         raise exception.VolumeBackendAPIException(
                             data=exceptionMessage)
 
@@ -3565,11 +3586,43 @@ class EMCVMAXCommon(object):
         """
         sourceName = sourceVolume['name']
         cloneName = cloneVolume['name']
-        rc, job = self.provision.create_element_replica(
-            self.conn, repServiceInstanceName, cloneName, sourceName,
-            sourceInstance, targetInstance, extraSpecs)
+
+        try:
+            rc, job = self.provision.create_element_replica(
+                self.conn, repServiceInstanceName, cloneName, sourceName,
+                sourceInstance, targetInstance, extraSpecs)
+        except Exception:
+            exceptionMessage = (_(
+                "Exception during create element replica. "
+                "Clone name: %(cloneName)s "
+                "Source name: %(sourceName)s "
+                "Extra specs: %(extraSpecs)s ")
+                % {'cloneName': cloneName,
+                   'sourceName': sourceName,
+                   'extraSpecs': extraSpecs})
+            LOG.error(exceptionMessage)
+
+            if targetInstance is not None:
+                # Check if the copy session exists.
+                storageSystem = targetInstance['SystemName']
+                syncInstanceName = self.utils.find_sync_sv_by_target(
+                    self.conn, storageSystem, targetInstance, False)
+                if syncInstanceName is not None:
+                    # Remove the Clone relationship.
+                    rc, job = self.provision.delete_clone_relationship(
+                        self.conn, repServiceInstanceName, syncInstanceName,
+                        extraSpecs, True)
+                storageConfigService = (
+                    self.utils.find_storage_configuration_service(
+                        self.conn, storageSystem))
+                self._delete_target_volume_v2(
+                    storageConfigService, targetInstance, extraSpecs)
+
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
         cloneDict = self.provision.get_volume_dict_from_job(
             self.conn, job['Job'])
+
         fastPolicyName = extraSpecs[FASTPOLICY]
         if isSnapshot:
             if fastPolicyName is not None:
@@ -3586,7 +3639,8 @@ class EMCVMAXCommon(object):
 
         cloneVolume['provider_location'] = six.text_type(cloneDict)
         syncInstanceName, storageSystemName = (
-            self._find_storage_sync_sv_sv(cloneVolume, sourceVolume))
+            self._find_storage_sync_sv_sv(cloneVolume, sourceVolume,
+                                          extraSpecs))
 
         # Remove the Clone relationship so it can be used as a regular lun.
         # 8 - Detach operation.
@@ -3671,7 +3725,10 @@ class EMCVMAXCommon(object):
         :returns: dict -- cloneDict
         """
         cloneName = cloneVolume['name']
-        syncType = self.utils.get_num(8, '16')  # Default syncType 8: clone.
+        # Default syncType 8: clone.
+        syncType = self.utils.get_num(8, '16')
+        # Default operation 8: Detach for clone.
+        operation = self.utils.get_num(8, '16')
 
         # Create target volume
         extraSpecs = self._initial_setup(cloneVolume)
@@ -3695,11 +3752,42 @@ class EMCVMAXCommon(object):
         if isSnapshot:
             # SyncType 7: snap, VG3R default snapshot is snapVx.
             syncType = self.utils.get_num(7, '16')
+            # Operation 9: Dissolve for snapVx.
+            operation = self.utils.get_num(9, '16')
 
-        _rc, job = (
-            self.provisionv3.create_element_replica(
-                self.conn, repServiceInstanceName, cloneName, syncType,
-                sourceInstance, extraSpecs, targetInstance))
+        try:
+            _rc, job = (
+                self.provisionv3.create_element_replica(
+                    self.conn, repServiceInstanceName, cloneName, syncType,
+                    sourceInstance, extraSpecs, targetInstance))
+        except Exception:
+            LOG.warning(_LW(
+                "Clone failed on V3. Cleaning up the target volume. "
+                "Clone name: %(cloneName)s "),
+                {'cloneName': cloneName})
+            # Check if the copy session exists.
+            storageSystem = targetInstance['SystemName']
+            syncInstanceName = self.utils.find_sync_sv_by_target(
+                self.conn, storageSystem, targetInstance, False)
+            if syncInstanceName is not None:
+                # Break the clone relationship.
+                rc, job = self.provisionv3.break_replication_relationship(
+                    self.conn, repServiceInstanceName, syncInstanceName,
+                    operation, extraSpecs, True)
+            storageConfigService = (
+                self.utils.find_storage_configuration_service(
+                    self.conn, storageSystem))
+            deviceId = targetInstance['DeviceID']
+            volumeName = targetInstance['Name']
+            storageGroupName = self.utils.get_v3_storage_group_name(
+                extraSpecs[POOL], extraSpecs[SLO],
+                extraSpecs[WORKLOAD])
+            rc = self._delete_from_pool_v3(
+                storageConfigService, targetInstance, volumeName,
+                deviceId, storageGroupName, extraSpecs)
+            # Re-throw the exception.
+            raise
+
         cloneDict = self.provisionv3.get_volume_dict_from_job(
             self.conn, job['Job'])
 
@@ -3786,3 +3874,20 @@ class EMCVMAXCommon(object):
                     volumeRef['status'] = 'error_deleting'
                     modelUpdate['status'] = 'error_deleting'
         return modelUpdate, volumes
+
+    def _delete_target_volume_v2(
+            self, storageConfigService, targetVolumeInstance, extraSpecs):
+        """Helper function to delete the clone target volume instance.
+
+        :param storageConfigService: storage configuration service instance
+        :param targetVolumeInstance: clone target volume instance
+        :param extraSpecs: extra specifications
+        """
+        deviceId = targetVolumeInstance['DeviceID']
+        volumeName = targetVolumeInstance['Name']
+        rc = self._delete_from_pool(storageConfigService,
+                                    targetVolumeInstance,
+                                    volumeName, deviceId,
+                                    extraSpecs[FASTPOLICY],
+                                    extraSpecs)
+        return rc
