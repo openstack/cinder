@@ -1343,10 +1343,6 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(
             side_effect=[1, 1]))
-    @mock.patch(
-        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase."
-        "get_lun_id_by_name",
-        mock.Mock(return_value=1))
     def test_volume_migration_timeout(self):
         commands = [self.testData.MIGRATION_CMD(),
                     self.testData.MIGRATION_VERIFY_CMD(1)]
@@ -1398,10 +1394,6 @@ Time Remaining:  0 second(s)
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(
             side_effect=[1, 1]))
-    @mock.patch(
-        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase."
-        "get_lun_id_by_name",
-        mock.Mock(return_value=1))
     def test_volume_migration(self):
 
         commands = [self.testData.MIGRATION_CMD(),
@@ -1441,10 +1433,6 @@ Time Remaining:  0 second(s)
                 "CommandLineHelper.create_lun_by_cmd",
                 mock.Mock(
                     return_value={'lun_id': 5}))
-    @mock.patch(
-        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase."
-        "get_lun_id_by_name",
-        mock.Mock(return_value=5))
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -1492,10 +1480,6 @@ Time Remaining:  0 second(s)
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(
             side_effect=[1, 1]))
-    @mock.patch(
-        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase."
-        "get_lun_id_by_name",
-        mock.Mock(return_value=1))
     def test_volume_migration_failed(self):
         commands = [self.testData.MIGRATION_CMD()]
         results = [FAKE_ERROR_RETURN]
@@ -1520,10 +1504,6 @@ Time Remaining:  0 second(s)
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(
             side_effect=[1, 1]))
-    @mock.patch(
-        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase."
-        "get_lun_id_by_name",
-        mock.Mock(return_value=1))
     def test_volume_migration_stopped(self):
 
         commands = [self.testData.MIGRATION_CMD(),
@@ -2345,10 +2325,6 @@ Time Remaining:  0 second(s)
 
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
-        mock.Mock(return_value=1))
-    @mock.patch(
-        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase."
-        "get_lun_id_by_name",
         mock.Mock(return_value=1))
     @mock.patch(
         "eventlet.event.Event.wait",
