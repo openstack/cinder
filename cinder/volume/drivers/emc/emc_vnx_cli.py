@@ -452,7 +452,7 @@ class CommandLineHelper(object):
                         self.CLI_RESP_PATTERN_LUN_NOT_EXIST) >= 0:
                     return False
                 else:
-                    raise ex
+                    raise
             return _lun_state_validation(data)
 
         self._wait_for_a_condition(lun_is_ready,
@@ -2428,7 +2428,7 @@ class EMCVnxCliBase(object):
                 self._client.connect_host_to_storage_group(
                     hostname, storage_group)
             else:
-                raise ex
+                raise
         return hostname
 
     def get_lun_owner(self, volume):
@@ -2629,7 +2629,7 @@ class EMCVnxCliBase(object):
                                                     poll=False)
         except exception.EMCVnxCLICmdError as ex:
             if ex.kwargs["rc"] != 83:
-                raise ex
+                raise
             # Storage Group has not existed yet
             self.assure_storage_group(hostname)
             if self.itor_auto_reg:

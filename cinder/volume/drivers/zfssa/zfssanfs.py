@@ -97,7 +97,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
                 msg = _('%s is not installed') % package
                 raise exception.NfsException(msg)
             else:
-                raise exc
+                raise
 
         lcfg = self.configuration
         LOG.info(_LI('Connecting to host: %s.'), lcfg.san_ip)

@@ -117,7 +117,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
                 raise exception.VolumeDriverException(
                     'mount.quobyte is not installed')
             else:
-                raise exc
+                raise
 
     def set_nas_security_options(self, is_new_cinder_install):
         self.configuration.nas_secure_file_operations = 'true'

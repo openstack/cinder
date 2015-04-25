@@ -206,13 +206,13 @@ class NetAppNfsDriver(nfs.NfsDriver):
             if vol_size != src_vol_size:
                 try:
                     self.extend_volume(volume, vol_size)
-                except Exception as e:
+                except Exception:
                     LOG.error(
                         _LE("Resizing %s failed. Cleaning volume."),
                         volume.name)
                     self._execute('rm', path,
                                   run_as_root=self._execute_as_root)
-                    raise e
+                    raise
         else:
             raise exception.CinderException(
                 _("NFS file %s not discovered.") % volume['name'])

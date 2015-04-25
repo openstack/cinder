@@ -1259,8 +1259,8 @@ class RemoteFSSnapDriver(RemoteFSDriver):
                 snapshot['volume_id'],
                 connection_info)
             LOG.debug('nova call result: %s', result)
-        except Exception as e:
-            LOG.error(_LE('Call to Nova to create snapshot failed %s'), e)
+        except Exception:
+            LOG.exception(_LE('Call to Nova to create snapshot failed'))
             raise
 
         # Loop and wait for result
@@ -1344,8 +1344,8 @@ class RemoteFSSnapDriver(RemoteFSDriver):
                 context,
                 snapshot['id'],
                 delete_info)
-        except Exception as e:
-            LOG.error(_LE('Call to Nova delete snapshot failed %s'), e)
+        except Exception:
+            LOG.exception(_LE('Call to Nova delete snapshot failed'))
             raise
 
         # Loop and wait for result
