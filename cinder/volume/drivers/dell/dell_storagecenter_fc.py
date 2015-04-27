@@ -60,32 +60,25 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         LOG.debug('Initialize connection: %s', volume_name)
         with self._client.open_connection() as api:
             try:
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
                 # Find our server.
                 wwpns = connector.get('wwpns')
                 for wwn in wwpns:
-                    scserver = api.find_server(ssn,
-                                               wwn)
+                    scserver = api.find_server(wwn)
                     if scserver is not None:
                         break
 
                 # No? Create it.
                 if scserver is None:
-                    server_folder = self.configuration.dell_sc_server_folder
-                    scserver = api.create_server_multiple_hbas(ssn,
-                                                               server_folder,
-                                                               wwpns)
+                    scserver = api.create_server_multiple_hbas(wwpns)
                 # Find the volume on the storage center.
-                scvolume = api.find_volume(ssn,
-                                           volume_name)
+                scvolume = api.find_volume(volume_name)
                 if scserver is not None and scvolume is not None:
                     mapping = api.map_volume(scvolume,
                                              scserver)
                     if mapping is not None:
                         # Since we just mapped our volume we had best update
                         # our sc volume object.
-                        scvolume = api.find_volume(ssn,
-                                                   volume_name)
+                        scvolume = api.find_volume(volume_name)
                         lun, targets, init_targ_map = api.find_wwns(scvolume,
                                                                     scserver)
                         if lun is not None and len(targets) > 0:
@@ -115,17 +108,14 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         LOG.debug('Terminate connection: %s', volume_name)
         with self._client.open_connection() as api:
             try:
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
                 wwpns = connector.get('wwpns')
                 for wwn in wwpns:
-                    scserver = api.find_server(ssn,
-                                               wwn)
+                    scserver = api.find_server(wwn)
                     if scserver is not None:
                         break
 
                 # Find the volume on the storage center.
-                scvolume = api.find_volume(ssn,
-                                           volume_name)
+                scvolume = api.find_volume(volume_name)
                 # Get our target map so we can return it to free up a zone.
                 lun, targets, init_targ_map = api.find_wwns(scvolume,
                                                             scserver)

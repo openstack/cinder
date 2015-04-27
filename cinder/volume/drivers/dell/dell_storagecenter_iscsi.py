@@ -54,19 +54,13 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
 
         with self._client.open_connection() as api:
             try:
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
                 # Find our server.
-                server = api.find_server(ssn,
-                                         initiator_name)
+                server = api.find_server(initiator_name)
                 # No? Create it.
                 if server is None:
-                    server_folder = self.configuration.dell_sc_server_folder
-                    server = api.create_server(ssn,
-                                               server_folder,
-                                               initiator_name)
+                    server = api.create_server(initiator_name)
                 # Find the volume on the storage center.
-                scvolume = api.find_volume(ssn,
-                                           volume_name)
+                scvolume = api.find_volume(volume_name)
 
                 # if we have a server and a volume lets bring them together.
                 if server is not None and scvolume is not None:
@@ -75,8 +69,7 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
                     if mapping is not None:
                         # Since we just mapped our volume we had best update
                         # our sc volume object.
-                        scvolume = api.find_volume(ssn,
-                                                   volume_name)
+                        scvolume = api.find_volume(volume_name)
 
                         if multipath:
                             # Just return our properties with all the mappings
@@ -136,12 +129,9 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
                    'i': initiator_name})
         with self._client.open_connection() as api:
             try:
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
-                scserver = api.find_server(ssn,
-                                           initiator_name)
+                scserver = api.find_server(initiator_name)
                 # Find the volume on the storage center.
-                scvolume = api.find_volume(ssn,
-                                           volume_name)
+                scvolume = api.find_volume(volume_name)
 
                 # If we have a server and a volume lets pull them apart.
                 if (scserver is not None and

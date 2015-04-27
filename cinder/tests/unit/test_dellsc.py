@@ -273,9 +273,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         volume = {'id': self.volume_name, 'size': 1}
         self.driver.create_volume(volume)
         mock_create_volume.assert_called_once_with(self.volume_name,
-                                                   1,
-                                                   12345,
-                                                   u'opnstktst')
+                                                   1)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_volume',
@@ -307,7 +305,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                            mock_init):
         volume = {'id': self.volume_name, 'size': 1}
         self.driver.delete_volume(volume)
-        mock_delete_volume.assert_called_once_with(12345, self.volume_name)
+        mock_delete_volume.assert_called_once_with(self.volume_name)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_volume',
@@ -359,7 +357,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         data = self.driver.initialize_connection(volume, connector)
         self.assertEqual(data['driver_volume_type'], 'iscsi')
         # verify find_volume has been called and that is has been called twice
-        mock_find_volume.assert_any_call(12345, self.volume_name)
+        mock_find_volume.assert_any_call(self.volume_name)
         assert mock_find_volume.call_count == 2
         expected = {'data':
                     {'access_mode': 'rw',
@@ -406,7 +404,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         data = self.driver.initialize_connection(volume, connector)
         self.assertEqual(data['driver_volume_type'], 'iscsi')
         # verify find_volume has been called and that is has been called twice
-        mock_find_volume.assert_any_call(12345, self.volume_name)
+        mock_find_volume.assert_any_call(self.volume_name)
         assert mock_find_volume.call_count == 2
         expected = {'data':
                     {'access_mode': 'rw',
@@ -573,8 +571,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                   mock_init):
         volume = {'id': self.volume_name}
         connector = self.connector
-        self.driver.terminate_connection(volume, connector)
+        res = self.driver.terminate_connection(volume, connector)
         mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
+        self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
@@ -823,7 +822,6 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume. \
             assert_called_once_with(self.volume_name + '_clone',
-                                    self.configuration.dell_sc_volume_folder,
                                     self.VOLUME)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -912,7 +910,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         volume = {'id': self.VOLUME.get(u'name')}
         self.driver.ensure_export(context, volume)
         mock_find_volume.assert_called_once_with(
-            12345, self.VOLUME.get(u'name'))
+            self.VOLUME.get(u'name'))
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',

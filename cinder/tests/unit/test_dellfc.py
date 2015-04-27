@@ -207,10 +207,20 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                    mock_init):
         volume = {'id': self.volume_name}
         connector = self.connector
-        data = self.driver.initialize_connection(volume, connector)
-        self.assertEqual(data['driver_volume_type'], 'fibre_channel')
+        res = self.driver.initialize_connection(volume, connector)
+        expected = {'data':
+                    {'initiator_target_map':
+                     {u'21000024FF30441C': [u'5000D31000FCBE35'],
+                      u'21000024FF30441D': [u'5000D31000FCBE3D']},
+                     'target_discovered': True,
+                     'target_lun': 1,
+                     'target_wwn':
+                     [u'5000D31000FCBE3D', u'5000D31000FCBE35']},
+                    'driver_volume_type': 'fibre_channel'}
+
+        self.assertEqual(expected, res, 'Unexpected return data')
         # verify find_volume has been called and that is has been called twice
-        mock_find_volume.assert_any_call(64702, self.volume_name)
+        mock_find_volume.assert_any_call(self.volume_name)
         assert mock_find_volume.call_count == 2
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -378,8 +388,11 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                   mock_init):
         volume = {'id': self.volume_name}
         connector = self.connector
-        self.driver.terminate_connection(volume, connector)
+        res = self.driver.terminate_connection(volume, connector)
         mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
+        expected = {'driver_volume_type': 'fibre_channel',
+                    'data': {}}
+        self.assertEqual(expected, res, 'Unexpected return data')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
@@ -499,7 +512,10 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         #                  self.driver.terminate_connection,
         #                  volume,
         #                  connector)
-        self.driver.terminate_connection(volume, connector)
+        res = self.driver.terminate_connection(volume, connector)
+        expected = {'driver_volume_type': 'fibre_channel',
+                    'data': {}}
+        self.assertEqual(expected, res, 'Unexpected return data')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
@@ -541,6 +557,54 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                           self.driver.terminate_connection,
                           volume,
                           connector)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=64702)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_server',
+                       return_value=SCSERVER)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'unmap_volume',
+                       return_value=True)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_wwns',
+                       return_value=(1,
+                                     [u'5000D31000FCBE3D',
+                                      u'5000D31000FCBE35'],
+                                     {u'21000024FF30441C':
+                                      [u'5000D31000FCBE35'],
+                                      u'21000024FF30441D':
+                                      [u'5000D31000FCBE3D']}))
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume_count',
+                       return_value=0)
+    def test_terminate_connection_vol_count_zero(self,
+                                                 mock_get_volume_count,
+                                                 mock_find_wwns,
+                                                 mock_unmap_volume,
+                                                 mock_find_volume,
+                                                 mock_find_server,
+                                                 mock_find_sc,
+                                                 mock_close_connection,
+                                                 mock_open_connection,
+                                                 mock_init):
+        # Test case where get_volume_count is zero
+        volume = {'id': self.volume_name}
+        connector = self.connector
+        res = self.driver.terminate_connection(volume, connector)
+        mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
+        expected = {'data':
+                    {'initiator_target_map':
+                     {u'21000024FF30441C': [u'5000D31000FCBE35'],
+                      u'21000024FF30441D': [u'5000D31000FCBE3D']},
+                     'target_wwn':
+                     [u'5000D31000FCBE3D', u'5000D31000FCBE35']},
+                    'driver_volume_type': 'fibre_channel'}
+        self.assertEqual(expected, res, 'Unexpected return data')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',

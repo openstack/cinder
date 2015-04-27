@@ -122,12 +122,27 @@ class StorageCenterApiHelper(object):
         self.config = config
 
     def open_connection(self):
-        '''Open connection to Enterprise Manager.'''
-        connection = StorageCenterApi(self.config.san_ip,
-                                      self.config.dell_sc_api_port,
-                                      self.config.san_login,
-                                      self.config.san_password)
-        connection.open_connection()
+        connection = None
+        ssn = self.config.dell_sc_ssn
+        LOG.info(_LI('open_connection to %(s)s at %(ip)s'),
+                 {'s': ssn,
+                  'ip': self.config.san_ip})
+        if ssn:
+            '''Open connection to Enterprise Manager.'''
+            connection = StorageCenterApi(self.config.san_ip,
+                                          self.config.dell_sc_api_port,
+                                          self.config.san_login,
+                                          self.config.san_password)
+            # This instance is for a single backend.  That backend has a
+            # few items of information we should save rather than passing them
+            # about.
+            connection.ssn = ssn
+            connection.vfname = self.config.dell_sc_volume_folder
+            connection.sfname = self.config.dell_sc_server_folder
+            connection.open_connection()
+        else:
+            raise exception.VolumeBackendAPIException('Configuration error.  '
+                                                      'dell_sc_ssn not set.')
         return connection
 
 
@@ -142,6 +157,9 @@ class StorageCenterApi(object):
 
     def __init__(self, host, port, user, password):
         self.notes = 'Created by Dell Cinder Driver'
+        self.ssn = None
+        self.vfname = 'openstack'
+        self.sfname = 'openstack'
         self.client = HttpClient(host,
                                  port,
                                  user,
@@ -228,32 +246,32 @@ class StorageCenterApi(object):
                          'r': r.reason})
         self.client = None
 
-    def find_sc(self, ssn):
-        '''This is really just a check that the sc is there and being managed by
-        EM.
+    def find_sc(self):
+        '''This is really just a check that the sc is there and being managed
+        by EM.
         '''
         r = self.client.get('StorageCenter/StorageCenter')
         result = self._get_result(r,
                                   'scSerialNumber',
-                                  ssn)
+                                  self.ssn)
         if result is None:
             LOG.error(_LE('Failed to find %(s)s.  Result %(r)s'),
-                      {'s': ssn,
+                      {'s': self.ssn,
                        'r': r})
             raise exception.VolumeBackendAPIException(
                 _('Failed to find Storage Center'))
 
         return self._get_id(result)
 
-    # Volume functions
+    # Folder functions
 
-    def _create_folder(self, url, ssn, parent, folder):
+    def _create_folder(self, url, parent, folder):
         '''This is generic to server and volume folders.
         '''
         f = None
         payload = {}
         payload['Name'] = folder
-        payload['StorageCenter'] = ssn
+        payload['StorageCenter'] = self.ssn
         if parent != '':
             payload['Parent'] = parent
         payload['Notes'] = self.notes
@@ -269,7 +287,7 @@ class StorageCenterApi(object):
             f = self._first_result(r)
         return f
 
-    def _create_folder_path(self, url, ssn, foldername):
+    def _create_folder_path(self, url, foldername):
         '''This is generic to server and volume folders.
         '''
         path = self._path_to_array(foldername)
@@ -284,14 +302,12 @@ class StorageCenterApi(object):
             if found:
                 listurl = url + '/GetList'
                 f = self._find_folder(listurl,
-                                      ssn,
                                       folderpath)
                 if f is None:
                     found = False
             # We didn't find it so create it
             if found is False:
                 f = self._create_folder(url,
-                                        ssn,
                                         instanceId,
                                         folder)
             # If we haven't found a folder or created it then leave
@@ -304,7 +320,7 @@ class StorageCenterApi(object):
             folderpath = folderpath + '/'
         return f
 
-    def _find_folder(self, url, ssn, foldername):
+    def _find_folder(self, url, foldername):
         '''Most of the time the folder will already have been created so
         we look for the end folder and check that the rest of the path is
         right.
@@ -312,13 +328,13 @@ class StorageCenterApi(object):
         This is generic to server and volume folders.
         '''
         pf = PayloadFilter()
-        pf.append('scSerialNumber', ssn)
+        pf.append('scSerialNumber', self.ssn)
         basename = os.path.basename(foldername)
         pf.append('Name', basename)
-        # If we have any kind of path we add '/' to match the storage
-        # center's convention and throw it into the filters.
+        # If we have any kind of path we throw it into the filters.
         folderpath = os.path.dirname(foldername)
         if folderpath != '':
+            # SC convention is to end with a '/' so make sure we do.
             folderpath += '/'
             pf.append('folderPath', folderpath)
         folder = None
@@ -335,15 +351,14 @@ class StorageCenterApi(object):
                        'r': r.reason})
         return folder
 
-    def _create_volume_folder_path(self, ssn, foldername):
-        return self._create_folder_path('StorageCenter/ScVolumeFolder',
-                                        ssn,
-                                        foldername)
-
-    def _find_volume_folder(self, ssn, foldername):
-        return self._find_folder('StorageCenter/ScVolumeFolder/GetList',
-                                 ssn,
-                                 foldername)
+    def _find_volume_folder(self, create=False):
+        folder = self._find_folder('StorageCenter/ScVolumeFolder/GetList',
+                                   self.vfname)
+        # Doesn't exist?  make it
+        if folder is None and create is True:
+            folder = self._create_folder_path('StorageCenter/ScVolumeFolder',
+                                              self.vfname)
+        return folder
 
     def _init_volume(self, scvolume):
         '''Maps the volume to a random server and immediately unmaps
@@ -370,37 +385,34 @@ class StorageCenterApi(object):
                                       scserver)
                     break
 
-    def create_volume(self, name, size, ssn, volfolder):
+    def create_volume(self, name, size):
         '''This creates a new volume on the storage center.  It
-        will create it in volfolder.  If volfolder does not
-        exist it will create it.  If it cannot create volfolder
+        will create it in a folder called self.vfname.  If self.vfname
+        does not exist it will create it.  If it cannot create it
         the volume will be created in the root.
         '''
-        scvolume = None
-        # Find our folder
         LOG.debug('Create Volume %(name)s %(ssn)s %(folder)s',
                   {'name': name,
-                   'ssn': ssn,
-                   'folder': volfolder})
-        folder = self._find_volume_folder(ssn,
-                                          volfolder)
+                   'ssn': self.ssn,
+                   'folder': self.vfname})
 
-        # Doesn't exist?  make it
-        if folder is None:
-            folder = self._create_volume_folder_path(ssn,
-                                                     volfolder)
+        # Find our folder
+        folder = self._find_volume_folder(True)
 
         # If we actually have a place to put our volume create it
         if folder is None:
-            LOG.error(_LE('Unable to create folder %s'),
-                      volfolder)
+            LOG.warning(_LW('Unable to create folder %s'),
+                        self.vfname)
+
+        # Init our return.
+        scvolume = None
 
         # Create the volume
         payload = {}
         payload['Name'] = name
         payload['Notes'] = self.notes
         payload['Size'] = '%d GB' % size
-        payload['StorageCenter'] = ssn
+        payload['StorageCenter'] = self.ssn
         if folder is not None:
             payload['VolumeFolder'] = self._get_id(folder)
         r = self.client.post('StorageCenter/ScVolume',
@@ -412,6 +424,7 @@ class StorageCenterApi(object):
                       {'name': name,
                        'c': r.status_code,
                        'r': r.reason})
+            return None
         if scvolume:
             LOG.info(_LI('Created volume %(instanceId)s: %(name)s'),
                      {'instanceId': scvolume['instanceId'],
@@ -421,46 +434,84 @@ class StorageCenterApi(object):
                           '  Attempting to locate volume'))
             # In theory it is there since success was returned.
             # Try one last time to find it before returning.
-            scvolume = self.find_volume(ssn, name, None)
+            scvolume = self.find_volume(name)
 
         return scvolume
 
-    def find_volume(self, ssn, name=None, instanceid=None):
-        '''search ssn for volume of name and/or instance id
+    def _get_volume_list(self, name, filterbyvfname=True):
+        '''Return the list of volumes with name of name.
+        :param name: Volume name.
+        :param filterbyvfname:  If true filters by the preset folder name.
+        :return: Returns the scvolume or None.
         '''
-        LOG.debug('finding volume %(sn)s : %(name)s : %(id)s',
-                  {'sn': ssn,
-                   'name': name,
-                   'id': instanceid})
+        result = None
         pf = PayloadFilter()
-        pf.append('scSerialNumber', ssn)
-        # We need at least a name and or an instance id.  If we have
-        # that we can find a volume.
-        if instanceid is not None:
-            pf.append('instanceId', instanceid)
-        elif name is not None:
+        pf.append('scSerialNumber', self.ssn)
+        # We need a name to find a volume.
+        if name is not None:
             pf.append('Name', name)
         else:
             return None
+        # set folderPath
+        if filterbyvfname:
+            vfname = (self.vfname if self.vfname.endswith('/')
+                      else self.vfname + '/')
+            pf.append('volumeFolderPath', vfname)
         r = self.client.post('StorageCenter/ScVolume/GetList',
                              pf.payload)
         if r.status_code != 200:
-            LOG.debug('ScVolume GetList error %(i)s: %(c)d %(r)s',
-                      {'i': instanceid,
+            LOG.debug('ScVolume GetList error %(n)s: %(c)d %(r)s',
+                      {'n': name,
                        'c': r.status_code,
                        'r': r.reason})
-        return self._first_result(r)
+        else:
+            result = self._get_json(r)
+        # We return None if there was an error and a list if the command
+        # succeeded. It might be an empty list.
+        return result
 
-    def delete_volume(self, ssn, name):
-        # find our volume
-        vol = self.find_volume(ssn, name, None)
+    def find_volume(self, name):
+        '''Search self.ssn for volume of name.
+        '''
+        LOG.debug('Searching %(sn)s for %(name)s',
+                  {'sn': self.ssn,
+                   'name': name})
+
+        # Cannot find a volume without the name
+        if name is None:
+            return None
+
+        # Look for our volume in our folder.
+        vollist = self._get_volume_list(name,
+                                        True)
+        # If an empty list was returned they probably moved the volumes or
+        # changed the folder name so try again without the folder.
+        if not vollist:
+            LOG.debug('Cannot find volume %(n)s in %(v)s.  Searching SC.',
+                      {'n': name,
+                       'v': self.vfname})
+            vollist = self._get_volume_list(name,
+                                            False)
+
+        # If multiple volumes of the same name are found we need to error.
+        if len(vollist) > 1:
+            # blow up
+            raise exception.VolumeBackendAPIException(
+                _('Multiple copies of volume %s found.') % name)
+
+        # We made it and should have a valid volume.
+        return None if not vollist else vollist[0]
+
+    def delete_volume(self, name):
+        # Delete our volume.
+        vol = self.find_volume(name)
         if vol is not None:
             r = self.client.delete('StorageCenter/ScVolume/%s'
                                    % self._get_id(vol))
             if r.status_code != 200:
                 raise exception.VolumeBackendAPIException(
                     _('Error deleting volume %(ssn)s: %(sn)s: %(c)d %(r)s') %
-                    {'ssn': ssn,
+                    {'ssn': self.ssn,
                      'sn': name,
                      'c': r.status_code,
                      'r': r.reason})
@@ -471,15 +522,13 @@ class StorageCenterApi(object):
         # If we can't find the volume then it is effectively gone.
         return True
 
-    def _create_server_folder_path(self, ssn, foldername):
-        return self._create_folder_path('StorageCenter/ScServerFolder',
-                                        ssn,
-                                        foldername)
-
-    def _find_server_folder(self, ssn, foldername):
-        return self._find_folder('StorageCenter/ScServerFolder/GetList',
-                                 ssn,
-                                 foldername)
+    def _find_server_folder(self, create=False):
+        folder = self._find_folder('StorageCenter/ScServerFolder/GetList',
+                                   self.sfname)
+        if folder is None and create is True:
+            folder = self._create_folder_path('StorageCenter/ScServerFolder',
+                                              self.sfname)
+        return folder
 
     def _add_hba(self, scserver, wwnoriscsiname, isfc=False):
         '''Adds an HBA to the scserver.  The HBA will be added
@@ -506,12 +555,12 @@ class StorageCenterApi(object):
 
     # We do not know that we are red hat linux 6.x but that works
     # best for red hat and ubuntu.  So, there.
-    def _find_serveros(self, ssn, osname='Red Hat Linux 6.x'):
+    def _find_serveros(self, osname='Red Hat Linux 6.x'):
         '''Returns the serveros instance id of the specified osname.
         Required to create a server.
         '''
         pf = PayloadFilter()
-        pf.append('scSerialNumber', ssn)
+        pf.append('scSerialNumber', self.ssn)
         r = self.client.post('StorageCenter/ScServerOperatingSystem/GetList',
                              pf.payload)
         if r.status_code == 200:
@@ -527,7 +576,7 @@ class StorageCenterApi(object):
                      'r': r.reason})
         return None
 
-    def create_server_multiple_hbas(self, ssn, foldername, wwns):
+    def create_server_multiple_hbas(self, wwns):
         '''Same as create_server except it can take a list of hbas.  hbas
         can be wwns or iqns.
         '''
@@ -537,9 +586,7 @@ class StorageCenterApi(object):
         for wwn in wwns:
             if scserver is None:
                 # Use the fist wwn to create the server.
-                scserver = self.create_server(ssn,
-                                              foldername,
-                                              wwn,
+                scserver = self.create_server(wwn,
                                               True)
             else:
                 # Add the wwn to our server
@@ -548,27 +595,23 @@ class StorageCenterApi(object):
                               True)
         return scserver
 
-    def create_server(self, ssn, foldername, wwnoriscsiname, isfc=False):
-        '''creates a server on the the storage center ssn.  Adds the first
+    def create_server(self, wwnoriscsiname, isfc=False):
+        '''creates a server on the the storage center self.ssn.  Adds the first
         HBA to it.
         '''
         scserver = None
         payload = {}
         payload['Name'] = 'Server_' + wwnoriscsiname
-        payload['StorageCenter'] = ssn
+        payload['StorageCenter'] = self.ssn
         payload['Notes'] = self.notes
         # We pick Red Hat Linux 6.x because it supports multipath and
         # will attach luns to paths as they are found.
-        scserveros = self._find_serveros(ssn, 'Red Hat Linux 6.x')
+        scserveros = self._find_serveros('Red Hat Linux 6.x')
         if scserveros is not None:
             payload['OperatingSystem'] = scserveros
 
         # Find our folder or make it
-        folder = self._find_server_folder(ssn,
-                                          foldername)
-        if folder is None:
-            folder = self._create_server_folder_path(ssn,
-                                                     foldername)
+        folder = self._find_server_folder(True)
 
         # At this point it doesn't matter if the folder was created or not.
         # We just attempt to create the server.  Let it be in the root if
@@ -600,7 +643,7 @@ class StorageCenterApi(object):
         # Success or failure is determined by the caller
         return scserver
 
-    def find_server(self, ssn, instance_name):
+    def find_server(self, instance_name):
         '''Hunts for a server by looking for an HBA with the server's IQN
         or wwn.
 
@@ -608,13 +651,13 @@ class StorageCenterApi(object):
         '''
         scserver = None
         # We search for our server by first finding our HBA
-        hba = self._find_serverhba(ssn, instance_name)
+        hba = self._find_serverhba(instance_name)
         # Once created hbas stay in the system.  So it isn't enough
         # that we found one it actually has to be attached to a
         # server.
         if hba is not None and hba.get('server') is not None:
             pf = PayloadFilter()
-            pf.append('scSerialNumber', ssn)
+            pf.append('scSerialNumber', self.ssn)
             pf.append('instanceId', self._get_id(hba['server']))
             r = self.client.post('StorageCenter/ScServer/GetList',
                                  pf.payload)
@@ -629,7 +672,7 @@ class StorageCenterApi(object):
                       instance_name)
         return scserver
 
-    def _find_serverhba(self, ssn, instance_name):
+    def _find_serverhba(self, instance_name):
         '''Hunts for a sc server HBA by looking for an HBA with the
         server's IQN or wwn.
 
@@ -638,7 +681,7 @@ class StorageCenterApi(object):
         scserverhba = None
         # We search for our server by first finding our HBA
         pf = PayloadFilter()
-        pf.append('scSerialNumber', ssn)
+        pf.append('scSerialNumber', self.ssn)
         pf.append('instanceName', instance_name)
         r = self.client.post('StorageCenter/ScServerHba/GetList',
                              pf.payload)
@@ -984,12 +1027,12 @@ class StorageCenterApi(object):
                 rtn = False
         return rtn
 
-    def get_storage_usage(self, ssn):
+    def get_storage_usage(self):
         '''get_storage_usage'''
         storageusage = None
-        if ssn is not None:
+        if self.ssn is not None:
             r = self.client.get('StorageCenter/StorageCenter/%s/StorageUsage'
-                                % ssn)
+                                % self.ssn)
             if r.status_code == 200:
                 storageusage = self._get_json(r)
             else:
@@ -1085,21 +1128,12 @@ class StorageCenterApi(object):
         # We either couldn't find it or expired it.
         return True
 
-    def create_view_volume(self, volname, volfolder, screplay):
+    def create_view_volume(self, volname, screplay):
         '''create_view_volume
 
-        creates a new volume named volname in the folder
-        volfolder from the screplay.
+        creates a new volume named volname from the screplay.
         '''
-        # find our ssn and get our folder
-        ssn = screplay.get('scSerialNumber')
-        folder = self._find_volume_folder(ssn,
-                                          volfolder)
-
-        # Doesn't exist?  make it
-        if folder is None:
-            folder = self._create_volume_folder_path(ssn,
-                                                     volfolder)
+        folder = self._find_volume_folder(True)
 
         # payload is just the volume name and folder if we have one.
         payload = {}
@@ -1124,7 +1158,7 @@ class StorageCenterApi(object):
 
         return volume
 
-    def create_cloned_volume(self, volumename, volumefolder, scvolume):
+    def create_cloned_volume(self, volumename, scvolume):
         '''create_cloned_volume
 
         creates a temporary replay and then creates a
@@ -1136,7 +1170,6 @@ class StorageCenterApi(object):
                                     60)
         if replay is not None:
             clone = self.create_view_volume(volumename,
-                                            volumefolder,
                                             replay)
         else:
             LOG.error(_LE('Error: unable to snap replay'))
