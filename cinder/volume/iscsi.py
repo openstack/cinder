@@ -41,7 +41,7 @@ class _ExportMixin(object):
                                                        volume,
                                                        max_targets)
 
-        current_chap_auth = self._get_target_chap_auth(iscsi_name)
+        current_chap_auth = self._get_target_chap_auth(context, iscsi_name)
         if current_chap_auth:
             (chap_username, chap_password) = current_chap_auth
         else:
@@ -235,6 +235,18 @@ class FakeIscsiHelper(_ExportMixin, iscsi.FakeIscsiHelper):
 
 
 class LioAdm(_ExportMixin, iscsi.LioAdm):
+
+    def _get_target_chap_auth(self, context, iscsi_name):
+        """Get the current chap auth username and password."""
+        try:
+            # 'iscsi_name': 'iqn.2010-10.org.openstack:volume-00000001'
+            vol_id = iscsi_name.split(':volume-')[1]
+            volume_info = self.db.volume_get(context, vol_id)
+            # 'provider_auth': 'CHAP user_id password'
+            if volume_info['provider_auth']:
+                return tuple(volume_info['provider_auth'].split(' ', 3)[1:])
+        except exception.NotFound:
+            LOG.debug('Failed to get CHAP auth from DB for %s', vol_id)
 
     def remove_export(self, context, volume):
         try:

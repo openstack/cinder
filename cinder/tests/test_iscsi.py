@@ -13,12 +13,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+
 import os.path
 import shutil
 import string
 import tempfile
 
 from cinder.brick.iscsi import iscsi
+from cinder import context
 from cinder import test
 from cinder.volume import driver
 
@@ -141,7 +144,8 @@ class TgtAdmTestCase(test.TestCase, TargetAdminTestCase):
 
     def verify_config(self):
         target_helper = self.driver.get_target_helper(self.db)
-        self.assertEqual(target_helper._get_target_chap_auth(self.target_name),
+        self.assertEqual(target_helper._get_target_chap_auth(None,
+                                                             self.target_name),
                          (self.chap_username, self.chap_password))
 
 
@@ -227,6 +231,20 @@ class LioAdmTestCase(test.TestCase, TargetAdminTestCase):
             'cinder-rtstool create '
             '%(path)s %(target_name)s %(username)s %(password)s',
             'cinder-rtstool delete %(target_name)s'])
+
+    # Based on TestLioAdmDriver.test_get_target_chap_auth from
+    # change Iea3d94e35a4ced4dafc1b61e2df6b075cf200577
+    def test_get_target_chap_auth(self):
+        ctxt = context.get_admin_context()
+        test_vol = 'iqn.2010-10.org.openstack:'\
+                   'volume-83c2e877-feed-46be-8435-77884fe55b45'
+
+        db = mock.MagicMock(
+            volume_get=lambda x, y: {'provider_auth': 'IncomingUser foo bar'})
+        target_helper = self.driver.get_target_helper(db)
+
+        self.assertEqual(('foo', 'bar'),
+                         target_helper._get_target_chap_auth(ctxt, test_vol))
 
 
 class ISERTgtAdmTestCase(TgtAdmTestCase):
