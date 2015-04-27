@@ -44,6 +44,7 @@ class VolumeActionsTest(test.TestCase):
     def setUp(self):
         super(VolumeActionsTest, self).setUp()
         self.UUID = uuid.uuid4()
+        self.controller = volume_actions.VolumeActionsController()
         self.api_patchers = {}
         for _meth in self._methods:
             self.api_patchers[_meth] = mock.patch('cinder.volume.API.' + _meth)
@@ -178,6 +179,41 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(res.status_int, 202)
+
+    def test_volume_attach_to_instance_raises_remote_error(self):
+        volume_remote_error = \
+            messaging.RemoteError(exc_type='InvalidUUID')
+        with mock.patch.object(volume_api.API, 'attach',
+                               side_effect=volume_remote_error):
+            id = 1
+            vol = {"instance_uuid": self.UUID,
+                   "mountpoint": "/dev/vdc",
+                   "mode": "rw"}
+            body = {"os-attach": vol}
+            req = fakes.HTTPRequest.blank('/v2/tenant1/volumes/%s/action' % id)
+            self.assertRaises(webob.exc.HTTPBadRequest,
+                              self.controller._attach,
+                              req,
+                              id,
+                              body)
+
+    def test_volume_attach_to_instance_raises_db_error(self):
+        # In case of DB error 500 error code is returned to user
+        volume_remote_error = \
+            messaging.RemoteError(exc_type='DBError')
+        with mock.patch.object(volume_api.API, 'attach',
+                               side_effect=volume_remote_error):
+            id = 1
+            vol = {"instance_uuid": self.UUID,
+                   "mountpoint": "/dev/vdc",
+                   "mode": "rw"}
+            body = {"os-attach": vol}
+            req = fakes.HTTPRequest.blank('/v2/tenant1/volumes/%s/action' % id)
+            self.assertRaises(messaging.RemoteError,
+                              self.controller._attach,
+                              req,
+                              id,
+                              body)
 
     def test_detach(self):
         body = {'os-detach': {'attachment_id': 'fakeuuid'}}
