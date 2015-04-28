@@ -2671,41 +2671,47 @@ class EMCVMAXCommon(object):
         return memberInstanceNames
 
     def _create_composite_volume(
-            self, volume, volumeName, volumeSize, extraSpecs):
+            self, volume, volumeName, volumeSize, extraSpecs,
+            memberCount=None):
         """Create a composite volume (V2).
 
         :param volume: the volume object
         :param volumeName: the name of the volume
         :param volumeSize: the size of the volume
         :param extraSpecs: extra specifications
+        :param memberCount: the number of meta members in a composite volume
         :returns: int -- return code
         :returns: dict -- volumeDict
         :returns: string -- storageSystemName
         :raises: VolumeBackendAPIException
         """
-        memberCount, errorDesc = self.utils.determine_member_count(
-            volume['size'], extraSpecs[MEMBERCOUNT],
-            extraSpecs[COMPOSITETYPE])
-        if errorDesc is not None:
-            exceptionMessage = (_("The striped meta count of %(memberCount)s "
-                                  "is too small for volume: %(volumeName)s "
-                                  "with size %(volumeSize)s.")
-                                % {'memberCount': memberCount,
-                                   'volumeName': volumeName,
-                                   'volumeSize': volume['size']})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+        if not memberCount:
+            memberCount, errorDesc = self.utils.determine_member_count(
+                volume['size'], extraSpecs[MEMBERCOUNT],
+                extraSpecs[COMPOSITETYPE])
+            if errorDesc is not None:
+                exceptionMessage = (_("The striped meta count of "
+                                      "%(memberCount)s is too small for "
+                                      "volume: %(volumeName)s, "
+                                      "with size %(volumeSize)s.")
+                                    % {'memberCount': memberCount,
+                                       'volumeName': volumeName,
+                                       'volumeSize': volume['size']})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
 
         poolInstanceName, storageSystemName = (
             self._get_pool_and_storage_system(extraSpecs))
 
         LOG.debug("Create Volume: %(volume)s  Pool: %(pool)s "
                   "Storage System: %(storageSystem)s "
-                  "Size: %(size)lu.",
+                  "Size: %(size)lu  MemberCount: %(memberCount)s.",
                   {'volume': volumeName,
                    'pool': poolInstanceName,
                    'storageSystem': storageSystemName,
-                   'size': volumeSize})
+                   'size': volumeSize,
+                   'memberCount': memberCount})
 
         elementCompositionService = (
             self.utils.find_element_composition_service(self.conn,
@@ -3483,7 +3489,7 @@ class EMCVMAXCommon(object):
                     _rc, baseVolumeDict, storageSystemName = (
                         self._create_composite_volume(
                             volume, baseVolumeName, volumeSizeInbits,
-                            extraSpecs))
+                            extraSpecs, 1))
                     baseTargetVolumeInstance = self.utils.find_volume_instance(
                         self.conn, baseVolumeDict, baseVolumeName)
                     LOG.debug("Base target volume %(targetVol)s created. "

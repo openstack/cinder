@@ -393,7 +393,7 @@ class EMCVMAXCommonData(object):
                           'project_id':
                           'project', 'id': '2',
                           'provider_location':
-                              six.text_type(provider_location),
+                          six.text_type(provider_location),
                           'display_description': 'snapshot source volume'}
 
     test_CG = {'name': 'myCG1',
@@ -2660,6 +2660,51 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage):
         self.driver.delete_cgsnapshot(
             self.data.test_ctxt, self.data.test_CG_snapshot)
+
+    # Bug https://bugs.launchpad.net/cinder/+bug/1442376
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_meta_members_capacity_in_bit',
+        return_value=[1234567, 7654321])
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_volume_meta_head',
+        return_value=[EMCVMAXCommonData.test_volume])
+    @mock.patch.object(
+        FakeDB,
+        'volume_get',
+        return_value=EMCVMAXCommonData.test_source_volume)
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSINoFAST'})
+    def test_create_clone_with_different_meta_sizes(
+            self, mock_volume_type, mock_volume,
+            mock_meta, mock_size, mock_pool):
+        self.data.test_volume['volume_name'] = "vmax-1234567"
+        common = self.driver.common
+        volumeDict = {'classname': u'Symm_StorageVolume',
+                      'keybindings': EMCVMAXCommonData.keybindings}
+        volume = {'size': 0L}
+        common.provision.create_volume_from_pool = (
+            mock.Mock(return_value=(volumeDict, volume['size'])))
+        common.provision.get_volume_dict_from_job = (
+            mock.Mock(return_value=volumeDict))
+
+        common._create_composite_volume = (
+            mock.Mock(return_value=(0L,
+                                    volumeDict,
+                                    EMCVMAXCommonData.storage_system)))
+
+        self.driver.create_cloned_volume(self.data.test_volume,
+                                         EMCVMAXCommonData.test_source_volume)
+        extraSpecs = self.driver.common._initial_setup(self.data.test_volume)
+        common._create_composite_volume.assert_called_with(
+            volume, "TargetBaseVol", 1234567, extraSpecs, 1)
 
     def _cleanup(self):
         if self.config_file_path:
