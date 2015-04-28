@@ -14,9 +14,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-iSCSI driver for NetApp E-series storage systems.
-"""
 
 import copy
 import math
@@ -34,7 +31,6 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import loopingcall
 from cinder import utils as cinder_utils
-from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import client
 from cinder.volume.drivers.netapp.eseries import exception as eseries_exc
 from cinder.volume.drivers.netapp.eseries import host_mapper
@@ -46,7 +42,6 @@ from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
-
 CONF = cfg.CONF
 CONF.register_opts(na_opts.netapp_basicauth_opts)
 CONF.register_opts(na_opts.netapp_connection_opts)
@@ -55,7 +50,7 @@ CONF.register_opts(na_opts.netapp_transport_opts)
 CONF.register_opts(na_opts.netapp_san_opts)
 
 
-class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
+class NetAppESeriesLibrary(object):
     """Executes commands relating to Volumes."""
 
     VERSION = "1.0.0"
@@ -97,9 +92,9 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
 
     DEFAULT_HOST_TYPE = 'linux_dm_mp'
 
-    def __init__(self, *args, **kwargs):
-        super(NetAppEseriesISCSIDriver, self).__init__(*args, **kwargs)
-        na_utils.validate_instantiation(**kwargs)
+    def __init__(self, driver_name, driver_protocol="iSCSI",
+                 configuration=None, **kwargs):
+        self.configuration = configuration
         self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
         self.configuration.append_config_values(
             na_opts.netapp_connection_opts)
@@ -108,6 +103,9 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         self.configuration.append_config_values(na_opts.netapp_san_opts)
         self._backend_name = self.configuration.safe_get(
             "volume_backend_name") or "NetApp_ESeries"
+        self.driver_name = driver_name
+        self.driver_protocol = driver_protocol
+        self._stats = {}
         self._ssc_stats = {}
 
     def do_setup(self, context):
@@ -457,7 +455,8 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        snapshot = {'id': uuid.uuid4(), 'volume_id': src_vref['id']}
+        snapshot = {'id': uuid.uuid4(), 'volume_id': src_vref['id'],
+                    'volume': src_vref}
         self.create_snapshot(snapshot)
         try:
             self.create_volume_from_snapshot(volume, snapshot)
@@ -481,7 +480,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         """Creates a snapshot."""
         snap_grp, snap_image = None, None
         snapshot_name = utils.convert_uuid_to_es_fmt(snapshot['id'])
-        os_vol = self.db.volume_get(self.context, snapshot['volume_id'])
+        os_vol = snapshot['volume']
         vol = self._get_volume(os_vol['name_id'])
         vol_size_gb = int(vol['totalSizeInBytes']) / units.Gi
         pools = self._get_sorted_available_storage_pools(vol_size_gb)
@@ -517,12 +516,10 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         """Removes an export for a volume."""
         pass
 
-    def initialize_connection(self, volume, connector):
-        """Allow connection to connector and return connection info."""
-        initiator_name = connector['initiator']
-        eseries_vol = self._get_volume(volume['name_id'])
+    def map_volume_to_host(self, volume, eseries_volume, initiator_name):
+        """Ensures the specified initiator has access to the volume."""
         existing_maps = host_mapper.get_host_mapping_for_vol_frm_array(
-            self._client, eseries_vol)
+            self._client, eseries_volume)
         host = self._get_or_create_host(initiator_name, self.host_type)
         # There can only be one or zero mappings on a volume in E-Series
         current_map = existing_maps[0] if existing_maps else None
@@ -531,13 +528,20 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
             self._ensure_multi_attach_host_group_exists()
             mapping = host_mapper.map_volume_to_multiple_hosts(self._client,
                                                                volume,
-                                                               eseries_vol,
+                                                               eseries_volume,
                                                                host,
                                                                current_map)
         else:
             mapping = host_mapper.map_volume_to_single_host(
-                self._client, volume, eseries_vol, host, current_map,
+                self._client, volume, eseries_volume, host, current_map,
                 self.configuration.netapp_enable_multiattach)
+        return mapping
+
+    def initialize_connection_iscsi(self, volume, connector):
+        """Allow connection to connector and return connection info."""
+        initiator_name = connector['initiator']
+        eseries_vol = self._get_volume(volume['name_id'])
+        mapping = self.map_volume_to_host(volume, eseries_vol, initiator_name)
 
         lun_id = mapping['lun']
         msg_fmt = {'id': volume['id'], 'initiator_name': initiator_name}
@@ -644,7 +648,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                 return ht
         raise exception.NotFound(_("Host type %s not supported.") % host_type)
 
-    def terminate_connection(self, volume, connector, **kwargs):
+    def terminate_connection_iscsi(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         eseries_vol = self._get_volume(volume['name_id'])
         initiator = connector['initiator']
@@ -675,7 +679,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         data["volume_backend_name"] = self._backend_name
         data["vendor_name"] = "NetApp"
         data["driver_version"] = self.VERSION
-        data["storage_protocol"] = "iSCSI"
+        data["storage_protocol"] = self.driver_protocol
         data["pools"] = []
 
         for storage_pool in self._get_storage_pools():

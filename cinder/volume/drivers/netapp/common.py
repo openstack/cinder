@@ -49,7 +49,7 @@ NETAPP_UNIFIED_DRIVER_REGISTRY = {
     },
     'eseries':
     {
-        'iscsi': ESERIES_PATH + '.iscsi.NetAppEseriesISCSIDriver'
+        'iscsi': ESERIES_PATH + '.iscsi_driver.NetAppEseriesISCSIDriver'
     }}
 
 
