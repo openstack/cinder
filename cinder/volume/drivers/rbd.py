@@ -259,10 +259,12 @@ class RADOSClient(object):
         return int(features)
 
 
-class RBDDriver(driver.VolumeDriver):
+class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
+                driver.CloneableVD, driver.CloneableImageVD, driver.SnapshotVD,
+                driver.BaseVD):
     """Implements RADOS block device (RBD) volume commands."""
 
-    VERSION = '1.1.0'
+    VERSION = '1.2.0'
 
     def __init__(self, *args, **kwargs):
         super(RBDDriver, self).__init__(*args, **kwargs)
