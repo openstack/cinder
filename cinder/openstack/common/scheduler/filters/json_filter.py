@@ -15,7 +15,7 @@
 
 import operator
 
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 import six
 
 from cinder.openstack.common.scheduler import filters
