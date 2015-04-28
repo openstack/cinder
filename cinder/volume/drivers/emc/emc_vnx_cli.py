@@ -1606,7 +1606,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.03.06'
+    VERSION = '05.03.07'
     stats = {'driver_version': VERSION,
              'storage_protocol': None,
              'vendor_name': 'EMC',
@@ -2740,18 +2740,6 @@ class EMCVnxCliBase(object):
         return fc_properties
 
     def initialize_connection(self, volume, connector):
-        volume_metadata = {}
-        for metadata in volume['volume_admin_metadata']:
-            volume_metadata[metadata['key']] = metadata['value']
-        access_mode = volume_metadata.get('attached_mode')
-        if access_mode is None:
-            access_mode = ('ro'
-                           if volume_metadata.get('readonly') == 'True'
-                           else 'rw')
-        LOG.debug('Volume %(vol)s Access mode is: %(access)s.',
-                  {'vol': volume['name'],
-                   'access': access_mode})
-
         """Initializes the connection and returns connection info."""
         @lockutils.synchronized('emc-connection-' + connector['host'],
                                 "emc-connection-", True)
@@ -2767,7 +2755,6 @@ class EMCVnxCliBase(object):
                 device_number,
                 sg_data['raw_output']
             )
-            iscsi_properties['access_mode'] = access_mode
             data = {'driver_volume_type': 'iscsi',
                     'data': iscsi_properties}
         elif self.protocol == 'FC':
@@ -2775,7 +2762,6 @@ class EMCVnxCliBase(object):
             fc_properties = self.vnx_get_fc_properties(connector,
                                                        device_number)
             fc_properties['volume_id'] = volume['id']
-            fc_properties['access_mode'] = access_mode
             data = {'driver_volume_type': 'fibre_channel',
                     'data': fc_properties}
 
