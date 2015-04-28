@@ -44,6 +44,7 @@ class VolumeActionsTest(test.TestCase):
     def setUp(self):
         super(VolumeActionsTest, self).setUp()
         self.UUID = uuid.uuid4()
+        self.controller = volume_actions.VolumeActionsController()
         self.api_patchers = {}
         for _meth in self._methods:
             self.api_patchers[_meth] = mock.patch('cinder.volume.API.' + _meth)
@@ -188,6 +189,37 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(202, res.status_int)
+
+    def test_volume_detach_raises_remote_error(self):
+        volume_remote_error = \
+            messaging.RemoteError(exc_type='VolumeAttachmentNotFound')
+        with mock.patch.object(volume_api.API, 'detach',
+                               side_effect=volume_remote_error):
+            id = 1
+            vol = {"attachment_id": self.UUID}
+            body = {"os-detach": vol}
+            req = fakes.HTTPRequest.blank('/v2/tenant1/volumes/%s/action' % id)
+            self.assertRaises(webob.exc.HTTPBadRequest,
+                              self.controller._detach,
+                              req,
+                              id,
+                              body)
+
+    def test_volume_detach_raises_db_error(self):
+        # In case of DB error 500 error code is returned to user
+        volume_remote_error = \
+            messaging.RemoteError(exc_type='DBError')
+        with mock.patch.object(volume_api.API, 'detach',
+                               side_effect=volume_remote_error):
+            id = 1
+            vol = {"attachment_id": self.UUID}
+            body = {"os-detach": vol}
+            req = fakes.HTTPRequest.blank('/v2/tenant1/volumes/%s/action' % id)
+            self.assertRaises(messaging.RemoteError,
+                              self.controller._detach,
+                              req,
+                              id,
+                              body)
 
     def test_attach_with_invalid_arguments(self):
         # Invalid request to attach volume an invalid target
