@@ -1165,7 +1165,9 @@ class API(base.Base):
             reserve_opts = {'gigabytes': size_increase}
             QUOTAS.add_volume_type_opts(context, reserve_opts,
                                         volume.get('volume_type_id'))
-            reservations = QUOTAS.reserve(context, **reserve_opts)
+            reservations = QUOTAS.reserve(context,
+                                          project_id=volume['project_id'],
+                                          **reserve_opts)
         except exception.OverQuota as exc:
             usages = exc.kwargs['usages']
             quotas = exc.kwargs['quotas']

@@ -3412,6 +3412,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume_api.extend(self.context, volume, 3)
         volume = db.volume_get(context.get_admin_context(), volume['id'])
         self.assertEqual('extending', volume['status'])
+        reserve.assert_called_once_with(self.context, gigabytes=1,
+                                        project_id=volume['project_id'])
 
         # Test the quota exceeded
         volume['status'] = 'available'
@@ -3477,13 +3479,19 @@ class VolumeTestCase(BaseVolumeTestCase):
         # Test driver success
         with mock.patch.object(self.volume.driver,
                                'extend_volume') as extend_volume:
-            extend_volume.return_value = fake_extend
-            volume['status'] = 'extending'
-            self.volume.extend_volume(self.context, volume['id'], '4',
-                                      fake_reservations)
-            volume = db.volume_get(context.get_admin_context(), volume['id'])
-            self.assertEqual(4, volume['size'])
-            self.assertEqual('available', volume['status'])
+            with mock.patch.object(QUOTAS, 'commit') as quotas_commit:
+                extend_volume.return_value = fake_extend
+                volume['status'] = 'extending'
+                self.volume.extend_volume(self.context, volume['id'], '4',
+                                          fake_reservations)
+                volume = db.volume_get(context.get_admin_context(),
+                                       volume['id'])
+                self.assertEqual(4, volume['size'])
+                self.assertEqual('available', volume['status'])
+                quotas_commit.assert_called_with(
+                    self.context,
+                    ['RESERVATION'],
+                    project_id=volume['project_id'])
 
         # clean up
         self.volume.delete_volume(self.context, volume['id'])

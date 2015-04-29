@@ -1566,6 +1566,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                       {'status': 'error_extending'})
 
         volume = self.db.volume_get(context, volume_id)
+        project_id = volume['project_id']
         size_increase = (int(new_size)) - volume['size']
         self._notify_about_volume_usage(context, volume, "resize.start")
         try:
@@ -1580,10 +1581,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                   "to extend volume") %
                                                 volume_id)
             finally:
-                QUOTAS.rollback(context, reservations)
+                QUOTAS.rollback(context, reservations, project_id=project_id)
                 return
 
-        QUOTAS.commit(context, reservations)
+        QUOTAS.commit(context, reservations, project_id=project_id)
         volume = self.db.volume_update(context,
                                        volume['id'],
                                        {'size': int(new_size),
