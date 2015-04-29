@@ -17,6 +17,7 @@ import mock
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
+import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import webob
@@ -489,6 +490,104 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(len(admin_metadata), 1)
         self.assertEqual(admin_metadata[0]['key'], 'readonly')
         self.assertEqual(admin_metadata[0]['value'], 'False')
+        # cleanup
+        svc.stop()
+
+    def test_volume_force_detach_raises_remote_error(self):
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is available
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1})
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        # start service to handle rpc messages for attach requests
+        svc = self.start_service('volume', host='test')
+        self.volume_api.reserve_volume(ctx, volume)
+        mountpoint = '/dev/vbd'
+        attachment = self.volume_api.attach(ctx, volume, stubs.FAKE_UUID,
+                                            None, mountpoint, 'rw')
+        # volume is attached
+        volume = db.volume_get(ctx, volume['id'])
+        self.assertEqual(volume['status'], 'in-use')
+        self.assertEqual(attachment['instance_uuid'], stubs.FAKE_UUID)
+        self.assertEqual(attachment['mountpoint'], mountpoint)
+        self.assertEqual(attachment['attach_status'], 'attached')
+        admin_metadata = volume['volume_admin_metadata']
+        self.assertEqual(len(admin_metadata), 2)
+        self.assertEqual(admin_metadata[0]['key'], 'readonly')
+        self.assertEqual(admin_metadata[0]['value'], 'False')
+        self.assertEqual(admin_metadata[1]['key'], 'attached_mode')
+        self.assertEqual(admin_metadata[1]['value'], 'rw')
+        conn_info = self.volume_api.initialize_connection(ctx,
+                                                          volume,
+                                                          connector)
+        self.assertEqual(conn_info['data']['access_mode'], 'rw')
+        # build request to force detach
+        volume_remote_error = \
+            messaging.RemoteError(exc_type='VolumeAttachmentNotFound')
+        with mock.patch.object(volume_api.API, 'detach',
+                               side_effect=volume_remote_error):
+            req = webob.Request.blank('/v2/fake/volumes/%s/action' %
+                                      volume['id'])
+            req.method = 'POST'
+            req.headers['content-type'] = 'application/json'
+            req.body = jsonutils.dumps({'os-force_detach':
+                                        {'attachment_id': 'fake'}})
+            # attach admin context to request
+            req.environ['cinder.context'] = ctx
+            # make request
+            resp = req.get_response(app())
+            self.assertEqual(resp.status_int, 400)
+        # cleanup
+        svc.stop()
+
+    def test_volume_force_detach_raises_db_error(self):
+        # In case of DB error 500 error code is returned to user
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # current status is available
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1})
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        # start service to handle rpc messages for attach requests
+        svc = self.start_service('volume', host='test')
+        self.volume_api.reserve_volume(ctx, volume)
+        mountpoint = '/dev/vbd'
+        attachment = self.volume_api.attach(ctx, volume, stubs.FAKE_UUID,
+                                            None, mountpoint, 'rw')
+        # volume is attached
+        volume = db.volume_get(ctx, volume['id'])
+        self.assertEqual(volume['status'], 'in-use')
+        self.assertEqual(attachment['instance_uuid'], stubs.FAKE_UUID)
+        self.assertEqual(attachment['mountpoint'], mountpoint)
+        self.assertEqual(attachment['attach_status'], 'attached')
+        admin_metadata = volume['volume_admin_metadata']
+        self.assertEqual(len(admin_metadata), 2)
+        self.assertEqual(admin_metadata[0]['key'], 'readonly')
+        self.assertEqual(admin_metadata[0]['value'], 'False')
+        self.assertEqual(admin_metadata[1]['key'], 'attached_mode')
+        self.assertEqual(admin_metadata[1]['value'], 'rw')
+        conn_info = self.volume_api.initialize_connection(ctx,
+                                                          volume,
+                                                          connector)
+        self.assertEqual(conn_info['data']['access_mode'], 'rw')
+        # build request to force detach
+        volume_remote_error = \
+            messaging.RemoteError(exc_type='DBError')
+        with mock.patch.object(volume_api.API, 'detach',
+                               side_effect=volume_remote_error):
+            req = webob.Request.blank('/v2/fake/volumes/%s/action' %
+                                      volume['id'])
+            req.method = 'POST'
+            req.headers['content-type'] = 'application/json'
+            req.body = jsonutils.dumps({'os-force_detach':
+                                        {'attachment_id': 'fake'}})
+            # attach admin context to request
+            req.environ['cinder.context'] = ctx
+            # make request
+            self.assertRaises(messaging.RemoteError,
+                              req.get_response,
+                              app())
         # cleanup
         svc.stop()
 
