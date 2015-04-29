@@ -35,6 +35,7 @@ from oslo_serialization import jsonutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import units
+import six
 from stevedore import extension
 from taskflow.engines.action_engine import engine
 
@@ -1261,7 +1262,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         # source volume was deleted while the create was locked. Note that the
         # volume is still in the db since it was created by the test prior to
         # calling manager.create_volume.
-        self.assertRaises(exception.VolumeNotFound, gthreads[0].wait)
+        with mock.patch('sys.stderr', new=six.StringIO()):
+            self.assertRaises(exception.VolumeNotFound, gthreads[0].wait)
 
     def _raise_metadata_copy_failure(self, method, dst_vol_id, **kwargs):
         # MetadataCopyFailure exception will be raised if DB service is Down
@@ -1519,8 +1521,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         # snapshot was deleted while the create was locked. Note that the
         # volume is still in the db since it was created by the test prior to
         #  calling manager.create_volume.
-        self.assertRaises(exception.SnapshotNotFound, gthreads[0].wait)
-
+        with mock.patch('sys.stderr', new=six.StringIO()):
+            self.assertRaises(exception.SnapshotNotFound, gthreads[0].wait)
         # locked
         self.volume.delete_volume(self.context, src_vol_id)
         # make sure it is gone

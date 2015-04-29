@@ -107,7 +107,7 @@ class QuobyteDriverTestCase(test.TestCase):
             caught = True
             self.assertEqual(excClass, type(exc),
                              'Wrong exception caught: %s Stacktrace: %s' %
-                             (exc, traceback.print_exc()))
+                             (exc, traceback.format_exc()))
             self.assertIn(msg, six.text_type(exc))
 
         if not caught:

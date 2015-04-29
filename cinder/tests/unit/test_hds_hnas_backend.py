@@ -263,8 +263,8 @@ UTILS_EXEC_OUT = ["output: test_cmd", ""]
 
 
 def m_run_cmd(*args, **kargs):
-    print(args)  # noqa
-    print(HNAS_CMDS.get(args))  # noqa
+    LOG.debug(args)
+    LOG.debug(HNAS_CMDS.get(args))
     return HNAS_CMDS.get(args)
 
 
