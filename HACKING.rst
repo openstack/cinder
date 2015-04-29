@@ -21,6 +21,7 @@ Cinder Specific Commandments
 - [C303] Ensure that there are no 'print()' statements in code that is being committed.
 - [C304] Enforce no use of LOG.audit messages.  LOG.info should be used instead.
 - [C305] Prevent use of deprecated contextlib.nested.
+- [C306] timeutils.strtime() must not be used (deprecated).
 
 
 General

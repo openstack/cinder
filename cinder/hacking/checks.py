@@ -219,6 +219,13 @@ def check_no_contextlib_nested(logical_line):
         yield(0, msg)
 
 
+def check_timeutils_strtime(logical_line):
+    msg = ("C306: Found timeutils.strtime(). "
+           "Please use oslo_utils.timeutils.isotime() or datetime.strftime()")
+    if 'timeutils.strtime' in logical_line:
+        yield(0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
@@ -227,6 +234,7 @@ def factory(register):
     register(check_assert_called_once)
     register(check_oslo_namespace_imports)
     register(check_datetime_now)
+    register(check_timeutils_strtime)
     register(validate_log_translations)
     register(check_unicode_usage)
     register(check_no_print_statements)

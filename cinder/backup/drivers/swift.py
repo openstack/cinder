@@ -274,7 +274,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         az = 'az_%s' % self.az
         backup_name = '%s_backup_%s' % (az, backup['id'])
         volume = 'volume_%s' % (backup['volume_id'])
-        timestamp = timeutils.strtime(fmt="%Y%m%d%H%M%S")
+        timestamp = timeutils.utcnow().strftime("%Y%m%d%H%M%S")
         prefix = volume + '/' + timestamp + '/' + backup_name
         LOG.debug('generate_object_name_prefix: %s', prefix)
         return prefix
