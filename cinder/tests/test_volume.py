@@ -2844,6 +2844,108 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.assertIsNone(volume['migration_status'])
             self.assertEqual('available', volume['status'])
 
+    def test_clean_temporary_volume(self):
+        def fake_delete_volume(ctxt, volume):
+            db.volume_destroy(ctxt, volume['id'])
+
+        fake_volume = tests_utils.create_volume(self.context, size=1,
+                                                host=CONF.host)
+        fake_new_volume = tests_utils.create_volume(self.context, size=1,
+                                                    host=CONF.host)
+        # Check when the migrated volume is in migration
+        db.volume_update(self.context, fake_volume['id'],
+                         {'migration_status': 'migrating'})
+        # 1. Only clean the db
+        self.volume._clean_temporary_volume(self.context, fake_volume['id'],
+                                            fake_new_volume['id'],
+                                            clean_db_only=True)
+        self.assertRaises(exception.VolumeNotFound,
+                          db.volume_get, self.context,
+                          fake_new_volume['id'])
+
+        # 2. Delete the backend storage
+        fake_new_volume = tests_utils.create_volume(self.context, size=1,
+                                                    host=CONF.host)
+        with mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume') as \
+                mock_delete_volume:
+            mock_delete_volume.side_effect = fake_delete_volume
+            self.volume._clean_temporary_volume(self.context,
+                                                fake_volume['id'],
+                                                fake_new_volume['id'],
+                                                clean_db_only=False)
+            self.assertRaises(exception.VolumeNotFound,
+                              db.volume_get, self.context,
+                              fake_new_volume['id'])
+
+        # Check when the migrated volume is not in migration
+        fake_new_volume = tests_utils.create_volume(self.context, size=1,
+                                                    host=CONF.host)
+        db.volume_update(self.context, fake_volume['id'],
+                         {'migration_status': 'non-migrating'})
+        self.volume._clean_temporary_volume(self.context, fake_volume['id'],
+                                            fake_new_volume['id'])
+        volume = db.volume_get(context.get_admin_context(),
+                               fake_new_volume['id'])
+        self.assertIsNone(volume['migration_status'])
+
+    def test_migrate_volume_generic_create_volume_error(self):
+        def fake_create_volume(ctxt, volume, host, req_spec, filters,
+                               allow_reschedule=True):
+            db.volume_update(ctxt, volume['id'],
+                             {'status': 'error'})
+
+        with contextlib.nested(
+            mock.patch.object(self.volume.driver, 'migrate_volume'),
+            mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume'),
+            mock.patch.object(self.volume, '_clean_temporary_volume')
+        ) as (mock_migrate, mock_create_volume, clean_temporary_volume):
+
+            # Exception case at the creation of the new temporary volume
+            mock_create_volume.side_effect = fake_create_volume
+            volume = tests_utils.create_volume(self.context, size=0,
+                                               host=CONF.host)
+            host_obj = {'host': 'newhost', 'capabilities': {}}
+            self.assertRaises(exception.VolumeMigrationFailed,
+                              self.volume.migrate_volume,
+                              self.context,
+                              volume['id'],
+                              host_obj,
+                              True)
+            volume = db.volume_get(context.get_admin_context(), volume['id'])
+            self.assertIsNone(volume['migration_status'])
+            self.assertEqual('available', volume['status'])
+            self.assertTrue(clean_temporary_volume.called)
+
+    def test_migrate_volume_generic_timeout_error(self):
+        CONF.set_override("migration_create_volume_timeout_secs", 2)
+
+        def fake_create_volume(ctxt, volume, host, req_spec, filters,
+                               allow_reschedule=True):
+            db.volume_update(ctxt, volume['id'],
+                             {'status': 'creating'})
+
+        with contextlib.nested(
+            mock.patch.object(self.volume.driver, 'migrate_volume'),
+            mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume'),
+            mock.patch.object(self.volume, '_clean_temporary_volume')
+        ) as (mock_migrate, mock_create_volume, clean_temporary_volume):
+
+            # Exception case at the timeout of the volume creation
+            mock_create_volume.side_effect = fake_create_volume
+            volume = tests_utils.create_volume(self.context, size=0,
+                                               host=CONF.host)
+            host_obj = {'host': 'newhost', 'capabilities': {}}
+            self.assertRaises(exception.VolumeMigrationFailed,
+                              self.volume.migrate_volume,
+                              self.context,
+                              volume['id'],
+                              host_obj,
+                              True)
+            volume = db.volume_get(context.get_admin_context(), volume['id'])
+            self.assertIsNone(volume['migration_status'])
+            self.assertEqual('available', volume['status'])
+            self.assertTrue(clean_temporary_volume.called)
+
     def test_migrate_volume_generic_create_export_error(self):
         def fake_create_volume(ctxt, volume, host, req_spec, filters,
                                allow_reschedule=True):
