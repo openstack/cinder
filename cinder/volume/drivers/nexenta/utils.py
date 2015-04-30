@@ -17,8 +17,7 @@
 =========================================================
 
 .. automodule:: nexenta.utils
-.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
-.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
+.. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
 """
 
 import re
