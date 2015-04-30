@@ -49,7 +49,7 @@ NEXENTA_EDGE_OPTIONS = [
                default='nexenta',
                help='Password to connect to NexentaEdge',
                secret=True),
-    cfg.StrOpt('nexenta_bucket',
+    cfg.StrOpt('nexenta_container',
                default='',
                help='NexentaEdge logical path of bucket for LUNs'),
     cfg.StrOpt('nexenta_service',
@@ -57,7 +57,8 @@ NEXENTA_EDGE_OPTIONS = [
                help='NexentaEdge iSCSI service name')
 ]
 
-cfg.CONF.register_opts(NEXENTA_EDGE_OPTIONS)
+CONF = cfg.CONF
+CONF.register_opts(NEXENTA_EDGE_OPTIONS)
 
 # placeholder text formatting handler
 def __(text):
@@ -83,7 +84,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.restapi_port = self.configuration.nexenta_rest_port
         self.restapi_user = self.configuration.nexenta_user
         self.restapi_password = self.configuration.nexenta_password
-        self.bucket_path = self.configuration.nexenta_volume
+        self.iscsi_service = self.configuration.nexenta_service
+        self.bucket_path = self.configuration.nexenta_container
         self.cluster, self.tenant, self.bucket = self.bucket_path.split('/')
         self.bucket_url = 'clusters/' + self.cluster + '/tenants/' + \
             self.tenant + '/buckets/' + self.bucket
@@ -119,13 +121,13 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.target_name = rsp['value'].split('\n', 1)[0].split(' ')[2]
 
     def check_for_setup_error(self):
-        self.restapi.get(self.bucket_url)
+        self.restapi.get(self.bucket_url + '/objects/')
 
     def _get_lun_from_name(self, name):
-        rsp = self.restapi.put('service/SVC/iscsi/number', {
+        rsp = self.restapi.put('service/' + self.iscsi_service + '/iscsi/lun', {
             'objectPath': self.bucket_path + '/' + name
         });
-        return rsp['number']
+        return rsp['data']['number']
 
     def _get_provider_location(self, volume):
         return '%(host)s:%(port)s,1 %(name)s %(number)s' % {
