@@ -17,6 +17,7 @@ Implementation of the class of ProphetStor DPL storage adapter of Federator.
     # v2.0.1 Consistency group support
     # v2.0.2 Pool aware scheduler
     # v2.0.3 Consistency group modification support
+    # v2.0.4 Port ProphetStor driver to use new driver model
 """
 
 import base64
@@ -682,9 +683,11 @@ class DPLVolume(object):
                              [httplib.OK, httplib.ACCEPTED])
 
 
-class DPLCOMMONDriver(driver.VolumeDriver):
+class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
+                      driver.CloneableVD, driver.CloneableImageVD,
+                      driver.SnapshotVD, driver.LocalVD, driver.BaseVD):
     """Class of dpl storage adapter."""
-    VERSION = '2.0.3'
+    VERSION = '2.0.4'
 
     def __init__(self, *args, **kwargs):
         super(DPLCOMMONDriver, self).__init__(*args, **kwargs)
