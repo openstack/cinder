@@ -625,6 +625,7 @@ class LVM(executor.Executor):
             LOG.error(_LE('StdErr  :%s'), err.stderr)
             raise
 
+    @utils.retry(putils.ProcessExecutionError)
     def delete(self, name):
         """Delete logical volume or snapshot.
 
