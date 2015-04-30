@@ -785,6 +785,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                     self.db.volume_attachment_get_by_host(context, volume_id,
                                                           host_name_sanitized)
             if attachment is not None:
+                self.db.volume_update(context, volume_id,
+                                      {'status': 'in-use'})
                 return
 
             self._notify_about_volume_usage(context, volume,
