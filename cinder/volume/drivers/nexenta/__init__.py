@@ -1,4 +1,4 @@
-# Copyright 2011 Nexenta Systems, Inc.
+# Copyright 2011-2015 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,8 +17,7 @@
 =====================================================================
 
 .. automodule:: nexenta
-.. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
-.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
+.. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
 """
 
 
