@@ -16,11 +16,13 @@ import os
 import os.path
 import string
 
+import mock
 from oslo_log import log as logging
 
 from cinder.brick import exception
 from cinder.brick.initiator import linuxscsi
 from cinder import test
+from cinder.tests.unit import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -68,6 +70,8 @@ class LinuxSCSITestCase(test.TestCase):
             ('tee -a /sys/block/sdc/device/delete')]
         self.assertEqual(expected_commands, self.cmds)
 
+    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     def test_wait_for_volume_removal(self):
         fake_path = '/dev/disk/by-path/fake-iscsi-iqn-lun-0'
         self.stubs.Set(os.path, "exists", lambda x: True)
