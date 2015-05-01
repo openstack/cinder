@@ -1,4 +1,5 @@
 ﻿# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
+# Copyright (c) 2015 Yogesh Kshirsagar.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -39,7 +40,8 @@ def map_volume_to_single_host(client, volume, eseries_vol, host,
 
     # If volume is not mapped on the backend, map directly to host
     if not vol_map:
-        lun = _get_free_lun(client, host, multiattach_enabled)
+        mappings = client.get_volume_mappings_for_host(host['hostRef'])
+        lun = _get_free_lun(client, host, multiattach_enabled, mappings)
         return client.create_volume_mapping(eseries_vol['volumeRef'],
                                             host['hostRef'], lun)
 
@@ -66,7 +68,9 @@ def map_volume_to_single_host(client, volume, eseries_vol, host,
             LOG.debug("Volume %(vol)s is not currently attached, moving "
                       "existing mapping to host %(host)s.",
                       {'vol': volume['id'], 'host': host['label']})
-            lun = _get_free_lun(client, host, multiattach_enabled)
+            mappings = client.get_volume_mappings_for_host(
+                host['hostRef'])
+            lun = _get_free_lun(client, host, multiattach_enabled, mappings)
             return client.move_volume_mapping_via_symbol(
                 vol_map.get('mapRef'), host['hostRef'], lun
             )
@@ -150,9 +154,8 @@ def map_volume_to_multiple_hosts(client, volume, eseries_vol, target_host,
     return mapping
 
 
-def _get_free_lun(client, host, multiattach_enabled):
+def _get_free_lun(client, host, multiattach_enabled, mappings):
     """Returns least used LUN ID available on the given host."""
-    mappings = client.get_volume_mappings()
     if not _is_host_full(client, host):
         unused_luns = _get_unused_lun_ids(mappings)
         if unused_luns:
@@ -190,13 +193,13 @@ def _get_used_lun_id_counter(mapping):
 
 def _is_host_full(client, host):
     """Checks whether maximum volumes attached to a host have been reached."""
-    luns = _get_vol_mapping_for_host_frm_array(client, host['hostRef'])
+    luns = client.get_volume_mappings_for_host(host['hostRef'])
     return len(luns) >= utils.MAX_LUNS_PER_HOST
 
 
 def _is_lun_id_available_on_host(client, host, lun_id):
     """Returns a boolean value depending on whether a LUN ID is available."""
-    mapping = _get_vol_mapping_for_host_frm_array(client, host['hostRef'])
+    mapping = client.get_volume_mappings_for_host(host['hostRef'])
     used_lun_ids = _get_used_lun_ids_for_mappings(mapping)
     return lun_id not in used_lun_ids
 
@@ -208,20 +211,6 @@ def _get_used_lun_ids_for_mappings(mappings):
     # assigned for general use
     used_luns.add(0)
     return used_luns
-
-
-def _get_vol_mapping_for_host_frm_array(client, host_ref):
-    """Gets all volume mappings for given host from array."""
-    mappings = client.get_volume_mappings() or []
-    host_maps = filter(lambda x: x.get('mapRef') == host_ref, mappings)
-    return host_maps
-
-
-def _get_vol_mapping_for_host_group_frm_array(client, hg_ref):
-    """Gets all volume mappings for given host from array."""
-    mappings = client.get_volume_mappings() or []
-    hg_maps = filter(lambda x: x.get('mapRef') == hg_ref, mappings)
-    return hg_maps
 
 
 def unmap_volume_from_host(client, volume, host, mapping):
@@ -255,11 +244,3 @@ def unmap_volume_from_host(client, volume, host, mapping):
         LOG.debug("Volume %s is mapped directly to multiattach host group but "
                   "is not currently attached; removing mapping.", volume['id'])
         client.delete_volume_mapping(mapping['lunMappingRef'])
-
-
-def get_host_mapping_for_vol_frm_array(client, volume):
-    """Gets all host mappings for given volume from array."""
-    mappings = client.get_volume_mappings() or []
-    host_maps = filter(lambda x: x.get('volumeRef') == volume['volumeRef'],
-                       mappings)
-    return host_maps

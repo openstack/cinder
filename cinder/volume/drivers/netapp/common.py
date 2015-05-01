@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Navneet Singh.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -49,7 +50,8 @@ NETAPP_UNIFIED_DRIVER_REGISTRY = {
     },
     'eseries':
     {
-        'iscsi': ESERIES_PATH + '.iscsi_driver.NetAppEseriesISCSIDriver'
+        'iscsi': ESERIES_PATH + '.iscsi_driver.NetAppEseriesISCSIDriver',
+        'fc': ESERIES_PATH + '.fc_driver.NetAppEseriesFibreChannelDriver'
     }}
 
 

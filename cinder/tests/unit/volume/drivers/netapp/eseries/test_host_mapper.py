@@ -64,18 +64,6 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
         self.client = eseries_fakes.FakeEseriesClient()
 
-    def test_get_host_mapping_for_vol_frm_array(self):
-        volume_mapping_1 = copy.deepcopy(eseries_fakes.VOLUME_MAPPING)
-        volume_mapping_2 = copy.deepcopy(eseries_fakes.VOLUME_MAPPING)
-        volume_mapping_2['volumeRef'] = '2'
-        self.mock_object(self.client, 'get_volume_mappings',
-                         mock.Mock(return_value=[volume_mapping_1,
-                                                 volume_mapping_2]))
-        mappings = host_mapper.get_host_mapping_for_vol_frm_array(
-            self.client, eseries_fakes.VOLUME)
-
-        self.assertEqual([volume_mapping_1], mappings)
-
     def test_unmap_volume_from_host_volume_mapped_to_host(self):
         fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
         fake_eseries_volume['listOfMappings'] = [
@@ -603,7 +591,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_host_full(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST)
-        self.mock_object(host_mapper, '_get_vol_mapping_for_host_frm_array',
+        self.mock_object(self.client, 'get_volume_mappings_for_host',
                          mock.Mock(return_value=FAKE_USED_UP_MAPPINGS))
         self.assertTrue(host_mapper._is_host_full(self.client, fake_host))
 
@@ -611,7 +599,8 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_host = copy.deepcopy(eseries_fakes.HOST)
         with mock.patch('random.sample') as mock_random:
             mock_random.return_value = [3]
-            lun = host_mapper._get_free_lun(self.client, fake_host, False)
+            lun = host_mapper._get_free_lun(self.client, fake_host, False,
+                                            [])
         self.assertEqual(3, lun)
 
     def test_get_free_lun_host_full(self):
@@ -621,34 +610,31 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         self.assertRaises(
             exception.NetAppDriverException,
             host_mapper._get_free_lun,
-            self.client, fake_host, False)
+            self.client, fake_host, False, FAKE_USED_UP_MAPPINGS)
 
     def test_get_free_lun_no_unused_luns(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST)
-        self.mock_object(self.client, 'get_volume_mappings',
-                         mock.Mock(return_value=FAKE_USED_UP_MAPPINGS))
-        lun = host_mapper._get_free_lun(self.client, fake_host, False)
+        lun = host_mapper._get_free_lun(self.client, fake_host, False,
+                                        FAKE_USED_UP_MAPPINGS)
         self.assertEqual(255, lun)
 
     def test_get_free_lun_no_unused_luns_host_not_full(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST)
-        self.mock_object(self.client, 'get_volume_mappings',
-                         mock.Mock(return_value=FAKE_USED_UP_MAPPINGS))
         self.mock_object(host_mapper, '_is_host_full',
                          mock.Mock(return_value=False))
-        lun = host_mapper._get_free_lun(self.client, fake_host, False)
+        lun = host_mapper._get_free_lun(self.client, fake_host, False,
+                                        FAKE_USED_UP_MAPPINGS)
         self.assertEqual(255, lun)
 
     def test_get_free_lun_no_lun_available(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST_3)
-        self.mock_object(self.client, 'get_volume_mappings',
-                         mock.Mock(return_value=FAKE_USED_UP_MAPPINGS))
-        self.mock_object(host_mapper, '_get_vol_mapping_for_host_frm_array',
+        self.mock_object(self.client, 'get_volume_mappings_for_host',
                          mock.Mock(return_value=FAKE_USED_UP_MAPPINGS))
 
         self.assertRaises(exception.NetAppDriverException,
                           host_mapper._get_free_lun,
-                          self.client, fake_host, False)
+                          self.client, fake_host, False,
+                          FAKE_USED_UP_MAPPINGS)
 
     def test_get_free_lun_multiattach_enabled_no_unused_ids(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST_3)
@@ -657,7 +643,8 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
         self.assertRaises(exception.NetAppDriverException,
                           host_mapper._get_free_lun,
-                          self.client, fake_host, True)
+                          self.client, fake_host, True,
+                          FAKE_USED_UP_MAPPINGS)
 
     def test_get_lun_by_mapping(self):
         used_luns = host_mapper._get_used_lun_ids_for_mappings(FAKE_MAPPINGS)
@@ -674,7 +661,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_no_lun_id_available_on_host(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST_3)
-        self.mock_object(host_mapper, '_get_vol_mapping_for_host_frm_array',
+        self.mock_object(self.client, 'get_volume_mappings_for_host',
                          mock.Mock(return_value=FAKE_USED_UP_MAPPINGS))
 
         self.assertFalse(host_mapper._is_lun_id_available_on_host(
