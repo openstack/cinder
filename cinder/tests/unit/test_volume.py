@@ -24,6 +24,7 @@ import shutil
 import socket
 import sys
 import tempfile
+import time
 
 import eventlet
 import mock
@@ -39,7 +40,7 @@ from taskflow.engines.action_engine import engine
 
 from cinder.backup import driver as backup_driver
 from cinder.brick.local_dev import lvm as brick_lvm
-from cinder import compute
+from cinder.compute import nova
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -2632,6 +2633,8 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.assertNotIn(iscsi_target, targets)
             targets.append(iscsi_target)
 
+        # FIXME(jdg): What is this actually testing?
+        # We never call the internal _check method?
         for _index in xrange(100):
             tests_utils.create_volume(self.context, **self.volume_params)
         for volume_id in volume_ids:
@@ -3818,7 +3821,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.assertIsNone(volume['migration_status'])
             self.assertEqual('available', volume['status'])
 
-    @mock.patch.object(compute.nova.API, 'update_server_volume')
+    @mock.patch.object(nova.API, 'update_server_volume')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 'migrate_volume_completion')
     @mock.patch('cinder.db.volume_get')
@@ -3843,7 +3846,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                          fake_new_volume['id'],
                                                          error=False)
 
-    @mock.patch.object(compute.nova.API, 'update_server_volume')
+    @mock.patch.object(nova.API, 'update_server_volume')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 'migrate_volume_completion')
     @mock.patch('cinder.db.volume_get')
@@ -4020,7 +4023,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                 mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume') as \
                 mock_create_volume, \
                 mock.patch.object(self.volume, '_clean_temporary_volume') as \
-                clean_temporary_volume:
+                clean_temporary_volume, \
+                mock.patch.object(time, 'sleep'):
 
             # Exception case at the timeout of the volume creation
             mock_create_volume.side_effect = fake_create_volume

@@ -19,6 +19,7 @@ from oslo_log import log as logging
 from cinder import context
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import utils
 from cinder.volume.drivers import xio
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
@@ -1194,6 +1195,8 @@ class XIOISEDriverTestCase(object):
         self.setup_driver()
         self.driver.create_snapshot(SNAPSHOT1)
 
+    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     def test_negative_create_snapshot_invalid_state_recover(self, mock_req):
         ctxt = context.get_admin_context()
         extra_specs = {"Feature:Pool": "1",
@@ -1218,6 +1221,8 @@ class XIOISEDriverTestCase(object):
         self.setup_driver()
         self.driver.create_snapshot(SNAPSHOT1)
 
+    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     def test_negative_create_snapshot_invalid_state_norecover(self, mock_req):
         ctxt = context.get_admin_context()
         extra_specs = {"Feature:Pool": "1",
