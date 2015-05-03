@@ -40,6 +40,7 @@ import json
 import math
 import pprint
 import re
+import six
 import uuid
 
 from oslo_utils import importutils
@@ -1842,7 +1843,7 @@ class HP3PARCommon(object):
                      'userCPG': new_cpg,
                      'conversionOperation': cop})
             except hpexceptions.HTTPBadRequest as ex:
-                if ex.get_code() == 40 and "keepVV" in str(ex):
+                if ex.get_code() == 40 and "keepVV" in six.text_type(ex):
                     # Cannot retype with snapshots because we don't want to
                     # use keepVV and have straggling volumes.  Log additional
                     # info and then raise.

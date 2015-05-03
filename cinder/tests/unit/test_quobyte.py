@@ -17,6 +17,7 @@
 
 import errno
 import os
+import six
 import StringIO
 import traceback
 
@@ -107,7 +108,7 @@ class QuobyteDriverTestCase(test.TestCase):
             self.assertEqual(excClass, type(exc),
                              'Wrong exception caught: %s Stacktrace: %s' %
                              (exc, traceback.print_exc()))
-            self.assertIn(msg, str(exc))
+            self.assertIn(msg, six.text_type(exc))
 
         if not caught:
             self.fail('Expected raised exception but nothing caught.')

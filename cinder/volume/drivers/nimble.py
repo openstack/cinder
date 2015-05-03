@@ -21,6 +21,7 @@ This driver supports Nimble Storage controller CS-Series.
 import functools
 import random
 import re
+import six
 import string
 import urllib2
 
@@ -389,7 +390,8 @@ def _connection_checker(func):
             try:
                 return func(self, *args, **kwargs)
             except NimbleAPIException as e:
-                if attempts < 1 and (re.search('SM-eaccess', str(e))):
+                if attempts < 1 and (re.search('SM-eaccess',
+                                     six.text_type(e))):
                     LOG.info(_LI('Session might have expired.'
                                  ' Trying to relogin'))
                     self.login()
