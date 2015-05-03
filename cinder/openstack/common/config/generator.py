@@ -27,8 +27,8 @@ import socket
 import sys
 import textwrap
 
-from oslo.config import cfg
-from oslo.utils import importutils
+from oslo_config import cfg
+from oslo_utils import importutils
 import six
 import stevedore.named
 

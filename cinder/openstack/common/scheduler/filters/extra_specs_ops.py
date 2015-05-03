@@ -15,7 +15,7 @@
 
 import operator
 
-from oslo.utils import strutils
+from oslo_utils import strutils
 
 # 1. The following operations are supported:
 #   =, s==, s!=, s>=, s>, s<=, s<, <in>, <is>, <or>, ==, !=, >=, <=

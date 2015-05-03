@@ -16,7 +16,7 @@ import logging
 import random
 import time
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 
 from cinder.openstack.common._i18n import _, _LE, _LI
