@@ -77,7 +77,7 @@ CONF = cfg.CONF
 CONF.register_opts(san_opts)
 
 
-class SanDriver(driver.VolumeDriver):
+class SanDriver(driver.BaseVD):
     """Base class for SAN-style storage volumes
 
     A SAN-style storage value is 'different' because the volume controller
