@@ -56,6 +56,8 @@ CONF.register_opts(na_opts.netapp_san_opts)
 class NetAppESeriesLibrary(object):
     """Executes commands relating to Volumes."""
 
+    DRIVER_NAME = 'NetApp_iSCSI_ESeries'
+    AUTOSUPPORT_INTERVAL_SECONDS = 3600  # hourly
     VERSION = "1.0.0"
     REQUIRED_FLAGS = ['netapp_server_hostname', 'netapp_controller_ips',
                       'netapp_login', 'netapp_password',
@@ -107,6 +109,7 @@ class NetAppESeriesLibrary(object):
     def __init__(self, driver_name, driver_protocol="iSCSI",
                  configuration=None, **kwargs):
         self.configuration = configuration
+        self._app_version = kwargs.pop("app_version", "unknown")
         self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
         self.configuration.append_config_values(
             na_opts.netapp_connection_opts)
@@ -152,6 +155,12 @@ class NetAppESeriesLibrary(object):
         ssc_periodic_task = loopingcall.FixedIntervalLoopingCall(
             self._update_ssc_info)
         ssc_periodic_task.start(interval=self.SSC_UPDATE_INTERVAL)
+
+        # Start the task that logs autosupport (ASUP) data to the controller
+        asup_periodic_task = loopingcall.FixedIntervalLoopingCall(
+            self._create_asup, CONF.host)
+        asup_periodic_task.start(interval=self.AUTOSUPPORT_INTERVAL_SECONDS,
+                                 initial_delay=0)
 
     def check_for_setup_error(self):
         self._check_host_type()
@@ -215,6 +224,7 @@ class NetAppESeriesLibrary(object):
             system = self._client.register_storage_system(
                 ips, password=self.configuration.netapp_sa_password)
         self._client.set_system_id(system.get('id'))
+        self._client._init_features()
 
     def _check_storage_system(self):
         """Checks whether system is registered and has good status."""
@@ -878,6 +888,42 @@ class NetAppESeriesLibrary(object):
 
         self._stats = data
         self._garbage_collect_tmp_vols()
+
+    def _create_asup(self, cinder_host):
+        if not self._client.features.AUTOSUPPORT:
+            msg = _LI("E-series proxy API version %s does not support "
+                      "autosupport logging.")
+            LOG.info(msg % self._client.api_version)
+            return
+
+        firmware_version = self._client.get_firmware_version()
+        event_source = ("Cinder driver %s" % self.DRIVER_NAME)
+        category = "provisioning"
+        event_description = "OpenStack Cinder connected to E-Series proxy"
+        model = self._client.get_model_name()
+        serial_numbers = self._client.get_serial_numbers()
+
+        key = ("openstack-%s-%s-%s"
+               % (cinder_host, serial_numbers[0], serial_numbers[1]))
+
+        # The counter is being set here to a key-value combination
+        # comprised of serial numbers and cinder host with a default
+        # heartbeat of 1. The counter is set to inform the user that the
+        # key does not have a stale value.
+        self._client.set_counter("%s-heartbeat" % key, value=1)
+        data = {
+            'computer-name': cinder_host,
+            'event-source': event_source,
+            'app-version': self._app_version,
+            'category': category,
+            'event-description': event_description,
+            'controller1-serial': serial_numbers[0],
+            'controller2-serial': serial_numbers[1],
+            'model': model,
+            'system-version': firmware_version,
+            'operating-mode': self._client.api_operating_mode
+        }
+        self._client.add_autosupport_data(key, data)
 
     @cinder_utils.synchronized("netapp_update_ssc_info", external=False)
     def _update_ssc_info(self):

@@ -670,6 +670,44 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.assertEqual({'test_vg1': {'netapp_raid_type': 'unknown'}},
                          ssc_stats)
 
+    def test_create_asup(self):
+        self.library._client = mock.Mock()
+        self.library._client.features.AUTOSUPPORT = True
+        self.library._client.api_operating_mode = (
+            eseries_fake.FAKE_ASUP_DATA['operating-mode'])
+        self.library._app_version = eseries_fake.FAKE_APP_VERSION
+        self.mock_object(
+            self.library._client, 'get_firmware_version',
+            mock.Mock(return_value=(
+                eseries_fake.FAKE_ASUP_DATA['system-version'])))
+        self.mock_object(
+            self.library._client, 'get_serial_numbers',
+            mock.Mock(return_value=eseries_fake.FAKE_SERIAL_NUMBERS))
+        self.mock_object(
+            self.library._client, 'get_model_name',
+            mock.Mock(
+                return_value=eseries_fake.FAKE_CONTROLLERS[0]['modelName']))
+        self.mock_object(
+            self.library._client, 'set_counter',
+            mock.Mock(return_value={'value': 1}))
+        mock_invoke = self.mock_object(
+            self.library._client, 'add_autosupport_data')
+
+        self.library._create_asup(eseries_fake.FAKE_CINDER_HOST)
+
+        mock_invoke.assert_called_with(eseries_fake.FAKE_KEY,
+                                       eseries_fake.FAKE_ASUP_DATA)
+
+    def test_create_asup_not_supported(self):
+        self.library._client = mock.Mock()
+        self.library._client.features.AUTOSUPPORT = False
+        mock_invoke = self.mock_object(
+            self.library._client, 'add_autosupport_data')
+
+        self.library._create_asup(eseries_fake.FAKE_CINDER_HOST)
+
+        mock_invoke.assert_not_called()
+
 
 class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     """Test driver when netapp_enable_multiattach is enabled.

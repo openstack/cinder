@@ -33,6 +33,7 @@ from cinder import exception
 from cinder.i18n import _
 import cinder.utils as cinder_utils
 from cinder.volume.drivers.netapp.eseries import utils
+from cinder.volume.drivers.netapp import utils as na_utils
 
 netapp_lib = importutils.try_import('netapp_lib')
 if netapp_lib:
@@ -45,6 +46,8 @@ LOG = logging.getLogger(__name__)
 class RestClient(object):
     """REST client specific to e-series storage service."""
 
+    ASUP_VALID_VERSION = (1, 52, 9000, 3)
+
     def __init__(self, scheme, host, port, service_path, username,
                  password, **kwargs):
 
@@ -55,6 +58,49 @@ class RestClient(object):
                                                          **kwargs)
         self._system_id = kwargs.get('system_id')
         self._content_type = kwargs.get('content_type') or 'json'
+
+    def _init_features(self):
+        """Sets up and initializes E-Series feature support map."""
+        self.features = na_utils.Features()
+        self.api_operating_mode, self.api_version = self.get_eseries_api_info(
+            verify=False)
+
+        api_version_tuple = tuple(int(version)
+                                  for version in self.api_version.split('.'))
+        api_valid_version = self._validate_version(self.ASUP_VALID_VERSION,
+                                                   api_version_tuple)
+
+        self.features.add_feature('AUTOSUPPORT', supported=api_valid_version)
+
+    def _validate_version(self, version, actual_version):
+        """Determine if version is newer than, or equal to the actual version
+
+        The proxy version number is formatted as AA.BB.CCCC.DDDD
+        A: Major version part 1
+        B: Major version part 2
+        C: Release version: 9000->Release, 9010->Pre-release, 9090->Integration
+        D: Minor version
+
+        Examples:
+        02.53.9000.0010
+        02.52.9010.0001
+
+        Note: The build version is actually 'newer' the lower the release
+        (CCCC) number is.
+
+        :param version: The version to validate
+        :param actual_version: The running version of the Webservice
+        :return: True if the actual_version is equal or newer than the
+        current running version, otherwise False
+        """
+        major_1, major_2, release, minor = version
+        actual_major_1, actual_major_2, actual_release, actual_minor = (
+            actual_version)
+
+        # We need to invert the release number for it to work with this
+        # comparison
+        return (actual_major_1, actual_major_2, 10000 - actual_release,
+                actual_minor) >= (major_1, major_2, 10000 - release, minor)
 
     def set_system_id(self, system_id):
         """Set the storage system id."""
@@ -439,3 +485,57 @@ class RestClient(object):
         """Delete volume copy job."""
         path = "/storage-systems/{system-id}/volume-copy-jobs/{object-id}"
         return self._invoke('DELETE', path, **{'object-id': object_id})
+
+    def add_autosupport_data(self, key, data):
+        """Register driver statistics via autosupport log."""
+        path = ('/key-values/%s' % key)
+        self._invoke('POST', path, json.dumps(data))
+
+    def get_firmware_version(self):
+        """Get firmware version information from the array."""
+        return self.list_storage_system()['fwVersion']
+
+    def set_counter(self, key, value):
+        path = ('/counters/%s/setCounter?value=%d' % (key, value))
+        self._invoke('POST', path)
+
+    def _get_controllers(self):
+        """Get controller information from the array."""
+        return self.list_hardware_inventory()['controllers']
+
+    def get_eseries_api_info(self, verify=False):
+        """Get E-Series API information from the array."""
+        api_operating_mode = 'embedded'
+        path = 'devmgr/utils/about'
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json'}
+        url = self._get_resource_url(path, True).replace(
+            '/devmgr/v2', '', 1)
+        result = self.client.invoke_service(method='GET', url=url,
+                                            headers=headers,
+                                            verify=verify)
+        about_response_dict = result.json()
+        mode_is_proxy = about_response_dict['runningAsProxy']
+        if mode_is_proxy:
+            api_operating_mode = 'proxy'
+        return api_operating_mode, about_response_dict['version']
+
+    def get_serial_numbers(self):
+        """Get the list of Serial Numbers from the array."""
+        controllers = self._get_controllers()
+        if not controllers:
+            return ['unknown', 'unknown']
+        serial_numbers = [value['serialNumber'].rstrip()
+                          for _, value in enumerate(controllers)]
+        serial_numbers.sort()
+        for index, value in enumerate(serial_numbers):
+            if not value:
+                serial_numbers[index] = 'unknown'
+        return serial_numbers
+
+    def get_model_name(self):
+        """Get Model Name from the array."""
+        controllers = self._get_controllers()
+        if not controllers:
+            return 'unknown'
+        return controllers[0].get('modelName', 'unknown')

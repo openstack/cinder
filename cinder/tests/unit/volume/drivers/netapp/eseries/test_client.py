@@ -16,6 +16,7 @@
 
 import copy
 
+import ddt
 import mock
 
 from cinder import test
@@ -24,6 +25,7 @@ from cinder.tests.unit.volume.drivers.netapp.eseries import fakes as \
 from cinder.volume.drivers.netapp.eseries import client
 
 
+@ddt.ddt
 class NetAppEseriesClientDriverTestCase(test.TestCase):
     """Test case for NetApp e-series client."""
 
@@ -295,3 +297,112 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         self.assertIn(status, final_msg)
         self.assertIn(headers_string, final_msg)
         self.assertIn(body_string, final_msg)
+
+    def test_add_autosupport_data(self):
+        self.mock_object(
+            client.RestClient, 'get_eseries_api_info',
+            mock.Mock(return_value=(
+                eseries_fake.FAKE_ASUP_DATA['operating-mode'],
+                eseries_fake.FAKE_ABOUT_RESPONSE['version'])))
+        self.mock_object(
+            self.my_client, 'get_firmware_version',
+            mock.Mock(
+                return_value=eseries_fake.FAKE_ABOUT_RESPONSE['version']))
+        self.mock_object(
+            self.my_client, 'get_serial_numbers',
+            mock.Mock(return_value=eseries_fake.FAKE_SERIAL_NUMBERS))
+        self.mock_object(
+            self.my_client, 'get_model_name',
+            mock.Mock(
+                return_value=eseries_fake.FAKE_CONTROLLERS[0]['modelName']))
+        self.mock_object(
+            self.my_client, 'set_counter',
+            mock.Mock(return_value={'value': 1}))
+        mock_invoke = self.mock_object(
+            self.my_client, '_invoke',
+            mock.Mock(return_value=eseries_fake.FAKE_ASUP_DATA))
+
+        client.RestClient.add_autosupport_data(
+            self.my_client,
+            eseries_fake.FAKE_KEY,
+            eseries_fake.FAKE_ASUP_DATA
+        )
+
+        mock_invoke.assert_called_with(*eseries_fake.FAKE_POST_INVOKE_DATA)
+
+    @ddt.data((eseries_fake.FAKE_SERIAL_NUMBERS,
+               eseries_fake.FAKE_CONTROLLERS),
+              (eseries_fake.FAKE_DEFAULT_SERIAL_NUMBER, []),
+              (eseries_fake.FAKE_SERIAL_NUMBER,
+              eseries_fake.FAKE_SINGLE_CONTROLLER))
+    @ddt.unpack
+    def test_get_serial_numbers(self, expected_serial_numbers, controllers):
+        self.mock_object(
+            client.RestClient, '_get_controllers',
+            mock.Mock(return_value=controllers))
+
+        serial_numbers = client.RestClient.get_serial_numbers(self.my_client)
+
+        self.assertEqual(expected_serial_numbers, serial_numbers)
+
+    def test_get_model_name(self):
+        self.mock_object(
+            client.RestClient, '_get_controllers',
+            mock.Mock(return_value=eseries_fake.FAKE_CONTROLLERS))
+
+        model = client.RestClient.get_model_name(self.my_client)
+
+        self.assertEqual(eseries_fake.FAKE_CONTROLLERS[0]['modelName'],
+                         model)
+
+    def test_get_model_name_empty_controllers_list(self):
+        self.mock_object(
+            client.RestClient, '_get_controllers',
+            mock.Mock(return_value=[]))
+
+        model = client.RestClient.get_model_name(self.my_client)
+
+        self.assertEqual(eseries_fake.FAKE_DEFAULT_MODEL, model)
+
+    def test_get_eseries_api_info(self):
+        fake_invoke_service = mock.Mock()
+        fake_invoke_service.json = mock.Mock(
+            return_value=eseries_fake.FAKE_ABOUT_RESPONSE)
+        self.mock_object(
+            client.RestClient, '_get_resource_url',
+            mock.Mock(return_value=eseries_fake.FAKE_RESOURCE_URL))
+        self.mock_object(
+            self.my_client.client, 'invoke_service',
+            mock.Mock(return_value=fake_invoke_service))
+
+        eseries_info = client.RestClient.get_eseries_api_info(
+            self.my_client, verify=False)
+
+        self.assertEqual((eseries_fake.FAKE_ASUP_DATA['operating-mode'],
+                          eseries_fake.FAKE_ABOUT_RESPONSE['version']),
+                         eseries_info)
+
+    @ddt.data('00.00.00.00', '01.52.9000.2', '01.52.9001.2', '01.51.9000.3',
+              '01.51.9001.3', '01.51.9010.5', '0.53.9000.3', '0.53.9001.4')
+    def test_api_version_not_support_asup(self, api_version):
+
+        self.mock_object(client.RestClient,
+                         'get_eseries_api_info',
+                         mock.Mock(return_value=('proxy', api_version)))
+
+        client.RestClient._init_features(self.my_client)
+
+        self.assertFalse(self.my_client.features.AUTOSUPPORT)
+
+    @ddt.data('01.52.9000.3', '01.52.9000.4', '01.52.8999.2',
+              '01.52.8999.3', '01.53.8999.3', '01.53.9000.2',
+              '02.51.9000.3', '02.52.8999.3', '02.51.8999.2')
+    def test_api_version_supports_asup(self, api_version):
+
+        self.mock_object(client.RestClient,
+                         'get_eseries_api_info',
+                         mock.Mock(return_value=('proxy', api_version)))
+
+        client.RestClient._init_features(self.my_client)
+
+        self.assertTrue(self.my_client.features.AUTOSUPPORT)

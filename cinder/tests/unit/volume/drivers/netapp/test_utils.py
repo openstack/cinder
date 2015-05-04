@@ -18,6 +18,7 @@ Mock unit tests for the NetApp driver utility module
 """
 
 import copy
+import ddt
 import platform
 
 import mock
@@ -751,3 +752,38 @@ class OpenStackInfoTestCase(test.TestCase):
         info._update_openstack_info()
 
         self.assertTrue(mock_updt_from_dpkg.called)
+
+
+@ddt.ddt
+class FeaturesTestCase(test.TestCase):
+
+    def setUp(self):
+        super(FeaturesTestCase, self).setUp()
+        self.features = na_utils.Features()
+
+    def test_init(self):
+        self.assertSetEqual(set(), self.features.defined_features)
+
+    def test_add_feature_default(self):
+        self.features.add_feature('FEATURE_1')
+
+        self.assertTrue(self.features.FEATURE_1)
+        self.assertIn('FEATURE_1', self.features.defined_features)
+
+    @ddt.data(True, False)
+    def test_add_feature(self, value):
+        self.features.add_feature('FEATURE_2', value)
+
+        self.assertEqual(value, self.features.FEATURE_2)
+        self.assertIn('FEATURE_2', self.features.defined_features)
+
+    @ddt.data('True', 'False', 0, 1, 1.0, None, [], {}, (True,))
+    def test_add_feature_type_error(self, value):
+        self.assertRaises(TypeError,
+                          self.features.add_feature,
+                          'FEATURE_3',
+                          value)
+        self.assertNotIn('FEATURE_3', self.features.defined_features)
+
+    def test_get_attr_missing(self):
+        self.assertRaises(AttributeError, getattr, self.features, 'FEATURE_4')
