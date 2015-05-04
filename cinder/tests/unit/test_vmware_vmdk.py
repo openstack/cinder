@@ -147,6 +147,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     IMG_TX_TIMEOUT = 10
     MAX_OBJECTS = 100
     TMP_DIR = "/vmware-tmp"
+    CA_FILE = "/etc/ssl/rui-ca-cert.pem"
     VMDK_DRIVER = vmdk.VMwareEsxVmdkDriver
 
     def setUp(self):
@@ -163,6 +164,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._config.vmware_image_transfer_timeout_secs = self.IMG_TX_TIMEOUT
         self._config.vmware_max_objects_retrieval = self.MAX_OBJECTS
         self._config.vmware_tmp_dir = self.TMP_DIR
+        self._config.vmware_ca_file = self.CA_FILE
         self._db = mock.Mock()
         self._driver = vmdk.VMwareEsxVmdkDriver(configuration=self._config,
                                                 db=self._db)
@@ -2834,6 +2836,22 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                       host)
         vops.move_backing_to_folder.assert_called_once_with(backing,
                                                             folder)
+
+    @mock.patch('oslo_vmware.api.VMwareAPISession')
+    def test_session(self, apiSession):
+        self._session = None
+
+        self._driver.session()
+
+        apiSession.assert_called_once_with(
+            self._config.vmware_host_ip,
+            self._config.vmware_host_username,
+            self._config.vmware_host_password,
+            self._config.vmware_api_retry_count,
+            self._config.vmware_task_poll_interval,
+            wsdl_loc=self._config.safe_get('vmware_wsdl_location'),
+            pbm_wsdl_loc=None,
+            cacert=self._config.vmware_ca_file)
 
 
 class ImageDiskTypeTest(test.TestCase):

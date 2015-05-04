@@ -106,7 +106,10 @@ vmdk_opts = [
     cfg.StrOpt('vmware_tmp_dir',
                default='/tmp',
                help='Directory where virtual disks are stored during volume '
-                    'backup and restore.')
+                    'backup and restore.'),
+    cfg.StrOpt('vmware_ca_file',
+               default=None,
+               help='CA bundle file to verify vCenter server certificate.')
 ]
 
 CONF = cfg.CONF
@@ -1884,11 +1887,13 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             task_poll_interval = self.configuration.vmware_task_poll_interval
             wsdl_loc = self.configuration.safe_get('vmware_wsdl_location')
             pbm_wsdl = self.pbm_wsdl if hasattr(self, 'pbm_wsdl') else None
+            ca_file = self.configuration.vmware_ca_file
             self._session = api.VMwareAPISession(ip, username,
                                                  password, api_retry_count,
                                                  task_poll_interval,
                                                  wsdl_loc=wsdl_loc,
-                                                 pbm_wsdl_loc=pbm_wsdl)
+                                                 pbm_wsdl_loc=pbm_wsdl,
+                                                 cacert=ca_file)
         return self._session
 
     def _get_vc_version(self):
