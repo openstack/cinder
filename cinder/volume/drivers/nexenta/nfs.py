@@ -604,7 +604,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                                              ns_folder), '')
         free = utils.str2size(folder_props['available'])
         allocated = utils.str2size(folder_props['used'])
-        return free + allocated, allocated
+        return free + allocated, free, allocated
 
     def _get_nms_for_url(self, url):
         """Returns initialized nms object for url."""
