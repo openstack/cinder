@@ -57,6 +57,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
     driver_prefix = 'nexenta'
     volume_backend_name = 'NexentaNfsDriver'
+    volume_file_name = 'volume'
     VERSION = VERSION
 
     def __init__(self, *args, **kwargs):
@@ -407,7 +408,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
-        super(NexentaNfsDriver, self).delete_volume(volume)
 
         nfs_share = volume.get('provider_location')
 
@@ -416,8 +416,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             vol, parent_folder = self._get_share_datasets(nfs_share)
             folder = '%s/%s/%s' % (vol, parent_folder, volume['name'])
             props = nms.folder.get_child_props(folder, 'origin') or {}
-            mount = self._get_mount_point_for_share(nfs_share)
-            self._execute('umount', mount, run_as_root=True)
+            mount_path = self.remote_path(volume).strip(
+                '/%s' % self.volume_file_name)
+            if mount_path in self._remotefsclient._read_mounts():
+                self._execute('umount', mount_path, run_as_root=True)
             try:
                 nms.folder.destroy(folder, '-r')
             except nexenta.NexentaException as exc:
@@ -538,7 +540,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """
         nfs_share = volume['provider_location']
         share = nfs_share.split(':')[1].rstrip('/')
-        return '%s/%s/volume' % (share, volume['name'])
+        return '%s/%s/%s' % (share, volume['name'], self.volume_file_name)
 
     def _share_folder(self, nms, volume, folder):
         """Share NFS folder on NexentaStor Appliance.
