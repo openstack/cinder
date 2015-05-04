@@ -1105,7 +1105,8 @@ class NfsDriverTestCase(test.TestCase):
 
         drv._remotefsclient.mount.called_once()
 
-    def test_ensure_share_mounted_exception(self):
+    @mock.patch('time.sleep')
+    def test_ensure_share_mounted_exception(self, _mock_sleep):
         """Make the configured number of attempts when mounts fail."""
 
         num_attempts = 3
