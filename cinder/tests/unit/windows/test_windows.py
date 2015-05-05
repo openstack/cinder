@@ -35,7 +35,6 @@ from cinder.volume.drivers.windows import vhdutils
 from cinder.volume.drivers.windows import windows
 from cinder.volume.drivers.windows import windows_utils
 
-
 CONF = cfg.CONF
 
 
@@ -156,18 +155,35 @@ class TestWindowsDriver(test.TestCase):
 
         drv.delete_snapshot(snapshot)
 
-    def test_create_export(self):
+    def _test_create_export(self, chap_enabled=False):
         drv = self._driver
-
         volume = db_fakes.get_fake_volume_info()
-
         initiator_name = "%s%s" % (CONF.iscsi_target_prefix, volume['name'])
+        fake_chap_username = 'fake_chap_username'
+        fake_chap_password = 'fake_chap_password'
 
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'create_iscsi_target')
-        windows_utils.WindowsUtils.create_iscsi_target(initiator_name)
+        self.flags(use_chap_auth=chap_enabled)
+        self.flags(chap_username=fake_chap_username)
+        self.flags(chap_password=fake_chap_password)
+
         self.mox.StubOutWithMock(windows_utils.WindowsUtils,
                                  'add_disk_to_target')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'create_iscsi_target')
+        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
+                                 'set_chap_credentials')
+        self.mox.StubOutWithMock(self._driver,
+                                 'remove_export')
+
+        self._driver.remove_export(mox.IgnoreArg(), mox.IgnoreArg())
+        windows_utils.WindowsUtils.create_iscsi_target(initiator_name)
+
+        if chap_enabled:
+            windows_utils.WindowsUtils.set_chap_credentials(
+                mox.IgnoreArg(),
+                fake_chap_username,
+                fake_chap_password)
+
         windows_utils.WindowsUtils.add_disk_to_target(volume['name'],
                                                       initiator_name)
 
@@ -175,7 +191,19 @@ class TestWindowsDriver(test.TestCase):
 
         export_info = drv.create_export(None, volume)
 
-        self.assertEqual(export_info['provider_location'], initiator_name)
+        self.assertEqual(initiator_name, export_info['provider_location'])
+        if chap_enabled:
+            expected_provider_auth = ' '.join(('CHAP',
+                                               fake_chap_username,
+                                               fake_chap_password))
+            self.assertEqual(expected_provider_auth,
+                             export_info['provider_auth'])
+
+    def test_create_export_chap_disabled(self):
+        self._test_create_export()
+
+    def test_create_export_chap_enabled(self):
+        self._test_create_export(chap_enabled=True)
 
     def test_initialize_connection(self):
         drv = self._driver
