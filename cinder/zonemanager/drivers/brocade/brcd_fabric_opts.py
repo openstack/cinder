@@ -57,7 +57,7 @@ def load_fabric_configurations(fabric_names):
     fabric_configs = {}
     for fabric_name in fabric_names:
         config = configuration.Configuration(brcd_zone_opts, fabric_name)
-        LOG.debug("Loaded FC fabric config %s" % fabric_name)
+        LOG.debug("Loaded FC fabric config %s", fabric_name)
         fabric_configs[fabric_name] = config
 
     return fabric_configs

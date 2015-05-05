@@ -193,7 +193,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
         stdout, stderr, sw_data = None, None, None
         try:
             stdout, stderr = self._run_ssh(cmd_list, True, 1)
-            LOG.debug("CLI output from ssh - output:%s", stdout)
+            LOG.debug("CLI output from ssh - output: %s", stdout)
             if (stdout):
                 sw_data = stdout.splitlines()
             return sw_data
@@ -266,7 +266,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                         cmd=command)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error running SSH command: %s") % command)
+                LOG.error(_LE("Error running SSH command: %s"), command)
 
     def _ssh_execute(self, cmd_list, check_exit_code=True, attempts=1):
         """Execute cli with status update.
@@ -294,7 +294,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                                              min_size=1,
                                              max_size=5)
         stdin, stdout, stderr = None, None, None
-        LOG.debug("Executing command via ssh: %s" % command)
+        LOG.debug("Executing command via ssh: %s", command)
         last_exception = None
         try:
             with self.sshpool.item() as ssh:
@@ -308,7 +308,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                         LOG.debug("Exit Status from ssh:%s", exit_status)
                         # exit_status == -1 if no exit code was returned
                         if exit_status != -1:
-                            LOG.debug('Result was %s' % exit_status)
+                            LOG.debug('Result was %s', exit_status)
                             if check_exit_code and exit_status != 0:
                                 raise processutils.ProcessExecutionError(
                                     exit_code=exit_status,
