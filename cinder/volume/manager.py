@@ -1465,7 +1465,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                 self.driver.configuration.config_group)
 
             LOG.warning(_LW("Update driver status failed: %(config_group)s "
-                            "is uninitialize."),
+                            "is uninitialized."),
                         {'config_group': config_group},
                         resource={'type': 'driver',
                                   'id': self.driver.__class__.__name__})
