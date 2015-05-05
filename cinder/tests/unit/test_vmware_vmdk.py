@@ -165,6 +165,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         self._config.vmware_max_objects_retrieval = self.MAX_OBJECTS
         self._config.vmware_tmp_dir = self.TMP_DIR
         self._config.vmware_ca_file = self.CA_FILE
+        self._config.vmware_insecure = False
         self._db = mock.Mock()
         self._driver = vmdk.VMwareEsxVmdkDriver(configuration=self._config,
                                                 db=self._db)
@@ -2851,7 +2852,8 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
             self._config.vmware_task_poll_interval,
             wsdl_loc=self._config.safe_get('vmware_wsdl_location'),
             pbm_wsdl_loc=None,
-            cacert=self._config.vmware_ca_file)
+            cacert=self._config.vmware_ca_file,
+            insecure=self._config.vmware_insecure)
 
 
 class ImageDiskTypeTest(test.TestCase):
