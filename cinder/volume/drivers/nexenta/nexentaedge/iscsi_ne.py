@@ -72,8 +72,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     VERSION = '1.0.0'
 
-    LUN_BLOCKSIZE = 512
-    LUN_CHUNKSIZE = 131072
+    LUN_BLOCKSIZE = 4096
+    LUN_CHUNKSIZE = 32768
 
     def __init__(self, *args, **kwargs):
         super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
