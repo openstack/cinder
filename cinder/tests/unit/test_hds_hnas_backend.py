@@ -102,6 +102,10 @@ HNAS_RESULT5 = "\n\
 1032         test    2  3.97 GB 2.12 GB (53%) 0 B (0%)   NA      \
    1.85 GB (47%)  No                                        4 KB,\
    WFS-2,128 DSBs\n\
+1058         huge_FS    7  1.50 TB  Not determined\n\
+1053              fs-unmounted    4   108 GB     Not mounted \
+   NA  943 MB (18%)  39.2 GB (36%)    No                    4 KB,\
+   WFS-2,128 DSBs,dedupe enabled\n\
 \n"
 
 HNAS_RESULT6 = "\n\
@@ -173,6 +177,10 @@ Deduped          Avail  Thin  ThinSize  ThinAvail              FS Type\n\
   No                       4 KB,WFS-2,128 DSBs\n\
 1047  manage_test02  19.9 GB  9.29 GB (47%)   0 B (0%)       NA  10.6 GB (53%)\
   No                       4 KB,WFS-2,128 DSBs\n\
+1058         huge_FS    7  1.50 TB  Not determined\n\
+1053              fs-unmounted    4   108 GB     Not mounted \
+   NA  943 MB (18%)  39.2 GB (36%)    No                 4 KB,\
+   WFS-2,128 DSBs,dedupe enabled\n\
 \n"
 
 HNAS_RESULT20 = "\n\
