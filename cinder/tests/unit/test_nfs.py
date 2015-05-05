@@ -16,13 +16,13 @@
 
 import errno
 import os
+import testtools
 
 import mock
 import mox as mox_lib
 from mox import stubout
 from oslo_utils import units
 
-from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
@@ -621,56 +621,6 @@ class NfsDriverTestCase(test.TestCase):
 
         self.assertEqual(1, remotefs.LOG.error.call_count)
 
-    def test_setup_should_throw_error_if_shares_config_not_configured(self):
-        """do_setup should throw error if shares config is not configured."""
-        drv = self._driver
-        self.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
-
-        self.assertRaises(exception.NfsException,
-                          drv.do_setup, mox_lib.IsA(context.RequestContext))
-
-    def test_setup_should_throw_error_if_oversub_ratio_less_than_zero(self):
-        """do_setup should throw error if nfs_oversub_ratio is less than 0."""
-        drv = self._driver
-        self.configuration.nfs_oversub_ratio = -1
-        self.assertRaises(exception.NfsException,
-                          drv.do_setup,
-                          mox_lib.IsA(context.RequestContext))
-
-    def test_setup_should_throw_error_if_used_ratio_less_than_zero(self):
-        """do_setup should throw error if nfs_used_ratio is less than 0."""
-        drv = self._driver
-        self.configuration.nfs_used_ratio = -1
-        self.assertRaises(exception.NfsException,
-                          drv.do_setup,
-                          mox_lib.IsA(context.RequestContext))
-
-    def test_setup_should_throw_error_if_used_ratio_greater_than_one(self):
-        """do_setup should throw error if nfs_used_ratio is greater than 1."""
-        drv = self._driver
-        self.configuration.nfs_used_ratio = 2
-        self.assertRaises(exception.NfsException,
-                          drv.do_setup,
-                          mox_lib.IsA(context.RequestContext))
-
-    def test_setup_should_throw_exception_if_nfs_client_is_not_installed(self):
-        """do_setup should throw error if nfs client is not installed."""
-        mox = self._mox
-        drv = self._driver
-        self.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
-        mox.StubOutWithMock(os.path, 'exists')
-        os.path.exists(self.TEST_SHARES_CONFIG_FILE).AndReturn(True)
-        mox.StubOutWithMock(drv, '_execute')
-        drv._execute('mount.nfs', check_exit_code=False, run_as_root=False).\
-            AndRaise(OSError(errno.ENOENT, 'No such file or directory'))
-
-        mox.ReplayAll()
-
-        self.assertRaises(exception.NfsException,
-                          drv.do_setup, mox_lib.IsA(context.RequestContext))
-
-        mox.VerifyAll()
-
     def test_find_share_should_throw_error_if_there_is_no_mounted_shares(self):
         """_find_share should throw error if there is no mounted shares."""
         drv = self._driver
@@ -1138,3 +1088,178 @@ class NfsDriverTestCase(test.TestCase):
 
         self.assertEqual(min_num_attempts,
                          drv._remotefsclient.mount.call_count)
+
+
+class NfsDriverDoSetupTestCase(test.TestCase):
+
+    def setUp(self):
+        super(NfsDriverDoSetupTestCase, self).setUp()
+        self.context = mock.Mock()
+        self.create_configuration()
+
+    def create_configuration(self):
+        config = conf.Configuration(None)
+        config.append_config_values(nfs.nfs_opts)
+        self.configuration = config
+
+    def test_setup_should_throw_error_if_shares_config_not_configured(self):
+        """do_setup should throw error if shares config is not configured."""
+
+        self.override_config('nfs_shares_config', None)
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+
+        with testtools.ExpectedException(exception.NfsException,
+                                         ".*no NFS config file configured.*"):
+            drv.do_setup(self.context)
+
+        self.assertEqual(0, mock_os_path_exists.call_count)
+
+    def test_setup_should_throw_error_if_shares_file_does_not_exist(self):
+        """do_setup should throw error if shares file does not exist."""
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = False
+
+        with testtools.ExpectedException(exception.NfsException,
+                                         "NFS config file.*doesn't exist"):
+            drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+
+    def test_setup_should_throw_error_if_oversub_ratio_less_than_zero(self):
+        """do_setup should throw error if nfs_oversub_ratio is less than 0."""
+
+        self.override_config('nfs_oversub_ratio', -1)
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = True
+
+        with testtools.ExpectedException(
+                exception.InvalidConfigurationValue,
+                ".*'nfs_oversub_ratio' invalid.*"):
+            drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+
+    def test_setup_oversub_ratio_default_value(self):
+        """do_setup should work with default value for nfs_oversub_ratio."""
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = True
+        mock_execute = self.mock_object(drv, '_execute')
+        mock_set_security = self.mock_object(drv, 'set_nas_security_options')
+
+        drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+        self.assertEqual(1, mock_execute.call_count)
+        self.assertEqual(1, mock_set_security.call_count)
+        self.assertEqual(self.configuration.nfs_oversub_ratio, 1.0)
+
+    def test_setup_should_throw_error_if_used_ratio_less_than_zero(self):
+        """do_setup should throw error if nfs_used_ratio is less than 0."""
+
+        self.override_config('nfs_used_ratio', -1)
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = True
+
+        with testtools.ExpectedException(
+                exception.InvalidConfigurationValue,
+                ".*'nfs_used_ratio' invalid.*"):
+            drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+
+    def test_setup_should_throw_error_if_used_ratio_greater_than_one(self):
+        """do_setup should throw error if nfs_used_ratio is greater than 1."""
+
+        self.override_config('nfs_used_ratio', 2)
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = True
+
+        with testtools.ExpectedException(
+                exception.InvalidConfigurationValue,
+                ".*'nfs_used_ratio' invalid.*"):
+            drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+
+    def test_setup_used_ratio_default_value(self):
+        """do_setup should work with default value for nfs_used_ratio."""
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = True
+        mock_execute = self.mock_object(drv, '_execute')
+        mock_set_security = self.mock_object(drv, 'set_nas_security_options')
+
+        drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+        self.assertEqual(1, mock_execute.call_count)
+        self.assertEqual(1, mock_set_security.call_count)
+        self.assertEqual(self.configuration.nfs_used_ratio, 0.95)
+
+    def test_setup_should_throw_exception_if_nfs_client_is_not_installed(self):
+        """do_setup should throw error if nfs client is not installed."""
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = True
+        mock_execute = self.mock_object(drv, '_execute')
+        mock_execute.side_effect = OSError(
+            errno.ENOENT, 'No such file or directory.')
+
+        with testtools.ExpectedException(
+                exception.NfsException, 'mount.nfs is not installed'):
+            drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+        mock_execute.assert_has_calls(
+            [mock.call('mount.nfs',
+                       check_exit_code=False,
+                       run_as_root=False)])
+
+    def test_setup_should_throw_exception_if_mount_nfs_command_fails(self):
+        """do_setup should throw error if mount.nfs fails with OSError
+
+           This test covers the OSError path when mount.nfs is installed.
+        """
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = True
+        mock_execute = self.mock_object(drv, '_execute')
+        mock_execute.side_effect = OSError(
+            errno.EPERM, 'Operation... BROKEN')
+
+        with testtools.ExpectedException(OSError, '.*Operation... BROKEN'):
+            drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+        mock_execute.assert_has_calls(
+            [mock.call('mount.nfs',
+                       check_exit_code=False,
+                       run_as_root=False)])
