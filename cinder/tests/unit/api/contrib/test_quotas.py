@@ -88,8 +88,13 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, 'foo', body)
 
-    def test_update_invalid_key_value(self):
+    def test_update_invalid_value_key_value(self):
         body = {'quota_set': {'gigabytes': "should_be_int"}}
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
+                          self.req, 'foo', body)
+
+    def test_update_invalid_type_key_value(self):
+        body = {'quota_set': {'gigabytes': None}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, 'foo', body)
 
