@@ -59,7 +59,7 @@ class QuotaSetsController(wsgi.Controller):
     def _validate_quota_limit(self, limit):
         try:
             limit = int(limit)
-        except ValueError:
+        except (ValueError, TypeError):
             msg = _("Quota limit must be specified as an integer value.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
