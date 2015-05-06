@@ -107,14 +107,14 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         else:
             protocol, auto = self.restapi_protocol, False
 
-        self.restapi = jsonrpc.NexentaEdgeJSONProxy(
-            protocol, self.restapi_host, self.restapi_port, '/',
-            self.restapi_user, self.restapi_password, auto=auto)
-
         try:
+            self.restapi = jsonrpc.NexentaEdgeJSONProxy(
+                protocol, self.restapi_host, self.restapi_port, '/',
+                self.restapi_user, self.restapi_password, auto=auto)
+
             rsp = self.restapi.get('sysconfig/iscsi/status')
         except Exception as exc:
-            LOG.error(__('Error reaching NexentaEdge host: %s') % self.restapi_host)
+            LOG.error(__('Error verifying NexentaEdge host: %s') % self.restapi_host)
             LOG.error(str(exc));
             return exc
 
