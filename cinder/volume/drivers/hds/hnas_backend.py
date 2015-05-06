@@ -182,7 +182,7 @@ class HnasBackend(object):
 
         newout = ""
         for line in lines:
-            if 'Not mounted' in line:
+            if 'Not mounted' in line or 'Not determined' in line:
                 continue
             if 'not' not in line and 'EVS' in line:
                 single_evs = False
