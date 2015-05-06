@@ -525,6 +525,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             'replication_status': 'disabled',
             'replication_extended_status': None,
             'replication_driver_data': None,
+            'metadata': [],
         }
         self.assertDictMatch(expected, msg['payload'])
         msg = fake_notifier.NOTIFICATIONS[1]
@@ -2823,7 +2824,8 @@ class VolumeTestCase(BaseVolumeTestCase):
             'user_id': 'fake',
             'volume_id': volume['id'],
             'volume_size': 1,
-            'availability_zone': 'nova'
+            'availability_zone': 'nova',
+            'metadata': '',
         }
         self.assertDictMatch(expected, msg['payload'])
         msg = fake_notifier.NOTIFICATIONS[3]

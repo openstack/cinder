@@ -15,7 +15,10 @@
 
 """Tests For miscellaneous util methods used with volume."""
 
+
+import datetime
 import mock
+
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -42,7 +45,8 @@ class NotifyUsageTestCase(test.TestCase):
                                                         mock.sentinel.volume,
                                                         'test_suffix')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.volume)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume)
         mock_rpc.get_notifier.assert_called_once_with('volume', 'host1')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
             mock.sentinel.context,
@@ -62,7 +66,8 @@ class NotifyUsageTestCase(test.TestCase):
             extra_usage_info={'a': 'b', 'c': 'd'},
             host='host2')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.volume, a='b', c='d')
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume, a='b', c='d')
         mock_rpc.get_notifier.assert_called_once_with('volume', 'host2')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
             mock.sentinel.context,
@@ -80,7 +85,8 @@ class NotifyUsageTestCase(test.TestCase):
             mock.sentinel.volume,
             'test_suffix')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.volume)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume)
         mock_rpc.get_notifier.assert_called_once_with('replication', 'host1')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
             mock.sentinel.context,
@@ -100,7 +106,8 @@ class NotifyUsageTestCase(test.TestCase):
             extra_usage_info={'a': 'b', 'c': 'd'},
             host='host2')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.volume,
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume,
                                            a='b', c='d')
         mock_rpc.get_notifier.assert_called_once_with('replication', 'host2')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
@@ -119,7 +126,8 @@ class NotifyUsageTestCase(test.TestCase):
             mock.sentinel.volume,
             'test_suffix')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.volume)
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume)
         mock_rpc.get_notifier.assert_called_once_with('replication', 'host1')
         mock_rpc.get_notifier.return_value.error.assert_called_once_with(
             mock.sentinel.context,
@@ -139,7 +147,8 @@ class NotifyUsageTestCase(test.TestCase):
             extra_error_info={'a': 'b', 'c': 'd'},
             host='host2')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.volume,
+        mock_usage.assert_called_once_with(mock.sentinel.context,
+                                           mock.sentinel.volume,
                                            a='b', c='d')
         mock_rpc.get_notifier.assert_called_once_with('replication', 'host2')
         mock_rpc.get_notifier.return_value.error.assert_called_once_with(
@@ -198,6 +207,7 @@ class NotifyUsageTestCase(test.TestCase):
             'created_at': '2014-12-11T10:10:00',
             'status': 'pause',
             'deleted': '',
+            'metadata': {'fake_snap_meta_key': 'fake_snap_meta_value'},
         }
         usage_info = volume_utils._usage_from_snapshot(raw_snapshot)
         expected_snapshot = {
@@ -211,8 +221,54 @@ class NotifyUsageTestCase(test.TestCase):
             'created_at': '2014-12-11T10:10:00',
             'status': 'pause',
             'deleted': '',
+            'metadata': "{'fake_snap_meta_key': 'fake_snap_meta_value'}",
         }
         self.assertEqual(expected_snapshot, usage_info)
+
+    @mock.patch('cinder.db.volume_glance_metadata_get')
+    def test_usage_from_volume(self, mock_image_metadata):
+        mock_image_metadata.return_value = {'image_id': 'fake_image_id'}
+        raw_volume = {
+            'project_id': '12b0330ec2584a',
+            'user_id': '158cba1b8c2bb6008e',
+            'host': 'fake_host',
+            'availability_zone': 'nova',
+            'volume_type_id': 'fake_volume_type_id',
+            'id': 'fake_volume_id',
+            'size': 1,
+            'display_name': 'test_volume',
+            'created_at': datetime.datetime(2015, 1, 1, 1, 1, 1),
+            'launched_at': datetime.datetime(2015, 1, 1, 1, 1, 1),
+            'snapshot_id': None,
+            'replication_status': None,
+            'replication_extended_status': None,
+            'replication_driver_data': None,
+            'status': 'available',
+            'volume_metadata': {'fake_metadata_key': 'fake_metadata_value'},
+        }
+        usage_info = volume_utils._usage_from_volume(
+            mock.sentinel.context,
+            raw_volume)
+        expected_volume = {
+            'tenant_id': '12b0330ec2584a',
+            'user_id': '158cba1b8c2bb6008e',
+            'host': 'fake_host',
+            'availability_zone': 'nova',
+            'volume_type': 'fake_volume_type_id',
+            'volume_id': 'fake_volume_id',
+            'size': 1,
+            'display_name': 'test_volume',
+            'created_at': '2015-01-01T01:01:01',
+            'launched_at': '2015-01-01T01:01:01',
+            'snapshot_id': None,
+            'replication_status': None,
+            'replication_extended_status': None,
+            'replication_driver_data': None,
+            'status': 'available',
+            'metadata': {'fake_metadata_key': 'fake_metadata_value'},
+            'glance_metadata': {'image_id': 'fake_image_id'},
+        }
+        self.assertEqual(expected_volume, usage_info)
 
     @mock.patch('cinder.volume.utils._usage_from_consistencygroup')
     @mock.patch('cinder.volume.utils.CONF')
