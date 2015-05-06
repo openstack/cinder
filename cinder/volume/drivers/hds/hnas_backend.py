@@ -482,7 +482,7 @@ class HnasBackend(object):
                 if lunline[0].isdigit():
                     # see if already mounted
                     if vol[:29] == lun[:29]:
-                        LOG.info(_LI('lun: %(lun)s already mounted (lline)%s'),
+                        LOG.info(_LI('lun: %(lun)s already mounted %(lline)s'),
                                  {'lun': lun, 'lline': lunline})
                         conn = (int(lunline), lun, initiator, hlun, fulliqn,
                                 hlun, hdp, port)
