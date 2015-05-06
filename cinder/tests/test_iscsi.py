@@ -20,8 +20,10 @@ import shutil
 import string
 import tempfile
 
+from cinder.brick import exception
 from cinder.brick.iscsi import iscsi
 from cinder import context
+from cinder.openstack.common import processutils as putils
 from cinder import test
 from cinder.volume import driver
 
@@ -245,6 +247,27 @@ class LioAdmTestCase(test.TestCase, TargetAdminTestCase):
 
         self.assertEqual(('foo', 'bar'),
                          target_helper._get_target_chap_auth(ctxt, test_vol))
+
+    def _raise_exception(self, *args, **kwargs):
+        raise putils.ProcessExecutionError(cmd=' '.join(args) + unichr(0xa1))
+
+    def test_create_iscsi_exception(self):
+        target_helper = self.driver.get_target_helper(self.db)
+        target_helper.set_execute(self._raise_exception)
+        chap_auth = target_helper._iscsi_authentication('IncomingUser',
+                                                        self.chap_username,
+                                                        self.chap_password)
+        self.assertRaises(exception.ISCSITargetCreateFailed,
+                          target_helper.create_iscsi_target, self.target_name,
+                          self.tid, self.lun, self.path, chap_auth,
+                          write_cache=self.write_cache)
+
+    def test_remove_iscsi_exception(self):
+        target_helper = self.driver.get_target_helper(self.db)
+        target_helper.set_execute(self._raise_exception)
+        self.assertRaises(exception.ISCSITargetRemoveFailed,
+                          target_helper.remove_iscsi_target, self.tid,
+                          self.lun, self.vol_id, self.target_name)
 
 
 class ISERTgtAdmTestCase(TgtAdmTestCase):
