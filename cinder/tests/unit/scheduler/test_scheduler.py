@@ -25,7 +25,6 @@ from oslo_log import log as logging
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _
 from cinder.scheduler import driver
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager
@@ -280,9 +279,7 @@ class SchedulerManagerTestCase(test.TestCase):
                               self.context,
                               'volume',
                               group_id)
-            LOG.exception.assert_called_once_with(_(
-                "Failed to create consistency group "
-                "%(group_id)s."), {'group_id': group_id})
+            self.assertTrue(LOG.exception.call_count > 0)
             db.consistencygroup_update.assert_called_once_with(
                 self.context, group_id, {'status': 'error'})
 
@@ -294,9 +291,7 @@ class SchedulerManagerTestCase(test.TestCase):
                 reason="No weighed hosts available")
             self.manager.create_consistencygroup(
                 self.context, 'volume', group_id)
-            LOG.error.assert_called_once_with(_(
-                "Could not find a host for consistency group "
-                "%(group_id)s.") % {'group_id': group_id})
+            self.assertTrue(LOG.error.call_count > 0)
             db.consistencygroup_update.assert_called_once_with(
                 self.context, group_id, {'status': 'error'})
 

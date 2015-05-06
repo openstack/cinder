@@ -25,6 +25,7 @@ from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
+import six
 
 from cinder import context
 from cinder import db
@@ -112,10 +113,9 @@ class SchedulerManager(manager.Manager):
                 request_spec_list,
                 filter_properties_list)
         except exception.NoValidHost:
-            msg = (_("Could not find a host for consistency group "
-                     "%(group_id)s.") %
-                   {'group_id': group_id})
-            LOG.error(msg)
+            LOG.error(_LE("Could not find a host for consistency group "
+                          "%(group_id)s."),
+                      {'group_id': group_id})
             db.consistencygroup_update(context, group_id,
                                        {'status': 'error'})
         except Exception:
@@ -140,10 +140,9 @@ class SchedulerManager(manager.Manager):
                                                  snapshot_id,
                                                  image_id)
         except Exception:
-            LOG.exception(_LE("Failed to create scheduler "
-                              "manager volume flow"))
-            raise exception.CinderException(
-                _("Failed to create scheduler manager volume flow"))
+            msg = _("Failed to create scheduler manager volume flow")
+            LOG.exception(msg)
+            raise exception.CinderException(msg)
 
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
@@ -277,8 +276,8 @@ class SchedulerManager(manager.Manager):
                                      request_spec, msg=None):
         # TODO(harlowja): move into a task that just does this later.
         if not msg:
-            msg = (_("Failed to schedule_%(method)s: %(ex)s") %
-                   {'method': method, 'ex': ex})
+            msg = (_LE("Failed to schedule_%(method)s: %(ex)s") %
+                   {'method': method, 'ex': six.text_type(ex)})
         LOG.error(msg)
 
         volume_state = updates['volume_state']
