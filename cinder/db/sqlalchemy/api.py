@@ -928,9 +928,26 @@ def reservation_rollback(context, reservations, project_id=None):
             reservation.delete(session=session)
 
 
+def quota_destroy_by_project(*args, **kwargs):
+    """Destroy all limit quotas associated with a project.
+
+    Leaves usage and reservation quotas intact.
+    """
+    quota_destroy_all_by_project(only_quotas=True, *args, **kwargs)
+
+
 @require_admin_context
 @_retry_on_deadlock
-def quota_destroy_all_by_project(context, project_id):
+def quota_destroy_all_by_project(context, project_id, only_quotas=False):
+    """Destroy all quotas associated with a project.
+
+    This includes limit quotas, usage quotas and reservation quotas.
+    Optionally can only remove limit quotas and leave other types as they are.
+
+    :param context: The request context, for access checks.
+    :param project_id: The ID of the project being deleted.
+    :param only_quotas: Only delete limit quotas, leave other types intact.
+    """
     session = get_session()
     with session.begin():
         quotas = model_query(context, models.Quota, session=session,
@@ -940,6 +957,9 @@ def quota_destroy_all_by_project(context, project_id):
 
         for quota_ref in quotas:
             quota_ref.delete(session=session)
+
+        if only_quotas:
+            return
 
         quota_usages = model_query(context, models.QuotaUsage,
                                    session=session, read_deleted="no").\
