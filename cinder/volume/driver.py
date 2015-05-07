@@ -1358,15 +1358,24 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         """
         return None
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
         """Return model update for migrated volume.
+
+        Each driver implementing this method needs to be responsible for the
+        values of _name_id and provider_location. If None is returned or either
+        key is not set, it means the volume table does not need to change the
+        value(s) for the key(s).
+        The return format is {"_name_id": value, "provider_location": value}.
 
         :param volume: The original volume that was migrated to this backend
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
         :return model_update to update DB with any needed changes
         """
-        return None
+        msg = _("The method update_migrated_volume not implemented.")
+        raise NotImplementedError(msg)
 
     def migrate_volume(self, context, volume, host):
         return (False, None)

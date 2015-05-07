@@ -3917,6 +3917,46 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_volume(self.context, volume_dst['id'])
         self.volume.delete_volume(self.context, volume_src['id'])
 
+    @mock.patch('cinder.db.volume_update')
+    def test_update_migrated_volume(self, volume_update):
+        fake_host = 'fake_host'
+        fake_new_host = 'fake_new_host'
+        fake_update = {'_name_id': None, 'provider_location': None}
+        fake_elevated = 'fake_elevated'
+        volume = tests_utils.create_volume(self.context, size=1,
+                                           status='available',
+                                           host=fake_host)
+        new_volume = tests_utils.create_volume(self.context, size=1,
+                                               status='available',
+                                               host=fake_new_host)
+        new_volume['_name_id'] = 'fake_name_id'
+        new_volume['provider_location'] = 'fake_provider_location'
+        fake_update_error = {'_name_id': new_volume['_name_id'],
+                             'provider_location':
+                             new_volume['provider_location']}
+        with mock.patch.object(self.volume.driver,
+                               'update_migrated_volume') as \
+                migrate_update,\
+                mock.patch.object(self.context, 'elevated') as elevated:
+            migrate_update.return_value = fake_update
+            elevated.return_value = fake_elevated
+            self.volume.update_migrated_volume(self.context, volume,
+                                               new_volume, 'available')
+            volume_update.assert_called_once_with(fake_elevated,
+                                                  volume['id'],
+                                                  fake_update)
+
+            # Test the case for update_migrated_volume not implemented
+            # for the driver.
+            migrate_update.reset_mock()
+            volume_update.reset_mock()
+            migrate_update.side_effect = NotImplementedError
+            self.volume.update_migrated_volume(self.context, volume,
+                                               new_volume, 'available')
+            volume_update.assert_called_once_with(fake_elevated,
+                                                  volume['id'],
+                                                  fake_update_error)
+
     def test_list_availability_zones_enabled_service(self):
         services = [
             {'availability_zone': 'ping', 'disabled': 0},
@@ -5867,6 +5907,43 @@ class LVMVolumeDriverTestCase(DriverTestCase):
                                          backup_service)
 
         mock_volume_get.assert_called_with(self.context, vol['id'])
+
+    def test_update_migrated_volume(self):
+        fake_volume_id = 'vol1'
+        fake_new_volume_id = 'vol2'
+        fake_provider = 'fake_provider'
+        original_volume_name = CONF.volume_name_template % fake_volume_id
+        current_name = CONF.volume_name_template % fake_new_volume_id
+        fake_volume = tests_utils.create_volume(self.context)
+        fake_volume['id'] = fake_volume_id
+        fake_new_volume = tests_utils.create_volume(self.context)
+        fake_new_volume['id'] = fake_new_volume_id
+        fake_new_volume['provider_location'] = fake_provider
+        fake_vg = fake_lvm.FakeBrickLVM('cinder-volumes', False,
+                                        None, 'default')
+        with mock.patch.object(self.volume.driver, 'vg') as vg:
+            vg.return_value = fake_vg
+            vg.rename_volume.return_value = None
+            update = self.volume.driver.update_migrated_volume(self.context,
+                                                               fake_volume,
+                                                               fake_new_volume,
+                                                               'available')
+            vg.rename_volume.assert_called_once_with(current_name,
+                                                     original_volume_name)
+            self.assertEqual({'_name_id': None,
+                              'provider_location': None}, update)
+
+            vg.rename_volume.reset_mock()
+            vg.rename_volume.side_effect = processutils.ProcessExecutionError
+            update = self.volume.driver.update_migrated_volume(self.context,
+                                                               fake_volume,
+                                                               fake_new_volume,
+                                                               'available')
+            vg.rename_volume.assert_called_once_with(current_name,
+                                                     original_volume_name)
+            self.assertEqual({'_name_id': fake_new_volume_id,
+                              'provider_location': fake_provider},
+                             update)
 
 
 class ISCSITestCase(DriverTestCase):

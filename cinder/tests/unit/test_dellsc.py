@@ -1058,7 +1058,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         volume = {'id': 111}
         backend_volume = {'id': 112}
         model_update = {'_name_id': None}
-        rt = self.driver.update_migrated_volume(None, volume, backend_volume)
+        rt = self.driver.update_migrated_volume(None, volume, backend_volume,
+                                                'available')
         mock_rename_volume.assert_called_once_with(self.VOLUME,
                                                    volume['id'])
         self.assertEqual(model_update, rt)
@@ -1080,20 +1081,22 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                 mock_open_connection,
                                                 mock_init):
         volume = {'id': 111}
-        backend_volume = {'id': 112}
-        rt = self.driver.update_migrated_volume(None, volume, backend_volume)
+        backend_volume = {'id': 112, '_name_id': 113}
+        rt = self.driver.update_migrated_volume(None, volume, backend_volume,
+                                                'available')
         mock_rename_volume.assert_called_once_with(self.VOLUME,
                                                    volume['id'])
-        self.assertEqual(None, rt)
+        self.assertEqual({'_name_id': 113}, rt)
 
     def test_update_migrated_volume_no_volume_id(self,
                                                  mock_close_connection,
                                                  mock_open_connection,
                                                  mock_init):
         volume = {'id': None}
-        backend_volume = {'id': 112}
-        rt = self.driver.update_migrated_volume(None, volume, backend_volume)
-        self.assertEqual(None, rt)
+        backend_volume = {'id': 112, '_name_id': 113}
+        rt = self.driver.update_migrated_volume(None, volume, backend_volume,
+                                                'available')
+        self.assertEqual({'_name_id': 113}, rt)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
@@ -1108,8 +1111,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                   mock_open_connection,
                                                   mock_init):
         volume = {'id': 111}
-        backend_volume = {'id': None}
-        rt = self.driver.update_migrated_volume(None, volume, backend_volume)
+        backend_volume = {'id': None, '_name_id': None}
+        rt = self.driver.update_migrated_volume(None, volume, backend_volume,
+                                                'available')
         mock_find_sc.assert_called_once_with()
         mock_find_volume.assert_called_once_with(None)
-        self.assertEqual(None, rt)
+        self.assertEqual({'_name_id': None}, rt)

@@ -434,7 +434,8 @@ class StorPoolDriver(driver.TransferVD, driver.ExtendVD, driver.CloneableVD,
 
         return True
 
-    def update_migrated_volume(self, context, volume, new_volume):
+    def update_migrated_volume(self, context, volume, new_volume,
+                               original_volume_status):
         orig_id = volume['id']
         orig_name = self._attach.volumeName(orig_id)
         temp_id = new_volume['id']
@@ -442,14 +443,25 @@ class StorPoolDriver(driver.TransferVD, driver.ExtendVD, driver.CloneableVD,
         vols = {v.name: True for v in self._attach.api().volumesList()}
         if temp_name not in vols:
             LOG.error(_LE('StorPool update_migrated_volume(): it seems '
-                          'that the StorPool volume "%(tid)" was not '
+                          'that the StorPool volume "%(tid)s" was not '
                           'created as part of the migration from '
-                          '"%(oid)"'), {'tid': temp_id, 'oid': orig_id})
+                          '"%(oid)s"'), {'tid': temp_id, 'oid': orig_id})
+            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
         elif orig_name in vols:
             LOG.error(_LE('StorPool update_migrated_volume(): both '
-                          'the original volume "%(oid)" and the migrated '
-                          'StorPool volume "%(tid)" seem to exist on '
+                          'the original volume "%(oid)s" and the migrated '
+                          'StorPool volume "%(tid)s" seem to exist on '
                           'the StorPool cluster'),
                       {'oid': orig_id, 'tid': temp_id})
+            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
         else:
-            self._attach.api().volumeUpdate(temp_name, {'rename': orig_name})
+            try:
+                self._attach.api().volumeUpdate(temp_name,
+                                                {'rename': orig_name})
+                return {'_name_id': None}
+            except spapi.ApiError as e:
+                LOG.error(_LE('StorPool update_migrated_volume(): '
+                              'could not rename %(tname)s to %(oname)s: '
+                              '%(err)s'),
+                          {'tname': temp_name, 'oname': orig_name, 'err': e})
+                return {'_name_id': new_volume['_name_id'] or new_volume['id']}

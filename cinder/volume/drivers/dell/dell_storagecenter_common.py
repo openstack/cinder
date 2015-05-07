@@ -343,12 +343,14 @@ class DellCommonDriver(san.SanDriver):
                       {'total': data['total_capacity_gb'],
                        'free': data['free_capacity_gb']})
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
         '''Return model update for migrated volume.
 
         :param volume: The original volume that was migrated to this backend
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
         :return model_update to update DB with any needed changes
         '''
         # We use id as our volume name so we need to rename the backend
@@ -369,4 +371,4 @@ class DellCommonDriver(san.SanDriver):
         # The world was horrible to us so we should error and leave.
         LOG.error(_LE('Unable to rename the logical volume for volume: %s'),
                   original_volume_name)
-        return None
+        return {'_name_id': new_volume['_name_id'] or new_volume['id']}

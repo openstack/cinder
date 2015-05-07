@@ -1904,7 +1904,8 @@ class InfortrendCommon(object):
                 'volume_id': volume['id']})
             return True
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
         """Return model update for migrated volume."""
 
         src_volume_id = volume['id'].replace('-', '')
@@ -1919,13 +1920,19 @@ class InfortrendCommon(object):
             'Rename partition %(part_id)s '
             'into new volume %(new_volume)s.', {
                 'part_id': part_id, 'new_volume': dst_volume_id})
-
-        self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
+        try:
+            self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
+        except exception.InfortrendCliException:
+            LOG.exception(_LE('Failed to rename %(new_volume)s into '
+                              '%(volume)s.'), {'new_volume': new_volume['id'],
+                                               'volume': volume['id']})
+            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
 
         LOG.info(_LI('Update migrated volume %(new_volume)s completed.'), {
             'new_volume': new_volume['id']})
 
         model_update = {
+            '_name_id': None,
             'provider_location': new_volume['provider_location'],
         }
         return model_update

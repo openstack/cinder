@@ -1151,12 +1151,13 @@ def finish_volume_migration(context, src_vol_id, dest_vol_id):
             return attr in inst.__class__.__table__.columns
 
         for key, value in dest_volume_ref.iteritems():
-            if key == 'id' or not is_column(dest_volume_ref, key):
+            # The implementation of update_migrated_volume will decide the
+            # values for _name_id and provider_location.
+            if (key in ('id', '_name_id', 'provider_location')
+                    or not is_column(dest_volume_ref, key)):
                 continue
             elif key == 'migration_status':
                 value = None
-            elif key == '_name_id':
-                value = dest_volume_ref['_name_id'] or dest_volume_ref['id']
 
             setattr(src_volume_ref, key, value)
 

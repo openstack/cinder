@@ -1374,11 +1374,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                       {'err': ex}, resource=volume)
 
         # Give driver (new_volume) a chance to update things as needed
+        # after a successful migration.
         # Note this needs to go through rpc to the host of the new volume
-        # the current host and driver object is for the "existing" volume
-        rpcapi.update_migrated_volume(ctxt,
-                                      volume,
-                                      new_volume)
+        # the current host and driver object is for the "existing" volume.
+        rpcapi.update_migrated_volume(ctxt, volume, new_volume,
+                                      orig_volume_status)
         self.db.finish_volume_migration(ctxt, volume_id, new_volume_id)
         self.db.volume_destroy(ctxt, new_volume_id)
         if orig_volume_status == 'in-use':
@@ -2580,14 +2580,23 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         return True
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               volume_status):
         """Finalize migration process on backend device."""
-
         model_update = None
-        model_update = self.driver.update_migrated_volume(ctxt,
-                                                          volume,
-                                                          new_volume)
+        try:
+            model_update = self.driver.update_migrated_volume(ctxt,
+                                                              volume,
+                                                              new_volume,
+                                                              volume_status)
+        except NotImplementedError:
+            # If update_migrated_volume is not implemented for the driver,
+            # _name_id and provider_location will be set with the values
+            # from new_volume.
+            model_update = {'_name_id': new_volume['_name_id'] or
+                            new_volume['id'],
+                            'provider_location':
+                            new_volume['provider_location']}
         if model_update:
-            self.db.volume_update(ctxt.elevated(),
-                                  volume['id'],
+            self.db.volume_update(ctxt.elevated(), volume['id'],
                                   model_update)

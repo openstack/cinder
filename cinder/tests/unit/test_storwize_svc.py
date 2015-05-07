@@ -2998,6 +2998,35 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.assertEqual((7, 2, 0, 0), res['code_level'],
                              'Get code level error')
 
+    @mock.patch.object(helpers.StorwizeHelpers, 'rename_vdisk')
+    def test_storwize_update_migrated_volume(self, rename_vdisk):
+        ctxt = testutils.get_test_admin_context()
+        current_volume_id = 'fake_volume_id'
+        original_volume_id = 'fake_original_volume_id'
+        current_name = 'volume-' + current_volume_id
+        original_name = 'volume-' + original_volume_id
+        backend_volume = self._create_volume(id=current_volume_id)
+        volume = self._create_volume(id=original_volume_id)
+        model_update = self.driver.update_migrated_volume(ctxt, volume,
+                                                          backend_volume,
+                                                          'available')
+        rename_vdisk.assert_called_once_with(current_name, original_name)
+        self.assertEqual({'_name_id': None}, model_update)
+
+        rename_vdisk.reset_mock()
+        rename_vdisk.side_effect = exception.VolumeBackendAPIException
+        model_update = self.driver.update_migrated_volume(ctxt, volume,
+                                                          backend_volume,
+                                                          'available')
+        self.assertEqual({'_name_id': current_volume_id}, model_update)
+
+        rename_vdisk.reset_mock()
+        rename_vdisk.side_effect = exception.VolumeBackendAPIException
+        model_update = self.driver.update_migrated_volume(ctxt, volume,
+                                                          backend_volume,
+                                                          'attached')
+        self.assertEqual({'_name_id': current_volume_id}, model_update)
+
     def test_storwize_vdisk_copy_ops(self):
         ctxt = testutils.get_test_admin_context()
         volume = self._create_volume()
