@@ -166,22 +166,31 @@ class DateraDriver(san.SanISCSIDriver):
 
     def _do_export(self, context, volume):
         """Gets the associated account, retrieves CHAP info and updates."""
-        if volume['provider_location']:
-            return {'provider_location': volume['provider_location']}
+        portal = None
+        iqn = None
+        datera_volume = self._issue_api_request('volumes',
+                                                resource=volume['id'])
+        if len(datera_volume['targets']) == 0:
+            export = self._issue_api_request(
+                'volumes', action='export', method='post',
+                body={'ctype': 'TC_BLOCK_ISCSI'}, resource=volume['id'])
 
-        export = self._issue_api_request(
-            'volumes', action='export', method='post',
-            body={'ctype': 'TC_BLOCK_ISCSI'}, resource=volume['id'])
+            portal = "%s:3260" % export['_ipColl'][0]
 
-        # NOTE(thingee): Refer to the Datera test for a stub of what this looks
-        # like. We're just going to pull the first IP that the Datera cluster
-        # makes available for the portal.
-        iscsi_portal = export['_ipColl'][0] + ':3260'
-        iqn = export['targetIds'].itervalues().next()['ids'][0]['id']
+            # NOTE(thingee): Refer to the Datera test for a stub of what this
+            # looks like. We're just going to pull the first IP that the Datera
+            # cluster makes available for the portal.
+            iqn = export['targetIds'].itervalues().next()['ids'][0]['id']
+        else:
+            export = self._issue_api_request(
+                'export_configs',
+                resource=datera_volume['targets'][0]
+            )
+            portal = export['endpoint_addrs'][0] + ':3260'
+            iqn = export['endpoint_idents'][0]
 
-        provider_location = '%s %s %s' % (iscsi_portal, iqn, 0)
-        model_update = {'provider_location': provider_location}
-        return model_update
+        provider_location = '%s %s %s' % (portal, iqn, 0)
+        return {'provider_location': provider_location}
 
     def ensure_export(self, context, volume):
         return self._do_export(context, volume)

@@ -158,10 +158,10 @@ class DateraVolumeTestCase(test.TestCase):
                           self.driver.delete_volume, self.volume)
 
     def test_ensure_export_success(self):
-        self.mock_api.return_value = stub_export
+        self.mock_api.side_effect = self._generate_fake_api_request()
         ctxt = context.get_admin_context()
         expected = {
-            'provider_location': u'172.28.121.10:3260 iqn.2013-05.com.daterain'
+            'provider_location': '172.28.121.10:3260 iqn.2013-05.com.daterain'
                                  'c::01:sn:fc372bc0490b2dbe 0'
         }
         self.assertEqual(expected, self.driver.ensure_export(ctxt,
@@ -173,13 +173,15 @@ class DateraVolumeTestCase(test.TestCase):
         self.assertRaises(exception.DateraAPIException,
                           self.driver.ensure_export, ctxt, self.volume)
 
-    def test_create_export_success(self):
-        self.mock_api.return_value = stub_export
+    def test_create_export_target_does_not_exist_success(self):
+        self.mock_api.side_effect = self._generate_fake_api_request(
+            targets_exist=False)
         ctxt = context.get_admin_context()
         expected = {
-            'provider_location': u'172.28.121.10:3260 iqn.2013-05.com.daterain'
-                                 'c::01:sn:fc372bc0490b2dbe 0'
+            'provider_location': '172.28.121.10:3260 iqn.2013-05.com.daterainc'
+                                 '::01:sn:fc372bc0490b2dbe 0'
         }
+
         self.assertEqual(expected, self.driver.create_export(ctxt,
                                                              self.volume))
 
@@ -305,7 +307,26 @@ class DateraVolumeTestCase(test.TestCase):
         self.assertRaises(exception.NotAuthorized, self.driver._login)
         self.assertEqual(1, self.mock_api.call_count)
 
-stub_export = {
+    def _generate_fake_api_request(self, targets_exist=True):
+        fake_volume = None
+        if not targets_exist:
+            fake_volume = _stub_datera_volume(targets={})
+        else:
+            fake_volume = _stub_datera_volume()
+
+        def _fake_api_request(resource_type, method='get', resource=None,
+                              body=None, action=None, sensitive=False):
+            if resource_type == 'volumes' and action is None:
+                return fake_volume
+            elif resource_type == 'volume' and action == 'export':
+                return stub_create_export
+            elif resource_type == 'export_configs':
+                return stub_get_export
+
+        return _fake_api_request
+
+
+stub_create_export = {
     u'_ipColl': [u'172.28.121.10', u'172.28.120.10'],
     u'acls': {},
     u'activeServers': {u'4594953e-f97f-e111-ad85-001e6738c0f0': u'1'},
@@ -347,6 +368,60 @@ stub_export = {
     u'typeName': u'TargetIscsiConfig',
     u'uuid': u'7071efd7-9f22-4996-8f68-47e9ab19d0fd'
 }
+
+stub_get_export = {
+    "uuid": "744e1bd8-d741-4919-86cd-806037d98c8a",
+    "active_initiators": [],
+    "active_servers": [
+        "472764aa-584b-4c1d-a7b7-e50cf7f5518f"
+    ],
+    "endpoint_addrs": [
+        "172.28.121.10",
+        "172.28.120.10"
+    ],
+    "endpoint_idents": [
+        "iqn.2013-05.com.daterainc::01:sn:fc372bc0490b2dbe"
+    ],
+    "initiators": [],
+    "servers": [
+        "472764aa-584b-4c1d-a7b7-e50cf7f5518f"
+    ],
+    "volumes": [
+        "10305aa4-1343-4363-86fe-f49eb421a48c"
+    ],
+    "type": "iscsi",
+    "creation_type": "system_explicit",
+    "server_allocation": "TS_ALLOC_COMPLETED",
+    "admin_state": "online",
+    "target_allocation": "TS_ALLOC_COMPLETED",
+    "atype": "none",
+    "name": "OS-10305aa4",
+    "targetIds": {
+        "472764aa-584b-4c1d-a7b7-e50cf7f5518f": {
+            "ids": [{
+                "dev": "",
+                "id": ("iqn.2013-05.com.daterainc::01:sn:fc372bc0490b2dbe")
+            }]
+        }
+    }
+}
+
+
+def _stub_datera_volume(*args, **kwargs):
+    return {
+        "status": "available",
+        "name": "test",
+        "num_replicas": "2",
+        "parent": "00000000-0000-0000-0000-000000000000",
+        "size": "1024",
+        "sub_type": "IS_ORIGINAL",
+        "uuid": "10305aa4-1343-4363-86fe-f49eb421a48c",
+        "snapshots": [],
+        "snapshot_configs": [],
+        "targets": [
+            kwargs.get('targets', "744e1bd8-d741-4919-86cd-806037d98c8a"),
+        ]
+    }
 
 
 def _stub_volume(*args, **kwargs):
