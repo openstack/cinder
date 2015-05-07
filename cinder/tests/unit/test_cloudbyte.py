@@ -674,6 +674,13 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
 
         return MAP_COMMAND_TO_FAKE_RESPONSE[cmd]
 
+    def _none_response_to_list_tsm(self, cmd, params, version='1.0'):
+        """This is a side effect function."""
+        if cmd == 'listTsm':
+            return {"listTsmResponse": {}}
+
+        return MAP_COMMAND_TO_FAKE_RESPONSE[cmd]
+
     def _side_effect_api_req_to_list_filesystem(
             self, cmd, params, version='1.0'):
         """This is a side effect function."""
@@ -1034,6 +1041,27 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
                 "Bad or unexpected response from the storage volume "
                 "backend API: Null response received from CloudByte's "
                 "list iscsi initiators."):
+            self.driver.create_volume(volume)
+
+        # Test - VIII
+
+        volume['id'] = fake_volume_id
+        volume['size'] = 22
+
+        # reconfigure the dependencies
+        # reset the mocks
+        mock_api_req.reset_mock()
+
+        # configure or re-configure the mocks
+        mock_api_req.side_effect = (
+            self._none_response_to_list_tsm)
+
+        # now run the test
+        with testtools.ExpectedException(
+                exception.VolumeBackendAPIException,
+                "Bad or unexpected response from the storage volume "
+                "backend API: TSM \[openstack\] was not found in CloudByte "
+                "storage for account \[CustomerA\]."):
             self.driver.create_volume(volume)
 
     @mock.patch.object(cloudbyte.CloudByteISCSIDriver,

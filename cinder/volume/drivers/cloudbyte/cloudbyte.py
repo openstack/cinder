@@ -236,9 +236,16 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         data = self._api_request_for_cloudbyte(async_cmd, params)
         return data
 
-    def _get_tsm_details(self, data, tsm_name):
+    def _get_tsm_details(self, data, tsm_name, account_name):
         # Filter required tsm's details
-        tsms = data['listTsmResponse']['listTsm']
+        tsms = data['listTsmResponse'].get('listTsm')
+
+        if tsms is None:
+            msg = (_("TSM [%(tsm)s] was not found in CloudByte storage "
+                   "for account [%(account)s].") %
+                   {'tsm': tsm_name, 'account': account_name})
+            raise exception.VolumeBackendAPIException(data=msg)
+
         tsmdetails = {}
         for tsm in tsms:
             if tsm['name'] == tsm_name:
@@ -582,7 +589,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
                    'tsm': tsm_name})
 
         tsm_data = self._request_tsm_details(account_id)
-        tsm_details = self._get_tsm_details(tsm_data, tsm_name)
+        tsm_details = self._get_tsm_details(tsm_data, tsm_name, account_name)
 
         # Send request to create a qos group before creating a volume
         LOG.debug("Creating qos group for CloudByte volume [%s].",
