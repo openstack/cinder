@@ -297,30 +297,14 @@ class ChunkedBackupDriver(driver.BackupDriver):
         obj[object_name] = {}
         obj[object_name]['offset'] = data_offset
         obj[object_name]['length'] = len(data)
-        LOG.debug('reading chunk of data from volume')
-        if self.compressor is not None:
-            algorithm = CONF.backup_compression_algorithm.lower()
-            obj[object_name]['compression'] = algorithm
-            data_size_bytes = len(data)
-            data = self.compressor.compress(data)
-            comp_size_bytes = len(data)
-            LOG.debug('compressed %(data_size_bytes)d bytes of data '
-                      'to %(comp_size_bytes)d bytes using '
-                      '%(algorithm)s',
-                      {
-                          'data_size_bytes': data_size_bytes,
-                          'comp_size_bytes': comp_size_bytes,
-                          'algorithm': algorithm,
-                      })
-        else:
-            LOG.debug('not compressing data')
-            obj[object_name]['compression'] = 'none'
-
+        LOG.debug('Backing up chunk of data from volume.')
+        algorithm, output_data = self._prepare_output_data(data)
+        obj[object_name]['compression'] = algorithm
         LOG.debug('About to put_object')
         with self.get_object_writer(
                 container, object_name, extra_metadata=extra_metadata
         ) as writer:
-            writer.write(data)
+            writer.write(output_data)
         md5 = hashlib.md5(data).hexdigest()
         obj[object_name]['md5'] = md5
         LOG.debug('backup MD5 for %(object_name)s: %(md5)s',
@@ -332,6 +316,30 @@ class ChunkedBackupDriver(driver.BackupDriver):
 
         LOG.debug('Calling eventlet.sleep(0)')
         eventlet.sleep(0)
+
+    def _prepare_output_data(self, data):
+        if self.compressor is None:
+            return 'none', data
+        data_size_bytes = len(data)
+        compressed_data = self.compressor.compress(data)
+        comp_size_bytes = len(compressed_data)
+        algorithm = CONF.backup_compression_algorithm.lower()
+        if comp_size_bytes >= data_size_bytes:
+            LOG.debug('Compression of this chunk was ineffective: '
+                      'original length: %(data_size_bytes)d, '
+                      'compressed length: %(compressed_size_bytes)d. '
+                      'Using original data for this chunk.',
+                      {'data_size_bytes': data_size_bytes,
+                       'comp_size_bytes': comp_size_bytes,
+                       })
+            return 'none', data
+        LOG.debug('Compressed %(data_size_bytes)d bytes of data '
+                  'to %(comp_size_bytes)d bytes using %(algorithm)s.',
+                  {'data_size_bytes': data_size_bytes,
+                   'comp_size_bytes': comp_size_bytes,
+                   'algorithm': algorithm,
+                   })
+        return algorithm, compressed_data
 
     def _finalize_backup(self, backup, container, object_meta, object_sha256):
         """Write the backup's metadata to the backup repository."""
