@@ -348,3 +348,33 @@ class DellCommonDriver(san.SanDriver):
             LOG.debug('Total cap %(t)s Free cap %(f)s',
                       {'t': totalcapacitygb,
                        'f': freespacegb})
+
+    def update_migrated_volume(self, ctxt, volume, new_volume):
+        """Return model update for migrated volume.
+
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :return model_update to update DB with any needed changes
+        """
+        # We use id as our volume name so we need to rename the backend
+        # volume to the original volume name.
+        original_volume_name = volume.get('id')
+        current_name = new_volume.get('id')
+        LOG.debug('update_migrated_volume: %(c)s to %(o)s',
+                  {'c': current_name,
+                   'o': original_volume_name})
+        if original_volume_name:
+            with self._client.open_connection() as api:
+                ssn = api.find_sc(self.configuration.dell_sc_ssn)
+                if ssn is not None:
+                    scvolume = api.find_volume(ssn,
+                                               current_name)
+                    if scvolume:
+                        if api.rename_volume(scvolume, original_volume_name):
+                            model_update = {'_name_id': None}
+                            return model_update
+        # The world was horrible to us so we should error and leave.
+        LOG.error(_LE('Unabled to rename the logical volume for volume: %s'),
+                  original_volume_name)
+        return None
