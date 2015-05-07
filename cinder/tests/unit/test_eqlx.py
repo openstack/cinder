@@ -20,6 +20,7 @@ import mock
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 import paramiko
+import six
 
 from cinder import context
 from cinder import exception
@@ -302,6 +303,9 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                          self.driver._ssh_execute(ssh, self.cmd))
 
     def test_ssh_execute_error(self):
+        self.mock_object(self.driver, '_ssh_execute',
+                         mock.Mock(side_effect=
+                                   processutils.ProcessExecutionError))
         ssh = mock.Mock(paramiko.SSHClient)
         chan = mock.Mock(paramiko.Channel)
         transport = mock.Mock(paramiko.Transport)
@@ -368,8 +372,10 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                          mock.Mock(side_effect=exception.
                                    VolumeBackendAPIException("some error")))
         # now call the execute
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver._eql_execute, "fake command")
+        with mock.patch('sys.stderr', new=six.StringIO()):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver._eql_execute, "fake command")
+
         self.assertEqual(num_attempts + 1, self.driver._get_output.call_count)
 
     def test_with_timeout(self):
