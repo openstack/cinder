@@ -125,7 +125,7 @@ class CiscoFCZoneClientCLI(object):
                          'zone_config': switch_data}
             LOG.error(msg)
             exc_msg = _("Exception: %s") % six.text_type(ex)
-            LOG.exception(exc_msg)
+            LOG.error(exc_msg)
             raise exception.FCZoneDriverException(reason=msg)
 
         return zone_set
@@ -147,10 +147,10 @@ class CiscoFCZoneClientCLI(object):
         """
         LOG.debug("Add Zones - Zones passed: %s", zones)
 
-        LOG.debug("Active zone set:%s", active_zone_set)
+        LOG.debug("Active zone set: %s", active_zone_set)
         zone_list = active_zone_set[ZoneConstant.CFG_ZONES]
-        LOG.debug("zone list:%s", zone_list)
-        LOG.debug("zone status:%s", zone_status)
+        LOG.debug("zone list: %s", zone_list)
+        LOG.debug("zone status: %s", zone_status)
 
         cfg_name = active_zone_set[ZoneConstant.ACTIVE_ZONE_CONFIG]
 
@@ -184,7 +184,7 @@ class CiscoFCZoneClientCLI(object):
         zone_cmds.append(['end'])
 
         try:
-            LOG.debug("Add zones: Config cmd to run:%s", zone_cmds)
+            LOG.debug("Add zones: Config cmd to run: %s", zone_cmds)
             self._ssh_execute(zone_cmds, True, 1)
 
             if activate:
@@ -201,7 +201,7 @@ class CiscoFCZoneClientCLI(object):
     def activate_zoneset(self, cfgname, fabric_vsan, zone_status):
         """Method to Activate the zone config. Param cfgname - ZonesetName."""
 
-        LOG.debug("zone status:%s", zone_status)
+        LOG.debug("zone status: %s", zone_status)
 
         cmd_list = [['conf'],
                     ['zoneset', 'activate', 'name', cfgname, 'vsan',
@@ -246,7 +246,7 @@ class CiscoFCZoneClientCLI(object):
                          'zone_status': switch_data}
             LOG.error(msg)
             exc_msg = _("Exception: %s") % six.text_type(ex)
-            LOG.exception(exc_msg)
+            LOG.error(exc_msg)
             raise exception.FCZoneDriverException(reason=msg)
 
         return zone_status
@@ -274,7 +274,7 @@ class CiscoFCZoneClientCLI(object):
 
             cmds.append(['end'])
 
-            LOG.debug("Delete zones: Config cmd to run:%s", cmds)
+            LOG.debug("Delete zones: Config cmd to run: %s", cmds)
             self._ssh_execute(cmds, True, 1)
 
             if activate:
@@ -321,7 +321,7 @@ class CiscoFCZoneClientCLI(object):
         stdout, stderr, sw_data = None, None, None
         try:
             stdout, stderr = self._run_ssh(cmd_list, True, 1)
-            LOG.debug("CLI output from ssh - output:%s", stdout)
+            LOG.debug("CLI output from ssh - output: %s", stdout)
             if (stdout):
                 sw_data = stdout.splitlines()
             return sw_data
@@ -394,7 +394,7 @@ class CiscoFCZoneClientCLI(object):
                         cmd=command)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error running SSH command: %s") % command)
+                LOG.error(_LE("Error running SSH command: %s"), command)
 
     def _ssh_execute(self, cmd_list, check_exit_code=True, attempts=1):
         """Execute cli with status update.
@@ -422,7 +422,7 @@ class CiscoFCZoneClientCLI(object):
                                              min_size=1,
                                              max_size=5)
         stdin, stdout, stderr = None, None, None
-        LOG.debug("Executing command via ssh: %s" % command)
+        LOG.debug("Executing command via ssh: %s", command)
         last_exception = None
         try:
             with self.sshpool.item() as ssh:
@@ -433,10 +433,10 @@ class CiscoFCZoneClientCLI(object):
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                         channel = stdout.channel
                         exit_status = channel.recv_exit_status()
-                        LOG.debug("Exit Status from ssh:%s", exit_status)
+                        LOG.debug("Exit Status from ssh: %s", exit_status)
                         # exit_status == -1 if no exit code was returned
                         if exit_status != -1:
-                            LOG.debug('Result was %s' % exit_status)
+                            LOG.debug('Result was %s', exit_status)
                             if check_exit_code and exit_status != 0:
                                 raise processutils.ProcessExecutionError(
                                     exit_code=exit_status,
@@ -448,11 +448,10 @@ class CiscoFCZoneClientCLI(object):
                         else:
                             return True
                     except Exception as e:
-                        msg = _("Exception: %s") % six.text_type(e)
-                        LOG.error(msg)
+                        LOG.exception(_LE('Error executing SSH command.'))
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
-                LOG.debug("Handling error case after SSH:%s", last_exception)
+                LOG.debug("Handling error case after SSH: %s", last_exception)
                 try:
                     raise processutils.ProcessExecutionError(
                         exit_code=last_exception.exit_code,
@@ -465,11 +464,9 @@ class CiscoFCZoneClientCLI(object):
                         stdout="",
                         stderr="Error running SSH command",
                         cmd=command)
-        except Exception as e:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                msg = (_("Error executing command via ssh: %s") %
-                       six.text_type(e))
-                LOG.error(msg)
+                LOG.exception(_LE("Error executing command via ssh."))
         finally:
             if stdin:
                 stdin.flush()

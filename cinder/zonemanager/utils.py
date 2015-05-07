@@ -76,8 +76,8 @@ def AddFCZone(initialize_connection):
     def decorator(self, *args, **kwargs):
         conn_info = initialize_connection(self, *args, **kwargs)
         if not conn_info:
-            LOG.warn(_LW("Driver didn't return connection info, "
-                         "can't add zone."))
+            LOG.warning(_LW("Driver didn't return connection info, "
+                            "can't add zone."))
             return None
 
         vol_type = conn_info.get('driver_volume_type', None)
@@ -101,8 +101,8 @@ def RemoveFCZone(terminate_connection):
     def decorator(self, *args, **kwargs):
         conn_info = terminate_connection(self, *args, **kwargs)
         if not conn_info:
-            LOG.warn(_LW("Driver didn't return connection info from "
-                         "terminate_connection call."))
+            LOG.warning(_LW("Driver didn't return connection info from "
+                            "terminate_connection call."))
             return None
 
         vol_type = conn_info.get('driver_volume_type', None)

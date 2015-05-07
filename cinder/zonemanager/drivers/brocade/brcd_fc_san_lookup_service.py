@@ -19,6 +19,7 @@
 from oslo_log import log as logging
 from oslo_utils import excutils
 import paramiko
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE
@@ -137,7 +138,7 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
                 except exception.FCSanLookupServiceException:
                     with excutils.save_and_reraise_exception():
                         LOG.error(_LE("Failed collecting name server info from"
-                                      " fabric %s") % fabric_ip)
+                                      " fabric %s"), fabric_ip)
                 except Exception as e:
                     msg = _("SSH connection failed "
                             "for %(fabric)s with error: %(err)s"
@@ -216,7 +217,7 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
             switch_data = stdout.readlines()
         except paramiko.SSHException as e:
             msg = (_("SSH Command failed with error '%(err)s' "
-                     "'%(command)s'") % {'err': e,
+                     "'%(command)s'") % {'err': six.text_type(e),
                                          'command': cmd})
             LOG.error(msg)
             raise exception.FCSanLookupServiceException(message=msg)

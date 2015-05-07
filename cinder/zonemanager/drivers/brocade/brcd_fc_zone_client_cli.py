@@ -28,6 +28,7 @@ from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_utils import excutils
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE
@@ -103,14 +104,13 @@ class BrcdFCZoneClientCLI(object):
                         zone_member_list.append(zone_member)
             zone_set[ZoneConstant.CFG_ZONES] = zone
             zone_set[ZoneConstant.ACTIVE_ZONE_CONFIG] = zone_set_name
-        except Exception as ex:
+        except Exception:
             # Incase of parsing error here, it should be malformed cli output.
             msg = _("Malformed zone configuration: (switch=%(switch)s "
                     "zone_config=%(zone_config)s)."
                     ) % {'switch': self.switch_ip,
                          'zone_config': switch_data}
-            LOG.error(msg)
-            LOG.exception(ex)
+            LOG.exception(msg)
             raise exception.FCZoneDriverException(reason=msg)
         switch_data = None
         return zone_set
@@ -137,9 +137,9 @@ class BrcdFCZoneClientCLI(object):
         zone_with_sep = ''
         if not active_zone_set:
             active_zone_set = self.get_active_zone_set()
-            LOG.debug("Active zone set:%s", active_zone_set)
+            LOG.debug("Active zone set: %s", active_zone_set)
         zone_list = active_zone_set[ZoneConstant.CFG_ZONES]
-        LOG.debug("zone list:%s", zone_list)
+        LOG.debug("zone list: %s", zone_list)
         for zone in zones.keys():
             # if zone exists, its an update. Delete & insert
             # TODO(skolathur): This can be optimized to an update call later
@@ -183,7 +183,7 @@ class BrcdFCZoneClientCLI(object):
             self._cfg_trans_abort()
             msg = _("Creating and activating zone set failed: "
                     "(Zone set=%(cfg_name)s error=%(err)s)."
-                    ) % {'cfg_name': cfg_name, 'err': e}
+                    ) % {'cfg_name': cfg_name, 'err': six.text_type(e)}
             LOG.error(msg)
             raise exception.BrocadeZoningCliException(reason=msg)
 
@@ -227,7 +227,7 @@ class BrcdFCZoneClientCLI(object):
                     % {'active_zoneset_name': active_zoneset_name,
                        'zone_names': zone_names
                        }
-            LOG.debug("Delete zones: Config cmd to run:%s", cmd)
+            LOG.debug("Delete zones: Config cmd to run: %s", cmd)
             self.apply_zone_change(cmd.split())
             for zone in zones:
                 self._zone_delete(zone)
@@ -237,7 +237,7 @@ class BrcdFCZoneClientCLI(object):
                 self._cfg_save()
         except Exception as e:
             msg = _("Deleting zones failed: (command=%(cmd)s error=%(err)s)."
-                    ) % {'cmd': cmd, 'err': e}
+                    ) % {'cmd': cmd, 'err': six.text_type(e)}
             LOG.error(msg)
             self._cfg_trans_abort()
             raise exception.BrocadeZoningCliException(reason=msg)
@@ -323,7 +323,7 @@ class BrcdFCZoneClientCLI(object):
             if (stdout):
                 for line in stdout:
                     if 'Fabric OS:  v' in line:
-                        LOG.debug("Firmware version string:%s", line)
+                        LOG.debug("Firmware version string: %s", line)
                         ver = line.split('Fabric OS:  v')[1].split('.')
                         if (ver):
                             firmware = int(ver[0] + ver[1])
@@ -333,7 +333,7 @@ class BrcdFCZoneClientCLI(object):
                 return False
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
-                    "error=%(err)s).") % {'cmd': cmd, 'err': e}
+                    "error=%(err)s).") % {'cmd': cmd, 'err': six.text_type(e)}
             LOG.error(msg)
             raise exception.BrocadeZoningCliException(reason=msg)
 
@@ -347,7 +347,7 @@ class BrcdFCZoneClientCLI(object):
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
                     "error=%(err)s).") % {'cmd': cmd_list,
-                                          'err': e}
+                                          'err': six.text_type(e)}
             LOG.error(msg)
             raise exception.BrocadeZoningCliException(reason=msg)
 
@@ -397,7 +397,7 @@ class BrcdFCZoneClientCLI(object):
                             command,
                             check_exit_code=check_exit_code)
                     except Exception as e:
-                        LOG.error(e)
+                        LOG.exception(_LE('Error executing SSH command.'))
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 try:
@@ -414,7 +414,7 @@ class BrcdFCZoneClientCLI(object):
                         cmd=command)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error running SSH command: %s") % command)
+                LOG.error(_LE("Error running SSH command: %s"), command)
 
     def _ssh_execute(self, cmd_list, check_exit_code=True, attempts=1):
         """Execute cli with status update.
@@ -433,7 +433,7 @@ class BrcdFCZoneClientCLI(object):
                                              min_size=1,
                                              max_size=5)
         stdin, stdout, stderr = None, None, None
-        LOG.debug("Executing command via ssh: %s" % command)
+        LOG.debug("Executing command via ssh: %s", command)
         last_exception = None
         try:
             with self.sshpool.item() as ssh:
@@ -444,10 +444,10 @@ class BrcdFCZoneClientCLI(object):
                         stdin.write("%s\n" % ZoneConstant.YES)
                         channel = stdout.channel
                         exit_status = channel.recv_exit_status()
-                        LOG.debug("Exit Status from ssh:%s", exit_status)
+                        LOG.debug("Exit Status from ssh: %s", exit_status)
                         # exit_status == -1 if no exit code was returned
                         if exit_status != -1:
-                            LOG.debug('Result was %s' % exit_status)
+                            LOG.debug('Result was %s', exit_status)
                             if check_exit_code and exit_status != 0:
                                 raise processutils.ProcessExecutionError(
                                     exit_code=exit_status,
@@ -459,11 +459,11 @@ class BrcdFCZoneClientCLI(object):
                         else:
                             return True
                     except Exception as e:
-                        LOG.error(e)
+                        LOG.exception(_LE('Error executing SSH command.'))
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 LOG.debug("Handling error case after "
-                          "SSH:%s", last_exception)
+                          "SSH: %s", last_exception)
                 try:
                     raise processutils.ProcessExecutionError(
                         exit_code=last_exception.exit_code,
@@ -507,7 +507,7 @@ class BrcdFCZoneClientCLI(object):
                                              min_size=1,
                                              max_size=5)
         with self.sshpool.item() as ssh:
-            LOG.debug('Running cmd (SSH): %s' % command)
+            LOG.debug('Running cmd (SSH): %s', command)
             channel = ssh.invoke_shell()
             stdin_stream = channel.makefile('wb')
             stdout_stream = channel.makefile('rb')
@@ -525,10 +525,9 @@ exit
             exit_status = channel.recv_exit_status()
             # exit_status == -1 if no exit code was returned
             if exit_status != -1:
-                LOG.debug('Result was %s' % exit_status)
+                LOG.debug('Result was %s', exit_status)
                 if exit_status != 0:
-                    msg = "command %s failed" % command
-                    LOG.debug(msg)
+                    LOG.debug("command %s failed", command)
                     raise processutils.ProcessExecutionError(
                         exit_code=exit_status,
                         stdout=stdout,
@@ -536,9 +535,9 @@ exit
                         cmd=command)
             try:
                 channel.close()
-            except Exception as e:
-                LOG.exception(e)
-            LOG.debug("_execute_cmd: stderr to return:%s" % stderr)
+            except Exception:
+                LOG.exception(_LE('Error closing channel.'))
+            LOG.debug("_execute_cmd: stderr to return: %s", stderr)
         return (stdout, stderr)
 
     def cleanup(self):

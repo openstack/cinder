@@ -122,7 +122,7 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
         :param initiator_target_map: Mapping of initiator to list of targets
         """
 
-        LOG.debug("Add connection for Fabric:%s", fabric)
+        LOG.debug("Add connection for Fabric: %s", fabric)
         LOG.info(_LI("CiscoFCZoneDriver - Add connection "
                      "for I-T map: %s"), initiator_target_map)
         fabric_ip = self.fabric_configs[fabric].safe_get(
@@ -219,10 +219,9 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     except exception.CiscoZoningCliException as cisco_ex:
                         msg = _("Exception: %s") % six.text_type(cisco_ex)
                         raise exception.FCZoneDriverException(msg)
-                    except Exception as e:
-                        LOG.error(_LE("Exception: %s") % six.text_type(e))
-                        msg = (_("Failed to add zoning configuration %s") %
-                               six.text_type(e))
+                    except Exception:
+                        msg = _("Failed to add zoning configuration.")
+                        LOG.exception(msg)
                         raise exception.FCZoneDriverException(msg)
                 LOG.debug("Zones added successfully: %s", zone_map)
             else:
@@ -239,7 +238,7 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
         :param fabric: Fabric name from cinder.conf file
         :param initiator_target_map: Mapping of initiator to list of targets
         """
-        LOG.debug("Delete connection for fabric:%s", fabric)
+        LOG.debug("Delete connection for fabric: %s", fabric)
         LOG.info(_LI("CiscoFCZoneDriver - Delete connection for I-T map: %s"),
                  initiator_target_map)
         fabric_ip = self.fabric_configs[fabric].safe_get(
@@ -319,7 +318,7 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                         # We find the filtered list and if it is non-empty,
                         # add initiator to it and update zone if filtered
                         # list is empty, we remove that zone.
-                        LOG.debug("Zone delete - I mode: filtered targets:%s",
+                        LOG.debug("Zone delete - I mode: filtered targets: %s",
                                   filtered_members)
                         if filtered_members:
                             filtered_members.append(formatted_initiator)
@@ -370,10 +369,9 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                                           zoning_vsan, cfgmap_from_fabric,
                                           statusmap_from_fabric)
                     conn.cleanup()
-                except Exception as e:
-                    msg = _("Exception: %s") % six.text_type(e)
-                    LOG.error(msg)
+                except Exception:
                     msg = _("Failed to update or delete zoning configuration")
+                    LOG.exception(msg)
                     raise exception.FCZoneDriverException(msg)
                 LOG.debug("Zones deleted successfully: %s", zone_map)
             else:
@@ -419,16 +417,16 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                         password=fabric_pwd, port=fabric_port,
                         vsan=zoning_vsan)
                     nsinfo = conn.get_nameserver_info()
-                    LOG.debug("show fcns database info from fabric:%s", nsinfo)
+                    LOG.debug("show fcns database info from fabric: %s",
+                              nsinfo)
                     conn.cleanup()
-                except exception.CiscoZoningCliException as ex:
+                except exception.CiscoZoningCliException:
                     with excutils.save_and_reraise_exception():
-                        LOG.error(_LE("Error getting show fcns database "
-                                      "info: %s"), six.text_type(ex))
-                except Exception as e:
-                    msg = (_("Failed to get show fcns database info:%s") %
-                           six.text_type(e))
-                    LOG.error(msg)
+                        LOG.exception(_LE("Error getting show fcns database "
+                                          "info."))
+                except Exception:
+                    msg = _("Failed to get show fcns database info.")
+                    LOG.exception(msg)
                     raise exception.FCZoneDriverException(msg)
                 visible_targets = filter(
                     lambda x: x in formatted_target_list, nsinfo)
@@ -444,7 +442,7 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                 else:
                     LOG.debug("No targets are in the fcns info for SAN %s",
                               fabric_name)
-        LOG.debug("Return SAN context output:%s", fabric_map)
+        LOG.debug("Return SAN context output: %s", fabric_map)
         return fabric_map
 
     def get_active_zone_set(self, fabric_ip,
@@ -462,10 +460,9 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                 password=fabric_pwd, port=fabric_port, vsan=zoning_vsan)
             cfgmap = conn.get_active_zone_set()
             conn.cleanup()
-        except Exception as e:
-            msg = (_("Failed to access active zoning configuration:%s") %
-                   six.text_type(e))
-            LOG.error(msg)
+        except Exception:
+            msg = _("Failed to access active zoning configuration.")
+            LOG.exception(msg)
             raise exception.FCZoneDriverException(msg)
         LOG.debug("Active zone set from fabric: %s", cfgmap)
         return cfgmap
@@ -484,10 +481,9 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                 password=fabric_pwd, port=fabric_port, vsan=zoning_vsan)
             statusmap = conn.get_zoning_status()
             conn.cleanup()
-        except Exception as e:
-            msg = (_("Failed to access zoneset status:%s") %
-                   six.text_type(e))
-            LOG.error(msg)
+        except Exception:
+            msg = _("Failed to access zoneset status:%s")
+            LOG.exception(msg)
             raise exception.FCZoneDriverException(msg)
         LOG.debug("Zoneset status from fabric: %s", statusmap)
         return statusmap

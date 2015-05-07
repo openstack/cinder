@@ -217,8 +217,7 @@ def validate_log_translations(logical_line, filename):
     ignore_dirs = [
         "cinder/db",
         "cinder/openstack",
-        "cinder/volume",
-        "cinder/zonemanager"]
+        "cinder/volume"]
     for directory in ignore_dirs:
         if directory in filename:
             return
