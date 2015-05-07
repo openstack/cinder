@@ -17,9 +17,7 @@
 =====================================================================
 
 .. automodule:: nexenta.volume
-.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
-.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
-.. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
+.. moduleauthor:: Alexey Khodos <alexey.khodos@nexenta.com>
 """
 
 from oslo_log import log as logging
@@ -32,7 +30,7 @@ from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.0'
+VERSION = '1.0.0'
 LOG = logging.getLogger(__name__)
 
 
@@ -41,18 +39,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     Version history:
         1.0.0 - Initial driver version.
-        1.0.1 - Fixed bug #1236626: catch "does not exist" exception of
-                lu_exists.
-        1.1.0 - Changed class name to NexentaISCSIDriver.
-        1.1.1 - Ignore "does not exist" exception of nms.snapshot.destroy.
-        1.1.2 - Optimized create_cloned_volume, replaced zfs send recv with zfs
-                clone.
-        1.1.3 - Extended volume stats provided by _update_volume_stats method.
-        1.2.0 - Added volume migration with storage assist method.
-        1.2.1 - Fixed bug #1263258: now migrate_volume update provider_location
-                of migrated volume; after migrating volume migrate_volume
-                destroy snapshot on migration destination.
-        1.3.0 - Added retype method.
     """
 
     VERSION = VERSION
