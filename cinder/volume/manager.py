@@ -855,7 +855,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                           resource=volume)
                 raise
         else:
-            # We can try and degrade gracefuly here by trying to detach
+            # We can try and degrade gracefully here by trying to detach
             # a volume without the attachment_id here if the volume only has
             # one attachment.  This is for backwards compatibility.
             attachments = self.db.volume_attachment_get_used_by_volume_id(
