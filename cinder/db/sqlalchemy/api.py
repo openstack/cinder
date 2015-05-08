@@ -218,9 +218,9 @@ def _retry_on_deadlock(f):
             try:
                 return f(*args, **kwargs)
             except db_exc.DBDeadlock:
-                LOG.warn(_LW("Deadlock detected when running "
-                             "'%(func_name)s': Retrying..."),
-                         dict(func_name=f.__name__))
+                LOG.warning(_LW("Deadlock detected when running "
+                                "'%(func_name)s': Retrying..."),
+                            dict(func_name=f.__name__))
                 # Retry!
                 time.sleep(0.5)
                 continue
@@ -875,7 +875,7 @@ def quota_reserve(context, resources, quotas, deltas, expire,
 
     if unders:
         LOG.warning(_LW("Change will make usage less than 0 for the following "
-                        "resources: %s") % unders)
+                        "resources: %s"), unders)
     if overs:
         usages = dict((k, dict(in_use=v['in_use'], reserved=v['reserved']))
                       for k, v in usages.items())
@@ -1636,7 +1636,7 @@ def process_sort_params(sort_keys, sort_dirs, default_keys=None,
         # Verify sort direction
         for sort_dir in sort_dirs:
             if sort_dir not in ('asc', 'desc'):
-                msg = _LE("Unknown sort direction, must be 'desc' or 'asc'.")
+                msg = _("Unknown sort direction, must be 'desc' or 'asc'.")
                 raise exception.InvalidInput(reason=msg)
             result_dirs.append(sort_dir)
     else:
@@ -1647,7 +1647,7 @@ def process_sort_params(sort_keys, sort_dirs, default_keys=None,
         result_dirs.append(default_dir_value)
     # Unless more direction are specified, which is an error
     if len(result_dirs) > len(result_keys):
-        msg = _LE("Sort direction array size exceeds sort key array size.")
+        msg = _("Sort direction array size exceeds sort key array size.")
         raise exception.InvalidInput(reason=msg)
 
     # Ensure defaults are included
@@ -2487,8 +2487,8 @@ def volume_type_destroy(context, id):
         results = model_query(context, models.Volume, session=session). \
             filter_by(volume_type_id=id).all()
         if results:
-            msg = _('VolumeType %s deletion failed, VolumeType in use.') % id
-            LOG.error(msg)
+            LOG.error(_LE('VolumeType %s deletion failed, '
+                          'VolumeType in use.'), id)
             raise exception.VolumeTypeInUse(volume_type_id=id)
         model_query(context, models.VolumeTypes, session=session).\
             filter_by(id=id).\
@@ -2908,7 +2908,7 @@ def qos_specs_update(context, qos_specs_id, specs):
             value = dict(id=id, key=key, value=specs[key],
                          specs_id=qos_specs_id,
                          deleted=False)
-            LOG.debug('qos_specs_update() value: %s' % value)
+            LOG.debug('qos_specs_update() value: %s', value)
             spec_ref.update(value)
             spec_ref.save(session=session)
 
@@ -3380,9 +3380,8 @@ def transfer_destroy(context, transfer_id):
         # If the volume state is not 'awaiting-transfer' don't change it, but
         # we can still mark the transfer record as deleted.
         if volume_ref['status'] != 'awaiting-transfer':
-            msg = _('Volume in unexpected state %s, '
-                    'expected awaiting-transfer') % volume_ref['status']
-            LOG.error(msg)
+            LOG.error(_LE('Volume in unexpected state %s, expected '
+                          'awaiting-transfer'), volume_ref['status'])
         else:
             volume_ref['status'] = 'available'
         volume_ref.update(volume_ref)
@@ -3610,12 +3609,12 @@ def purge_deleted_rows(context, age_in_days):
     try:
         age_in_days = int(age_in_days)
     except ValueError:
-        msg = _LE('Invalid value for age, %(age)s')
-        LOG.exception(msg, {'age': age_in_days})
-        raise exception.InvalidParameterValue(msg % {'age': age_in_days})
-    if age_in_days <= 0:
-        msg = _LE('Must supply a positive value for age')
+        msg = _('Invalid value for age, %(age)s') % {'age': age_in_days}
         LOG.exception(msg)
+        raise exception.InvalidParameterValue(msg)
+    if age_in_days <= 0:
+        msg = _('Must supply a positive value for age')
+        LOG.error(msg)
         raise exception.InvalidParameterValue(msg)
 
     engine = get_engine()

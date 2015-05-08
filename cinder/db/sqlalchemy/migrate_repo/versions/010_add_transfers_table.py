@@ -14,7 +14,7 @@ from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import MetaData, String, Table, ForeignKey
 
-from cinder.i18n import _
+from cinder.i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ def upgrade(migrate_engine):
     try:
         transfers.create()
     except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(transfers))
+        LOG.error(_LE("Table |%s| not created!"), repr(transfers))
         raise
 
 
@@ -59,5 +59,5 @@ def downgrade(migrate_engine):
     try:
         transfers.drop()
     except Exception:
-        LOG.error(_("transfers table not dropped"))
+        LOG.error(_LE("transfers table not dropped"))
         raise

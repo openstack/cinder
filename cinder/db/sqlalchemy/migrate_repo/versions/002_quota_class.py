@@ -132,8 +132,7 @@ def downgrade(migrate_engine):
             fkey = ForeignKeyConstraint(**params)
             fkey.drop()
         except Exception:
-            msg = _LE("Dropping foreign key %s failed.")
-            LOG.error(msg, fk_name)
+            LOG.error(_LE("Dropping foreign key %s failed."), fk_name)
 
     quota_classes = Table('quota_classes', meta, autoload=True)
     try:
