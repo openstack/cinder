@@ -22,7 +22,6 @@ import re
 import tempfile
 import time
 
-from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
@@ -498,21 +497,6 @@ class RemoteFSDriver(driver.VolumeDriver):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         self._stats = data
-
-    def _do_mount(self, cmd, ensure, share):
-        """Finalize mount command.
-
-        :param cmd: command to do the actual mount
-        :param ensure: boolean to allow remounting a share with a warning
-        :param share: description of the share for error reporting
-        """
-        try:
-            self._execute(*cmd, run_as_root=True)
-        except putils.ProcessExecutionError as exc:
-            if ensure and 'already mounted' in exc.stderr:
-                LOG.warn(_LW("%s is already mounted"), share)
-            else:
-                raise
 
     def _get_capacity_info(self, share):
         raise NotImplementedError()

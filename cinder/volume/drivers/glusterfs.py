@@ -71,12 +71,12 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         self._remotefsclient = None
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
+        root_helper = utils.get_root_helper()
         self.base = getattr(self.configuration,
                             'glusterfs_mount_point_base',
                             CONF.glusterfs_mount_point_base)
         self._remotefsclient = remotefs_brick.RemoteFsClient(
-            'glusterfs',
-            execute,
+            'glusterfs', root_helper, execute,
             glusterfs_mount_point_base=self.base)
 
     def set_execute(self, execute):
@@ -362,7 +362,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         :param glusterfs_share: string
         """
         mount_path = self._get_mount_point_for_share(glusterfs_share)
-        self._mount_glusterfs(glusterfs_share, mount_path, ensure=True)
+        self._mount_glusterfs(glusterfs_share)
 
         # Ensure we can write to this share
         group_id = os.getegid()
@@ -402,17 +402,17 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                 volume_size=volume_size_for)
         return greatest_share
 
-    def _mount_glusterfs(self, glusterfs_share, mount_path, ensure=False):
+    def _mount_glusterfs(self, glusterfs_share):
         """Mount GlusterFS share to mount path."""
-        # TODO(eharney): make this fs-agnostic and factor into remotefs
-        self._execute('mkdir', '-p', mount_path)
-
-        command = ['mount', '-t', 'glusterfs', glusterfs_share,
-                   mount_path]
+        mnt_flags = []
         if self.shares.get(glusterfs_share) is not None:
-            command.extend(self.shares[glusterfs_share].split())
-
-        self._do_mount(command, ensure, glusterfs_share)
+            mnt_flags = self.shares[glusterfs_share].split()
+        try:
+            self._remotefsclient.mount(glusterfs_share, mnt_flags)
+        except processutils.ProcessExecutionError:
+            LOG.error(_LE("Mount failure for %(share)s."),
+                      {'share': glusterfs_share})
+            raise
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume.
