@@ -609,9 +609,6 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(res.status_int, 400)
         self.assertEqual(res_dict['badRequest']['code'], 400)
-        self.assertEqual(res_dict['badRequest']['message'],
-                         'Invalid volume: Volume to be backed up must'
-                         ' be available')
 
     def test_create_backup_with_InvalidVolume2(self):
         # need to create the volume referenced below first
@@ -633,9 +630,6 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(res.status_int, 400)
         self.assertEqual(res_dict['badRequest']['code'], 400)
-        self.assertEqual(res_dict['badRequest']['message'],
-                         'Invalid volume: Volume to be backed up must'
-                         ' be available')
 
     @mock.patch('cinder.db.service_get_all_by_topic')
     def test_create_backup_WithOUT_enabled_backup_service(
