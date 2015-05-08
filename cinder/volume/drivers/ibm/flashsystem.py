@@ -73,6 +73,8 @@ class FlashSystemDriver(san.SanDriver):
     Version history:
     1.0.0 - Initial driver
     1.0.1 - Code clean up
+    1.0.2 - Add lock into vdisk map/unmap, connection
+            initialize/terminate
 
     """
 
@@ -265,7 +267,6 @@ class FlashSystemDriver(san.SanDriver):
             self._set_vdisk_copy_in_progress,
             [src_vdisk_name, dest_vdisk_name])
         timer.start(interval=self._check_lock_interval).wait()
-        timer.stop()
 
         try:
             self._copy_vdisk_data(src_vdisk_name, src_vdisk_id,
@@ -763,6 +764,7 @@ class FlashSystemDriver(san.SanDriver):
                    'out': six.text_type(out),
                    'err': six.text_type(err)})
 
+    @utils.synchronized('flashsystem-map', external=True)
     def _map_vdisk_to_host(self, vdisk_name, connector):
         """Create a mapping between a vdisk to a host."""
 
@@ -886,6 +888,7 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug('leave: _scan_device')
 
+    @utils.synchronized('flashsystem-unmap', external=True)
     def _unmap_vdisk_from_host(self, vdisk_name, connector):
         if 'host' in connector:
             host_name = self._get_host_from_connector(connector)
@@ -1010,7 +1013,6 @@ class FlashSystemDriver(san.SanDriver):
         timer = loopingcall.FixedIntervalLoopingCall(
             self._is_vdisk_copy_in_progress, vdisk_name)
         timer.start(interval=self._check_lock_interval).wait()
-        timer.stop()
 
     def do_setup(self, ctxt):
         """Check that we have all configuration details from the storage."""
@@ -1175,6 +1177,7 @@ class FlashSystemDriver(san.SanDriver):
         LOG.debug('leave: extend_volume: volume %s.', volume['name'])
 
     @fczm_utils.AddFCZone
+    @utils.synchronized('flashsystem-init-conn', external=True)
     def initialize_connection(self, volume, connector):
         """Perform the necessary work so that a FC connection can
         be made.
@@ -1228,6 +1231,7 @@ class FlashSystemDriver(san.SanDriver):
         return properties
 
     @fczm_utils.RemoveFCZone
+    @utils.synchronized('flashsystem-term-conn', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after connection has been terminated.
 
