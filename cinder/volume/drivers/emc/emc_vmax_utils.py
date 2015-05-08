@@ -1894,7 +1894,7 @@ class EMCVMAXUtils(object):
 
     def create_storage_hardwareId_instance_name(
             self, conn, hardwareIdManagementService, initiator):
-        """Create storage hardware ID instance name based on the given wwpn.
+        """Create storage hardware ID instance name based on the WWPN/IQN.
 
         :param conn: connection to the ecom server
         :param hardwareIdManagementService: the hardware ID management service
@@ -1903,7 +1903,7 @@ class EMCVMAXUtils(object):
         :returns: hardwareIdList
         """
         hardwareIdList = None
-        hardwareIdType = 2
+        hardwareIdType = self._get_hardware_type(initiator)
         rc, ret = conn.InvokeMethod(
             'CreateStorageHardwareID',
             hardwareIdManagementService,
@@ -1920,3 +1920,21 @@ class EMCVMAXUtils(object):
                          "%(initiator)s, rc=%(rc)d, ret=%(ret)s."),
                      {'initiator': initiator, 'rc': rc, 'ret': ret})
         return hardwareIdList
+
+    def _get_hardware_type(
+            self, initiator):
+        """Determine the hardware type based on the initiator.
+
+        :param initiator: initiator(IQN or WWPN)
+        :returns: hardwareTypeId
+        """
+        hardwareTypeId = 0
+        try:
+            int(initiator, 16)
+            hardwareTypeId = 2
+        except Exception:
+            if 'iqn' in initiator.lower():
+                hardwareTypeId = 5
+        if hardwareTypeId == 0:
+            LOG.warn(_LW("Cannot determine the hardware type."))
+        return hardwareTypeId
