@@ -90,28 +90,28 @@ class VolumeRouterTestCase(test.TestCase):
         vers = {
             "id": "v2.0",
             "status": "CURRENT",
-            "updated": "2012-11-21T11:33:21Z",
+            "updated": "2015-05-07T11:33:21Z",
             "links": [
                 {
                     "rel": "describedby",
                     "type": "application/pdf",
-                    "href": "http://jorgew.github.com/block-storage-api/"
-                            "content/os-block-storage-1.0.pdf",
+                    "href": "http://developer.openstack.org/api-ref-guides/"
+                            "bk-api-ref-blockstorage-v2.pdf",
                 },
             ],
         }
         fake_result = {
-            'id': 'http://jorgew.github.com/block-storage-api/'
-                  'content/os-block-storage-1.0.pdf',
+            'id': 'http://developer.openstack.org/api-ref-guides/'
+                  'bk-api-ref-blockstorage-v2.pdf',
             'title': 'Version v2.0',
-            'updated': '2012-11-21T11:33:21Z',
+            'updated': '2015-05-07T11:33:21Z',
             'link': {
-                'href': 'http://jorgew.github.com/block-storage-api/'
-                        'content/os-block-storage-1.0.pdf',
+                'href': 'http://developer.openstack.org/api-ref-guides/'
+                        'bk-api-ref-blockstorage-v2.pdf',
                 'type': 'application/pdf',
                 'rel': 'describedby'
             },
-            'content': 'Version v2.0 CURRENT (2012-11-21T11:33:21Z)'
+            'content': 'Version v2.0 CURRENT (2015-05-07T11:33:21Z)'
         }
         result_function = res._create_version_entry(vers)
         result = {}
@@ -128,13 +128,14 @@ class VolumeRouterTestCase(test.TestCase):
             {
                 "id": "v2.0",
                 "status": "CURRENT",
-                "updated": "2012-11-21T11:33:21Z",
+                "updated": "2015-05-07T11:33:21Z",
                 "links": [
                     {
                         "rel": "describedby",
                         "type": "application/pdf",
-                        "href": "http://jorgew.github.com/block-storage-api/"
-                                "content/os-block-storage-1.0.pdf",
+                        "href": "http://developer.openstack.org/"
+                                "api-ref-guides/"
+                                "bk-api-ref-blockstorage-v2.pdf",
                     },
                 ],
             },
@@ -153,13 +154,14 @@ class VolumeRouterTestCase(test.TestCase):
             }
         ]
         result = res._create_feed(vers, "fake_feed_title",
-                                  "http://jorgew.github.com/block-storage-api/"
-                                  "content/os-block-storage-1.0.pdf")
+                                  "http://developer.openstack.org/"
+                                  "api-ref-guides/"
+                                  "bk-api-ref-blockstorage-v1.pdf")
         fake_data = {
-            'id': 'http://jorgew.github.com/block-storage-api/'
-                  'content/os-block-storage-1.0.pdf',
+            'id': 'http://developer.openstack.org/api-ref-guides/'
+                  'bk-api-ref-blockstorage-v1.pdf',
             'title': 'fake_feed_title',
-            'updated': '2012-11-21T11:33:21Z',
+            'updated': '2015-05-07T11:33:21Z',
         }
         data = {}
         for subElement in result:
