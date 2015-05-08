@@ -232,22 +232,13 @@ class WindowsSmbFsTestCase(test.TestCase):
     def test_copy_vhd_volume_to_image(self):
         self._test_copy_volume_to_image(volume_format='vhd')
 
-    def _test_copy_image_to_volume(self, qemu_version=[1, 7]):
+    def test_copy_image_to_volume(self):
         drv = self._smbfs_driver
 
-        fake_image_id = 'fake_image_id'
-        fake_image_service = mock.MagicMock()
-        fake_image_service.show.return_value = (
-            {'id': fake_image_id, 'disk_format': 'raw'})
-
         drv.get_volume_format = mock.Mock(
-            return_value='vhdx')
+            return_value=mock.sentinel.volume_format)
         drv.local_path = mock.Mock(
             return_value=self._FAKE_VOLUME_PATH)
-        drv._local_volume_dir = mock.Mock(
-            return_value=self._FAKE_MNT_POINT)
-        drv.get_qemu_version = mock.Mock(
-            return_value=qemu_version)
         drv.configuration = mock.MagicMock()
         drv.configuration.volume_dd_blocksize = mock.sentinel.block_size
 
@@ -255,33 +246,14 @@ class WindowsSmbFsTestCase(test.TestCase):
                                'fetch_to_volume_format') as fake_fetch:
             drv.copy_image_to_volume(
                 mock.sentinel.context, self._FAKE_VOLUME,
-                fake_image_service,
-                fake_image_id)
-
-            if qemu_version < [1, 7]:
-                fake_temp_image_name = '%s.temp_image.%s.vhd' % (
-                    self._FAKE_VOLUME['id'],
-                    fake_image_id)
-                fetch_path = os.path.join(self._FAKE_MNT_POINT,
-                                          fake_temp_image_name)
-                fetch_format = 'vpc'
-                drv.vhdutils.convert_vhd.assert_called_once_with(
-                    fetch_path, self._FAKE_VOLUME_PATH)
-                drv._delete.assert_called_with(fetch_path)
-
-            else:
-                fetch_path = self._FAKE_VOLUME_PATH
-                fetch_format = 'vhdx'
-
+                mock.sentinel.image_service,
+                mock.sentinel.image_id)
             fake_fetch.assert_called_once_with(
-                mock.sentinel.context, fake_image_service, fake_image_id,
-                fetch_path, fetch_format, mock.sentinel.block_size)
-
-    def test_copy_image_to_volume(self):
-        self._test_copy_image_to_volume()
-
-    def test_copy_image_to_volume_with_conversion(self):
-        self._test_copy_image_to_volume([1, 5])
+                mock.sentinel.context,
+                mock.sentinel.image_service,
+                mock.sentinel.image_id,
+                self._FAKE_VOLUME_PATH, mock.sentinel.volume_format,
+                mock.sentinel.block_size)
 
     def test_copy_volume_from_snapshot(self):
         drv = self._smbfs_driver
