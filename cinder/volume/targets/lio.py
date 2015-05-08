@@ -189,9 +189,10 @@ class LioAdm(iscsi.ISCSITarget):
                           volume_iqn,
                           connector['initiator'],
                           run_as_root=True)
-        except putils.ProcessExecutionError:
-            LOG.error(_LE("Failed to delete initiator iqn %s to target.") %
-                      connector['initiator'])
+        except putils.ProcessExecutionError as e:
+            LOG.error(_LE("Failed to delete initiator iqn %(initiator)s to "
+                          "target. Error: %(error)s"),
+                      {'initiator': connector['initiator'], 'error': e})
             raise exception.ISCSITargetDetachFailed(volume_id=volume['id'])
 
         # We make changes persistent
