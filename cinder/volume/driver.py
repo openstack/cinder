@@ -22,7 +22,7 @@ import time
 from oslo.config import cfg
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import excutils
 from cinder.openstack.common import fileutils
@@ -457,7 +457,23 @@ class VolumeDriver(object):
             # Call remote manager's initialize_connection which includes
             # driver's create_export and initialize_connection
             rpcapi = volume_rpcapi.VolumeAPI()
-            conn = rpcapi.initialize_connection(context, volume, properties)
+            try:
+                conn = rpcapi.initialize_connection(context, volume,
+                                                    properties)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    # It is possible that initialize_connection fails due to
+                    # timeout. In fact, the volume is already attached after
+                    # the timeout error is raised, so the connection worths
+                    # a try of terminating.
+                    try:
+                        rpcapi.terminate_connection(context, volume,
+                                                    properties, force=True)
+                    except Exception:
+                        LOG.warning(_LW("Failed terminating the connection "
+                                        "of volume %(volume_id)s, but it is "
+                                        "acceptable."),
+                                    {'volume_id': volume['id']})
         else:
             # Call local driver's create_export and initialize_connection.
             # NOTE(avishay) This is copied from the manager's code - need to
