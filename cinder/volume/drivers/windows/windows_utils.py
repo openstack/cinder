@@ -268,14 +268,13 @@ class WindowsUtils(object):
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
-    def create_iscsi_target(self, target_name, ensure):
+    def create_iscsi_target(self, target_name):
         """Creates ISCSI target."""
         try:
-            cl = self._conn_wmi.__getattr__("WT_Host")
-            cl.NewHost(HostName=target_name)
+            self._conn_wmi.WT_Host.NewHost(HostName=target_name)
         except wmi.x_wmi as exc:
             excep_info = exc.com_error.excepinfo[2]
-            if not ensure or excep_info.find(u'The file exists') == -1:
+            if excep_info.find(u'The file exists') != -1:
                 err_msg = (_(
                     'create_iscsi_target: error when creating iscsi target: '
                     '%(tar_name)s . WMI exception: '
@@ -283,8 +282,8 @@ class WindowsUtils(object):
                 LOG.error(err_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
             else:
-                LOG.info(_LI('Ignored target creation error "%s"'
-                             ' while ensuring export'), exc)
+                LOG.info(_LI('The iSCSI target %(target_name)s already '
+                             'exists.'), {'target_name': target_name})
 
     def remove_iscsi_target(self, target_name):
         """Removes ISCSI target."""

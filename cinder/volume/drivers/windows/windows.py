@@ -128,32 +128,21 @@ class WindowsDriver(driver.ISCSIDriver):
         snapshot_name = snapshot['name']
         self.utils.delete_snapshot(snapshot_name)
 
-    def _do_export(self, _ctx, volume, ensure=False):
-        """Do all steps to get disk exported as LUN 0 at separate target.
+    def ensure_export(self, context, volume):
+        # iSCSI targets exported by WinTarget persist after host reboot.
+        pass
 
-        :param volume: reference of volume to be exported
-        :param ensure: if True, ignore errors caused by already existing
-            resources
-        :return: iscsiadm-formatted provider location string
-        """
+    def create_export(self, context, volume):
+        """Driver entry point to get the export info for a new volume."""
         target_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                 volume['name'])
-        self.utils.create_iscsi_target(target_name, ensure)
+        self.utils.create_iscsi_target(target_name)
 
         # Get the disk to add
         vol_name = volume['name']
         self.utils.add_disk_to_target(vol_name, target_name)
 
-        return target_name
-
-    def ensure_export(self, context, volume):
-        """Driver entry point to get the export info for an existing volume."""
-        self._do_export(context, volume, ensure=True)
-
-    def create_export(self, context, volume):
-        """Driver entry point to get the export info for a new volume."""
-        loc = self._do_export(context, volume, ensure=False)
-        return {'provider_location': loc}
+        return {'provider_location': target_name}
 
     def remove_export(self, context, volume):
         """Driver entry point to remove an export for a volume.

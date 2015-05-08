@@ -165,8 +165,7 @@ class TestWindowsDriver(test.TestCase):
 
         self.mox.StubOutWithMock(windows_utils.WindowsUtils,
                                  'create_iscsi_target')
-        windows_utils.WindowsUtils.create_iscsi_target(initiator_name,
-                                                       mox.IgnoreArg())
+        windows_utils.WindowsUtils.create_iscsi_target(initiator_name)
         self.mox.StubOutWithMock(windows_utils.WindowsUtils,
                                  'add_disk_to_target')
         windows_utils.WindowsUtils.add_disk_to_target(volume['name'],
@@ -215,25 +214,6 @@ class TestWindowsDriver(test.TestCase):
         self.mox.ReplayAll()
 
         drv.terminate_connection(volume, connector)
-
-    def test_ensure_export(self):
-        drv = self._driver
-
-        volume = db_fakes.get_fake_volume_info()
-
-        initiator_name = "%s%s" % (CONF.iscsi_target_prefix, volume['name'])
-
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'create_iscsi_target')
-        windows_utils.WindowsUtils.create_iscsi_target(initiator_name, True)
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'add_disk_to_target')
-        windows_utils.WindowsUtils.add_disk_to_target(volume['name'],
-                                                      initiator_name)
-
-        self.mox.ReplayAll()
-
-        drv.ensure_export(None, volume)
 
     def test_remove_export(self):
         drv = self._driver
