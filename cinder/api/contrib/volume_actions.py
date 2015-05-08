@@ -114,9 +114,21 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Invalid request to attach volume with an invalid mode. "
                     "Attaching mode should be 'rw' or 'ro'")
             raise webob.exc.HTTPBadRequest(explanation=msg)
+        try:
+            self.volume_api.attach(context, volume,
+                                   instance_uuid, host_name, mountpoint, mode)
+        except messaging.RemoteError as error:
+            if error.exc_type in ['InvalidVolume', 'InvalidUUID',
+                                  'InvalidVolumeAttachMode']:
+                msg = "Error attaching volume - %(err_type)s: %(err_msg)s" % {
+                      'err_type': error.exc_type, 'err_msg': error.value}
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            else:
+                # There are also few cases where attach call could fail due to
+                # db or volume driver errors. These errors shouldn't be exposed
+                # to the user and in such cases it should raise 500 error.
+                raise
 
-        self.volume_api.attach(context, volume,
-                               instance_uuid, host_name, mountpoint, mode)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-detach')
