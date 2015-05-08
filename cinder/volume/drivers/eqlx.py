@@ -245,8 +245,6 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                         return self._ssh_execute(
                             ssh, command,
                             timeout=self.configuration.eqlx_cli_timeout)
-                    except processutils.ProcessExecutionError:
-                        raise
                     except Exception as e:
                         LOG.exception(e)
                         greenthread.sleep(random.randint(20, 500) / 100.0)

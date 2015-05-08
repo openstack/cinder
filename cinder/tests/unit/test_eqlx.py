@@ -350,6 +350,33 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                          self.driver._ssh_execute.call_count)
 
     @mock.patch.object(greenthread, 'sleep')
+    def test_ensure_connection_retries(self, _gt_sleep):
+        num_attempts = 3
+        self.driver.configuration.eqlx_cli_max_retries = num_attempts
+        self.mock_object(self.driver, '_ssh_execute',
+                         mock.Mock(side_effect=
+                                   processutils.ProcessExecutionError
+                                   (stdout='% Error ... some error.\n')))
+        # mocks for calls in _run_ssh
+        self.mock_object(utils, 'check_ssh_injection')
+        self.mock_object(ssh_utils, 'SSHPool')
+
+        sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
+                                    "test",
+                                    password="test",
+                                    min_size=1,
+                                    max_size=1)
+        self.driver.sshpool = mock.Mock(return_value=sshpool)
+        ssh = mock.Mock(paramiko.SSHClient)
+        self.driver.sshpool.item().__enter__ = mock.Mock(return_value=ssh)
+        self.driver.sshpool.item().__exit__ = mock.Mock(return_value=False)
+        # now call the execute
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._eql_execute, "fake command")
+        self.assertEqual(num_attempts + 1,
+                         self.driver._ssh_execute.call_count)
+
+    @mock.patch.object(greenthread, 'sleep')
     def test_ensure_retries_on_channel_timeout(self, _gt_sleep):
         num_attempts = 3
         self.driver.configuration.eqlx_cli_max_retries = num_attempts
