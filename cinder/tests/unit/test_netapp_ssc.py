@@ -19,7 +19,7 @@ import copy
 import httplib
 
 from lxml import etree
-import mox
+from mox3 import mox
 import six
 
 from cinder import exception

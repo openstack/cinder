@@ -28,7 +28,6 @@ import uuid
 
 import fixtures
 import mock
-import mox
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
@@ -36,7 +35,7 @@ from oslo_log import log
 from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import strutils
 from oslo_utils import timeutils
-import stubout
+from oslotest import moxstubout
 import testtools
 
 from cinder.common import config  # noqa Need to register global_opts
@@ -196,13 +195,10 @@ class TestCase(testtools.TestCase):
 
         # emulate some of the mox stuff, we can't use the metaclass
         # because it screws with our generators
-        self.mox = mox.Mox()
-        self.stubs = stubout.StubOutForTesting()
+        mox_fixture = self.useFixture(moxstubout.MoxStubout())
+        self.mox = mox_fixture.mox
+        self.stubs = mox_fixture.stubs
         self.addCleanup(CONF.reset)
-        self.addCleanup(self.mox.UnsetStubs)
-        self.addCleanup(self.stubs.UnsetAll)
-        self.addCleanup(self.stubs.SmartUnsetAll)
-        self.addCleanup(self.mox.VerifyAll)
         self.addCleanup(self._common_cleanup)
         self.injected = []
         self._services = []

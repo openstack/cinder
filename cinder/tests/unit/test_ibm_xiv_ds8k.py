@@ -21,7 +21,7 @@
 
 import copy
 
-import mox
+from mox3 import mox
 from oslo_config import cfg
 
 from cinder import context

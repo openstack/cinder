@@ -17,7 +17,7 @@
 import datetime
 
 import mock
-import mox
+from mox3 import mox
 from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
@@ -43,7 +43,6 @@ def create_configuration():
 class SolidFireVolumeTestCase(test.TestCase):
     def setUp(self):
         self.ctxt = context.get_admin_context()
-        self._mox = mox.Mox()
         self.configuration = mox.MockObject(conf.Configuration)
         self.configuration.sf_allow_tenant_qos = True
         self.configuration.san_is_local = True
