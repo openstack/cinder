@@ -604,10 +604,12 @@ class LVM(executor.Executor):
             LOG.error(_LE('StdErr  :%s'), err.stderr)
             raise
 
-    def activate_lv(self, name, is_snapshot=False):
+    def activate_lv(self, name, is_snapshot=False, permanent=False):
         """Ensure that logical volume/snapshot logical volume is activated.
 
         :param name: Name of LV to activate
+        :param is_snapshot: whether LV is a snapshot
+        :param permanent: whether we should drop skipactivation flag
         :raises: putils.ProcessExecutionError
         """
 
@@ -626,6 +628,10 @@ class LVM(executor.Executor):
 
         if self.supports_lvchange_ignoreskipactivation:
             cmd.append('-K')
+            # If permanent=True is specified, drop the skipactivation flag in
+            # order to make this LV automatically activated after next reboot.
+            if permanent:
+                cmd += ['-k', 'n']
 
         cmd.append(lv_path)
 

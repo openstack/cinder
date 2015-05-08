@@ -55,7 +55,7 @@ class FakeBrickLVM(object):
     def lv_has_snapshot(self, name):
         return False
 
-    def activate_lv(self, lv, is_snapshot=False):
+    def activate_lv(self, lv, is_snapshot=False, permanent=False):
         pass
 
     def rename_volume(self, lv_name, new_name):

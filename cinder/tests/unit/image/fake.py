@@ -210,6 +210,12 @@ class _FakeImageService(object):
             return 'fake_location'
         return None
 
+    def add_location(self, context, image_id, url, metadata):
+        self.update(context, image_id, {'locations': [{'url': url,
+                                                       'metadata': metadata}]})
+        return True
+
+
 _fakeImageService = _FakeImageService()
 
 

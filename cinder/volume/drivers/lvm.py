@@ -449,6 +449,16 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
+        if self.configuration.lvm_type == 'thin':
+            self.vg.create_lv_snapshot(volume['name'],
+                                       src_vref['name'],
+                                       self.configuration.lvm_type)
+            if volume['size'] > src_vref['size']:
+                LOG.debug("Resize the new volume to %s.", volume['size'])
+                self.extend_volume(volume, volume['size'])
+            self.vg.activate_lv(volume['name'], is_snapshot=True,
+                                permanent=True)
+            return
 
         mirror_count = 0
         if self.configuration.lvm_mirrors:

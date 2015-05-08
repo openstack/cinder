@@ -966,6 +966,107 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_volume_usage(context, volume, "detach.end")
         LOG.info(_LI("Detach volume completed successfully."), resource=volume)
 
+    def _clone_image_volume(self, ctx, volume, image_meta):
+        volume_type_id = volume.get('volume_type_id')
+        reserve_opts = {'volumes': 1, 'gigabytes': volume.size}
+        QUOTAS.add_volume_type_opts(ctx, reserve_opts, volume_type_id)
+        reservations = QUOTAS.reserve(ctx, **reserve_opts)
+
+        try:
+            new_vol_values = {}
+            for k, v in volume.items():
+                new_vol_values[k] = v
+            del new_vol_values['id']
+            del new_vol_values['_name_id']
+            del new_vol_values['volume_type']
+            new_vol_values['volume_type_id'] = volume_type_id
+            new_vol_values['attach_status'] = 'detached'
+            new_vol_values['volume_attachment'] = []
+            new_vol_values['status'] = 'creating'
+            new_vol_values['project_id'] = ctx.project_id
+            new_vol_values['display_name'] = 'image-%s' % image_meta['id']
+            new_vol_values['source_volid'] = volume.id
+            LOG.debug('Creating image volume entry: %s.', new_vol_values)
+            image_volume = self.db.volume_create(ctx, new_vol_values)
+        except Exception:
+            QUOTAS.rollback(ctx, reservations)
+            return False
+
+        QUOTAS.commit(ctx, reservations,
+                      project_id=new_vol_values['project_id'])
+
+        try:
+            self.create_volume(ctx, image_volume.id,
+                               allow_reschedule=False)
+            image_volume = self.db.volume_get(ctx, image_volume.id)
+            if image_volume.status != 'available':
+                raise exception.InvalidVolume(_('Volume is not available.'))
+
+            self.db.volume_admin_metadata_update(ctx.elevated(),
+                                                 image_volume.id,
+                                                 {'readonly': 'True'},
+                                                 False)
+            return image_volume
+        except exception.CinderException:
+            LOG.exception(_LE('Failed to clone volume %(volume_id)s for '
+                              'image %(image_id).'),
+                          {'volume_id': volume.id,
+                           'image_id': image_meta['id']})
+            try:
+                self.delete_volume(ctx, image_volume)
+            except exception.CinderException:
+                LOG.exception(_LE('Could not delete the image volume %(id)s.'),
+                              {'id': volume.id})
+            return False
+
+    def _clone_image_volume_and_add_location(self, ctx, volume, image_service,
+                                             image_meta):
+        """Create a cloned volume and register its location to the image."""
+        if (image_meta['disk_format'] != 'raw' or
+                image_meta['container_format'] != 'bare'):
+            return False
+
+        image_volume_context = ctx
+        if self.driver.configuration.image_upload_use_internal_tenant:
+            internal_ctx = context.get_internal_tenant_context()
+            if internal_ctx:
+                image_volume_context = internal_ctx
+
+        image_volume = self._clone_image_volume(image_volume_context,
+                                                volume,
+                                                image_meta)
+        if not image_volume:
+            return False
+
+        uri = 'cinder://%s' % image_volume.id
+        image_registered = None
+        try:
+            image_registered = image_service.add_location(
+                ctx, image_meta['id'], uri, {})
+        except (exception.NotAuthorized, exception.Invalid,
+                exception.NotFound):
+            LOG.exception(_LE('Failed to register image volume location '
+                              '%(uri)s.'), {'uri': uri})
+
+        if not image_registered:
+            LOG.warning(_LW('Registration of image volume URI %(uri)s '
+                            'to image %(image_id)s failed.'),
+                        {'uri': uri, 'image_id': image_meta['id']})
+            try:
+                self.delete_volume(image_volume_context, image_volume)
+            except exception.CinderException:
+                LOG.exception(_LE('Could not delete failed image volume '
+                                  '%(id)s.'), {'id': image_volume.id})
+            return False
+
+        image_volume_meta = {'glance_image_id': image_meta['id'],
+                             'image_owner': ctx.project_id}
+        self.db.volume_metadata_update(image_volume_context,
+                                       image_volume.id,
+                                       image_volume_meta,
+                                       False)
+        return True
+
     def copy_volume_to_image(self, context, volume_id, image_meta):
         """Uploads the specified volume to Glance.
 
@@ -985,10 +1086,19 @@ class VolumeManager(manager.SchedulerDependentManager):
 
             image_service, image_id = \
                 glance.get_remote_image_service(context, image_meta['id'])
-            self.driver.copy_volume_to_image(context, volume, image_service,
-                                             image_meta)
-            LOG.debug("Uploaded volume to glance image-id: %(image_id)s.",
-                      resource=volume)
+            if (self.driver.configuration.image_upload_use_cinder_backend
+                    and self._clone_image_volume_and_add_location(
+                        context, volume, image_service, image_meta)):
+                LOG.debug("Registered image volume location to glance "
+                          "image-id: %(image_id)s.",
+                          {'image_id': image_meta['id']},
+                          resource=volume)
+            else:
+                self.driver.copy_volume_to_image(context, volume,
+                                                 image_service, image_meta)
+                LOG.debug("Uploaded volume to glance image-id: %(image_id)s.",
+                          {'image_id': image_meta['id']},
+                          resource=volume)
         except Exception as error:
             LOG.error(_LE("Upload volume to image encountered an error "
                           "(image-id: %(image_id)s)."),

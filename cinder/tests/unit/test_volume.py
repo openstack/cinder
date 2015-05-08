@@ -3381,8 +3381,12 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context,
                           volume_id)
 
-    def _create_volume_from_image(self, fakeout_copy_image_to_volume=False,
-                                  fakeout_clone_image=False):
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask._clone_image_volume')
+    def _create_volume_from_image(self, mock_clone_image_volume,
+                                  fakeout_copy_image_to_volume=False,
+                                  fakeout_clone_image=False,
+                                  clone_image_volume=False):
         """Test function of create_volume_from_image.
 
         Test cases call this function to create a volume from image, caller
@@ -3414,6 +3418,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         if fakeout_copy_image_to_volume:
             self.stubs.Set(self.volume, '_copy_image_to_volume',
                            fake_copy_image_to_volume)
+        mock_clone_image_volume.return_value = ({}, clone_image_volume)
 
         image_id = 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'
         volume_id = tests_utils.create_volume(self.context,
@@ -3507,6 +3512,17 @@ class VolumeTestCase(BaseVolumeTestCase):
         # allocated_capacity is incremented.
         self.assertDictEqual(self.volume.stats['pools'],
                              {'_pool0': {'allocated_capacity_gb': 1}})
+
+    def test_create_volume_from_image_clone_image_volume(self):
+        """Test create volume from image via image volume.
+
+        Verify that after cloning image to volume, it is in available
+        state and is bootable.
+        """
+        volume = self._create_volume_from_image(clone_image_volume=True)
+        self.assertEqual('available', volume['status'])
+        self.assertTrue(volume['bootable'])
+        self.volume.delete_volume(self.context, volume['id'])
 
     def test_create_volume_from_exact_sized_image(self):
         """Test create volume from an image of the same size.
@@ -5491,6 +5507,61 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
                               self.context,
                               saving_image_id)
 
+    @mock.patch.object(QUOTAS, 'reserve')
+    @mock.patch.object(QUOTAS, 'commit')
+    @mock.patch.object(vol_manager.VolumeManager, 'create_volume')
+    @mock.patch.object(fake_driver.FakeISCSIDriver, 'copy_volume_to_image')
+    def _test_copy_volume_to_image_with_image_volume(
+            self, mock_copy, mock_create, mock_quota_commit,
+            mock_quota_reserve):
+        self.flags(glance_api_version=2)
+        self.volume.driver.configuration.image_upload_use_cinder_backend = True
+        image_service = fake_image.FakeImageService()
+        image_id = '5c6eec33-bab4-4e7d-b2c9-88e2d0a5f6f2'
+        self.image_meta['id'] = image_id
+        self.image_meta['status'] = 'queued'
+        image_service.create(self.context, self.image_meta)
+
+        # creating volume testdata
+        self.volume_attrs['instance_uuid'] = None
+        db.volume_create(self.context, self.volume_attrs)
+
+        def fake_create(context, volume_id, **kwargs):
+            db.volume_update(context, volume_id, {'status': 'available'})
+
+        mock_create.side_effect = fake_create
+
+        # start test
+        self.volume.copy_volume_to_image(self.context,
+                                         self.volume_id,
+                                         self.image_meta)
+
+        volume = db.volume_get(self.context, self.volume_id)
+        self.assertEqual('available', volume['status'])
+
+        # return create image
+        image = image_service.show(self.context, image_id)
+        image_service.delete(self.context, image_id)
+        return image
+
+    def test_copy_volume_to_image_with_image_volume(self):
+        image = self._test_copy_volume_to_image_with_image_volume()
+        self.assertTrue(image['locations'][0]['url'].startswith('cinder://'))
+
+    def test_copy_volume_to_image_with_image_volume_qcow2(self):
+        self.image_meta['disk_format'] = 'qcow2'
+        image = self._test_copy_volume_to_image_with_image_volume()
+        self.assertIsNone(image.get('locations'))
+
+    @mock.patch.object(vol_manager.VolumeManager, 'delete_volume')
+    @mock.patch.object(fake_image._FakeImageService, 'add_location',
+                       side_effect=exception.Invalid)
+    def test_copy_volume_to_image_with_image_volume_failure(
+            self, mock_add_location, mock_delete):
+        image = self._test_copy_volume_to_image_with_image_volume()
+        self.assertIsNone(image.get('locations'))
+        self.assertTrue(mock_delete.called)
+
 
 class GetActiveByWindowTestCase(BaseVolumeTestCase):
     def setUp(self):
@@ -6573,6 +6644,24 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         lvm_driver.check_for_setup_error()
 
         self.assertEqual('default', lvm_driver.configuration.lvm_type)
+
+    @mock.patch.object(lvm.LVMISCSIDriver, 'extend_volume')
+    def test_create_cloned_volume_by_thin_snapshot(self, mock_extend):
+        self.configuration.lvm_type = 'thin'
+        fake_vg = mock.Mock(fake_lvm.FakeBrickLVM('cinder-volumes', False,
+                                                  None, 'default'))
+        lvm_driver = lvm.LVMISCSIDriver(configuration=self.configuration,
+                                        vg_obj=fake_vg,
+                                        db=db)
+        fake_volume = tests_utils.create_volume(self.context, size=1)
+        fake_new_volume = tests_utils.create_volume(self.context, size=2)
+
+        lvm_driver.create_cloned_volume(fake_new_volume, fake_volume)
+        fake_vg.create_lv_snapshot.assert_called_once_with(
+            fake_new_volume['name'], fake_volume['name'], 'thin')
+        mock_extend.assert_called_once_with(fake_new_volume, 2)
+        fake_vg.activate_lv.assert_called_once_with(
+            fake_new_volume['name'], is_snapshot=True, permanent=True)
 
 
 class ISCSITestCase(DriverTestCase):

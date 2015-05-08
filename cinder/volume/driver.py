@@ -234,7 +234,21 @@ volume_opts = [
                      "is: {'key-1'='val1' 'key-2'='val2'...},{...} "
                      "and for managed devices its simply a list of valid "
                      "configured backend_names that the driver supports "
-                     "replicating to: backend-a,bakcend-b...")
+                     "replicating to: backend-a,bakcend-b..."),
+    cfg.BoolOpt('image_upload_use_cinder_backend',
+                default=False,
+                help='If set to True, upload-to-image in raw format will '
+                     'create a cloned volume and register its location to '
+                     'the image service, instead of uploading the volume '
+                     'content. The cinder backend and locations support '
+                     'must be enabled in the image service, and '
+                     'glance_api_version must be set to 2.'),
+    cfg.BoolOpt('image_upload_use_internal_tenant',
+                default=False,
+                help='If set to True, the image volume created by '
+                     'upload-to-image will be placed in the internal tenant. '
+                     'Otherwise, the image volume is created in the current '
+                     'context\'s tenant.'),
 ]
 
 # for backward compatibility

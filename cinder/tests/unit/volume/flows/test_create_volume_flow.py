@@ -223,3 +223,60 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                           volume, snapshot_obj.id)
         fake_driver.create_volume_from_snapshot.assert_called_once_with(
             volume, snapshot_obj)
+
+
+class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
+
+    def setUp(self):
+        super(CreateVolumeFlowManagerGlanceCinderBackendCase, self).setUp()
+        self.ctxt = context.get_admin_context()
+
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
+                '_handle_bootable_volume_glance_meta')
+    def test_create_from_image_volume(self, handle_bootable, format='raw',
+                                      owner=None, location=True):
+        self.flags(allowed_direct_url_schemes=['cinder'])
+        fake_db = mock.MagicMock()
+        fake_driver = mock.MagicMock()
+        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
+            fake_db, fake_driver)
+        fake_image_service = mock.MagicMock()
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+        image_volume = fake_volume.fake_volume_obj(self.ctxt,
+                                                   volume_metadata={})
+        image_id = '34e54c31-3bc8-5c1d-9fff-2225bcce4b59'
+        url = 'cinder://%s' % image_volume['id']
+        image_location = None
+        if location:
+            image_location = (url, [{'url': url, 'metadata': {}}])
+        image_meta = {'id': image_id,
+                      'container_format': 'bare',
+                      'disk_format': format,
+                      'owner': owner or self.ctxt.project_id}
+        fake_driver.clone_image.return_value = (None, False)
+        fake_db.volume_get_all_by_host.return_value = [image_volume]
+
+        fake_manager._create_from_image(self.ctxt,
+                                        volume,
+                                        image_location,
+                                        image_id,
+                                        image_meta,
+                                        fake_image_service)
+        if format is 'raw' and not owner and location:
+            fake_driver.create_cloned_volume.assert_called_once_with(
+                volume, image_volume)
+            handle_bootable.assert_called_once_with(self.ctxt, volume['id'],
+                                                    image_id=image_id,
+                                                    image_meta=image_meta)
+        else:
+            self.assertFalse(fake_driver.create_cloned_volume.called)
+
+    def test_create_from_image_volume_in_qcow2_format(self):
+        self.test_create_from_image_volume(format='qcow2')
+
+    def test_create_from_image_volume_of_other_owner(self):
+        self.test_create_from_image_volume(owner='fake-owner')
+
+    def test_create_from_image_volume_without_location(self):
+        self.test_create_from_image_volume(location=False)

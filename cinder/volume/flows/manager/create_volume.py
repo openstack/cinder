@@ -570,6 +570,59 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         self.db.volume_glance_metadata_bulk_create(context, volume_id,
                                                    volume_metadata)
 
+    def _clone_image_volume(self, context, volume, image_location, image_meta):
+        """Create a volume efficiently from an existing image.
+
+        Returns a dict of volume properties eg. provider_location,
+        boolean indicating whether cloning occurred
+        """
+        if not image_location:
+            return None, False
+
+        if (image_meta.get('container_format') != 'bare' or
+                image_meta.get('disk_format') != 'raw'):
+            LOG.info(_LI("Requested image %(id)s is not in raw format."),
+                     {'id': image_meta.get('id')})
+            return None, False
+
+        image_volume = None
+        direct_url, locations = image_location
+        urls = set([direct_url] + [loc.get('url') for loc in locations or []])
+        image_volume_ids = [url[9:] for url in urls
+                            if url and url.startswith('cinder://')]
+        image_volumes = self.db.volume_get_all_by_host(
+            context, volume['host'], filters={'id': image_volume_ids})
+
+        for image_volume in image_volumes:
+            # For the case image volume is stored in the service tenant,
+            # image_owner volume metadata should also be checked.
+            image_owner = None
+            volume_metadata = image_volume.get('volume_metadata') or {}
+            for m in volume_metadata:
+                if m['key'] == 'image_owner':
+                    image_owner = m['value']
+            if (image_meta['owner'] != volume['project_id'] and
+                    image_meta['owner'] != image_owner):
+                LOG.info(_LI("Skipping image volume %(id)s because "
+                             "it is not accessible by current Tenant."),
+                         {'id': image_volume.id})
+                continue
+
+            LOG.info(_LI("Will clone a volume from the image volume "
+                         "%(id)s."), {'id': image_volume.id})
+            break
+        else:
+            LOG.debug("No accessible image volume for image %(id)s found.",
+                      {'id': image_meta['id']})
+            return None, False
+
+        try:
+            return self.driver.create_cloned_volume(volume, image_volume), True
+        except (NotImplementedError, exception.CinderException):
+            LOG.exception(_LE('Failed to clone image volume %(id)s.'),
+                          {'id': image_volume['id']})
+            return None, False
+
     def _create_from_image(self, context, volume_ref,
                            image_location, image_id, image_meta,
                            image_service, **kwargs):
@@ -587,6 +640,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                        image_location,
                                                        image_meta,
                                                        image_service)
+        if not cloned and 'cinder' in CONF.allowed_direct_url_schemes:
+            model_update, cloned = self._clone_image_volume(context,
+                                                            volume_ref,
+                                                            image_location,
+                                                            image_meta)
         if not cloned:
             # TODO(harlowja): what needs to be rolled back in the clone if this
             # volume create fails?? Likely this should be a subflow or broken
