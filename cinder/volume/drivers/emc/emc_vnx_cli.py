@@ -271,6 +271,7 @@ class CommandLineHelper(object):
     CLI_RESP_PATTERN_LUN_IN_SG_2 = 'Host LUN/LUN mapping still exists'
     CLI_RESP_PATTERN_LUN_NOT_MIGRATING = ('The specified source LUN '
                                           'is not currently migrating')
+    CLI_RESP_PATTERN_LUN_IS_PREPARING = '0x712d8e0e'
 
     def __init__(self, configuration):
         configuration.append_config_values(san.san_opts)
@@ -1129,6 +1130,16 @@ class CommandLineHelper(object):
                                        properties, poll=poll)
         return data
 
+    def get_lun_current_ops_state(self, name, poll=False):
+        data = self.get_lun_by_name(name, poll=False)
+        return data[self.LUN_OPERATION.key]
+
+    def wait_until_lun_ready_for_ops(self, name):
+        def is_lun_ready_for_ops():
+            data = self.get_lun_current_ops_state(name, False)
+            return data == 'None'
+        self._wait_for_a_condition(is_lun_ready_for_ops)
+
     def get_pool(self, name, properties=POOL_ALL, poll=True):
         data = self.get_pool_properties(('-name', name),
                                         properties=properties,
@@ -1848,12 +1859,31 @@ class EMCVnxCliBase(object):
                 self._client.delete_lun(volume['name'])
             else:
                 with excutils.save_and_reraise_exception():
-                    # Reraise the original exceiption
+                    # Reraise the original exception
                     pass
 
     def extend_volume(self, volume, new_size):
         """Extends an EMC volume."""
-        self._client.expand_lun_and_wait(volume['name'], new_size)
+
+        try:
+            self._client.expand_lun_and_wait(volume['name'], new_size)
+        except exception.EMCVnxCLICmdError as ex:
+            with excutils.save_and_reraise_exception(ex) as ctxt:
+                out = "\n".join(ex.kwargs["out"])
+                if (self._client.CLI_RESP_PATTERN_LUN_IS_PREPARING
+                        in out):
+                    # The error means the operation cannot be performed
+                    # because the LUN is 'Preparing'. Wait for a while
+                    # so that the LUN may get out of the transitioning
+                    # state.
+                    LOG.warning(_LW("LUN %(name)s is not ready for extension: "
+                                    "%(out)s"),
+                                {'name': volume['name'], 'out': out})
+                    self._client.wait_until_lun_ready_for_ops(volume['name'])
+                    self._client.expand_lun_and_wait(volume['name'], new_size)
+                    ctxt.reraise = False
+                else:
+                    ctxt.reraise = True
 
     def _get_original_status(self, volume):
         if not volume['volume_attachment']:
@@ -2127,7 +2157,26 @@ class EMCVnxCliBase(object):
                  {'snapshot': snapshot_name,
                   'volume': volume_name})
         lun_id = self.get_lun_id(volume)
-        self._client.create_snapshot(lun_id, snapshot_name)
+
+        try:
+            self._client.create_snapshot(lun_id, snapshot_name)
+        except exception.EMCVnxCLICmdError as ex:
+            with excutils.save_and_reraise_exception(ex) as ctxt:
+                out = "\n".join(ex.kwargs["out"])
+                if (self._client.CLI_RESP_PATTERN_LUN_IS_PREPARING
+                        in out):
+                    # The error means the operation cannot be performed
+                    # because the LUN is 'Preparing'. Wait for a while
+                    # so that the LUN may get out of the transitioning
+                    # state.
+                    LOG.warning(_LW("LUN %(name)s is not ready for snapshot: "
+                                    "%(out)s"),
+                                {'name': volume_name, 'out': out})
+                    self._client.wait_until_lun_ready_for_ops(volume['name'])
+                    self._client.create_snapshot(lun_id, snapshot_name)
+                    ctxt.reraise = False
+                else:
+                    ctxt.reraise = True
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
