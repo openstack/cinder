@@ -1636,6 +1636,21 @@ class FakeISCSIDriver(ISCSIDriver):
         super(FakeISCSIDriver, self).__init__(execute=self.fake_execute,
                                               *args, **kwargs)
 
+    def _update_pools_and_stats(self, data):
+        fake_pool = {}
+        fake_pool.update(dict(
+            pool_name=data["volume_backend_name"],
+            total_capacity_gb=0,
+            free_capacity_gb=0,
+            provisioned_capacity_gb=0,
+            reserved_percentage=100,
+            QoS_support=False,
+            filter_function=self.get_filter_function(),
+            goodness_function=self.get_goodness_function()
+        ))
+        data["pools"].append(fake_pool)
+        self._stats = data
+
     def create_volume(self, volume):
         pass
 
