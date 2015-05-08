@@ -577,6 +577,34 @@ FAKE_UPDATE_QOS_GROUP_RESPONSE = """{ "updateqosresponse" : {
     }]
     }}"""
 
+# A fake list iSCSI auth user response of cloudbyte's elasticenter
+FAKE_LIST_ISCSI_AUTH_USER_RESPONSE = """{ "listiSCSIAuthUsersResponse" : {
+    "count":1 ,
+    "authuser" : [{
+        "id": "53d00164-a974-31b8-a854-bd346a8ea937",
+        "accountid": "12d41531-c41a-4ab7-abe2-ce0db2570119",
+        "authgroupid": "537744eb-c594-3145-85c0-96079922b894",
+        "chapusername": "fakeauthgroupchapuser",
+        "chappassword": "fakeauthgroupchapsecret",
+        "mutualchapusername": "fakeauthgroupmutualchapuser",
+        "mutualchappassword": "fakeauthgroupmutualchapsecret"
+    }]
+    }}"""
+
+# A fake list iSCSI auth group response of cloudbyte's elasticenter
+FAKE_LIST_ISCSI_AUTH_GROUP_RESPONSE = """{ "listiSCSIAuthGroupResponse" : {
+    "count":2 ,
+    "authgroup" : [{
+        "id": "32d935ee-a60f-3681-b792-d8ccfe7e8e7f",
+        "name": "None",
+        "comment": "None"
+        }, {
+        "id": "537744eb-c594-3145-85c0-96079922b894",
+        "name": "fakeauthgroup",
+        "comment": "Fake Auth Group For Openstack "
+    }]
+    }}"""
+
 
 # This dict maps the http commands of elasticenter
 # with its respective fake responses
@@ -588,8 +616,6 @@ MAP_COMMAND_TO_FAKE_RESPONSE["listFileSystem"] = (
     json.loads(FAKE_LIST_FILE_SYSTEM_RESPONSE))
 MAP_COMMAND_TO_FAKE_RESPONSE["deleteSnapshot"] = (
     json.loads(FAKE_DELETE_STORAGE_SNAPSHOT_RESPONSE))
-MAP_COMMAND_TO_FAKE_RESPONSE["listStorageSnapshots"] = (
-    json.loads(FAKE_LIST_STORAGE_SNAPSHOTS_RESPONSE))
 MAP_COMMAND_TO_FAKE_RESPONSE["updateVolumeiSCSIService"] = (
     json.loads(FAKE_UPDATE_VOLUME_ISCSI_SERVICE_RESPONSE))
 MAP_COMMAND_TO_FAKE_RESPONSE["createStorageSnapshot"] = (
@@ -616,12 +642,10 @@ MAP_COMMAND_TO_FAKE_RESPONSE['updateQosGroup'] = (
     json.loads(FAKE_UPDATE_QOS_GROUP_RESPONSE))
 MAP_COMMAND_TO_FAKE_RESPONSE['listStorageSnapshots'] = (
     json.loads(FAKE_LIST_STORAGE_SNAPSHOTS_RESPONSE))
-
-# This dict maps the http commands of elasticenter
-# with its respective fake json responses
-MAP_COMMAND_TO_FAKE_JSON_RESPONSE = {}
-
-MAP_COMMAND_TO_FAKE_JSON_RESPONSE["listTsm"] = FAKE_LIST_TSM_RESPONSE
+MAP_COMMAND_TO_FAKE_RESPONSE['listiSCSIAuthUser'] = (
+    json.loads(FAKE_LIST_ISCSI_AUTH_USER_RESPONSE))
+MAP_COMMAND_TO_FAKE_RESPONSE['listiSCSIAuthGroup'] = (
+    json.loads(FAKE_LIST_ISCSI_AUTH_GROUP_RESPONSE))
 
 
 class CloudByteISCSIDriverTestCase(testtools.TestCase):
@@ -641,6 +665,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         # override some parts of driver configuration
         self.driver.configuration.cb_tsm_name = 'openstack'
         self.driver.configuration.cb_account_name = 'CustomerA'
+        self.driver.configuration.cb_auth_group = 'fakeauthgroup'
 
     def _side_effect_api_req(self, cmd, params, version='1.0'):
         """This is a side effect function.
@@ -680,6 +705,30 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
             return {"listTsmResponse": {}}
 
         return MAP_COMMAND_TO_FAKE_RESPONSE[cmd]
+
+    def _side_effect_api_req_to_list_iscsi_auth_group(self, cmd, params,
+                                                      version='1.0'):
+        """This is a side effect function."""
+        if cmd == 'listiSCSIAuthGroup':
+            return {}
+
+        return MAP_COMMAND_TO_FAKE_RESPONSE[cmd]
+
+    def _side_effect_api_req_to_list_iscsi_auth_user(self, cmd, params,
+                                                     version='1.0'):
+        """This is a side effect function."""
+        if cmd == 'listiSCSIAuthUser':
+            return {}
+
+        return MAP_COMMAND_TO_FAKE_RESPONSE[cmd]
+
+    def _side_effect_enable_chap(self):
+        """This is a side effect function."""
+        self.driver.cb_use_chap = True
+
+    def _side_effect_disable_chap(self):
+        """This is a side effect function."""
+        self.driver.cb_use_chap = False
 
     def _side_effect_api_req_to_list_filesystem(
             self, cmd, params, version='1.0'):
@@ -934,6 +983,9 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
 
         # Test - I
 
+        # enable CHAP
+        self._side_effect_enable_chap()
+
         # configure the mocks with respective side-effects
         mock_api_req.side_effect = self._side_effect_api_req
 
@@ -945,14 +997,52 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
             'openstack', self.driver.configuration.cb_tsm_name)
         self.assertEqual(
             'CustomerA', self.driver.configuration.cb_account_name)
+        self.assertEqual(
+            'fakeauthgroup', self.driver.configuration.cb_auth_group)
+
+        # assert the result
+        self.assertEqual(
+            'CHAP fakeauthgroupchapuser fakeauthgroupchapsecret',
+            provider_details['provider_auth'])
         self.assertThat(
             provider_details['provider_location'],
             matchers.Contains('172.16.50.35:3260'))
 
-        # assert that 9 api calls were invoked
-        self.assertEqual(9, mock_api_req.call_count)
+        # assert the invoked api calls to CloudByte Storage
+        self.assertEqual(11, mock_api_req.call_count)
 
         # Test - II
+
+        # reset the mock
+        mock_api_req.reset_mock()
+
+        # disable CHAP
+        self._side_effect_disable_chap()
+
+        # configure the mocks with respective side-effects
+        mock_api_req.side_effect = self._side_effect_api_req
+
+        # now run the test
+        provider_details = self.driver.create_volume(volume)
+
+        # assert equality checks for certain configuration attributes
+        self.assertEqual(
+            'openstack', self.driver.configuration.cb_tsm_name)
+        self.assertEqual(
+            'CustomerA', self.driver.configuration.cb_account_name)
+
+        # assert the result
+        self.assertEqual(
+            None,
+            provider_details['provider_auth'])
+        self.assertThat(
+            provider_details['provider_location'],
+            matchers.Contains('172.16.50.35:3260'))
+
+        # assert the invoked api calls to CloudByte Storage
+        self.assertEqual(9, mock_api_req.call_count)
+
+        # Test - III
 
         # reconfigure the dependencies
         volume['id'] = 'NotExists'
@@ -970,7 +1060,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
                 "CloudByte storage."):
             self.driver.create_volume(volume)
 
-        # Test - III
+        # Test - IV
 
         # reconfigure the dependencies
         volume['id'] = 'abc'
@@ -989,7 +1079,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
                 'creating volume'):
             self.driver.create_volume(volume)
 
-        # Test - IV
+        # Test - V
 
         # reconfigure the dependencies
         # reset the mocks
@@ -1122,11 +1212,51 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
 
         # Test - I
 
+        # enable CHAP
+        self._side_effect_enable_chap()
+
         # configure the mocks with respective side-effects
         mock_api_req.side_effect = self._side_effect_api_req
 
         # now run the test
-        self.driver.create_volume_from_snapshot(cloned_volume, snapshot)
+        provider_details = (
+            self.driver.create_volume_from_snapshot(cloned_volume, snapshot))
+
+        # assert the result
+        self.assertEqual(
+            'CHAP fakeauthgroupchapuser fakeauthgroupchapsecret',
+            provider_details['provider_auth'])
+        self.assertEqual(
+            '20.10.22.56:3260 '
+            'iqn.2014-06.acc1.openstacktsm:acc1DS1Snap1clone1 0',
+            provider_details['provider_location'])
+
+        # assert the invoked api calls to CloudByte Storage
+        self.assertEqual(4, mock_api_req.call_count)
+
+        # Test - II
+
+        # reset the mocks
+        mock_api_req.reset_mock()
+
+        # disable CHAP
+        self._side_effect_disable_chap()
+
+        # configure the mocks with respective side-effects
+        mock_api_req.side_effect = self._side_effect_api_req
+
+        # now run the test
+        provider_details = (
+            self.driver.create_volume_from_snapshot(cloned_volume, snapshot))
+
+        # assert the result
+        self.assertEqual(
+            None,
+            provider_details['provider_auth'])
+        self.assertEqual(
+            '20.10.22.56:3260 '
+            'iqn.2014-06.acc1.openstacktsm:acc1DS1Snap1clone1 0',
+            provider_details['provider_location'])
 
         # assert n api calls were invoked
         self.assertEqual(1, mock_api_req.call_count)
@@ -1160,7 +1290,10 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
                        '_api_request_for_cloudbyte')
     def test_create_export(self, mock_api_req):
 
-        # prepare the input test data
+        # Test - I
+
+        # enable CHAP
+        self._side_effect_enable_chap()
 
         # configure the mocks with respective side-effects
         mock_api_req.side_effect = self._side_effect_api_req
@@ -1169,13 +1302,35 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         model_update = self.driver.create_export({}, {})
 
         # assert the result
-        self.assertEqual(None, model_update['provider_auth'])
+        self.assertEqual('CHAP fakeauthgroupchapuser fakeauthgroupchapsecret',
+                         model_update['provider_auth'])
+
+        # Test - II
+
+        # reset the mocks
+        mock_api_req.reset_mock()
+
+        # disable CHAP
+        self._side_effect_disable_chap()
+
+        # configure the mocks with respective side-effects
+        mock_api_req.side_effect = self._side_effect_api_req
+
+        # now run the test
+        model_update = self.driver.create_export({}, {})
+
+        # assert the result
+        self.assertEqual(None,
+                         model_update['provider_auth'])
 
     @mock.patch.object(cloudbyte.CloudByteISCSIDriver,
                        '_api_request_for_cloudbyte')
     def test_ensure_export(self, mock_api_req):
 
-        # prepare the input test data
+        # Test - I
+
+        # enable CHAP
+        self._side_effect_enable_chap()
 
         # configure the mock with respective side-effects
         mock_api_req.side_effect = self._side_effect_api_req
@@ -1184,13 +1339,30 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         model_update = self.driver.ensure_export({}, {})
 
         # assert the result to have a provider_auth attribute
-        self.assertEqual(None, model_update['provider_auth'])
+        self.assertEqual('CHAP fakeauthgroupchapuser fakeauthgroupchapsecret',
+                         model_update['provider_auth'])
+
+        # Test - II
+
+        # reset the mocks
+        mock_api_req.reset_mock()
+
+        # disable CHAP
+        self._side_effect_disable_chap()
+
+        # configure the mocks with respective side-effects
+        mock_api_req.side_effect = self._side_effect_api_req
+
+        # now run the test
+        model_update = self.driver.create_export({}, {})
+
+        # assert the result
+        self.assertEqual(None,
+                         model_update['provider_auth'])
 
     @mock.patch.object(cloudbyte.CloudByteISCSIDriver,
                        '_api_request_for_cloudbyte')
     def test_get_volume_stats(self, mock_api_req):
-
-        # prepare the input test data
 
         # configure the mock with a side-effect
         mock_api_req.side_effect = self._side_effect_api_req
