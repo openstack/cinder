@@ -19,9 +19,7 @@
 Unit Tests for remote procedure calls using queue
 """
 
-
 import mock
-from mox3 import mox
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_db import exception as db_exc
@@ -115,14 +113,13 @@ class ServiceTestCase(test.TestCase):
 
     def setUp(self):
         super(ServiceTestCase, self).setUp()
-        self.mox.StubOutWithMock(service, 'db')
 
     def test_create(self):
         host = 'foo'
         binary = 'cinder-fake'
         topic = 'fake'
 
-        # NOTE(vish): Create was moved out of mox replay to make sure that
+        # NOTE(vish): Create was moved out of mock replay to make sure that
         #             the looping calls are created in StartService.
         app = service.Service.create(host=host, binary=binary, topic=topic)
 
@@ -132,72 +129,53 @@ class ServiceTestCase(test.TestCase):
         host = 'foo'
         binary = 'bar'
         topic = 'test'
-        service_create = {'host': host,
-                          'binary': binary,
-                          'topic': topic,
-                          'report_count': 0,
-                          'availability_zone': 'nova'}
         service_ref = {'host': host,
                        'binary': binary,
                        'topic': topic,
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
+        with mock.patch.object(service, 'db') as mock_db:
+            mock_db.service_get_by_args.side_effect = exception.NotFound()
+            mock_db.service_create.return_value = service_ref
+            mock_db.service_get.side_effect = db_exc.DBConnectionError()
 
-        service.db.service_get_by_args(mox.IgnoreArg(),
-                                       host,
-                                       binary).AndRaise(exception.NotFound())
-        service.db.service_create(mox.IgnoreArg(),
-                                  service_create).AndReturn(service_ref)
-        service.db.service_get(
-            mox.IgnoreArg(),
-            mox.IgnoreArg()).AndRaise(db_exc.DBConnectionError())
-
-        self.mox.ReplayAll()
-        serv = service.Service(host,
-                               binary,
-                               topic,
-                               'cinder.tests.unit.test_service.FakeManager')
-        serv.start()
-        serv.report_state()
-        self.assertTrue(serv.model_disconnected)
+            serv = service.Service(
+                host,
+                binary,
+                topic,
+                'cinder.tests.unit.test_service.FakeManager'
+            )
+            serv.start()
+            serv.report_state()
+            self.assertTrue(serv.model_disconnected)
 
     def test_report_state_newly_connected(self):
         host = 'foo'
         binary = 'bar'
         topic = 'test'
-        service_create = {'host': host,
-                          'binary': binary,
-                          'topic': topic,
-                          'report_count': 0,
-                          'availability_zone': 'nova'}
         service_ref = {'host': host,
                        'binary': binary,
                        'topic': topic,
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
+        with mock.patch.object(service, 'db') as mock_db:
+            mock_db.service_get_by_args.side_effect = exception.NotFound()
+            mock_db.service_create.return_value = service_ref
+            mock_db.service_get.return_value = service_ref
 
-        service.db.service_get_by_args(mox.IgnoreArg(),
-                                       host,
-                                       binary).AndRaise(exception.NotFound())
-        service.db.service_create(mox.IgnoreArg(),
-                                  service_create).AndReturn(service_ref)
-        service.db.service_get(mox.IgnoreArg(),
-                               service_ref['id']).AndReturn(service_ref)
-        service.db.service_update(mox.IgnoreArg(), service_ref['id'],
-                                  mox.ContainsKeyValue('report_count', 1))
+            serv = service.Service(
+                host,
+                binary,
+                topic,
+                'cinder.tests.unit.test_service.FakeManager'
+            )
+            serv.start()
+            serv.model_disconnected = True
+            serv.report_state()
 
-        self.mox.ReplayAll()
-        serv = service.Service(host,
-                               binary,
-                               topic,
-                               'cinder.tests.unit.test_service.FakeManager')
-        serv.start()
-        serv.model_disconnected = True
-        serv.report_state()
-
-        self.assertFalse(serv.model_disconnected)
+            self.assertFalse(serv.model_disconnected)
 
     def test_service_with_long_report_interval(self):
         self.override_config('service_down_time', 10)
@@ -212,14 +190,31 @@ class TestWSGIService(test.TestCase):
 
     def setUp(self):
         super(TestWSGIService, self).setUp()
-        self.stubs.Set(wsgi.Loader, "load_app", mox.MockAnything())
 
     def test_service_random_port(self):
-        test_service = service.WSGIService("test_service")
-        self.assertEqual(0, test_service.port)
-        test_service.start()
-        self.assertNotEqual(0, test_service.port)
-        test_service.stop()
+        with mock.patch.object(wsgi.Loader, 'load_app') as mock_load_app:
+            test_service = service.WSGIService("test_service")
+            self.assertEqual(0, test_service.port)
+            test_service.start()
+            self.assertNotEqual(0, test_service.port)
+            test_service.stop()
+            self.assertTrue(mock_load_app.called)
+
+    def test_reset_pool_size_to_default(self):
+        with mock.patch.object(wsgi.Loader, 'load_app') as mock_load_app:
+            test_service = service.WSGIService("test_service")
+            test_service.start()
+
+            # Stopping the service, which in turn sets pool size to 0
+            test_service.stop()
+            self.assertEqual(test_service.server._pool.size, 0)
+
+            # Resetting pool size to default
+            test_service.reset()
+            test_service.start()
+            self.assertEqual(test_service.server._pool.size,
+                             1000)
+            self.assertTrue(mock_load_app.called)
 
     @mock.patch('cinder.wsgi.Server')
     def test_workers_set_default(self, wsgi_server):
