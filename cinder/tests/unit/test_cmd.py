@@ -964,13 +964,49 @@ class TestCinderRtstoolCmd(test.TestCase):
         target.delete.assert_called_once_with()
         storage_object.delete.assert_called_once_with()
 
+    @mock.patch.object(cinder_rtstool, 'os', autospec=True)
     @mock.patch.object(cinder_rtstool, 'rtslib_fb', autospec=True)
-    def test_save(self, mock_rtslib):
+    def test_save_with_filename(self, mock_rtslib, mock_os):
         filename = mock.sentinel.filename
         cinder_rtstool.save_to_file(filename)
         rtsroot = mock_rtslib.root.RTSRoot
         rtsroot.assert_called_once_with()
+        self.assertEqual(0, mock_os.path.dirname.call_count)
+        self.assertEqual(0, mock_os.path.exists.call_count)
+        self.assertEqual(0, mock_os.makedirs.call_count)
         rtsroot.return_value.save_to_file.assert_called_once_with(filename)
+
+    @mock.patch.object(cinder_rtstool, 'os',
+                       **{'path.exists.return_value': True,
+                          'path.dirname.return_value': mock.sentinel.dirname})
+    @mock.patch.object(cinder_rtstool, 'rtslib_fb',
+                       **{'root.default_save_file': mock.sentinel.filename})
+    def test_save(self, mock_rtslib, mock_os):
+        """Test that we check path exists with default file."""
+        cinder_rtstool.save_to_file(None)
+        rtsroot = mock_rtslib.root.RTSRoot
+        rtsroot.assert_called_once_with()
+        rtsroot.return_value.save_to_file.assert_called_once_with(
+            mock.sentinel.filename)
+        mock_os.path.dirname.assert_called_once_with(mock.sentinel.filename)
+        mock_os.path.exists.assert_called_once_with(mock.sentinel.dirname)
+        self.assertEqual(0, mock_os.makedirs.call_count)
+
+    @mock.patch.object(cinder_rtstool, 'os',
+                       **{'path.exists.return_value': False,
+                          'path.dirname.return_value': mock.sentinel.dirname})
+    @mock.patch.object(cinder_rtstool, 'rtslib_fb',
+                       **{'root.default_save_file': mock.sentinel.filename})
+    def test_save_no_targetcli(self, mock_rtslib, mock_os):
+        """Test that we create path if it doesn't exist with default file."""
+        cinder_rtstool.save_to_file(None)
+        rtsroot = mock_rtslib.root.RTSRoot
+        rtsroot.assert_called_once_with()
+        rtsroot.return_value.save_to_file.assert_called_once_with(
+            mock.sentinel.filename)
+        mock_os.path.dirname.assert_called_once_with(mock.sentinel.filename)
+        mock_os.path.exists.assert_called_once_with(mock.sentinel.dirname)
+        mock_os.makedirs.assert_called_once_with(mock.sentinel.dirname, 0o755)
 
     def test_usage(self):
         with mock.patch('sys.stdout', new=six.StringIO()):
