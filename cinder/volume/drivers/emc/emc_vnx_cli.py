@@ -1501,7 +1501,7 @@ class CommandLineHelper(object):
         retry_disable = kwargv.pop('retry_disable', False)
         out, rc = self._command_execute_on_active_ip(*command, **kwargv)
         if not retry_disable and self._is_sp_unavailable_error(out):
-            # When active sp is unavailble, swith to another sp
+            # When active sp is unavailable, switch to another sp
             # and set it to active and force a poll
             if self._toggle_sp():
                 LOG.debug('EMC: Command Exception: %(rc) %(result)s. '
@@ -2200,7 +2200,7 @@ class EMCVnxCliBase(object):
         return self.dumps_provider_location(pl_dict)
 
     def _extract_provider_location_for_lun(self, provider_location, key='id'):
-        """Extacts value of the specified field from provider_location string.
+        """Extracts value of the specified field from provider_location string.
 
         :param provider_location: provider_location string
         :param key: field name of the value that to be extracted

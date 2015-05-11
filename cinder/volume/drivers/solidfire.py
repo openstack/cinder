@@ -634,7 +634,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if ((not image_meta.get('is_public', False)) and
                 (image_meta['owner'] != volume['project_id'])):
                 LOG.warning(_LW("Requested image is not "
-                                "accesible by current Tenant."))
+                                "accessible by current Tenant."))
                 return None, False
 
         # Is virtual_size property set on the image?
