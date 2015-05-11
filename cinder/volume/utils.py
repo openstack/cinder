@@ -503,3 +503,7 @@ def matching_backend_name(src_volume_type, volume_type):
             volume_type.get('volume_backend_name')
     else:
         return False
+
+
+def hosts_are_equivalent(host_1, host_2):
+    return extract_host(host_1) == extract_host(host_2)
