@@ -983,3 +983,44 @@ class ValidBodyTest(test.TestCase):
         wsgi.Resource(controller=None)
         body = {'foo': 'bar'}
         self.assertFalse(self.controller.is_valid_body(body, 'foo'))
+
+    def test_validate_name_and_description_with_name_too_long(self):
+        body = {'name': 'a' * 256}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.validate_name_and_description,
+                          body)
+
+    def test_validate_name_and_description_with_desc_too_long(self):
+        body = {'description': 'a' * 256}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.validate_name_and_description,
+                          body)
+
+    def test_validate_name_and_description_with_name_as_int(self):
+        body = {'name': 1234}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.validate_name_and_description,
+                          body)
+
+    def test_validate_name_and_description_with_desc_as_int(self):
+        body = {'description': 1234}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.validate_name_and_description,
+                          body)
+
+    def test_validate_name_and_description_with_name_zero_length(self):
+        body = {'name': ""}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.validate_name_and_description,
+                          body)
+
+    def test_validate_name_and_description_with_desc_zero_length(self):
+        body = {'description': ""}
+        self.controller.validate_name_and_description(body)
+        self.assertEqual('', body['description'])
+
+    def test_validate_name_and_description_with_name_contains_whitespaces(
+            self):
+        body = {'name': 'a' * 255 + "  "}
+        self.controller.validate_name_and_description(body)
+        self.assertEqual('a' * 255, body['name'])

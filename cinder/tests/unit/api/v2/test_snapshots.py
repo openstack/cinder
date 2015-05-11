@@ -90,7 +90,9 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(db, 'snapshot_get_all',
                        stubs.stub_snapshot_get_all)
 
-    def test_snapshot_create(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_snapshot_create(self, mock_validate):
         self.stubs.Set(volume.api.API, "create_snapshot", stub_snapshot_create)
         self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
         snapshot_name = 'Snapshot Test Name'
@@ -107,10 +109,10 @@ class SnapshotApiTest(test.TestCase):
         resp_dict = self.controller.create(req, body)
 
         self.assertIn('snapshot', resp_dict)
-        self.assertEqual(snapshot_name,
-                         resp_dict['snapshot']['name'])
+        self.assertEqual(snapshot_name, resp_dict['snapshot']['name'])
         self.assertEqual(snapshot_description,
                          resp_dict['snapshot']['description'])
+        self.assertTrue(mock_validate.called)
 
     def test_snapshot_create_force(self):
         self.stubs.Set(volume.api.API, "create_snapshot_force",
@@ -166,8 +168,11 @@ class SnapshotApiTest(test.TestCase):
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
-    def test_snapshot_update(self, snapshot_get_by_id, volume_get_by_id,
-                             snapshot_metadata_get, update_snapshot):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_snapshot_update(
+            self, mock_validate, snapshot_get_by_id, volume_get_by_id,
+            snapshot_metadata_get, update_snapshot):
         snapshot = {
             'id': UUID,
             'volume_id': 1,
@@ -202,6 +207,7 @@ class SnapshotApiTest(test.TestCase):
             }
         }
         self.assertEqual(expected, res_dict)
+        self.assertTrue(mock_validate.called)
         self.assertEqual(2, len(self.notifier.notifications))
 
     def test_snapshot_update_missing_body(self):
