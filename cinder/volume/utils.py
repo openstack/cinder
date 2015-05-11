@@ -498,3 +498,7 @@ def append_host(host, pool):
 
     new_host = "#".join([host, pool])
     return new_host
+
+
+def hosts_are_equivalent(host_1, host_2):
+    return extract_host(host_1) == extract_host(host_2)

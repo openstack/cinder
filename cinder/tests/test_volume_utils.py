@@ -655,3 +655,14 @@ class VolumeUtilsTestCase(test.TestCase):
         expected = None
         self.assertEqual(expected,
                          volume_utils.append_host(host, pool))
+
+    def test_compare_hosts(self):
+        host_1 = 'fake_host@backend1'
+        host_2 = 'fake_host@backend1#pool1'
+        self.assertTrue(volume_utils.hosts_are_equivalent(host_1, host_2))
+
+        host_2 = 'fake_host@backend1'
+        self.assertTrue(volume_utils.hosts_are_equivalent(host_1, host_2))
+
+        host_2 = 'fake_host2@backend1'
+        self.assertFalse(volume_utils.hosts_are_equivalent(host_1, host_2))
