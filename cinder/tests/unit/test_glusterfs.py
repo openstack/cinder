@@ -147,7 +147,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             '/mnt/test/ab03ab34eaca46a5fb81878f7e9b91fc/volume-123',
             drv.local_path(volume))
 
-    def test_mount_glusterfs_should_mount_correctly(self):
+    def test_mount_glusterfs(self):
         """_mount_glusterfs common case usage."""
         drv = self._driver
 
