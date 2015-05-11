@@ -328,7 +328,7 @@ class TestTgtAdmDriver(test.TestCase):
             raise putils.ProcessExecutionError(
                 exit_code=1,
                 stdout='',
-                stderr='this isnt the error your looking for',
+                stderr='this is not the error you are looking for',
                 cmd='tgt-admin --force --delete')
 
         mock_exec.side_effect = _fake_execute
@@ -373,7 +373,7 @@ class TestTgtAdmDriver(test.TestCase):
             raise putils.ProcessExecutionError(
                 exit_code=1,
                 stdout='',
-                stderr='this isnt the error your looking for',
+                stderr='this is not the error you are looking for',
                 cmd='tgt-admin --force --delete')
 
         mock_exec.side_effect = _fake_execute

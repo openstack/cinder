@@ -613,7 +613,7 @@ class CinderObjectDictCompat(object):
         if key not in self.obj_fields:
             # NOTE(jdg): There are a number of places where we rely on the
             # old dictionary version and do a get(xxx, None).
-            # The following preserves that compatability but in
+            # The following preserves that compatibility but in
             # the future we'll remove this shim altogether so don't
             # rely on it.
             LOG.debug('Cinder object %(object_name)s has no '

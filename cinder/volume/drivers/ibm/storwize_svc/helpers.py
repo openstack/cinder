@@ -946,7 +946,7 @@ class StorwizeHelpers(object):
         """Ensures that vdisk is not part of FC mapping and deletes it."""
         LOG.debug('enter: delete_vdisk: vdisk %s' % vdisk)
         if not self.is_vdisk_defined(vdisk):
-            LOG.info(_LI('Tried to delete non-existant vdisk %s.') % vdisk)
+            LOG.info(_LI('Tried to delete non-existent vdisk %s.') % vdisk)
             return
         self.ensure_vdisk_no_fc_mappings(vdisk)
         self.ssh.rmvdisk(vdisk, force=force)

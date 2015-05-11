@@ -453,7 +453,7 @@ class API(base.Base):
         fields = {'updated_at': now}
 
         # Update name and description in db now. No need to
-        # to send them over thru an RPC call.
+        # to send them over through an RPC call.
         if name:
             fields['name'] = name
         if description:

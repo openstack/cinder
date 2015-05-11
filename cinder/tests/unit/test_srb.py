@@ -585,7 +585,7 @@ class SRBDriverTestCase(test.TestCase):
             lvname = cmd[4].split('/')[1]
             snapname = cmd[2]
             if lvname not in self._volumes[vgname]['vgs'][vgname]['lvs']:
-                raise AssertionError('snap creation attempted on non-existant '
+                raise AssertionError('snap creation attempted on non-existent '
                                      'thin-lv: %s' % cmd_string)
             if snapname[1:] in self._volumes[vgname]['vgs'][vgname]['snaps']:
                 raise AssertionError('snap creation attempted on existing '
