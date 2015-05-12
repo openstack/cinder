@@ -83,11 +83,21 @@ def create(backing_device, name, userid, password, iser_enabled,
                 'RDMA is supported on your iSCSI port.'))
         raise
 
+    portal = None
+
     try:
-        rtslib.NetworkPortal(tpg_new, '::0', 3260, mode='any')
+        portal = rtslib.NetworkPortal(tpg_new, '::0', 3260, mode='any')
     except rtslib.utils.RTSLibError:
         # TODO(emh): Binding to IPv6 fails sometimes -- let pass for now.
         pass
+
+    try:
+        if portal and iser_enabled == 'True':
+            portal.iser = True
+    except rtslib.utils.RTSLibError:
+        print (_('Error enabling iSER for IPv6 NetworkPortal: please '
+                 'ensure that RDMA is supported on your iSCSI port.'))
+        raise
 
 
 def _lookup_target(target_iqn, initiator_iqn):
