@@ -1,4 +1,4 @@
-# Copyright 2011-2015 Nexenta Systems, Inc.
+# Copyright 2013 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,7 +17,8 @@
 =============================================================================
 
 .. automodule:: nexenta.options
-.. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
+.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
+.. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
 """
 
 from oslo_config import cfg
@@ -26,7 +27,7 @@ from oslo_config import cfg
 NEXENTA_CONNECTION_OPTIONS = [
     cfg.StrOpt('nexenta_host',
                default='',
-               help='IP address of NexentaStor or NexentaEdge'),
+               help='IP address of Nexenta SA'),
     cfg.IntOpt('nexenta_rest_port',
                default=2000,
                help='HTTP port to connect to Nexenta REST API server'),
@@ -36,10 +37,10 @@ NEXENTA_CONNECTION_OPTIONS = [
                help='Use http or https for REST connection (default auto)'),
     cfg.StrOpt('nexenta_user',
                default='admin',
-               help='User name to connect to NexentaStor or NexentaEdge'),
+               help='User name to connect to Nexenta SA'),
     cfg.StrOpt('nexenta_password',
                default='nexenta',
-               help='Password to connect to NexentaStor or NexentaEdge',
+               help='Password to connect to Nexenta SA',
                secret=True),
 ]
 
@@ -49,10 +50,9 @@ NEXENTA_ISCSI_OPTIONS = [
                help='Nexenta target portal port'),
     cfg.StrOpt('nexenta_volume',
                default='cinder',
-               help='Full path to NexentaEdge Bucket (e.g. cluster/tenant/bucket) or '
-                    'NexentaStor Pool that holds all volumes'),
+               help='SA Pool that holds all volumes'),
     cfg.StrOpt('nexenta_target_prefix',
-               default='iqn.2005-11.com.nexenta:storage.',
+               default='iqn.1986-03.com.sun:02:cinder-',
                help='IQN prefix for iSCSI targets'),
     cfg.StrOpt('nexenta_target_group_prefix',
                default='cinder/',
@@ -86,13 +86,13 @@ NEXENTA_VOLUME_OPTIONS = [
                         'gzip-9', 'lzjb', 'zle', 'lz4'],
                help='Compression value for new ZFS folders.'),
     cfg.StrOpt('nexenta_volume_dedup',
-               default='on',
+               default='off',
                choices=['on', 'off', 'sha256', 'verify', 'sha256, verify'],
                help='Deduplication value for new ZFS folders.'),
     cfg.StrOpt('nexenta_volume_description',
                default='',
                help='Human-readable description for the folder.'),
-    cfg.StrOpt('nexenta_blocksize',
+    cfg.StrOpt('self.configuration.nexenta_blocksize',
                default='',
                help='Block size for volumes (default=blank means 8KB)'),
     cfg.BoolOpt('nexenta_sparse',
@@ -100,7 +100,7 @@ NEXENTA_VOLUME_OPTIONS = [
                 help='Enables or disables the creation of sparse volumes'),
     cfg.IntOpt('nexenta_capacitycheck',
                default=80,
-               help=('Percentage of real volume capacity for cinder to use. '
+               help=('Percentage of real disc capacity for cinder to use. '
                      '80 is recommened')),
 ]
 

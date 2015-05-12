@@ -1,4 +1,4 @@
-# Copyright 2011-2015 Nexenta Systems, Inc.
+# Copyright 2011 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,7 +17,9 @@
 =====================================================================
 
 .. automodule:: nexenta.volume
-.. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
+.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
+.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
+.. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
 """
 
 from oslo_log import log as logging
@@ -682,7 +684,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'storage_protocol': 'iSCSI',
             'total_capacity_gb': total_amount,
             'free_capacity_gb': free_amount,
-            'reserved_percentage': 0,
+            'reserved_percentage': self.configuration.nexenta_capacitycheck,
             'QoS_support': False,
             'volume_backend_name': self.backend_name,
             'location_info': location_info,

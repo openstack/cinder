@@ -1,4 +1,4 @@
-# Copyright 2011-2015 Nexenta Systems, Inc.
+# Copyright 2013 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,7 +17,8 @@
 =======================================================================
 
 .. automodule:: nexenta.nfs
-.. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
+.. moduleauthor:: Mikhail Khodos <hodosmb@gmail.com>
+.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
 """
 
 import hashlib
@@ -57,7 +58,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
     driver_prefix = 'nexenta'
     volume_backend_name = 'NexentaNfsDriver'
-    volume_file_name = 'volume'
     VERSION = VERSION
 
     def __init__(self, *args, **kwargs):
@@ -408,6 +408,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
+        super(NexentaNfsDriver, self).delete_volume(volume)
 
         nfs_share = volume.get('provider_location')
 
@@ -416,10 +417,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             vol, parent_folder = self._get_share_datasets(nfs_share)
             folder = '%s/%s/%s' % (vol, parent_folder, volume['name'])
             props = nms.folder.get_child_props(folder, 'origin') or {}
-            mount_path = self.remote_path(volume).strip(
-                '/%s' % self.volume_file_name)
-            if mount_path in self._remotefsclient._read_mounts():
-                self._execute('umount', mount_path, run_as_root=True)
+            mount = self._get_mount_point_for_share(nfs_share)
+            self._execute('umount', mount, run_as_root=True)
             try:
                 nms.folder.destroy(folder, '-r')
             except nexenta.NexentaException as exc:
@@ -540,7 +539,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """
         nfs_share = volume['provider_location']
         share = nfs_share.split(':')[1].rstrip('/')
-        return '%s/%s/%s' % (share, volume['name'], self.volume_file_name)
+        return '%s/%s/volume' % (share, volume['name'])
 
     def _share_folder(self, nms, volume, folder):
         """Share NFS folder on NexentaStor Appliance.
@@ -604,7 +603,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                                              ns_folder), '')
         free = utils.str2size(folder_props['available'])
         allocated = utils.str2size(folder_props['used'])
-        return free + allocated, free, allocated
+        return free + allocated, allocated
 
     def _get_nms_for_url(self, url):
         """Returns initialized nms object for url."""
