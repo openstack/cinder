@@ -160,6 +160,29 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                           hashed)
         return path
 
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+        super(GlusterfsDriver, self)._update_volume_stats()
+        data = self._stats
+
+        global_capacity = data['total_capacity_gb']
+        global_free = data['free_capacity_gb']
+
+        thin_enabled = (self.configuration.glusterfs_sparsed_volumes or
+                        self.configuration.glusterfs_qcow2_volumes)
+        if thin_enabled:
+            provisioned_capacity = self._get_provisioned_capacity()
+        else:
+            provisioned_capacity = round(global_capacity - global_free, 2)
+
+        data['provisioned_capacity_gb'] = provisioned_capacity
+        data['max_over_subscription_ratio'] = (
+            self.configuration.max_over_subscription_ratio)
+        data['thin_provisioning_support'] = thin_enabled
+        data['thick_provisioning_support'] = not thin_enabled
+
+        self._stats = data
+
     @remotefs_drv.locked_volume_id_operation
     def create_volume(self, volume):
         """Creates a volume."""

@@ -38,6 +38,7 @@ from cinder import test
 from cinder import utils
 from cinder.volume import driver as base_driver
 from cinder.volume.drivers import glusterfs
+from cinder.volume.drivers import remotefs as remotefs_drv
 
 
 CONF = cfg.CONF
@@ -210,6 +211,93 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             result = drv._get_available_capacity(self.TEST_EXPORT1)
             self.assertEqual((df_avail, df_total_size), result)
+
+    def test_get_provisioned_capacity(self):
+        """_get_provisioned_size should calculate correct value."""
+        drv = self._driver
+
+        drv.shares = {'127.7.7.7:/gluster1': None}
+        with mock.patch.object(drv, '_get_mount_point_for_share') as \
+                mock_get_mount_point_for_share,\
+                mock.patch.object(drv, '_execute') as mock_execute:
+            mock_get_mount_point_for_share.\
+                return_value = self.TEST_MNT_POINT
+            mock_execute.return_value = ("3221225472 /mount/point", '')
+            provisioned_capacity = drv._get_provisioned_capacity()
+
+            self.assertEqual(3.0, provisioned_capacity)
+
+    def test_update_volume_stats_sparse(self):
+        """_update_volume_stats_sparse with sparse files."""
+        drv = self._driver
+        rfsdriver = remotefs_drv.RemoteFSSnapDriver
+
+        with mock.patch.object(rfsdriver, '_update_volume_stats') as \
+                mock_update_volume_stats,\
+                mock.patch.object(drv, '_get_provisioned_capacity') as \
+                mock_get_provisioned_capacity:
+            data = {'total_capacity_gb': 10.0,
+                    'free_capacity_gb': 2.0}
+            drv._stats = data
+            drv.configuration.glusterfs_sparsed_volumes = True
+            drv.configuration.glusterfs_qcow2_volumes = False
+            drv.configuration.max_over_subscription_ratio = 20.0
+            mock_get_provisioned_capacity.return_value = 8.0
+            drv._update_volume_stats()
+            data['max_over_subscription_ratio'] = 20.0
+            data['thick_provisioning_support'] = False
+            data['thin_provisioning_support'] = True
+
+            self.assertEqual(data, drv._stats)
+            self.assertTrue(mock_get_provisioned_capacity.called)
+            self.assertTrue(mock_update_volume_stats.called)
+
+    def test_update_volume_stats_qcow2(self):
+        """_update_volume_stats_sparse with qcow2 files."""
+        drv = self._driver
+        rfsdriver = remotefs_drv.RemoteFSSnapDriver
+
+        with mock.patch.object(rfsdriver, '_update_volume_stats') as \
+                mock_update_volume_stats,\
+                mock.patch.object(drv, '_get_provisioned_capacity') as \
+                mock_get_provisioned_capacity:
+            data = {'total_capacity_gb': 10.0,
+                    'free_capacity_gb': 2.0}
+            drv._stats = data
+            drv.configuration.glusterfs_sparsed_volumes = False
+            drv.configuration.glusterfs_qcow2_volumes = True
+            drv.configuration.max_over_subscription_ratio = 20.0
+            mock_get_provisioned_capacity.return_value = 8.0
+            drv._update_volume_stats()
+            data['max_over_subscription_ratio'] = 20.0
+            data['thick_provisioning_support'] = False
+            data['thin_provisioning_support'] = True
+
+            self.assertEqual(data, drv._stats)
+            self.assertTrue(mock_get_provisioned_capacity.called)
+            self.assertTrue(mock_update_volume_stats.called)
+
+    def test_update_volume_stats_thick(self):
+        """_update_volume_stats_sparse with raw files."""
+        drv = self._driver
+        rfsdriver = remotefs_drv.RemoteFSSnapDriver
+
+        with mock.patch.object(rfsdriver, '_update_volume_stats') as \
+                mock_update_volume_stats:
+            data = {'total_capacity_gb': 10.0,
+                    'free_capacity_gb': 2.0}
+            drv._stats = data
+            drv.configuration.glusterfs_sparsed_volumes = False
+            drv.configuration.glusterfs_qcow2_volumes = False
+            drv.configuration.max_over_subscription_ratio = 20.0
+            drv._update_volume_stats()
+            data['provisioned_capacity_gb'] = 8.0
+            data['max_over_subscription_ratio'] = 20.0
+            data['thick_provisioning_support'] = True
+            data['thin_provisioning_support'] = False
+
+            self.assertEqual(data, drv._stats)
+            self.assertTrue(mock_update_volume_stats.called)
 
     def test_load_shares_config(self):
         drv = self._driver
