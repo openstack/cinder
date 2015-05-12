@@ -59,14 +59,14 @@ class HttpClient(object):
     Helper for making the REST calls.
     '''
 
-    def __init__(self, host, port, user, password):
+    def __init__(self, host, port, user, password, verify):
         self.baseUrl = 'https://%s:%s/api/rest/' % (host, port)
         self.session = requests.Session()
         self.session.auth = (user, password)
         self.header = {}
         self.header['Content-Type'] = 'application/json; charset=utf-8'
         self.header['x-dell-api-version'] = '2.0'
-        self.verify = False
+        self.verify = verify
 
     def __enter__(self):
         return self
@@ -132,7 +132,8 @@ class StorageCenterApiHelper(object):
             connection = StorageCenterApi(self.config.san_ip,
                                           self.config.dell_sc_api_port,
                                           self.config.san_login,
-                                          self.config.san_password)
+                                          self.config.san_password,
+                                          self.config.dell_sc_verify_cert)
             # This instance is for a single backend.  That backend has a
             # few items of information we should save rather than passing them
             # about.
@@ -155,7 +156,7 @@ class StorageCenterApi(object):
 
     APIVERSION = '1.0.1'
 
-    def __init__(self, host, port, user, password):
+    def __init__(self, host, port, user, password, verify):
         self.notes = 'Created by Dell Cinder Driver'
         self.ssn = None
         self.vfname = 'openstack'
@@ -163,7 +164,8 @@ class StorageCenterApi(object):
         self.client = HttpClient(host,
                                  port,
                                  user,
-                                 password)
+                                 password,
+                                 verify)
 
     def __enter__(self):
         return self

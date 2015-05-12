@@ -1434,6 +1434,14 @@ class DellSCSanAPITestCase(test.TestCase):
         self.configuration.dell_sc_ssn = 12345
         self.configuration.dell_sc_server_folder = 'opnstktst'
         self.configuration.dell_sc_volume_folder = 'opnstktst'
+        # Note that we set this to True even though we do not
+        # test this functionality.  This is sent directly to
+        # the requests calls as the verify parameter and as
+        # that is a third party library deeply stubbed out is
+        # not directly testable by this code.  Note that in the
+        # case that this fails the driver fails to even come
+        # up.
+        self.configuration.dell_sc_verify_cert = True
         self.configuration.dell_sc_api_port = 3033
         self.configuration.iscsi_ip_address = '192.168.1.1'
         self.configuration.iscsi_port = 3260
@@ -1444,7 +1452,8 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.san_ip,
             self.configuration.dell_sc_api_port,
             self.configuration.san_login,
-            self.configuration.san_password)
+            self.configuration.san_password,
+            self.configuration.dell_sc_verify_cert)
 
         # Set up the scapi configuration vars
         self.scapi.ssn = self.configuration.dell_sc_ssn
@@ -3896,6 +3905,14 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
         self.configuration.dell_sc_ssn = 12345
         self.configuration.dell_sc_server_folder = 'openstack'
         self.configuration.dell_sc_volume_folder = 'openstack'
+        # Note that we set this to True even though we do not
+        # test this functionality.  This is sent directly to
+        # the requests calls as the verify parameter and as
+        # that is a third party library deeply stubbed out is
+        # not directly testable by this code.  Note that in the
+        # case that this fails the driver fails to even come
+        # up.
+        self.configuration.dell_sc_verify_cert = True
         self.configuration.dell_sc_api_port = 3033
         self.configuration.iscsi_ip_address = '192.168.1.1'
         self.configuration.iscsi_port = 3260
@@ -3906,7 +3923,8 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
             self.configuration.san_ip,
             self.configuration.dell_sc_api_port,
             self.configuration.san_login,
-            self.configuration.san_password)
+            self.configuration.san_password,
+            self.configuration.dell_sc_verify_cert)
 
         # Set up the scapi configuration vars
         self.scapi.ssn = self.configuration.dell_sc_ssn

@@ -1095,6 +1095,6 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         volume = {'id': 111}
         backend_volume = {'id': None}
         rt = self.driver.update_migrated_volume(None, volume, backend_volume)
-        mock_find_sc.assert_called_once_with(12345)
-        mock_find_volume.assert_called_once_with(12345, None)
+        mock_find_sc.assert_called_once_with()
+        mock_find_volume.assert_called_once_with(None)
         self.assertEqual(None, rt)
