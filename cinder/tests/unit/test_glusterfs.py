@@ -22,11 +22,11 @@ import time
 import traceback
 
 import mock
+import os_brick
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_utils import units
 
-from cinder import brick
 from cinder import compute
 from cinder import context
 from cinder import db
@@ -123,7 +123,7 @@ class GlusterFsDriverTestCase(test.TestCase):
     def test_set_execute(self):
         drv = self._driver
 
-        rfsclient = brick.remotefs.remotefs.RemoteFsClient
+        rfsclient = os_brick.remotefs.remotefs.RemoteFsClient
 
         with mock.patch.object(rfsclient, 'set_execute') as mock_set_execute:
             def my_execute(*a, **k):
@@ -151,7 +151,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         """_mount_glusterfs common case usage."""
         drv = self._driver
 
-        with mock.patch.object(brick.remotefs.remotefs.RemoteFsClient,
+        with mock.patch.object(os_brick.remotefs.remotefs.RemoteFsClient,
                                'mount') as mock_mount:
             drv._mount_glusterfs(self.TEST_EXPORT1)
 
@@ -162,7 +162,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         """
         drv = self._driver
 
-        with mock.patch.object(brick.remotefs.remotefs.RemoteFsClient,
+        with mock.patch.object(os_brick.remotefs.remotefs.RemoteFsClient,
                                'mount') as mock_mount:
 
             mock_mount.side_effect = exception.GlusterfsException()
@@ -182,7 +182,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
         hashed_path = '/mnt/test/abcdefabcdef'
 
-        with mock.patch.object(brick.remotefs.remotefs.RemoteFsClient,
+        with mock.patch.object(os_brick.remotefs.remotefs.RemoteFsClient,
                                'get_mount_point') as mock_get_mount_point:
             mock_get_mount_point.return_value = hashed_path
 
@@ -351,7 +351,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_get_file_mode,\
                 mock.patch.object(tempfile, 'NamedTemporaryFile') as \
                 mock_named_temp,\
-                mock.patch.object(brick.remotefs.remotefs.RemoteFsClient,
+                mock.patch.object(os_brick.remotefs.remotefs.RemoteFsClient,
                                   'mount') as mock_mount:
             drv._load_shares_config = self._fake_load_shares_config
             mock_named_temp.return_value = self._fake_NamedTemporaryFile

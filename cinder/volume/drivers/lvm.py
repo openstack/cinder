@@ -25,7 +25,6 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import units
 
-from cinder.brick import exception as brick_exception
 from cinder.brick.local_dev import lvm as lvm
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -262,7 +261,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                   executor=self._execute,
                                   lvm_conf=lvm_conf_file)
 
-            except brick_exception.VolumeGroupNotFound:
+            except exception.VolumeGroupNotFound:
                 message = (_("Volume Group %s does not exist") %
                            self.configuration.volume_group)
                 raise exception.VolumeBackendAPIException(data=message)

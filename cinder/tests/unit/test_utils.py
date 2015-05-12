@@ -1252,7 +1252,7 @@ class BrickUtils(test.TestCase):
     """
 
     @mock.patch('cinder.utils.CONF')
-    @mock.patch('cinder.brick.initiator.connector.get_connector_properties')
+    @mock.patch('os_brick.initiator.connector.get_connector_properties')
     @mock.patch('cinder.utils.get_root_helper')
     def test_brick_get_connector_properties(self, mock_helper, mock_get,
                                             mock_conf):
@@ -1263,7 +1263,7 @@ class BrickUtils(test.TestCase):
                                          False, False)
         self.assertEqual(mock_get.return_value, output)
 
-    @mock.patch('cinder.brick.initiator.connector.InitiatorConnector.factory')
+    @mock.patch('os_brick.initiator.connector.InitiatorConnector.factory')
     @mock.patch('cinder.utils.get_root_helper')
     def test_brick_get_connector(self, mock_helper, mock_factory):
         output = utils.brick_get_connector('protocol')

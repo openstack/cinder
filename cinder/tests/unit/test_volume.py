@@ -29,6 +29,7 @@ import time
 import eventlet
 import mock
 from mox3 import mox
+import os_brick
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_serialization import jsonutils
@@ -5215,7 +5216,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         backup_service = self.mox.CreateMock(backup_driver.BackupDriver)
         root_helper = 'sudo cinder-rootwrap /etc/cinder/rootwrap.conf'
         self.mox.StubOutWithMock(self.volume.driver.db, 'volume_get')
-        self.mox.StubOutWithMock(cinder.brick.initiator.connector,
+        self.mox.StubOutWithMock(os_brick.initiator.connector,
                                  'get_connector_properties')
         self.mox.StubOutWithMock(self.volume.driver, '_attach_volume')
         self.mox.StubOutWithMock(os, 'getuid')
@@ -5226,7 +5227,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
 
         self.volume.driver.db.volume_get(self.context, vol['id']).\
             AndReturn(vol)
-        cinder.brick.initiator.connector.\
+        os_brick.initiator.connector.\
             get_connector_properties(root_helper, CONF.my_ip, False, False).\
             AndReturn(properties)
         self.volume.driver._attach_volume(self.context, vol, properties).\
@@ -5250,7 +5251,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         attach_info = {'device': {'path': '/dev/null'}}
         root_helper = 'sudo cinder-rootwrap /etc/cinder/rootwrap.conf'
         backup_service = self.mox.CreateMock(backup_driver.BackupDriver)
-        self.mox.StubOutWithMock(cinder.brick.initiator.connector,
+        self.mox.StubOutWithMock(os_brick.initiator.connector,
                                  'get_connector_properties')
         self.mox.StubOutWithMock(self.volume.driver, '_attach_volume')
         self.mox.StubOutWithMock(os, 'getuid')
@@ -5259,7 +5260,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         self.mox.StubOutWithMock(self.volume.driver, '_detach_volume')
         self.mox.StubOutWithMock(self.volume.driver, 'terminate_connection')
 
-        cinder.brick.initiator.connector.\
+        os_brick.initiator.connector.\
             get_connector_properties(root_helper, CONF.my_ip, False, False).\
             AndReturn(properties)
         self.volume.driver._attach_volume(self.context, vol, properties).\
@@ -5622,7 +5623,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
 
     @mock.patch.object(utils, 'temporary_chown')
     @mock.patch.object(fileutils, 'file_open')
-    @mock.patch.object(cinder.brick.initiator.connector,
+    @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties')
     @mock.patch.object(db, 'volume_get')
     def test_backup_volume(self, mock_volume_get,
