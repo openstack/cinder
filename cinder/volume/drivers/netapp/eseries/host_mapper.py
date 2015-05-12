@@ -33,7 +33,7 @@ LOG = logging.getLogger(__name__)
 def map_volume_to_single_host(client, volume, eseries_vol, host,
                               vol_map):
     """Maps the e-series volume to host with initiator."""
-    LOG.debug("Attempting to map volume %s to single host." % volume['id'])
+    LOG.debug("Attempting to map volume %s to single host.", volume['id'])
 
     # If volume is not mapped on the backend, map directly to host
     if not vol_map:
@@ -56,8 +56,8 @@ def map_volume_to_single_host(client, volume, eseries_vol, host,
 
     # Volume is mapped to the multiattach host group
     if vol_map.get('mapRef') == multiattach_cluster_ref:
-        LOG.debug("Volume %s is mapped to multiattach host group."
-                  % volume['id'])
+        LOG.debug("Volume %s is mapped to multiattach host group.",
+                  volume['id'])
 
         # If volume is not currently attached according to Cinder, it is
         # safe to delete the mapping
@@ -84,7 +84,7 @@ def map_volume_to_multiple_hosts(client, volume, eseries_vol, target_host,
                                  mapping):
     """Maps the e-series volume to multiattach host group."""
 
-    LOG.debug("Attempting to map volume %s to multiple hosts." % volume['id'])
+    LOG.debug("Attempting to map volume %s to multiple hosts.", volume['id'])
 
     # If volume is already mapped to desired host, return the mapping
     if mapping['mapRef'] == target_host['hostRef']:
