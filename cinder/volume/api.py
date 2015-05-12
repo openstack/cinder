@@ -165,6 +165,26 @@ class API(base.Base):
         LOG.info(_LI("Availability Zones retrieved successfully."))
         return tuple(azs)
 
+    def _retype_is_possible(self, context,
+                            first_type_id, second_type_id,
+                            first_type=None, second_type=None):
+        safe = False
+        if len(self.db.service_get_all_by_topic(context,
+                                                'cinder-volume',
+                                                disabled=True)) == 1:
+            safe = True
+        else:
+            type_a = first_type or volume_types.get_volume_type(
+                context,
+                first_type_id)
+            type_b = second_type or volume_types.get_volume_type(
+                context,
+                second_type_id)
+            if(volume_utils.matching_backend_name(type_a['extra_specs'],
+                                                  type_b['extra_specs'])):
+                safe = True
+        return safe
+
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
                availability_zone=None, source_volume=None,
@@ -202,10 +222,15 @@ class API(base.Base):
 
         if source_volume and volume_type:
             if volume_type['id'] != source_volume['volume_type_id']:
-                msg = _("Invalid volume_type provided: %s (requested type "
-                        "must match source volume, "
-                        "or be omitted).") % volume_type
-                raise exception.InvalidInput(reason=msg)
+                if not self._retype_is_possible(
+                        context,
+                        volume_type['id'],
+                        source_volume['volume_type_id'],
+                        volume_type):
+                    msg = _("Invalid volume_type provided: %s (requested type "
+                            "is not compatible; either match source volume, "
+                            "or omit type argument).") % volume_type['id']
+                    raise exception.InvalidInput(reason=msg)
 
         # When cloning replica (for testing), volume type must be omitted
         if source_replica and volume_type:
@@ -215,10 +240,14 @@ class API(base.Base):
 
         if snapshot and volume_type:
             if volume_type['id'] != snapshot['volume_type_id']:
-                msg = _("Invalid volume_type provided: %s (requested "
-                        "type must match source snapshot, or be "
-                        "omitted).") % volume_type
-                raise exception.InvalidInput(reason=msg)
+                if not self._retype_is_possible(context,
+                                                volume_type['id'],
+                                                snapshot['volume_type_id'],
+                                                volume_type):
+                    msg = _("Invalid volume_type provided: %s (requested "
+                            "type is not compatible; recommend omitting "
+                            "the type argument).") % volume_type['id']
+                    raise exception.InvalidInput(reason=msg)
 
         # Determine the valid availability zones that the volume could be
         # created in (a task in the flow will/can use this information to

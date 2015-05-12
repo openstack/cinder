@@ -958,10 +958,14 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Test volume create from snapshot with types including mistmatch."""
         volume_api = cinder.volume.api.API()
 
-        db.volume_type_create(context.get_admin_context(),
-                              {'name': 'foo', 'extra_specs': {}})
-        db.volume_type_create(context.get_admin_context(),
-                              {'name': 'biz', 'extra_specs': {}})
+        db.volume_type_create(
+            context.get_admin_context(),
+            {'name': 'foo',
+             'extra_specs': {'volume_backend_name': 'dev_1'}})
+
+        db.volume_type_create(
+            context.get_admin_context(),
+            {'name': 'biz', 'extra_specs': {'volume_backend_name': 'dev_2'}})
 
         foo_type = db.volume_type_get_by_name(context.get_admin_context(),
                                               'foo')
@@ -975,31 +979,34 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # Make sure the case of specifying a type that
         # doesn't match the snapshots type fails
-        self.assertRaises(exception.InvalidInput,
-                          volume_api.create,
-                          self.context,
-                          size=1,
-                          name='fake_name',
-                          description='fake_desc',
-                          volume_type=foo_type,
-                          snapshot=snapshot)
+        with mock.patch.object(cinder.volume.volume_types,
+                               'get_volume_type') as mock_get_type:
+            mock_get_type.return_value = biz_type
+            self.assertRaises(exception.InvalidInput,
+                              volume_api.create,
+                              self.context,
+                              size=1,
+                              name='fake_name',
+                              description='fake_desc',
+                              volume_type=foo_type,
+                              snapshot=snapshot)
 
-        # Make sure that trying to specify a type
-        # when the snapshots type is None fails
-        snapshot['volume_type_id'] = None
-        self.assertRaises(exception.InvalidInput,
-                          volume_api.create,
-                          self.context,
-                          size=1,
-                          name='fake_name',
-                          description='fake_desc',
-                          volume_type=foo_type,
-                          snapshot=snapshot)
+            # Make sure that trying to specify a type
+            # when the snapshots type is None fails
+            snapshot['volume_type_id'] = None
+            self.assertRaises(exception.InvalidInput,
+                              volume_api.create,
+                              self.context,
+                              size=1,
+                              name='fake_name',
+                              description='fake_desc',
+                              volume_type=foo_type,
+                              snapshot=snapshot)
 
-        snapshot['volume_type_id'] = foo_type['id']
-        volume_api.create(self.context, size=1, name='fake_name',
-                          description='fake_desc', volume_type=foo_type,
-                          snapshot=snapshot)
+            snapshot['volume_type_id'] = foo_type['id']
+            volume_api.create(self.context, size=1, name='fake_name',
+                              description='fake_desc', volume_type=foo_type,
+                              snapshot=snapshot)
 
         db.volume_type_destroy(context.get_admin_context(),
                                foo_type['id'])
@@ -1011,10 +1018,14 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Test volume create from source with types including mistmatch."""
         volume_api = cinder.volume.api.API()
 
-        db.volume_type_create(context.get_admin_context(),
-                              {'name': 'foo', 'extra_specs': {}})
-        db.volume_type_create(context.get_admin_context(),
-                              {'name': 'biz', 'extra_specs': {}})
+        db.volume_type_create(
+            context.get_admin_context(),
+            {'name': 'foo',
+             'extra_specs': {'volume_backend_name': 'dev_1'}})
+
+        db.volume_type_create(
+            context.get_admin_context(),
+            {'name': 'biz', 'extra_specs': {'volume_backend_name': 'dev_2'}})
 
         foo_type = db.volume_type_get_by_name(context.get_admin_context(),
                                               'foo')
@@ -1027,40 +1038,146 @@ class VolumeTestCase(BaseVolumeTestCase):
                       'volume_type': biz_type,
                       'volume_type_id': biz_type['id']}
 
-        # Make sure the case of specifying a type that
-        # doesn't match the snapshots type fails
-        self.assertRaises(exception.InvalidInput,
-                          volume_api.create,
-                          self.context,
-                          size=1,
-                          name='fake_name',
-                          description='fake_desc',
-                          volume_type=foo_type,
-                          source_volume=source_vol)
+        with mock.patch.object(cinder.volume.volume_types,
+                               'get_volume_type') as mock_get_type:
+            mock_get_type.return_value = biz_type
+            self.assertRaises(exception.InvalidInput,
+                              volume_api.create,
+                              self.context,
+                              size=1,
+                              name='fake_name',
+                              description='fake_desc',
+                              volume_type=foo_type,
+                              source_volume=source_vol)
 
-        # Make sure that trying to specify a type
-        # when the source type is None fails
-        source_vol['volume_type_id'] = None
-        source_vol['volume_type'] = None
-        self.assertRaises(exception.InvalidInput,
-                          volume_api.create,
-                          self.context,
-                          size=1,
-                          name='fake_name',
-                          description='fake_desc',
-                          volume_type=foo_type,
-                          source_volume=source_vol)
+            # Make sure that trying to specify a type
+            # when the source type is None fails
+            source_vol['volume_type_id'] = None
+            source_vol['volume_type'] = None
+            self.assertRaises(exception.InvalidInput,
+                              volume_api.create,
+                              self.context,
+                              size=1,
+                              name='fake_name',
+                              description='fake_desc',
+                              volume_type=foo_type,
+                              source_volume=source_vol)
 
-        source_vol['volume_type_id'] = biz_type['id']
-        source_vol['volume_type'] = biz_type
-        volume_api.create(self.context, size=1, name='fake_name',
-                          description='fake_desc', volume_type=biz_type,
-                          source_volume=source_vol)
+            source_vol['volume_type_id'] = biz_type['id']
+            source_vol['volume_type'] = biz_type
+            volume_api.create(self.context, size=1, name='fake_name',
+                              description='fake_desc', volume_type=biz_type,
+                              source_volume=source_vol)
 
-        db.volume_type_destroy(context.get_admin_context(),
-                               foo_type['id'])
-        db.volume_type_destroy(context.get_admin_context(),
-                               biz_type['id'])
+            db.volume_type_destroy(context.get_admin_context(),
+                                   foo_type['id'])
+            db.volume_type_destroy(context.get_admin_context(),
+                                   biz_type['id'])
+
+    @mock.patch('cinder.volume.flows.api.create_volume.get_flow')
+    def test_create_volume_from_source_with_same_backend(self, _get_flow):
+        """Test volume create from source with type mismatch same backend."""
+        volume_api = cinder.volume.api.API()
+
+        foo_type = {
+            'name': 'foo',
+            'qos_specs_id': None,
+            'deleted': False,
+            'created_at': datetime.datetime(2015, 5, 8, 0, 40, 5, 408232),
+            'updated_at': None,
+            'extra_specs': {'volume_backend_name': 'dev_1'},
+            'is_public': True,
+            'deleted_at': None,
+            'id': '29e43b50-2cd7-4d0c-8ddd-2119daab3a38',
+            'description': None}
+
+        biz_type = {
+            'name': 'biz',
+            'qos_specs_id': None,
+            'deleted': False,
+            'created_at': datetime.datetime(2015, 5, 8, 0, 20, 5, 408232),
+            'updated_at': None,
+            'extra_specs': {'volume_backend_name': 'dev_1'},
+            'is_public': True,
+            'deleted_at': None,
+            'id': '34e54c31-3bc8-5c1d-9fff-2225bcce4b59',
+            'description': None}
+
+        source_vol = {'id': 1234,
+                      'status': 'available',
+                      'volume_size': 10,
+                      'volume_type': biz_type,
+                      'volume_type_id': biz_type['id']}
+
+        with mock.patch.object(cinder.volume.volume_types,
+                               'get_volume_type') as mock_get_type:
+            mock_get_type.return_value = biz_type
+            volume_api.create(self.context,
+                              size=1,
+                              name='fake_name',
+                              description='fake_desc',
+                              volume_type=foo_type,
+                              source_volume=source_vol)
+
+    @mock.patch('cinder.volume.flows.api.create_volume.get_flow')
+    def test_create_from_source_and_snap_only_one_backend(self, _get_flow):
+        """Test create from source and snap with type mismatch one backend."""
+        volume_api = cinder.volume.api.API()
+
+        foo_type = {
+            'name': 'foo',
+            'qos_specs_id': None,
+            'deleted': False,
+            'created_at': datetime.datetime(2015, 5, 8, 0, 40, 5, 408232),
+            'updated_at': None,
+            'extra_specs': {'some_key': 3},
+            'is_public': True,
+            'deleted_at': None,
+            'id': '29e43b50-2cd7-4d0c-8ddd-2119daab3a38',
+            'description': None}
+
+        biz_type = {
+            'name': 'biz',
+            'qos_specs_id': None,
+            'deleted': False,
+            'created_at': datetime.datetime(2015, 5, 8, 0, 20, 5, 408232),
+            'updated_at': None,
+            'extra_specs': {'some_other_key': 4},
+            'is_public': True,
+            'deleted_at': None,
+            'id': '34e54c31-3bc8-5c1d-9fff-2225bcce4b59',
+            'description': None}
+
+        source_vol = {'id': 1234,
+                      'status': 'available',
+                      'volume_size': 10,
+                      'volume_type': biz_type,
+                      'volume_type_id': biz_type['id']}
+
+        snapshot = {'id': 1234,
+                    'status': 'available',
+                    'volume_size': 10,
+                    'volume_type_id': biz_type['id']}
+
+        with mock.patch.object(db,
+                               'service_get_all_by_topic') as mock_get_service, \
+            mock.patch.object(volume_api,
+                              'list_availability_zones') as mock_get_azs:
+            mock_get_service.return_value = ['foo']
+            mock_get_azs.return_value = {}
+            volume_api.create(self.context,
+                              size=1,
+                              name='fake_name',
+                              description='fake_desc',
+                              volume_type=foo_type,
+                              source_volume=source_vol)
+
+            volume_api.create(self.context,
+                              size=1,
+                              name='fake_name',
+                              description='fake_desc',
+                              volume_type=foo_type,
+                              snapshot=snapshot)
 
     def test_create_snapshot_driver_not_initialized(self):
         volume_src = tests_utils.create_volume(self.context,
