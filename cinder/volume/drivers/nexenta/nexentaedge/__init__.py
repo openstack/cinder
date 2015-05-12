@@ -1,0 +1,3 @@
+
+class NexentaException(Exception):
+    pass
