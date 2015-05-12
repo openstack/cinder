@@ -92,7 +92,7 @@ NEXENTA_VOLUME_OPTIONS = [
     cfg.StrOpt('nexenta_volume_description',
                default='',
                help='Human-readable description for the folder.'),
-    cfg.StrOpt('self.configuration.nexenta_blocksize',
+    cfg.StrOpt('nexenta_blocksize',
                default='',
                help='Block size for volumes (default=blank means 8KB)'),
     cfg.BoolOpt('nexenta_sparse',
