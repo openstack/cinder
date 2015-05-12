@@ -51,6 +51,7 @@ INTERVAL_10_SEC = 10
 INTERVAL = 'storagetype:interval'
 RETRIES = 'storagetype:retries'
 CIM_ERR_NOT_FOUND = 6
+VOLUME_ELEMENT_NAME_PREFIX = 'OS-'
 
 
 class EMCVMAXUtils(object):
@@ -1973,3 +1974,134 @@ class EMCVMAXUtils(object):
         if hardwareTypeId == 0:
             LOG.warning(_LW("Cannot determine the hardware type."))
         return hardwareTypeId
+
+    def find_volume_by_device_id_on_array(self, conn, storageSystem, deviceID):
+        """Find the volume by device ID on a specific array.
+
+        :param conn: connection to the ecom server
+        :param storageSystem: the storage system name
+        :param deviceID: string value of the volume device ID
+        :returns: foundVolumeInstanceName
+        """
+        foundVolumeInstanceName = None
+        volumeInstanceNames = conn.EnumerateInstanceNames(
+            'CIM_StorageVolume')
+        for volumeInstanceName in volumeInstanceNames:
+            if storageSystem not in volumeInstanceName['SystemName']:
+                continue
+            if deviceID == volumeInstanceName['DeviceID']:
+                foundVolumeInstanceName = volumeInstanceName
+                LOG.debug("Found volume: %(vol)s",
+                          {'vol': foundVolumeInstanceName})
+                break
+        if foundVolumeInstanceName is None:
+            exceptionMessage = (_("Volume %(deviceID)s not found.")
+                                % {'deviceID': deviceID})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+        return foundVolumeInstanceName
+
+    def get_volume_element_name(self, volumeId):
+        """Get volume element name follows naming convention, i.e. 'OS-UUID'.
+
+        :param volumeId: volume id containing uuid
+        :returns: volume element name in format of OS-UUID
+        """
+        elementName = volumeId
+        uuid_regex = (re.compile(
+            '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',
+            re.I))
+        match = uuid_regex.search(volumeId)
+        if match:
+            volumeUUID = match.group()
+            elementName = ("%(prefix)s%(volumeUUID)s"
+                           % {'prefix': VOLUME_ELEMENT_NAME_PREFIX,
+                              'volumeUUID': volumeUUID})
+            LOG.debug(
+                "get_volume_element_name elementName:  %(elementName)s.",
+                {'elementName': elementName})
+        return elementName
+
+    def rename_volume(self, conn, volume, newName):
+        """Change the volume ElementName to specified new name.
+
+        :param conn: connection to the ecom server
+        :param volume: the volume instance name or volume instance
+        :param newName: new ElementName of the volume
+        :returns: volumeInstance after rename
+        """
+        if type(volume) is pywbem.cim_obj.CIMInstance:
+            volumeInstance = volume
+        else:
+            volumeInstance = conn.GetInstance(volume)
+            volumeInstance['ElementName'] = newName
+
+        LOG.debug("Rename volume to new ElementName %(newName)s.",
+                  {'newName': newName})
+
+        conn.ModifyInstance(volumeInstance, PropertyList=['ElementName'])
+
+        return volumeInstance
+
+    def get_array_and_device_id(self, volume, external_ref):
+        """Helper function for manage volume to get array name and device ID.
+
+        :param volume: volume object from API
+        :param external_ref: the existing volume object to be manged
+        :returns: string value of the array name and device ID
+        """
+        deviceId = external_ref.get(u'source-name', None)
+        arrayName = ''
+        for metadata in volume['volume_metadata']:
+            if metadata['key'].lower() == 'array':
+                arrayName = metadata['value']
+                break
+
+        if deviceId:
+            LOG.debug("Get device ID of existing volume - device ID: "
+                      "%(deviceId)s, Array: %(arrayName)s.",
+                      {'deviceId': deviceId,
+                       'arrayName': arrayName})
+        else:
+            exception_message = (_("Source volume device ID is required."))
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        return (arrayName, deviceId)
+
+    def get_associated_replication_from_source_volume(
+            self, conn, storageSystem, sourceDeviceId):
+        """Given the source volume device ID, find associated replication
+        storage synchronized instance names.
+
+        :param conn: connection to the ecom server
+        :param storageSystem: the storage system name
+        :param source: target volume object
+        :returns: foundSyncName (String)
+        """
+        foundSyncInstanceName = None
+        syncInstanceNames = conn.EnumerateInstanceNames(
+            'SE_StorageSynchronized_SV_SV')
+        for syncInstanceName in syncInstanceNames:
+            sourceVolume = syncInstanceName['SystemElement']
+            if storageSystem != sourceVolume['SystemName']:
+                continue
+            if sourceVolume['DeviceID'] == sourceDeviceId:
+                # Check that it hasn't recently been deleted.
+                try:
+                    conn.GetInstance(syncInstanceName)
+                    foundSyncInstanceName = syncInstanceName
+                    LOG.debug("Found sync Name: "
+                              "%(syncName)s.",
+                              {'syncName': foundSyncInstanceName})
+                except Exception:
+                    foundSyncInstanceName = None
+                break
+
+        if foundSyncInstanceName is None:
+            LOG.info(_LI(
+                "No replication synchronization session found associated "
+                "with source volume %(source)s on %(storageSystem)s."),
+                {'source': sourceDeviceId, 'storageSystem': storageSystem})
+
+        return foundSyncInstanceName

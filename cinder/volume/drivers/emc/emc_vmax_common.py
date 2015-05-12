@@ -18,6 +18,8 @@ import os.path
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import units
+
 import six
 
 from cinder import exception
@@ -3886,3 +3888,165 @@ class EMCVMAXCommon(object):
                                     extraSpecs[FASTPOLICY],
                                     extraSpecs)
         return rc
+
+    def manage_existing(self, volume, external_ref):
+        """Manages an existing VMAX Volume (import to Cinder).
+
+        Renames the existing volume to match the expected name for the volume.
+        Also need to consider things like QoS, Emulation, account/tenant.
+
+        :param volume: the volume object including the volume_type_id
+        :param external_ref: reference to the existing volume
+        :returns: dict -- model_update
+        :raises: VolumeBackendAPIException
+        """
+        extraSpecs = self._initial_setup(volume)
+        self.conn = self._get_ecom_connection()
+        arrayName, deviceId = self.utils.get_array_and_device_id(volume,
+                                                                 external_ref)
+
+        # Manage existing volume is not supported if fast enabled.
+        if extraSpecs[FASTPOLICY]:
+            LOG.warning(_LW(
+                "FAST is enabled. Policy: %(fastPolicyName)s."),
+                {'fastPolicyName': extraSpecs[FASTPOLICY]})
+            exceptionMessage = (_(
+                "Manage volume is not supported if FAST is enable. "
+                "FAST policy: %(fastPolicyName)s.")
+                % {'fastPolicyName': extraSpecs[FASTPOLICY]})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+        # Check if the volume is attached by checking if in any masking view.
+        volumeInstanceName = (
+            self.utils.find_volume_by_device_id_on_array(self.conn,
+                                                         arrayName, deviceId))
+        sgInstanceNames = (
+            self.utils.get_storage_groups_from_volume(
+                self.conn, volumeInstanceName))
+
+        for sgInstanceName in sgInstanceNames:
+            mvInstanceName = self.masking.get_masking_view_from_storage_group(
+                self.conn, sgInstanceName)
+            if mvInstanceName:
+                exceptionMessage = (_(
+                    "Unable to import volume %(deviceId)s to cinder. "
+                    "Volume is in masking view %(mv)s.")
+                    % {'deviceId': deviceId,
+                       'mv': mvInstanceName})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+
+        # Check if there is any associated snapshots with the volume.
+        cinderPoolInstanceName, storageSystemName = (
+            self._get_pool_and_storage_system(extraSpecs))
+        repSessionInstanceName = (
+            self.utils.get_associated_replication_from_source_volume(
+                self.conn, storageSystemName, deviceId))
+        if repSessionInstanceName:
+            exceptionMessage = (_(
+                "Unable to import volume %(deviceId)s to cinder. "
+                "It is the source volume of replication session %(sync)s.")
+                % {'deviceId': deviceId,
+                   'sync': repSessionInstanceName})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+
+        # Make sure the existing external volume is in the same storage pool.
+        volumePoolInstanceName = (
+            self.utils.get_assoc_pool_from_volume(self.conn,
+                                                  volumeInstanceName))
+        volumePoolName = volumePoolInstanceName['InstanceID']
+        cinderPoolName = cinderPoolInstanceName['InstanceID']
+        LOG.debug("Storage pool of existing volume: %(volPool)s, "
+                  "Storage pool currently managed by cinder: %(cinderPool)s.",
+                  {'volPool': volumePoolName,
+                   'cinderPool': cinderPoolName})
+        if volumePoolName != cinderPoolName:
+            exceptionMessage = (_(
+                "Unable to import volume %(deviceId)s to cinder. The external "
+                "volume is not in the pool managed by current cinder host.")
+                % {'deviceId': deviceId})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+
+        # Rename the volume
+        volumeId = volume['name']
+        volumeElementName = self.utils.get_volume_element_name(volumeId)
+        LOG.debug("Rename volume %(vol)s to %(elementName)s.",
+                  {'vol': volumeInstanceName,
+                   'elementName': volumeElementName})
+        volumeInstance = self.utils.rename_volume(self.conn,
+                                                  volumeInstanceName,
+                                                  volumeElementName)
+        keys = {}
+        volpath = volumeInstance.path
+        keys['CreationClassName'] = volpath['CreationClassName']
+        keys['SystemName'] = volpath['SystemName']
+        keys['DeviceID'] = volpath['DeviceID']
+        keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
+
+        model_update = {}
+        provider_location = {}
+        provider_location['classname'] = volpath['CreationClassName']
+        provider_location['keybindings'] = keys
+
+        model_update.update({'display_name': volumeElementName})
+        volume['provider_location'] = six.text_type(provider_location)
+        model_update.update({'provider_location': volume['provider_location']})
+        return model_update
+
+    def manage_existing_get_size(self, volume, external_ref):
+        """Return size of an existing VMAX volume to manage_existing.
+
+        :param self: reference to class
+        :param volume: the volume object including the volume_type_id
+        :param external_ref: reference to the existing volume
+        :returns: size of the volume in GB
+        """
+        LOG.debug("Volume in manage_existing_get_size: %(volume)s.",
+                  {'volume': volume})
+        arrayName, deviceId = self.utils.get_array_and_device_id(volume,
+                                                                 external_ref)
+        volumeInstanceName = (
+            self.utils.find_volume_by_device_id_on_array(self.conn,
+                                                         arrayName, deviceId))
+        volumeInstance = self.conn.GetInstance(volumeInstanceName)
+        byteSize = self.utils.get_volume_size(self.conn, volumeInstance)
+        gbSize = int(byteSize) / units.Gi
+        LOG.debug(
+            "Size of volume %(deviceID)s is %(volumeSize)s GB.",
+            {'deviceID': deviceId,
+             'volumeSize': gbSize})
+        return gbSize
+
+    def unmanage(self, volume):
+        """Export VMAX volume from Cinder.
+
+        Leave the volume intact on the backend array.
+
+        :param volume: the volume object
+        :raises: VolumeBackendAPIException
+        """
+        volumeName = volume['name']
+        volumeId = volume['id']
+        LOG.debug("Unmanage volume %(name)s, id=%(id)s",
+                  {'name': volumeName,
+                   'id': volumeId})
+        self._initial_setup(volume)
+        self.conn = self._get_ecom_connection()
+        volumeInstance = self._find_lun(volume)
+        if volumeInstance is None:
+            exceptionMessage = (_("Cannot find Volume: %(id)s. "
+                                  "unmanage operation.  Exiting...")
+                                % {'id': volumeId})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+        # Rename the volume to volumeId, thus remove the 'OS-' prefix.
+        volumeInstance = self.utils.rename_volume(self.conn,
+                                                  volumeInstance,
+                                                  volumeId)
