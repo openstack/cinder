@@ -608,7 +608,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         else:
             # Bummer, it's been updated, delete it
             params = {'accountID': sfaccount['accountID']}
-            params = {'volumeID': sf_vol['volumeID']}
+            params['volumeID'] = sf_vol['volumeID']
             data = self._issue_api_request('DeleteVolume', params)
             if 'result' not in data:
                 msg = _("Failed to delete SolidFire Image-Volume: %s") % data
