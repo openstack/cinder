@@ -42,7 +42,7 @@ def null_safe_str(s):
     return str(s) if s else ''
 
 
-def _usage_from_volume(context, volume_ref, **kw):
+def _usage_from_volume(volume_ref, **kw):
     usage_info = dict(
         tenant_id=volume_ref['project_id'],
         host=volume_ref['host'],
@@ -64,7 +64,7 @@ def _usage_from_volume(context, volume_ref, **kw):
     return usage_info
 
 
-def _usage_from_backup(context, backup_ref, **kw):
+def _usage_from_backup(backup_ref, **kw):
     usage_info = dict(tenant_id=backup_ref['project_id'],
                       user_id=backup_ref['user_id'],
                       availability_zone=backup_ref['availability_zone'],
@@ -91,7 +91,7 @@ def notify_about_volume_usage(context, volume, event_suffix,
     if not extra_usage_info:
         extra_usage_info = {}
 
-    usage_info = _usage_from_volume(context, volume, **extra_usage_info)
+    usage_info = _usage_from_volume(volume, **extra_usage_info)
 
     rpc.get_notifier("volume", host).info(context, 'volume.%s' % event_suffix,
                                           usage_info)
@@ -106,13 +106,13 @@ def notify_about_backup_usage(context, backup, event_suffix,
     if not extra_usage_info:
         extra_usage_info = {}
 
-    usage_info = _usage_from_backup(context, backup, **extra_usage_info)
+    usage_info = _usage_from_backup(backup, **extra_usage_info)
 
     rpc.get_notifier("backup", host).info(context, 'backup.%s' % event_suffix,
                                           usage_info)
 
 
-def _usage_from_snapshot(context, snapshot_ref, **extra_usage_info):
+def _usage_from_snapshot(snapshot_ref, **extra_usage_info):
     usage_info = {
         'tenant_id': snapshot_ref['project_id'],
         'user_id': snapshot_ref['user_id'],
@@ -138,7 +138,7 @@ def notify_about_snapshot_usage(context, snapshot, event_suffix,
     if not extra_usage_info:
         extra_usage_info = {}
 
-    usage_info = _usage_from_snapshot(context, snapshot, **extra_usage_info)
+    usage_info = _usage_from_snapshot(snapshot, **extra_usage_info)
 
     rpc.get_notifier('snapshot', host).info(context,
                                             'snapshot.%s' % event_suffix,
@@ -153,8 +153,7 @@ def notify_about_replication_usage(context, volume, suffix,
     if not extra_usage_info:
         extra_usage_info = {}
 
-    usage_info = _usage_from_volume(context,
-                                    volume,
+    usage_info = _usage_from_volume(volume,
                                     **extra_usage_info)
 
     rpc.get_notifier('replication', host).info(context,
@@ -170,8 +169,7 @@ def notify_about_replication_error(context, volume, suffix,
     if not extra_error_info:
         extra_error_info = {}
 
-    usage_info = _usage_from_volume(context,
-                                    volume,
+    usage_info = _usage_from_volume(volume,
                                     **extra_error_info)
 
     rpc.get_notifier('replication', host).error(context,
@@ -179,7 +177,7 @@ def notify_about_replication_error(context, volume, suffix,
                                                 usage_info)
 
 
-def _usage_from_consistencygroup(context, group_ref, **kw):
+def _usage_from_consistencygroup(group_ref, **kw):
     usage_info = dict(tenant_id=group_ref['project_id'],
                       user_id=group_ref['user_id'],
                       availability_zone=group_ref['availability_zone'],
@@ -200,8 +198,7 @@ def notify_about_consistencygroup_usage(context, group, event_suffix,
     if not extra_usage_info:
         extra_usage_info = {}
 
-    usage_info = _usage_from_consistencygroup(context,
-                                              group,
+    usage_info = _usage_from_consistencygroup(group,
                                               **extra_usage_info)
 
     rpc.get_notifier("consistencygroup", host).info(
@@ -210,7 +207,7 @@ def notify_about_consistencygroup_usage(context, group, event_suffix,
         usage_info)
 
 
-def _usage_from_cgsnapshot(context, cgsnapshot_ref, **kw):
+def _usage_from_cgsnapshot(cgsnapshot_ref, **kw):
     usage_info = dict(
         tenant_id=cgsnapshot_ref['project_id'],
         user_id=cgsnapshot_ref['user_id'],
@@ -232,8 +229,7 @@ def notify_about_cgsnapshot_usage(context, cgsnapshot, event_suffix,
     if not extra_usage_info:
         extra_usage_info = {}
 
-    usage_info = _usage_from_cgsnapshot(context,
-                                        cgsnapshot,
+    usage_info = _usage_from_cgsnapshot(cgsnapshot,
                                         **extra_usage_info)
 
     rpc.get_notifier("cgsnapshot", host).info(
