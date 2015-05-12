@@ -494,3 +494,12 @@ def append_host(host, pool):
 
     new_host = "#".join([host, pool])
     return new_host
+
+
+def matching_backend_name(src_volume_type, volume_type):
+    if src_volume_type.get('volume_backend_name') and \
+            volume_type.get('volume_backend_name'):
+        return src_volume_type.get('volume_backend_name') == \
+            volume_type.get('volume_backend_name')
+    else:
+        return False
