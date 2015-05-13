@@ -40,8 +40,9 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
-class BlockDeviceDriver(driver.VolumeDriver):
-    VERSION = '2.0.0'
+class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
+                        driver.CloneableImageVD, driver.TransferVD):
+    VERSION = '2.1.0'
 
     def __init__(self, *args, **kwargs):
         super(BlockDeviceDriver, self).__init__(*args, **kwargs)
