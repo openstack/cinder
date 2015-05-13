@@ -240,6 +240,11 @@ class CommandLineHelper(object):
         '-name',
         'Pool Name:\s*(.*)\s*',
         'pool_name')
+    POOL_SUBSCRIBED_CAPACITY = PropertyDescriptor(
+        '-subscribedCap',
+        'Total Subscribed Capacity *\(GBs\) *:\s*(.*)\s*',
+        'provisioned_capacity_gb',
+        float)
 
     POOL_ALL = [POOL_TOTAL_CAPACITY, POOL_FREE_CAPACITY, POOL_STATE]
 
@@ -335,7 +340,9 @@ class CommandLineHelper(object):
 
         # extra spec constants
         self.tiering_spec = 'storagetype:tiering'
-        self.provisioning_spec = 'storagetype:provisioning'
+        self.provisioning_specs = [
+            'provisioning:type',
+            'storagetype:provisioning']
         self.provisioning_values = {
             'thin': ['-type', 'Thin'],
             'thick': ['-type', 'NonThin'],
@@ -1606,7 +1613,7 @@ class CommandLineHelper(object):
 class EMCVnxCliBase(object):
     """This class defines the functions to use the native CLI functionality."""
 
-    VERSION = '05.03.07'
+    VERSION = '06.00.00'
     stats = {'driver_version': VERSION,
              'storage_protocol': None,
              'vendor_name': 'EMC',
@@ -1614,7 +1621,8 @@ class EMCVnxCliBase(object):
              'compression_support': 'False',
              'fast_support': 'False',
              'deduplication_support': 'False',
-             'thinprovisioning_support': 'False'}
+             'thin_provisioning_support': False,
+             'thick_provisioning_support': True}
     enablers = []
 
     def __init__(self, prtcl, configuration=None):
@@ -1653,6 +1661,8 @@ class EMCVnxCliBase(object):
             self.configuration.force_delete_lun_in_storagegroup)
         if self.force_delete_lun_in_sg:
             LOG.warning(_LW("force_delete_lun_in_storagegroup=True"))
+        self.max_over_subscription_ratio = (
+            self.configuration.max_over_subscription_ratio)
 
     def get_target_storagepool(self, volume, source_volume=None):
         raise NotImplementedError
@@ -1763,8 +1773,23 @@ class EMCVnxCliBase(object):
         provisioning = 'thick'
         tiering = None
 
-        if self._client.provisioning_spec in extra_specs:
-            provisioning = extra_specs[self._client.provisioning_spec].lower()
+        if self._client.provisioning_specs[0] in extra_specs:
+            provisioning = (
+                extra_specs[self._client.provisioning_specs[0]].lower())
+            if self._client.provisioning_specs[1] in extra_specs:
+                LOG.warning(_LW("Both 'storagetype:prvosioning' and "
+                                "'provisioning:type' are set in the "
+                                "extra specs, the value of "
+                                "'provisioning:type' will be used. The "
+                                "key 'storagetype:provisioning' may be "
+                                "deprecated in the next release."))
+        elif self._client.provisioning_specs[1] in extra_specs:
+            provisioning = (
+                extra_specs[self._client.provisioning_specs[1]].lower())
+            LOG.warning(_LW("Extra spec key 'storagetype:provisioning' may "
+                            "be deprecated in the next release. It is "
+                            "recommended to use extra spec key "
+                            "'provisioning:type' instead."))
         if self._client.tiering_spec in extra_specs:
             tiering = extra_specs[self._client.tiering_spec].lower()
 
@@ -2005,6 +2030,8 @@ class EMCVnxCliBase(object):
         pool_stats = {}
         pool_stats['pool_name'] = pool['pool_name']
         pool_stats['total_capacity_gb'] = pool['total_capacity_gb']
+        pool_stats['provisioned_capacity_gb'] = (
+            pool['provisioned_capacity_gb'])
         pool_stats['reserved_percentage'] = 0
 
         # Handle pool state Initializing, Ready, Faulted, Offline or Deleting.
@@ -2051,10 +2078,16 @@ class EMCVnxCliBase(object):
         pool_stats['fast_support'] = self.stats['fast_support']
         pool_stats['deduplication_support'] = (
             self.stats['deduplication_support'])
-        pool_stats['thinprovisioning_support'] = (
-            self.stats['thinprovisioning_support'])
+        # Thin provisioning is supported on VNX pools only when
+        # ThinProvisioning Enabler software is installed on VNX,
+        # and thick provisioning is always supported on VNX pools.
+        pool_stats['thin_provisioning_support'] = (
+            self.stats['thin_provisioning_support'])
+        pool_stats['thick_provisioning_support'] = True
         pool_stats['consistencygroup_support'] = (
             self.stats['consistencygroup_support'])
+        pool_stats['max_over_subscription_ratio'] = (
+            self.max_over_subscription_ratio)
 
         return pool_stats
 
@@ -2073,8 +2106,8 @@ class EMCVnxCliBase(object):
         self.stats['deduplication_support'] = (
             'True' if '-Deduplication' in self.enablers else 'False')
 
-        self.stats['thinprovisioning_support'] = (
-            'True' if '-ThinProvisioning' in self.enablers else 'False')
+        self.stats['thin_provisioning_support'] = (
+            True if '-ThinProvisioning' in self.enablers else False)
 
         self.stats['consistencygroup_support'] = (
             'True' if '-VNXSnapshots' in self.enablers else 'False')
@@ -2944,11 +2977,13 @@ class EMCVnxCliPool(EMCVnxCliBase):
             properties = [self._client.POOL_FREE_CAPACITY,
                           self._client.POOL_TOTAL_CAPACITY,
                           self._client.POOL_FAST_CACHE,
-                          self._client.POOL_STATE]
+                          self._client.POOL_STATE,
+                          self._client.POOL_SUBSCRIBED_CAPACITY]
         else:
             properties = [self._client.POOL_FREE_CAPACITY,
                           self._client.POOL_TOTAL_CAPACITY,
-                          self._client.POOL_STATE]
+                          self._client.POOL_STATE,
+                          self._client.POOL_SUBSCRIBED_CAPACITY]
 
         pool = self._client.get_pool(self.storage_pool,
                                      properties=properties,
@@ -3005,11 +3040,13 @@ class EMCVnxCliArray(EMCVnxCliBase):
             properties = [self._client.POOL_FREE_CAPACITY,
                           self._client.POOL_TOTAL_CAPACITY,
                           self._client.POOL_FAST_CACHE,
-                          self._client.POOL_STATE]
+                          self._client.POOL_STATE,
+                          self._client.POOL_SUBSCRIBED_CAPACITY]
         else:
             properties = [self._client.POOL_FREE_CAPACITY,
                           self._client.POOL_TOTAL_CAPACITY,
-                          self._client.POOL_STATE]
+                          self._client.POOL_STATE,
+                          self._client.POOL_SUBSCRIBED_CAPACITY]
         pool_list = self._client.get_pool_list(properties, False)
 
         self.stats['pools'] = map(lambda pool: self._build_pool_stats(pool),

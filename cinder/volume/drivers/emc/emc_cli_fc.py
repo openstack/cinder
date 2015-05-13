@@ -54,6 +54,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         5.1.0 - iSCSI multipath enhancement
         5.2.0 - Pool-aware scheduler support
         5.3.0 - Consistency group modification support
+        6.0.0 - Over subscription support
     """
 
     def __init__(self, *args, **kwargs):
