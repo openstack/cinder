@@ -1915,9 +1915,9 @@ class EMCVMAXUtils(object):
                       {'initiator': initiator, 'rc': rc, 'ret': ret})
             hardwareIdList = ret['HardwareID']
         else:
-            LOG.warn(_LW("CreateStorageHardwareID failed. initiator: "
-                         "%(initiator)s, rc=%(rc)d, ret=%(ret)s."),
-                     {'initiator': initiator, 'rc': rc, 'ret': ret})
+            LOG.warning(_LW("CreateStorageHardwareID failed. initiator: "
+                            "%(initiator)s, rc=%(rc)d, ret=%(ret)s."),
+                        {'initiator': initiator, 'rc': rc, 'ret': ret})
         return hardwareIdList
 
     def _get_hardware_type(
@@ -1935,5 +1935,5 @@ class EMCVMAXUtils(object):
             if 'iqn' in initiator.lower():
                 hardwareTypeId = 5
         if hardwareTypeId == 0:
-            LOG.warn(_LW("Cannot determine the hardware type."))
+            LOG.warning(_LW("Cannot determine the hardware type."))
         return hardwareTypeId

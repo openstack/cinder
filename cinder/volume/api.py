@@ -712,10 +712,10 @@ class API(base.Base):
                     msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
                               "%(s_size)sG snapshot (%(d_consumed)dG of "
                               "%(d_quota)dG already consumed).")
-                    LOG.warn(msg, {'s_pid': context.project_id,
-                                   's_size': volume['size'],
-                                   'd_consumed': _consumed(over),
-                                   'd_quota': quotas[over]})
+                    LOG.warning(msg, {'s_pid': context.project_id,
+                                      's_size': volume['size'],
+                                      'd_consumed': _consumed(over),
+                                      'd_quota': quotas[over]})
                     raise exception.VolumeSizeExceedsAvailableQuota(
                         requested=volume['size'],
                         consumed=_consumed('gigabytes'),
@@ -725,8 +725,8 @@ class API(base.Base):
                               "snapshot (%(d_consumed)d snapshots "
                               "already consumed).")
 
-                    LOG.warn(msg, {'s_pid': context.project_id,
-                                   'd_consumed': _consumed(over)})
+                    LOG.warning(msg, {'s_pid': context.project_id,
+                                      'd_consumed': _consumed(over)})
                     raise exception.SnapshotLimitExceeded(
                         allowed=quotas[over])
 
@@ -955,15 +955,15 @@ class API(base.Base):
         for k, v in metadata.iteritems():
             if len(k) == 0:
                 msg = _("Metadata property key blank.")
-                LOG.warn(msg)
+                LOG.warning(msg)
                 raise exception.InvalidVolumeMetadata(reason=msg)
             if len(k) > 255:
                 msg = _("Metadata property key greater than 255 characters.")
-                LOG.warn(msg)
+                LOG.warning(msg)
                 raise exception.InvalidVolumeMetadataSize(reason=msg)
             if len(v) > 255:
                 msg = _("Metadata property value greater than 255 characters.")
-                LOG.warn(msg)
+                LOG.warning(msg)
                 raise exception.InvalidVolumeMetadataSize(reason=msg)
 
     @wrap_check_policy

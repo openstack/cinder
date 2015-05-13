@@ -297,6 +297,12 @@ def check_timeutils_strtime(logical_line):
         yield(0, msg)
 
 
+def no_log_warn(logical_line):
+    msg = "C307: LOG.warn is deprecated, please use LOG.warning!"
+    if "LOG.warn(" in logical_line:
+        yield (0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
@@ -312,3 +318,4 @@ def factory(register):
     register(check_no_print_statements)
     register(check_no_log_audit)
     register(check_no_contextlib_nested)
+    register(no_log_warn)
