@@ -563,10 +563,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                 lvm_type,
                                 lvm_mirrors,
                                 dest_vg_ref)
-
+            # copy_volume expects sizes in MiB, we store integer GiB
+            # be sure to convert before passing in
+            size_in_mb = int(volume['size']) * units.Ki
             volutils.copy_volume(self.local_path(volume),
                                  self.local_path(volume, vg=dest_vg),
-                                 volume['size'],
+                                 size_in_mb,
                                  self.configuration.volume_dd_blocksize,
                                  execute=self._execute)
             self._delete_volume(volume)
