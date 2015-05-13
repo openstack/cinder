@@ -430,7 +430,6 @@ class CiscoFCZoneClientCLI(object):
                     attempts -= 1
                     try:
                         stdin, stdout, stderr = ssh.exec_command(command)
-                        greenthread.sleep(random.randint(20, 500) / 100.0)
                         channel = stdout.channel
                         exit_status = channel.recv_exit_status()
                         LOG.debug("Exit Status from ssh: %s", exit_status)
