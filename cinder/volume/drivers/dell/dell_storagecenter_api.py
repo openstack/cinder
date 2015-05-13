@@ -1130,6 +1130,21 @@ class StorageCenterApi(object):
                        's': vol['configuredSize']})
         return vol
 
+    def rename_volume(self, scvolume, name):
+        payload = {}
+        payload['Name'] = name
+        r = self.client.post('StorageCenter/ScVolume/%s/Modify'
+                             % self._get_id(scvolume),
+                             payload)
+        if r.status_code != 200:
+            LOG.error(_LE('Error renaming volume %(o)s to %(n)s: %(c)d %(r)s'),
+                      {'o': scvolume['name'],
+                       'n': name,
+                       'c': r.status_code,
+                       'r': r.reason})
+            return False
+        return True
+
     def _delete_server(self, scserver):
         '''_delete_server
 

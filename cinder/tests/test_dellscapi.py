@@ -3588,6 +3588,30 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    def test_rename_volume(self,
+                           mock_post,
+                           mock_close_connection,
+                           mock_open_connection,
+                           mock_init):
+        res = self.scapi.rename_volume(self.VOLUME, 'newname')
+        self.assertTrue(mock_post.called)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_204)
+    def test_rename_volume_failure(self,
+                                   mock_post,
+                                   mock_close_connection,
+                                   mock_open_connection,
+                                   mock_init):
+        res = self.scapi.rename_volume(self.VOLUME, 'newname')
+        self.assertTrue(mock_post.called)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'delete',
                        return_value=RESPONSE_200)
     def test_delete_server(self,
