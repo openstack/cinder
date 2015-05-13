@@ -332,7 +332,7 @@ class Client(client_base.Client):
             except netapp_api.NaApiError as e:
                 if e.code != 'UnknownCloneId':
                     self._clear_clone(clone_id)
-                raise e
+                raise
 
     def _wait_for_clone_finish(self, clone_op_id, vol_uuid):
         """Waits till a clone operation is complete or errored out."""

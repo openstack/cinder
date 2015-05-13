@@ -494,10 +494,10 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                 LOG.debug("creating snapshot='%s'", clone_snap)
                 src_volume.create_snap(clone_snap)
                 src_volume.protect_snap(clone_snap)
-            except Exception as exc:
+            except Exception:
                 # Only close if exception since we still need it.
                 src_volume.close()
-                raise exc
+                raise
 
             # Now clone source volume snapshot
             try:
@@ -508,10 +508,10 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                 self.RBDProxy().clone(client.ioctx, src_name, clone_snap,
                                       client.ioctx, dest_name,
                                       features=client.features)
-            except Exception as exc:
+            except Exception:
                 src_volume.unprotect_snap(clone_snap)
                 src_volume.remove_snap(clone_snap)
-                raise exc
+                raise
             finally:
                 src_volume.close()
 

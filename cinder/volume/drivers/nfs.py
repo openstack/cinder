@@ -154,7 +154,7 @@ class NfsDriver(remotefs.RemoteFSDriver):
                 msg = _('%s is not installed') % package
                 raise exception.NfsException(msg)
             else:
-                raise exc
+                raise
 
         # Now that all configuration data has been loaded (shares),
         # we can "set" our final NAS file security options.
