@@ -473,9 +473,10 @@ class TestNexentaNfsDriver(test.TestCase):
         self.configuration.nfs_mount_point_base = '/mnt/test'
         self.configuration.nfs_mount_options = None
         self.configuration.nexenta_nms_cache_volroot = False
+        self.configuration.nfs_mount_attempts = 3
         self.nms_mock = self.mox.CreateMockAnything()
         for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc',
-                    'snapshot'):
+                    'snapshot', 'netsvc'):
             setattr(self.nms_mock, mod, self.mox.CreateMockAnything())
         self.nms_mock.__hash__ = lambda *_, **__: 1
         self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
@@ -558,9 +559,14 @@ class TestNexentaNfsDriver(test.TestCase):
             'truncate --size 1G /volumes/stack/share/volume-1/volume')
         self.nms_mock.appliance.execute('chmod ugo+rw '
                                         '/volumes/stack/share/volume-1/volume')
+        self.nms_mock.netsvc.get_confopts('svc:/network/nfs/server:default',
+                                          'configure').AndReturn({
+                                              'nfs_server_versmax': {
+                                                  'current': u'3'}})
 
         self.mox.ReplayAll()
 
+        self.mox.StubOutWithMock(self.drv, '_ensure_share_mounted')
         self.drv._do_create_volume(volume)
 
         self.mox.ResetAll()
