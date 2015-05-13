@@ -175,10 +175,11 @@ class HP3PARCommon(object):
         2.0.40 - Make the 3PAR drivers honor the pool in create  bug #1432876
         2.0.41 - Only log versions at startup.  bug #1447697
         2.0.42 - Fix type for snapshot config settings. bug #1461640
+        2.0.43 - Report the capability of supporting multiattach
 
     """
 
-    VERSION = "2.0.42"
+    VERSION = "2.0.43"
 
     stats = {}
 
@@ -743,7 +744,8 @@ class HP3PARCommon(object):
                     'total_volumes': total_volumes,
                     'capacity_utilization': capacity_utilization,
                     'filter_function': filter_function,
-                    'goodness_function': goodness_function
+                    'goodness_function': goodness_function,
+                    'multiattach': True,
                     }
 
             pools.append(pool)
