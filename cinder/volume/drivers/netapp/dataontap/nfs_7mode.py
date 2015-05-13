@@ -22,7 +22,6 @@ Volume driver for NetApp NFS storage.
 
 from oslo_log import log as logging
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
@@ -74,7 +73,7 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
 
         :param volume: volume reference
         """
-        LOG.debug('create_volume on %s' % volume['host'])
+        LOG.debug('create_volume on %s', volume['host'])
         self._ensure_shares_mounted()
 
         # get share as pool name
@@ -85,17 +84,17 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
             raise exception.InvalidHost(reason=msg)
 
         volume['provider_location'] = share
-        LOG.info(_LI('Creating volume at location %s')
-                 % volume['provider_location'])
+        LOG.info(_LI('Creating volume at location %s'),
+                 volume['provider_location'])
 
         try:
             self._do_create_volume(volume)
         except Exception as ex:
             LOG.error(_LE("Exception creating vol %(name)s on "
-                          "share %(share)s. Details: %(ex)s")
-                      % {'name': volume['name'],
-                         'share': volume['provider_location'],
-                         'ex': six.text_type(ex)})
+                          "share %(share)s. Details: %(ex)s"),
+                      {'name': volume['name'],
+                       'share': volume['provider_location'],
+                       'ex': ex})
             msg = _("Volume %s could not be created on shares.")
             raise exception.VolumeBackendAPIException(
                 data=msg % (volume['name']))

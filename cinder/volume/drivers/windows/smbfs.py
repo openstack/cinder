@@ -23,7 +23,7 @@ from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder import utils
@@ -103,8 +103,10 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
             smbfs_share)
         total_allocated = self._get_total_allocated(smbfs_share)
         return_value = [total_size, total_available, total_allocated]
-        LOG.info('Smb share %s Total size %s Total allocated %s'
-                 % (smbfs_share, total_size, total_allocated))
+        LOG.info(_LI('Smb share %(share)s Total size %(size)s '
+                     'Total allocated %(allocated)s'),
+                 {'share': smbfs_share, 'size': total_size,
+                  'allocated': total_allocated})
         return [float(x) for x in return_value]
 
     def _get_total_allocated(self, smbfs_share):
@@ -223,7 +225,7 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
         """Copy data from snapshot to destination volume."""
 
         LOG.debug("snapshot: %(snap)s, volume: %(vol)s, "
-                  "volume_size: %(size)s" %
+                  "volume_size: %(size)s",
                   {'snap': snapshot['id'],
                    'vol': volume['id'],
                    'size': snapshot['volume_size']})

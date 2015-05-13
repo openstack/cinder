@@ -81,27 +81,24 @@ class ZFSSAWebDAVClient(object):
 
         request.get_method = lambda: method
 
-        LOG.debug('Sending WebDAV request:%s %s %s' % (method, src_url,
-                  dst_url))
+        LOG.debug('Sending WebDAV request:%(method)s %(src)s %(des)s',
+                  {'method': method, 'src': src_url, 'des': dst_url})
 
         while retry < maxretries:
             try:
                 response = urllib2.urlopen(request, timeout=None)
             except urllib2.HTTPError as err:
                 LOG.error(_LE('WebDAV returned with %(code)s error during '
-                              '%(method)s call.')
-                          % {'code': err.code,
-                             'method': method})
+                              '%(method)s call.'),
+                          {'code': err.code, 'method': method})
 
                 if err.code == httplib.INTERNAL_SERVER_ERROR:
-                    exception_msg = (_('WebDAV operation failed with '
-                                       'error code: %(code)s '
-                                       'reason: %(reason)s '
-                                       'Retry attempt %(retry)s in progress.')
-                                     % {'code': err.code,
-                                        'reason': err.reason,
-                                        'retry': retry})
-                    LOG.error(exception_msg)
+                    LOG.error(_LE('WebDAV operation failed with error code: '
+                                  '%(code)s reason: %(reason)s Retry attempt '
+                                  '%(retry)s in progress.'),
+                              {'code': err.code,
+                               'reason': err.reason,
+                               'retry': retry})
                     if retry < maxretries:
                         retry += 1
                         time.sleep(1)

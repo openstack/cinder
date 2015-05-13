@@ -362,9 +362,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                     'id': uuid.uuid4(),
                                     'host': 'hostname@backend#vol1'})
 
-        warn_msg = 'Extra spec netapp:raid_type is obsolete.  ' \
-                   'Use netapp_raid_type instead.'
-        na_utils.LOG.warning.assert_called_once_with(warn_msg)
+        warn_msg = 'Extra spec %(old)s is obsolete.  Use %(new)s instead.'
+        na_utils.LOG.warning.assert_called_once_with(
+            warn_msg, {'new': 'netapp_raid_type', 'old': 'netapp:raid_type'})
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_create_lun', mock.Mock())
@@ -383,9 +383,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                     'id': uuid.uuid4(),
                                     'host': 'hostname@backend#vol1'})
 
-        warn_msg = 'Extra spec netapp_thick_provisioned is deprecated.  ' \
-                   'Use netapp_thin_provisioned instead.'
-        na_utils.LOG.warning.assert_called_once_with(warn_msg)
+        warn_msg = "Extra spec %(old)s is deprecated.  Use %(new)s instead."
+        na_utils.LOG.warning.assert_called_once_with(
+            warn_msg, {'new': 'netapp_thin_provisioned',
+                       'old': 'netapp_thick_provisioned'})
 
     @mock.patch.object(na_utils, 'check_flags')
     def test_do_setup_san_configured(self, mock_check_flags):

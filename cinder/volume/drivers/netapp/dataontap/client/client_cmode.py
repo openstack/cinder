@@ -98,7 +98,7 @@ class Client(client_base.Client):
             attr_list = result.get_child_by_name('attributes-list')
             iscsi_service = attr_list.get_child_by_name('iscsi-service-info')
             return iscsi_service.get_child_content('node-name')
-        LOG.debug('No iSCSI service found for vserver %s' % (self.vserver))
+        LOG.debug('No iSCSI service found for vserver %s', self.vserver)
         return None
 
     def get_lun_list(self):
@@ -360,11 +360,10 @@ class Client(client_base.Client):
     def clone_file(self, flex_vol, src_path, dest_path, vserver,
                    dest_exists=False):
         """Clones file on vserver."""
-        msg = ("Cloning with params volume %(volume)s, src %(src_path)s,"
-               "dest %(dest_path)s, vserver %(vserver)s")
-        msg_fmt = {'volume': flex_vol, 'src_path': src_path,
-                   'dest_path': dest_path, 'vserver': vserver}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Cloning with params volume %(volume)s, src %(src_path)s, "
+                  "dest %(dest_path)s, vserver %(vserver)s",
+                  {'volume': flex_vol, 'src_path': src_path,
+                   'dest_path': dest_path, 'vserver': vserver})
         clone_create = netapp_api.NaElement.create_node_with_children(
             'clone-create',
             **{'volume': flex_vol, 'source-path': src_path,
@@ -381,8 +380,8 @@ class Client(client_base.Client):
             'file-usage-get', **{'path': path})
         res = self._invoke_vserver_api(file_use, vserver)
         unique_bytes = res.get_child_content('unique-bytes')
-        LOG.debug('file-usage for path %(path)s is %(bytes)s'
-                  % {'path': path, 'bytes': unique_bytes})
+        LOG.debug('file-usage for path %(path)s is %(bytes)s',
+                  {'path': path, 'bytes': unique_bytes})
         return unique_bytes
 
     def get_vserver_ips(self, vserver):

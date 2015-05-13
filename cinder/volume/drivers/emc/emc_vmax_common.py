@@ -334,7 +334,7 @@ class EMCVMAXCommon(object):
         device_number = device_info['hostlunid']
         if device_number is None:
             LOG.info(_LI("Volume %s is not mapped. No volume to unmap."),
-                     (volumename))
+                     volumename)
             return
 
         vol_instance = self._find_lun(volume)
@@ -444,7 +444,7 @@ class EMCVMAXCommon(object):
                 (self.masking
                     ._check_if_rollback_action_for_masking_required(
                         self.conn, rollbackDict))
-            exception_message = ("Error Attaching volume %(vol)s."
+            exception_message = (_("Error Attaching volume %(vol)s.")
                                  % {'vol': volumeName})
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
@@ -673,12 +673,12 @@ class EMCVMAXCommon(object):
         :returns: boolean -- Always returns True
         :returns: dict -- Empty dict {}
         """
-        LOG.warn(_LW("The VMAX plugin only supports Retype. "
-                     "If a pool based migration is necessary "
-                     "this will happen on a Retype "
-                     "From the command line: "
-                     "cinder --os-volume-api-version 2 retype "
-                     "<volumeId> <volumeType> --migration-policy on-demand"))
+        LOG.warning(_LW("The VMAX plugin only supports Retype. "
+                        "If a pool based migration is necessary "
+                        "this will happen on a Retype "
+                        "From the command line: "
+                        "cinder --os-volume-api-version 2 retype <volumeId> "
+                        "<volumeType> --migration-policy on-demand"))
         return True, {}
 
     def _migrate_volume(
@@ -710,7 +710,7 @@ class EMCVMAXCommon(object):
         if moved is False and sourceFastPolicyName is not None:
             # Return the volume to the default source fast policy storage
             # group because the migrate was unsuccessful.
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Failed to migrate: %(volumeName)s from "
                 "default source storage group "
                 "for FAST policy: %(sourceFastPolicyName)s. "
@@ -738,7 +738,7 @@ class EMCVMAXCommon(object):
             if not self._migrate_volume_fast_target(
                     volumeInstance, storageSystemName,
                     targetFastPolicyName, volumeName, extraSpecs):
-                LOG.warn(_LW(
+                LOG.warning(_LW(
                     "Attempting a rollback of: %(volumeName)s to "
                     "original pool %(sourcePoolInstanceName)s."),
                     {'volumeName': volumeName,
@@ -770,8 +770,8 @@ class EMCVMAXCommon(object):
         :param extraSpecs: extra specifications
         """
 
-        LOG.warn(_LW("_migrate_rollback on : %(volumeName)s."),
-                 {'volumeName': volumeName})
+        LOG.warning(_LW("_migrate_rollback on : %(volumeName)s."),
+                    {'volumeName': volumeName})
 
         storageRelocationService = self.utils.find_storage_relocation_service(
             conn, storageSystemName)
@@ -805,8 +805,8 @@ class EMCVMAXCommon(object):
         :param extraSpecs: extra specifications
         """
 
-        LOG.warn(_LW("_migrate_cleanup on : %(volumeName)s."),
-                 {'volumeName': volumeName})
+        LOG.warning(_LW("_migrate_cleanup on : %(volumeName)s."),
+                    {'volumeName': volumeName})
 
         controllerConfigurationService = (
             self.utils.find_controller_configuration_service(
@@ -934,11 +934,10 @@ class EMCVMAXCommon(object):
             rc = self.provision.migrate_volume_to_storage_pool(
                 self.conn, storageRelocationService, volumeInstance.path,
                 targetPoolInstanceName, extraSpecs)
-        except Exception as e:
+        except Exception:
             # Rollback by deleting the volume if adding the volume to the
             # default storage group were to fail.
-            LOG.error(_LE("Exception: %s"), e)
-            LOG.error(_LE(
+            LOG.exception(_LE(
                 "Error migrating volume: %(volumename)s. "
                 "to target pool %(targetPoolName)s."),
                 {'volumename': volumeName,
@@ -993,8 +992,7 @@ class EMCVMAXCommon(object):
                     conn, controllerConfigurationService,
                     volumeInstance.path, volumeName, sourceFastPolicyName,
                     extraSpecs))
-        except Exception as ex:
-            LOG.error(_LE("Exception: %s"), ex)
+        except Exception:
             exceptionMessage = (_(
                 "Failed to remove: %(volumename)s. "
                 "from the default storage group for "
@@ -1002,11 +1000,11 @@ class EMCVMAXCommon(object):
                 % {'volumename': volumeName,
                    'fastPolicyName': sourceFastPolicyName})
 
-            LOG.error(exceptionMessage)
+            LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         if defaultStorageGroupInstanceName is None:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "The volume: %(volumename)s "
                 "was not first part of the default storage "
                 "group for FAST policy %(fastPolicyName)s."),
@@ -1098,7 +1096,7 @@ class EMCVMAXCommon(object):
             self.utils.get_storage_group_from_volume(
                 self.conn, volumeInstanceName))
         if foundStorageGroupInstanceName is None:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Volume: %(volumeName)s is not currently "
                 "belonging to any storage group."),
                 {'volumeName': volumeName})
@@ -1484,13 +1482,12 @@ class EMCVMAXCommon(object):
                 _rc, targetEndpoints = (
                     self.provision.get_target_endpoints(
                         self.conn, storageHardwareService, hardwareIdInstance))
-            except Exception as ex:
-                LOG.error(_LE("Exception: %s"), ex)
+            except Exception:
                 errorMessage = (_(
                     "Unable to get target endpoints for hardwareId "
                     "%(hardwareIdInstance)s.")
                     % {'hardwareIdInstance': hardwareIdInstance})
-                LOG.error(errorMessage)
+                LOG.exception(errorMessage)
                 raise exception.VolumeBackendAPIException(data=errorMessage)
 
             if targetEndpoints:
@@ -1795,14 +1792,13 @@ class EMCVMAXCommon(object):
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
-        except Exception as e:
+        except Exception:
             # Rollback by deleting the volume if adding the volume to the
             # default storage group were to fail.
-            LOG.error(_LE("Exception: %s"), e)
             errorMessage = (_(
                 "Rolling back %(volumeName)s by deleting it.")
                 % {'volumeName': volumeName})
-            LOG.error(errorMessage)
+            LOG.exception(errorMessage)
             self.provision.delete_volume_from_pool(
                 self.conn, storageConfigService, volumeInstance.path,
                 volumeName, extraSpecs)
@@ -2126,7 +2122,7 @@ class EMCVMAXCommon(object):
             self.masking.get_associated_masking_groups_from_device(
                 self.conn, volumeInstanceName))
         if storageGroupInstanceNames:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Pre check for deletion. "
                 "Volume: %(volumeName)s is part of a storage group. "
                 "Attempting removal from %(storageGroupInstanceNames)s."),
@@ -2289,10 +2285,9 @@ class EMCVMAXCommon(object):
                 repservice = self.utils.find_replication_service(self.conn,
                                                                  storageSystem)
                 if repservice is None:
-                    exception_message = (_LE(
+                    exception_message = _(
                         "Cannot find Replication Service to"
-                        " delete snapshot %s.") %
-                        snapshotname)
+                        " delete snapshot %s.") % snapshotname
                     raise exception.VolumeBackendAPIException(
                         data=exception_message)
                 # Break the replication relationship
@@ -2339,12 +2334,11 @@ class EMCVMAXCommon(object):
                 self.conn, storageSystem)
             self.provision.create_consistency_group(
                 self.conn, replicationService, cgName, extraSpecs)
-        except Exception as ex:
-            LOG.error(_LE("Exception: %(ex)s"), {'ex': ex})
+        except Exception:
             exceptionMessage = (_("Failed to create consistency group:"
                                   " %(cgName)s.")
                                 % {'cgName': cgName})
-            LOG.error(exceptionMessage)
+            LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         return modelUpdate
@@ -2402,12 +2396,11 @@ class EMCVMAXCommon(object):
                     storageSystem, memberInstanceNames, storageConfigservice,
                     volumes, modelUpdate, extraSpecs[ISV3], extraSpecs)
 
-        except Exception as ex:
-            LOG.error(_LE("Exception: %s"), ex)
+        except Exception:
             exceptionMessage = (_(
                 "Failed to delete consistency group: %(cgName)s.")
                 % {'cgName': cgName})
-            LOG.error(exceptionMessage)
+            LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         return modelUpdate, volumes
@@ -2574,15 +2567,14 @@ class EMCVMAXCommon(object):
                                                          rgSyncInstanceName,
                                                          extraSpecs)
 
-        except Exception as ex:
+        except Exception:
             modelUpdate['status'] = 'error'
             self.utils.populate_cgsnapshot_status(
                 context, db, cgsnapshot['id'], modelUpdate['status'])
-            LOG.error(_LE("Exception: %(ex)s"), {'ex': ex})
             exceptionMessage = (_("Failed to create snapshot for cg:"
                                   " %(cgName)s.")
                                 % {'cgName': cgName})
-            LOG.error(exceptionMessage)
+            LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         snapshots = self.utils.populate_cgsnapshot_status(
@@ -2623,15 +2615,14 @@ class EMCVMAXCommon(object):
             modelUpdate, snapshots = self._delete_cg_and_members(
                 storageSystem, targetCgName, modelUpdate,
                 snapshots, extraSpecs)
-        except Exception as ex:
+        except Exception:
             modelUpdate['status'] = 'error_deleting'
             self.utils.populate_cgsnapshot_status(
                 context, db, cgsnapshot['id'], modelUpdate['status'])
-            LOG.error(_LE("Exception: %(ex)s"), {'ex': ex})
             exceptionMessage = (_("Failed to delete snapshot for cg: "
                                   "%(cgId)s.")
                                 % {'cgId': cgsnapshot['consistencygroup_id']})
-            LOG.error(exceptionMessage)
+            LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         snapshots = self.utils.populate_cgsnapshot_status(
@@ -2819,7 +2810,7 @@ class EMCVMAXCommon(object):
                 extraSpecs))
         if not self.utils.is_in_range(
                 volumeSize, maximumVolumeSize, minimumVolumeSize):
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Volume: %(volume)s with size: %(volumeSize)s bits "
                 "is not in the Performance Capacity range: "
                 "%(minimumVolumeSize)s-%(maximumVolumeSize)s bits. "
@@ -3012,7 +3003,7 @@ class EMCVMAXCommon(object):
             self.utils.get_storage_group_from_volume(
                 self.conn, volumeInstance.path))
         if foundStorageGroupInstanceName is None:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Volume : %(volumeName)s is not currently "
                 "belonging to any storage group."),
                 {'volumeName': volumeName})
@@ -3314,7 +3305,7 @@ class EMCVMAXCommon(object):
                     volumeInstance.path, volumeName, fastPolicyName,
                     extraSpecs))
             if defaultStorageGroupInstanceName is None:
-                LOG.warn(_LW(
+                LOG.warning(_LW(
                     "The volume: %(volumename)s. was not first part of the "
                     "default storage group for FAST policy %(fastPolicyName)s"
                     "."),
@@ -3343,7 +3334,7 @@ class EMCVMAXCommon(object):
                 self.conn, storageConfigService, volumeInstance.path,
                 volumeName, extraSpecs)
 
-        except Exception as e:
+        except Exception:
             # If we cannot successfully delete the volume then we want to
             # return the volume to the default storage group.
             if (fastPolicyName is not None and
@@ -3365,10 +3356,9 @@ class EMCVMAXCommon(object):
                         {'volumeName': volumeName,
                          'fastPolicyName': fastPolicyName})
 
-            LOG.error(_LE("Exception: %s."), e)
             errorMessage = (_("Failed to delete volume %(volumeName)s.") %
                             {'volumeName': volumeName})
-            LOG.error(errorMessage)
+            LOG.exception(errorMessage)
             raise exception.VolumeBackendAPIException(data=errorMessage)
 
         return rc
@@ -3410,7 +3400,7 @@ class EMCVMAXCommon(object):
                 self.conn, storageConfigService, volumeInstance.path,
                 volumeName, extraSpecs)
 
-        except Exception as e:
+        except Exception:
             # If we cannot successfully delete the volume, then we want to
             # return the volume to the default storage group,
             # which should be the SG it previously belonged to.
@@ -3432,10 +3422,9 @@ class EMCVMAXCommon(object):
                     storageGroupInstanceName, volumeInstance, volumeName,
                     storageGroupName, extraSpecs)
 
-            LOG.error(_LE("Exception: %s."), e)
             errorMessage = (_("Failed to delete volume %(volumeName)s.") %
                             {'volumeName': volumeName})
-            LOG.error(errorMessage)
+            LOG.exception(errorMessage)
             raise exception.VolumeBackendAPIException(data=errorMessage)
 
         return rc

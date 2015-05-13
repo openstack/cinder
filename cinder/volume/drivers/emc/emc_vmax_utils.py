@@ -141,10 +141,11 @@ class EMCVMAXUtils(object):
         for elementCompositionService in elementCompositionServices:
             if storageSystemName == elementCompositionService['SystemName']:
                 foundElementCompositionService = elementCompositionService
-                LOG.debug("Found Element Composition Service:"
-                          "%(elementCompositionService)s."
-                          % {'elementCompositionService':
-                              elementCompositionService})
+                LOG.debug(
+                    "Found Element Composition Service: "
+                    "%(elementCompositionService)s.", {
+                        'elementCompositionService':
+                            elementCompositionService})
                 break
         if foundElementCompositionService is None:
             exceptionMessage = (_("Element Composition Service not found "
@@ -324,10 +325,9 @@ class EMCVMAXUtils(object):
                 if not wait_for_job_called:
                     if self._is_job_finished(conn, job):
                         kwargs['wait_for_job_called'] = True
-            except Exception as e:
-                LOG.error(_LE("Exception: %s.") % six.text_type(e))
+            except Exception:
                 exceptionMessage = (_("Issue encountered waiting for job."))
-                LOG.error(exceptionMessage)
+                LOG.exception(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
         kwargs = {'retries': 0,
@@ -415,11 +415,10 @@ class EMCVMAXUtils(object):
                 if not wait_for_sync_called:
                     if self._is_sync_complete(conn, syncName):
                         kwargs['wait_for_sync_called'] = True
-            except Exception as e:
-                LOG.error(_LE("Exception: %s") % six.text_type(e))
+            except Exception:
                 exceptionMessage = (_("Issue encountered waiting for "
                                       "synchronization."))
-                LOG.error(exceptionMessage)
+                LOG.exception(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
         kwargs = {'retries': 0,

@@ -205,8 +205,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                 conf[ip]['ctl'] = ctl
                 conf[ip]['port'] = port
                 conf[ip]['iscsi_port'] = ipp
-                msg = "portal: %(ip)s:%(ipp)s, CTL: %(ctl)s, port: %(pt)s"
-                LOG.debug(msg, {'ip': ip, 'ipp': ipp, 'ctl': ctl, 'pt': port})
+                LOG.debug("portal: %(ip)s:%(ipp)s, CTL: %(ctl)s, port: %(pt)s",
+                          {'ip': ip, 'ipp': ipp, 'ctl': ctl, 'pt': port})
 
         return conf
 
@@ -256,7 +256,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                 # value and use a temporary dummy password.
                 if 'iscsi_secret' not in svc:
                     # Warns in the first time
-                    LOG.info(_LE("CHAP authentication disabled"))
+                    LOG.info(_LI("CHAP authentication disabled"))
 
                 svc['iscsi_secret'] = ""
 
@@ -303,7 +303,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                                          self.config['password'],
                                          pool['hdp'])
 
-            LOG.debug('Query for pool %s: %s', pool['pool_name'], out)
+            LOG.debug('Query for pool %(pool)s: %(out)s',
+                      {'pool': pool['pool_name'], 'out': out})
 
             (hdp, size, _ign, used) = out.split()[1:5]  # in MB
             pool['total_capacity_gb'] = int(size) / units.Ki
@@ -566,7 +567,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
         if 'tgt' in info.keys():  # spurious repeat connection
             # print info.keys()
-            LOG.debug("initiate_conn: tgt already set %s" % info['tgt'])
+            LOG.debug("initiate_conn: tgt already set %s", info['tgt'])
         (arid, lun) = info['id_lu']
         loc = arid + '.' + lun
         # sps, use target if provided
@@ -612,7 +613,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
         info = _loc_info(volume['provider_location'])
         if 'tgt' not in info.keys():  # spurious disconnection
-            LOG.warn(_LW("terminate_conn: provider location empty."))
+            LOG.warning(_LW("terminate_conn: provider location empty."))
             return
         (arid, lun) = info['id_lu']
         (_portal, iqn, loc, ctl, port, hlun) = info['tgt']

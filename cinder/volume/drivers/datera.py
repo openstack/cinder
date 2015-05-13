@@ -20,9 +20,10 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 import requests
+import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import versionutils
 from cinder import utils
 from cinder.volume.drivers.san import san
@@ -160,9 +161,9 @@ class DateraDriver(san.SanISCSIDriver):
         try:
             self._issue_api_request('volumes', 'delete', volume['id'])
         except exception.NotFound:
-            msg = _("Tried to delete volume %s, but it was not found in the "
-                    "Datera cluster. Continuing with delete.")
-            LOG.info(msg, volume['id'])
+            LOG.info(_LI("Tried to delete volume %s, but it was not found in "
+                         "the Datera cluster. Continuing with delete."),
+                     volume['id'])
 
     def _do_export(self, context, volume):
         """Gets the associated account, retrieves CHAP info and updates."""
@@ -203,18 +204,17 @@ class DateraDriver(san.SanISCSIDriver):
             self._issue_api_request('volumes', 'delete', resource=volume['id'],
                                     action='export')
         except exception.NotFound:
-            msg = _("Tried to delete export for volume %s, but it was not "
-                    "found in the Datera cluster. Continuing with volume "
-                    "detach")
-            LOG.info(msg, volume['id'])
+            LOG.info(_LI("Tried to delete export for volume %s, but it was "
+                         "not found in the Datera cluster. Continuing with "
+                         "volume detach"), volume['id'])
 
     def delete_snapshot(self, snapshot):
         try:
             self._issue_api_request('snapshots', 'delete', snapshot['id'])
         except exception.NotFound:
-            msg = _("Tried to delete snapshot %s, but was not found in Datera "
-                    "cluster. Continuing with delete.")
-            LOG.info(msg, snapshot['id'])
+            LOG.info(_LI("Tried to delete snapshot %s, but was not found in "
+                         "Datera cluster. Continuing with delete."),
+                     snapshot['id'])
 
     def create_snapshot(self, snapshot):
         body = {
@@ -244,7 +244,8 @@ class DateraDriver(san.SanISCSIDriver):
             try:
                 self._update_cluster_stats()
             except exception.DateraAPIException:
-                LOG.error('Failed to get updated stats from Datera cluster.')
+                LOG.error(_LE('Failed to get updated stats from Datera '
+                              'cluster.'))
                 pass
 
         return self.cluster_stats
@@ -360,7 +361,7 @@ class DateraDriver(san.SanISCSIDriver):
                                                  verify=False, cert=cert_data)
         except requests.exceptions.RequestException as ex:
             msg = _('Failed to make a request to Datera cluster endpoint due '
-                    'to the following reason: %s') % ex.message
+                    'to the following reason: %s') % six.text_type(ex.message)
             LOG.error(msg)
             raise exception.DateraAPIException(msg)
 

@@ -38,7 +38,8 @@ class HusBackend(object):
                                  '--version', '1',
                                  run_as_root=True,
                                  check_exit_code=True)
-        LOG.debug('get_version: ' + out + ' -- ' + err)
+        LOG.debug('get_version: %(out)s -- %(err)s',
+                  {'out': out, 'err': err})
         return out
 
     def get_iscsi_info(self, cmd, ver, ip0, ip1, user, pw):
@@ -50,7 +51,8 @@ class HusBackend(object):
                                  '--password', pw,
                                  '--iscsi', '1',
                                  check_exit_code=True)
-        LOG.debug('get_iscsi_info: ' + out + ' -- ' + err)
+        LOG.debug('get_iscsi_info: %(out)s -- %(err)s',
+                  {'out': out, 'err': err})
         return out
 
     def get_hdp_info(self, cmd, ver, ip0, ip1, user, pw):
@@ -62,7 +64,8 @@ class HusBackend(object):
                                  '--password', pw,
                                  '--hdp', '1',
                                  check_exit_code=True)
-        LOG.debug('get_hdp_info: ' + out + ' -- ' + err)
+        LOG.debug('get_hdp_info: %(out)s -- %(err)s',
+                  {'out': out, 'err': err})
         return out
 
     def create_lu(self, cmd, ver, ip0, ip1, user, pw, id, hdp, start,
@@ -80,7 +83,8 @@ class HusBackend(object):
                                  '--end', end,
                                  '--size', size,
                                  check_exit_code=True)
-        LOG.debug('create_lu: ' + out + ' -- ' + err)
+        LOG.debug('create_lu: %(out)s -- %(err)s',
+                  {'out': out, 'err': err})
         return out
 
     def delete_lu(self, cmd, ver, ip0, ip1, user, pw, id, lun):
@@ -95,7 +99,8 @@ class HusBackend(object):
                                  '--lun', lun,
                                  '--force', 1,
                                  check_exit_code=True)
-        LOG.debug('delete_lu: ' + out + ' -- ' + err)
+        LOG.debug('delete_lu: %(out)s -- %(err)s',
+                  {'out': out, 'err': err})
         return out
 
     def create_dup(self, cmd, ver, ip0, ip1, user, pw, id, src_lun,
@@ -114,7 +119,8 @@ class HusBackend(object):
                                  '--end', end,
                                  '--size', size,
                                  check_exit_code=True)
-        LOG.debug('create_dup: ' + out + ' -- ' + err)
+        LOG.debug('create_dup: %(out)s -- %(err)s',
+                  {'out': out, 'err': err})
         return out
 
     def extend_vol(self, cmd, ver, ip0, ip1, user, pw, id, lun, new_size):
@@ -129,7 +135,8 @@ class HusBackend(object):
                                  '--lun', lun,
                                  '--size', new_size,
                                  check_exit_code=True)
-        LOG.debug('extend_vol: ' + out + ' -- ' + err)
+        LOG.debug('extend_vol: %(out)s -- %(err)s',
+                  {'out': out, 'err': err})
         return out
 
     def add_iscsi_conn(self, cmd, ver, ip0, ip1, user, pw, id, lun, ctl, port,
@@ -148,7 +155,8 @@ class HusBackend(object):
                                  '--target', iqn,
                                  '--initiator', initiator,
                                  check_exit_code=True)
-        LOG.debug('add_iscsi_conn: ' + out + ' -- ' + err)
+        LOG.debug('add_iscsi_conn: %(out)s -- %(err)s',
+                  {'out': out, 'err': err})
         return out
 
     def del_iscsi_conn(self, cmd, ver, ip0, ip1, user, pw, id, lun, ctl, port,
@@ -168,5 +176,6 @@ class HusBackend(object):
                                  '--initiator', initiator,
                                  '--force', 1,
                                  check_exit_code=True)
-        LOG.debug('del_iscsi_conn: ' + out + ' -- ' + err)
+        LOG.debug('del_iscsi_conn: %(out)s -- %(err)s',
+                  {'out': out, 'err': err})
         return out

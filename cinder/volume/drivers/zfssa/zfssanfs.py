@@ -146,8 +146,8 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         https_path = 'https://' + lcfg.zfssa_data_ip + ':' + https_port + \
             '/shares' + mountpoint
 
-        LOG.debug('NFS mount path: %s' % self.mount_path)
-        LOG.debug('WebDAV path to the share: %s' % https_path)
+        LOG.debug('NFS mount path: %s', self.mount_path)
+        LOG.debug('WebDAV path to the share: %s', https_path)
 
         self.shares = {}
         mnt_opts = self.configuration.zfssa_nfs_mount_options
@@ -167,10 +167,10 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         try:
             self._ensure_share_mounted(self.mount_path)
         except Exception as exc:
-            LOG.error(_LE('Exception during mounting %s.') % exc)
+            LOG.error(_LE('Exception during mounting %s.'), exc)
 
         self._mounted_shares = [self.mount_path]
-        LOG.debug('Available shares %s' % self._mounted_shares)
+        LOG.debug('Available shares %s', self._mounted_shares)
 
     def check_for_setup_error(self):
         """Check that driver can login.
@@ -203,7 +203,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
                                                       snapshot['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.debug('Error thrown during snapshot: %s creation' %
+                LOG.debug('Error thrown during snapshot: %s creation',
                           snapshot['name'])
         finally:
             self.zfssa.delete_snapshot(lcfg.zfssa_nfs_pool,
@@ -232,17 +232,15 @@ class ZFSSANFSDriver(nfs.NfsDriver):
                 self.extend_volume(volume, volume['size'])
             except Exception:
                 vol_path = self.local_path(volume)
-                exception_msg = (_('Error in extending volume size: '
-                                   'Volume: %(volume)s '
-                                   'Vol_Size: %(vol_size)d with '
-                                   'Snapshot: %(snapshot)s '
-                                   'Snap_Size: %(snap_size)d')
-                                 % {'volume': volume['name'],
-                                    'vol_size': volume['size'],
-                                    'snapshot': snapshot['name'],
-                                    'snap_size': snapshot['volume_size']})
                 with excutils.save_and_reraise_exception():
-                    LOG.error(exception_msg)
+                    LOG.error(_LE('Error in extending volume size: Volume: '
+                                  '%(volume)s Vol_Size: %(vol_size)d with '
+                                  'Snapshot: %(snapshot)s Snap_Size: '
+                                  '%(snap_size)d'),
+                              {'volume': volume['name'],
+                               'vol_size': volume['size'],
+                               'snapshot': snapshot['name'],
+                               'snap_size': snapshot['volume_size']})
                     self._execute('rm', '-f', vol_path, run_as_root=True)
 
         return {'provider_location': volume['provider_location']}

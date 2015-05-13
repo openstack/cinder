@@ -1201,9 +1201,11 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         with mock.patch.object(drv, '_ensure_shares_mounted'):
             with mock.patch.object(drv, '_do_create_volume'):
                 self._driver.create_volume(FakeVolume(host, 1))
-                warn_msg = 'Extra spec netapp:raid_type is obsolete.  ' \
-                           'Use netapp_raid_type instead.'
-                utils.LOG.warning.assert_called_once_with(warn_msg)
+                warn_msg = ('Extra spec %(old)s is obsolete.  Use %(new)s '
+                            'instead.')
+                utils.LOG.warning.assert_called_once_with(
+                    warn_msg, {'new': 'netapp_raid_type',
+                               'old': 'netapp:raid_type'})
 
     @mock.patch.object(utils, 'LOG', mock.Mock())
     def test_create_volume_deprecated_extra_spec(self):
@@ -1220,9 +1222,11 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         with mock.patch.object(drv, '_ensure_shares_mounted'):
             with mock.patch.object(drv, '_do_create_volume'):
                 self._driver.create_volume(FakeVolume(host, 1))
-                warn_msg = 'Extra spec netapp_thick_provisioned is ' \
-                           'deprecated.  Use netapp_thin_provisioned instead.'
-                utils.LOG.warning.assert_called_once_with(warn_msg)
+                warn_msg = ('Extra spec %(old)s is deprecated.  Use %(new)s '
+                            'instead.')
+                utils.LOG.warning.assert_called_once_with(
+                    warn_msg, {'new': 'netapp_thin_provisioned',
+                               'old': 'netapp_thick_provisioned'})
 
     def test_create_volume_no_pool_specified(self):
         drv = self._driver

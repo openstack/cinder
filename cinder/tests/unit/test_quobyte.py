@@ -195,8 +195,8 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_execute.assert_has_calls([mkdir_call, mount_call],
                                           any_order=False)
 
-            mock_LOG.warn.assert_called_once_with('%s is already mounted',
-                                                  self.TEST_QUOBYTE_VOLUME)
+            mock_LOG.warning.assert_called_once_with('%s is already mounted',
+                                                     self.TEST_QUOBYTE_VOLUME)
 
     def test_mount_quobyte_should_reraise_already_mounted_error(self):
         """Same as

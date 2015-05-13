@@ -89,12 +89,9 @@ class ZFSSAApi(object):
         val = json.loads(ret.data)
 
         if not self._is_pool_owned(val):
-            exception_msg = (_('Error Pool ownership: '
-                               'Pool %(pool)s is not owned '
-                               'by %(host)s.')
-                             % {'pool': pool,
-                                'host': self.host})
-            LOG.error(exception_msg)
+            LOG.error(_LE('Error Pool ownership: Pool %(pool)s is not owned '
+                          'by %(host)s.'),
+                      {'pool': pool, 'host': self.host})
             raise exception.InvalidInput(reason=pool)
 
         avail = val['pool']['usage']['available']
@@ -464,20 +461,16 @@ class ZFSSAApi(object):
 
         ret = self.rclient.put(svc, arg)
         if ret.status != restclient.Status.ACCEPTED:
-            exception_msg = (_('Error Setting '
-                               'Volume: %(lun)s to '
-                               'InitiatorGroup: %(initiatorgroup)s '
-                               'Pool: %(pool)s '
-                               'Project: %(project)s  '
-                               'Return code: %(ret.status)d '
-                               'Message: %(ret.data)s.')
-                             % {'lun': lun,
-                                'initiatorgroup': initiatorgroup,
-                                'pool': pool,
-                                'project': project,
-                                'ret.status': ret.status,
-                                'ret.data': ret.data})
-            LOG.error(exception_msg)
+            LOG.error(_LE('Error Setting Volume: %(lun)s to InitiatorGroup: '
+                          '%(initiatorgroup)s Pool: %(pool)s Project: '
+                          '%(project)s  Return code: %(ret.status)d Message: '
+                          '%(ret.data)s.'),
+                      {'lun': lun,
+                       'initiatorgroup': initiatorgroup,
+                       'pool': pool,
+                       'project': project,
+                       'ret.status': ret.status,
+                       'ret.data': ret.data})
 
     def delete_lun(self, pool, project, lun):
         """delete iscsi lun."""
@@ -486,18 +479,14 @@ class ZFSSAApi(object):
 
         ret = self.rclient.delete(svc)
         if ret.status != restclient.Status.NO_CONTENT:
-            exception_msg = (_('Error Deleting '
-                               'Volume: %(lun)s to '
-                               'Pool: %(pool)s '
-                               'Project: %(project)s  '
-                               'Return code: %(ret.status)d '
-                               'Message: %(ret.data)s.')
-                             % {'lun': lun,
-                                'pool': pool,
-                                'project': project,
-                                'ret.status': ret.status,
-                                'ret.data': ret.data})
-            LOG.error(exception_msg)
+            LOG.error(_LE('Error Deleting Volume: %(lun)s to Pool: %(pool)s '
+                          'Project: %(project)s  Return code: %(ret.status)d '
+                          'Message: %(ret.data)s.'),
+                      {'lun': lun,
+                       'pool': pool,
+                       'project': project,
+                       'ret.status': ret.status,
+                       'ret.data': ret.data})
 
     def create_snapshot(self, pool, project, lun, snapshot):
         """create snapshot."""
@@ -633,9 +622,9 @@ class ZFSSAApi(object):
         svc = "/api/san/v1/iscsi/initiator-groups"
         ret = self.rclient.get(svc)
         if ret.status != restclient.Status.OK:
-            LOG.error(_LE('Error getting initiator groups.'))
-            exception_msg = (_('Error getting initiator groups.'))
-            raise exception.VolumeBackendAPIException(data=exception_msg)
+            msg = _('Error getting initiator groups.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
         val = json.loads(ret.data)
         for initiator_group in val['groups']:
             if initiator in initiator_group['initiators']:
@@ -762,7 +751,8 @@ class ZFSSANfsApi(ZFSSAApi):
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
         data = json.loads(ret.data)['service']
-        LOG.debug('%s service state: %s' % (service, data))
+        LOG.debug('%(service)s service state: %(data)s',
+                  {'service': service, 'data': data})
 
         status = 'online' if state == 'enable' else 'disabled'
 
@@ -833,9 +823,9 @@ class ZFSSANfsApi(ZFSSAApi):
             raise exception.VolumeBackendAPIException(data=exception_msg)
         data = json.loads(ret.data)['service']
         LOG.debug('Modify %(service)s service '
-                  'return data: %(data)s'
-                  % {'service': service,
-                     'data': data})
+                  'return data: %(data)s',
+                  {'service': service,
+                   'data': data})
 
     def create_share(self, pool, project, share, args):
         """Create a share in the specified pool and project"""

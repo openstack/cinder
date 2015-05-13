@@ -213,8 +213,8 @@ class PureISCSIDriver(san.SanISCSIDriver):
                         ERR_MSG_NOT_EXIST in err.text:
                     # Happens if the volume does not exist.
                     ctxt.reraise = False
-                    LOG.warn(_LW("Volume deletion failed with message: %s"),
-                             err.text)
+                    LOG.warning(_LW("Volume deletion failed with message: %s"),
+                                err.text)
         LOG.debug("Leave PureISCSIDriver.delete_volume.")
 
     def create_snapshot(self, snapshot):
@@ -279,11 +279,11 @@ class PureISCSIDriver(san.SanISCSIDriver):
             self._run_iscsiadm_bare(["-m", "discovery", "-t", "sendtargets",
                                      "-p", self._iscsi_port["portal"]])
         except processutils.ProcessExecutionError as err:
-            LOG.warn(_LW("iSCSI discovery of port %(port_name)s at "
-                         "%(port_portal)s failed with error: %(err_msg)s"),
-                     {"port_name": self._iscsi_port["name"],
-                      "port_portal": self._iscsi_port["portal"],
-                      "err_msg": err.stderr})
+            LOG.warning(_LW("iSCSI discovery of port %(port_name)s at "
+                            "%(port_portal)s failed with error: %(err_msg)s"),
+                        {"port_name": self._iscsi_port["name"],
+                         "port_portal": self._iscsi_port["portal"],
+                         "err_msg": err.stderr})
             self._iscsi_port = self._choose_target_iscsi_port()
         return self._iscsi_port
 
@@ -384,8 +384,8 @@ class PureISCSIDriver(san.SanISCSIDriver):
                         "Connection already exists" in err.text):
                     # Happens if the volume is already connected to the host.
                     ctxt.reraise = False
-                    LOG.warn(_LW("Volume connection already exists with "
-                                 "message: %s"), err.text)
+                    LOG.warning(_LW("Volume connection already exists with "
+                                    "message: %s"), err.text)
                     # Get the info for the existing connection
                     connected_hosts = \
                         self._array.list_volume_private_connections(vol_name)
@@ -724,5 +724,5 @@ class PureISCSIDriver(san.SanISCSIDriver):
                 if (err.code == 400 and
                         ERR_MSG_NOT_EXIST in err.text):
                     ctxt.reraise = False
-                    LOG.warn(_LW("Volume unmanage was unable to rename "
-                                 "the volume, error message: %s"), err.text)
+                    LOG.warning(_LW("Volume unmanage was unable to rename "
+                                    "the volume, error message: %s"), err.text)

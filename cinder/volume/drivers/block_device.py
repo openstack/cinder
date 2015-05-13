@@ -61,7 +61,8 @@ class BlockDeviceDriver(driver.VolumeDriver):
 
     def create_volume(self, volume):
         device = self.find_appropriate_size_device(volume['size'])
-        LOG.info("Create %s on %s" % (volume['name'], device))
+        LOG.info(_LI("Create %(volume)s on %(device)s"),
+                 {"volume": volume['name'], "device": device})
         return {
             'provider_location': device,
         }
@@ -103,7 +104,7 @@ class BlockDeviceDriver(driver.VolumeDriver):
                                   self.local_path(volume))
 
     def create_cloned_volume(self, volume, src_vref):
-        LOG.info(_LI('Creating clone of volume: %s') % src_vref['id'])
+        LOG.info(_LI('Creating clone of volume: %s'), src_vref['id'])
         device = self.find_appropriate_size_device(src_vref['size'])
         volutils.copy_volume(
             self.local_path(src_vref), device,

@@ -128,11 +128,11 @@ class RestClient(WebserviceClient):
             if 'storedPassword' in scrubbed_data:
                 scrubbed_data['storedPassword'] = "****"
 
-        params = {'m': method, 'p': path, 'd': scrubbed_data,
-                  'sys': use_system, 't': timeout, 'v': verify, 'k': kwargs}
         LOG.debug("Invoking rest with method: %(m)s, path: %(p)s,"
                   " data: %(d)s, use_system: %(sys)s, timeout: %(t)s,"
-                  " verify: %(v)s, kwargs: %(k)s." % (params))
+                  " verify: %(v)s, kwargs: %(k)s.",
+                  {'m': method, 'p': path, 'd': scrubbed_data,
+                   'sys': use_system, 't': timeout, 'v': verify, 'k': kwargs})
         url = self._get_resource_url(path, use_system, **kwargs)
         if self._content_type == 'json':
             headers = {'Accept': 'application/json',

@@ -457,7 +457,7 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
                 client_options[client_key] = client_value
             except KeyError:
                 LOG.error(_LE("'%(value)s' is an invalid value "
-                              "for extra spec '%(key)s'") %
+                              "for extra spec '%(key)s'"),
                           {'value': value, 'key': key})
         return client_options
 
@@ -477,10 +477,10 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
             chap_secret = server_info['chapTargetSecret']
             if not chap_enabled and chap_secret:
                 LOG.warning(_LW('CHAP secret exists for host %s but CHAP is '
-                                'disabled') % connector['host'])
+                                'disabled'), connector['host'])
             if chap_enabled and chap_secret is None:
                 LOG.warning(_LW('CHAP is enabled, but server secret not '
-                                'configured on server %s') % connector['host'])
+                                'configured on server %s'), connector['host'])
             return server_info
         except hpexceptions.HTTPNotFound:
             # server does not exist, so create one
@@ -522,10 +522,10 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
                      dictionary of its reported capabilities.
         """
         LOG.debug('enter: retype: id=%(id)s, new_type=%(new_type)s,'
-                  'diff=%(diff)s, host=%(host)s' % {'id': volume['id'],
-                                                    'new_type': new_type,
-                                                    'diff': diff,
-                                                    'host': host})
+                  'diff=%(diff)s, host=%(host)s', {'id': volume['id'],
+                                                   'new_type': new_type,
+                                                   'diff': diff,
+                                                   'host': host})
         client = self._login()
         try:
             volume_info = client.getVolumeByName(volume['name'])
@@ -536,7 +536,7 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
                 new_extra_specs,
                 extra_specs_key_map.keys())
 
-            LOG.debug('LH specs=%(specs)s' % {'specs': lh_extra_specs})
+            LOG.debug('LH specs=%(specs)s', {'specs': lh_extra_specs})
 
             # only set the ones that have changed
             changed_extra_specs = {}
@@ -553,7 +553,7 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         except hpexceptions.HTTPNotFound:
             raise exception.VolumeNotFound(volume_id=volume['id'])
         except Exception as ex:
-            LOG.warning("%s" % ex)
+            LOG.warning(_LW("%s"), ex)
         finally:
             self._logout(client)
 
@@ -581,7 +581,7 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
                      dictionary of its reported capabilities.
         """
         LOG.debug('enter: migrate_volume: id=%(id)s, host=%(host)s, '
-                  'cluster=%(cluster)s' % {
+                  'cluster=%(cluster)s', {
                       'id': volume['id'],
                       'host': host,
                       'cluster': self.configuration.hplefthand_clustername})
@@ -596,24 +596,24 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         try:
             # get the cluster info, if it exists and compare
             cluster_info = client.getClusterByName(cluster)
-            LOG.debug('Cluster info: %s' % cluster_info)
+            LOG.debug('Cluster info: %s', cluster_info)
             virtual_ips = cluster_info['virtualIPAddresses']
 
             if driver != self.__class__.__name__:
                 LOG.info(_LI("Cannot provide backend assisted migration for "
                              "volume: %s because volume is from a different "
-                             "backend.") % volume['name'])
+                             "backend."), volume['name'])
                 return false_ret
             if vip != virtual_ips[0]['ipV4Address']:
                 LOG.info(_LI("Cannot provide backend assisted migration for "
                              "volume: %s because cluster exists in different "
-                             "management group.") % volume['name'])
+                             "management group."), volume['name'])
                 return false_ret
 
         except hpexceptions.HTTPNotFound:
             LOG.info(_LI("Cannot provide backend assisted migration for "
                          "volume: %s because cluster exists in different "
-                         "management group.") % volume['name'])
+                         "management group."), volume['name'])
             return false_ret
         finally:
             self._logout(client)
@@ -621,24 +621,24 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         client = self._login()
         try:
             volume_info = client.getVolumeByName(volume['name'])
-            LOG.debug('Volume info: %s' % volume_info)
+            LOG.debug('Volume info: %s', volume_info)
 
             # can't migrate if server is attached
             if volume_info['iscsiSessions'] is not None:
                 LOG.info(_LI("Cannot provide backend assisted migration "
                              "for volume: %s because the volume has been "
-                             "exported.") % volume['name'])
+                             "exported."), volume['name'])
                 return false_ret
 
             # can't migrate if volume has snapshots
             snap_info = client.getVolume(
                 volume_info['id'],
                 'fields=snapshots,snapshots[resource[members[name]]]')
-            LOG.debug('Snapshot info: %s' % snap_info)
+            LOG.debug('Snapshot info: %s', snap_info)
             if snap_info['snapshots']['resource'] is not None:
                 LOG.info(_LI("Cannot provide backend assisted migration "
                              "for volume: %s because the volume has "
-                             "snapshots.") % volume['name'])
+                             "snapshots."), volume['name'])
                 return false_ret
 
             options = {'clusterName': cluster}
@@ -646,10 +646,10 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         except hpexceptions.HTTPNotFound:
             LOG.info(_LI("Cannot provide backend assisted migration for "
                          "volume: %s because volume does not exist in this "
-                         "management group.") % volume['name'])
+                         "management group."), volume['name'])
             return false_ret
         except hpexceptions.HTTPServerError as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             return false_ret
         finally:
             self._logout(client)

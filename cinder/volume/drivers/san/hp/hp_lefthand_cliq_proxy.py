@@ -203,7 +203,7 @@ class HPLeftHandCLIQProxy(san.SanISCSIDriver):
             for k, v in status_node.attrib.items():
                 volume_attributes["permission." + k] = v
 
-        LOG.debug("Volume info: %(volume_name)s => %(volume_attributes)s" %
+        LOG.debug("Volume info: %(volume_name)s => %(volume_attributes)s",
                   {'volume_name': volume_name,
                    'volume_attributes': volume_attributes})
         return volume_attributes
@@ -259,7 +259,7 @@ class HPLeftHandCLIQProxy(san.SanISCSIDriver):
             for k, v in status_node.attrib.items():
                 snapshot_attributes["permission." + k] = v
 
-        LOG.debug("Snapshot info: %(name)s => %(attributes)s" %
+        LOG.debug("Snapshot info: %(name)s => %(attributes)s",
                   {'name': snapshot_name, 'attributes': snapshot_attributes})
         return snapshot_attributes
 

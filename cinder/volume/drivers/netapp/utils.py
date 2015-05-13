@@ -128,15 +128,14 @@ def round_down(value, precision):
 def log_extra_spec_warnings(extra_specs):
     for spec in (set(extra_specs.keys() if extra_specs else []) &
                  set(OBSOLETE_SSC_SPECS.keys())):
-            msg = _LW('Extra spec %(old)s is obsolete.  Use %(new)s instead.')
-            args = {'old': spec, 'new': OBSOLETE_SSC_SPECS[spec]}
-            LOG.warning(msg % args)
+            LOG.warning(_LW('Extra spec %(old)s is obsolete.  Use %(new)s '
+                            'instead.'), {'old': spec,
+                                          'new': OBSOLETE_SSC_SPECS[spec]})
     for spec in (set(extra_specs.keys() if extra_specs else []) &
                  set(DEPRECATED_SSC_SPECS.keys())):
-            msg = _LW('Extra spec %(old)s is deprecated.  Use %(new)s '
-                      'instead.')
-            args = {'old': spec, 'new': DEPRECATED_SSC_SPECS[spec]}
-            LOG.warning(msg % args)
+            LOG.warning(_LW('Extra spec %(old)s is deprecated.  Use %(new)s '
+                            'instead.'), {'old': spec,
+                                          'new': DEPRECATED_SSC_SPECS[spec]})
 
 
 def get_iscsi_connection_properties(lun_id, volume, iqn,
@@ -228,7 +227,7 @@ class OpenStackInfo(object):
                                       "'%{version}\t%{release}\t%{vendor}'",
                                       self.PACKAGE_NAME)
             if not out:
-                LOG.info(_LI('No rpm info found for %(pkg)s package.') % {
+                LOG.info(_LI('No rpm info found for %(pkg)s package.'), {
                     'pkg': self.PACKAGE_NAME})
                 return False
             parts = out.split()
@@ -237,7 +236,7 @@ class OpenStackInfo(object):
             self._vendor = ' '.join(parts[2::])
             return True
         except Exception as e:
-            LOG.info(_LI('Could not run rpm command: %(msg)s.') % {'msg': e})
+            LOG.info(_LI('Could not run rpm command: %(msg)s.'), {'msg': e})
             return False
 
     # ubuntu, mirantis on ubuntu
@@ -248,8 +247,8 @@ class OpenStackInfo(object):
             out, err = putils.execute("dpkg-query", "-W", "-f='${Version}'",
                                       self.PACKAGE_NAME)
             if not out:
-                LOG.info(_LI('No dpkg-query info found for %(pkg)s package.')
-                         % {'pkg': self.PACKAGE_NAME})
+                LOG.info(_LI('No dpkg-query info found for %(pkg)s package.'),
+                         {'pkg': self.PACKAGE_NAME})
                 return False
             # debian format: [epoch:]upstream_version[-debian_revision]
             deb_version = out
@@ -266,7 +265,7 @@ class OpenStackInfo(object):
                 self._vendor = _vendor
             return True
         except Exception as e:
-            LOG.info(_LI('Could not run dpkg-query command: %(msg)s.') % {
+            LOG.info(_LI('Could not run dpkg-query command: %(msg)s.'), {
                 'msg': e})
             return False
 

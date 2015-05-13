@@ -87,9 +87,9 @@ class retry(object):
             for attempt in xrange(self._count):
                 if attempt != 0:
                     LOG.warning(_LW('Retrying failed call to %(func)s, '
-                                    'attempt %(attempt)i.')
-                                % {'func': func_name,
-                                   'attempt': attempt})
+                                    'attempt %(attempt)i.'),
+                                {'func': func_name,
+                                 'attempt': attempt})
                 try:
                     return fun(*args, **kwargs)
                 except self._exceptions:
@@ -127,9 +127,9 @@ class LVM(lvm.LVM):
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
             LOG.exception(_LE('Error activating Volume Group'))
-            LOG.error(_LE('Cmd     :%s') % err.cmd)
-            LOG.error(_LE('StdOut  :%s') % err.stdout)
-            LOG.error(_LE('StdErr  :%s') % err.stderr)
+            LOG.error(_LE('Cmd     :%s'), err.cmd)
+            LOG.error(_LE('StdOut  :%s'), err.stdout)
+            LOG.error(_LE('StdErr  :%s'), err.stderr)
             raise
 
     def deactivate_vg(self):
@@ -147,9 +147,9 @@ class LVM(lvm.LVM):
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
             LOG.exception(_LE('Error deactivating Volume Group'))
-            LOG.error(_LE('Cmd     :%s') % err.cmd)
-            LOG.error(_LE('StdOut  :%s') % err.stdout)
-            LOG.error(_LE('StdErr  :%s') % err.stderr)
+            LOG.error(_LE('Cmd     :%s'), err.cmd)
+            LOG.error(_LE('StdOut  :%s'), err.stdout)
+            LOG.error(_LE('StdErr  :%s'), err.stderr)
             raise
 
     def destroy_vg(self):
@@ -165,9 +165,9 @@ class LVM(lvm.LVM):
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
             LOG.exception(_LE('Error destroying Volume Group'))
-            LOG.error(_LE('Cmd     :%s') % err.cmd)
-            LOG.error(_LE('StdOut  :%s') % err.stdout)
-            LOG.error(_LE('StdErr  :%s') % err.stderr)
+            LOG.error(_LE('Cmd     :%s'), err.cmd)
+            LOG.error(_LE('StdOut  :%s'), err.stdout)
+            LOG.error(_LE('StdErr  :%s'), err.stderr)
             raise
 
     def pv_resize(self, pv_name, new_size_str):
@@ -183,9 +183,9 @@ class LVM(lvm.LVM):
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
             LOG.exception(_LE('Error resizing Physical Volume'))
-            LOG.error(_LE('Cmd     :%s') % err.cmd)
-            LOG.error(_LE('StdOut  :%s') % err.stdout)
-            LOG.error(_LE('StdErr  :%s') % err.stderr)
+            LOG.error(_LE('Cmd     :%s'), err.cmd)
+            LOG.error(_LE('StdOut  :%s'), err.stdout)
+            LOG.error(_LE('StdErr  :%s'), err.stderr)
             raise
 
     def extend_thin_pool(self):
@@ -209,9 +209,9 @@ class LVM(lvm.LVM):
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
             LOG.exception(_LE('Error extending thin provisioning pool'))
-            LOG.error(_LE('Cmd     :%s') % err.cmd)
-            LOG.error(_LE('StdOut  :%s') % err.stdout)
-            LOG.error(_LE('StdErr  :%s') % err.stderr)
+            LOG.error(_LE('Cmd     :%s'), err.cmd)
+            LOG.error(_LE('StdOut  :%s'), err.stdout)
+            LOG.error(_LE('StdErr  :%s'), err.stderr)
             raise
 
 
@@ -577,7 +577,8 @@ class SRBDriver(driver.VolumeDriver):
     def _attach_file(self, volume):
         name = self._get_volname(volume)
         devname = self._device_name(volume)
-        LOG.debug('Attaching volume %s as %s', name, devname)
+        LOG.debug('Attaching volume %(name)s as %(devname)s',
+                  {'name': name, 'devname': devname})
 
         count = self._get_attached_count(volume)
         if count == 0:
@@ -621,8 +622,8 @@ class SRBDriver(driver.VolumeDriver):
                     self._do_deactivate(volume, vg)
                 except putils.ProcessExecutionError:
                     LOG.warning(_LW('All attempts to recover failed detach '
-                                    'of %(volume)s failed.')
-                                % {'volume': volname})
+                                    'of %(volume)s failed.'),
+                                {'volume': volname})
 
     @lockutils.synchronized('devices', 'cinder-srb-')
     def _detach_file(self, volume):
@@ -634,9 +635,8 @@ class SRBDriver(driver.VolumeDriver):
         count = self._get_attached_count(volume)
         if count > 1:
             LOG.info(_LI('Reference count of %(volume)s is %(count)d, '
-                         'not detaching.')
-                     % {'volume': volume['name'],
-                        'count': count})
+                         'not detaching.'),
+                     {'volume': volume['name'], 'count': count})
             return
 
         message = (_('Could not detach volume %(vol)s from device %(dev)s.')
@@ -649,18 +649,15 @@ class SRBDriver(driver.VolumeDriver):
                 if vg is not None:
                     self._do_deactivate(volume, vg)
             except putils.ProcessExecutionError:
-                msg = _LE('Could not deactivate volume groupe %s')\
-                    % (self._get_volname(volume))
-                LOG.error(msg)
+                LOG.error(_LE('Could not deactivate volume group %s'),
+                          self._get_volname(volume))
                 raise
 
             try:
                 self._do_detach(volume, vg=vg)
             except putils.ProcessExecutionError:
-                msg = _LE('Could not detach volume '
-                          '%(vol)s from device %(dev)s.') \
-                    % {'vol': name, 'dev': devname}
-                LOG.error(msg)
+                LOG.error(_LE('Could not detach volume %(vol)s from device '
+                              '%(dev)s.'), {'vol': name, 'dev': devname})
                 raise
 
             self._decrement_attached_count(volume)
@@ -748,8 +745,8 @@ class SRBDriver(driver.VolumeDriver):
                 self._destroy_lvm(volume)
             self._detach_file(volume)
 
-        LOG.debug('Deleting volume %s, attached=%s',
-                  volume['name'], attached)
+        LOG.debug('Deleting volume %(volume_name)s, attached=%(attached)s',
+                  {'volume_name': volume['name'], 'attached': attached})
 
         self._destroy_file(volume)
 

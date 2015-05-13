@@ -24,6 +24,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import units
+import six
 
 from cinder.brick.local_dev import lvm as lvm
 from cinder import exception
@@ -131,15 +132,15 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # the cow table and only overwriting what's necessary?
         # for now we're still skipping on snaps due to hang issue
         if not os.path.exists(dev_path):
-            msg = (_LE('Volume device file path %s does not exist.')
+            msg = (_('Volume device file path %s does not exist.')
                    % dev_path)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
         size_in_g = volume.get('volume_size') or volume.get('size')
         if size_in_g is None:
-            msg = (_LE("Size for volume: %s not found, "
-                   "cannot secure delete.") % volume['id'])
+            msg = (_("Size for volume: %s not found, cannot secure delete.")
+                   % volume['id'])
             LOG.error(msg)
             raise exception.InvalidParameterValue(msg)
 
@@ -169,7 +170,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
-        LOG.debug(("Updating volume stats"))
+        LOG.debug("Updating volume stats")
         if self.vg is None:
             LOG.warning(_LW('Unable to update stats on non-initialized '
                             'Volume Group: %s'),
@@ -289,7 +290,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 except processutils.ProcessExecutionError as exc:
                     exception_message = (_("Failed to create thin pool, "
                                            "error message was: %s")
-                                         % exc.stderr)
+                                         % six.text_type(exc.stderr))
                     raise exception.VolumeBackendAPIException(
                         data=exception_message)
 
@@ -335,8 +336,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
             return True
 
         if self.vg.lv_has_snapshot(volume['name']):
-            LOG.error(_LE('Unabled to delete due to existing snapshot '
-                          'for volume: %s') % volume['name'])
+            LOG.error(_LE('Unable to delete due to existing snapshot '
+                          'for volume: %s'), volume['name'])
             raise exception.VolumeIsBusy(volume_name=volume['name'])
 
         self._delete_volume(volume)
@@ -354,7 +355,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         if self._volume_not_present(self._escape_snapshot(snapshot['name'])):
             # If the snapshot isn't present, then don't attempt to delete
             LOG.warning(_LW("snapshot: %s not found, "
-                            "skipping delete operations") % snapshot['name'])
+                            "skipping delete operations"), snapshot['name'])
             LOG.info(_LI('Successfully deleted snapshot: %s'), snapshot['id'])
             return True
 
@@ -392,7 +393,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         mirror_count = 0
         if self.configuration.lvm_mirrors:
             mirror_count = self.configuration.lvm_mirrors
-        LOG.info(_LI('Creating clone of volume: %s') % src_vref['id'])
+        LOG.info(_LI('Creating clone of volume: %s'), src_vref['id'])
         volume_name = src_vref['name']
         temp_id = 'tmp-snap-%s' % volume['id']
         temp_snapshot = {'volume_name': volume_name,
@@ -540,9 +541,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
             try:
                 (vg for vg in vg_list if vg['name'] == dest_vg).next()
             except StopIteration:
-                message = (_LE("Destination Volume Group %s does not exist") %
-                           dest_vg)
-                LOG.error(message)
+                LOG.error(_LE("Destination Volume Group %s does not exist"),
+                          dest_vg)
                 return false_ret
 
             helper = utils.get_root_helper()
@@ -573,7 +573,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         else:
             message = (_("Refusing to migrate volume ID: %(id)s. Please "
                          "check your configuration because source and "
-                         "destination are the same Volume Group: %(name)s."),
+                         "destination are the same Volume Group: %(name)s.") %
                        {'id': volume['id'], 'name': self.vg.vg_name})
             LOG.exception(message)
             raise exception.VolumeBackendAPIException(data=message)

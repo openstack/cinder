@@ -21,6 +21,7 @@ import os
 
 from oslo_config import cfg
 from oslo_log import log as logging
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LI
@@ -54,9 +55,10 @@ class WindowsUtils(object):
             listen = wt_portal.Listen
         except wmi.x_wmi as exc:
             err_msg = (_('check_for_setup_error: the state of the WT Portal '
-                         'could not be verified. WMI exception: %s'))
-            LOG.error(err_msg % exc)
-            raise exception.VolumeBackendAPIException(data=err_msg % exc)
+                         'could not be verified. WMI exception: %s')
+                       % six.text_type(exc))
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
         if not listen:
             err_msg = (_('check_for_setup_error: there is no ISCSI traffic '
@@ -70,9 +72,10 @@ class WindowsUtils(object):
             wt_portal = self._conn_wmi.WT_Portal()[0]
         except wmi.x_wmi as exc:
             err_msg = (_('get_host_information: the state of the WT Portal '
-                         'could not be verified. WMI exception: %s'))
-            LOG.error(err_msg % exc)
-            raise exception.VolumeBackendAPIException(data=err_msg % exc)
+                         'could not be verified. WMI exception: %s')
+                       % six.text_type(exc))
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
         (address, port) = (wt_portal.Address, wt_portal.Port)
         # Getting the host information
         try:
@@ -80,8 +83,9 @@ class WindowsUtils(object):
             host = hosts[0]
         except wmi.x_wmi as exc:
             err_msg = (_('get_host_information: the ISCSI target information '
-                         'could not be retrieved. WMI exception: %s'))
-            LOG.error(err_msg % exc)
+                         'could not be retrieved. WMI exception: %s')
+                       % six.text_type(exc))
+            LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         properties = {}
@@ -118,7 +122,7 @@ class WindowsUtils(object):
                          'target name: %(target)s could not be established. '
                          'WMI exception: %(wmi_exc)s') %
                        {'init': initiator_name, 'target': target_name,
-                        'wmi_exc': exc})
+                        'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -133,9 +137,9 @@ class WindowsUtils(object):
         except wmi.x_wmi as exc:
             err_msg = (_(
                 'delete_iscsi_target: error when deleting the iscsi target '
-                'associated with target name: %(target)s . '
-                'WMI exception: %(wmi_exc)s') % {'target': target_name,
-                                                 'wmi_exc': exc})
+                'associated with target name: %(target)s . WMI '
+                'exception: %(wmi_exc)s') % {'target': target_name,
+                                             'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -154,7 +158,8 @@ class WindowsUtils(object):
             err_msg = (_(
                 'create_volume: error when creating the volume name: '
                 '%(vol_name)s . WMI exception: '
-                '%(wmi_exc)s') % {'vol_name': vol_name, 'wmi_exc': exc})
+                '%(wmi_exc)s') % {'vol_name': vol_name,
+                                  'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -167,7 +172,7 @@ class WindowsUtils(object):
             err_msg = (_("Failed to import disk: %(vhd_path)s. "
                          "WMI exception: %(exc)s") %
                        {'vhd_path': vhd_path,
-                        'exc': exc})
+                        'exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -180,7 +185,8 @@ class WindowsUtils(object):
             err_msg = (_(
                 'Error changing disk status: '
                 '%(vol_name)s . WMI exception: '
-                '%(wmi_exc)s') % {'vol_name': vol_name, 'wmi_exc': exc})
+                '%(wmi_exc)s') % {'vol_name': vol_name,
+                                  'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -190,7 +196,7 @@ class WindowsUtils(object):
             disk = self._conn_wmi.WT_Disk(Description=vol_name)
             if not disk:
                 LOG.debug('Skipping deleting disk %s as it does not '
-                          'exist.' % vol_name)
+                          'exist.', vol_name)
                 return
             wt_disk = disk[0]
             wt_disk.Delete_()
@@ -203,7 +209,8 @@ class WindowsUtils(object):
             err_msg = (_(
                 'delete_volume: error when deleting the volume name: '
                 '%(vol_name)s . WMI exception: '
-                '%(wmi_exc)s') % {'vol_name': vol_name, 'wmi_exc': exc})
+                '%(wmi_exc)s') % {'vol_name': vol_name,
+                                  'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -223,7 +230,8 @@ class WindowsUtils(object):
             err_msg = (_(
                 'create_snapshot: error when creating the snapshot name: '
                 '%(vol_name)s . WMI exception: '
-                '%(wmi_exc)s') % {'vol_name': snapshot_name, 'wmi_exc': exc})
+                '%(wmi_exc)s') % {'vol_name': snapshot_name,
+                                  'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -248,10 +256,10 @@ class WindowsUtils(object):
         except wmi.x_wmi as exc:
             err_msg = (_(
                 'create_volume_from_snapshot: error when creating the volume '
-                'name: %(vol_name)s from snapshot name: %(snap_name)s. '
-                'WMI exception: %(wmi_exc)s') % {'vol_name': vol_name,
-                                                 'snap_name': snap_name,
-                                                 'wmi_exc': exc})
+                'name: %(vol_name)s from snapshot name: %(snap_name)s. WMI '
+                'exception: %(wmi_exc)s') % {'vol_name': vol_name,
+                                             'snap_name': snap_name,
+                                             'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -264,7 +272,8 @@ class WindowsUtils(object):
             err_msg = (_(
                 'delete_snapshot: error when deleting the snapshot name: '
                 '%(snap_name)s . WMI exception: '
-                '%(wmi_exc)s') % {'snap_name': snap_name, 'wmi_exc': exc})
+                '%(wmi_exc)s') % {'snap_name': snap_name,
+                                  'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -278,7 +287,8 @@ class WindowsUtils(object):
                 err_msg = (_(
                     'create_iscsi_target: error when creating iscsi target: '
                     '%(tar_name)s . WMI exception: '
-                    '%(wmi_exc)s') % {'tar_name': target_name, 'wmi_exc': exc})
+                    '%(wmi_exc)s') % {'tar_name': target_name,
+                                      'wmi_exc': six.text_type(exc)})
                 LOG.error(err_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
             else:
@@ -291,7 +301,7 @@ class WindowsUtils(object):
             host = self._conn_wmi.WT_Host(HostName=target_name)
             if not host:
                 LOG.debug('Skipping removing target %s as it does not '
-                          'exist.' % target_name)
+                          'exist.', target_name)
                 return
             wt_host = host[0]
             wt_host.RemoveAllWTDisks()
@@ -300,7 +310,8 @@ class WindowsUtils(object):
             err_msg = (_(
                 'remove_iscsi_target: error when deleting iscsi target: '
                 '%(tar_name)s . WMI exception: '
-                '%(wmi_exc)s') % {'tar_name': target_name, 'wmi_exc': exc})
+                '%(wmi_exc)s') % {'tar_name': target_name,
+                                  'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -314,10 +325,10 @@ class WindowsUtils(object):
         except wmi.x_wmi as exc:
             err_msg = (_(
                 'add_disk_to_target: error adding disk associated to volume : '
-                '%(vol_name)s to the target name: %(tar_name)s '
-                '. WMI exception: %(wmi_exc)s') % {'tar_name': target_name,
-                                                   'vol_name': vol_name,
-                                                   'wmi_exc': exc})
+                '%(vol_name)s to the target name: %(tar_name)s . WMI '
+                'exception: %(wmi_exc)s') % {'tar_name': target_name,
+                                             'vol_name': vol_name,
+                                             'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -370,16 +381,16 @@ class WindowsUtils(object):
             wt_disk.Extend(additional_size)
         except wmi.x_wmi as exc:
             err_msg = (_(
-                'extend: error when extending the volume: %(vol_name)s '
-                '.WMI exception: %(wmi_exc)s') % {'vol_name': vol_name,
-                                                  'wmi_exc': exc})
+                'extend: error when extending the volume: %(vol_name)s .WMI '
+                'exception: %(wmi_exc)s') % {'vol_name': vol_name,
+                                             'wmi_exc': six.text_type(exc)})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
     def local_path(self, volume, format=None):
         base_vhd_folder = CONF.windows_iscsi_lun_path
         if not os.path.exists(base_vhd_folder):
-            LOG.debug('Creating folder: %s' % base_vhd_folder)
+            LOG.debug('Creating folder: %s', base_vhd_folder)
             os.makedirs(base_vhd_folder)
         if not format:
             format = self.get_supported_format()

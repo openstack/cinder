@@ -208,7 +208,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
             if any(ln.startswith(('% Error', 'Error:')) for ln in out):
                 desc = _("Error executing EQL command")
                 cmdout = '\n'.join(out)
-                LOG.error(cmdout)
+                LOG.error(_LE("%s"), cmdout)
                 raise processutils.ProcessExecutionError(
                     stdout=cmdout, cmd=command, description=desc)
             return out
@@ -412,8 +412,8 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
             self._eql_execute('volume', 'select', volume['name'], 'offline')
             self._eql_execute('volume', 'delete', volume['name'])
         except exception.VolumeNotFound:
-            LOG.warn(_LW('Volume %s was not found while trying to delete it.'),
-                     volume['name'])
+            LOG.warning(_LW('Volume %s was not found while trying to delete '
+                            'it.'), volume['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to delete '
@@ -527,8 +527,8 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         try:
             self._check_volume(volume)
         except exception.VolumeNotFound:
-            LOG.warn(_LW('Volume %s is not found!, it may have been deleted.'),
-                     volume['name'])
+            LOG.warning(_LW('Volume %s is not found!, it may have been '
+                            'deleted.'), volume['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to ensure export of volume "%s".'),

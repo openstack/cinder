@@ -190,7 +190,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
             'id':lun_id
         }
         """
-        LOG.debug("Reference lun id %s." % existing_ref['id'])
+        LOG.debug("Reference lun id %s.", existing_ref['id'])
         self.cli.manage_existing(volume, existing_ref)
 
     def manage_existing_get_size(self, volume, existing_ref):

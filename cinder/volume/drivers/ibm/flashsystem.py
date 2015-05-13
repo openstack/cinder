@@ -406,7 +406,7 @@ class FlashSystemDriver(san.SanDriver):
             out, err = self._ssh(ssh_cmd)
         except processutils.ProcessExecutionError:
             LOG.warning(_LW('_execute_command_and_parse_attributes: Failed to '
-                            'run command: %s.'), six.text_type(ssh_cmd))
+                            'run command: %s.'), ssh_cmd)
             # Does not raise exception when command encounters error.
             # Only return and the upper logic decides what to do.
             return None
@@ -1140,9 +1140,8 @@ class FlashSystemDriver(san.SanDriver):
     def validate_connector(self, connector):
         """Check connector."""
         if 'FC' == self._protocol and 'wwpns' not in connector:
-            msg = (_LE('The connector does not contain the '
-                       'required information: wwpns is missing'))
-            LOG.error(msg)
+            LOG.error(_LE('The connector does not contain the '
+                          'required information: wwpns is missing'))
             raise exception.InvalidConnectorException(missing='wwpns')
 
     def create_volume(self, volume):

@@ -103,7 +103,7 @@ class EMCVMAXMasking(object):
                     maskingViewDict['workload'])
 
                 if assocStorageGroupName != defaultSgGroupName:
-                    LOG.warn(_LW(
+                    LOG.warning(_LW(
                         "Volume: %(volumeName)s Does not belong "
                         "to storage storage group %(defaultSgGroupName)s."),
                         {'volumeName': volumeName,
@@ -472,7 +472,7 @@ class EMCVMAXMasking(object):
         if self._is_volume_in_storage_group(
                 conn, storageGroupInstanceName,
                 volumeInstance):
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Volume: %(volumeName)s is already part "
                 "of storage group %(sgGroupName)s."),
                 {'volumeName': volumeName,
@@ -1049,8 +1049,8 @@ class EMCVMAXMasking(object):
                 {'view': maskingViewName,
                  'masking': foundStorageGroupInstanceName})
         else:
-            LOG.warn(_LW("Unable to find Masking view: %(view)s."),
-                     {'view': maskingViewName})
+            LOG.warning(_LW("Unable to find Masking view: %(view)s."),
+                        {'view': maskingViewName})
 
         return foundStorageGroupInstanceName
 
@@ -1212,7 +1212,7 @@ class EMCVMAXMasking(object):
                 # Volume is not associated with any storage group so add
                 # it back to the default.
                 if len(foundStorageGroupInstanceName) == 0:
-                    LOG.warn(_LW(
+                    LOG.warning(_LW(
                         "No storage group found. "
                         "Performing rollback on Volume: %(volumeName)s "
                         "To return it to the default storage group for FAST "
@@ -1257,8 +1257,7 @@ class EMCVMAXMasking(object):
                         rollbackDict['fastPolicyName'],
                         rollbackDict['volumeName'], rollbackDict['extraSpecs'],
                         False)
-        except Exception as e:
-            LOG.error(_LE("Exception: %s."), e)
+        except Exception:
             errorMessage = (_(
                 "Rollback for Volume: %(volumeName)s has failed. "
                 "Please contact your system administrator to manually return "
@@ -1266,7 +1265,7 @@ class EMCVMAXMasking(object):
                 "%(fastPolicyName)s failed.")
                 % {'volumeName': rollbackDict['volumeName'],
                    'fastPolicyName': rollbackDict['fastPolicyName']})
-            LOG.error(errorMessage)
+            LOG.exception(errorMessage)
             raise exception.VolumeBackendAPIException(data=errorMessage)
 
     def _find_new_initiator_group(self, conn, maskingGroupDict):
@@ -1307,8 +1306,8 @@ class EMCVMAXMasking(object):
                 {'view': maskingViewName,
                  'masking': foundInitiatorMaskingGroupInstanceName})
         else:
-            LOG.warn(_LW("Unable to find Masking view: %(view)s."),
-                     {'view': maskingViewName})
+            LOG.warning(_LW("Unable to find Masking view: %(view)s."),
+                        {'view': maskingViewName})
 
         return foundInitiatorMaskingGroupInstanceName
 
@@ -1582,7 +1581,7 @@ class EMCVMAXMasking(object):
                 volumeName, fastPolicyName))
 
         if defaultStorageGroupInstanceName is None:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Volume %(volumeName)s was not first part of the default "
                 "storage group for the FAST Policy."),
                 {'volumeName': volumeName})
@@ -1733,15 +1732,15 @@ class EMCVMAXMasking(object):
 
         if numVolInMaskingView == 1:
             # Last volume in the storage group.
-            LOG.warn(_LW("Only one volume remains in storage group "
-                     "%(sgname)s. Driver will attempt cleanup."),
-                     {'sgname': storageGroupName})
+            LOG.warning(_LW("Only one volume remains in storage group "
+                            "%(sgname)s. Driver will attempt cleanup."),
+                        {'sgname': storageGroupName})
             mvInstanceName = self.get_masking_view_from_storage_group(
                 conn, storageGroupInstanceName)
             if mvInstanceName is None:
-                LOG.warn(_LW("Unable to get masking view %(maskingView)s "
-                         "from storage group."),
-                         {'maskingView': mvInstanceName})
+                LOG.warning(_LW("Unable to get masking view %(maskingView)s "
+                                "from storage group."),
+                            {'maskingView': mvInstanceName})
             else:
                 maskingViewInstance = conn.GetInstance(
                     mvInstanceName, LocalOnly=False)
@@ -2053,10 +2052,10 @@ class EMCVMAXMasking(object):
             ResultClass='Symm_FCSCSIProtocolEndpoint')
         numberOfPorts = len(targetPortInstanceNames)
         if numberOfPorts <= 0:
-            LOG.warn(_LW("No target ports found in "
-                     "masking view %(maskingView)s."),
-                     {'numPorts': len(targetPortInstanceNames),
-                      'maskingView': mvInstanceName})
+            LOG.warning(_LW("No target ports found in "
+                            "masking view %(maskingView)s."),
+                        {'numPorts': len(targetPortInstanceNames),
+                         'maskingView': mvInstanceName})
         for targetPortInstanceName in targetPortInstanceNames:
             targetWwns.append(targetPortInstanceName['Name'])
         return targetWwns
@@ -2107,8 +2106,8 @@ class EMCVMAXMasking(object):
                        'mv': maskingViewInstanceName})
             return portGroupInstanceNames[0]
         else:
-            LOG.warn(_LW("No port group found in masking view %(mv)s."),
-                     {'mv': maskingViewInstanceName})
+            LOG.warning(_LW("No port group found in masking view %(mv)s."),
+                        {'mv': maskingViewInstanceName})
 
     def get_initiator_group_from_masking_view(
             self, conn, maskingViewInstanceName):
@@ -2126,8 +2125,8 @@ class EMCVMAXMasking(object):
                        'mv': maskingViewInstanceName})
             return initiatorGroupInstanceNames[0]
         else:
-            LOG.warn(_LW("No port group found in masking view %(mv)s."),
-                     {'mv': maskingViewInstanceName})
+            LOG.warning(_LW("No port group found in masking view %(mv)s."),
+                        {'mv': maskingViewInstanceName})
 
     def _get_sg_or_mv_associated_with_initiator(
             self, conn, controllerConfigService, volumeInstanceName,

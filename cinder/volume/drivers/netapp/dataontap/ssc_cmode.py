@@ -242,7 +242,7 @@ def create_vol_list(vol_attrs):
             vols.add(vol)
         except KeyError as e:
             LOG.debug('Unexpected error while creating'
-                      ' ssc vol list. Message - %s' % six.text_type(e))
+                      ' ssc vol list. Message - %s', e)
             continue
     return vols
 
@@ -422,8 +422,8 @@ def refresh_cluster_stale_ssc(*args, **kwargs):
         def refresh_stale_ssc():
             stale_vols = backend._update_stale_vols(reset=True)
             LOG.info(_LI('Running stale ssc refresh job for %(server)s'
-                         ' and vserver %(vs)s')
-                     % {'server': na_server, 'vs': vserver})
+                         ' and vserver %(vs)s'),
+                     {'server': na_server, 'vs': vserver})
             # refreshing single volumes can create inconsistency
             # hence doing manipulations on copy
             ssc_vols_copy = copy.deepcopy(backend.ssc_vols)
@@ -456,8 +456,8 @@ def refresh_cluster_stale_ssc(*args, **kwargs):
                     vol_set.discard(vol)
             backend.refresh_ssc_vols(ssc_vols_copy)
             LOG.info(_LI('Successfully completed stale refresh job for'
-                         ' %(server)s and vserver %(vs)s')
-                     % {'server': na_server, 'vs': vserver})
+                         ' %(server)s and vserver %(vs)s'),
+                     {'server': na_server, 'vs': vserver})
 
         refresh_stale_ssc()
     finally:
@@ -483,14 +483,14 @@ def get_cluster_latest_ssc(*args, **kwargs):
         @utils.synchronized(lock_pr)
         def get_latest_ssc():
             LOG.info(_LI('Running cluster latest ssc job for %(server)s'
-                         ' and vserver %(vs)s')
-                     % {'server': na_server, 'vs': vserver})
+                         ' and vserver %(vs)s'),
+                     {'server': na_server, 'vs': vserver})
             ssc_vols = get_cluster_ssc(na_server, vserver)
             backend.refresh_ssc_vols(ssc_vols)
             backend.ssc_run_time = timeutils.utcnow()
             LOG.info(_LI('Successfully completed ssc job for %(server)s'
-                         ' and vserver %(vs)s')
-                     % {'server': na_server, 'vs': vserver})
+                         ' and vserver %(vs)s'),
+                     {'server': na_server, 'vs': vserver})
 
         get_latest_ssc()
     finally:

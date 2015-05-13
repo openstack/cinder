@@ -308,8 +308,8 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         return args
 
     def _connect_to_rados(self, pool=None):
-        LOG.debug("opening connection to ceph cluster (timeout=%s)." %
-                  (self.configuration.rados_connect_timeout))
+        LOG.debug("opening connection to ceph cluster (timeout=%s).",
+                  self.configuration.rados_connect_timeout)
 
         # NOTE (e0ne): rados is binding to C lbirary librados.
         # It blocks eventlet loop so we need to run it in a native
@@ -468,8 +468,8 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
             # infinite is allowed.
             if depth == CONF.rbd_max_clone_depth:
                 LOG.debug("maximum clone depth (%d) has been reached - "
-                          "flattening source volume" %
-                          (CONF.rbd_max_clone_depth))
+                          "flattening source volume",
+                          CONF.rbd_max_clone_depth)
                 flatten_parent = True
 
             src_volume = self.rbd.Image(client.ioctx, src_name)
@@ -479,7 +479,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                     _pool, parent, snap = self._get_clone_info(src_volume,
                                                                src_name)
                     # Flatten source volume
-                    LOG.debug("flattening source volume %s" % (src_name))
+                    LOG.debug("flattening source volume %s", src_name)
                     src_volume.flatten()
                     # Delete parent clone snap
                     parent_volume = self.rbd.Image(client.ioctx, parent)
@@ -491,7 +491,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
 
                 # Create new snapshot of source volume
                 clone_snap = "%s.clone_snap" % dest_name
-                LOG.debug("creating snapshot='%s'" % (clone_snap))
+                LOG.debug("creating snapshot='%s'", clone_snap)
                 src_volume.create_snap(clone_snap)
                 src_volume.protect_snap(clone_snap)
             except Exception as exc:
@@ -502,7 +502,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
             # Now clone source volume snapshot
             try:
                 LOG.debug("cloning '%(src_vol)s@%(src_snap)s' to "
-                          "'%(dest)s'" %
+                          "'%(dest)s'",
                           {'src_vol': src_name, 'src_snap': clone_snap,
                            'dest': dest_name})
                 self.RBDProxy().clone(client.ioctx, src_name, clone_snap,
@@ -517,7 +517,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
 
         if volume['size'] != src_vref['size']:
             LOG.debug("resize volume '%(dst_vol)s' from %(src_size)d to "
-                      "%(dst_size)d" %
+                      "%(dst_size)d",
                       {'dst_vol': volume['name'], 'src_size': src_vref['size'],
                        'dst_size': volume['size']})
             self._resize(volume)
@@ -528,7 +528,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         """Creates a logical volume."""
         size = int(volume['size']) * units.Gi
 
-        LOG.debug("creating volume '%s'" % (volume['name']))
+        LOG.debug("creating volume '%s'", volume['name'])
 
         chunk_size = CONF.rbd_store_chunk_size * units.Mi
         order = int(math.log(chunk_size, 2))
@@ -542,13 +542,13 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                                    features=client.features)
 
     def _flatten(self, pool, volume_name):
-        LOG.debug('flattening %(pool)s/%(img)s' %
+        LOG.debug('flattening %(pool)s/%(img)s',
                   dict(pool=pool, img=volume_name))
         with RBDVolumeProxy(self, volume_name, pool) as vol:
             vol.flatten()
 
     def _clone(self, volume, src_pool, src_image, src_snap):
-        LOG.debug('cloning %(pool)s/%(img)s@%(snap)s to %(dst)s' %
+        LOG.debug('cloning %(pool)s/%(img)s@%(snap)s to %(dst)s',
                   dict(pool=src_pool, img=src_image, snap=src_snap,
                        dst=volume['name']))
         with RADOSClient(self, src_pool) as src_client:
@@ -604,7 +604,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
             if parent_snap == "%s.clone_snap" % volume_name:
                 return pool, parent, parent_snap
         except self.rbd.ImageNotFound:
-            LOG.debug("volume %s is not a clone" % volume_name)
+            LOG.debug("volume %s is not a clone", volume_name)
             volume.set_snap(None)
 
         return (None, None, None)
@@ -622,7 +622,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                                                                   parent_name,
                                                                   parent_snap)
 
-            LOG.debug("deleting parent snapshot %s" % (parent_snap))
+            LOG.debug("deleting parent snapshot %s", parent_snap)
             parent_rbd.unprotect_snap(parent_snap)
             parent_rbd.remove_snap(parent_snap)
 
@@ -633,7 +633,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         # If parent has been deleted in Cinder, delete the silent reference and
         # keep walking up the chain if it is itself a clone.
         if (not parent_has_snaps) and parent_name.endswith('.deleted'):
-            LOG.debug("deleting parent %s" % (parent_name))
+            LOG.debug("deleting parent %s", parent_name)
             self.RBDProxy().remove(client.ioctx, parent_name)
 
             # Now move up to grandparent if there is one
@@ -649,8 +649,8 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
             try:
                 rbd_image = self.rbd.Image(client.ioctx, volume_name)
             except self.rbd.ImageNotFound:
-                LOG.info(_LI("volume %s no longer exists in backend")
-                         % (volume_name))
+                LOG.info(_LI("volume %s no longer exists in backend"),
+                         volume_name)
                 return
 
             clone_snap = None
@@ -681,7 +681,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                 rbd_image.close()
 
             if clone_snap is None:
-                LOG.debug("deleting rbd volume %s" % (volume_name))
+                LOG.debug("deleting rbd volume %s", volume_name)
                 try:
                     self.RBDProxy().remove(client.ioctx, volume_name)
                 except self.rbd.ImageBusy:
@@ -690,14 +690,13 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                              "connection from a client that has crashed and, "
                              "if so, may be resolved by retrying the delete "
                              "after 30 seconds has elapsed."))
-                    LOG.warn(msg)
+                    LOG.warning(msg)
                     # Now raise this so that volume stays available so that we
                     # delete can be retried.
                     raise exception.VolumeIsBusy(msg, volume_name=volume_name)
                 except self.rbd.ImageNotFound:
-                    msg = (_LI("RBD volume %s not found, allowing delete "
-                               "operation to proceed.") % volume_name)
-                    LOG.info(msg)
+                    LOG.info(_LI("RBD volume %s not found, allowing delete "
+                                 "operation to proceed."), volume_name)
                     return
 
                 # If it is a clone, walk back up the parent chain deleting
@@ -815,15 +814,13 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
             return False
 
         if self._get_fsid() != fsid:
-            reason = ('%s is in a different ceph cluster') % image_location
-            LOG.debug(reason)
+            LOG.debug('%s is in a different ceph cluster', image_location)
             return False
 
         if image_meta['disk_format'] != 'raw':
-            reason = ("rbd image clone requires image format to be "
-                      "'raw' but image {0} is '{1}'").format(
-                          image_location, image_meta['disk_format'])
-            LOG.debug(reason)
+            LOG.debug(("rbd image clone requires image format to be "
+                       "'raw' but image {0} is '{1}'").format(
+                image_location, image_meta['disk_format']))
             return False
 
         # check that we can read the image
@@ -834,7 +831,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                                 read_only=True):
                 return True
         except self.rbd.Error as e:
-            LOG.debug('Unable to open image %(loc)s: %(err)s' %
+            LOG.debug('Unable to open image %(loc)s: %(err)s',
                       dict(loc=image_location, err=e))
             return False
 
@@ -855,9 +852,9 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                   CONF.image_conversion_dir or
                   tempfile.gettempdir())
 
-        if (tmpdir == self.configuration.volume_tmp_dir):
-            LOG.warn(_LW('volume_tmp_dir is now deprecated, please use '
-                         'image_conversion_dir'))
+        if tmpdir == self.configuration.volume_tmp_dir:
+            LOG.warning(_LW('volume_tmp_dir is now deprecated, please use '
+                            'image_conversion_dir'))
 
         # ensure temporary directory exists
         if not os.path.exists(tmpdir):

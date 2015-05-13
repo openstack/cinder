@@ -33,8 +33,7 @@ LOG = logging.getLogger(__name__)
 def map_volume_to_single_host(client, volume, eseries_vol, host,
                               vol_map):
     """Maps the e-series volume to host with initiator."""
-    msg = "Attempting to map volume %s to single host."
-    LOG.debug(msg % volume['id'])
+    LOG.debug("Attempting to map volume %s to single host." % volume['id'])
 
     # If volume is not mapped on the backend, map directly to host
     if not vol_map:
@@ -63,10 +62,9 @@ def map_volume_to_single_host(client, volume, eseries_vol, host,
         # If volume is not currently attached according to Cinder, it is
         # safe to delete the mapping
         if not (volume['attach_status'] == 'attached'):
-            msg = (_("Volume %(vol)s is not currently attached, "
-                     "moving existing mapping to host %(host)s.")
-                   % {'vol': volume['id'], 'host': host['label']})
-            LOG.debug(msg)
+            LOG.debug("Volume %(vol)s is not currently attached, moving "
+                      "existing mapping to host %(host)s.",
+                      {'vol': volume['id'], 'host': host['label']})
             mappings = _get_vol_mapping_for_host_frm_array(
                 client, host['hostRef'])
             lun = _get_free_lun(client, host, mappings)
@@ -86,8 +84,7 @@ def map_volume_to_multiple_hosts(client, volume, eseries_vol, target_host,
                                  mapping):
     """Maps the e-series volume to multiattach host group."""
 
-    msg = "Attempting to map volume %s to multiple hosts."
-    LOG.debug(msg % volume['id'])
+    LOG.debug("Attempting to map volume %s to multiple hosts." % volume['id'])
 
     # If volume is already mapped to desired host, return the mapping
     if mapping['mapRef'] == target_host['hostRef']:
@@ -143,8 +140,8 @@ def map_volume_to_multiple_hosts(client, volume, eseries_vol, target_host,
     # Once both existing and target hosts are in the multiattach host group,
     # move the volume mapping to said group.
     if not mapped_host_group:
-        msg = "Moving mapping for volume %s to multiattach host group."
-        LOG.debug(msg % volume['id'])
+        LOG.debug("Moving mapping for volume %s to multiattach host group.",
+                  volume['id'])
         return client.move_volume_mapping_via_symbol(
             mapping.get('lunMappingRef'),
             multiattach_host_group['clusterRef'],
@@ -187,9 +184,9 @@ def _get_vol_mapping_for_host_group_frm_array(client, hg_ref):
 def unmap_volume_from_host(client, volume, host, mapping):
     # Volume is mapped directly to host, so delete the mapping
     if mapping.get('mapRef') == host['hostRef']:
-        msg = ("Volume %(vol)s is mapped directly to host %(host)s; removing "
-               "mapping.")
-        LOG.debug(msg % {'vol': volume['id'], 'host': host['label']})
+        LOG.debug("Volume %(vol)s is mapped directly to host %(host)s; "
+                  "removing mapping.", {'vol': volume['id'],
+                                        'host': host['label']})
         client.delete_volume_mapping(mapping['lunMappingRef'])
         return
 
@@ -212,9 +209,8 @@ def unmap_volume_from_host(client, volume, host, mapping):
     # Remove mapping if volume should no longer be attached after this
     # operation.
     if volume['status'] == 'detaching':
-        msg = ("Volume %s is mapped directly to multiattach host group "
-               "but is not currently attached; removing mapping.")
-        LOG.debug(msg % volume['id'])
+        LOG.debug("Volume %s is mapped directly to multiattach host group but "
+                  "is not currently attached; removing mapping.", volume['id'])
         client.delete_volume_mapping(mapping['lunMappingRef'])
 
 

@@ -201,10 +201,10 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     VERSION = '1.4.0'
 
     def _do_deprecation_warning(self):
-        LOG.warn(_LW('The VMware ESX VMDK driver is now deprecated '
-                     'and will be removed in the Juno release. The VMware '
-                     'vCenter VMDK driver will remain and continue to be '
-                     'supported.'))
+        LOG.warning(_LW('The VMware ESX VMDK driver is now deprecated '
+                        'and will be removed in the Juno release. The VMware '
+                        'vCenter VMDK driver will remain and continue to be '
+                        'supported.'))
 
     def __init__(self, *args, **kwargs):
         super(VMwareEsxVmdkDriver, self).__init__(*args, **kwargs)
@@ -477,9 +477,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 LOG.error(msg, storage_profile)
                 raise exceptions.VimException(msg % storage_profile)
         elif storage_profile:
-            LOG.warn(_LW("Ignoring storage profile %s requirement for this "
-                         "volume since policy based placement is "
-                         "disabled."), storage_profile)
+            LOG.warning(_LW("Ignoring storage profile %s requirement for this "
+                            "volume since policy based placement is "
+                            "disabled."), storage_profile)
 
         size_bytes = volume['size'] * units.Gi
         datastore_summary = self._select_datastore_summary(size_bytes,
@@ -639,8 +639,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             if not backing:
                 # Create a backing in case it does not exist. It is a bad use
                 # case to boot from an empty volume.
-                LOG.warn(_LW("Trying to boot from an empty volume: %s."),
-                         volume['name'])
+                LOG.warning(_LW("Trying to boot from an empty volume: %s."),
+                            volume['name'])
                 # Create backing
                 backing = self._create_backing(volume)
 
@@ -912,10 +912,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             self.volumeops.delete_vmdk_file(
                 descriptor_ds_file_path, dc_ref)
         except exceptions.VimException:
-            LOG.warn(_LW("Error occurred while deleting temporary "
-                         "disk: %s."),
-                     descriptor_ds_file_path,
-                     exc_info=True)
+            LOG.warning(_LW("Error occurred while deleting temporary "
+                            "disk: %s."),
+                        descriptor_ds_file_path, exc_info=True)
 
     def _copy_temp_virtual_disk(self, src_dc_ref, src_path, dest_dc_ref,
                                 dest_path):
@@ -1044,10 +1043,10 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                     self.volumeops.delete_file(
                         path.get_descriptor_ds_file_path(), dc_ref)
                 except exceptions.VimException:
-                    LOG.warn(_LW("Error occurred while deleting "
-                                 "descriptor: %s."),
-                             path.get_descriptor_ds_file_path(),
-                             exc_info=True)
+                    LOG.warning(_LW("Error occurred while deleting "
+                                    "descriptor: %s."),
+                                path.get_descriptor_ds_file_path(),
+                                exc_info=True)
 
         if dest_path != path:
             # Copy temporary disk to given destination.
@@ -1077,9 +1076,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         try:
             self.volumeops.delete_backing(backing)
         except exceptions.VimException:
-            LOG.warn(_LW("Error occurred while deleting backing: %s."),
-                     backing,
-                     exc_info=True)
+            LOG.warning(_LW("Error occurred while deleting backing: %s."),
+                        backing, exc_info=True)
 
     def _create_volume_from_non_stream_optimized_image(
             self, context, volume, image_service, image_id,
@@ -1438,8 +1436,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
         # Can't attempt retype if the volume is in use.
         if self._in_use(volume):
-            LOG.warn(_LW("Volume: %s is in use, can't retype."),
-                     volume['name'])
+            LOG.warning(_LW("Volume: %s is in use, can't retype."),
+                        volume['name'])
             return False
 
         # If the backing doesn't exist, retype is NOP.
@@ -1507,9 +1505,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             best_candidate = self.ds_sel.select_datastore(req)
             if not best_candidate:
                 # No candidate datastores; can't retype.
-                LOG.warn(_LW("There are no datastores matching new "
-                             "requirements; can't retype volume: %s."),
-                         volume['name'])
+                LOG.warning(_LW("There are no datastores matching new "
+                                "requirements; can't retype volume: %s."),
+                            volume['name'])
                 return False
 
             (host, rp, summary) = best_candidate
@@ -1559,12 +1557,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                 self.volumeops.rename_backing(backing,
                                                               volume['name'])
                             except exceptions.VimException:
-                                LOG.warn(_LW("Changing backing: %(backing)s "
-                                             "name from %(new_name)s to "
-                                             "%(old_name)s failed."),
-                                         {'backing': backing,
-                                          'new_name': tmp_name,
-                                          'old_name': volume['name']})
+                                LOG.warning(_LW("Changing backing: "
+                                                "%(backing)s name from "
+                                                "%(new_name)s to %(old_name)s "
+                                                "failed."),
+                                            {'backing': backing,
+                                             'new_name': tmp_name,
+                                             'old_name': volume['name']})
 
         # Update the backing's storage profile if needed.
         if need_profile_change:
@@ -1802,12 +1801,12 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                             self.volumeops.rename_backing(backing,
                                                           volume['name'])
                         except exceptions.VimException:
-                            LOG.warn(_LW("Cannot undo volume rename; old name "
-                                         "was %(old_name)s and new name is "
-                                         "%(new_name)s."),
-                                     {'old_name': volume['name'],
-                                      'new_name': tmp_backing_name},
-                                     exc_info=True)
+                            LOG.warning(_LW("Cannot undo volume rename; old "
+                                            "name was %(old_name)s and new "
+                                            "name is %(new_name)s."),
+                                        {'old_name': volume['name'],
+                                         'new_name': tmp_backing_name},
+                                        exc_info=True)
         finally:
             # Delete the temporary backing.
             self._delete_temp_backing(src)

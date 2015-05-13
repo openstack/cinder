@@ -24,7 +24,6 @@ Volume driver library for NetApp 7-mode block storage systems.
 from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder.i18n import _, _LW
@@ -125,7 +124,7 @@ class NetAppBlockStorage7modeLibrary(block_base.
             if self._get_vol_option(volume_name, 'root') == 'true':
                 return volume_name
         LOG.warning(_LW('Could not determine root volume name '
-                        'on %s.') % self._get_owner())
+                        'on %s.'), self._get_owner())
         return None
 
     def _get_owner(self):
@@ -314,7 +313,7 @@ class NetAppBlockStorage7modeLibrary(block_base.
                 self.vol_refresh_time = timeutils.utcnow()
             except Exception as e:
                 LOG.warning(_LW("Error refreshing volume info. Message: %s"),
-                            six.text_type(e))
+                            e)
             finally:
                 na_utils.set_safe_attr(self, 'vol_refresh_running', False)
 

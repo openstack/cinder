@@ -152,7 +152,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         iscsi_properties = self.smis_get_iscsi_properties(
             volume, connector)
 
-        LOG.info(_LI("Leaving initialize_connection: %s"), (iscsi_properties))
+        LOG.info(_LI("Leaving initialize_connection: %s"), iscsi_properties)
         return {
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties
@@ -202,7 +202,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                                           " for volume %(volumeName)s.")
                                           % {'volumeName': volume['name']})
 
-        LOG.debug("ISCSI Discovery: Found %s", (location))
+        LOG.debug("ISCSI Discovery: Found %s", location)
         properties['target_discovered'] = True
 
         device_info = self.common.find_device_number(volume)
@@ -244,7 +244,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                 properties['auth_username'] = auth_username
                 properties['auth_password'] = auth_secret
 
-                LOG.info(_LI("AUTH properties: %s."), (properties))
+                LOG.info(_LI("AUTH properties: %s."), properties)
 
         return properties
 
