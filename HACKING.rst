@@ -23,6 +23,7 @@ Cinder Specific Commandments
 - [C304] Enforce no use of LOG.audit messages.  LOG.info should be used instead.
 - [C305] Prevent use of deprecated contextlib.nested.
 - [C306] timeutils.strtime() must not be used (deprecated).
+- [C307] LOG.warn is deprecated. Enforce use of LOG.warning.
 
 
 General

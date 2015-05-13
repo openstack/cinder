@@ -36,7 +36,7 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         self.osapi = service.WSGIService("osapi_volume")
         self.osapi.start()
         self.auth_url = 'http://%s:%s/v2' % (self.osapi.host, self.osapi.port)
-        LOG.warn(self.auth_url)
+        LOG.warning(self.auth_url)
 
     def _get_flags(self):
         f = super(VolumesTest, self)._get_flags()
@@ -48,13 +48,13 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         """Simple check that listing volumes works."""
         volumes = self.api.get_volumes(False)
         for volume in volumes:
-            LOG.debug("volume: %s" % volume)
+            LOG.debug("volume: %s", volume)
 
     def test_get_volumes(self):
         """Simple check that listing volumes works."""
         volumes = self.api.get_volumes()
         for volume in volumes:
-            LOG.debug("volume: %s" % volume)
+            LOG.debug("volume: %s", volume)
 
     def _poll_while(self, volume_id, continue_states, max_retries=5):
         """Poll (briefly) while the state is in continue_states."""
@@ -67,7 +67,7 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
                 LOG.debug("Got 404, proceeding")
                 break
 
-            LOG.debug("Found %s" % found_volume)
+            LOG.debug("Found %s", found_volume)
 
             self.assertEqual(volume_id, found_volume['id'])
 
@@ -86,7 +86,7 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
 
         # Create volume
         created_volume = self.api.post_volume({'volume': {'size': 1}})
-        LOG.debug("created_volume: %s" % created_volume)
+        LOG.debug("created_volume: %s", created_volume)
         self.assertTrue(created_volume['id'])
         created_volume_id = created_volume['id']
 
@@ -114,12 +114,12 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         # Should be gone
         self.assertFalse(found_volume)
 
-        LOG.debug("Logs: %s" % fake_driver.LoggingVolumeDriver.all_logs())
+        LOG.debug("Logs: %s", fake_driver.LoggingVolumeDriver.all_logs())
 
         create_actions = fake_driver.LoggingVolumeDriver.logs_like(
             'create_volume',
             id=created_volume_id)
-        LOG.debug("Create_Actions: %s" % create_actions)
+        LOG.debug("Create_Actions: %s", create_actions)
 
         self.assertEqual(1, len(create_actions))
         create_action = create_actions[0]
@@ -151,7 +151,7 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         created_volume = self.api.post_volume(
             {'volume': {'size': 1,
                         'metadata': metadata}})
-        LOG.debug("created_volume: %s" % created_volume)
+        LOG.debug("created_volume: %s", created_volume)
         self.assertTrue(created_volume['id'])
         created_volume_id = created_volume['id']
 
@@ -168,7 +168,7 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         created_volume = self.api.post_volume(
             {'volume': {'size': 1,
                         'availability_zone': availability_zone}})
-        LOG.debug("created_volume: %s" % created_volume)
+        LOG.debug("created_volume: %s", created_volume)
         self.assertTrue(created_volume['id'])
         created_volume_id = created_volume['id']
 

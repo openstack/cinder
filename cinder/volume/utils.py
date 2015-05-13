@@ -27,7 +27,7 @@ from oslo_utils import units
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _LI, _LW
 from cinder import rpc
 from cinder import utils
 from cinder.volume import throttling
@@ -252,11 +252,10 @@ def _calculate_count(size_in_m, blocksize):
             raise ValueError
         bs = strutils.string_to_bytes('%sB' % blocksize)
     except ValueError:
-        msg = (_("Incorrect value error: %(blocksize)s, "
-                 "it may indicate that \'volume_dd_blocksize\' "
-                 "was configured incorrectly. Fall back to default.")
-               % {'blocksize': blocksize})
-        LOG.warn(msg)
+        LOG.warning(_LW("Incorrect value error: %(blocksize)s, "
+                        "it may indicate that \'volume_dd_blocksize\' "
+                        "was configured incorrectly. Fall back to default."),
+                    {'blocksize': blocksize})
         # Fall back to default blocksize
         CONF.clear_override('volume_dd_blocksize')
         blocksize = CONF.volume_dd_blocksize
@@ -315,14 +314,14 @@ def _copy_volume(prefix, srcstr, deststr, size_in_m, blocksize, sync=False,
     if duration < 1:
         duration = 1
     mbps = (size_in_m / duration)
-    mesg = ("Volume copy details: src %(src)s, dest %(dest)s, "
-            "size %(sz).2f MB, duration %(duration).2f sec")
-    LOG.debug(mesg % {"src": srcstr,
-                      "dest": deststr,
-                      "sz": size_in_m,
-                      "duration": duration})
-    mesg = _("Volume copy %(size_in_m).2f MB at %(mbps).2f MB/s")
-    LOG.info(mesg % {'size_in_m': size_in_m, 'mbps': mbps})
+    LOG.debug("Volume copy details: src %(src)s, dest %(dest)s, "
+              "size %(sz).2f MB, duration %(duration).2f sec",
+              {"src": srcstr,
+               "dest": deststr,
+               "sz": size_in_m,
+               "duration": duration})
+    LOG.info(_LI("Volume copy %(size_in_m).2f MB at %(mbps).2f MB/s"),
+             {'size_in_m': size_in_m, 'mbps': mbps})
 
 
 def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
@@ -351,7 +350,7 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
     if volume_clear_ionice is None:
         volume_clear_ionice = CONF.volume_clear_ionice
 
-    LOG.info(_LI("Performing secure delete on volume: %s") % volume_path)
+    LOG.info(_LI("Performing secure delete on volume: %s"), volume_path)
 
     if volume_clear == 'zero':
         return copy_volume('/dev/zero', volume_path, volume_clear_size,
@@ -377,7 +376,7 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
     # some incredible event this is 0 (cirros image?) don't barf
     if duration < 1:
         duration = 1
-    LOG.info(_LI('Elapsed time for clear volume: %.2f sec') % duration)
+    LOG.info(_LI('Elapsed time for clear volume: %.2f sec'), duration)
 
 
 def supports_thin_provisioning():

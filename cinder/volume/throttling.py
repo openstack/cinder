@@ -83,8 +83,8 @@ class BlkioCgroup(Throttle):
             utils.execute('cgset', '-r', 'blkio.throttle.%s_bps_device=%s %d'
                           % (rw, dev, bps), self.cgroup, run_as_root=True)
         except processutils.ProcessExecutionError:
-            LOG.warn(_LW('Failed to setup blkio cgroup to throttle the '
-                         'device \'%(device)s\'.'), {'device': dev})
+            LOG.warning(_LW('Failed to setup blkio cgroup to throttle the '
+                            'device \'%(device)s\'.'), {'device': dev})
 
     def _set_limits(self, rw, devs):
         total = sum(devs.itervalues())

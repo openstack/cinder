@@ -77,12 +77,12 @@ def create(context, name, specs=None):
 
     values = dict(name=name, qos_specs=specs)
 
-    LOG.debug("Dict for qos_specs: %s" % values)
+    LOG.debug("Dict for qos_specs: %s", values)
 
     try:
         qos_specs_ref = db.qos_specs_create(context, values)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
         raise exception.QoSSpecsCreateFailed(name=name,
                                              qos_specs=specs)
     return qos_specs_ref
@@ -102,8 +102,8 @@ def update(context, qos_specs_id, specs):
     LOG.debug('qos_specs.update(): specs %s' % specs)
     try:
         res = db.qos_specs_update(context, qos_specs_id, specs)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
         raise exception.QoSSpecsUpdateFailed(specs_id=qos_specs_id,
                                              qos_specs=specs)
 
@@ -152,11 +152,11 @@ def get_associations(context, specs_id):
     try:
         # query returns a list of volume types associated with qos specs
         associates = db.qos_specs_associations_get(context, specs_id)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
         msg = _('Failed to get all associations of '
                 'qos specs %s') % specs_id
-        LOG.warn(msg)
+        LOG.warning(msg)
         raise exception.CinderException(message=msg)
 
     result = []
@@ -194,11 +194,11 @@ def associate_qos_with_type(context, specs_id, type_id):
                 raise exception.InvalidVolumeType(reason=msg)
         else:
             db.qos_specs_associate(context, specs_id, type_id)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
-        LOG.warn(_LW('Failed to associate qos specs '
-                     '%(id)s with type: %(vol_type_id)s') %
-                 dict(id=specs_id, vol_type_id=type_id))
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
+        LOG.warning(_LW('Failed to associate qos specs '
+                        '%(id)s with type: %(vol_type_id)s'),
+                    dict(id=specs_id, vol_type_id=type_id))
         raise exception.QoSSpecsAssociateFailed(specs_id=specs_id,
                                                 type_id=type_id)
 
@@ -208,11 +208,11 @@ def disassociate_qos_specs(context, specs_id, type_id):
     try:
         get_qos_specs(context, specs_id)
         db.qos_specs_disassociate(context, specs_id, type_id)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
-        LOG.warn(_LW('Failed to disassociate qos specs '
-                     '%(id)s with type: %(vol_type_id)s') %
-                 dict(id=specs_id, vol_type_id=type_id))
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
+        LOG.warning(_LW('Failed to disassociate qos specs '
+                        '%(id)s with type: %(vol_type_id)s'),
+                    dict(id=specs_id, vol_type_id=type_id))
         raise exception.QoSSpecsDisassociateFailed(specs_id=specs_id,
                                                    type_id=type_id)
 
@@ -222,9 +222,9 @@ def disassociate_all(context, specs_id):
     try:
         get_qos_specs(context, specs_id)
         db.qos_specs_disassociate_all(context, specs_id)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
-        LOG.warn(_LW('Failed to disassociate qos specs %s.') % specs_id)
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
+        LOG.warning(_LW('Failed to disassociate qos specs %s.'), specs_id)
         raise exception.QoSSpecsDisassociateFailed(specs_id=specs_id,
                                                    type_id=None)
 
@@ -239,7 +239,7 @@ def get_all_specs(context, inactive=False, search_opts=None):
     qos_specs = db.qos_specs_get_all(context, inactive)
 
     if search_opts:
-        LOG.debug("Searching by: %s" % search_opts)
+        LOG.debug("Searching by: %s", search_opts)
 
         def _check_specs_match(qos_specs, searchdict):
             for k, v in searchdict.iteritems():

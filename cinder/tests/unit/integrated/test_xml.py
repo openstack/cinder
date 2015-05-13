@@ -44,6 +44,6 @@ class XmlTests(integrated_helpers._IntegratedTestBase):
         response = self.api.api_request('/volumes', headers=headers,
                                         stream=True)
         data = response.raw
-        LOG.warn("data: %s" % data)
+        LOG.warning("data: %s", data)
         root = etree.parse(data).getroot()
         self.assertEqual(root.nsmap.get(None), common.XML_NS_V2)
