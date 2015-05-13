@@ -143,6 +143,12 @@ volume_opts = [
                     'perform write-back(on) or write-through(off). '
                     'This parameter is valid if iscsi_helper is set '
                     'to tgtadm or iseradm.'),
+    cfg.StrOpt('iscsi_target_flags',
+               default='',
+               help='Sets the target-specific flags for the iSCSI target. '
+                    'Only used for tgtadm to specify backing device flags '
+                    'using bsoflags option. The specified string is passed '
+                    'as is to the underlying tool.'),
     cfg.StrOpt('iscsi_protocol',
                default='iscsi',
                choices=['iscsi', 'iser'],
