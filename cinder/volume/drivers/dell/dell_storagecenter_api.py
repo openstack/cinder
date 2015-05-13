@@ -912,14 +912,18 @@ class StorageCenterApi(object):
                         ipaddress = d.get('targetIpv4Address',
                                           d.get('wellKnownIpAddress'))
                         portnumber = d.get('portNumber')
-                        # We've all the information.  Do we want to return
-                        # it?
+                        # We save our portal.
+                        portals.append(ipaddress + ':' +
+                                       six.text_type(portnumber))
+                        iqns.append(iqn)
+                        luns.append(lun)
+
+                        # We've all the information.  We need to find
+                        # the best single portal to return.  So check
+                        # this one if it is on the right IP, port and
+                        # if the access and status are correct.
                         if ((ip is None or ip == ipaddress) and
                                 (port is None or port == portnumber)):
-                            portals.append(ipaddress + ':' +
-                                           six.text_type(portnumber))
-                            iqns.append(iqn)
-                            luns.append(lun)
 
                             # We need to point to the best link.
                             # So state active and status up is preferred
@@ -931,6 +935,12 @@ class StorageCenterApi(object):
                                     active = len(iqns) - 1
                                     if status == 'Up':
                                         up = active
+        # Make sure we found something to return.
+        if len(luns) == 0:
+            # Since we just mapped this and can't find that mapping the world
+            # is wrong so we raise exception.
+            raise exception.VolumeBackendAPIException(
+                _('Unable to find iSCSI mappings.'))
 
         # Make sure we point to the best portal we can.  This means it is
         # on the active controller and, preferably, up.  If it isn't return
@@ -946,17 +956,19 @@ class StorageCenterApi(object):
             active = 0
 
         data = {'target_discovered': False,
+                'target_iqn': iqns[active],
                 'target_iqns': iqns,
+                'target_portal': portals[active],
                 'target_portals': portals,
+                'target_lun': luns[active],
                 'target_luns': luns,
                 'access_mode': access_mode
                 }
 
-        LOG.debug('find_iscsi_properties return: %(a)d %(d)s',
-                  {'a': active,
-                   'd': data})
+        LOG.debug('find_iscsi_properties return: %s',
+                  data)
 
-        return active, data
+        return data
 
     def map_volume(self, scvolume, scserver):
         '''map_volume

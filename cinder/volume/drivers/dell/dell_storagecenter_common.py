@@ -111,7 +111,7 @@ class DellCommonDriver(san.SanDriver):
 
     def delete_volume(self, volume):
         deleted = False
-        # we use id as our name as it s unique
+        # We use id as our name as it is unique.
         volume_name = volume.get('id')
         LOG.debug('Deleting volume %s', volume_name)
         with self._client.open_connection() as api:

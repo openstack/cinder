@@ -2949,13 +2949,16 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = (0,
-                    {'access_mode': 'rw',
-                     'target_discovered': False,
-                     'target_iqns':
+        expected = {'access_mode': 'rw',
+                    'target_discovered': False,
+                    'target_iqn':
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                    'target_iqns':
                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
-                     'target_luns': [1],
-                     'target_portals': [u'192.168.0.21:3260']})
+                    'target_lun': 1,
+                    'target_luns': [1],
+                    'target_portal': u'192.168.0.21:3260',
+                    'target_portals': [u'192.168.0.21:3260']}
         self.assertEqual(expected, res, 'Wrong Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2985,13 +2988,16 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = (0,
-                    {'access_mode': 'rw',
-                     'target_discovered': False,
-                     'target_iqns':
+        expected = {'access_mode': 'rw',
+                    'target_discovered': False,
+                    'target_iqn':
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                    'target_iqns':
                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
-                     'target_luns': [1],
-                     'target_portals': [u'192.168.0.21:3260']})
+                    'target_lun': 1,
+                    'target_luns': [1],
+                    'target_portal': u'192.168.0.21:3260',
+                    'target_portals': [u'192.168.0.21:3260']}
         self.assertEqual(expected, res, 'Wrong Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -3021,12 +3027,16 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_ctrl.called)
-        expected = (0,
-                    {'access_mode': 'rw',
-                     'target_discovered': False,
-                     'target_iqns': [],
-                     'target_luns': [],
-                     'target_portals': []})
+        expected = {'access_mode': 'rw',
+                    'target_discovered': False,
+                    'target_iqn':
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                    'target_iqns':
+                        [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                    'target_lun': 1,
+                    'target_luns': [1],
+                    'target_portal': u'192.168.0.21:3260',
+                    'target_portals': [u'192.168.0.21:3260']}
         self.assertEqual(expected, res, 'Wrong Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -3038,15 +3048,10 @@ class DellSCSanAPITestCase(test.TestCase):
                                               mock_open_connection,
                                               mock_init):
         # Test case where there are no ScMapping(s)
-        res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.find_iscsi_properties,
+                          self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
-        expected = (0,
-                    {'access_mode': 'rw',
-                     'target_discovered': False,
-                     'target_iqns': [],
-                     'target_luns': [],
-                     'target_portals': []})
-        self.assertEqual(expected, res, 'Expected empty Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
@@ -3069,18 +3074,13 @@ class DellSCSanAPITestCase(test.TestCase):
                                              mock_open_connection,
                                              mock_init):
         # Test case where there are no ScFaultDomain(s)
-        res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.find_iscsi_properties,
+                          self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = (0,
-                    {'access_mode': 'rw',
-                     'target_discovered': False,
-                     'target_iqns': [],
-                     'target_luns': [],
-                     'target_portals': []})
-        self.assertEqual(expected, res, 'Expected empty Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
@@ -3103,18 +3103,13 @@ class DellSCSanAPITestCase(test.TestCase):
                                                 mock_open_connection,
                                                 mock_init):
         # Test case where there are no ScFaultDomain(s)
-        res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.find_iscsi_properties,
+                          self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = (0,
-                    {'access_mode': 'rw',
-                     'target_discovered': False,
-                     'target_iqns': [],
-                     'target_luns': [],
-                     'target_portals': []})
-        self.assertEqual(expected, res, 'Expected empty Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
@@ -3142,13 +3137,16 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = (0,
-                    {'access_mode': 'ro',
-                     'target_discovered': False,
-                     'target_iqns':
+        expected = {'access_mode': 'ro',
+                    'target_discovered': False,
+                    'target_iqn':
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                    'target_iqns':
                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
-                     'target_luns': [1],
-                     'target_portals': [u'192.168.0.21:3260']})
+                    'target_lun': 1,
+                    'target_luns': [1],
+                    'target_portal': u'192.168.0.21:3260',
+                    'target_portals': [u'192.168.0.21:3260']}
         self.assertEqual(expected, res, 'Wrong Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -3177,20 +3175,22 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = (3,
-                    {'access_mode': 'rw',
-                     'target_discovered': False,
-                     'target_iqns':
+        expected = {'access_mode': 'rw',
+                    'target_discovered': False,
+                    'target_iqn':
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                    'target_iqns':
                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                          u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                          u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                          u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
-                     'target_luns': [1, 1, 1, 1],
-                     'target_portals':
-                        [u'192.168.0.21:3260',
-                         u'192.168.0.25:3260',
-                         u'192.168.0.21:3260',
-                         u'192.168.0.25:3260']})
+                    'target_lun': 1,
+                    'target_luns': [1, 1, 1, 1],
+                    'target_portal': u'192.168.0.25:3260',
+                    'target_portals': [u'192.168.0.21:3260',
+                                       u'192.168.0.25:3260',
+                                       u'192.168.0.21:3260',
+                                       u'192.168.0.25:3260']}
         self.assertEqual(expected, res, 'Wrong Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
