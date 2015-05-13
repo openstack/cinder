@@ -27,6 +27,7 @@ import re
 
 from oslo_utils import units
 
+from eventlet import greenthread
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -94,10 +95,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         return backend_name
 
     def do_setup(self, context):
+        shares_config = getattr(self.configuration, self.driver_prefix +
+                                '_shares_config')
+        if shares_config:
+            self.configuration.nfs_shares_config = shares_config
         super(NexentaNfsDriver, self).do_setup(context)
-        self._load_shares_config(getattr(self.configuration,
-                                         self.driver_prefix +
-                                         '_shares_config'))
+        self._load_shares_config(shares_config)
+        self._mount_subfolders()
 
     def check_for_setup_error(self):
         """Verify that the volume for our folder exists.
@@ -336,6 +340,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                         nms.folder.set('compression', compression)
 
             self._set_rw_permissions_for_all(nms, volume_path)
+
+            if self._get_nfs_server_version(nfs_share) < 4:
+                sub_share, mnt_path = self._get_subshare_mount_point(nfs_share,
+                                                                     volume)
+                self._ensure_share_mounted(sub_share, mnt_path)
         except nexenta.NexentaException as exc:
             try:
                 nms.folder.destroy('%s/%s' % (vol, folder))
@@ -374,6 +383,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                 "%(vol)s/%(folder)s"),
                             {'vol': vol, 'folder': folder})
             raise
+
+        if self._get_nfs_server_version(nfs_share) < 4:
+            sub_share, mnt_path = self._get_subshare_mount_point(nfs_share,
+                                                                 volume)
+            self._ensure_share_mounted(sub_share, mnt_path)
 
         return {'provider_location': volume['provider_location']}
 
@@ -592,6 +606,71 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         LOG.debug('Shares loaded: %s' % self.shares)
 
+    def _get_subshare_mount_point(self, nfs_share, volume):
+        mnt_path = '%s/%s' % (
+            self._get_mount_point_for_share(nfs_share), volume['name'])
+        sub_share = '%s/%s' % (nfs_share, volume['name'])
+        return sub_share, mnt_path
+
+    def _ensure_share_mounted(self, nfs_share, mount_path=None):
+        """Ensure that NFS share is mounted on the host.
+
+        Unlike the parent method this one accepts mount_path as an optional
+        parameter and uses it as a mount point if provided.
+
+        :param nfs_share: NFS share name
+        :param mount_path: mount path on the host
+        """
+        mnt_flags = []
+        if self.shares.get(nfs_share) is not None:
+            mnt_flags = self.shares[nfs_share].split()
+        num_attempts = max(1, self.configuration.nfs_mount_attempts)
+        for attempt in range(num_attempts):
+            try:
+                if mount_path is None:
+                    self._remotefsclient.mount(nfs_share, mnt_flags)
+                else:
+                    if mount_path in self._remotefsclient._read_mounts():
+                        LOG.info(_LI('Already mounted: %s'), mount_path)
+                        return
+
+                    self._execute('mkdir', '-p', mount_path,
+                                  check_exit_code=False)
+                    self._remotefsclient._mount_nfs(nfs_share, mount_path,
+                                                    mnt_flags)
+                return
+            except Exception as e:
+                if attempt == (num_attempts - 1):
+                    LOG.error(_LE('Mount failure for %(share)s after '
+                                  '%(count)d attempts.'), {
+                              'share': nfs_share,
+                              'count': num_attempts})
+                    raise exception.NfsException(e)
+                LOG.warning(
+                    _LW('Mount attempt %(attempt)d failed: %(error)s.'
+                        'Retrying mount ...'), {
+                        'attempt': attempt,
+                        'error': e})
+                greenthread.sleep(1)
+
+    def _mount_subfolders(self):
+        ctxt = context.get_admin_context()
+        vol_entries = self.db.volume_get_all_by_host(ctxt, self.host)
+        for vol in vol_entries:
+            nfs_share = vol['provider_location']
+            if (nfs_share in self.shares) and \
+               (self._get_nfs_server_version(nfs_share) < 4):
+                    sub_share, mnt_path = self._get_subshare_mount_point(
+                        nfs_share, vol)
+                    self._ensure_share_mounted(sub_share, mnt_path)
+
+    def _get_nfs_server_version(self, share):
+        nms = self.share2nms[share]
+        nfs_opts = nms.netsvc.get_confopts(
+            'svc:/network/nfs/server:default', 'configure')
+        version = nfs_opts['nfs_server_versmax']['current']
+        return int(version)
+
     def _get_capacity_info(self, nfs_share):
         """Calculate available space on the NFS share.
 
@@ -603,7 +682,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                                              ns_folder), '')
         free = utils.str2size(folder_props['available'])
         allocated = utils.str2size(folder_props['used'])
-        return free + allocated, allocated
+        return free + allocated, free, allocated
 
     def _get_nms_for_url(self, url):
         """Returns initialized nms object for url."""
