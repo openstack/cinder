@@ -841,14 +841,27 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
     def clone_image(self, context, volume,
                     image_location, image_meta,
                     image_service):
-        image_location = image_location[0] if image_location else None
-        if image_location is None or not self._is_cloneable(
-                image_location, image_meta):
-            return ({}, False)
-        _prefix, pool, image, snapshot = self._parse_location(image_location)
-        self._clone(volume, pool, image, snapshot)
-        self._resize(volume)
-        return {'provider_location': None}, True
+        if image_location:
+            # Note: image_location[0] is glance image direct_url.
+            # image_location[1] contains the list of all locations (including
+            # direct_url) or None if show_multiple_locations is False in
+            # glance configuration.
+            if image_location[1]:
+                url_locations = [location['url'] for
+                                 location in image_location[1]]
+            else:
+                url_locations = [image_location[0]]
+
+            # iterate all locations to look for a cloneable one.
+            for url_location in url_locations:
+                if url_location and self._is_cloneable(
+                        url_location, image_meta):
+                    _prefix, pool, image, snapshot = \
+                        self._parse_location(url_location)
+                    self._clone(volume, pool, image, snapshot)
+                    self._resize(volume)
+                    return {'provider_location': None}, True
+        return ({}, False)
 
     def _image_conversion_dir(self):
         tmpdir = (self.configuration.volume_tmp_dir or
