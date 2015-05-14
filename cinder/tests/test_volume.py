@@ -3985,7 +3985,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         capabilities = {'location_info': 'LVMVolumeDriver:%s:'
                         'cinder-volumes-2:default:0' % hostname}
         host = {'capabilities': capabilities}
-        vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
+        vol = {'name': 'testvol', 'id': 1, 'size': 2, 'status': 'available'}
 
         def fake_execute(*args, **kwargs):
             pass
@@ -3998,33 +3998,33 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         def _fake_get_all_physical_volumes(obj, root_helper, vg_name):
             return [{}]
 
-        self.stubs.Set(brick_lvm.LVM,
-                       'get_all_physical_volumes',
-                       _fake_get_all_physical_volumes)
+        with contextlib.nested(
+            mock.patch.object(brick_lvm.LVM, 'get_all_physical_volumes',
+                              return_value = [{}]),
+            mock.patch.object(self.volume.driver, '_execute'),
+            mock.patch.object(volutils, 'copy_volume'),
+            mock.patch.object(volutils, 'get_all_volume_groups',
+                              side_effect = get_all_volume_groups),
+            mock.patch.object(self.volume.driver, '_delete_volume'),
+            mock.patch.object(self.volume.driver, '_create_export',
+                              return_value = None)
+        ) as (mock_get_all_pv, mock_execute, mock_copy, mock_get_all_vg,
+              mock_delete, mock_create):
 
-        self.stubs.Set(self.volume.driver, '_execute', fake_execute)
-
-        self.stubs.Set(volutils, 'copy_volume',
-                       lambda x, y, z, sync=False, execute='foo',
-                       blocksize=mox.IgnoreArg(): None)
-
-        self.stubs.Set(volutils, 'get_all_volume_groups',
-                       get_all_volume_groups)
-
-        self.stubs.Set(self.volume.driver, '_delete_volume',
-                       lambda x: None)
-
-        self.stubs.Set(self.volume.driver, '_create_export',
-                       lambda x, y, vg='vg': None)
-
-        self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
-                                             False,
-                                             None,
-                                             'default')
-        moved, model_update = self.volume.driver.migrate_volume(self.context,
-                                                                vol, host)
-        self.assertEqual(moved, True)
-        self.assertIsNone(model_update)
+            self.volume.driver.vg = FakeBrickLVM('cinder-volumes',
+                                                 False,
+                                                 None,
+                                                 'default')
+            moved, model_update = \
+                self.volume.driver.migrate_volume(self.context, vol, host)
+            self.assertTrue(moved)
+            self.assertIsNone(model_update)
+            mock_copy.assert_called_once_with(
+                '/dev/mapper/cinder--volumes-testvol',
+                '/dev/mapper/cinder--volumes--2-testvol',
+                2048,
+                '1M',
+                execute=mock_execute)
 
     @staticmethod
     def _get_manage_existing_lvs(name):
