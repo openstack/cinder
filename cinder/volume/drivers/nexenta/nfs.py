@@ -740,6 +740,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'share': share
         }
         nms_url = self.share2nms[share].url
+        reserve = 100 - self.configuration.nexenta_capacitycheck
         self._stats = {
             'vendor_name': 'Nexenta',
             'dedup': self.volume_deduplication,
@@ -751,7 +752,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'storage_protocol': 'NFS',
             'total_capacity_gb': total_space,
             'free_capacity_gb': free_space,
-            'reserved_percentage': self.configuration.nexenta_capacitycheck,
+            'reserved_percentage': reserve,
             'QoS_support': False,
             'location_info': location_info,
             'volume_backend_name': self.backend_name,
