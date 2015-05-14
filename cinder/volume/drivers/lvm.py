@@ -413,12 +413,14 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                 mirror_count)
 
             self.vg.activate_lv(temp_snapshot['name'], is_snapshot=True)
+            sparse = True if self.configuration.lvm_type == 'thin' else False
             volutils.copy_volume(
                 self.local_path(temp_snapshot),
                 self.local_path(volume),
                 src_vref['size'] * units.Ki,
                 self.configuration.volume_dd_blocksize,
-                execute=self._execute)
+                execute=self._execute,
+                sparse=sparse)
         finally:
             self.delete_snapshot(temp_snapshot)
 

@@ -382,7 +382,7 @@ class ClearVolumeTestCase(test.TestCase):
         mock_copy.assert_called_once_with('/dev/zero', 'volume_path', 1024,
                                           '1M', sync=True,
                                           execute=utils.execute, ionice='-c3',
-                                          throttle=None)
+                                          throttle=None, sparse=False)
 
     @mock.patch('cinder.volume.utils.copy_volume', return_value=None)
     @mock.patch('cinder.volume.utils.CONF')
@@ -397,7 +397,7 @@ class ClearVolumeTestCase(test.TestCase):
         mock_copy.assert_called_once_with('/dev/zero', 'volume_path', 1,
                                           '1M', sync=True,
                                           execute=utils.execute, ionice='-c0',
-                                          throttle=None)
+                                          throttle=None, sparse=False)
 
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.utils.CONF')
@@ -522,6 +522,39 @@ class CopyVolumeTestCase(test.TestCase):
                                           'if=/dev/zero', 'of=/dev/null',
                                           'count=5678', 'bs=1234',
                                           'conv=fdatasync', run_as_root=True)
+
+    @mock.patch('cinder.volume.utils._calculate_count',
+                return_value=(1234, 5678))
+    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+                return_value=False)
+    @mock.patch('cinder.utils.execute')
+    def test_copy_volume_dd_with_sparse(self, mock_exec,
+                                        mock_support, mock_count):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+                                          sync=True, execute=utils.execute,
+                                          sparse=True)
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('dd', 'if=/dev/zero', 'of=/dev/null',
+                                          'count=5678', 'bs=1234',
+                                          'conv=fdatasync,sparse',
+                                          run_as_root=True)
+
+    @mock.patch('cinder.volume.utils._calculate_count',
+                return_value=(1234, 5678))
+    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+                return_value=True)
+    @mock.patch('cinder.utils.execute')
+    def test_copy_volume_dd_with_sparse_iflag_and_oflag(self, mock_exec,
+                                                        mock_support,
+                                                        mock_count):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+                                          sync=True, execute=utils.execute,
+                                          sparse=True)
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('dd', 'if=/dev/zero', 'of=/dev/null',
+                                          'count=5678', 'bs=1234',
+                                          'iflag=direct', 'oflag=direct',
+                                          'conv=sparse', run_as_root=True)
 
 
 class VolumeUtilsTestCase(test.TestCase):
