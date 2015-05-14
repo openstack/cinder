@@ -42,8 +42,7 @@ class NotifyUsageTestCase(test.TestCase):
                                                         mock.sentinel.volume,
                                                         'test_suffix')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.volume)
+        mock_usage.assert_called_once_with(mock.sentinel.volume)
         mock_rpc.get_notifier.assert_called_once_with('volume', 'host1')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
             mock.sentinel.context,
@@ -63,8 +62,7 @@ class NotifyUsageTestCase(test.TestCase):
             extra_usage_info={'a': 'b', 'c': 'd'},
             host='host2')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.volume, a='b', c='d')
+        mock_usage.assert_called_once_with(mock.sentinel.volume, a='b', c='d')
         mock_rpc.get_notifier.assert_called_once_with('volume', 'host2')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
             mock.sentinel.context,
@@ -82,8 +80,7 @@ class NotifyUsageTestCase(test.TestCase):
             mock.sentinel.volume,
             'test_suffix')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.volume)
+        mock_usage.assert_called_once_with(mock.sentinel.volume)
         mock_rpc.get_notifier.assert_called_once_with('replication', 'host1')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
             mock.sentinel.context,
@@ -103,8 +100,7 @@ class NotifyUsageTestCase(test.TestCase):
             extra_usage_info={'a': 'b', 'c': 'd'},
             host='host2')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.volume,
+        mock_usage.assert_called_once_with(mock.sentinel.volume,
                                            a='b', c='d')
         mock_rpc.get_notifier.assert_called_once_with('replication', 'host2')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
@@ -123,8 +119,7 @@ class NotifyUsageTestCase(test.TestCase):
             mock.sentinel.volume,
             'test_suffix')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.volume)
+        mock_usage.assert_called_once_with(mock.sentinel.volume)
         mock_rpc.get_notifier.assert_called_once_with('replication', 'host1')
         mock_rpc.get_notifier.return_value.error.assert_called_once_with(
             mock.sentinel.context,
@@ -144,8 +139,7 @@ class NotifyUsageTestCase(test.TestCase):
             extra_error_info={'a': 'b', 'c': 'd'},
             host='host2')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.volume,
+        mock_usage.assert_called_once_with(mock.sentinel.volume,
                                            a='b', c='d')
         mock_rpc.get_notifier.assert_called_once_with('replication', 'host2')
         mock_rpc.get_notifier.return_value.error.assert_called_once_with(
@@ -164,8 +158,7 @@ class NotifyUsageTestCase(test.TestCase):
             mock.sentinel.snapshot,
             'test_suffix')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.snapshot)
+        mock_usage.assert_called_once_with(mock.sentinel.snapshot)
         mock_rpc.get_notifier.assert_called_once_with('snapshot', 'host1')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
             mock.sentinel.context,
@@ -185,8 +178,7 @@ class NotifyUsageTestCase(test.TestCase):
             extra_usage_info={'a': 'b', 'c': 'd'},
             host='host2')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.snapshot,
+        mock_usage.assert_called_once_with(mock.sentinel.snapshot,
                                            a='b', c='d')
         mock_rpc.get_notifier.assert_called_once_with('snapshot', 'host2')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
@@ -207,9 +199,7 @@ class NotifyUsageTestCase(test.TestCase):
             'status': 'pause',
             'deleted': '',
         }
-        usage_info = volume_utils._usage_from_snapshot(
-            mock.sentinel.context,
-            raw_snapshot)
+        usage_info = volume_utils._usage_from_snapshot(raw_snapshot)
         expected_snapshot = {
             'tenant_id': '12b0330ec2584a',
             'user_id': '158cba1b8c2bb6008e',
@@ -235,8 +225,7 @@ class NotifyUsageTestCase(test.TestCase):
             mock.sentinel.consistencygroup,
             'test_suffix')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.consistencygroup)
+        mock_usage.assert_called_once_with(mock.sentinel.consistencygroup)
         mock_rpc.get_notifier.assert_called_once_with('consistencygroup',
                                                       'host1')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
@@ -258,8 +247,7 @@ class NotifyUsageTestCase(test.TestCase):
             extra_usage_info={'a': 'b', 'c': 'd'},
             host='host2')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.consistencygroup,
+        mock_usage.assert_called_once_with(mock.sentinel.consistencygroup,
                                            a='b', c='d')
         mock_rpc.get_notifier.assert_called_once_with('consistencygroup',
                                                       'host2')
@@ -279,8 +267,7 @@ class NotifyUsageTestCase(test.TestCase):
             mock.sentinel.cgsnapshot,
             'test_suffix')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.cgsnapshot)
+        mock_usage.assert_called_once_with(mock.sentinel.cgsnapshot)
         mock_rpc.get_notifier.assert_called_once_with('cgsnapshot', 'host1')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
             mock.sentinel.context,
@@ -300,8 +287,7 @@ class NotifyUsageTestCase(test.TestCase):
             extra_usage_info={'a': 'b', 'c': 'd'},
             host='host2')
         self.assertIsNone(output)
-        mock_usage.assert_called_once_with(mock.sentinel.context,
-                                           mock.sentinel.cgsnapshot,
+        mock_usage.assert_called_once_with(mock.sentinel.cgsnapshot,
                                            a='b', c='d')
         mock_rpc.get_notifier.assert_called_once_with('cgsnapshot', 'host2')
         mock_rpc.get_notifier.return_value.info.assert_called_once_with(
