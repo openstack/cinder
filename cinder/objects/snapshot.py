@@ -14,13 +14,13 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_versionedobjects import fields
 
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
-from cinder.objects import fields
 from cinder import utils
 
 CONF = cfg.CONF
@@ -30,6 +30,7 @@ OPTIONAL_FIELDS = ['volume', 'metadata']
 LOG = logging.getLogger(__name__)
 
 
+@base.CinderObjectRegistry.register
 class Snapshot(base.CinderPersistentObject, base.CinderObject,
                base.CinderObjectDictCompat):
     # Version 1.0: Initial version
@@ -129,7 +130,7 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
                                    expected_attrs=['metadata'])
 
     @base.remotable
-    def create(self, context):
+    def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
                                               reason=_('already created'))
@@ -139,11 +140,11 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
             raise exception.ObjectActionError(action='create',
                                               reason=_('volume assigned'))
 
-        db_snapshot = db.snapshot_create(context, updates)
-        self._from_db_object(context, self, db_snapshot)
+        db_snapshot = db.snapshot_create(self._context, updates)
+        self._from_db_object(self._context, self, db_snapshot)
 
     @base.remotable
-    def save(self, context):
+    def save(self):
         updates = self.obj_get_changes()
         if updates:
             if 'volume' in updates:
@@ -154,16 +155,17 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
                 # Metadata items that are not specified in the
                 # self.metadata will be deleted
                 metadata = updates.pop('metadata', None)
-                self.metadata = db.snapshot_metadata_update(context, self.id,
-                                                            metadata, True)
+                self.metadata = db.snapshot_metadata_update(self._context,
+                                                            self.id, metadata,
+                                                            True)
 
-            db.snapshot_update(context, self.id, updates)
+            db.snapshot_update(self._context, self.id, updates)
 
         self.obj_reset_changes()
 
     @base.remotable
-    def destroy(self, context):
-        db.snapshot_destroy(context, self.id)
+    def destroy(self):
+        db.snapshot_destroy(self._context, self.id)
 
     def obj_load_attr(self, attrname):
         if attrname not in OPTIONAL_FIELDS:
@@ -191,6 +193,7 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
             self.obj_reset_changes(['metadata'])
 
 
+@base.CinderObjectRegistry.register
 class SnapshotList(base.ObjectListBase, base.CinderObject):
     VERSION = '1.0'
 

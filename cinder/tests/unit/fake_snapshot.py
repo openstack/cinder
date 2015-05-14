@@ -12,8 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_versionedobjects import fields
+
 from cinder import objects
-from cinder.objects import fields
 
 
 def fake_db_volume(**updates):
