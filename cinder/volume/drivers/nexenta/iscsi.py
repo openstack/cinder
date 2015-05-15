@@ -165,8 +165,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: volume reference
         """
         volume_name = self._get_zvol_name(volume['name'])
-        props = self.nms.zvol.get_child_props(volume_name, 'origin') or {}
         try:
+            props = self.nms.zvol.get_child_props(volume_name, 'origin') or {}
             self.nms.zvol.destroy(volume_name, '')
         except nexenta.NexentaException as exc:
             if 'does not exist' in exc.args[0]:
