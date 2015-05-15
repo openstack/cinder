@@ -299,6 +299,10 @@ class BaseVD(object):
         # set True by manager after successful check_for_setup
         self._initialized = False
 
+        # Copy volume data in a sparse fashion.
+        #  (overload in drivers where this is desired)
+        self._sparse_copy_volume_data = False
+
     def _is_non_recoverable(self, err, non_recoverable_list):
         for item in non_recoverable_list:
             if item in err:
@@ -528,7 +532,8 @@ class BaseVD(object):
                 dest_attach_info['device']['path'],
                 size_in_mb,
                 self.configuration.volume_dd_blocksize,
-                throttle=self._throttle)
+                throttle=self._throttle,
+                sparse=self._sparse_copy_volume_data)
             copy_error = False
         except Exception:
             with excutils.save_and_reraise_exception():

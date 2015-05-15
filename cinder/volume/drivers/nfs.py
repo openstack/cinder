@@ -108,6 +108,8 @@ class NfsDriver(remotefs.RemoteFSDriver):
             nfs_mount_point_base=self.base,
             nfs_mount_options=opts)
 
+        self._sparse_copy_volume_data = True
+
     def set_execute(self, execute):
         super(NfsDriver, self).set_execute(execute)
         if self._remotefsclient:
