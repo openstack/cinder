@@ -514,6 +514,25 @@ class VMwareVolumeOps(object):
                                         self._session.vim, datacenter,
                                         'vmFolder')
 
+    def _get_child_folder(self, parent_folder, child_folder_name):
+        # Get list of child entities for the parent folder
+        prop_val = self._session.invoke_api(vim_util, 'get_object_property',
+                                            self._session.vim, parent_folder,
+                                            'childEntity')
+
+        if prop_val and hasattr(prop_val, 'ManagedObjectReference'):
+            child_entities = prop_val.ManagedObjectReference
+
+            # Return if the child folder with input name is already present
+            for child_entity in child_entities:
+                if child_entity._type != 'Folder':
+                    continue
+                child_entity_name = self.get_entity_name(child_entity)
+                if child_entity_name and (urllib.unquote(child_entity_name) ==
+                                          child_folder_name):
+                    LOG.debug("Child folder: %s exists.", child_folder_name)
+                    return child_entity
+
     def create_folder(self, parent_folder, child_folder_name):
         """Creates child folder with given name under the given parent folder.
 
@@ -531,30 +550,20 @@ class VMwareVolumeOps(object):
                   {'child_folder_name': child_folder_name,
                    'parent_folder': parent_folder})
 
-        # Get list of child entities for the parent folder
-        prop_val = self._session.invoke_api(vim_util, 'get_object_property',
-                                            self._session.vim, parent_folder,
-                                            'childEntity')
-
-        if prop_val and hasattr(prop_val, 'ManagedObjectReference'):
-            child_entities = prop_val.ManagedObjectReference
-
-            # Return if the child folder with input name is already present
-            for child_entity in child_entities:
-                if child_entity._type != 'Folder':
-                    continue
-                child_entity_name = self.get_entity_name(child_entity)
-                if child_entity_name and (urllib.unquote(child_entity_name) ==
-                                          child_folder_name):
-                    LOG.debug("Child folder: %s already present.",
-                              child_folder_name)
-                    return child_entity
-
-        # Need to create the child folder
-        child_folder = self._session.invoke_api(self._session.vim,
-                                                'CreateFolder', parent_folder,
-                                                name=child_folder_name)
-        LOG.debug("Created child folder: %s.", child_folder)
+        child_folder = self._get_child_folder(parent_folder, child_folder_name)
+        if not child_folder:
+            # Need to create the child folder.
+            try:
+                child_folder = self._session.invoke_api(self._session.vim,
+                                                        'CreateFolder',
+                                                        parent_folder,
+                                                        name=child_folder_name)
+                LOG.debug("Created child folder: %s.", child_folder)
+            except exceptions.DuplicateName:
+                # Another thread is trying to create the same folder, ignore
+                # the exception.
+                child_folder = self._get_child_folder(parent_folder,
+                                                      child_folder_name)
         return child_folder
 
     def extend_virtual_disk(self, requested_size_in_gb, name, dc_ref,

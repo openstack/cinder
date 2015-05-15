@@ -403,6 +403,37 @@ class VolumeOpsTestCase(test.TestCase):
                                                         mock.sentinel.dc,
                                                         'vmFolder')
 
+    def test_create_folder_with_concurrent_create(self):
+        parent_folder = mock.sentinel.parent_folder
+        child_name = 'child_folder'
+
+        prop_val_1 = mock.Mock(ManagedObjectReference=[])
+
+        child_folder = mock.Mock(_type='Folder')
+        prop_val_2 = mock.Mock(ManagedObjectReference=[child_folder])
+
+        self.session.invoke_api.side_effect = [prop_val_1,
+                                               exceptions.DuplicateName,
+                                               prop_val_2,
+                                               child_name]
+
+        ret = self.vops.create_folder(parent_folder, child_name)
+
+        self.assertEqual(child_folder, ret)
+        expected_invoke_api = [mock.call(vim_util, 'get_object_property',
+                                         self.session.vim, parent_folder,
+                                         'childEntity'),
+                               mock.call(self.session.vim, 'CreateFolder',
+                                         parent_folder, name=child_name),
+                               mock.call(vim_util, 'get_object_property',
+                                         self.session.vim, parent_folder,
+                                         'childEntity'),
+                               mock.call(vim_util, 'get_object_property',
+                                         self.session.vim, child_folder,
+                                         'name')]
+        self.assertEqual(expected_invoke_api,
+                         self.session.invoke_api.mock_calls)
+
     def test_create_folder_with_empty_vmfolder(self):
         """Test create_folder when the datacenter vmFolder is empty"""
         child_folder = mock.sentinel.child_folder
