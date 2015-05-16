@@ -20,7 +20,6 @@ import functools
 import traceback
 
 from oslo_log import log as logging
-from oslo_utils import timeutils
 from oslo_versionedobjects import base
 from oslo_versionedobjects import fields
 import six
@@ -136,7 +135,7 @@ def serialize_args(fn):
                     not isinstance(value_arg, six.string_types) and value_arg):
                 kwargs[kw] = ''.join(traceback.format_tb(value_arg))
             elif isinstance(value_arg, datetime.datetime):
-                kwargs[kw] = timeutils.isotime(value_arg)
+                kwargs[kw] = value_arg.isoformat()
         if hasattr(fn, '__call__'):
             return fn(obj, *args, **kwargs)
         # NOTE(danms): We wrap a descriptor, so use that protocol

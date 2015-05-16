@@ -127,14 +127,14 @@ class LimitsControllerTest(BaseLimitTestSuite):
                         "limit": [
                             {
                                 "verb": "GET",
-                                "next-available": "1970-01-01T00:00:00Z",
+                                "next-available": "1970-01-01T00:00:00",
                                 "unit": "MINUTE",
                                 "value": 10,
                                 "remaining": 10,
                             },
                             {
                                 "verb": "POST",
-                                "next-available": "1970-01-01T00:00:00Z",
+                                "next-available": "1970-01-01T00:00:00",
                                 "unit": "HOUR",
                                 "value": 5,
                                 "remaining": 5,
@@ -147,7 +147,7 @@ class LimitsControllerTest(BaseLimitTestSuite):
                         "limit": [
                             {
                                 "verb": "GET",
-                                "next-available": "1970-01-01T00:00:00Z",
+                                "next-available": "1970-01-01T00:00:00",
                                 "unit": "MINUTE",
                                 "value": 5,
                                 "remaining": 5,
@@ -186,7 +186,7 @@ class LimitsControllerTest(BaseLimitTestSuite):
                         "limit": [
                             {
                                 "verb": "GET",
-                                "next-available": "1970-01-01T00:00:00Z",
+                                "next-available": "1970-01-01T00:00:00",
                                 "unit": "MINUTE",
                                 "value": 10,
                                 "remaining": 10,
@@ -199,7 +199,7 @@ class LimitsControllerTest(BaseLimitTestSuite):
                         "limit": [
                             {
                                 "verb": "GET",
-                                "next-available": "1970-01-01T00:00:00Z",
+                                "next-available": "1970-01-01T00:00:00",
                                 "unit": "MINUTE",
                                 "value": 10,
                                 "remaining": 10,
@@ -777,7 +777,7 @@ class LimitsViewBuilderTest(test.TestCase):
                                 "injected_file_content_bytes": 5}
 
     def test_build_limits(self):
-        tdate = "2011-07-21T18:17:06Z"
+        tdate = "2011-07-21T18:17:06"
         expected_limits = \
             {"limits": {"rate": [{"uri": "*",
                                   "regex": ".*",

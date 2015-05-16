@@ -115,7 +115,7 @@ class RequestContext(context.RequestContext):
                  'read_deleted': self.read_deleted,
                  'roles': self.roles,
                  'remote_address': self.remote_address,
-                 'timestamp': timeutils.isotime(self.timestamp, True),
+                 'timestamp': self.timestamp.isoformat(),
                  'quota_class': self.quota_class,
                  'service_catalog': self.service_catalog,
                  'request_id': self.request_id}

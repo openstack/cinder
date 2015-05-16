@@ -396,7 +396,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         # to set any that were provided
         params = {'volumeID': sf_volume_id}
 
-        create_time = timeutils.isotime(v_ref['created_at'], True)
+        create_time = v_ref['created_at'].isoformat()
         attributes = {'uuid': v_ref['id'],
                       'is_clone': 'True',
                       'src_uuid': src_uuid,
@@ -700,7 +700,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if type_id is not None:
             qos = self._set_qos_by_volume_type(ctxt, type_id)
 
-        create_time = timeutils.isotime(volume['created_at'], True)
+        create_time = volume['created_at'].isoformat()
         attributes = {'uuid': volume['id'],
                       'is_clone': 'False',
                       'created_at': create_time}
@@ -1008,7 +1008,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         attributes = sf_vol['attributes']
-        attributes['retyped_at'] = timeutils.isotime(subsecond=True)
+        attributes['retyped_at'] = timeutils.utcnow().isoformat()
         params = {'volumeID': sf_vol['volumeID']}
         qos = self._set_qos_by_volume_type(ctxt, new_type['id'])
 
@@ -1055,7 +1055,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if type_id is not None:
             qos = self._set_qos_by_volume_type(ctxt, type_id)
 
-        import_time = timeutils.isotime(volume['created_at'], True)
+        import_time = volume['created_at'].isoformat()
         attributes = {'uuid': volume['id'],
                       'is_clone': 'False',
                       'os_imported_at': import_time,
@@ -1115,7 +1115,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if sf_vol is None:
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
-        export_time = timeutils.isotime(subsecond=True)
+        export_time = timeutils.utcnow().isoformat()
         attributes = sf_vol['attributes']
         attributes['os_exported_at'] = export_time
         params = {'volumeID': int(sf_vol['volumeID']),
