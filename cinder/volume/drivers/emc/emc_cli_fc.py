@@ -56,6 +56,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         5.3.0 - Consistency group modification support
         6.0.0 - Over subscription support
                 Create consistency group from cgsnapshot support
+                Multiple pools support enhancement
     """
 
     def __init__(self, *args, **kwargs):

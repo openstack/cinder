@@ -390,7 +390,7 @@ class EMCVNXCLIDriverTestData(object):
 
     def POOL_GET_ALL_RESULT(self, withfastcache=False):
         if withfastcache:
-            return ("Pool Name:  unit_test_pool1\n"
+            return ("Pool Name:  unit_test_pool\n"
                     "Pool ID:  0\n"
                     "User Capacity (Blocks):  6881061888\n"
                     "User Capacity (GBs):  3281.146\n"
@@ -400,7 +400,7 @@ class EMCVNXCLIDriverTestData(object):
                     "FAST Cache:  Enabled\n"
                     "State: Ready\n"
                     "\n"
-                    "Pool Name:  unit test pool 2\n"
+                    "Pool Name:  unit_test_pool2\n"
                     "Pool ID:  1\n"
                     "User Capacity (Blocks):  8598306816\n"
                     "User Capacity (GBs):  4099.992\n"
@@ -410,7 +410,7 @@ class EMCVNXCLIDriverTestData(object):
                     "FAST Cache:  Disabled\n"
                     "State: Ready\n", 0)
         else:
-            return ("Pool Name:  unit_test_pool1\n"
+            return ("Pool Name:  unit_test_pool\n"
                     "Pool ID:  0\n"
                     "User Capacity (Blocks):  6881061888\n"
                     "User Capacity (GBs):  3281.146\n"
@@ -419,7 +419,7 @@ class EMCVNXCLIDriverTestData(object):
                     "Total Subscribed Capacity (GBs):  536.140\n"
                     "State: Ready\n"
                     "\n"
-                    "Pool Name:  unit test pool 2\n"
+                    "Pool Name:  unit_test_pool2\n"
                     "Pool ID:  1\n"
                     "User Capacity (Blocks):  8598306816\n"
                     "User Capacity (GBs):  4099.992\n"
@@ -427,6 +427,16 @@ class EMCVNXCLIDriverTestData(object):
                     "Available Capacity (GBs):  3984.768\n"
                     "Total Subscribed Capacity (GBs):  636.240\n"
                     "State: Ready\n", 0)
+
+    def POOL_GET_STATE_RESULT(self, pools):
+        output = []
+        for i, po in enumerate(pools):
+            if i != 0:
+                output.append("\n")
+            output.append("Pool Name:  %s" % po['pool_name'])
+            output.append("Pool ID: %s" % i)
+            output.append("State: %s" % po['state'])
+        return ("\n".join(output), 0)
 
     def POOL_GET_ALL_STATES_TEST(self, states=['Ready']):
         output = ""
@@ -828,7 +838,7 @@ State: Ready
 
     def LUN_PROPERTY(self, name, is_thin=False, has_snap=False, size=1,
                      state='Ready', faulted='false', operation='None',
-                     lunid=1):
+                     lunid=1, pool_name='unit_test_pool'):
         return ("""
                LOGICAL UNIT NUMBER %(lunid)s
                Name:  %(name)s
@@ -841,7 +851,7 @@ State: Ready
                User Capacity (GBs):  %(size)d
                Consumed Capacity (Blocks):  2149576704
                Consumed Capacity (GBs):  1024.998
-               Pool Name:  unit_test_pool
+               Pool Name:  %(pool_name)s
                Current State:  %(state)s
                Status:  OK(0x0)
                Is Faulted:  %(faulted)s
@@ -855,6 +865,7 @@ State: Ready
             'name': name,
             'has_snap': 'FakeSnap' if has_snap else 'N/A',
             'size': size,
+            'pool_name': pool_name,
             'state': state,
             'faulted': faulted,
             'operation': operation,
@@ -1014,7 +1025,7 @@ class DriverTestCaseBase(test.TestCase):
         self.configuration.initiator_auto_registration = True
         self.configuration.check_max_pool_luns_threshold = False
         self.stubs.Set(self.configuration, 'safe_get',
-                       self.fake_safe_get({'storage_vnx_pool_name':
+                       self.fake_safe_get({'storage_vnx_pool_names':
                                            'unit_test_pool',
                                            'volume_backend_name':
                                            'namedbackend'}))
@@ -1024,14 +1035,14 @@ class DriverTestCaseBase(test.TestCase):
         self.configuration.iscsi_initiators = '{"fakehost": ["10.0.0.2"]}'
 
     def driverSetup(self, commands=tuple(), results=tuple()):
-        self.driver = self.generateDriver(self.configuration)
+        self.driver = self.generate_driver(self.configuration)
         fake_command_execute = self.get_command_execute_simulator(
             commands, results)
         fake_cli = mock.Mock(side_effect=fake_command_execute)
         self.driver.cli._client.command_execute = fake_cli
         return fake_cli
 
-    def generateDriver(self, conf):
+    def generate_driver(self, conf):
         raise NotImplementedError
 
     def get_command_execute_simulator(self, commands=tuple(),
@@ -1078,6 +1089,10 @@ class DriverTestCaseBase(test.TestCase):
     def fake_command_execute_for_driver_setup(self, *command, **kwargv):
         if command == ('connection', '-getport', '-address', '-vlanid'):
             return self.testData.ALL_PORTS
+        elif command == ('storagepool', '-list', '-state'):
+            return self.testData.POOL_GET_STATE_RESULT([
+                {'pool_name': self.testData.test_pool_name, 'state': "Ready"},
+                {'pool_name': "unit_test_pool2", 'state': "Ready"}])
         else:
             return SUCCEED
 
@@ -1088,7 +1103,7 @@ class DriverTestCaseBase(test.TestCase):
 
 
 class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
-    def generateDriver(self, conf):
+    def generate_driver(self, conf):
         return emc_cli_iscsi.EMCCLIISCSIDriver(configuration=conf)
 
     @mock.patch(
@@ -1339,9 +1354,9 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
 
     def test_get_volume_stats(self):
         commands = [self.testData.NDU_LIST_CMD,
-                    self.testData.POOL_PROPERTY_W_FASTCACHE_CMD]
+                    self.testData.POOL_GET_ALL_CMD(True)]
         results = [self.testData.NDU_LIST_RESULT,
-                   self.testData.POOL_PROPERTY_W_FASTCACHE]
+                   self.testData.POOL_GET_ALL_RESULT(True)]
         self.driverSetup(commands, results)
         stats = self.driver.get_volume_stats(True)
 
@@ -1360,11 +1375,11 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         pool_stats = stats['pools'][0]
 
         expected_pool_stats = {
-            'free_capacity_gb': 3257.851,
-            'reserved_percentage': 3,
+            'free_capacity_gb': 3105.303,
+            'reserved_percentage': 2,
             'location_info': 'unit_test_pool|fakeSerial',
             'total_capacity_gb': 3281.146,
-            'provisioned_capacity_gb': 636.240,
+            'provisioned_capacity_gb': 536.14,
             'compression_support': 'True',
             'deduplication_support': 'True',
             'thin_provisioning_support': True,
@@ -1379,10 +1394,10 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
 
     def test_get_volume_stats_too_many_luns(self):
         commands = [self.testData.NDU_LIST_CMD,
-                    self.testData.POOL_PROPERTY_W_FASTCACHE_CMD,
+                    self.testData.POOL_GET_ALL_CMD(True),
                     self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD()]
         results = [self.testData.NDU_LIST_RESULT,
-                   self.testData.POOL_PROPERTY_W_FASTCACHE,
+                   self.testData.POOL_GET_ALL_RESULT(True),
                    self.testData.POOL_FEATURE_INFO_POOL_LUNS(1000, 1000)]
         fake_cli = self.driverSetup(commands, results)
 
@@ -1403,7 +1418,7 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         self.assertTrue(stats['driver_version'] is not None,
                         "driver_version is not returned")
         self.assertTrue(
-            pool_stats['free_capacity_gb'] == 3257.851,
+            pool_stats['free_capacity_gb'] == 3105.303,
             "free_capacity_gb is incorrect")
 
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
@@ -2374,15 +2389,7 @@ Time Remaining:  0 second(s)
         commands = [lun_rename_cmd]
 
         results = [SUCCEED]
-        self.configuration.storage_vnx_pool_name = \
-            self.testData.test_pool_name
-        self.driver = emc_cli_iscsi.EMCCLIISCSIDriver(
-            configuration=self.configuration)
-        assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
-        # mock the command executor
-        fake_command_execute = self.get_command_execute_simulator(
-            commands, results)
-        fake_cli = mock.MagicMock(side_effect=fake_command_execute)
+        fake_cli = self.driverSetup(commands, results)
         self.driver.cli._client.command_execute = fake_cli
         self.driver.manage_existing(
             self.testData.test_volume_with_type,
@@ -2395,18 +2402,10 @@ Time Remaining:  0 second(s)
                        '-state', '-userCap', '-owner',
                        '-attachedSnapshot', '-poolName')
         commands = [get_lun_cmd]
-
-        results = [self.testData.LUN_PROPERTY('lun_name')]
         invalid_pool_name = "fake_pool"
-        self.configuration.storage_vnx_pool_name = invalid_pool_name
-        self.driver = emc_cli_iscsi.EMCCLIISCSIDriver(
-            configuration=self.configuration)
-        assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
-        # mock the command executor
-        fake_command_execute = self.get_command_execute_simulator(
-            commands, results)
-        fake_cli = mock.MagicMock(side_effect=fake_command_execute)
-        self.driver.cli._client.command_execute = fake_cli
+        results = [self.testData.LUN_PROPERTY('lun_name',
+                                              pool_name=invalid_pool_name)]
+        fake_cli = self.driverSetup(commands, results)
         ex = self.assertRaises(
             exception.ManageExistingInvalidReference,
             self.driver.manage_existing_get_size,
@@ -2425,19 +2424,7 @@ Time Remaining:  0 second(s)
         test_size = 2
         commands = [get_lun_cmd]
         results = [self.testData.LUN_PROPERTY('lun_name', size=test_size)]
-
-        self.configuration.storage_vnx_pool_name = \
-            self.testData.test_pool_name
-        self.driver = emc_cli_iscsi.EMCCLIISCSIDriver(
-            configuration=self.configuration)
-        assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
-
-        # mock the command executor
-        fake_command_execute = self.get_command_execute_simulator(
-            commands, results)
-        fake_cli = mock.MagicMock(side_effect=fake_command_execute)
-        self.driver.cli._client.command_execute = fake_cli
-
+        fake_cli = self.driverSetup(commands, results)
         get_size = self.driver.manage_existing_get_size(
             self.testData.test_volume_with_type,
             self.testData.test_existing_ref)
@@ -2966,24 +2953,18 @@ Time Remaining:  0 second(s)
                     'operation': 'None'
                     }
 
-        self.configuration.storage_vnx_pool_name = \
-            self.testData.test_pool_name
-        self.driver = emc_cli_iscsi.EMCCLIISCSIDriver(
-            configuration=self.configuration)
-        assert isinstance(self.driver.cli, emc_vnx_cli.EMCVnxCliPool)
-
         cli_helper = self.driver.cli._client
         cli_helper.command_execute = fake_cli
         cli_helper.get_lun_by_name = mock.Mock(return_value=lun_info)
         cli_helper.get_enablers_on_array = mock.Mock(return_value="-FASTCache")
-        cli_helper.get_pool = mock.Mock(return_value={
+        cli_helper.get_pool_list = mock.Mock(return_value=[{
             'lun_nums': 1000,
             'total_capacity_gb': 10,
             'free_capacity_gb': 5,
             'provisioned_capacity_gb': 8,
             'pool_name': "unit_test_pool",
             'fast_cache_enabled': 'True',
-            'state': 'Ready'})
+            'state': 'Ready'}])
 
         self.driver.update_volume_stats()
         self.driver.create_volume(self.testData.test_volume_with_type)
@@ -3545,13 +3526,11 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
     def setUp(self):
         super(EMCVNXCLIDArrayBasedDriverTestCase, self).setUp()
         self.configuration.safe_get = self.fake_safe_get(
-            {'storage_vnx_pool_name': None,
+            {'storage_vnx_pool_names': None,
              'volume_backend_name': 'namedbackend'})
 
-    def generateDriver(self, conf):
+    def generate_driver(self, conf):
         driver = emc_cli_iscsi.EMCCLIISCSIDriver(configuration=conf)
-        self.assertTrue(isinstance(driver.cli,
-                                   emc_vnx_cli.EMCVnxCliArray))
         return driver
 
     def test_get_volume_stats(self):
@@ -3579,7 +3558,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         expected_pool_stats1 = {
             'free_capacity_gb': 3105.303,
             'reserved_percentage': 2,
-            'location_info': 'unit_test_pool1|fakeSerial',
+            'location_info': 'unit_test_pool|fakeSerial',
             'total_capacity_gb': 3281.146,
             'provisioned_capacity_gb': 536.140,
             'compression_support': 'True',
@@ -3587,7 +3566,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'thin_provisioning_support': True,
             'thick_provisioning_support': True,
             'consistencygroup_support': 'True',
-            'pool_name': 'unit_test_pool1',
+            'pool_name': 'unit_test_pool',
             'max_over_subscription_ratio': 20.0,
             'fast_cache_enabled': 'True',
             'fast_support': 'True'}
@@ -3597,7 +3576,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         expected_pool_stats2 = {
             'free_capacity_gb': 3984.768,
             'reserved_percentage': 2,
-            'location_info': 'unit test pool 2|fakeSerial',
+            'location_info': 'unit_test_pool2|fakeSerial',
             'total_capacity_gb': 4099.992,
             'provisioned_capacity_gb': 636.240,
             'compression_support': 'True',
@@ -3605,7 +3584,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'thin_provisioning_support': True,
             'thick_provisioning_support': True,
             'consistencygroup_support': 'True',
-            'pool_name': 'unit test pool 2',
+            'pool_name': 'unit_test_pool2',
             'max_over_subscription_ratio': 20.0,
             'fast_cache_enabled': 'False',
             'fast_support': 'True'}
@@ -3625,7 +3604,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         expected_pool_stats1 = {
             'free_capacity_gb': 3105.303,
             'reserved_percentage': 2,
-            'location_info': 'unit_test_pool1|fakeSerial',
+            'location_info': 'unit_test_pool|fakeSerial',
             'total_capacity_gb': 3281.146,
             'provisioned_capacity_gb': 536.140,
             'compression_support': 'False',
@@ -3633,7 +3612,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'thin_provisioning_support': False,
             'thick_provisioning_support': True,
             'consistencygroup_support': 'False',
-            'pool_name': 'unit_test_pool1',
+            'pool_name': 'unit_test_pool',
             'max_over_subscription_ratio': 20.0,
             'fast_cache_enabled': 'False',
             'fast_support': 'False'}
@@ -3643,7 +3622,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         expected_pool_stats2 = {
             'free_capacity_gb': 3984.768,
             'reserved_percentage': 2,
-            'location_info': 'unit test pool 2|fakeSerial',
+            'location_info': 'unit_test_pool2|fakeSerial',
             'total_capacity_gb': 4099.992,
             'provisioned_capacity_gb': 636.240,
             'compression_support': 'False',
@@ -3651,7 +3630,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'thin_provisioning_support': False,
             'thick_provisioning_support': True,
             'consistencygroup_support': 'False',
-            'pool_name': 'unit test pool 2',
+            'pool_name': 'unit_test_pool2',
             'max_over_subscription_ratio': 20.0,
             'fast_cache_enabled': 'False',
             'fast_support': 'False'}
@@ -3663,6 +3642,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
                    (['Initializing', 'Ready', 'Faulted',
                      'Offline', 'Deleting'])]
         self.driverSetup(commands, results)
+
         stats = self.driver.get_volume_stats(True)
         self.assertTrue(
             stats['pools'][0]['free_capacity_gb'] == 0,
@@ -3834,7 +3814,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
 
 
 class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
-    def generateDriver(self, conf):
+    def generate_driver(self, conf):
         return emc_cli_fc.EMCCLIFCDriver(configuration=conf)
 
     @mock.patch(
@@ -4015,9 +3995,9 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
 
     def test_get_volume_stats(self):
         commands = [self.testData.NDU_LIST_CMD,
-                    self.testData.POOL_PROPERTY_W_FASTCACHE_CMD]
+                    self.testData.POOL_GET_ALL_CMD(True)]
         results = [self.testData.NDU_LIST_RESULT,
-                   self.testData.POOL_PROPERTY_W_FASTCACHE]
+                   self.testData.POOL_GET_ALL_RESULT(True)]
         self.driverSetup(commands, results)
         stats = self.driver.get_volume_stats(True)
 
@@ -4036,11 +4016,11 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         pool_stats = stats['pools'][0]
 
         expected_pool_stats = {
-            'free_capacity_gb': 3257.851,
-            'reserved_percentage': 3,
+            'free_capacity_gb': 3105.303,
+            'reserved_percentage': 2,
             'location_info': 'unit_test_pool|fakeSerial',
             'total_capacity_gb': 3281.146,
-            'provisioned_capacity_gb': 636.24,
+            'provisioned_capacity_gb': 536.14,
             'compression_support': 'True',
             'deduplication_support': 'True',
             'thin_provisioning_support': True,
@@ -4055,13 +4035,12 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
 
     def test_get_volume_stats_too_many_luns(self):
         commands = [self.testData.NDU_LIST_CMD,
-                    self.testData.POOL_PROPERTY_W_FASTCACHE_CMD,
+                    self.testData.POOL_GET_ALL_CMD(True),
                     self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD()]
         results = [self.testData.NDU_LIST_RESULT,
-                   self.testData.POOL_PROPERTY_W_FASTCACHE,
+                   self.testData.POOL_GET_ALL_RESULT(True),
                    self.testData.POOL_FEATURE_INFO_POOL_LUNS(1000, 1000)]
         fake_cli = self.driverSetup(commands, results)
-
         self.driver.cli.check_max_pool_luns_threshold = True
         stats = self.driver.get_volume_stats(True)
         pool_stats = stats['pools'][0]
@@ -4079,7 +4058,7 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         self.assertTrue(stats['driver_version'] is not None,
                         "driver_version is incorrect")
         self.assertTrue(
-            pool_stats['free_capacity_gb'] == 3257.851,
+            pool_stats['free_capacity_gb'] == 3105.303,
             "free_capacity_gb is incorrect")
 
     def test_deregister_initiator(self):
@@ -4263,3 +4242,69 @@ Message : Error occurred because of time out"""
                         + FAKE_COMMAND),
                     check_exit_code=True)]
             mock_utils.assert_has_calls(expected)
+
+
+class EMCVNXCLIDMultiPoolsTestCase(DriverTestCaseBase):
+
+    def generate_driver(self, conf):
+        driver = emc_cli_iscsi.EMCCLIISCSIDriver(configuration=conf)
+        return driver
+
+    def fake_command_execute_for_driver_setup(self, *command, **kwargv):
+        if command == ('connection', '-getport', '-address', '-vlanid'):
+            return self.testData.ALL_PORTS
+        elif command == ('storagepool', '-list', '-state'):
+            return self.testData.POOL_GET_STATE_RESULT([
+                {'pool_name': self.testData.test_pool_name, 'state': "Ready"},
+                {'pool_name': "unit_test_pool2", 'state': "Ready"},
+                {'pool_name': "unit_test_pool3", 'state': "Ready"},
+                {'pool_name': "unit_text_pool4", 'state': "Ready"}])
+        else:
+            return SUCCEED
+
+    def test_storage_pool_names_option(self):
+        self.configuration.safe_get = self.fake_safe_get(
+            {'storage_vnx_pool_names': "unit_test_pool, unit_test_pool3",
+             'volume_backend_name': 'namedbackend'})
+
+        driver = self.generate_driver(self.configuration)
+        self.assertEqual(set(["unit_test_pool", "unit_test_pool3"]),
+                         driver.cli.storage_pools)
+
+        self.configuration.safe_get = self.fake_safe_get(
+            {'storage_vnx_pool_names': "unit_test_pool2,",
+             'volume_backend_name': 'namedbackend'})
+        driver = self.generate_driver(self.configuration)
+        self.assertEqual(set(["unit_test_pool2"]),
+                         driver.cli.storage_pools)
+
+        self.configuration.safe_get = self.fake_safe_get(
+            {'storage_vnx_pool_names': "unit_test_pool3",
+             'volume_backend_name': 'namedbackend'})
+        driver = self.generate_driver(self.configuration)
+        self.assertEqual(set(["unit_test_pool3"]),
+                         driver.cli.storage_pools)
+
+    def test_configured_pool_does_not_exist(self):
+        self.configuration.safe_get = self.fake_safe_get(
+            {'storage_vnx_pool_names': "unit_test_pool2, unit_test_pool_none2",
+             'volume_backend_name': 'namedbackend'})
+        driver = self.generate_driver(self.configuration)
+        self.assertEqual(set(["unit_test_pool2"]),
+                         driver.cli.storage_pools)
+
+        self.configuration.safe_get = self.fake_safe_get(
+            {'storage_vnx_pool_names': "unit_test_pool_none1",
+             "unit_test_pool_none2"
+             'volume_backend_name': 'namedbackend'})
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.generate_driver,
+                          self.configuration)
+
+    def test_no_storage_pool_is_configured(self):
+        self.configuration.safe_get = self.fake_safe_get(
+            {'storage_vnx_pool_names': None,
+             'volume_backend_name': 'namedbackend'})
+        driver = self.generate_driver(self.configuration)
+        self.assertEqual(set(),
+                         driver.cli.storage_pools)
