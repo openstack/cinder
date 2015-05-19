@@ -135,7 +135,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         if volume['status'] not in ('available', 'retyping'):
             LOG.warning(_("Volume status must be 'available' or 'retyping'."
-                            "Current volume status: %s"), volume['status'])
+                          "Current volume status: %s"), volume['status'])
             return false_ret
 
         if 'capabilities' not in host:
@@ -162,7 +162,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     shares.append(share)
         if len(shares) == 0:
             LOG.warning(_("Remote NexentaStor appliance at %s should be "
-                            "SSH-bound."), share)
+                          "SSH-bound."), share)
             return false_ret
         share = sorted(shares, key=ns_shares.get, reverse=True)[0]
         snapshot = {
@@ -182,7 +182,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             nms.appliance.execute(self._get_zfs_send_recv_cmd(src, dst))
         except nexenta.NexentaException as exc:
             LOG.warning(_("Cannot send source snapshot %(src)s to "
-                            "destination %(dst)s. Reason: %(exc)s"),
+                          "destination %(dst)s. Reason: %(exc)s"),
                         {'src': src, 'dst': dst, 'exc': exc})
             return false_ret
         finally:
@@ -190,13 +190,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 self.delete_snapshot(snapshot)
             except nexenta.NexentaException as exc:
                 LOG.warning(_("Cannot delete temporary source snapshot "
-                                "%(src)s on NexentaStor Appliance: %(exc)s"),
+                              "%(src)s on NexentaStor Appliance: %(exc)s"),
                             {'src': src, 'exc': exc})
         try:
             self.delete_volume(volume)
         except nexenta.NexentaException as exc:
             LOG.warning(_("Cannot delete source volume %(volume)s on "
-                            "NexentaStor Appliance: %(exc)s"),
+                          "NexentaStor Appliance: %(exc)s"),
                         {'volume': volume['name'], 'exc': exc})
 
         dst_nms = self._get_nms_for_url(capabilities['nms_url'])
@@ -206,7 +206,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             dst_nms.snapshot.destroy(dst_snapshot, '')
         except nexenta.NexentaException as exc:
             LOG.warning(_("Cannot delete temporary destination snapshot "
-                            "%(dst)s on NexentaStor Appliance: %(exc)s"),
+                          "%(dst)s on NexentaStor Appliance: %(exc)s"),
                         {'dst': dst_snapshot, 'exc': exc})
         return True, {'provider_location': share}
 
@@ -301,7 +301,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     retyped = True
                 except nexenta.NexentaException:
                     LOG.error(_('Error trying to change %(opt)s'
-                                  ' from %(old)s to %(new)s'),
+                                ' from %(old)s to %(new)s'),
                               {'opt': opt, 'old': old, 'new': new})
                     return False, None
         return retyped or migrated, model_update
@@ -350,7 +350,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 nms.folder.destroy('%s/%s' % (vol, folder))
             except nexenta.NexentaException:
                 LOG.warning(_("Cannot destroy created folder: "
-                                "%(vol)s/%(folder)s"),
+                              "%(vol)s/%(folder)s"),
                             {'vol': vol, 'folder': folder})
             raise exc
 
@@ -380,7 +380,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 nms.folder.destroy('%s/%s' % (vol, folder), '')
             except nexenta.NexentaException:
                 LOG.warning(_("Cannot destroy cloned folder: "
-                                "%(vol)s/%(folder)s"),
+                              "%(vol)s/%(folder)s"),
                             {'vol': vol, 'folder': folder})
             raise
 
@@ -409,12 +409,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             return self.create_volume_from_snapshot(volume, snapshot)
         except nexenta.NexentaException:
             LOG.error(_('Volume creation failed, deleting created snapshot '
-                          '%(volume_name)s@%(name)s'), snapshot)
+                        '%(volume_name)s@%(name)s'), snapshot)
             try:
                 self.delete_snapshot(snapshot)
             except (nexenta.NexentaException, exception.SnapshotIsBusy):
                 LOG.warning(_('Failed to delete zfs snapshot '
-                                '%(volume_name)s@%(name)s'), snapshot)
+                              '%(volume_name)s@%(name)s'), snapshot)
             raise
 
     def delete_volume(self, volume):
@@ -438,7 +438,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             except nexenta.NexentaException as exc:
                 if 'does not exist' in exc.args[0]:
                     LOG.info(_('Folder %s does not exist, it was '
-                                 'already deleted.'), folder)
+                               'already deleted.'), folder)
                     return
                 raise
             origin = props.get('origin')
@@ -448,7 +448,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 except nexenta.NexentaException as exc:
                     if 'does not exist' in exc.args[0]:
                         LOG.info(_('Snapshot %s does not exist, it was '
-                                     'already deleted.'), origin)
+                                   'already deleted.'), origin)
                         return
                     raise
 
@@ -479,7 +479,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         except nexenta.NexentaException as exc:
             if 'does not exist' in exc.args[0]:
                 LOG.info(_('Snapshot %s does not exist, it was '
-                             'already deleted.'), '%s@%s' % (folder, snapshot))
+                           'already deleted.'), '%s@%s' % (folder, snapshot))
                 return
             raise
 
@@ -509,7 +509,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         block_count = size * units.Gi / (block_size_mb * units.Mi)
 
         LOG.info(_('Creating regular file: %s.'
-                     'This may take some time.') % path)
+                   'This may take some time.') % path)
 
         nms.appliance.execute(
             'dd if=/dev/zero of=%(path)s bs=%(bs)dM count=%(count)d' % {
@@ -631,7 +631,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     self._remotefsclient.mount(nfs_share, mnt_flags)
                 else:
                     if mount_path in self._remotefsclient._read_mounts():
-                        LOG.info(_LI('Already mounted: %s'), mount_path)
+                        LOG.info(_('Already mounted: %s'), mount_path)
                         return
 
                     self._execute('mkdir', '-p', mount_path,
@@ -641,13 +641,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 return
             except Exception as e:
                 if attempt == (num_attempts - 1):
-                    LOG.error(_LE('Mount failure for %(share)s after '
-                                  '%(count)d attempts.'), {
+                    LOG.error(_('Mount failure for %(share)s after '
+                                '%(count)d attempts.'), {
                               'share': nfs_share,
                               'count': num_attempts})
                     raise exception.NfsException(e)
                 LOG.warning(
-                    _LW('Mount attempt %(attempt)d failed: %(error)s.'
+                    _('Mount attempt %(attempt)d failed: %(error)s.'
                         'Retrying mount ...'), {
                         'attempt': attempt,
                         'error': e})
