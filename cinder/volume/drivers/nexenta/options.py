@@ -60,6 +60,9 @@ NEXENTA_ISCSI_OPTIONS = [
 ]
 
 NEXENTA_NFS_OPTIONS = [
+    cfg.IntOpt('nfs_mount_attempts',
+               default=3,
+               help='Amount of attemps to mount share'),
     cfg.StrOpt('nexenta_shares_config',
                default='/etc/cinder/nfs_shares',
                help='File with the list of available nfs shares'),
