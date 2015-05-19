@@ -1974,10 +1974,22 @@ def snapshot_get(context, snapshot_id):
 
 
 @require_admin_context
-def snapshot_get_all(context):
-    return model_query(context, models.Snapshot).\
-        options(joinedload('snapshot_metadata')).\
-        all()
+def snapshot_get_all(context, filters=None):
+    # Ensure that the filter value exists on the model
+    if filters:
+        for key in filters.keys():
+            try:
+                getattr(models.Snapshot, key)
+            except AttributeError:
+                LOG.debug("'%s' filter key is not valid.", key)
+                return []
+
+    query = model_query(context, models.Snapshot)
+
+    if filters:
+        query = query.filter_by(**filters)
+
+    return query.options(joinedload('snapshot_metadata')).all()
 
 
 @require_context
@@ -2012,12 +2024,15 @@ def snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id):
 
 
 @require_context
-def snapshot_get_all_by_project(context, project_id):
+def snapshot_get_all_by_project(context, project_id, filters=None):
     authorize_project_context(context, project_id)
-    return model_query(context, models.Snapshot).\
-        filter_by(project_id=project_id).\
-        options(joinedload('snapshot_metadata')).\
-        all()
+    query = model_query(context, models.Snapshot)
+
+    if filters:
+        query = query.filter_by(**filters)
+
+    return query.filter_by(project_id=project_id).\
+        options(joinedload('snapshot_metadata')).all()
 
 
 @require_context

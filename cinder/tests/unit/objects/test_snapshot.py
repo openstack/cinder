@@ -146,9 +146,12 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
         volume_get_by_id.return_value = fake_volume_obj
 
-        snapshots = objects.SnapshotList.get_all(self.context)
+        search_opts = mock.sentinel.search_opts
+        snapshots = objects.SnapshotList.get_all(
+            self.context, search_opts)
         self.assertEqual(1, len(snapshots))
         TestSnapshot._compare(self, fake_snapshot, snapshots[0])
+        snapshot_get_all.assert_called_once_with(self.context, search_opts)
 
     @mock.patch('cinder.db.snapshot_metadata_get', return_value={})
     @mock.patch('cinder.objects.Volume.get_by_id')
@@ -173,10 +176,14 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
         fake_volume_obj = fake_volume.fake_volume_obj(self.context)
         volume_get_by_id.return_value = fake_volume_obj
 
+        search_opts = mock.sentinel.search_opts
         snapshots = objects.SnapshotList.get_all_by_project(
-            self.context, self.project_id)
+            self.context, self.project_id, search_opts)
         self.assertEqual(1, len(snapshots))
         TestSnapshot._compare(self, fake_snapshot, snapshots[0])
+        get_all_by_project.assert_called_once_with(self.context,
+                                                   self.project_id,
+                                                   search_opts)
 
     @mock.patch('cinder.db.snapshot_metadata_get', return_value={})
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
