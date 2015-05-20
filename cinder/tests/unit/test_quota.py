@@ -627,6 +627,21 @@ class QuotaEngineTestCase(test.TestCase):
         context = FakeContext(None, None)
         driver = FakeDriver()
         quota_obj = self._make_quota_obj(driver)
+
+        def test_get_project_quotas(obj, context, sub_resources,
+                                    project_id, quota_class, usages=False):
+            return {'resource_quota': {'limit': 100}}
+
+        @property
+        def test_resources(obj):
+            result = {}
+            # set global quotas without sync.
+            argses = [('resource_quota', None, 'resource_quota')]
+            for args in argses:
+                resource = quota.ReservableResource(*args)
+                result[resource.name] = resource
+            return result
+
         quota_obj.limit_check(context, test_resource1=4, test_resource2=3,
                               test_resource3=2, test_resource4=1)
 
@@ -640,7 +655,22 @@ class QuotaEngineTestCase(test.TestCase):
                  test_resource3=2,
                  test_resource4=1,),
              None), ])
-
+        self.stubs.Set(cinder.quota.VolumeTypeQuotaEngine,
+                       'resources', test_resources)
+        self.stubs.Set(cinder.quota.DbQuotaDriver,
+                       'get_project_quotas', test_get_project_quotas)
+        value = {'resource_quota': 123}
+        try:
+            cinder.quota.QUOTAS.limit_check(context, project_id=123, **value)
+        except Exception as e:
+            """ quota limit is 100 , so it shoud raise an exception """
+            self.assertEqual(e.kwargs['overs'], ['resource_quota'])
+        value = {'resource_quota': 55}
+        try:
+            cinder.quota.QUOTAS.limit_check(context, project_id=None, **value)
+        except Exception as e:
+            """ quota limit is 100 , and it's under the limit """
+            pass
     def test_reserve(self):
         context = FakeContext(None, None)
         driver = FakeDriver(reservations=['resv-01',

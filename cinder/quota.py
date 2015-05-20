@@ -523,7 +523,8 @@ class ReservableResource(BaseResource):
         """
 
         super(ReservableResource, self).__init__(name, flag=flag)
-        self.sync = sync
+        if(sync): 
+            self.sync = sync
 
 
 class AbsoluteResource(BaseResource):
