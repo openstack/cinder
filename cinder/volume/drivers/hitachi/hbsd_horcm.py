@@ -1,4 +1,4 @@
-# Copyright (C) 2014, Hitachi, Ltd.
+# Copyright (C) 2014, 2015, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -39,6 +39,7 @@ HOST_IO_SSB = '0xB958,0x0233'
 INVALID_LUN_SSB = '0x2E20,0x0000'
 INTERCEPT_LDEV_SSB = '0x2E22,0x0001'
 HOSTGROUP_INSTALLED = '0xB956,0x3173'
+RESOURCE_LOCKED = 'SSB=0x2E11,0x2205'
 
 LDEV_STATUS_WAITTIME = 120
 LUN_DELETE_WAITTIME = basic_lib.DEFAULT_PROCESS_WAITTIME
@@ -112,6 +113,10 @@ volume_opts = [
     cfg.BoolOpt('hitachi_horcm_add_conf',
                 default=True,
                 help='Add to HORCM configuration'),
+    cfg.IntOpt('hitachi_horcm_resource_lock_timeout',
+               default=600,
+               help='Timeout until a resource lock is released, in seconds. '
+                    'The value must be between 0 and 7200.'),
 ]
 
 CONF = cfg.CONF
@@ -179,6 +184,12 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
                 raise exception.HBSDError(message=msg)
         if self.conf.hitachi_thin_pool_id == self.conf.hitachi_pool_id:
             msg = basic_lib.output_err(601, param='hitachi_thin_pool_id')
+            raise exception.HBSDError(message=msg)
+        resource_lock_timeout = self.conf.hitachi_horcm_resource_lock_timeout
+        if not ((resource_lock_timeout >= 0) and
+                (resource_lock_timeout <= 7200)):
+            msg = basic_lib.output_err(
+                601, param='hitachi_horcm_resource_lock_timeout')
             raise exception.HBSDError(message=msg)
         for opt in volume_opts:
             getattr(self.conf, opt.name)
@@ -274,6 +285,13 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
             ret, stdout, stderr = self.exec_command(cmd, args=args,
                                                     printflag=printflag)
 
+        # The resource group may be locked by other software.
+        # Therefore, wait until the lock is released.
+        if (RESOURCE_LOCKED in stderr and
+            (time.time() - start <
+             self.conf.hitachi_horcm_resource_lock_timeout)):
+            return
+
         if not ret or ret <= 127:
             raise loopingcall.LoopingCallDone((ret, stdout, stderr))
 
@@ -312,17 +330,6 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
         rmi_pass = self.conf.hitachi_horcm_password
         args = '-login %s %s' % (rmi_user, rmi_pass)
         return self.exec_raidcom('raidcom', args, printflag=False)
-
-    def comm_lock(self):
-        ret, _stdout, stderr = self.exec_raidcom('raidcom', 'lock resource')
-        if ret:
-            msg = basic_lib.output_err(
-                603, serial=self.conf.hitachi_serial_number,
-                inst=self.conf.hitachi_horcm_numbers[0], ret=ret, err=stderr)
-            raise exception.HBSDError(message=msg)
-
-    def comm_unlock(self):
-        self.exec_raidcom('raidcom', 'unlock resource')
 
     def comm_reset_status(self):
         self.exec_raidcom('raidcom', 'reset command_status')
@@ -603,34 +610,29 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
 
         loop.start(interval=LUN_DELETE_INTERVAL).wait()
 
-    @storage_synchronized
     def comm_delete_lun(self, hostgroups, ldev):
-        try:
-            deleted_hostgroups = []
-            self.comm_lock()
-            no_ldev_cnt = 0
-            for hostgroup in hostgroups:
-                port = hostgroup['port']
-                gid = hostgroup['gid']
-                is_deleted = False
-                for deleted in deleted_hostgroups:
-                    if port == deleted['port'] and gid == deleted['gid']:
-                        is_deleted = True
-                if is_deleted:
-                    continue
-                try:
-                    self.comm_delete_lun_core(hostgroup, ldev)
-                except exception.HBSDCmdError as ex:
-                    no_ldev_cnt += 1
-                    if ex.ret == EX_ENOOBJ:
-                        if no_ldev_cnt != len(hostgroups):
-                            continue
-                        raise exception.HBSDNotFound
-                    else:
-                        raise
-                deleted_hostgroups.append({'port': port, 'gid': gid})
-        finally:
-            self.comm_unlock()
+        deleted_hostgroups = []
+        no_ldev_cnt = 0
+        for hostgroup in hostgroups:
+            port = hostgroup['port']
+            gid = hostgroup['gid']
+            is_deleted = False
+            for deleted in deleted_hostgroups:
+                if port == deleted['port'] and gid == deleted['gid']:
+                    is_deleted = True
+            if is_deleted:
+                continue
+            try:
+                self.comm_delete_lun_core(hostgroup, ldev)
+            except exception.HBSDCmdError as ex:
+                no_ldev_cnt += 1
+                if ex.ret == EX_ENOOBJ:
+                    if no_ldev_cnt != len(hostgroups):
+                        continue
+                    raise exception.HBSDNotFound
+                else:
+                    raise
+            deleted_hostgroups.append({'port': port, 'gid': gid})
 
     def _check_ldev_status(self, ldev, status):
         opt = ('get ldev -ldev_id %s -check_status %s -time %s' %
@@ -638,6 +640,9 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
         ret, _stdout, _stderr = self.exec_raidcom('raidcom', opt)
         return ret
 
+    # Don't remove a storage_syncronized decorator.
+    # It is need to avoid comm_add_ldev() and comm_delete_ldev() are
+    # executed concurrently.
     @storage_synchronized
     def comm_add_ldev(self, pool_id, ldev, capacity, is_vvol):
         emulation = 'OPEN-V'
@@ -650,70 +655,47 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
                    '-capacity %dG -emulation %s'
                    % (pool_id, ldev, capacity, emulation))
 
-        try:
-            self.comm_lock()
-            self.comm_reset_status()
-            ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
-            if ret:
-                if re.search('SSB=%s' % INTERCEPT_LDEV_SSB, stderr):
-                    raise exception.HBSDNotFound
-                opt = 'raidcom %s' % opt
-                msg = basic_lib.output_err(
-                    600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
+        self.comm_reset_status()
+        ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
+        if ret:
+            if re.search('SSB=%s' % INTERCEPT_LDEV_SSB, stderr):
+                raise exception.HBSDNotFound
 
-            if self._check_ldev_status(ldev, "NML"):
-                msg = basic_lib.output_err(653, ldev=ldev)
-                raise exception.HBSDError(message=msg)
-        finally:
-            self.comm_unlock()
+            msg = basic_lib.output_err(
+                600, cmd='raidcom %s' % opt, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
 
-    @storage_synchronized
+        if self._check_ldev_status(ldev, "NML"):
+            msg = basic_lib.output_err(653, ldev=ldev)
+            raise exception.HBSDError(message=msg)
+
     def comm_add_hostgrp(self, port, gid, host_grp_name):
         opt = 'add host_grp -port %s-%d -host_grp_name %s' % (port, gid,
                                                               host_grp_name)
-        try:
-            self.comm_lock()
-            ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
-            if ret:
-                if re.search('SSB=%s' % HOSTGROUP_INSTALLED, stderr):
-                    raise exception.HBSDNotFound
-                else:
-                    opt = 'raidcom %s' % opt
-                    msg = basic_lib.output_err(
-                        600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                    raise exception.HBSDCmdError(
-                        message=msg, ret=ret, err=stderr)
-        finally:
-            self.comm_unlock()
+        ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
+        if ret:
+            if re.search('SSB=%s' % HOSTGROUP_INSTALLED, stderr):
+                raise exception.HBSDNotFound
 
-    @storage_synchronized
+            msg = basic_lib.output_err(
+                600, cmd='raidcom %s' % opt, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
+
     def comm_del_hostgrp(self, port, gid, host_grp_name):
         opt = 'delete host_grp -port %s-%d %s' % (port, gid, host_grp_name)
-        try:
-            self.comm_lock()
-            ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
-            if ret:
-                opt = 'raidcom %s' % opt
-                msg = basic_lib.output_err(
-                    600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
-        finally:
-            self.comm_unlock()
+        ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
+        if ret:
+            msg = basic_lib.output_err(
+                600, cmd='raidcom %s' % opt, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
 
-    @storage_synchronized
     def comm_add_hbawwn(self, port, gid, wwn):
         opt = 'add hba_wwn -port %s-%s -hba_wwn %s' % (port, gid, wwn)
-        try:
-            self.comm_lock()
-            ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
-            if ret:
-                opt = 'raidcom %s' % opt
-                msg = basic_lib.output_err(
-                    600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
-        finally:
-            self.comm_unlock()
+        ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
+        if ret:
+            msg = basic_lib.output_err(
+                600, cmd='raidcom %s' % opt, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
 
     @storage_synchronized
     def comm_add_lun(self, unused_command, hostgroups, ldev, is_once=False):
@@ -768,32 +750,27 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
         stderr = None
         invalid_hgs_str = None
 
-        try:
-            self.comm_lock()
-            for hostgroup in tmp_hostgroups:
-                port = hostgroup['port']
-                gid = hostgroup['gid']
-                if not hostgroup['detected']:
-                    if invalid_hgs_str:
-                        invalid_hgs_str = '%s, %s:%d' % (invalid_hgs_str,
-                                                         port, gid)
-                    else:
-                        invalid_hgs_str = '%s:%d' % (port, gid)
-                    continue
-                opt = 'add lun -port %s-%d -ldev_id %d -lun_id %d' % (
-                    port, gid, ldev, lun)
-                ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
-                if not ret:
-                    is_ok = True
-                    hostgroup['lun'] = lun
-                    if is_once:
-                        break
+        for hostgroup in tmp_hostgroups:
+            port = hostgroup['port']
+            gid = hostgroup['gid']
+            if not hostgroup['detected']:
+                if invalid_hgs_str:
+                    invalid_hgs_str = '%s, %s:%d' % (invalid_hgs_str,
+                                                     port, gid)
                 else:
-                    LOG.warning(basic_lib.set_msg(
-                        314, ldev=ldev, lun=lun, port=port, id=gid))
-
-        finally:
-            self.comm_unlock()
+                    invalid_hgs_str = '%s:%d' % (port, gid)
+                continue
+            opt = 'add lun -port %s-%d -ldev_id %d -lun_id %d' % (
+                port, gid, ldev, lun)
+            ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
+            if not ret:
+                is_ok = True
+                hostgroup['lun'] = lun
+                if is_once:
+                    break
+            else:
+                LOG.warning(basic_lib.set_msg(
+                    314, ldev=ldev, lun=lun, port=port, id=gid))
 
         if not is_ok:
             if stderr:
@@ -805,56 +782,40 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
                 msg = basic_lib.output_err(659, gid=invalid_hgs_str)
                 raise exception.HBSDError(message=msg)
 
+    # Don't remove a storage_syncronized decorator.
+    # It is need to avoid comm_add_ldev() and comm_delete_ldev() are
+    # executed concurrently.
     @storage_synchronized
     def comm_delete_ldev(self, ldev, is_vvol):
         ret = -1
         stdout = ""
         stderr = ""
-        try:
-            self.comm_lock()
-            self.comm_reset_status()
-            opt = 'delete ldev -ldev_id %d' % ldev
-            ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
-            if ret:
-                if re.search('SSB=%s' % INVALID_LUN_SSB, stderr):
-                    raise exception.HBSDNotFound
-                opt = 'raidcom %s' % opt
-                msg = basic_lib.output_err(
-                    600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
-            ret, stdout, stderr = self.comm_get_status()
-            if ret or self.get_command_error(stdout):
-                opt = 'raidcom %s' % opt
-                msg = basic_lib.output_err(
-                    600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
-        finally:
-            self.comm_unlock()
+        self.comm_reset_status()
+        opt = 'delete ldev -ldev_id %d' % ldev
+        ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
+        if ret:
+            if re.search('SSB=%s' % INVALID_LUN_SSB, stderr):
+                raise exception.HBSDNotFound
 
-    @storage_synchronized
+            msg = basic_lib.output_err(
+                600, cmd='raidcom %s' % opt, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
+
+        ret, stdout, stderr = self.comm_get_status()
+        if ret or self.get_command_error(stdout):
+            opt = 'raidcom %s' % opt
+            msg = basic_lib.output_err(
+                600, cmd=opt, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
+
     def comm_extend_ldev(self, ldev, old_size, new_size):
-        ret = -1
-        stdout = ""
-        stderr = ""
         extend_size = new_size - old_size
-        try:
-            self.comm_lock()
-            self.comm_reset_status()
-            opt = 'extend ldev -ldev_id %d -capacity %dG' % (ldev, extend_size)
-            ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
-            if ret:
-                opt = 'raidcom %s' % opt
-                msg = basic_lib.output_err(
-                    600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
-            ret, stdout, stderr = self.comm_get_status()
-            if ret or self.get_command_error(stdout):
-                opt = 'raidcom %s' % opt
-                msg = basic_lib.output_err(
-                    600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
-        finally:
-            self.comm_unlock()
+        opt = 'extend ldev -ldev_id %d -capacity %dG' % (ldev, extend_size)
+        ret, stdout, stderr = self.exec_raidcom('raidcom', opt)
+        if ret:
+            msg = basic_lib.output_err(
+                600, cmd='raidcom %s' % opt, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
 
     def comm_get_dp_pool(self, pool_id):
         opt = 'get dp_pool'
@@ -876,16 +837,11 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
         msg = basic_lib.output_err(640, pool_id=pool_id)
         raise exception.HBSDError(message=msg)
 
-    @storage_synchronized
     def comm_modify_ldev(self, ldev):
         args = 'modify ldev -ldev_id %d -status discard_zero_page' % ldev
-        try:
-            self.comm_lock()
-            ret, stdout, stderr = self.exec_raidcom('raidcom', args)
-            if ret:
-                LOG.warning(basic_lib.set_msg(315, ldev=ldev, reason=stderr))
-        finally:
-            self.comm_unlock()
+        ret, stdout, stderr = self.exec_raidcom('raidcom', args)
+        if ret:
+            LOG.warning(basic_lib.set_msg(315, ldev=ldev, reason=stderr))
 
     def is_detected(self, port, wwn):
         return self.comm_chk_login_wwn([wwn], port)
@@ -896,51 +852,33 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
         except Exception as ex:
             LOG.warning(_LW('Failed to discard zero page: %s'), ex)
 
-    @storage_synchronized
     def comm_add_snapshot(self, pvol, svol):
         pool = self.conf.hitachi_thin_pool_id
         copy_size = self.conf.hitachi_copy_speed
         args = ('add snapshot -ldev_id %d %d -pool %d '
                 '-snapshot_name %s -copy_size %d'
                 % (pvol, svol, pool, SNAP_NAME, copy_size))
-        try:
-            self.comm_lock()
-            ret, stdout, stderr = self.exec_raidcom('raidcom', args)
-            if ret:
-                opt = 'raidcom %s' % args
-                msg = basic_lib.output_err(
-                    600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
-        finally:
-            self.comm_unlock()
+        ret, stdout, stderr = self.exec_raidcom('raidcom', args)
+        if ret:
+            msg = basic_lib.output_err(
+                600, cmd='raidcom %s' % args, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
 
-    @storage_synchronized
     def comm_delete_snapshot(self, ldev):
         args = 'delete snapshot -ldev_id %d' % ldev
-        try:
-            self.comm_lock()
-            ret, stdout, stderr = self.exec_raidcom('raidcom', args)
-            if ret:
-                opt = 'raidcom %s' % args
-                msg = basic_lib.output_err(
-                    600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
-        finally:
-            self.comm_unlock()
+        ret, stdout, stderr = self.exec_raidcom('raidcom', args)
+        if ret:
+            msg = basic_lib.output_err(
+                600, cmd='raidcom %s' % args, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
 
-    @storage_synchronized
     def comm_modify_snapshot(self, ldev, op):
         args = ('modify snapshot -ldev_id %d -snapshot_data %s' % (ldev, op))
-        try:
-            self.comm_lock()
-            ret, stdout, stderr = self.exec_raidcom('raidcom', args)
-            if ret:
-                opt = 'raidcom %s' % args
-                msg = basic_lib.output_err(
-                    600, cmd=opt, ret=ret, out=stdout, err=stderr)
-                raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
-        finally:
-            self.comm_unlock()
+        ret, stdout, stderr = self.exec_raidcom('raidcom', args)
+        if ret:
+            msg = basic_lib.output_err(
+                600, cmd='raidcom %s' % args, ret=ret, out=stdout, err=stderr)
+            raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
 
     def _wait_for_snap_status(self, pvol, svol, status, timeout, start):
         if (self.get_snap_pvol_status(pvol, svol) in status and
@@ -1303,35 +1241,24 @@ HORCM_CMD
 
         return paired_info
 
-    @storage_synchronized
     def add_pair_config(self, pvol, svol, copy_group, ldev_name, mun):
         pvol_group = '%sP' % copy_group
         svol_group = '%sS' % copy_group
-        try:
-            self.comm_lock()
-            self.comm_add_device_grp(pvol_group, ldev_name, pvol)
-            self.comm_add_device_grp(svol_group, ldev_name, svol)
-            nr_copy_groups = self.check_copy_grp(copy_group)
-            if nr_copy_groups == 1:
-                self.comm_delete_copy_grp(copy_group)
-            if nr_copy_groups != 2:
-                self.comm_add_copy_grp(copy_group, pvol_group,
-                                       svol_group, mun)
-        finally:
-            self.comm_unlock()
+        self.comm_add_device_grp(pvol_group, ldev_name, pvol)
+        self.comm_add_device_grp(svol_group, ldev_name, svol)
+        nr_copy_groups = self.check_copy_grp(copy_group)
+        if nr_copy_groups == 1:
+            self.comm_delete_copy_grp(copy_group)
+        if nr_copy_groups != 2:
+            self.comm_add_copy_grp(copy_group, pvol_group, svol_group, mun)
 
-    @storage_synchronized
     def delete_pair_config(self, pvol, svol, copy_group, ldev_name):
         pvol_group = '%sP' % copy_group
         svol_group = '%sS' % copy_group
-        try:
-            self.comm_lock()
-            if self.check_device_grp(pvol_group, pvol, ldev_name=ldev_name):
-                self.comm_delete_device_grp(pvol_group, pvol)
-            if self.check_device_grp(svol_group, svol, ldev_name=ldev_name):
-                self.comm_delete_device_grp(svol_group, svol)
-        finally:
-            self.comm_unlock()
+        if self.check_device_grp(pvol_group, pvol, ldev_name=ldev_name):
+            self.comm_delete_device_grp(pvol_group, pvol)
+        if self.check_device_grp(svol_group, svol, ldev_name=ldev_name):
+            self.comm_delete_device_grp(svol_group, svol)
 
     def _wait_for_pair_status(self, copy_group, ldev_name,
                               status, timeout, check_svol, start):
