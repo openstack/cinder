@@ -1635,7 +1635,7 @@ Time Remaining:  0 second(s)
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
-                              '-gname', 'fakehost',
+                              '-gname', 'fakehost', '-o',
                               poll=False),
                     mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
                               poll=False),
@@ -1672,7 +1672,7 @@ Time Remaining:  0 second(s)
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
-                              '-gname', 'fakehost', poll=False),
+                              '-gname', 'fakehost', '-o', poll=False),
                     mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
                               poll=False),
                     mock.call(*self.testData.PINGNODE_CMD('A', 4, 0,
@@ -1706,7 +1706,7 @@ Time Remaining:  0 second(s)
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
-                              '-gname', 'fakehost', poll=False),
+                              '-gname', 'fakehost', '-o', poll=False),
                     mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
                               poll=False)]
         fake_cli.assert_has_calls(expected)
@@ -1746,7 +1746,7 @@ Time Remaining:  0 second(s)
         expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=False),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
-                              '-gname', 'fakehost', poll=False),
+                              '-gname', 'fakehost', '-o', poll=False),
                     mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
                               poll=False)]
         fake_cli.assert_has_calls(expected)
@@ -1771,7 +1771,7 @@ Time Remaining:  0 second(s)
         self.configuration.max_luns_per_storage_group = 2
         commands = [('storagegroup', '-list', '-gname', 'fakehost'),
                     ('storagegroup', '-addhlu', '-hlu', 2, '-alu', 3,
-                     '-gname', 'fakehost'),
+                     '-gname', 'fakehost', '-o'),
                     self.testData.PINGNODE_CMD('A', 4, 0, '10.0.0.2')]
         results = [[self.testData.STORAGE_GROUP_HAS_MAP('fakehost'),
                     self.testData.STORAGE_GROUP_HAS_MAP_2('fakehost')],
@@ -1789,7 +1789,7 @@ Time Remaining:  0 second(s)
         expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=False),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 3,
-                              '-gname', 'fakehost',
+                              '-gname', 'fakehost', '-o',
                               poll=False),
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
@@ -1819,7 +1819,7 @@ Time Remaining:  0 second(s)
         self.configuration.max_luns_per_storage_group = 2
         commands = [('storagegroup', '-list', '-gname', 'fakehost'),
                     ('storagegroup', '-addhlu', '-hlu', 2, '-alu', 4,
-                     '-gname', 'fakehost'),
+                     '-gname', 'fakehost', '-o'),
                     self.testData.PINGNODE_CMD('A', 4, 0, '10.0.0.2')]
         results = [[self.testData.STORAGE_GROUP_HAS_MAP_2('fakehost'),
                     self.testData.STORAGE_GROUP_HAS_MAP('fakehost')],
@@ -1838,7 +1838,7 @@ Time Remaining:  0 second(s)
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 4,
-                              '-gname', 'fakehost',
+                              '-gname', 'fakehost', '-o',
                               poll=False),
                     mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
                               poll=False),
@@ -2043,7 +2043,7 @@ Time Remaining:  0 second(s)
         cmd_dest_np = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
         output_dest = self.testData.LUN_PROPERTY("vol2_dest")
         cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
-        cmd_detach_lun = ('lun', '-detach', '-name', 'vol2')
+        cmd_detach_lun = ('lun', '-detach', '-name', 'vol2', '-o')
         output_migrate = ("", 0)
         cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
         output_migrate_verify = (r'The specified source LUN '
@@ -2096,7 +2096,7 @@ Time Remaining:  0 second(s)
         cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
         output_dest = self.testData.LUN_PROPERTY("vol2_dest")
         cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
-        cmd_detach_lun = ('lun', '-detach', '-name', 'vol2')
+        cmd_detach_lun = ('lun', '-detach', '-name', 'vol2', '-o')
         commands = [cmd_dest, cmd_migrate]
         results = [output_dest, FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
@@ -3592,7 +3592,7 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
-                              '-gname', 'fakehost',
+                              '-gname', 'fakehost', '-o',
                               poll=False),
                     mock.call('port', '-list', '-gname', 'fakehost')
                     ]
@@ -3623,7 +3623,7 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 1, '-alu', 1,
-                              '-gname', 'fakehost', poll=False),
+                              '-gname', 'fakehost', '-o', poll=False),
                     mock.call('port', '-list', '-gname', 'fakehost')
                     ]
         fake_cli.assert_has_calls(expected)
@@ -3666,7 +3666,7 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 1, '-alu', 1,
-                              '-gname', 'fakehost',
+                              '-gname', 'fakehost', '-o',
                               poll=False),
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
