@@ -99,7 +99,6 @@ class BrcdFCZoneClientCLI(object):
                         zone[zone_name] = list()
                     if line_split[2]:
                         zone_member = line_split[2]
-                    if zone_member:
                         zone_member_list = zone.get(zone_name)
                         zone_member_list.append(zone_member)
             zone_set[ZoneConstant.CFG_ZONES] = zone
