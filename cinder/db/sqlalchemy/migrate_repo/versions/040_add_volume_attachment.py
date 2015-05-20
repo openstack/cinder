@@ -74,7 +74,7 @@ def upgrade(migrate_engine):
             values = {'id': six.text_type(uuid.uuid4()),
                       'created_at': CREATED_AT,
                       'deleted_at': None,
-                      'deleted': 0,
+                      'deleted': False,
                       'volume_id': volume.id,
                       'attached_host': volume.host,
                       'instance_uuid': volume.instance_uuid,
