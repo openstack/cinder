@@ -328,17 +328,21 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                        self.driver_prefix + '_sparsed_volumes'):
                 self._create_sparsed_file(nms, volume_path, volume_size)
             else:
-                compression = nms.folder.get('compression')
+                folder_path = '%s/%s' % (vol, folder)
+                compression = nms.folder.get_child_prop(
+                    folder_path, 'compression')
                 if compression != 'off':
                     # Disable compression, because otherwise will not use space
                     # on disk.
-                    nms.folder.set('compression', 'off')
+                    nms.folder.set_child_prop(
+                        folder_path, 'compression', 'off')
                 try:
                     self._create_regular_file(nms, volume_path, volume_size)
                 finally:
                     if compression != 'off':
                         # Backup default compression value if it was changed.
-                        nms.folder.set('compression', compression)
+                        nms.folder.set_child_prop(
+                            folder_path, 'compression', compression)
 
             self._set_rw_permissions_for_all(nms, volume_path)
 
@@ -350,8 +354,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             try:
                 nms.folder.destroy('%s/%s' % (vol, folder))
             except nexenta.NexentaException:
-                LOG.warning(_LW("Cannot destroy created folder: "
-                                "%(vol)s/%(folder)s"),
+                LOG.warning(_("Cannot destroy created folder: "
+                              "%(vol)s/%(folder)s"),
                             {'vol': vol, 'folder': folder})
             raise exc
 
