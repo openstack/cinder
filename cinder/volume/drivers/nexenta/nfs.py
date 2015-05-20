@@ -428,12 +428,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             nms = self.share2nms[nfs_share]
             vol, parent_folder = self._get_share_datasets(nfs_share)
             folder = '%s/%s/%s' % (vol, parent_folder, volume['name'])
-            props = nms.folder.get_child_props(folder, 'origin') or {}
             mount_path = self.remote_path(volume).strip(
                 '/%s' % self.VOLUME_FILE_NAME)
             if mount_path in self._remotefsclient._read_mounts():
                 self._execute('umount', mount_path, run_as_root=True)
             try:
+                props = nms.folder.get_child_props(folder, 'origin') or {}
                 nms.folder.destroy(folder, '-r')
             except nexenta.NexentaException as exc:
                 if 'does not exist' in exc.args[0]:
