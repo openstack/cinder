@@ -43,7 +43,8 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         2.0.0 - Add driver requirement functions
         2.1.0 - Add consistency group functions
         2.1.1 - Fixed issue with mismatched config (bug #1442376)
-        2.1.3 - Clean up failed clones (bug #1440154)
+        2.1.2 - Clean up failed clones (bug #1440154)
+        2.1.3 - Fixed a problem with FAST support (bug #1435069)
     """
 
     VERSION = "2.1.3"

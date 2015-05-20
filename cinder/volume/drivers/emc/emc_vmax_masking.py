@@ -93,7 +93,8 @@ class EMCVMAXMasking(object):
             if isV3:
                 assocStorageGroupInstanceName = (
                     self.utils.get_storage_group_from_volume(
-                        conn, volumeInstance.path))
+                        conn, volumeInstance.path,
+                        maskingViewDict['sgGroupName']))
                 instance = conn.GetInstance(
                     assocStorageGroupInstanceName, LocalOnly=False)
                 assocStorageGroupName = instance['ElementName']
@@ -125,14 +126,24 @@ class EMCVMAXMasking(object):
                             volumeName, fastPolicyName,
                             extraSpecs))
 
-        maskingViewInstanceName, storageGroupInstanceName, errorMessage = (
-            self._validate_masking_view(conn, maskingViewDict,
-                                        defaultStorageGroupInstanceName))
-
-        LOG.debug(
-            "The masking view in the attach operation is "
-            "%(maskingViewInstanceName)s.",
-            {'maskingViewInstanceName': maskingViewInstanceName})
+        # If anything has gone wrong with the masking view we rollback
+        try:
+            maskingViewInstanceName, storageGroupInstanceName, errorMessage = (
+                self._validate_masking_view(conn, maskingViewDict,
+                                            defaultStorageGroupInstanceName))
+            LOG.debug(
+                "The masking view in the attach operation is "
+                "%(maskingViewInstanceName)s. The storage group "
+                "in the masking view is %(storageGroupInstanceName)s.",
+                {'maskingViewInstanceName': maskingViewInstanceName,
+                 'storageGroupInstanceName': storageGroupInstanceName})
+        except Exception as e:
+            LOG.exception(_LE(
+                "Masking View creation or retrieval was not successful "
+                "for masking view %(maskingViewName)s. "
+                "Attempting rollback."),
+                {'maskingViewName': maskingViewDict['maskingViewName']})
+            errorMessage = e
 
         if not errorMessage:
             # Only after the masking view has been validated, add the
@@ -149,6 +160,7 @@ class EMCVMAXMasking(object):
         rollbackDict['fastPolicyName'] = fastPolicyName
         rollbackDict['isV3'] = isV3
         rollbackDict['extraSpecs'] = extraSpecs
+        rollbackDict['sgName'] = maskingViewDict['sgGroupName']
 
         if errorMessage:
             # Rollback code if we cannot complete any of the steps above
@@ -471,7 +483,7 @@ class EMCVMAXMasking(object):
         msg = None
         if self._is_volume_in_storage_group(
                 conn, storageGroupInstanceName,
-                volumeInstance):
+                volumeInstance, sgGroupName):
             LOG.warning(_LW(
                 "Volume: %(volumeName)s is already part "
                 "of storage group %(sgGroupName)s."),
@@ -484,7 +496,7 @@ class EMCVMAXMasking(object):
                 sgGroupName, maskingViewDict['extraSpecs'])
             if not self._is_volume_in_storage_group(
                     conn, storageGroupInstanceName,
-                    volumeInstance):
+                    volumeInstance, sgGroupName):
                 # This may be used in exception hence _ instead of _LE.
                 msg = (_(
                     "Volume: %(volumeName)s was not added "
@@ -533,8 +545,7 @@ class EMCVMAXMasking(object):
                 volumeName, fastPolicyName, extraSpecs))
         if retStorageGroupInstanceName is None:
             exceptionMessage = (_(
-                "Failed to remove volume %(volumeName)s from default SG: "
-                "%(volumeName)s.")
+                "Failed to remove volume %(volumeName)s from default SG.")
                 % {'volumeName': volumeName})
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(
@@ -577,7 +588,8 @@ class EMCVMAXMasking(object):
 
         # Required for unit tests.
         emptyStorageGroupInstanceName = (
-            self._wrap_get_storage_group_from_volume(conn, volumeInstanceName))
+            self._wrap_get_storage_group_from_volume(
+                conn, volumeInstanceName, maskingViewDict['sgGroupName']))
 
         if emptyStorageGroupInstanceName is not None:
             exceptionMessage = (_(
@@ -589,7 +601,7 @@ class EMCVMAXMasking(object):
                 data=exceptionMessage)
 
     def _is_volume_in_storage_group(
-            self, conn, storageGroupInstanceName, volumeInstance):
+            self, conn, storageGroupInstanceName, volumeInstance, sgName):
         """Check if the volume is already part of the storage group.
 
         Check if the volume is already part of the storage group,
@@ -602,7 +614,7 @@ class EMCVMAXMasking(object):
         """
         foundStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(
-                conn, volumeInstance.path))
+                conn, volumeInstance.path, sgName))
 
         if foundStorageGroupInstanceName is not None:
             storageGroupInstance = conn.GetInstance(
@@ -1195,8 +1207,10 @@ class EMCVMAXMasking(object):
 
         :param conn: the connection to the ecom server
         :param rollbackDict: the rollback dictionary
+        :returns: message
         :raises: VolumeBackendAPIException
         """
+        message = None
         try:
             if rollbackDict['isV3']:
                 errorMessage = self._check_adding_volume_to_storage_group(
@@ -1204,14 +1218,16 @@ class EMCVMAXMasking(object):
                     rollbackDict['defaultStorageGroupInstanceName'])
                 if errorMessage:
                     LOG.error(errorMessage)
+                message = (_("V3 rollback"))
 
             else:
                 foundStorageGroupInstanceName = (
                     self.utils.get_storage_group_from_volume(
-                        conn, rollbackDict['volumeInstance'].path))
+                        conn, rollbackDict['volumeInstance'].path,
+                        rollbackDict['sgName']))
                 # Volume is not associated with any storage group so add
                 # it back to the default.
-                if len(foundStorageGroupInstanceName) == 0:
+                if not foundStorageGroupInstanceName:
                     LOG.warning(_LW(
                         "No storage group found. "
                         "Performing rollback on Volume: %(volumeName)s "
@@ -1237,26 +1253,29 @@ class EMCVMAXMasking(object):
                             "admin to get the volume re-added manually."),
                             {'volumeName': rollbackDict['volumeName'],
                              'fastPolicyName': rollbackDict['fastPolicyName']})
-                if len(foundStorageGroupInstanceName) > 0:
+                    message = (_("V2 rollback, volume is not in any storage "
+                                 "group."))
+                else:
                     LOG.info(_LI(
                         "The storage group found is "
                         "%(foundStorageGroupInstanceName)s."),
                         {'foundStorageGroupInstanceName':
                          foundStorageGroupInstanceName})
 
-                # Check the name, see is it the default storage group
-                # or another.
-                if (foundStorageGroupInstanceName !=
-                        rollbackDict['defaultStorageGroupInstanceName']):
-                    # Remove it from its current masking view and return it
-                    # to its default masking view if fast is enabled.
-                    self.remove_and_reset_members(
-                        conn,
-                        rollbackDict['controllerConfigService'],
-                        rollbackDict['volumeInstance'],
-                        rollbackDict['fastPolicyName'],
-                        rollbackDict['volumeName'], rollbackDict['extraSpecs'],
-                        False)
+                    # Check the name, see is it the default storage group
+                    # or another.
+                    if (foundStorageGroupInstanceName !=
+                            rollbackDict['defaultStorageGroupInstanceName']):
+                        # Remove it from its current masking view and return it
+                        # to its default masking view if fast is enabled.
+                        self.remove_and_reset_members(
+                            conn,
+                            rollbackDict['controllerConfigService'],
+                            rollbackDict['volumeInstance'],
+                            rollbackDict['volumeName'],
+                            rollbackDict['extraSpecs'])
+                    message = (_("V2 rollback - Volume in another storage "
+                                 "group besides default storage group."))
         except Exception:
             errorMessage = (_(
                 "Rollback for Volume: %(volumeName)s has failed. "
@@ -1267,6 +1286,7 @@ class EMCVMAXMasking(object):
                    'fastPolicyName': rollbackDict['fastPolicyName']})
             LOG.exception(errorMessage)
             raise exception.VolumeBackendAPIException(data=errorMessage)
+        return message
 
     def _find_new_initiator_group(self, conn, maskingGroupDict):
         """After creating an new initiator group find it and return it.
@@ -1575,7 +1595,7 @@ class EMCVMAXMasking(object):
         :returns: instance name defaultStorageGroupInstanceName
         """
         failedRet = None
-        defaultStorageGroupInstanceName = (
+        defaultStorageGroupInstanceName, defaultSgName = (
             self.fast.get_and_verify_default_storage_group(
                 conn, controllerConfigService, volumeInstanceName,
                 volumeName, fastPolicyName))
@@ -1610,7 +1630,8 @@ class EMCVMAXMasking(object):
 
         # Required for unit tests.
         emptyStorageGroupInstanceName = (
-            self._wrap_get_storage_group_from_volume(conn, volumeInstanceName))
+            self._wrap_get_storage_group_from_volume(conn, volumeInstanceName,
+                                                     defaultSgName))
 
         if emptyStorageGroupInstanceName is not None:
             LOG.error(_LE(
@@ -1621,18 +1642,20 @@ class EMCVMAXMasking(object):
 
         return defaultStorageGroupInstanceName
 
-    def _wrap_get_storage_group_from_volume(self, conn, volumeInstanceName):
+    def _wrap_get_storage_group_from_volume(self, conn, volumeInstanceName,
+                                            defaultSgName):
         """Wrapper for get_storage_group_from_volume.
 
         Needed for override in tests.
 
         :param conn: the connection to the ecom server
         :param volumeInstanceName: the volume instance name
+        :param defaultSgName: the default storage group name
         :returns: emptyStorageGroupInstanceName
         """
 
         return self.utils.get_storage_group_from_volume(
-            conn, volumeInstanceName)
+            conn, volumeInstanceName, defaultSgName)
 
     def get_devices_from_storage_group(
             self, conn, storageGroupInstanceName):
