@@ -25,7 +25,7 @@ import hashlib
 import os
 import re
 
-from oslo_utils import units
+from cinder.openstack.common import units
 
 from eventlet import greenthread
 from cinder import context
