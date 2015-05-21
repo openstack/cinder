@@ -21,7 +21,7 @@
 .. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
 """
 
-from oslo_config import cfg
+from oslo.config import cfg
 
 
 NEXENTA_CONNECTION_OPTIONS = [
