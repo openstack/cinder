@@ -32,14 +32,15 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         super(DPLFCDriver, self).__init__(*args, **kwargs)
 
     def _get_fc_channel(self):
-        """return :
-                fcInfos[uuid]
-                    fcInfo[uuid]['display_name']
-                    fcInfo[uuid]['display_description']
-                    fcInfo[uuid]['hardware_address']
-                    fcInfo[uuid]['type']
-                    fcInfo[uuid]['speed']
-                    fcInfo[uuid]['state']
+        """Get FibreChannel info.
+
+        :returns: fcInfos[uuid]
+                  fcInfo[uuid]['display_name']
+                  fcInfo[uuid]['display_description']
+                  fcInfo[uuid]['hardware_address']
+                  fcInfo[uuid]['type']
+                  fcInfo[uuid]['speed']
+                  fcInfo[uuid]['state']
         """
         output = None
         fcInfos = {}
@@ -60,11 +61,12 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         return fcInfos
 
     def _get_targets(self):
-        """return::
-                targetInfos[uuid] = targetInfo
-                targetInfo['targetUuid']
-                targetInfo['targetName']
-                targetInfo['targetAddr']
+        """Get targets.
+
+        :returns: targetInfos[uuid] = targetInfo
+                  targetInfo['targetUuid']
+                  targetInfo['targetName']
+                  targetInfo['targetAddr']
         """
         output = None
         targetInfos = {}

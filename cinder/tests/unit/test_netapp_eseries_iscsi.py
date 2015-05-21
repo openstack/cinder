@@ -14,9 +14,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests for NetApp e-series iscsi volume driver.
-"""
+"""Tests for NetApp e-series iscsi volume driver."""
 
 import copy
 import json
@@ -594,8 +592,7 @@ class FakeEseriesServerHandler(object):
 
 
 class FakeEseriesHTTPSession(object):
-    """A fake requests.Session for netapp tests.
-    """
+    """A fake requests.Session for netapp tests."""
     def __init__(self):
         self.handler = FakeEseriesServerHandler()
 

@@ -327,9 +327,7 @@ def safe_minidom_parse_string(xml_string):
 
 
 def xhtml_escape(value):
-    """Escapes a string so it is valid within XML or XHTML.
-
-    """
+    """Escapes a string so it is valid within XML or XHTML."""
     return saxutils.escape(value, {'"': '&quot;', "'": '&apos;'})
 
 
@@ -402,7 +400,9 @@ def is_none_string(val):
 
 
 def monkey_patch():
-    """If the CONF.monkey_patch set as True,
+    """Patches decorators for all functions in a specified module.
+
+    If the CONF.monkey_patch set as True,
     this function patches a decorator
     for all functions in specified modules.
 
@@ -415,8 +415,8 @@ def monkey_patch():
     Parameters of the decorator is as follows.
     (See cinder.openstack.common.notifier.api.notify_decorator)
 
-    name - name of the function
-    function - object of the function
+    :param name: name of the function
+    :param function: object of the function
     """
     # If CONF.monkey_patch is not True, this function do nothing.
     if not CONF.monkey_patch:
@@ -551,11 +551,10 @@ def get_root_helper():
 
 
 def brick_get_connector_properties(multipath=False, enforce_multipath=False):
-    """wrapper for the brick calls to automatically set
-    the root_helper needed for cinder.
+    """Wrapper to automatically set root_helper in brick calls.
 
-    :param multipath:         A boolean indicating whether the connector can
-                              support multipath.
+    :param multipath: A boolean indicating whether the connector can
+                      support multipath.
     :param enforce_multipath: If True, it raises exception when multipath=True
                               is specified but multipathd is not running.
                               If False, it falls back to multipath=False
@@ -575,6 +574,7 @@ def brick_get_connector(protocol, driver=None,
                         device_scan_attempts=3,
                         *args, **kwargs):
     """Wrapper to get a brick connector object.
+
     This automatically populates the required protocol as well
     as the root_helper needed to execute commands.
     """
@@ -620,7 +620,9 @@ def get_file_size(path):
 
 
 def _get_disk_of_partition(devpath, st=None):
-    """Returns a disk device path from a partition device path, and stat for
+    """Gets a disk device path and status from partition path.
+
+    Returns a disk device path from a partition device path, and stat for
     the device. If devpath is not a partition, devpath is returned as it is.
     For example, '/dev/sda' is returned for '/dev/sda1', and '/dev/disk1' is
     for '/dev/disk1p1' ('p' is prepended to the partition number if the disk
@@ -641,7 +643,9 @@ def _get_disk_of_partition(devpath, st=None):
 
 
 def get_blkdev_major_minor(path, lookup_for_file=True):
-    """Get the device's "major:minor" number of a block device to control
+    """Get 'major:minor' number of block device.
+
+    Get the device's 'major:minor' number of a block device to control
     I/O ratelimit of the specified path.
     If lookup_for_file is True and the path is a regular file, lookup a disk
     device which the file lies on and returns the result for the device.
@@ -667,7 +671,8 @@ def get_blkdev_major_minor(path, lookup_for_file=True):
 
 
 def check_string_length(value, name, min_length=0, max_length=None):
-    """Check the length of specified string
+    """Check the length of specified string.
+
     :param value: the value of the string
     :param name: the name of the string
     :param min_length: the min_length of the string
@@ -733,9 +738,8 @@ def add_visible_admin_metadata(volume):
 
 def remove_invalid_filter_options(context, filters,
                                   allowed_search_options):
-    """Remove search options that are not valid
-    for non-admin API/context.
-    """
+    """Remove search options that are not valid for non-admin API/context."""
+
     if context.is_admin:
         # Allow all options
         return

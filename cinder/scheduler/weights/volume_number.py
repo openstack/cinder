@@ -12,8 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Weighers that weigh hosts by volume number in backends:
+"""Weighers that weigh hosts by volume number in backends:
 
 1. Volume Number Weigher.  Weigh hosts by their volume number.
 
@@ -51,6 +50,7 @@ class VolumeNumberWeigher(weights.BaseHostWeigher):
 
     def _weigh_object(self, host_state, weight_properties):
         """Less volume number weights win.
+
         We want spreading to be the default.
         """
         context = weight_properties['context']

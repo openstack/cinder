@@ -117,8 +117,7 @@ class EMCVMAXCommon(object):
         self._gather_info()
 
     def _gather_info(self):
-        """Gather the relevant information for update_volume_stats.
-        """
+        """Gather the relevant information for update_volume_stats."""
         if hasattr(self.configuration, 'cinder_emc_config_file'):
             self.pool_info['config_file'] = (
                 self.configuration.cinder_emc_config_file)
@@ -564,8 +563,7 @@ class EMCVMAXCommon(object):
         return modifiedVolumeDict
 
     def update_volume_stats(self):
-        """Retrieve stats info.
-        """
+        """Retrieve stats info."""
 
         if self.pool_info['is_v3']:
             location_info, total_capacity_gb, free_capacity_gb = (

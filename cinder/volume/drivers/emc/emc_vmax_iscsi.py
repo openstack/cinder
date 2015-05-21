@@ -349,9 +349,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         return self.common.manage_existing_get_size(volume, external_ref)
 
     def unmanage(self, volume):
-        """Export VMAX volume from Cinder, leave the volume intact on the
-        backend array.
-        """
+        """Export VMAX volume and leave volume intact on the backend array."""
         return self.common.unmanage(volume)
 
     def update_consistencygroup(self, context, group,

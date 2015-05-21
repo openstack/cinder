@@ -1432,8 +1432,9 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
         return pools
 
     def _update_volume_stats(self, refresh=False):
-        """Return the current state of the volume service. If 'refresh' is
-           True, run the update first.
+        """Return the current state of the volume service.
+
+        If 'refresh' is True, run the update first.
         """
         data = {}
         pools = self._get_pools()

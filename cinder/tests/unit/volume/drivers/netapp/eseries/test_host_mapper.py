@@ -12,9 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Mock unit tests for the NetApp E-series iscsi driver
-"""
+"""Mock unit tests for the NetApp E-series iscsi driver."""
 
 import copy
 
@@ -101,7 +99,9 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_unmap_volume_from_host_volume_mapped_to_host_group_but_not_host(
             self):
-        """Ensure an error is raised if the specified host is not in the
+        """Test volume mapped to host not in specified host group.
+
+        Ensure an error is raised if the specified host is not in the
         host group the volume is mapped to.
         """
         fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
@@ -162,7 +162,9 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         self.assertFalse(self.client.delete_volume_mapping.called)
 
     def test_unmap_volume_from_host_volume_mapped_to_outside_host_group(self):
-        """Ensure we raise error when we find a volume is mapped to an unknown
+        """Test volume mapped to host group without host.
+
+        Ensure we raise error when we find a volume is mapped to an unknown
         host group that does not have the host.
         """
         fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
@@ -189,7 +191,9 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_unmap_volume_from_host_volume_mapped_to_outside_host_group_w_host(
             self):
-        """Ensure we raise error when we find a volume is mapped to an unknown
+        """Test volume mapped to host in unknown host group.
+
+        Ensure we raise error when we find a volume is mapped to an unknown
         host group that has the host.
         """
         fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
@@ -246,7 +250,9 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_map_volume_to_single_host_volume_mapped_to_multiattach_host_group(
             self):
-        """Should move mapping to target host if volume is not migrating or
+        """Test map volume to a single host.
+
+        Should move mapping to target host if volume is not migrating or
         attached(in-use). If volume is not in use then it should not require a
         mapping making it ok to sever the mapping to the host group.
         """
@@ -385,7 +391,9 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
                           fake_mapping_to_host_group)
 
     def test_map_volume_to_multiple_hosts_volume_mapped_to_another_host(self):
-        """Should ensure both existing host and destination host are in
+        """Test that mapping moves to another host group.
+
+        Should ensure both existing host and destination host are in
         multiattach host group and move the mapping to the host group.
         """
 
@@ -418,7 +426,9 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_map_volume_to_multiple_hosts_volume_mapped_to_another_host_with_lun_collision_with_source_host(  # noqa
             self):
-        """Should fail attempting to move source host to multiattach host
+        """Test moving source host to multiattach host group.
+
+        Should fail attempting to move source host to multiattach host
         group and raise an error.
         """
 
@@ -451,7 +461,9 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_map_volume_to_multiple_hosts_volume_mapped_to_another_host_with_lun_collision_with_dest_host(  # noqa
             self):
-        """Should fail attempting to move destination host to multiattach host
+        """Test moving destination host to multiattach host group.
+
+        Should fail attempting to move destination host to multiattach host
         group and raise an error.
         """
 
@@ -484,7 +496,9 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_map_volume_to_multiple_hosts_volume_mapped_to_foreign_host_group(
             self):
-        """Should raise an error stating the volume is mapped to an
+        """Test a target when the host is in a foreign host group.
+
+        Should raise an error stating the volume is mapped to an
         unsupported host group.
         """
         fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
@@ -510,7 +524,9 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_map_volume_to_multiple_hosts_volume_mapped_to_host_in_foreign_host_group(  # noqa
             self):
-        """Should raise an error stating the volume is mapped to a
+        """Test a target when the host is in a foreign host group.
+
+        Should raise an error stating the volume is mapped to a
         host that is in an unsupported host group.
         """
         fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
@@ -540,7 +556,9 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_map_volume_to_multiple_hosts_volume_target_host_in_foreign_host_group(  # noqa
             self):
-        """Should raise an error stating the target host is in an
+        """Test a target when the host is in a foreign host group.
+
+        Should raise an error stating the target host is in an
         unsupported host group.
         """
         fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)

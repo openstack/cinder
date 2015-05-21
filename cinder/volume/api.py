@@ -14,9 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Handles all requests relating to volumes.
-"""
+"""Handles all requests relating to volumes."""
 
 
 import collections
@@ -1515,7 +1513,8 @@ class HostAPI(base.Base):
         raise NotImplementedError()
 
     def set_host_maintenance(self, context, host, mode):
-        """Start/Stop host maintenance window. On start, it triggers
-        volume evacuation.
+        """Start/Stop host maintenance window.
+
+        On start, it triggers volume evacuation.
         """
         raise NotImplementedError()

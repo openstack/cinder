@@ -4686,8 +4686,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'FCFAST'})
     def test_delete_volume_fast_notfound(self, _mock_volume_type):
-        """We do not set the provider location.
-        """
+        """"Test delete volume with volume not found."""
         notfound_delete_vol = {}
         notfound_delete_vol['name'] = 'notfound_delete_vol'
         notfound_delete_vol['id'] = '10'

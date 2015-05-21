@@ -11,9 +11,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Unit Tests for volume types code
-"""
+"""Unit Tests for volume types code."""
 
 
 import datetime
@@ -110,7 +108,9 @@ class VolumeTypeTestCase(test.TestCase):
                          conf_fixture.def_vol_type)
 
     def test_default_volume_type_missing_in_db(self):
-        """Ensures proper exception raised if default volume type
+        """Test default volume type is missing in database.
+
+        Ensures proper exception raised if default volume type
         is not in database.
         """
         default_vol_type = volume_types.get_default_volume_type()

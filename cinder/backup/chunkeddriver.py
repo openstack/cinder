@@ -138,18 +138,22 @@ class ChunkedBackupDriver(driver.BackupDriver):
 
     @abc.abstractmethod
     def update_container_name(self, backup, container):
-        """This method exists so that sub-classes can override the container name
-           as it comes in to the driver in the backup object.  Implementations
-           should return None if no change to the container name is desired.
+        """Allow sub-classes to override container name.
+
+        This method exists so that sub-classes can override the container name
+        as it comes in to the driver in the backup object. Implementations
+        should return None if no change to the container name is desired.
         """
         return
 
     @abc.abstractmethod
     def get_extra_metadata(self, backup, volume):
-        """This method allows for collection of extra metadata in prepare_backup()
-           which will be passed to get_object_reader() and get_object_writer().
-           Subclass extensions can use this extra information to optimize
-           data transfers.  Return a json serializable object.
+        """Return extra metadata to use in prepare_backup.
+
+        This method allows for collection of extra metadata in prepare_backup()
+        which will be passed to get_object_reader() and get_object_writer().
+        Subclass extensions can use this extra information to optimize
+        data transfers. Return a json serializable object.
         """
         return
 

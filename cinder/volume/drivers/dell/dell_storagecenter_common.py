@@ -62,10 +62,11 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
     def _bytes_to_gb(self, spacestring):
         """Space is returned in a string like ...
+
         7.38197504E8 Bytes
         Need to split that apart and convert to GB.
 
-        returns gbs in int form
+        :returns: gbs in int form
         """
         try:
             n = spacestring.split(' ', 1)

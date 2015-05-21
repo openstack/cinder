@@ -74,7 +74,8 @@ class Status(object):
 class RestResult(object):
     """Result from a REST API operation"""
     def __init__(self, response=None, err=None):
-        """Initialize a RestResult containing the results from a REST call
+        """Initialize a RestResult containing the results from a REST call.
+
         :param response: HTTP response
         """
         self.response = response

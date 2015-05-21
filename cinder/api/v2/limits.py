@@ -217,12 +217,11 @@ class RateLimitingMiddleware(base_wsgi.Middleware):
     """
 
     def __init__(self, application, limits=None, limiter=None, **kwargs):
-        """Initialize new `RateLimitingMiddleware`, which wraps the given WSGI
-        application and sets up the given limits.
+        """Initialize class, wrap WSGI app, and set up given limits.
 
-        @param application: WSGI application to wrap
-        @param limits: String describing limits
-        @param limiter: String identifying class for representing limits
+        :param application: WSGI application to wrap
+        :param limits: String describing limits
+        :param limiter: String identifying class for representing limits
 
         Other parameters are passed to the constructor for the limiter.
         """

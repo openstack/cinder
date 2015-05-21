@@ -12,10 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-iSCSI Drivers for EMC VNX array based on CLI.
-
-"""
+"""iSCSI Drivers for EMC VNX array based on CLI."""
 
 from oslo_log import log as logging
 
@@ -202,8 +199,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         self.cli.manage_existing(volume, existing_ref)
 
     def manage_existing_get_size(self, volume, existing_ref):
-        """Return size of volume to be managed by manage_existing.
-        """
+        """Return size of volume to be managed by manage_existing."""
         return self.cli.manage_existing_get_size(volume, existing_ref)
 
     def create_consistencygroup(self, context, group):

@@ -146,6 +146,7 @@ def factory_bend(drv_config):
 
 class HDSNFSDriver(nfs.NfsDriver):
     """Base class for Hitachi NFS driver.
+
     Executes commands relating to Volumes.
 
     Version 1.0.0: Initial driver version
@@ -190,8 +191,10 @@ class HDSNFSDriver(nfs.NfsDriver):
         return vol
 
     def _get_service(self, volume):
-        """Get the available service parameters for a given volume using
-           its type.
+        """Get service parameters.
+
+        Get the available service parameters for a given volume using
+        its type.
 
         :param volume: dictionary volume reference
         """
@@ -373,8 +376,7 @@ class HDSNFSDriver(nfs.NfsDriver):
                 time.sleep(tries ** 2)
 
     def _get_volume_path(self, nfs_share, volume_name):
-        """Get volume path (local fs path) for given volume name on given nfs
-        share.
+        """Get volume path (local fs path) for given name on given nfs share.
 
         :param nfs_share string, example 172.18.194.100:/var/nfs
         :param volume_name string,

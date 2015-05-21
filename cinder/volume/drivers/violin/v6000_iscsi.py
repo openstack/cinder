@@ -440,7 +440,9 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
                 _('Failed to add igroup member: %(code)d, %(message)s') % resp)
 
     def _update_stats(self):
-        """Gathers array stats from the backend and converts them to GB values.
+        """Update array stats.
+
+        Gathers array stats from the backend and converts them to GB values.
         """
         data = {}
         total_gb = 0

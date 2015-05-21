@@ -245,9 +245,11 @@ class GlanceImageService(object):
         return base_image_meta
 
     def get_location(self, context, image_id):
-        """Returns a tuple of the direct url and locations representing the
-        backend storage location, or (None, None) if these attributes are not
-        shown by Glance.
+        """Get backend storage location url.
+
+        Returns a tuple containing the direct url and locations representing
+        the backend storage location, or (None, None) if these attributes are
+        not shown by Glance.
         """
         if CONF.glance_api_version == 1:
             # image location not available in v1

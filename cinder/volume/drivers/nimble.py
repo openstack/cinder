@@ -191,8 +191,9 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         return ''.join(random.sample(char_set, length))
 
     def _clone_volume_from_snapshot(self, volume, snapshot):
-        """Clonevolume from snapshot. Extend the volume if the
-           size of the volume is more than the snapshot
+        """Clone volume from snapshot.
+
+        Extend the volume if the size of the volume is more than the snapshot.
         """
         reserve = not self.configuration.san_thin_provision
         self.APIExecutor.clone_vol(volume, snapshot, reserve)
@@ -371,9 +372,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
 
 
 def _response_checker(func):
-    """Decorator function to check if the response
-       of an API is positive
-    """
+    """Decorator function to check if the response of an API is positive."""
     @functools.wraps(func)
     def inner_response_checker(self, *args, **kwargs):
         response = func(self, *args, **kwargs)
@@ -391,9 +390,7 @@ def _response_checker(func):
 
 
 def _connection_checker(func):
-    """Decorator to re-establish and
-       re-run the api if session has expired.
-    """
+    """Decorator to re-establish and re-run the api if session has expired."""
     @functools.wraps(func)
     def inner_connection_checker(self, *args, **kwargs):
         for attempts in range(2):

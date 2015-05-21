@@ -11,9 +11,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Unit tests for Oracle's ZFSSA Cinder volume driver
-"""
+"""Unit tests for Oracle's ZFSSA Cinder volume driver."""
 
 import json
 
@@ -34,7 +32,7 @@ nfs_compression = 'off'
 
 
 class FakeZFSSA(object):
-    """Fake ZFS SA"""
+    """Fake ZFS SA."""
     def __init__(self):
         self.user = None
         self.host = None
@@ -221,8 +219,7 @@ class FakeZFSSA(object):
 
 
 class FakeNFSZFSSA(FakeZFSSA):
-    """Fake ZFS SA for the NFS Driver
-    """
+    """Fake ZFS SA for the NFS Driver."""
     def set_webdav(self, https_path, auth_str):
         self.webdavclient = https_path
 

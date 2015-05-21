@@ -670,9 +670,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
                          "Consistency Group created failed")
 
     def test_create_consistencygroup_fail_on_cg_not_empty(self):
-        """Test that create_consistencygroup fail
-        when consistency group is not empty.
-        """
+        """Test create_consistencygroup with empty consistency group."""
 
         self.driver.do_setup(None)
 
@@ -713,9 +711,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
                              'Consistency Group deleted failed')
 
     def test_delete_consistencygroup_fail_on_volume_not_delete(self):
-        """Test that delete_consistencygroup return fail
-        when the volume can not be deleted.
-        """
+        """Test delete_consistencygroup with volume delete failure."""
 
         self.driver.do_setup(None)
 
@@ -821,9 +817,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         self.driver.delete_consistencygroup(ctxt, CONSISTGROUP)
 
     def test_delete_cgsnapshot_fail_on_snapshot_not_delete(self):
-        """Test that delete_cgsnapshot return fail
-        when the snapshot can not be deleted.
-        """
+        """Test delete_cgsnapshot when the snapshot cannot be deleted."""
 
         self.driver.do_setup(None)
 

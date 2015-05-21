@@ -277,11 +277,12 @@ class NetAppNfsDriver(nfs.NfsDriver):
                 time.sleep(tries ** 2)
 
     def _get_volume_path(self, nfs_share, volume_name):
-        """Get volume path (local fs path) for given volume name on given nfs
-        share.
+        """Get volume path.
 
-        @param nfs_share string, example 172.18.194.100:/var/nfs
-        @param volume_name string,
+        Get volume path (local fs path) for given volume name on given nfs
+        share.
+        :param nfs_share: string, example 172.18.194.100:/var/nfs
+        :param volume_name: string,
             example volume-91ee65ec-c473-4391-8c09-162b00c68a8c
         """
 

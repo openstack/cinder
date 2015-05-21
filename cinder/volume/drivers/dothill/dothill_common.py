@@ -187,8 +187,8 @@ class DotHillCommon(object):
 
     def _assert_enough_space_for_copy(self, volume_size):
         """The DotHill creates a snap pool before trying to copy the volume.
-        The pool is 5.27GB or 20% of the volume size, whichever is larger.
 
+        The pool is 5.27GB or 20% of the volume size, whichever is larger.
         Verify that we have enough space for the pool and then copy
         """
         pool_size = max(volume_size * 0.2, 5.27)

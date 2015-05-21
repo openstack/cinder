@@ -20,8 +20,7 @@ from cinder.volume.targets import tgt
 
 
 class TestIserAdmDriver(tf.TargetDriverFixture):
-    """Unit tests for the deprecated ISERTgtAdm flow
-    """
+    """Unit tests for the deprecated ISERTgtAdm flow"""
 
     def setUp(self):
         super(TestIserAdmDriver, self).setUp()
@@ -46,8 +45,7 @@ class TestIserAdmDriver(tf.TargetDriverFixture):
 
 
 class TestIserTgtDriver(tf.TargetDriverFixture):
-    """Unit tests for the iSER TGT flow
-    """
+    """Unit tests for the iSER TGT flow"""
 
     def setUp(self):
         super(TestIserTgtDriver, self).setUp()
@@ -72,8 +70,7 @@ class TestIserTgtDriver(tf.TargetDriverFixture):
 
 
 class TestIserLioAdmDriver(tf.TargetDriverFixture):
-    """Unit tests for the iSER LIO flow
-    """
+    """Unit tests for the iSER LIO flow"""
     def setUp(self):
         super(TestIserLioAdmDriver, self).setUp()
         self.configuration.iscsi_protocol = 'iser'

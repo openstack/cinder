@@ -3234,7 +3234,9 @@ def volume_glance_metadata_copy_from_volume_to_volume(context,
 @require_context
 @require_volume_exists
 def volume_glance_metadata_copy_to_volume(context, volume_id, snapshot_id):
-    """Update the Glance metadata from a volume (created from a snapshot) by
+    """Update Glance metadata from a volume.
+
+    Update the Glance metadata from a volume (created from a snapshot) by
     copying all of the key:value pairs from the originating snapshot.
 
     This is so that the Glance metadata from the original volume is retained.

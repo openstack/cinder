@@ -211,9 +211,10 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         return conf
 
     def _get_service(self, volume):
-        """Get the available service parameters for a given volume using
-           its type.
-           :param volume: dictionary volume reference
+        """Get available service parameters.
+
+        Get the available service parameters for a given volume using its type.
+        :param volume: dictionary volume reference
         """
 
         label = utils.extract_host(volume['host'], level='pool')
@@ -360,7 +361,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
     def _id_to_vol(self, volume_id):
         """Given the volume id, retrieve the volume object from database.
-           :param volume_id: volume id string
+
+        :param volume_id: volume id string
         """
 
         vol = self.db.volume_get(self.context, volume_id)
@@ -369,8 +371,9 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
     def _update_vol_location(self, volume_id, loc):
         """Update the provider location.
-           :param volume_id: volume id string
-           :param loc: string provider location value
+
+        :param volume_id: volume id string
+        :param loc: string provider location value
         """
 
         update = {'provider_location': loc}
@@ -421,8 +424,9 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
     def create_export(self, context, volume):
         """Create an export. Moved to initialize_connection.
-           :param context:
-           :param volume: volume reference
+
+        :param context:
+        :param volume: volume reference
         """
 
         name = volume['name']
@@ -432,8 +436,9 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
     def remove_export(self, context, volume):
         """Disconnect a volume from an attached instance.
-           :param context: context
-           :param volume: dictionary volume reference
+
+        :param context: context
+        :param volume: dictionary volume reference
         """
 
         provider = volume['provider_location']
@@ -445,7 +450,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
     def create_volume(self, volume):
         """Create a LU on HNAS.
-           :param volume: ditctionary volume reference
+
+        :param volume: dictionary volume reference
         """
 
         service = self._get_service(volume)
@@ -470,8 +476,9 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
     def create_cloned_volume(self, dst, src):
         """Create a clone of a volume.
-           :param dst: ditctionary destination volume reference
-           :param src: ditctionary source volume reference
+
+        :param dst: ditctionary destination volume reference
+        :param src: ditctionary source volume reference
         """
 
         if src['size'] != dst['size']:
@@ -519,6 +526,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
     def delete_volume(self, volume):
         """Delete an LU on HNAS.
+
         :param volume: dictionary volume reference
         """
 
@@ -653,6 +661,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
     def create_snapshot(self, snapshot):
         """Create a snapshot.
+
         :param snapshot: dictionary snapshot reference
         """
 

@@ -460,7 +460,9 @@ class SRBDriver(driver.VolumeDriver):
 
     @staticmethod
     def _activate_lv(orig, *args, **kwargs):
-        """Use with `patched` to patch `lvm.LVM.activate_lv` to ignore `EEXIST`
+        """Activate lv.
+
+        Use with `patched` to patch `lvm.LVM.activate_lv` to ignore `EEXIST`
         """
         try:
             orig(*args, **kwargs)

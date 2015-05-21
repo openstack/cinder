@@ -145,8 +145,7 @@ class WindowsDriver(driver.ISCSIDriver):
         return {'provider_location': target_name}
 
     def remove_export(self, context, volume):
-        """Driver entry point to remove an export for a volume.
-        """
+        """Driver entry point to remove an export for a volume."""
         target_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                 volume['name'])
 

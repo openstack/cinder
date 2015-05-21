@@ -679,7 +679,9 @@ class FakeHttplibConnection(object):
 
 
 def wire_HTTPConnection_to_WSGI(host, app):
-    """Monkeypatches HTTPConnection so that if you try to connect to host, you
+    """Monkeypatches HTTPConnection.
+
+    Monkeypatches HTTPConnection so that if you try to connect to host, you
     are instead routed straight to the given WSGI app.
 
     After calling this method, when any code calls
@@ -698,7 +700,9 @@ def wire_HTTPConnection_to_WSGI(host, app):
     can restore the default HTTPConnection interface (for all hosts).
     """
     class HTTPConnectionDecorator(object):
-        """Wraps the real HTTPConnection class so that when you instantiate
+        """Decorator to mock the HTTPConnection class.
+
+        Wraps the real HTTPConnection class so that when you instantiate
         the class you might instead get a fake instance.
         """
 

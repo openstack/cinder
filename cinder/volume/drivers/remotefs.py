@@ -242,9 +242,7 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
         self._set_rw_permissions(volume_path)
 
     def _ensure_shares_mounted(self):
-        """Look for remote shares in the flags and tries to mount them
-        locally.
-        """
+        """Look for remote shares in the flags and mount them locally."""
         mounted_shares = []
 
         self._load_shares_config(getattr(self.configuration,
@@ -296,8 +294,10 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
         pass
 
     def delete_snapshot(self, snapshot):
-        """Do nothing for this driver, but allow manager to handle deletion
-           of snapshot in error state.
+        """Delete snapshot.
+
+        Do nothing for this driver, but allow manager to handle deletion
+        of snapshot in error state.
         """
         pass
 
@@ -363,7 +363,8 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
                       run_as_root=self._execute_as_root)
 
     def local_path(self, volume):
-        """Get volume path (mounted locally fs path) for given volume
+        """Get volume path (mounted locally fs path) for given volume.
+
         :param volume: volume reference
         """
         remotefs_share = volume['provider_location']
@@ -746,19 +747,22 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
         return output
 
     def _get_hash_str(self, base_str):
-        """Return a string that represents hash of base_str
-        (in a hex format).
+        """Return a string that represents hash of base_str.
+
+        Returns string in a hex format.
         """
         return hashlib.md5(base_str).hexdigest()
 
     def _get_mount_point_for_share(self, share):
         """Return mount point for share.
+
         :param share: example 172.18.194.100:/var/fs
         """
         return self._remotefsclient.get_mount_point(share)
 
     def _get_available_capacity(self, share):
         """Calculate available space on the share.
+
         :param share: example 172.18.194.100:/var/fs
         """
         mount_point = self._get_mount_point_for_share(share)

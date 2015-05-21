@@ -45,7 +45,9 @@ def upgrade(migrate_engine):
 
 
 def downgrade(migrate_engine):
-    """Don't delete the 'default' entries at downgrade time.
+    """Downgrade.
+
+    Don't delete the 'default' entries at downgrade time.
     We don't know if the user had default entries when we started.
     If they did, we wouldn't want to remove them.  So, the safest
     thing to do is just leave the 'default' entries at downgrade time.

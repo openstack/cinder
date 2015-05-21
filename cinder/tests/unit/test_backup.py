@@ -12,10 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests for Backup code.
-
-"""
+"""Tests for Backup code."""
 
 import ddt
 import tempfile
@@ -178,7 +175,9 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch.object(lvm.LVMVolumeDriver, 'delete_snapshot')
     @mock.patch.object(lvm.LVMVolumeDriver, 'delete_volume')
     def test_init_host(self, mock_delete_volume, mock_delete_snapshot):
-        """Make sure stuck volumes and backups are reset to correct
+        """Test stuck volumes and backups.
+
+        Make sure stuck volumes and backups are reset to correct
         states when backup_manager.init_host() is called
         """
         vol1_id = self._create_volume_db_entry()
@@ -308,7 +307,9 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(2, notify.call_count)
 
     def test_restore_backup_with_bad_volume_status(self):
-        """Test error handling when restoring a backup to a volume
+        """Test error handling.
+
+        Test error handling when restoring a backup to a volume
         with a bad status.
         """
         vol_id = self._create_volume_db_entry(status='available', size=1)
@@ -322,7 +323,9 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(backup['status'], 'available')
 
     def test_restore_backup_with_bad_backup_status(self):
-        """Test error handling when restoring a backup with a backup
+        """Test error handling.
+
+        Test error handling when restoring a backup with a backup
         with a bad status.
         """
         vol_id = self._create_volume_db_entry(status='restoring-backup',
@@ -360,7 +363,9 @@ class BackupTestCase(BaseBackupTest):
         self.assertTrue(_mock_volume_restore.called)
 
     def test_restore_backup_with_bad_service(self):
-        """Test error handling when attempting a restore of a backup
+        """Test error handling.
+
+        Test error handling when attempting a restore of a backup
         with a different service to that used to create the backup.
         """
         vol_id = self._create_volume_db_entry(status='restoring-backup',
@@ -410,7 +415,9 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(2, notify.call_count)
 
     def test_delete_backup_with_bad_backup_status(self):
-        """Test error handling when deleting a backup with a backup
+        """Test error handling.
+
+        Test error handling when deleting a backup with a backup
         with a bad status.
         """
         vol_id = self._create_volume_db_entry(size=1)
@@ -437,7 +444,9 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(backup['status'], 'error')
 
     def test_delete_backup_with_bad_service(self):
-        """Test error handling when attempting a delete of a backup
+        """Test error handling.
+
+        Test error handling when attempting a delete of a backup
         with a different service to that used to create the backup.
         """
         vol_id = self._create_volume_db_entry(size=1)
@@ -453,7 +462,9 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(backup['status'], 'error')
 
     def test_delete_backup_with_no_service(self):
-        """Test error handling when attempting a delete of a backup
+        """Test error handling.
+
+        Test error handling when attempting a delete of a backup
         with no service defined for that backup, relates to bug #1162908
         """
         vol_id = self._create_volume_db_entry(size=1)
@@ -500,8 +511,10 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(backups[0].id, b2.id)
 
     def test_backup_get_all_by_project_with_deleted(self):
-        """Test deleted backups don't show up in backup_get_all_by_project.
-           Unless context.read_deleted is 'yes'.
+        """Test deleted backups.
+
+        Test deleted backups don't show up in backup_get_all_by_project.
+        Unless context.read_deleted is 'yes'.
         """
         backups = db.backup_get_all_by_project(self.ctxt, 'fake')
         self.assertEqual(len(backups), 0)
@@ -519,8 +532,10 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(len(backups), 2)
 
     def test_backup_get_all_by_host_with_deleted(self):
-        """Test deleted backups don't show up in backup_get_all_by_project.
-           Unless context.read_deleted is 'yes'
+        """Test deleted backups.
+
+        Test deleted backups don't show up in backup_get_all_by_project.
+        Unless context.read_deleted is 'yes'
         """
         backups = db.backup_get_all_by_host(self.ctxt, 'testhost')
         self.assertEqual(len(backups), 0)
@@ -546,7 +561,9 @@ class BackupTestCase(BaseBackupTest):
                          backup_mgr.driver_name)
 
     def test_export_record_with_bad_service(self):
-        """Test error handling when attempting an export of a backup
+        """Test error handling.
+
+        Test error handling when attempting an export of a backup
         record with a different service to that used to create the backup.
         """
         vol_id = self._create_volume_db_entry(size=1)
@@ -561,7 +578,9 @@ class BackupTestCase(BaseBackupTest):
                           backup)
 
     def test_export_record_with_bad_backup_status(self):
-        """Test error handling when exporting a backup record with a backup
+        """Test error handling.
+
+        Test error handling when exporting a backup record with a backup
         with a bad status.
         """
         vol_id = self._create_volume_db_entry(status='available',
@@ -605,7 +624,9 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(backup['size'], vol_size)
 
     def test_import_record_with_bad_service(self):
-        """Test error handling when attempting an import of a backup
+        """Test error handling.
+
+        Test error handling when attempting an import of a backup
         record with a different service to that used to create the backup.
         """
         export = self._create_exported_record_entry()
@@ -644,7 +665,9 @@ class BackupTestCase(BaseBackupTest):
                 backup_hosts_expect)
 
     def test_import_record_with_invalid_backup(self):
-        """Test error handling when attempting an import of a backup
+        """Test error handling.
+
+        Test error handling when attempting an import of a backup
         record where the backup driver returns an exception.
         """
         export = self._create_exported_record_entry()
@@ -723,7 +746,9 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         self.assertEqual(backup['size'], vol_size)
 
     def test_import_record_with_verify_invalid_backup(self):
-        """Test error handling when attempting an import of a backup
+        """Test error handling.
+
+        Test error handling when attempting an import of a backup
         record where the backup driver returns an exception.
         """
         vol_size = 1

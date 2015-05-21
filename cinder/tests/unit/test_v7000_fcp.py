@@ -333,8 +333,10 @@ class V7000FCPDriverTestCase(test.TestCase):
 
     @mock.patch('socket.gethostbyaddr')
     def test_update_volume_stats(self, mock_gethost):
-        """Makes a mock query to the backend to collect
-           stats on all physical devices.
+        """Test Update Volume Stats.
+
+        Makes a mock query to the backend to collect stats on all physical
+        devices.
         """
 
         def gethostbyaddr(addr):
@@ -369,8 +371,10 @@ class V7000FCPDriverTestCase(test.TestCase):
         self.assertIsNone(result)
 
     def test_get_active_fc_targets(self):
-        """Makes a mock query to the backend to collect
-           all the physical adapters and extract the WWNs
+        """Test Get Active FC Targets.
+
+        Makes a mock query to the backend to collect all the physical
+        adapters and extract the WWNs.
         """
 
         conf = {

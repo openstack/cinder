@@ -13,10 +13,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests for Volume Code.
-
-"""
+"""Tests for Volume Code."""
 
 import datetime
 import os
@@ -1751,9 +1748,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
     @mock.patch.object(keymgr, 'API', fake_keymgr.fake_api)
     def test_create_volume_from_snapshot_with_encryption(self):
-        """Test volume can be created from a snapshot of
-        an encrypted volume.
-        """
+        """Test volume can be created from a snapshot of an encrypted volume"""
         ctxt = context.get_admin_context()
 
         db.volume_type_create(ctxt,
@@ -3455,7 +3450,9 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_volume(self.context, volume['id'])
 
     def test_create_volume_from_image_exception(self):
-        """Verify that create volume from a non-existing image, the volume
+        """Test create volume from a non-existing image.
+
+        Verify that create volume from a non-existing image, the volume
         status is 'error' and is not bootable.
         """
         dst_fd, dst_path = tempfile.mkstemp()
@@ -3505,7 +3502,9 @@ class VolumeTestCase(BaseVolumeTestCase):
                              {'_pool0': {'allocated_capacity_gb': 1}})
 
     def test_create_volume_from_exact_sized_image(self):
-        """Verify that an image which is exactly the same size as the
+        """Test create volume from an image of the same size.
+
+        Verify that an image which is exactly the same size as the
         volume, will work correctly.
         """
         try:

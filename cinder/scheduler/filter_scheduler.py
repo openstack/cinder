@@ -14,8 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-The FilterScheduler is for creating volumes.
+"""The FilterScheduler is for creating volumes.
+
 You can customize this scheduler by specifying your own volume Filters and
 Weighing Functions.
 """
@@ -42,9 +42,7 @@ class FilterScheduler(driver.Scheduler):
         self.max_attempts = self._max_attempts()
 
     def schedule(self, context, topic, method, *args, **kwargs):
-        """The schedule() contract requires we return the one
-        best-suited host for this request.
-        """
+        """Schedule contract that returns best-suited host for this request."""
         self._schedule(context, topic, *args, **kwargs)
 
     def _get_configuration_options(self):
@@ -52,8 +50,9 @@ class FilterScheduler(driver.Scheduler):
         return self.options.get_configuration()
 
     def populate_filter_properties(self, request_spec, filter_properties):
-        """Stuff things into filter_properties.  Can be overridden in a
-        subclass to add more data.
+        """Stuff things into filter_properties.
+
+        Can be overridden in a subclass to add more data.
         """
         vol = request_spec['volume_properties']
         filter_properties['size'] = vol['size']
@@ -172,16 +171,19 @@ class FilterScheduler(driver.Scheduler):
 
     def _post_select_populate_filter_properties(self, filter_properties,
                                                 host_state):
-        """Add additional information to the filter properties after a host has
+        """Populate filter properties with additional information.
+
+        Add additional information to the filter properties after a host has
         been selected by the scheduling process.
         """
         # Add a retry entry for the selected volume backend:
         self._add_retry_host(filter_properties, host_state.host)
 
     def _add_retry_host(self, filter_properties, host):
-        """Add a retry entry for the selected volume backend. In the event that
-        the request gets re-scheduled, this entry will signal that the given
-        backend has already been tried.
+        """Add a retry entry for the selected volume backend.
+
+        In the event that the request gets re-scheduled, this entry will signal
+        that the given backend has already been tried.
         """
         retry = filter_properties.get('retry', None)
         if not retry:
@@ -198,9 +200,7 @@ class FilterScheduler(driver.Scheduler):
         return max_attempts
 
     def _log_volume_error(self, volume_id, retry):
-        """If the request contained an exception from a previous volume
-        create operation, log it to aid debugging
-        """
+        """Log requests with exceptions from previous volume operations."""
         exc = retry.pop('exc', None)  # string-ified exception from volume
         if not exc:
             return  # no exception info from a previous attempt, skip
@@ -217,8 +217,9 @@ class FilterScheduler(driver.Scheduler):
                    'exc': exc})
 
     def _populate_retry(self, filter_properties, properties):
-        """Populate filter properties with history of retries for this
-        request. If maximum retries is exceeded, raise NoValidHost.
+        """Populate filter properties with history of retries for request.
+
+        If maximum retries is exceeded, raise NoValidHost.
         """
         max_attempts = self.max_attempts
         retry = filter_properties.pop('retry', {})
@@ -249,8 +250,9 @@ class FilterScheduler(driver.Scheduler):
 
     def _get_weighted_candidates(self, context, request_spec,
                                  filter_properties=None):
-        """Returns a list of hosts that meet the required specs,
-        ordered by their fitness.
+        """Return a list of hosts that meet required specs.
+
+        Returned list is ordered by their fitness.
         """
         elevated = context.elevated()
 

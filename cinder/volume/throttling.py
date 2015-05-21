@@ -47,7 +47,9 @@ class Throttle(object):
 
     @contextlib.contextmanager
     def subcommand(self, srcpath, dstpath):
-        """Throttle disk I/O bandwidth used by a sub-command, such as 'dd',
+        """Sub-command that reads from srcpath and writes to dstpath.
+
+        Throttle disk I/O bandwidth used by a sub-command, such as 'dd',
         that reads from srcpath and writes to dstpath. The sub-command
         must be executed with the generated prefix command.
         """

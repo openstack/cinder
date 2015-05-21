@@ -12,10 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests for NetApp volume driver
-
-"""
+"""Tests for NetApp volume driver."""
 
 from lxml import etree
 import mock
@@ -1162,9 +1159,7 @@ class FakeDirect7modeHTTPConnection(object):
 
 class NetAppDirect7modeISCSIDriverTestCase_NV(
         NetAppDirectCmodeISCSIDriverTestCase):
-    """Test case for NetAppISCSIDriver
-       No vfiler
-    """
+    """Test case for NetAppISCSIDriver without vfiler"""
     def setUp(self):
         super(NetAppDirect7modeISCSIDriverTestCase_NV, self).setUp()
 
@@ -1218,9 +1213,7 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
 
 class NetAppDirect7modeISCSIDriverTestCase_WV(
         NetAppDirect7modeISCSIDriverTestCase_NV):
-    """Test case for NetAppISCSIDriver
-       With vfiler
-    """
+    """Test case for NetAppISCSIDriver with vfiler"""
     def setUp(self):
         super(NetAppDirect7modeISCSIDriverTestCase_WV, self).setUp()
 

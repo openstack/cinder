@@ -286,7 +286,9 @@ class XMLDeserializerTest(test.TestCase):
 
 class MetadataXMLDeserializerTest(test.TestCase):
     def test_xml_meta_parsing_special_character(self):
-        """Test that when a SaxParser splits a string containing special
+        """Test XML meta parsing with special characters.
+
+        Test that when a SaxParser splits a string containing special
         characters into multiple childNodes there are no issues extracting
         the text.
         """

@@ -611,8 +611,10 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
 
 class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
-    """Test driver behavior when the netapp_enable_multiattach
-    configuration option is True.
+    """Test driver when netapp_enable_multiattach is enabled.
+
+    Test driver behavior when the netapp_enable_multiattach configuration
+    option is True.
     """
 
     def setUp(self):
