@@ -28,6 +28,7 @@ from cinder import utils
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
 from cinder.zonemanager import fc_san_lookup_service as fc_service
+from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -97,10 +98,10 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
         LOG.debug("FC Fabric List: %s", fabrics)
         if fabrics:
             for t in target_wwn_list:
-                formatted_target_list.append(self.get_formatted_wwn(t))
+                formatted_target_list.append(fczm_utils.get_formatted_wwn(t))
 
             for i in initiator_wwn_list:
-                formatted_initiator_list.append(self.
+                formatted_initiator_list.append(fczm_utils.
                                                 get_formatted_wwn(i))
 
             for fabric_name in fabrics:
@@ -237,11 +238,3 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
                 LOG.error(msg)
                 raise exception.InvalidParameterValue(err=msg)
         return nsinfo_list
-
-    def get_formatted_wwn(self, wwn_str):
-        """Utility API that formats WWN to insert ':'."""
-        if (len(wwn_str) != 16):
-            return wwn_str.lower()
-        else:
-            return (':'.join([wwn_str[i:i + 2]
-                              for i in range(0, len(wwn_str), 2)])).lower()

@@ -1,8 +1,6 @@
 #    (c) Copyright 2014 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
-#    Copyright 2014 OpenStack Foundation
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -23,6 +21,7 @@ import mock
 from oslo_config import cfg
 from oslo_utils import importutils
 import paramiko
+import requests
 
 from cinder import exception
 from cinder import test
@@ -76,15 +75,16 @@ class BrcdFcZoneDriverBaseTest(object):
 
         configuration.fc_fabric_names = 'BRCD_FAB_1'
         configuration.fc_fabric_address_BRCD_FAB_1 = '10.24.48.213'
-        if (is_normal):
+        configuration.fc_southbound_connector = 'CLI'
+        if is_normal:
             configuration.fc_fabric_user_BRCD_FAB_1 = 'admin'
         else:
             configuration.fc_fabric_user_BRCD_FAB_1 = 'invaliduser'
         configuration.fc_fabric_password_BRCD_FAB_1 = 'password'
 
-        if (mode == 1):
+        if mode == 1:
             configuration.zoning_policy_BRCD_FAB_1 = 'initiator-target'
-        elif (mode == 2):
+        elif mode == 2:
             configuration.zoning_policy_BRCD_FAB_1 = 'initiator'
         else:
             configuration.zoning_policy_BRCD_FAB_1 = 'initiator-target'
@@ -110,40 +110,60 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
     def fake__get_active_zone_set(self, brcd_sb_connector, fabric_ip):
         return GlobalVars._active_cfg
 
+    def get_client(self, protocol='HTTPS'):
+        conn = ('cinder.tests.unit.zonemanager.test_brcd_fc_zone_driver.' +
+                ('FakeBrcdFCZoneClientCLI' if protocol == "CLI"
+                 else 'FakeBrcdHttpFCZoneClient'))
+        client = importutils.import_object(
+            conn,
+            ipaddress="10.24.48.213",
+            username="admin",
+            password="password",
+            key="/home/stack/.ssh/id_rsa",
+            port=22,
+            protocol=protocol
+        )
+        return client
+
     def fake_get_san_context(self, target_wwn_list):
         fabric_map = {}
         return fabric_map
 
-    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_active_zone_set')
-    def test_add_connection(self, get_active_zs_mock):
+    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
+    def test_add_connection(self, get_southbound_client_mock):
         """Normal flow for i-t mode."""
         GlobalVars._is_normal_test = True
         GlobalVars._zone_state = []
-        get_active_zs_mock.return_value = _active_cfg_before_add
+        GlobalVars._active_cfg = _active_cfg_before_add
+        get_southbound_client_mock.return_value = self.get_client("HTTPS")
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
         self.assertTrue(_zone_name in GlobalVars._zone_state)
 
-    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_active_zone_set')
-    def test_delete_connection(self, get_active_zs_mock):
+    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
+    def test_delete_connection(self, get_southbound_client_mock):
         GlobalVars._is_normal_test = True
-        get_active_zs_mock.return_value = _active_cfg_before_delete
+        get_southbound_client_mock.return_value = self.get_client("CLI")
+        GlobalVars._active_cfg = _active_cfg_before_delete
         self.driver.delete_connection(
             'BRCD_FAB_1', _initiator_target_map)
         self.assertFalse(_zone_name in GlobalVars._zone_state)
 
-    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_active_zone_set')
-    def test_add_connection_for_initiator_mode(self, get_active_zs_mock):
+    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
+    def test_add_connection_for_initiator_mode(self, get_southbound_client_mk):
         """Normal flow for i mode."""
         GlobalVars._is_normal_test = True
-        get_active_zs_mock.return_value = _active_cfg_before_add
+        get_southbound_client_mk.return_value = self.get_client("CLI")
+        GlobalVars._active_cfg = _active_cfg_before_add
         self.setup_driver(self.setup_config(True, 2))
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
         self.assertTrue(_zone_name in GlobalVars._zone_state)
 
-    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_active_zone_set')
-    def test_delete_connection_for_initiator_mode(self, get_active_zs_mock):
+    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
+    def test_delete_connection_for_initiator_mode(self,
+                                                  get_southbound_client_mk):
         GlobalVars._is_normal_test = True
-        get_active_zs_mock.return_value = _active_cfg_before_delete
+        get_southbound_client_mk.return_value = self.get_client("HTTPS")
+        GlobalVars._active_cfg = _active_cfg_before_delete
         self.setup_driver(self.setup_config(True, 2))
         self.driver.delete_connection(
             'BRCD_FAB_1', _initiator_target_map)
@@ -170,12 +190,7 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
                           _initiator_target_map)
 
 
-class FakeBrcdFCZoneClientCLI(object):
-    def __init__(self, ipaddress, username, password, port):
-        self.firmware_supported = True
-        if not GlobalVars._is_normal_test:
-            raise paramiko.SSHException("Unable to connect to fabric")
-
+class FakeClient(object):
     def get_active_zone_set(self):
         return GlobalVars._active_cfg
 
@@ -200,7 +215,25 @@ class FakeBrcdFCZoneClientCLI(object):
         pass
 
 
+class FakeBrcdFCZoneClientCLI(FakeClient):
+    def __init__(self, ipaddress, username,
+                 password, port, key, protocol):
+        self.firmware_supported = True
+        if not GlobalVars._is_normal_test:
+            raise paramiko.SSHException("Unable to connect to fabric.")
+
+
+class FakeBrcdHttpFCZoneClient(FakeClient):
+
+    def __init__(self, ipaddress, username,
+                 password, port, key, protocol):
+        self.firmware_supported = True
+        if not GlobalVars._is_normal_test:
+            raise requests.exception.HTTPError("Unable to connect to fabric")
+
+
 class FakeBrcdFCSanLookupService(object):
+
     def get_device_mapping_from_network(self,
                                         initiator_wwn_list,
                                         target_wwn_list):
@@ -208,10 +241,10 @@ class FakeBrcdFCSanLookupService(object):
         initiators = []
         targets = []
         for i in initiator_wwn_list:
-            if (i in _initiator_ns_map[_fabric_wwn]):
+            if i in _initiator_ns_map[_fabric_wwn]:
                 initiators.append(i)
         for t in target_wwn_list:
-            if (t in _target_ns_map[_fabric_wwn]):
+            if t in _target_ns_map[_fabric_wwn]:
                 targets.append(t)
         device_map[_fabric_wwn] = {
             'initiator_port_wwn_list': initiators,

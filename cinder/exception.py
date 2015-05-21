@@ -842,11 +842,15 @@ class FCSanLookupServiceException(CinderException):
 
 
 class BrocadeZoningCliException(CinderException):
-    message = _("Fibre Channel Zoning CLI error: %(reason)s")
+    message = _("Brocade Fibre Channel Zoning CLI error: %(reason)s")
+
+
+class BrocadeZoningHttpException(CinderException):
+    message = _("Brocade Fibre Channel Zoning HTTP error: %(reason)s")
 
 
 class CiscoZoningCliException(CinderException):
-    message = _("Fibre Channel Zoning CLI error: %(reason)s")
+    message = _("Cisco Fibre Channel Zoning CLI error: %(reason)s")
 
 
 class NetAppDriverException(VolumeDriverException):

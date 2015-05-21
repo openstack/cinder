@@ -1,8 +1,6 @@
 #    (c) Copyright 2014 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
-#    Copyright 2014 OpenStack Foundation
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -143,10 +141,3 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
         self.assertEqual(parsed_switch_port_wwns, return_wwn_list)
         self.assertRaises(exception.InvalidParameterValue,
                           self._parse_ns_output, invalid_switch_data)
-
-    def test_get_formatted_wwn(self):
-        wwn_list = ['10008c7cff523b01']
-        return_wwn_list = []
-        expected_wwn_list = ['10:00:8c:7c:ff:52:3b:01']
-        return_wwn_list.append(self.get_formatted_wwn(wwn_list[0]))
-        self.assertEqual(expected_wwn_list, return_wwn_list)
