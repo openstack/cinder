@@ -57,6 +57,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                 Multiple pools support enhancement
                 Manage/unmanage volume revise
                 White list target ports support
+                Snap copy support
     """
 
     def __init__(self, *args, **kwargs):
@@ -248,3 +249,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                                                          volumes,
                                                          cgsnapshot,
                                                          snapshots)
+
+    def update_migrated_volume(self, context, volume, new_volume):
+        """Returns model update for migrated volume."""
+        return self.cli.update_migrated_volume(context, volume, new_volume)
