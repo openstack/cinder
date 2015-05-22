@@ -123,8 +123,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'qos_specs'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'qos_specs')
 
         specs = body['qos_specs']
         name = specs.get('name', None)
@@ -166,8 +165,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'qos_specs'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'qos_specs')
         specs = body['qos_specs']
         try:
             qos_specs.update(context, id, specs)

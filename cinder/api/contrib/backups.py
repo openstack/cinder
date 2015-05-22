@@ -240,13 +240,12 @@ class BackupsController(wsgi.Controller):
     def create(self, req, body):
         """Create a new backup."""
         LOG.debug('Creating new backup %s', body)
-        if not self.is_valid_body(body, 'backup'):
-            raise exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'backup')
 
         context = req.environ['cinder.context']
+        backup = body['backup']
 
         try:
-            backup = body['backup']
             volume_id = backup['volume_id']
         except KeyError:
             msg = _("Incorrect request body format")
@@ -282,9 +281,7 @@ class BackupsController(wsgi.Controller):
         """Restore an existing backup to a volume."""
         LOG.debug('Restoring backup %(backup_id)s (%(body)s)',
                   {'backup_id': id, 'body': body})
-        if not self.is_valid_body(body, 'restore'):
-            msg = _("Incorrect request body format")
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'restore')
 
         context = req.environ['cinder.context']
         restore = body['restore']
@@ -344,9 +341,7 @@ class BackupsController(wsgi.Controller):
     def import_record(self, req, body):
         """Import a backup."""
         LOG.debug('Importing record from %s.', body)
-        if not self.is_valid_body(body, 'backup-record'):
-            msg = _("Incorrect request body format.")
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'backup-record')
         context = req.environ['cinder.context']
         import_data = body['backup-record']
         # Verify that body elements are provided

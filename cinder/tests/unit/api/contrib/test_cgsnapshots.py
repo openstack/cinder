@@ -383,9 +383,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
         self.assertEqual(res.status_int, 400)
         self.assertEqual(res_dict['badRequest']['code'], 400)
-        self.assertEqual(res_dict['badRequest']['message'],
-                         'The server could not comply with the request since'
-                         ' it is either malformed or otherwise incorrect.')
+        self.assertEqual("Missing required element 'cgsnapshot' in "
+                         "request body.",
+                         res_dict['badRequest']['message'])
 
     @mock.patch.object(consistencygroupAPI.API, 'create_cgsnapshot',
                        side_effect=exception.InvalidCgSnapshot(
