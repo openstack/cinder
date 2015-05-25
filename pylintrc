@@ -33,3 +33,9 @@ max-args=6
 [Variables]
 
 dummy-variables-rgx=_
+
+[Typecheck]
+# Disable warnings on the HTTPSConnection classes because pylint doesn't
+# support importing from six.moves yet, see:
+# https://bitbucket.org/logilab/pylint/issue/550/
+ignored-classes=HTTPSConnection

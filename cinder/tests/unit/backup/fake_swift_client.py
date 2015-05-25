@@ -13,13 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import httplib
 import json
 import os
 import socket
 import zlib
 
 from oslo_log import log as logging
+from six.moves import http_client
 from swiftclient import client as swift
 
 LOG = logging.getLogger(__name__)
@@ -45,10 +45,10 @@ class FakeSwiftConnection(object):
         LOG.debug("fake head_container(%s)" % container)
         if container == 'missing_container':
             raise swift.ClientException('fake exception',
-                                        http_status=httplib.NOT_FOUND)
+                                        http_status=http_client.NOT_FOUND)
         elif container == 'unauthorized_container':
             raise swift.ClientException('fake exception',
-                                        http_status=httplib.UNAUTHORIZED)
+                                        http_status=http_client.UNAUTHORIZED)
         elif container == 'socket_error_on_head':
             raise socket.error(111, 'ECONNREFUSED')
         pass

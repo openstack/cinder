@@ -17,14 +17,13 @@
 
 """Unit tests for the API endpoint."""
 
-import httplib
-
 import six
+from six.moves import http_client
 import webob
 
 
 class FakeHttplibSocket(object):
-    """A fake socket implementation for httplib.HTTPResponse, trivial."""
+    """A fake socket implementation for http_client.HTTPResponse, trivial."""
     def __init__(self, response_string):
         self.response_string = response_string
         self._buffer = six.StringIO(response_string)
@@ -35,11 +34,11 @@ class FakeHttplibSocket(object):
 
 
 class FakeHttplibConnection(object):
-    """A fake httplib.HTTPConnection for boto.
+    """A fake http_client.HTTPConnection for boto.
 
     requests made via this connection actually get translated and routed into
     our WSGI app, we then wait for the response and turn it back into
-    the httplib.HTTPResponse that boto expects.
+    the http_client.HTTPResponse that boto expects.
     """
     def __init__(self, app, host, is_secure=False):
         self.app = app
@@ -58,7 +57,7 @@ class FakeHttplibConnection(object):
         # guess that's a function the web server usually provides.
         resp = "HTTP/1.0 %s" % resp
         self.sock = FakeHttplibSocket(resp)
-        self.http_response = httplib.HTTPResponse(self.sock)
+        self.http_response = http_client.HTTPResponse(self.sock)
         # NOTE(vish): boto is accessing private variables for some reason
         self._HTTPConnection__response = self.http_response
         self.http_response.begin()

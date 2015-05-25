@@ -14,11 +14,11 @@
 
 import copy
 import errno
-import httplib
 import re
 
 import mock
 from oslo_utils import units
+from six.moves import http_client
 
 from cinder import exception
 from cinder import test
@@ -206,7 +206,7 @@ class TestProphetStorDPLVolume(test.TestCase):
             'GET',
             '/%s/%s/' % (DPLCOMMON.DPL_VER_V1, DPLCOMMON.DPL_OBJ_SYSTEM),
             None,
-            [httplib.OK, httplib.ACCEPTED])
+            [http_client.OK, http_client.ACCEPTED])
 
     def test_createvdev(self):
         self.dplcmd.create_vdev(DATA_IN_VOLUME['id'],
@@ -229,7 +229,7 @@ class TestProphetStorDPLVolume(test.TestCase):
             '/%s/%s/%s/' % (DPLCOMMON.DPL_VER_V1, DPLCOMMON.DPL_OBJ_VOLUME,
                             DATA_IN_VOLUME['id']),
             params,
-            [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+            [http_client.OK, http_client.ACCEPTED, http_client.CREATED])
 
     def test_extendvdev(self):
         self.dplcmd.extend_vdev(DATA_IN_VOLUME['id'],
@@ -248,7 +248,7 @@ class TestProphetStorDPLVolume(test.TestCase):
             '/%s/%s/%s/' % (DPLCOMMON.DPL_VER_V1, DPLCOMMON.DPL_OBJ_VOLUME,
                             DATA_IN_VOLUME['id']),
             params,
-            [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+            [http_client.OK, http_client.ACCEPTED, http_client.CREATED])
 
     def test_deletevdev(self):
         self.dplcmd.delete_vdev(DATA_IN_VOLUME['id'], True)
@@ -261,8 +261,8 @@ class TestProphetStorDPLVolume(test.TestCase):
             '/%s/%s/%s/' % (DPLCOMMON.DPL_VER_V1, DPLCOMMON.DPL_OBJ_VOLUME,
                             DATA_IN_VOLUME['id']),
             params,
-            [httplib.OK, httplib.ACCEPTED, httplib.NOT_FOUND,
-             httplib.NO_CONTENT])
+            [http_client.OK, http_client.ACCEPTED, http_client.NOT_FOUND,
+             http_client.NO_CONTENT])
 
     def test_createvdevfromsnapshot(self):
         self.dplcmd.create_vdev_from_snapshot(
@@ -287,7 +287,7 @@ class TestProphetStorDPLVolume(test.TestCase):
             '/%s/%s/%s/' % (DPLCOMMON.DPL_VER_V1, DPLCOMMON.DPL_OBJ_VOLUME,
                             DATA_IN_VOLUME['id']),
             params,
-            [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+            [http_client.OK, http_client.ACCEPTED, http_client.CREATED])
 
     def test_getpool(self):
         self.dplcmd.get_pool(POOLUUID)
@@ -296,7 +296,7 @@ class TestProphetStorDPLVolume(test.TestCase):
             '/%s/%s/%s/' % (DPLCOMMON.DPL_VER_V1, DPLCOMMON.DPL_OBJ_POOL,
                             POOLUUID),
             None,
-            [httplib.OK, httplib.ACCEPTED])
+            [http_client.OK, http_client.ACCEPTED])
 
     def test_clonevdev(self):
         self.dplcmd.clone_vdev(
@@ -324,7 +324,7 @@ class TestProphetStorDPLVolume(test.TestCase):
             '/%s/%s/%s/' % (DPLCOMMON.DPL_VER_V1, DPLCOMMON.DPL_OBJ_VOLUME,
                             DATA_IN_VOLUME1['id']),
             params,
-            [httplib.OK, httplib.CREATED, httplib.ACCEPTED])
+            [http_client.OK, http_client.CREATED, http_client.ACCEPTED])
 
     def test_createvdevsnapshot(self):
         self.dplcmd.create_vdev_snapshot(
@@ -346,7 +346,7 @@ class TestProphetStorDPLVolume(test.TestCase):
             '/%s/%s/%s/' % (DPLCOMMON.DPL_VER_V1, DPLCOMMON.DPL_OBJ_VOLUME,
                             DATA_IN_VOLUME['id']),
             params,
-            [httplib.OK, httplib.CREATED, httplib.ACCEPTED])
+            [http_client.OK, http_client.CREATED, http_client.ACCEPTED])
 
     def test_getvdev(self):
         self.dplcmd.get_vdev(DATA_IN_VOLUME['id'])
@@ -355,7 +355,7 @@ class TestProphetStorDPLVolume(test.TestCase):
             '/%s/%s/%s/' % (DPLCOMMON.DPL_VER_V1, DPLCOMMON.DPL_OBJ_VOLUME,
                             DATA_IN_VOLUME['id']),
             None,
-            [httplib.OK, httplib.ACCEPTED, httplib.NOT_FOUND])
+            [http_client.OK, http_client.ACCEPTED, http_client.NOT_FOUND])
 
     def test_getvdevstatus(self):
         self.dplcmd.get_vdev_status(DATA_IN_VOLUME['id'], '123456')
@@ -366,7 +366,7 @@ class TestProphetStorDPLVolume(test.TestCase):
                                           DATA_IN_VOLUME['id'],
                                           '123456'),
             None,
-            [httplib.OK, httplib.NOT_FOUND])
+            [http_client.OK, http_client.NOT_FOUND])
 
     def test_getpoolstatus(self):
         self.dplcmd.get_pool_status(POOLUUID, '123456')
@@ -377,7 +377,7 @@ class TestProphetStorDPLVolume(test.TestCase):
                                           POOLUUID,
                                           '123456'),
             None,
-            [httplib.OK, httplib.NOT_FOUND])
+            [http_client.OK, http_client.NOT_FOUND])
 
     def test_assignvdev(self):
         self.dplcmd.assign_vdev(
@@ -411,7 +411,7 @@ class TestProphetStorDPLVolume(test.TestCase):
                             DPLCOMMON.DPL_OBJ_VOLUME,
                             DATA_IN_VOLUME['id']),
             params,
-            [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+            [http_client.OK, http_client.ACCEPTED, http_client.CREATED])
 
     def test_unassignvdev(self):
         self.dplcmd.unassign_vdev(DATA_IN_VOLUME['id'],
@@ -436,8 +436,8 @@ class TestProphetStorDPLVolume(test.TestCase):
                             DPLCOMMON.DPL_OBJ_VOLUME,
                             DATA_IN_VOLUME['id']),
             params,
-            [httplib.OK, httplib.ACCEPTED,
-             httplib.NO_CONTENT, httplib.NOT_FOUND])
+            [http_client.OK, http_client.ACCEPTED,
+             http_client.NO_CONTENT, http_client.NOT_FOUND])
 
     def test_deletevdevsnapshot(self):
         self.dplcmd.delete_vdev_snapshot(DATA_IN_VOLUME['id'],
@@ -453,8 +453,8 @@ class TestProphetStorDPLVolume(test.TestCase):
                                   DPLCOMMON.DPL_OBJ_SNAPSHOT,
                                   DATA_IN_SNAPSHOT['id']),
             None,
-            [httplib.OK, httplib.ACCEPTED, httplib.NO_CONTENT,
-             httplib.NOT_FOUND])
+            [http_client.OK, http_client.ACCEPTED, http_client.NO_CONTENT,
+             http_client.NOT_FOUND])
 
     def test_listvdevsnapshots(self):
         self.dplcmd.list_vdev_snapshots(DATA_IN_VOLUME['id'])
@@ -465,7 +465,7 @@ class TestProphetStorDPLVolume(test.TestCase):
                                DATA_IN_VOLUME['id'],
                                DPLCOMMON.DPL_OBJ_SNAPSHOT),
             None,
-            [httplib.OK])
+            [http_client.OK])
 
 
 class TestProphetStorDPLDriver(test.TestCase):

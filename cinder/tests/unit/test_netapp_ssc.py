@@ -14,13 +14,12 @@
 #    under the License.
 """Unit tests for the NetApp-specific ssc module."""
 
-import BaseHTTPServer
 import copy
-import httplib
-
 from lxml import etree
 from mox3 import mox
 import six
+from six.moves import BaseHTTPServer
+from six.moves import http_client
 
 from cinder import exception
 from cinder import test
@@ -36,7 +35,7 @@ class FakeHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 class FakeHttplibSocket(object):
-    """A fake socket implementation for httplib.HTTPResponse."""
+    """A fake socket implementation for http_client.HTTPResponse."""
     def __init__(self, value):
         self._rbuffer = six.StringIO(value)
         self._wbuffer = six.StringIO('')
@@ -252,11 +251,11 @@ class FakeDirectCMODEServerHandler(FakeHTTPRequestHandler):
 
 
 class FakeDirectCmodeHTTPConnection(object):
-    """A fake httplib.HTTPConnection for netapp tests.
+    """A fake http_client.HTTPConnection for netapp tests.
 
     Requests made via this connection actually get translated and routed into
     the fake direct handler above, we then turn the response into
-    the httplib.HTTPResponse that the caller expects.
+    the http_client.HTTPResponse that the caller expects.
     """
     def __init__(self, host, timeout=None):
         self.host = host
@@ -278,7 +277,7 @@ class FakeDirectCmodeHTTPConnection(object):
         self.app = FakeDirectCMODEServerHandler(sock, '127.0.0.1:80', None)
 
         self.sock = FakeHttplibSocket(sock.result)
-        self.http_response = httplib.HTTPResponse(self.sock)
+        self.http_response = http_client.HTTPResponse(self.sock)
 
     def set_debuglevel(self, level):
         pass
@@ -372,7 +371,7 @@ class SscUtilsTestCase(test.TestCase):
 
     def setUp(self):
         super(SscUtilsTestCase, self).setUp()
-        self.stubs.Set(httplib, 'HTTPConnection',
+        self.stubs.Set(http_client, 'HTTPConnection',
                        FakeDirectCmodeHTTPConnection)
 
     def test_cl_vols_ssc_all(self):
