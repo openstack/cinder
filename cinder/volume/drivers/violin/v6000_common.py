@@ -536,7 +536,7 @@ class V6000Common(object):
             LOG.debug("Entering _wait_for_export_config loop: state=%s.",
                       state)
 
-            for node_id in xrange(2):
+            for node_id in range(2):
                 resp = mg_conns[node_id].basic.get_node_values(bn)
                 if state and len(resp.keys()):
                     status[node_id] = True

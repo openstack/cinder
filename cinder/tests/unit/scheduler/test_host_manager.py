@@ -46,7 +46,7 @@ class HostManagerTestCase(test.TestCase):
         super(HostManagerTestCase, self).setUp()
         self.host_manager = host_manager.HostManager()
         self.fake_hosts = [host_manager.HostState('fake_host%s' % x)
-                           for x in xrange(1, 5)]
+                           for x in range(1, 5)]
 
     def test_choose_host_filters_not_found(self):
         self.flags(scheduler_default_filters='FakeFilterClass3')
@@ -254,7 +254,7 @@ class HostManagerTestCase(test.TestCase):
         # Get host_state_map and make sure we have the first 4 hosts
         host_state_map = self.host_manager.host_state_map
         self.assertEqual(len(host_state_map), 3)
-        for i in xrange(3):
+        for i in range(3):
             volume_node = services[i]
             host = volume_node['host']
             self.assertEqual(host_state_map[host].service, volume_node)
@@ -280,7 +280,7 @@ class HostManagerTestCase(test.TestCase):
         # down, host4 is missing capabilities)
         host_state_map = self.host_manager.host_state_map
         self.assertEqual(len(host_state_map), 2)
-        for i in xrange(2):
+        for i in range(2):
             volume_node = services[i]
             host = volume_node['host']
             self.assertEqual(host_state_map[host].service,

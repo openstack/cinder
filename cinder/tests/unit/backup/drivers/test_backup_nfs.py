@@ -289,7 +289,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                          mock.Mock(return_value=mock_remotefsclient))
         # Remove tempdir.
         self.addCleanup(shutil.rmtree, self.temp_dir)
-        for _i in xrange(0, 128):
+        for _i in range(0, 128):
             self.volume_file.write(os.urandom(1024))
 
     def test_backup_uncompressed(self):

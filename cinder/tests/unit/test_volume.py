@@ -2790,7 +2790,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # FIXME(jdg): What is this actually testing?
         # We never call the internal _check method?
-        for _index in xrange(100):
+        for _index in range(100):
             tests_utils.create_volume(self.context, **self.volume_params)
         for volume_id in volume_ids:
             self.volume.delete_volume(self.context, volume_id)
@@ -5832,7 +5832,7 @@ class ISCSITestCase(DriverTestCase):
     def _attach_volume(self):
         """Attach volumes to an instance."""
         volume_id_list = []
-        for index in xrange(3):
+        for index in range(3):
             vol = {}
             vol['size'] = 0
             vol_ref = db.volume_create(self.context, vol)

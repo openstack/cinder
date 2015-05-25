@@ -21,6 +21,7 @@ import collections
 import random
 
 from oslo_log import log as logging
+from six.moves import range
 
 from cinder import exception
 from cinder.i18n import _

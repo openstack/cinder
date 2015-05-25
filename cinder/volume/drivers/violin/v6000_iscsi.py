@@ -588,7 +588,7 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
             LOG.debug("Entering _wait_for_targetstate loop: target=%s.",
                       target_name)
 
-            for node_id in xrange(2):
+            for node_id in range(2):
                 resp = mg_conns[node_id].basic.get_node_values(bn)
                 if len(resp.keys()):
                     status[node_id] = True

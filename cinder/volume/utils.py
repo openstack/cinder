@@ -24,6 +24,7 @@ from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
+from six.moves import range
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import db
@@ -443,7 +444,7 @@ def generate_password(length=16, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
 
     # then fill with random characters from all symbol groups
     symbols = ''.join(symbolgroups)
-    password.extend([random.choice(symbols) for _i in xrange(length)])
+    password.extend([random.choice(symbols) for _i in range(length)])
 
     # finally shuffle to ensure first x characters aren't from a
     # predictable group
