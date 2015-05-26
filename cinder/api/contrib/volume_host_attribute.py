@@ -25,7 +25,7 @@ authorize = extensions.soft_extension_authorizer('volume',
 
 
 class VolumeHostAttributeController(wsgi.Controller):
-    def _add_volume_host_attribute(self, context, req, resp_volume):
+    def _add_volume_host_attribute(self, req, resp_volume):
         db_volume = req.get_db_volume(resp_volume['id'])
         key = "%s:host" % Volume_host_attribute.alias
         resp_volume[key] = db_volume['host']
@@ -36,7 +36,7 @@ class VolumeHostAttributeController(wsgi.Controller):
         if authorize(context):
             resp_obj.attach(xml=VolumeHostAttributeTemplate())
             volume = resp_obj.obj['volume']
-            self._add_volume_host_attribute(context, req, volume)
+            self._add_volume_host_attribute(req, volume)
 
     @wsgi.extends
     def detail(self, req, resp_obj):
@@ -44,7 +44,7 @@ class VolumeHostAttributeController(wsgi.Controller):
         if authorize(context):
             resp_obj.attach(xml=VolumeListHostAttributeTemplate())
             for vol in list(resp_obj.obj['volumes']):
-                self._add_volume_host_attribute(context, req, vol)
+                self._add_volume_host_attribute(req, vol)
 
 
 class Volume_host_attribute(extensions.ExtensionDescriptor):

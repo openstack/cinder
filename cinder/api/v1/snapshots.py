@@ -32,16 +32,16 @@ from cinder import volume
 LOG = logging.getLogger(__name__)
 
 
-def _translate_snapshot_detail_view(context, snapshot):
+def _translate_snapshot_detail_view(snapshot):
     """Maps keys for snapshots details view."""
 
-    d = _translate_snapshot_summary_view(context, snapshot)
+    d = _translate_snapshot_summary_view(snapshot)
 
     # NOTE(gagupta): No additional data / lookups at the moment
     return d
 
 
-def _translate_snapshot_summary_view(context, snapshot):
+def _translate_snapshot_summary_view(snapshot):
     """Maps keys for snapshots summary view."""
     d = {}
 
@@ -107,7 +107,7 @@ class SnapshotsController(wsgi.Controller):
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
-        return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
+        return {'snapshot': _translate_snapshot_detail_view(snapshot)}
 
     def delete(self, req, id):
         """Delete a snapshot."""
@@ -150,7 +150,7 @@ class SnapshotsController(wsgi.Controller):
                                                       search_opts=search_opts)
         limited_list = common.limited(snapshots.objects, req)
         req.cache_db_snapshots(limited_list)
-        res = [entity_maker(context, snapshot) for snapshot in limited_list]
+        res = [entity_maker(snapshot) for snapshot in limited_list]
         return {'snapshots': res}
 
     @wsgi.serializers(xml=SnapshotTemplate)
@@ -200,7 +200,7 @@ class SnapshotsController(wsgi.Controller):
                 **kwargs)
         req.cache_db_snapshot(new_snapshot)
 
-        retval = _translate_snapshot_detail_view(context, new_snapshot)
+        retval = _translate_snapshot_detail_view(new_snapshot)
 
         return {'snapshot': retval}
 
@@ -236,7 +236,7 @@ class SnapshotsController(wsgi.Controller):
         snapshot.update(update_dict)
         req.cache_db_snapshot(snapshot)
 
-        return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
+        return {'snapshot': _translate_snapshot_detail_view(snapshot)}
 
 
 def create_resource(ext_mgr):
