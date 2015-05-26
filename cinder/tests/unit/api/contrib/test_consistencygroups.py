@@ -372,7 +372,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
-        self.assertEqual('Consistency group 9999 could not be found.',
+        self.assertEqual('ConsistencyGroup 9999 could not be found.',
                          res_dict['itemNotFound']['message'])
 
     def test_delete_consistencygroup_with_Invalidconsistencygroup(self):

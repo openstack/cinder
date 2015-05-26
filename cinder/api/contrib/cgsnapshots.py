@@ -116,9 +116,8 @@ class CgsnapshotsController(wsgi.Controller):
                 context,
                 cgsnapshot_id=id)
             self.cgsnapshot_api.delete_cgsnapshot(context, cgsnapshot)
-        except exception.CgSnapshotNotFound:
-            msg = _("Cgsnapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.CgSnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.InvalidCgSnapshot:
             msg = _("Invalid cgsnapshot")
             raise exc.HTTPBadRequest(explanation=msg)
@@ -175,9 +174,8 @@ class CgsnapshotsController(wsgi.Controller):
 
         try:
             group = self.cgsnapshot_api.get(context, group_id)
-        except exception.NotFound:
-            msg = _("Consistency group could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.ConsistencyGroupNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         name = cgsnapshot.get('name', None)
         description = cgsnapshot.get('description', None)

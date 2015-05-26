@@ -56,9 +56,8 @@ class VolumeUnmanageController(wsgi.Controller):
         try:
             vol = self.volume_api.get(context, id)
             self.volume_api.delete(context, vol, unmanage_only=True)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.VolumeAttached:
             msg = _("Volume cannot be deleted while in attached state")
             raise exc.HTTPBadRequest(explanation=msg)

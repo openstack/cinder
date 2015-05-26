@@ -125,9 +125,8 @@ class VolumeManageController(wsgi.Controller):
                 else:
                     kwargs['volume_type'] = volume_types.get_volume_type(
                         context, req_volume_type)
-            except exception.VolumeTypeNotFound:
-                msg = _("Volume type not found.")
-                raise exc.HTTPNotFound(explanation=msg)
+            except exception.VolumeTypeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['volume_type'] = {}
 

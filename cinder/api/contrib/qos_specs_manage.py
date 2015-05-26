@@ -95,7 +95,7 @@ class AssociationsTemplate(xmlutil.TemplateBuilder):
 def _check_specs(context, specs_id):
     try:
         qos_specs.get_qos_specs(context, specs_id)
-    except exception.NotFound as ex:
+    except exception.QoSSpecsNotFound as ex:
         raise webob.exc.HTTPNotFound(explanation=six.text_type(ex))
 
 

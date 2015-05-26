@@ -95,7 +95,7 @@ class AdminController(wsgi.Controller):
 
         try:
             self._update(context, id, update)
-        except exception.NotFound as e:
+        except exception.VolumeNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
 
         notifier.info(context, self.collection + '.reset_status.end',
@@ -110,8 +110,8 @@ class AdminController(wsgi.Controller):
         self.authorize(context, 'force_delete')
         try:
             resource = self._get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
         self._delete(context, resource, force=True)
         return webob.Response(status_int=202)
 
@@ -184,8 +184,8 @@ class VolumeAdminController(AdminController):
         self.authorize(context, 'force_detach')
         try:
             volume = self._get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
         self.volume_api.terminate_connection(context, volume,
                                              {}, force=True)
 
@@ -215,8 +215,8 @@ class VolumeAdminController(AdminController):
         self.authorize(context, 'migrate_volume')
         try:
             volume = self._get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
         params = body['os-migrate_volume']
         try:
             host = params['host']
@@ -243,8 +243,8 @@ class VolumeAdminController(AdminController):
         self.authorize(context, 'migrate_volume_completion')
         try:
             volume = self._get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
         params = body['os-migrate_volume_completion']
         try:
             new_volume_id = params['new_volume']
@@ -253,8 +253,8 @@ class VolumeAdminController(AdminController):
                 explanation=_("Must specify 'new_volume'"))
         try:
             new_volume = self._get(context, new_volume_id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
         error = params.get('error', False)
         ret = self.volume_api.migrate_volume_completion(context, volume,
                                                         new_volume, error)
@@ -308,7 +308,7 @@ class BackupAdminController(AdminController):
         try:
             self.backup_api.reset_status(context=context, backup_id=id,
                                          status=update['status'])
-        except exception.NotFound as e:
+        except exception.VolumeNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
         return webob.Response(status_int=202)
 
