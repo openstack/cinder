@@ -69,7 +69,10 @@ quota_opts = [
     cfg.BoolOpt('use_default_quota_class',
                 default=True,
                 help='Enables or disables use of default quota class '
-                     'with default quota.'), ]
+                     'with default quota.'),
+    cfg.IntOpt('per_volume_size_limit',
+               default=-1,
+               help='Max size allowed per volume, in gigabytes'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(quota_opts)
@@ -523,7 +526,8 @@ class ReservableResource(BaseResource):
         """
 
         super(ReservableResource, self).__init__(name, flag=flag)
-        self.sync = sync
+        if sync:
+            self.sync = sync
 
 
 class AbsoluteResource(BaseResource):
@@ -869,6 +873,7 @@ class VolumeTypeQuotaEngine(QuotaEngine):
         result = {}
         # Global quotas.
         argses = [('volumes', '_sync_volumes', 'quota_volumes'),
+                  ('per_volume_gigabytes', None, 'per_volume_size_limit'),
                   ('snapshots', '_sync_snapshots', 'quota_snapshots'),
                   ('gigabytes', '_sync_gigabytes', 'quota_gigabytes'),
                   ('backups', '_sync_backups', 'quota_backups'),

@@ -572,6 +572,15 @@ class QuotaReserveTask(flow_utils.CinderTask):
 
     def execute(self, context, size, volume_type_id, optional_args):
         try:
+            values = {'per_volume_gigabytes': size}
+            QUOTAS.limit_check(context, project_id=context.project_id,
+                               **values)
+        except exception.OverQuota as e:
+            quotas = e.kwargs['quotas']
+            raise exception.VolumeSizeExceedsLimit(
+                size=size, limit=quotas['per_volume_gigabytes'])
+
+        try:
             reserve_opts = {'volumes': 1, 'gigabytes': size}
             QUOTAS.add_volume_type_opts(context, reserve_opts, volume_type_id)
             reservations = QUOTAS.reserve(context, **reserve_opts)
