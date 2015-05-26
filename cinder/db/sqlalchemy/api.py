@@ -470,8 +470,8 @@ def _dict_with_extra_specs(inst_type_query):
     'extra_specs' : {'k1': 'v1'}
     """
     inst_type_dict = dict(inst_type_query)
-    extra_specs = dict([(x['key'], x['value'])
-                        for x in inst_type_query['extra_specs']])
+    extra_specs = {x['key']: x['value']
+                   for x in inst_type_query['extra_specs']}
     inst_type_dict['extra_specs'] = extra_specs
     return inst_type_dict
 
@@ -742,7 +742,7 @@ def _get_quota_usages(context, session, project_id):
         filter_by(project_id=project_id).\
         with_lockmode('update').\
         all()
-    return dict((row.resource, row) for row in rows)
+    return {row.resource: row for row in rows}
 
 
 @require_context
@@ -877,8 +877,8 @@ def quota_reserve(context, resources, quotas, deltas, expire,
         LOG.warning(_LW("Change will make usage less than 0 for the following "
                         "resources: %s"), unders)
     if overs:
-        usages = dict((k, dict(in_use=v['in_use'], reserved=v['reserved']))
-                      for k, v in usages.items())
+        usages = {k: dict(in_use=v['in_use'], reserved=v['reserved'])
+                  for k, v in usages.items()}
         raise exception.OverQuota(overs=sorted(overs), quotas=quotas,
                                   usages=usages)
 

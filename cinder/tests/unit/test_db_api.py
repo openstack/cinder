@@ -63,8 +63,8 @@ class ModelsObjectComparatorMixin(object):
     def _dict_from_object(self, obj, ignored_keys):
         if ignored_keys is None:
             ignored_keys = []
-        return dict([(k, v) for k, v in obj.iteritems()
-                    if k not in ignored_keys])
+        return {k: v for k, v in obj.iteritems()
+                if k not in ignored_keys}
 
     def _assertEqualObjects(self, obj1, obj2, ignored_keys=None):
         obj1 = self._dict_from_object(obj1, ignored_keys)
@@ -537,8 +537,8 @@ class DBAPIVolumeTestCase(BaseTest):
                 # metadata is a dict, compare the 'key' and 'value' of each
                 if key == 'volume_metadata':
                     self.assertEqual(len(val1), len(val2))
-                    val1_dict = dict((x.key, x.value) for x in val1)
-                    val2_dict = dict((x.key, x.value) for x in val2)
+                    val1_dict = {x.key: x.value for x in val1}
+                    val2_dict = {x.key: x.value for x in val2}
                     self.assertDictMatch(val1_dict, val2_dict)
                 else:
                     self.assertEqual(val1, val2)
@@ -1104,7 +1104,7 @@ class DBAPIEncryptionTestCase(BaseTest):
                 step = str(step)
             return val + step
 
-        return [dict([(k, compose(v, i)) for k, v in values.items()])
+        return [{k: compose(v, i) for k, v in values.items()}
                 for i in range(1, 4)]
 
     def test_volume_type_encryption_create(self):
@@ -1504,7 +1504,7 @@ class DBAPIBackupTestCase(BaseTest):
                 step = str(step)
             return val + step
 
-        return [dict([(k, compose(v, i)) for k, v in base_values.items()])
+        return [{k: compose(v, i) for k, v in base_values.items()}
                 for i in range(1, 4)]
 
     def test_backup_create(self):

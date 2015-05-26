@@ -148,7 +148,7 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         db.volume_glance_metadata_copy_to_volume(self.ctxt, vol2['id'],
                                                  snapshot['id'])
         metadata = db.volume_glance_metadata_get(self.ctxt, vol2['id'])
-        metadata = dict([(m['key'], m['value']) for m in metadata])
+        metadata = {m['key']: m['value'] for m in metadata}
         self.assertEqual(metadata, {'m1': 'v1'})
 
     def test_volume_snapshot_glance_metadata_get_nonexistent(self):

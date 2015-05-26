@@ -1106,9 +1106,7 @@ class API(base.Base):
         db_data = self.db.volume_glance_metadata_get(context, volume['id'])
         LOG.info(_LI("Get volume image-metadata completed successfully."),
                  resource=volume)
-        return dict(
-            (meta_entry.key, meta_entry.value) for meta_entry in db_data
-        )
+        return {meta_entry.key: meta_entry.value for meta_entry in db_data}
 
     def _check_volume_availability(self, volume, force):
         """Check if the volume can be used."""
@@ -1141,11 +1139,10 @@ class API(base.Base):
                 custom_property_set = (set(volume_image_metadata).difference
                                        (set(glance_core_properties)))
                 if custom_property_set:
-                    metadata.update(dict(properties=dict((custom_property,
-                                                          volume_image_metadata
-                                                          [custom_property])
-                                    for custom_property
-                                    in custom_property_set)))
+                    properties = {custom_property:
+                                  volume_image_metadata[custom_property]
+                                  for custom_property in custom_property_set}
+                    metadata.update(dict(properties=properties))
             except exception.GlanceMetadataNotFound:
                 # If volume is not created from image, No glance metadata
                 # would be available for that volume in
