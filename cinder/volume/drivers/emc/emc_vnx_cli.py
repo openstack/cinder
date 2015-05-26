@@ -845,7 +845,7 @@ class CommandLineHelper(object):
     def detach_mount_point(self, smp_name):
 
         command_detach_mount_point = ('lun', '-detach',
-                                      '-name', smp_name)
+                                      '-name', smp_name, '-o')
 
         out, rc = self.command_execute(*command_detach_mount_point)
         if rc != 0:
@@ -1090,7 +1090,7 @@ class CommandLineHelper(object):
         command_add_hlu = ('storagegroup', '-addhlu',
                            '-hlu', hlu,
                            '-alu', alu,
-                           '-gname', sg_name)
+                           '-gname', sg_name, '-o')
 
         out, rc = self.command_execute(*command_add_hlu, poll=False)
         if rc != 0:
