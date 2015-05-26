@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
 import six
 import webob
 
@@ -198,6 +199,44 @@ class VolumeTypesManageApiTest(test.TestCase):
         self._check_test_results(res_dict, {
             'expected_name': 'vol_type_1', 'expected_desc': 'vol_type_desc_1'})
 
+    @mock.patch('cinder.volume.volume_types.create')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_by_name')
+    def test_create_with_description_of_zero_length(
+            self, mock_get_volume_type_by_name, mock_create_type):
+        mock_get_volume_type_by_name.return_value = \
+            {'extra_specs': {"key1": "value1"},
+             'id': 1,
+             'name': u'vol_type_1',
+             'description': u''}
+
+        type_description = ""
+        body = {"volume_type": {"name": "vol_type_1",
+                                "description": type_description,
+                                "extra_specs": {"key1": "value1"}}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types')
+
+        res_dict = self.controller._create(req, body)
+
+        self._check_test_results(res_dict, {
+            'expected_name': 'vol_type_1', 'expected_desc': ''})
+
+    def test_create_type_with_name_too_long(self):
+        type_name = 'a' * 256
+        body = {"volume_type": {"name": type_name,
+                                "extra_specs": {"key1": "value1"}}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types')
+        self.assertRaises(exception.InvalidInput,
+                          self.controller._create, req, body)
+
+    def test_create_type_with_description_too_long(self):
+        type_description = 'a' * 256
+        body = {"volume_type": {"name": "vol_type_1",
+                                "description": type_description,
+                                "extra_specs": {"key1": "value1"}}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types')
+        self.assertRaises(exception.InvalidInput,
+                          self.controller._create, req, body)
+
     def test_create_duplicate_type_fail(self):
         self.stubs.Set(volume_types, 'create',
                        return_volume_types_create_duplicate_type)
@@ -244,6 +283,40 @@ class VolumeTypesManageApiTest(test.TestCase):
         self._check_test_results(res_dict,
                                  {'expected_desc': 'vol_type_desc_1_1',
                                   'expected_name': 'vol_type_1_1'})
+
+    @mock.patch('cinder.volume.volume_types.update')
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    def test_update_type_with_description_having_length_zero(
+            self, mock_get_volume_type, mock_type_update):
+
+        mock_get_volume_type.return_value = \
+            {'id': 1, 'name': u'vol_type_1', 'description': u''}
+
+        type_description = ""
+        body = {"volume_type": {"description": type_description}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
+        req.method = 'PUT'
+        resp = self.controller._update(req, '1', body)
+        self._check_test_results(resp,
+                                 {'expected_desc': '',
+                                  'expected_name': 'vol_type_1'})
+
+    def test_update_type_with_name_too_long(self):
+        type_name = 'a' * 256
+        body = {"volume_type": {"name": type_name,
+                                "description": ""}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
+        req.method = 'PUT'
+        self.assertRaises(exception.InvalidInput,
+                          self.controller._update, req, '1', body)
+
+    def test_update_type_with_description_too_long(self):
+        type_description = 'a' * 256
+        body = {"volume_type": {"description": type_description}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
+        req.method = 'PUT'
+        self.assertRaises(exception.InvalidInput,
+                          self.controller._update, req, '1', body)
 
     def test_update_non_exist(self):
         self.stubs.Set(volume_types, 'update',
