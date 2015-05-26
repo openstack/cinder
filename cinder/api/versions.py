@@ -254,13 +254,16 @@ class Versions(wsgi.Resource):
         return args
 
 
-class VolumeVersionV1(object):
+class VolumeVersion(object):
     @wsgi.serializers(xml=VersionTemplate,
                       atom=VersionAtomSerializer)
     def show(self, req):
         builder = views_versions.get_view_builder(req)
-        return builder.build_version(_KNOWN_VERSIONS['v1.0'])
+        if 'v1' in builder.base_url:
+            return builder.build_version(_KNOWN_VERSIONS['v1.0'])
+        else:
+            return builder.build_version(_KNOWN_VERSIONS['v2.0'])
 
 
 def create_resource():
-    return wsgi.Resource(VolumeVersionV1())
+    return wsgi.Resource(VolumeVersion())

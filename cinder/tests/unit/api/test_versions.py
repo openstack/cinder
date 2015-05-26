@@ -69,3 +69,75 @@ class VersionsTest(test.TestCase):
             },
         ]
         self.assertEqual(expected, results)
+
+    def test_get_version_detail_v1(self):
+        req = webob.Request.blank('/', base_url='http://127.0.0.1:8776/v1')
+        req.accept = 'application/json'
+        res = versions.VolumeVersion().show(req)
+        expected = {
+            "version": {
+                "status": "SUPPORTED",
+                "updated": "2014-06-28T12:20:21Z",
+                "media-types": [
+                    {
+                        "base": "application/xml",
+                        "type":
+                            "application/vnd.openstack.volume+xml;version=1"
+                    },
+                    {
+                        "base": "application/json",
+                        "type":
+                            "application/vnd.openstack.volume+json;version=1"
+                    }
+                ],
+                "id": "v1.0",
+                "links": [
+                    {
+                        "href": "http://127.0.0.1:8776/v1/",
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://docs.openstack.org/",
+                        "type": "text/html",
+                        "rel": "describedby"
+                    }
+                ]
+            }
+        }
+        self.assertEqual(expected, res)
+
+    def test_get_version_detail_v2(self):
+        req = webob.Request.blank('/', base_url='http://127.0.0.1:8776/v2')
+        req.accept = 'application/json'
+        res = versions.VolumeVersion().show(req)
+        expected = {
+            "version": {
+                "status": "CURRENT",
+                "updated": "2012-11-21T11:33:21Z",
+                "media-types": [
+                    {
+                        "base": "application/xml",
+                        "type":
+                            "application/vnd.openstack.volume+xml;version=1"
+                    },
+                    {
+                        "base": "application/json",
+                        "type":
+                            "application/vnd.openstack.volume+json;version=1"
+                    }
+                ],
+                "id": "v2.0",
+                "links": [
+                    {
+                        "href": "http://127.0.0.1:8776/v2/",
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://docs.openstack.org/",
+                        "type": "text/html",
+                        "rel": "describedby"
+                    }
+                ]
+            }
+        }
+        self.assertEqual(expected, res)
