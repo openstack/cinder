@@ -12,22 +12,19 @@
 
 import mock
 
-from cinder.tests.unit.targets import test_lio_driver as test_lio
-from cinder.tests.unit.targets import test_tgt_driver as test_tgt
+from cinder.tests.unit.targets import targets_fixture as tf
 from cinder import utils
 from cinder.volume.targets import iser
 from cinder.volume.targets import lio
 from cinder.volume.targets import tgt
 
 
-class TestIserAdmDriver(test_tgt.TestTgtAdmDriver):
+class TestIserAdmDriver(tf.TargetDriverFixture):
     """Unit tests for the deprecated ISERTgtAdm flow
     """
 
     def setUp(self):
         super(TestIserAdmDriver, self).setUp()
-        self.configuration.iser_ip_address = '10.9.8.7'
-        self.configuration.iser_target_prefix = 'iqn.2010-10.org.openstack:'
         self.target = iser.ISERTgtAdm(root_helper=utils.get_root_helper(),
                                       configuration=self.configuration)
 
@@ -48,7 +45,7 @@ class TestIserAdmDriver(test_tgt.TestTgtAdmDriver):
         self.assertEqual(self.target.iscsi_protocol, 'iser')
 
 
-class TestIserTgtDriver(test_tgt.TestTgtAdmDriver):
+class TestIserTgtDriver(tf.TargetDriverFixture):
     """Unit tests for the iSER TGT flow
     """
 
@@ -74,7 +71,7 @@ class TestIserTgtDriver(test_tgt.TestTgtAdmDriver):
                                                            connector))
 
 
-class TestIserLioAdmDriver(test_lio.TestLioAdmDriver):
+class TestIserLioAdmDriver(tf.TargetDriverFixture):
     """Unit tests for the iSER LIO flow
     """
     def setUp(self):
@@ -89,7 +86,7 @@ class TestIserLioAdmDriver(test_lio.TestLioAdmDriver):
     def test_iscsi_protocol(self):
         self.assertEqual(self.target.iscsi_protocol, 'iser')
 
-    @mock.patch.object(utils, 'execute')
+    @mock.patch('cinder.utils.execute')
     @mock.patch.object(lio.LioAdm, '_get_iscsi_properties')
     def test_initialize_connection(self, mock_get_iscsi, mock_execute):
 

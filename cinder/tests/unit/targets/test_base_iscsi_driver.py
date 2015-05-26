@@ -12,11 +12,10 @@
 
 import mock
 from oslo_config import cfg
-from oslo_utils import timeutils
 
 from cinder import context
 from cinder import exception
-from cinder import test
+from cinder.tests.unit.targets import targets_fixture as tf
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.targets import fake
@@ -28,43 +27,12 @@ class FakeIncompleteDriver(iscsi.ISCSITarget):
         pass
 
 
-class TestBaseISCSITargetDriver(test.TestCase):
+class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
 
     def setUp(self):
         super(TestBaseISCSITargetDriver, self).setUp()
-        self.configuration = conf.Configuration(None)
-        self.fake_project_id = 'ed2c1fd4-5fc0-11e4-aa15-123b93f75cba'
-        self.fake_volume_id = 'ed2c2222-5fc0-11e4-aa15-123b93f75cba'
         self.target = fake.FakeTarget(root_helper=utils.get_root_helper(),
                                       configuration=self.configuration)
-        self.testvol =\
-            {'project_id': self.fake_project_id,
-             'name': 'testvol',
-             'size': 1,
-             'id': self.fake_volume_id,
-             'volume_type_id': None,
-             'provider_location': '10.10.7.1:3260 '
-                                  'iqn.2010-10.org.openstack:'
-                                  'volume-%s 0' % self.fake_volume_id,
-             'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
-                              'c76370d66b 2FE0CQ8J196R',
-             'provider_geometry': '512 512',
-             'created_at': timeutils.utcnow(),
-             'host': 'fake_host@lvm#lvm'}
-
-        self.expected_iscsi_properties = \
-            {'auth_method': 'CHAP',
-             'auth_password': '2FE0CQ8J196R',
-             'auth_username': 'stack-1-a60e2611875f40199931f2c76370d66b',
-             'encrypted': False,
-             'logical_block_size': '512',
-             'physical_block_size': '512',
-             'target_discovered': False,
-             'target_iqn': 'iqn.2010-10.org.openstack:volume-%s' %
-                           self.fake_volume_id,
-             'target_lun': 0,
-             'target_portal': '10.10.7.1:3260',
-             'volume_id': self.fake_volume_id}
 
     def test_abc_methods_not_present_fails(self):
         configuration = conf.Configuration(cfg.StrOpt('iscsi_target_prefix',
@@ -101,26 +69,12 @@ class TestBaseISCSITargetDriver(test.TestCase):
                                                            'chap-password'))
 
     def test_do_iscsi_discovery(self):
-        target_string = '127.0.0.1:3260,1 '\
-                        'iqn.2010-10.org.openstack:'\
-                        'volume-%s' % self.testvol['id']
-
-        def _fake_execute(*args, **kwargs):
-            return target_string, None
-
-        def _fake_safe_get(val):
-            return '127.0.0.1'
-
-        self.stubs.Set(self.configuration,
-                       'safe_get',
-                       _fake_safe_get)
-
-        self.stubs.Set(utils,
-                       'execute',
-                       _fake_execute)
-
-        self.assertEqual(target_string,
-                         self.target._do_iscsi_discovery(self.testvol))
+        with mock.patch.object(self.configuration,
+                               'safe_get', return_value='127.0.0.1'),\
+                mock.patch('cinder.utils.execute',
+                           return_value=(self.target_string, '')):
+            self.assertEqual(self.target_string,
+                             self.target._do_iscsi_discovery(self.testvol))
 
     def test_remove_export(self):
 
