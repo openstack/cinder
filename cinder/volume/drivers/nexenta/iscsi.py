@@ -177,7 +177,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 raise exception.VolumeIsBusy(volume_name=volume_name)
             raise
         origin = props.get('origin')
-        if origin and self._is_clone_snapshot_name(origin):
+        if origin:
             volume, snapshot = origin.split('@')
             volume = volume.lstrip('%s/' % self.configuration.nexenta_volume)
             try:
@@ -421,7 +421,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                              'already deleted.'), snapshot_name)
                 return
             if "snapshot has dependent clones" in exc.args[0]:
-                raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
+                LOG.info(_LI('Snapshot %s has dependent clones, will be '
+                             'deleted later.'), snapshot_name)
+                return
+                #raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
             raise
 
     def local_path(self, volume):
