@@ -33,6 +33,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
+from cinder import objects
 from cinder.openstack.common import loopingcall
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import options
@@ -907,26 +908,24 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
 
     def create_cgsnapshot(self, context, cgsnapshot):
         """Creates a cgsnapshot."""
-        cgId = cgsnapshot['consistencygroup_id']
-        cgsnapshot_id = cgsnapshot['id']
-        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
-            context, cgsnapshot_id)
-
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+            context, cgsnapshot['id'])
         model_update = {}
         LOG.info(_LI('Start to create cgsnapshot for consistency group'
-                     ': %(group_name)s'), {'group_name': cgId})
-
+                     ': %(group_name)s'),
+                 {'group_name': cgsnapshot['consistencygroup_id']})
         try:
-            self.dpl.create_vdev_snapshot(self._conver_uuid2hex(cgId),
-                                          self._conver_uuid2hex(cgsnapshot_id),
-                                          cgsnapshot['name'],
-                                          cgsnapshot['description'],
-                                          True)
+            self.dpl.create_vdev_snapshot(
+                self._conver_uuid2hex(cgsnapshot['consistencygroup_id']),
+                self._conver_uuid2hex(cgsnapshot['id']),
+                cgsnapshot['name'],
+                cgsnapshot.get('description', ''),
+                True)
             for snapshot in snapshots:
-                snapshot['status'] = 'available'
+                snapshot.status = 'available'
         except Exception as e:
             msg = _('Failed to create cg snapshot %(id)s '
-                    'due to %(reason)s.') % {'id': cgsnapshot_id,
+                    'due to %(reason)s.') % {'id': cgsnapshot['id'],
                                              'reason': six.text_type(e)}
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -936,27 +935,23 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
 
     def delete_cgsnapshot(self, context, cgsnapshot):
         """Deletes a cgsnapshot."""
-        cgId = cgsnapshot['consistencygroup_id']
-        cgsnapshot_id = cgsnapshot['id']
-        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
-            context, cgsnapshot_id)
-
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+            context, cgsnapshot['id'])
         model_update = {}
         model_update['status'] = cgsnapshot['status']
         LOG.info(_LI('Delete cgsnapshot %(snap_name)s for consistency group: '
                      '%(group_name)s'),
                  {'snap_name': cgsnapshot['id'],
                   'group_name': cgsnapshot['consistencygroup_id']})
-
         try:
-            self.dpl.delete_vdev_snapshot(self._conver_uuid2hex(cgId),
-                                          self._conver_uuid2hex(cgsnapshot_id),
-                                          True)
+            self.dpl.delete_vdev_snapshot(
+                self._conver_uuid2hex(cgsnapshot['consistencygroup_id']),
+                self._conver_uuid2hex(cgsnapshot['id']), True)
             for snapshot in snapshots:
-                snapshot['status'] = 'deleted'
+                snapshot.status = 'deleted'
         except Exception as e:
             msg = _('Failed to delete cgsnapshot %(id)s due to '
-                    '%(reason)s.') % {'id': cgsnapshot_id,
+                    '%(reason)s.') % {'id': cgsnapshot['id'],
                                       'reason': six.text_type(e)}
             raise exception.VolumeBackendAPIException(data=msg)
 

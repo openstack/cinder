@@ -22,6 +22,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_snapshot
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.prophetstor import dpl_iscsi as DPLDRIVER
 from cinder.volume.drivers.prophetstor import dplcommon as DPLCOMMON
@@ -739,17 +740,23 @@ class TestProphetStorDPLDriver(test.TestCase):
                           add_volumes=None,
                           remove_volumes=[remove_vol])
 
-    def test_create_consistency_group_snapshot(self):
-        self.DB_MOCK.snapshot_get_all_for_cgsnapshot.return_value = (
-            [DATA_OUT_SNAPSHOT_CG])
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_create_consistency_group_snapshot(self, get_all_for_cgsnapshot):
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context)
+        snapshot_obj.consistencygroup_id = \
+            DATA_IN_CG_SNAPSHOT['consistencygroup_id']
+        get_all_for_cgsnapshot.return_value = [snapshot_obj]
         self.DPL_MOCK.create_vdev_snapshot.return_value = DATA_OUTPUT
         model_update, snapshots = self.dpldriver.create_cgsnapshot(
-            self.context, DATA_IN_CG_SNAPSHOT)
+            self.context, snapshot_obj)
         self.assertDictMatch({'status': 'available'}, model_update)
 
-    def test_delete_consistency_group_snapshot(self):
-        self.DB_MOCK.snapshot_get_all_for_cgsnapshot.return_value = (
-            [DATA_OUT_SNAPSHOT_CG])
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_delete_consistency_group_snapshot(self, get_all_for_cgsnapshot):
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context)
+        snapshot_obj.consistencygroup_id = \
+            DATA_IN_CG_SNAPSHOT['consistencygroup_id']
+        get_all_for_cgsnapshot.return_value = [snapshot_obj]
         self.DPL_MOCK.delete_cgsnapshot.return_value = DATA_OUTPUT
         model_update, snapshots = self.dpldriver.delete_cgsnapshot(
             self.context, DATA_IN_CG_SNAPSHOT)
