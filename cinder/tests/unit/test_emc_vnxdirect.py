@@ -660,6 +660,12 @@ State:  Ready
         of another consistency group. (0x716d8045)
         """, 71
 
+    def LUN_PREP_ERROR(self):
+        return ("The operation cannot be performed because "
+                "the LUN is 'Preparing'.  Wait for the LUN's "
+                "Current Operation to complete 'Preparing' "
+                "and retry the operation. (0x712d8e0e)", 14)
+
     POOL_PROPERTY = ("""\
 Pool Name:  unit_test_pool
 Pool ID:  1
@@ -1600,6 +1606,34 @@ Time Remaining:  0 second(s)
 
         fake_cli.assert_has_calls(expect_cmd)
 
+    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
+    def test_snapshot_preparing_volume(self):
+        commands = [self.testData.SNAP_CREATE_CMD('snapshot1'),
+                    self.testData.LUN_PROPERTY_ALL_CMD('vol1')]
+        results = [[self.testData.LUN_PREP_ERROR(), SUCCEED],
+                   [self.testData.LUN_PROPERTY('vol1', size=1,
+                                               operation='Preparing'),
+                    self.testData.LUN_PROPERTY('vol1', size=1,
+                                               operation='Optimizing'),
+                    self.testData.LUN_PROPERTY('vol1', size=1,
+                                               operation='None')]]
+
+        fake_cli = self.driverSetup(commands, results)
+
+        self.driver.create_snapshot(self.testData.test_snapshot)
+        expected = [mock.call(*self.testData.SNAP_CREATE_CMD('snapshot1'),
+                              poll=False),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                              poll=False),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                              poll=False),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                              poll=False),
+                    mock.call(*self.testData.SNAP_CREATE_CMD('snapshot1'),
+                              poll=False)]
+        fake_cli.assert_has_calls(expected)
+
     @mock.patch(
         "oslo_concurrency.processutils.execute",
         mock.Mock(
@@ -2285,6 +2319,36 @@ Time Remaining:  0 second(s)
             mock.call(
                 *self.testData.LUN_PROPERTY_ALL_CMD('failed_vol1'),
                 poll=False)]
+        fake_cli.assert_has_calls(expected)
+
+    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
+    def test_extend_preparing_volume(self):
+        commands = [self.testData.LUN_EXTEND_CMD('vol1', 2),
+                    self.testData.LUN_PROPERTY_ALL_CMD('vol1')]
+        results = [[self.testData.LUN_PREP_ERROR(), SUCCEED],
+                   [self.testData.LUN_PROPERTY('vol1', size=1,
+                                               operation='Preparing'),
+                    self.testData.LUN_PROPERTY('vol1', size=1,
+                                               operation='Optimizing'),
+                    self.testData.LUN_PROPERTY('vol1', size=1,
+                                               operation='None'),
+                    self.testData.LUN_PROPERTY('vol1', size=2)]]
+        fake_cli = self.driverSetup(commands, results)
+
+        self.driver.extend_volume(self.testData.test_volume, 2)
+        expected = [mock.call(*self.testData.LUN_EXTEND_CMD('vol1', 2),
+                              poll=False),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                              poll=False),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                              poll=False),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                              poll=False),
+                    mock.call(*self.testData.LUN_EXTEND_CMD('vol1', 2),
+                              poll=False),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                              poll=False)]
         fake_cli.assert_has_calls(expected)
 
     def test_manage_existing(self):
