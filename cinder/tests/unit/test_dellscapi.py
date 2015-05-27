@@ -110,6 +110,124 @@ class DellSCSanAPITestCase(test.TestCase):
               u'mapped': False,
               u'cmmSource': False}
 
+    VOLUME_LIST = [{u'instanceId': u'64702.3494',
+                    u'scSerialNumber': 64702,
+                    u'replicationSource': False,
+                    u'liveVolume': False,
+                    u'vpdId': 3496,
+                    u'objectType': u'ScVolume',
+                    u'index': 3494,
+                    u'volumeFolderPath': u'devstackvol/fcvm/',
+                    u'hostCacheEnabled': False,
+                    u'usedByLegacyFluidFsNasVolume': False,
+                    u'inRecycleBin': False,
+                    u'volumeFolderIndex': 17,
+                    u'instanceName':
+                        u'volume-37883deb-85cd-426a-9a98-62eaad8671ea',
+                    u'statusMessage': u'',
+                    u'status': u'Up',
+                    u'storageType': {u'instanceId': u'64702.1',
+                                     u'instanceName':
+                                     u'Assigned - Redundant - 2 MB',
+                                     u'objectType': u'ScStorageType'},
+                    u'cmmDestination': False,
+                    u'replicationDestination': False,
+                    u'volumeFolder': {u'instanceId': u'64702.17',
+                                      u'instanceName': u'fcvm',
+                                      u'objectType': u'ScVolumeFolder'},
+                    u'deviceId': u'6000d31000fcbe000000000000000da8',
+                    u'active': True,
+                    u'portableVolumeDestination': False,
+                    u'deleteAllowed': True,
+                    u'name': u'volume-37883deb-85cd-426a-9a98-62eaad8671ea',
+                    u'scName': u'Storage Center 64702',
+                    u'secureDataUsed': False,
+                    u'serialNumber': u'0000fcbe-00000da8',
+                    u'replayAllowed': True,
+                    u'flashOptimized': False,
+                    u'configuredSize': u'1.073741824E9 Bytes',
+                    u'mapped': False,
+                    u'cmmSource': False}]
+
+    # Volume list that contains multiple volumes
+    VOLUME_LIST_MULTI_VOLS = [
+        {u'instanceId': u'64702.3494',
+         u'scSerialNumber': 64702,
+         u'replicationSource': False,
+         u'liveVolume': False,
+         u'vpdId': 3496,
+         u'objectType': u'ScVolume',
+         u'index': 3494,
+         u'volumeFolderPath': u'devstackvol/fcvm/',
+         u'hostCacheEnabled': False,
+         u'usedByLegacyFluidFsNasVolume': False,
+         u'inRecycleBin': False,
+         u'volumeFolderIndex': 17,
+         u'instanceName':
+                        u'volume-37883deb-85cd-426a-9a98-62eaad8671ea',
+         u'statusMessage': u'',
+         u'status': u'Up',
+                    u'storageType': {u'instanceId': u'64702.1',
+                                     u'instanceName':
+                                     u'Assigned - Redundant - 2 MB',
+                                     u'objectType': u'ScStorageType'},
+                    u'cmmDestination': False,
+                    u'replicationDestination': False,
+                    u'volumeFolder': {u'instanceId': u'64702.17',
+                                      u'instanceName': u'fcvm',
+                                      u'objectType': u'ScVolumeFolder'},
+                    u'deviceId': u'6000d31000fcbe000000000000000da8',
+                    u'active': True,
+                    u'portableVolumeDestination': False,
+                    u'deleteAllowed': True,
+                    u'name': u'volume-37883deb-85cd-426a-9a98-62eaad8671ea',
+                    u'scName': u'Storage Center 64702',
+                    u'secureDataUsed': False,
+                    u'serialNumber': u'0000fcbe-00000da8',
+                    u'replayAllowed': True,
+                    u'flashOptimized': False,
+                    u'configuredSize': u'1.073741824E9 Bytes',
+                    u'mapped': False,
+                    u'cmmSource': False},
+        {u'instanceId': u'64702.3495',
+         u'scSerialNumber': 64702,
+         u'replicationSource': False,
+         u'liveVolume': False,
+         u'vpdId': 3496,
+         u'objectType': u'ScVolume',
+         u'index': 3495,
+         u'volumeFolderPath': u'devstackvol/fcvm/',
+         u'hostCacheEnabled': False,
+         u'usedByLegacyFluidFsNasVolume': False,
+         u'inRecycleBin': False,
+         u'volumeFolderIndex': 17,
+         u'instanceName':
+         u'volume-37883deb-85cd-426a-9a98-62eaad8671ea',
+         u'statusMessage': u'',
+         u'status': u'Up',
+         u'storageType': {u'instanceId': u'64702.1',
+                          u'instanceName':
+                          u'Assigned - Redundant - 2 MB',
+                          u'objectType': u'ScStorageType'},
+         u'cmmDestination': False,
+         u'replicationDestination': False,
+         u'volumeFolder': {u'instanceId': u'64702.17',
+                           u'instanceName': u'fcvm',
+                           u'objectType': u'ScVolumeFolder'},
+         u'deviceId': u'6000d31000fcbe000000000000000da9',
+         u'active': True,
+         u'portableVolumeDestination': False,
+         u'deleteAllowed': True,
+         u'name': u'volume-37883deb-85cd-426a-9a98-62eaad8671ea',
+         u'scName': u'Storage Center 64702',
+         u'secureDataUsed': False,
+         u'serialNumber': u'0000fcbe-00000da8',
+         u'replayAllowed': True,
+         u'flashOptimized': False,
+         u'configuredSize': u'1.073741824E9 Bytes',
+         u'mapped': False,
+         u'cmmSource': False}]
+
     VOLUME_CONFIG = \
         {u'instanceId': u'64702.3494',
          u'scSerialNumber': 64702,
@@ -1328,6 +1446,11 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.san_login,
             self.configuration.san_password)
 
+        # Set up the scapi configuration vars
+        self.scapi.ssn = self.configuration.dell_sc_ssn
+        self.scapi.sfname = self.configuration.dell_sc_server_folder
+        self.scapi.vfname = self.configuration.dell_sc_volume_folder
+
         self.volid = str(uuid.uuid4())
         self.volume_name = "volume" + self.volid
 
@@ -1351,7 +1474,7 @@ class DellSCSanAPITestCase(test.TestCase):
                      mock_close_connection,
                      mock_open_connection,
                      mock_init):
-        res = self.scapi.find_sc(64702)
+        res = self.scapi.find_sc()
         mock_get.assert_called_once_with('StorageCenter/StorageCenter')
         self.assertTrue(mock_get_result.called)
         self.assertEqual(u'64702', res, 'Unexpected SSN')
@@ -1369,7 +1492,7 @@ class DellSCSanAPITestCase(test.TestCase):
                              mock_open_connection,
                              mock_init):
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.scapi.find_sc, 12345)
+                          self.scapi.find_sc)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_first_result',
@@ -1384,7 +1507,8 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_open_connection,
                            mock_init):
         res = self.scapi._create_folder(
-            'StorageCenter/ScVolumeFolder', 12345, '',
+            'StorageCenter/ScVolumeFolder',
+            '',
             self.configuration.dell_sc_volume_folder)
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_first_result.called)
@@ -1404,7 +1528,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                        mock_init):
         # Test case where parent folder name is specified
         res = self.scapi._create_folder(
-            'StorageCenter/ScVolumeFolder', 12345, 'parentFolder',
+            'StorageCenter/ScVolumeFolder', 'parentFolder',
             self.configuration.dell_sc_volume_folder)
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_first_result.called)
@@ -1419,7 +1543,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                    mock_open_connection,
                                    mock_init):
         res = self.scapi._create_folder(
-            'StorageCenter/ScVolumeFolder', 12345, '',
+            'StorageCenter/ScVolumeFolder', '',
             self.configuration.dell_sc_volume_folder)
         self.assertIsNone(res, 'Test Create folder - None expected')
 
@@ -1436,7 +1560,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                 mock_open_connection,
                                 mock_init):
         res = self.scapi._create_folder_path(
-            'StorageCenter/ScVolumeFolder', 12345,
+            'StorageCenter/ScVolumeFolder',
             self.configuration.dell_sc_volume_folder)
         mock_path_to_array.assert_called_once_with(
             self.configuration.dell_sc_volume_folder)
@@ -1461,7 +1585,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             mock_init):
         # Test case where folder is not found and must be created
         res = self.scapi._create_folder_path(
-            'StorageCenter/ScVolumeFolder', 12345,
+            'StorageCenter/ScVolumeFolder',
             self.configuration.dell_sc_volume_folder)
         mock_path_to_array.assert_called_once_with(
             self.configuration.dell_sc_volume_folder)
@@ -1488,7 +1612,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where folder is not found, must be created
         # and creation fails
         res = self.scapi._create_folder_path(
-            'StorageCenter/ScVolumeFolder', 12345,
+            'StorageCenter/ScVolumeFolder',
             self.configuration.dell_sc_volume_folder)
         mock_path_to_array.assert_called_once_with(
             self.configuration.dell_sc_volume_folder)
@@ -1509,7 +1633,7 @@ class DellSCSanAPITestCase(test.TestCase):
                          mock_open_connection,
                          mock_init):
         res = self.scapi._find_folder(
-            'StorageCenter/ScVolumeFolder', 12345,
+            'StorageCenter/ScVolumeFolder',
             self.configuration.dell_sc_volume_folder)
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_get_result.called)
@@ -1529,7 +1653,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                     mock_init):
         # Test case for folder path with multiple folders
         res = self.scapi._find_folder(
-            'StorageCenter/ScVolumeFolder', 12345,
+            'StorageCenter/ScVolumeFolder',
             u'testParentFolder/opnstktst')
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_get_result.called)
@@ -1544,26 +1668,25 @@ class DellSCSanAPITestCase(test.TestCase):
                                  mock_open_connection,
                                  mock_init):
         res = self.scapi._find_folder(
-            'StorageCenter/ScVolumeFolder', 12345,
+            'StorageCenter/ScVolumeFolder',
             self.configuration.dell_sc_volume_folder)
         self.assertIsNone(res, 'Test find folder - None expected')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_create_folder_path',
-                       return_value=FLDR)
-    def test_create_volume_folder_path(self,
-                                       mock_create_vol_fldr_path,
-                                       mock_close_connection,
-                                       mock_open_connection,
-                                       mock_init):
-        res = self.scapi._create_volume_folder_path(
-            12345,
+                       '_find_folder',
+                       return_value=None)
+    def test_find_volume_folder_fail(self,
+                                     mock_find_folder,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        # Test case where _find_volume_folder returns none
+        res = self.scapi._find_volume_folder(
+            False)
+        mock_find_folder.assert_called_once_with(
+            'StorageCenter/ScVolumeFolder/GetList',
             self.configuration.dell_sc_volume_folder)
-        mock_create_vol_fldr_path.assert_called_once_with(
-            'StorageCenter/ScVolumeFolder',
-            12345,
-            self.configuration.dell_sc_volume_folder)
-        self.assertEqual(self.FLDR, res, 'Unexpected ScFolder')
+        self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_folder',
@@ -1574,12 +1697,32 @@ class DellSCSanAPITestCase(test.TestCase):
                                 mock_open_connection,
                                 mock_init):
         res = self.scapi._find_volume_folder(
-            12345,
-            self.configuration.dell_sc_volume_folder)
+            False)
         mock_find_folder.assert_called_once_with(
             'StorageCenter/ScVolumeFolder/GetList',
-            12345,
             self.configuration.dell_sc_volume_folder)
+        self.assertEqual(self.FLDR, res, 'Unexpected Folder')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_create_folder_path',
+                       return_value=FLDR)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_folder',
+                       return_value=None)
+    def test_find_volume_folder_create_folder(self,
+                                              mock_find_folder,
+                                              mock_create_folder_path,
+                                              mock_close_connection,
+                                              mock_open_connection,
+                                              mock_init):
+        # Test case where _find_volume_folder returns none and folder must be
+        # created
+        res = self.scapi._find_volume_folder(
+            True)
+        mock_find_folder.assert_called_once_with(
+            'StorageCenter/ScVolumeFolder/GetList',
+            self.configuration.dell_sc_volume_folder)
+        self.assertTrue(mock_create_folder_path.called)
         self.assertEqual(self.FLDR, res, 'Unexpected Folder')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1661,56 +1804,46 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_init):
         res = self.scapi.create_volume(
             self.volume_name,
-            1,
-            12345,
-            self.configuration.dell_sc_volume_folder)
+            1)
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_get_json.called)
-        mock_find_volume_folder.assert_called_once_with(
-            12345, self.configuration.dell_sc_volume_folder)
+        mock_find_volume_folder.assert_called_once_with(True)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_get_json',
+                       'find_volume',
                        return_value=VOLUME)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_create_volume_folder_path',
-                       return_value=FLDR)
+                       '_get_json',
+                       return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_volume_folder',
-                       return_value=None)
+                       return_value=FLDR)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_201)
-    def test_create_vol_and_folder(self,
-                                   mock_post,
-                                   mock_find_volume_folder,
-                                   mock_create_vol_folder_path,
-                                   mock_get_json,
-                                   mock_close_connection,
-                                   mock_open_connection,
-                                   mock_init):
-        # Test calling create_volume where volume folder has to be created
+    def test_create_volume_retry_find(self,
+                                      mock_post,
+                                      mock_find_volume_folder,
+                                      mock_get_json,
+                                      mock_find_volume,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+        # Test case where find_volume is used to do a retry of finding the
+        # created volume
         res = self.scapi.create_volume(
             self.volume_name,
-            1,
-            12345,
-            self.configuration.dell_sc_volume_folder)
+            1)
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_get_json.called)
-        mock_create_vol_folder_path.assert_called_once_with(
-            12345,
-            self.configuration.dell_sc_volume_folder)
-        mock_find_volume_folder.assert_called_once_with(
-            12345, self.configuration.dell_sc_volume_folder)
+        self.assertTrue(mock_find_volume.called)
+        mock_find_volume_folder.assert_called_once_with(True)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_create_volume_folder_path',
-                       return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_volume_folder',
                        return_value=None)
@@ -1720,7 +1853,6 @@ class DellSCSanAPITestCase(test.TestCase):
     def test_create_vol_folder_fail(self,
                                     mock_post,
                                     mock_find_volume_folder,
-                                    mock_create_vol_folder_path,
                                     mock_get_json,
                                     mock_close_connection,
                                     mock_open_connection,
@@ -1729,16 +1861,10 @@ class DellSCSanAPITestCase(test.TestCase):
         # fails to be created
         res = self.scapi.create_volume(
             self.volume_name,
-            1,
-            12345,
-            self.configuration.dell_sc_volume_folder)
+            1)
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_get_json.called)
-        mock_create_vol_folder_path.assert_called_once_with(
-            12345,
-            self.configuration.dell_sc_volume_folder)
-        mock_find_volume_folder.assert_called_once_with(
-            12345, self.configuration.dell_sc_volume_folder)
+        mock_find_volume_folder.assert_called_once_with(True)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1759,76 +1885,115 @@ class DellSCSanAPITestCase(test.TestCase):
                                    mock_init):
         res = self.scapi.create_volume(
             self.volume_name,
-            1,
-            12345,
-            self.configuration.dell_sc_volume_folder)
-        mock_find_volume_folder.assert_called_once_with(
-            12345, self.configuration.dell_sc_volume_folder)
+            1)
+        mock_find_volume_folder.assert_called_once_with(True)
         self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_first_result',
-                       return_value=VOLUME)
+                       '_get_json',
+                       return_value=VOLUME_LIST)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_200)
-    def test_find_volume_by_name(self,
-                                 mock_post,
-                                 mock_first_result,
-                                 mock_close_connection,
-                                 mock_open_connection,
-                                 mock_init):
-        # Test case to find volume by name
-        res = self.scapi.find_volume(12345,
-                                     self.volume_name)
+    def test__get_volume_list_enforce_vol_fldr(self,
+                                               mock_post,
+                                               mock_get_json,
+                                               mock_close_connection,
+                                               mock_open_connection,
+                                               mock_init):
+        # Test case to find volume in the configured volume folder
+        res = self.scapi._get_volume_list(self.volume_name, True)
         self.assertTrue(mock_post.called)
-        self.assertTrue(mock_first_result.called)
-        self.assertEqual(self.VOLUME, res, 'Unexpected volume')
+        self.assertTrue(mock_get_json.called)
+        self.assertEqual(self.VOLUME_LIST, res, 'Unexpected volume list')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_first_result',
-                       return_value=VOLUME)
+                       '_get_json',
+                       return_value=VOLUME_LIST)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_200)
-    # Test case to find volume by InstancedId
-    def test_find_volume_by_instanceid(self,
+    def test__get_volume_list_any_fldr(self,
                                        mock_post,
-                                       mock_first_result,
+                                       mock_get_json,
                                        mock_close_connection,
                                        mock_open_connection,
                                        mock_init):
-        res = self.scapi.find_volume(12345,
-                                     None,
-                                     '64702.3494')
+        # Test case to find volume anywhere in the configured SC
+        res = self.scapi._get_volume_list(self.volume_name, False)
         self.assertTrue(mock_post.called)
-        self.assertTrue(mock_first_result.called)
-        self.assertEqual(self.VOLUME, res, 'Unexpected volume')
+        self.assertTrue(mock_get_json.called)
+        self.assertEqual(self.VOLUME_LIST, res, 'Unexpected volume list')
 
-    def test_find_volume_no_name_or_instance(self,
-                                             mock_close_connection,
-                                             mock_open_connection,
-                                             mock_init):
-        # Test calling find_volume with no name or instanceid
-        res = self.scapi.find_volume(12345)
-        self.assertEqual(res, None, 'Expected None')
+    def test__get_volume_list_no_name(self,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+        # Test case specified volume name is None
+        res = self.scapi._get_volume_list(None, True)
+        self.assertIsNone(res, 'None expected')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_first_result',
-                       return_value=None)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_204)
+    def test__get_volume_list_failure(self,
+                                      mock_post,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+        # Test case to find volume in the configured volume folder
+        res = self.scapi._get_volume_list(self.volume_name, True)
+        self.assertTrue(mock_post.called)
+        self.assertIsNone(res, 'None expected')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=VOLUME_LIST)
+    def test_find_volume(self,
+                         mock_get_vol_list,
+                         mock_close_connection,
+                         mock_open_connection,
+                         mock_init):
+        # Test case to find volume by name
+        res = self.scapi.find_volume(self.volume_name)
+        self.assertTrue(mock_get_vol_list.called)
+        self.assertEqual(self.VOLUME, res, 'Unexpected volume')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=None)
+    def test_find_volume_no_name(self,
+                                 mock_get_volume_list,
+                                 mock_close_connection,
+                                 mock_open_connection,
+                                 mock_init):
+        # Test calling find_volume with no name or instanceid
+        res = self.scapi.find_volume(None)
+        self.assertEqual(res, None, 'Expected None')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list')
     def test_find_volume_not_found(self,
-                                   mock_post,
-                                   mock_first_result,
+                                   mock_get_volume_list,
                                    mock_close_connection,
                                    mock_open_connection,
                                    mock_init):
         # Test calling find_volume with result of no volume found
-        res = self.scapi.find_volume(12345,
-                                     self.volume_name)
+        mock_get_volume_list.side_effect = [[], []]
+        res = self.scapi.find_volume(self.volume_name)
         self.assertEqual(None, res, 'None expected')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=VOLUME_LIST_MULTI_VOLS)
+    def test_find_volume_multi_vols_found(self,
+                                          mock_get_volume_list,
+                                          mock_close_connection,
+                                          mock_open_connection,
+                                          mock_init):
+        # Test case where multiple volumes are found
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.find_volume, self.volume_name)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
@@ -1846,10 +2011,9 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_close_connection,
                            mock_open_connection,
                            mock_init):
-        res = self.scapi.delete_volume(12345,
-                                       self.volume_name)
+        res = self.scapi.delete_volume(self.volume_name)
         self.assertTrue(mock_delete.called)
-        mock_find_volume.assert_called_once_with(12345, self.volume_name, None)
+        mock_find_volume.assert_called_once_with(self.volume_name)
         self.assertTrue(mock_get_json.called)
         self.assertTrue(res)
 
@@ -1866,7 +2030,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                    mock_open_connection,
                                    mock_init):
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.scapi.delete_volume, 12345, self.volume_name)
+                          self.scapi.delete_volume, self.volume_name)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume',
@@ -1877,26 +2041,8 @@ class DellSCSanAPITestCase(test.TestCase):
                                         mock_open_connection,
                                         mock_init):
         # Test case where volume to be deleted does not exist
-        res = self.scapi.delete_volume(12345,
-                                       self.volume_name)
+        res = self.scapi.delete_volume(self.volume_name)
         self.assertTrue(res, 'Expected True')
-
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_create_folder_path',
-                       return_value=SVR_FLDR)
-    def test_create_server_folder_path(self,
-                                       mock_create_svr_fldr_path,
-                                       mock_close_connection,
-                                       mock_open_connection,
-                                       mock_init):
-        res = self.scapi._create_server_folder_path(
-            12345,
-            self.configuration.dell_sc_server_folder)
-        mock_create_svr_fldr_path.assert_called_once_with(
-            'StorageCenter/ScServerFolder',
-            12345,
-            self.configuration.dell_sc_server_folder)
-        self.assertEqual(self.SVR_FLDR, res, 'Unexpected server folder')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_folder',
@@ -1906,14 +2052,48 @@ class DellSCSanAPITestCase(test.TestCase):
                                 mock_close_connection,
                                 mock_open_connection,
                                 mock_init):
-        res = self.scapi._find_server_folder(
-            12345,
-            self.configuration.dell_sc_server_folder)
+        res = self.scapi._find_server_folder(False)
         mock_find_folder.assert_called_once_with(
             'StorageCenter/ScServerFolder/GetList',
-            12345,
             self.configuration.dell_sc_server_folder)
         self.assertEqual(self.SVR_FLDR, res, 'Unexpected server folder')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_create_folder_path',
+                       return_value=SVR_FLDR)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_folder',
+                       return_value=None)
+    def test_find_server_folder_create_folder(self,
+                                              mock_find_folder,
+                                              mock_create_folder_path,
+                                              mock_close_connection,
+                                              mock_open_connection,
+                                              mock_init):
+        # Test case where specified server folder is not found and must be
+        # created
+        res = self.scapi._find_server_folder(True)
+        mock_find_folder.assert_called_once_with(
+            'StorageCenter/ScServerFolder/GetList',
+            self.configuration.dell_sc_server_folder)
+        self.assertTrue(mock_create_folder_path.called)
+        self.assertEqual(self.SVR_FLDR, res, 'Unexpected server folder')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_folder',
+                       return_value=None)
+    def test_find_server_folder_fail(self,
+                                     mock_find_folder,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        # Test case where _find_server_folder returns none
+        res = self.scapi._find_server_folder(
+            False)
+        mock_find_folder.assert_called_once_with(
+            'StorageCenter/ScServerFolder/GetList',
+            self.configuration.dell_sc_volume_folder)
+        self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
@@ -1969,7 +2149,7 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_close_connection,
                            mock_open_connection,
                            mock_init):
-        res = self.scapi._find_serveros(12345, 'Red Hat Linux 6.x')
+        res = self.scapi._find_serveros('Red Hat Linux 6.x')
         self.assertTrue(mock_get_json.called)
         self.assertTrue(mock_post.called)
         self.assertEqual('64702.38', res, 'Wrong InstanceId')
@@ -1987,7 +2167,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                      mock_open_connection,
                                      mock_init):
         # Test requesting a Server OS that will not be found
-        res = self.scapi._find_serveros(12345, 'Non existent OS')
+        res = self.scapi._find_serveros('Non existent OS')
         self.assertTrue(mock_get_json.called)
         self.assertTrue(mock_post.called)
         self.assertIsNone(res, 'None expected')
@@ -2000,7 +2180,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                   mock_close_connection,
                                   mock_open_connection,
                                   mock_init):
-        res = self.scapi._find_serveros(12345, 'Red Hat Linux 6.x')
+        res = self.scapi._find_serveros('Red Hat Linux 6.x')
         self.assertEqual(None, res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2016,8 +2196,6 @@ class DellSCSanAPITestCase(test.TestCase):
                                          mock_open_connection,
                                          mock_init):
         res = self.scapi.create_server_multiple_hbas(
-            12345,
-            self.configuration.dell_sc_server_folder,
             self.WWNS)
         self.assertTrue(mock_create_server.called)
         self.assertTrue(mock_add_hba.called)
@@ -2048,8 +2226,6 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_open_connection,
                            mock_init):
         res = self.scapi.create_server(
-            12345,
-            self.configuration.dell_sc_server_folder,
             self.IQN,
             False)
         self.assertTrue(mock_find_serveros.called)
@@ -2083,8 +2259,6 @@ class DellSCSanAPITestCase(test.TestCase):
                                         mock_open_connection,
                                         mock_init):
         res = self.scapi.create_server(
-            12345,
-            self.configuration.dell_sc_server_folder,
             self.IQN,
             False)
         self.assertTrue(mock_find_serveros.called)
@@ -2096,9 +2270,6 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_first_result',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_create_server_folder_path',
-                       return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_server_folder',
                        return_value=None)
@@ -2112,19 +2283,15 @@ class DellSCSanAPITestCase(test.TestCase):
                                           mock_post,
                                           mock_find_serveros,
                                           mock_find_server_folder,
-                                          mock_create_svr_fldr_path,
                                           mock_first_result,
                                           mock_add_hba,
                                           mock_close_connection,
                                           mock_open_connection,
                                           mock_init):
         res = self.scapi.create_server(
-            12345,
-            self.configuration.dell_sc_server_folder,
             self.IQN,
             False)
         self.assertTrue(mock_find_server_folder.called)
-        self.assertTrue(mock_create_svr_fldr_path.called)
         self.assertEqual(self.SCSERVER, res, 'Unexpected ScServer')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2133,9 +2300,6 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_first_result',
                        return_value=SCSERVER)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_create_server_folder_path',
-                       return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_server_folder',
                        return_value=None)
@@ -2149,15 +2313,12 @@ class DellSCSanAPITestCase(test.TestCase):
                                    mock_post,
                                    mock_find_serveros,
                                    mock_find_server_folder,
-                                   mock_create_svr_fldr_path,
                                    mock_first_result,
                                    mock_add_hba,
                                    mock_close_connection,
                                    mock_open_connection,
                                    mock_init):
         res = self.scapi.create_server(
-            12345,
-            self.configuration.dell_sc_server_folder,
             self.IQN,
             False)
         self.assertIsNone(res, 'None expected')
@@ -2167,9 +2328,6 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=True)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_first_result',
-                       return_value=None)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_create_server_folder_path',
                        return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_server_folder',
@@ -2184,7 +2342,6 @@ class DellSCSanAPITestCase(test.TestCase):
                                      mock_post,
                                      mock_find_serveros,
                                      mock_find_server_folder,
-                                     mock_create_svr_fldr_path,
                                      mock_first_result,
                                      mock_add_hba,
                                      mock_close_connection,
@@ -2192,8 +2349,6 @@ class DellSCSanAPITestCase(test.TestCase):
                                      mock_init):
         # Test create server where _first_result is None
         res = self.scapi.create_server(
-            12345,
-            self.configuration.dell_sc_server_folder,
             self.IQN,
             False)
         self.assertIsNone(res, 'None expected')
@@ -2228,8 +2383,6 @@ class DellSCSanAPITestCase(test.TestCase):
                                        mock_init):
         # Tests create server where add hba fails
         res = self.scapi.create_server(
-            12345,
-            self.configuration.dell_sc_server_folder,
             self.IQN,
             False)
         self.assertTrue(mock_delete_server.called)
@@ -2251,8 +2404,7 @@ class DellSCSanAPITestCase(test.TestCase):
                          mock_close_connection,
                          mock_open_connection,
                          mock_init):
-        res = self.scapi.find_server(12345,
-                                     self.IQN)
+        res = self.scapi.find_server(self.IQN)
         self.assertTrue(mock_find_serverhba.called)
         self.assertTrue(mock_first_result.called)
         self.assertIsNotNone(res, 'Expected ScServer')
@@ -2271,8 +2423,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                 mock_init):
         # Test case where a ScServer HBA does not exist with the specified IQN
         # or WWN
-        res = self.scapi.find_server(12345,
-                                     self.IQN)
+        res = self.scapi.find_server(self.IQN)
         self.assertTrue(mock_find_serverhba.called)
         self.assertIsNone(res, 'Expected None')
 
@@ -2290,8 +2441,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                  mock_init):
         # Test case where a ScServer does not exist with the specified
         # ScServerHba
-        res = self.scapi.find_server(12345,
-                                     self.IQN)
+        res = self.scapi.find_server(self.IQN)
         self.assertTrue(mock_find_serverhba.called)
         self.assertIsNone(res, 'Expected None')
 
@@ -2307,8 +2457,7 @@ class DellSCSanAPITestCase(test.TestCase):
                             mock_close_connection,
                             mock_open_connection,
                             mock_init):
-        res = self.scapi.find_server(12345,
-                                     self.IQN)
+        res = self.scapi.find_server(self.IQN)
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_first_result.called)
         self.assertIsNotNone(res, 'Expected ScServerHba')
@@ -2323,8 +2472,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                     mock_init):
         # Test case where a ScServer does not exist with the specified
         # ScServerHba
-        res = self.scapi.find_server(12345,
-                                     self.IQN)
+        res = self.scapi.find_server(self.IQN)
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -3054,6 +3202,48 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_first_result.called)
         self.assertEqual(self.MAP_PROFILE, res, 'Incorrect ScMappingProfile')
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_first_result')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test_map_volume_no_vol_id(self,
+                                  mock_post,
+                                  mock_first_result,
+                                  mock_get_id,
+                                  mock_close_connection,
+                                  mock_open_connection,
+                                  mock_init):
+        # Test case where ScVolume instanceId is None
+        mock_get_id.side_effect = [None, '64702.47']
+        res = self.scapi.map_volume(self.VOLUME,
+                                    self.SCSERVER)
+        self.assertFalse(mock_post.called)
+        self.assertFalse(mock_first_result.called)
+        self.assertIsNone(res, 'None expected')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_first_result')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    def test_map_volume_no_server_id(self,
+                                     mock_post,
+                                     mock_first_result,
+                                     mock_get_id,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        # Test case where ScVolume instanceId is None
+        mock_get_id.side_effect = ['64702.3494', None]
+        res = self.scapi.map_volume(self.VOLUME,
+                                    self.SCSERVER)
+        self.assertFalse(mock_post.called)
+        self.assertFalse(mock_first_result.called)
+        self.assertIsNone(res, 'None expected')
+
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_204)
@@ -3146,6 +3336,62 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertFalse(res, False)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'delete',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=MAP_PROFILES)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_unmap_volume_no_vol_id(self,
+                                    mock_get,
+                                    mock_get_json,
+                                    mock_delete,
+                                    mock_get_id,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        # Test case where ScVolume instanceId = None
+        mock_get_id.side_effect = [None, '64702.47']
+        res = self.scapi.unmap_volume(self.VOLUME,
+                                      self.SCSERVER)
+        self.assertFalse(mock_get.called)
+        self.assertFalse(mock_get_json.called)
+        self.assertFalse(mock_delete.called)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'delete',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=MAP_PROFILES)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_unmap_volume_no_server_id(self,
+                                       mock_get,
+                                       mock_get_json,
+                                       mock_delete,
+                                       mock_get_id,
+                                       mock_close_connection,
+                                       mock_open_connection,
+                                       mock_init):
+        # Test case where ScVolume instanceId = None
+        mock_get_id.side_effect = ['64702.3494', None]
+        res = self.scapi.unmap_volume(self.VOLUME,
+                                      self.SCSERVER)
+        self.assertFalse(mock_get.called)
+        self.assertFalse(mock_get_json.called)
+        self.assertFalse(mock_delete.called)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
                        return_value=STRG_USAGE)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -3157,17 +3403,24 @@ class DellSCSanAPITestCase(test.TestCase):
                                mock_close_connection,
                                mock_open_connection,
                                mock_init):
-        res = self.scapi.get_storage_usage(64702)
+        res = self.scapi.get_storage_usage()
         self.assertTrue(mock_get.called)
         self.assertTrue(mock_get_json.called)
         self.assertEqual(self.STRG_USAGE, res, 'Unexpected ScStorageUsage')
 
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_204)
     def test_get_storage_usage_no_ssn(self,
+                                      mock_get,
                                       mock_close_connection,
                                       mock_open_connection,
                                       mock_init):
         # Test case where SSN is none
-        res = self.scapi.get_storage_usage(None)
+        self.scapi.ssn = None
+        res = self.scapi.get_storage_usage()
+        self.scapi.ssn = 12345
+        self.assertFalse(mock_get.called)
         self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -3179,7 +3432,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                        mock_close_connection,
                                        mock_open_connection,
                                        mock_init):
-        res = self.scapi.get_storage_usage(64702)
+        res = self.scapi.get_storage_usage()
         self.assertTrue(mock_get.called)
         self.assertIsNone(res, 'None expected')
 
@@ -3408,21 +3661,15 @@ class DellSCSanAPITestCase(test.TestCase):
         vol_name = u'Test_create_vol'
         res = self.scapi.create_view_volume(
             vol_name,
-            self.configuration.dell_sc_volume_folder,
             self.TST_RPLAY)
         self.assertTrue(mock_post.called)
-        mock_find_volume_folder.assert_called_once_with(
-            64702,
-            self.configuration.dell_sc_volume_folder)
+        mock_find_volume_folder.assert_called_once_with(True)
         self.assertTrue(mock_first_result.called)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_first_result',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_create_volume_folder_path',
-                       return_value=FLDR)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_volume_folder',
                        return_value=None)
@@ -3432,7 +3679,6 @@ class DellSCSanAPITestCase(test.TestCase):
     def test_create_view_volume_create_fldr(self,
                                             mock_post,
                                             mock_find_volume_folder,
-                                            mock_create_volume_folder,
                                             mock_first_result,
                                             mock_close_connection,
                                             mock_open_connection,
@@ -3441,24 +3687,15 @@ class DellSCSanAPITestCase(test.TestCase):
         vol_name = u'Test_create_vol'
         res = self.scapi.create_view_volume(
             vol_name,
-            self.configuration.dell_sc_volume_folder,
             self.TST_RPLAY)
         self.assertTrue(mock_post.called)
-        mock_find_volume_folder.assert_called_once_with(
-            64702,
-            self.configuration.dell_sc_volume_folder)
-        mock_create_volume_folder.assert_called_once_with(
-            64702,
-            self.configuration.dell_sc_volume_folder)
+        mock_find_volume_folder.assert_called_once_with(True)
         self.assertTrue(mock_first_result.called)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_first_result',
                        return_value=VOLUME)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_create_volume_folder_path',
-                       return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_volume_folder',
                        return_value=None)
@@ -3468,7 +3705,6 @@ class DellSCSanAPITestCase(test.TestCase):
     def test_create_view_volume_no_vol_fldr(self,
                                             mock_post,
                                             mock_find_volume_folder,
-                                            mock_create_volume_folder,
                                             mock_first_result,
                                             mock_close_connection,
                                             mock_open_connection,
@@ -3477,15 +3713,9 @@ class DellSCSanAPITestCase(test.TestCase):
         vol_name = u'Test_create_vol'
         res = self.scapi.create_view_volume(
             vol_name,
-            self.configuration.dell_sc_volume_folder,
             self.TST_RPLAY)
         self.assertTrue(mock_post.called)
-        mock_find_volume_folder.assert_called_once_with(
-            64702,
-            self.configuration.dell_sc_volume_folder)
-        mock_create_volume_folder.assert_called_once_with(
-            64702,
-            self.configuration.dell_sc_volume_folder)
+        mock_find_volume_folder.assert_called_once_with(True)
         self.assertTrue(mock_first_result.called)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
@@ -3505,12 +3735,9 @@ class DellSCSanAPITestCase(test.TestCase):
         vol_name = u'Test_create_vol'
         res = self.scapi.create_view_volume(
             vol_name,
-            self.configuration.dell_sc_volume_folder,
             self.TST_RPLAY)
         self.assertTrue(mock_post.called)
-        mock_find_volume_folder.assert_called_once_with(
-            64702,
-            self.configuration.dell_sc_volume_folder)
+        mock_find_volume_folder.assert_called_once_with(True)
         self.assertIsNone(res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -3528,14 +3755,12 @@ class DellSCSanAPITestCase(test.TestCase):
         vol_name = u'Test_create_clone_vol'
         res = self.scapi.create_cloned_volume(
             vol_name,
-            self.configuration.dell_sc_volume_folder,
             self.VOLUME)
         mock_create_replay.assert_called_once_with(self.VOLUME,
                                                    'Cinder Clone Replay',
                                                    60)
         mock_create_view_volume.assert_called_once_with(
             vol_name,
-            self.configuration.dell_sc_volume_folder,
             self.RPLAY)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
 
@@ -3552,7 +3777,6 @@ class DellSCSanAPITestCase(test.TestCase):
         vol_name = u'Test_create_clone_vol'
         res = self.scapi.create_cloned_volume(
             vol_name,
-            self.configuration.dell_sc_volume_folder,
             self.VOLUME)
         mock_create_replay.assert_called_once_with(self.VOLUME,
                                                    'Cinder Clone Replay',
@@ -3670,8 +3894,8 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
         self.configuration.san_login = "admin"
         self.configuration.san_password = "mmm"
         self.configuration.dell_sc_ssn = 12345
-        self.configuration.dell_sc_server_folder = 'opnstktst'
-        self.configuration.dell_sc_volume_folder = 'opnstktst'
+        self.configuration.dell_sc_server_folder = 'openstack'
+        self.configuration.dell_sc_volume_folder = 'openstack'
         self.configuration.dell_sc_api_port = 3033
         self.configuration.iscsi_ip_address = '192.168.1.1'
         self.configuration.iscsi_port = 3260
@@ -3683,6 +3907,11 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
             self.configuration.dell_sc_api_port,
             self.configuration.san_login,
             self.configuration.san_password)
+
+        # Set up the scapi configuration vars
+        self.scapi.ssn = self.configuration.dell_sc_ssn
+        self.scapi.sfname = self.configuration.dell_sc_server_folder
+        self.scapi.vfname = self.configuration.dell_sc_volume_folder
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
