@@ -641,6 +641,15 @@ class TestCinderManageCmd(test.TestCase):
             service_get_all.assert_called_with(ctxt)
             service_is_up.assert_called_with(service)
 
+    def test_get_arg_string(self):
+        args1 = "foobar"
+        args2 = "-foo bar"
+        args3 = "--foo bar"
+
+        self.assertEqual("foobar", cinder_manage.get_arg_string(args1))
+        self.assertEqual("foo bar", cinder_manage.get_arg_string(args2))
+        self.assertEqual("foo bar", cinder_manage.get_arg_string(args3))
+
     @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
     def test_main_argv_lt_2(self, register_cli_opt):
         script_name = 'cinder-manage'
