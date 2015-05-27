@@ -24,7 +24,14 @@ import json
 import urllib2
 
 from cinder.volume.drivers import nexenta
-from oslo_log import log as logging
+
+try:
+    from oslo_log import log as logging
+except:
+    try:
+        from oslo.log import log as logging
+    except:
+        from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

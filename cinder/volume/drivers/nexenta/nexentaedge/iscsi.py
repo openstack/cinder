@@ -26,7 +26,14 @@ from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc as jsonrpc
 
 import json
 
-from oslo_log import log as logging
+try:
+    from oslo_log import log as logging
+except:
+    try:
+        from oslo.log import log as logging
+    except:
+        from cinder.openstack.common import log as logging
+
 try:
     from oslo_config import cfg
 except:
