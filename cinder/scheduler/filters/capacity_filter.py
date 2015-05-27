@@ -80,22 +80,13 @@ class CapacityFilter(filters.BaseHostFilter):
         msg_args = {"host": host_state.host,
                     "requested": volume_size,
                     "available": free}
-        if free < volume_size:
-            LOG.warning(_LW("Insufficient free space for volume creation "
-                            "on host %(host)s (requested / avail): "
-                            "%(requested)s/%(available)s"), msg_args)
-            return free >= volume_size
-        else:
-            LOG.debug("Space information for volume creation "
-                      "on host %(host)s (requested / avail): "
-                      "%(requested)s/%(available)s", msg_args)
 
         # Only evaluate using max_over_subscription_ratio if
         # thin_provisioning_support is True. Check if the ratio of
         # provisioned capacity over total capacity has exceeded over
         # subscription ratio.
         if (host_state.thin_provisioning_support and
-                host_state.max_over_subscription_ratio >= 1):
+                host_state.max_over_subscription_ratio > 1):
             provisioned_ratio = ((host_state.provisioned_capacity_gb +
                                   volume_size) / total)
             if provisioned_ratio >= host_state.max_over_subscription_ratio:
@@ -113,4 +104,14 @@ class CapacityFilter(filters.BaseHostFilter):
                 free_virtual = free * host_state.max_over_subscription_ratio
                 return free_virtual >= volume_size
 
-        return free >= volume_size
+        if free < volume_size:
+            LOG.warning(_LW("Insufficient free space for volume creation "
+                            "on host %(host)s (requested / avail): "
+                            "%(requested)s/%(available)s"), msg_args)
+            return False
+
+        LOG.debug("Space information for volume creation "
+                  "on host %(host)s (requested / avail): "
+                  "%(requested)s/%(available)s", msg_args)
+
+        return True
