@@ -23,8 +23,8 @@
 import json
 import urllib2
 
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers import nexenta
+from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 

@@ -20,13 +20,17 @@
 .. moduleauthor:: Kyle Schochenmaier <kyle.schochenmaier@nexenta.com>
 """
 
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers import nexenta
-from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc_ne as jsonrpc
+from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc as jsonrpc
 
 import json
-from oslo_config import cfg
+
+from oslo_log import log as logging
+try:
+    from oslo_config import cfg
+except:
+    from oslo.config import cfg
 
 NEXENTA_EDGE_OPTIONS = [
     cfg.StrOpt('nexenta_rest_address',
