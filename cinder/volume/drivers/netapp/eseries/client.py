@@ -260,8 +260,8 @@ class RestClient(WebserviceClient):
         """Creates host on array."""
         path = "/storage-systems/{system-id}/hosts"
         data = {'name': label, 'hostType': host_type}
-        data.setdefault('groupId', group_id) if group_id else None
-        data.setdefault('ports', ports) if ports else None
+        data.setdefault('groupId', group_id if group_id else None)
+        data.setdefault('ports', ports if ports else None)
         return self._invoke('POST', path, data)
 
     def create_host_with_port(self, label, host_type, port_id,
@@ -377,8 +377,8 @@ class RestClient(WebserviceClient):
         """Registers storage system with web service."""
         path = "/storage-systems"
         data = {'controllerAddresses': controller_addresses}
-        data.setdefault('wwn', wwn) if wwn else None
-        data.setdefault('password', password) if password else None
+        data.setdefault('wwn', wwn if wwn else None)
+        data.setdefault('password', password if password else None)
         return self._invoke('POST', path, data, use_system=False)
 
     def update_stored_system_password(self, password):

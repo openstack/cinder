@@ -5730,7 +5730,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         backup['parent_id'] = None
         backup['size'] = 5 * 1024 * 1024
         backup['object_count'] = 22
-        db.backup_create(self.context, backup)['id']
+        db.backup_create(self.context, backup)
 
         lvm_driver.check_for_setup_error()
 

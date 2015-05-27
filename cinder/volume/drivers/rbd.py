@@ -593,9 +593,11 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         snapshot still depends on the parent.
         """
         try:
-            snap and volume.set_snap(snap)
+            if snap:
+                volume.set_snap(snap)
             pool, parent, parent_snap = tuple(volume.parent_info())
-            snap and volume.set_snap(None)
+            if snap:
+                volume.set_snap(None)
             # Strip the tag off the end of the volume name since it will not be
             # in the snap name.
             if volume_name.endswith('.deleted'):

@@ -215,7 +215,7 @@ class TestGlanceImageService(test.TestCase):
         properties = {'owner_id': 'proj1'}
         fixture['properties'] = properties
 
-        self.service.create(self.context, fixture)['id']
+        self.service.create(self.context, fixture)
 
         proj = self.context.project_id
         self.context.project_id = 'proj1'
