@@ -161,33 +161,39 @@ class VolumeApiTest(test.TestCase):
             metadata=None,
             attachments=None,
             volume_type=stubs.DEFAULT_VOL_TYPE,
-            status=stubs.DEFAULT_VOL_STATUS):
+            status=stubs.DEFAULT_VOL_STATUS,
+            with_migration_status=False):
         metadata = metadata or {}
         attachments = attachments or []
-        return {'volume':
-                {'attachments': attachments,
-                 'availability_zone': availability_zone,
-                 'bootable': 'false',
-                 'consistencygroup_id': consistencygroup_id,
-                 'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                 'description': description,
-                 'id': stubs.DEFAULT_VOL_ID,
-                 'links':
-                 [{'href': 'http://localhost/v2/fakeproject/volumes/1',
-                   'rel': 'self'},
-                  {'href': 'http://localhost/fakeproject/volumes/1',
-                   'rel': 'bookmark'}],
-                 'metadata': metadata,
-                 'name': name,
-                 'replication_status': 'disabled',
-                 'multiattach': False,
-                 'size': size,
-                 'snapshot_id': snapshot_id,
-                 'source_volid': source_volid,
-                 'status': status,
-                 'user_id': 'fakeuser',
-                 'volume_type': volume_type,
-                 'encrypted': False}}
+        volume = {'volume':
+                  {'attachments': attachments,
+                   'availability_zone': availability_zone,
+                   'bootable': 'false',
+                   'consistencygroup_id': consistencygroup_id,
+                   'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
+                   'description': description,
+                   'id': stubs.DEFAULT_VOL_ID,
+                   'links':
+                   [{'href': 'http://localhost/v2/fakeproject/volumes/1',
+                     'rel': 'self'},
+                    {'href': 'http://localhost/fakeproject/volumes/1',
+                     'rel': 'bookmark'}],
+                   'metadata': metadata,
+                   'name': name,
+                   'replication_status': 'disabled',
+                   'multiattach': False,
+                   'size': size,
+                   'snapshot_id': snapshot_id,
+                   'source_volid': source_volid,
+                   'status': status,
+                   'user_id': 'fakeuser',
+                   'volume_type': volume_type,
+                   'encrypted': False}}
+
+        if with_migration_status:
+            volume['volume']['migration_status'] = None
+
+        return volume
 
     def _expected_volume_api_create_kwargs(self, snapshot=None,
                                            availability_zone=DEFAULT_AZ,
@@ -652,7 +658,8 @@ class VolumeApiTest(test.TestCase):
                 'host_name': None,
                 'device': '/',
             }],
-            metadata={'key': 'value', 'readonly': 'True'})
+            metadata={'key': 'value', 'readonly': 'True'},
+            with_migration_status=True)
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
         self.assertTrue(mock_validate.called)
@@ -758,7 +765,8 @@ class VolumeApiTest(test.TestCase):
                           'host_name': None,
                           'id': '1',
                           'volume_id': stubs.DEFAULT_VOL_ID}],
-            metadata={'key': 'value', 'readonly': 'True'})
+            metadata={'key': 'value', 'readonly': 'True'},
+            with_migration_status=True)
         expected = {'volumes': [exp_vol['volume']]}
         self.assertEqual(expected, res_dict)
 
@@ -1174,7 +1182,8 @@ class VolumeApiTest(test.TestCase):
                 'server_id': stubs.FAKE_UUID,
                 'host_name': None,
                 'device': '/'}],
-            metadata={'key': 'value', 'readonly': 'True'})
+            metadata={'key': 'value', 'readonly': 'True'},
+            with_migration_status=True)
         self.assertEqual(expected, res_dict)
 
     def test_volume_show_with_encrypted_volume(self):

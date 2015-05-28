@@ -28,6 +28,7 @@ from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager
 from cinder import test
 from cinder.tests.unit import fake_consistencygroup
+from cinder.tests.unit import utils as tests_utils
 
 CONF = cfg.CONF
 
@@ -47,7 +48,7 @@ class SchedulerManagerTestCase(test.TestCase):
         self.flags(scheduler_driver=self.driver_cls_name)
         self.manager = self.manager_cls()
         self.manager._startup_delay = False
-        self.context = context.RequestContext('fake_user', 'fake_project')
+        self.context = context.get_admin_context()
         self.topic = 'fake_topic'
         self.fake_args = (1, 2, 3)
         self.fake_kwargs = {'cat': 'meow', 'dog': 'woof'}
@@ -171,16 +172,42 @@ class SchedulerManagerTestCase(test.TestCase):
                                                    {})
         self.assertFalse(_mock_sleep.called)
 
+    @mock.patch('cinder.db.volume_get')
     @mock.patch('cinder.scheduler.driver.Scheduler.host_passes_filters')
     @mock.patch('cinder.db.volume_update')
     def test_migrate_volume_exception_returns_volume_state(
-            self, _mock_volume_update, _mock_host_passes):
+            self, _mock_volume_update, _mock_host_passes,
+            _mock_volume_get):
         # Test NoValidHost exception behavior for migrate_volume_to_host.
         # Puts the volume in 'error_migrating' state and eats the exception.
-        _mock_host_passes.side_effect = exception.NoValidHost(reason="")
-        fake_volume_id = 1
+        fake_updates = {'migration_status': 'error'}
+        self._test_migrate_volume_exception_returns_volume_state(
+            _mock_volume_update, _mock_host_passes, _mock_volume_get,
+            'available', fake_updates)
+
+    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.scheduler.driver.Scheduler.host_passes_filters')
+    @mock.patch('cinder.db.volume_update')
+    def test_migrate_volume_exception_returns_volume_state_maintenance(
+            self, _mock_volume_update, _mock_host_passes,
+            _mock_volume_get):
+        fake_updates = {'status': 'available',
+                        'migration_status': 'error'}
+        self._test_migrate_volume_exception_returns_volume_state(
+            _mock_volume_update, _mock_host_passes, _mock_volume_get,
+            'maintenance', fake_updates)
+
+    def _test_migrate_volume_exception_returns_volume_state(
+            self, _mock_volume_update, _mock_host_passes,
+            _mock_volume_get, status, fake_updates):
+        volume = tests_utils.create_volume(self.context,
+                                           status=status,
+                                           previous_status='available')
+        fake_volume_id = volume.id
         topic = 'fake_topic'
         request_spec = {'volume_id': fake_volume_id}
+        _mock_host_passes.side_effect = exception.NoValidHost(reason="")
+        _mock_volume_get.return_value = volume
 
         self.manager.migrate_volume_to_host(self.context, topic,
                                             fake_volume_id, 'host', True,
@@ -188,7 +215,7 @@ class SchedulerManagerTestCase(test.TestCase):
                                             filter_properties={})
         _mock_volume_update.assert_called_once_with(self.context,
                                                     fake_volume_id,
-                                                    {'migration_status': None})
+                                                    fake_updates)
         _mock_host_passes.assert_called_once_with(self.context, 'host',
                                                   request_spec, {})
 
@@ -198,24 +225,24 @@ class SchedulerManagerTestCase(test.TestCase):
                                                           _mock_vol_update):
         # Test NoValidHost exception behavior for retype.
         # Puts the volume in original state and eats the exception.
-        fake_volume_id = 1
+        volume = tests_utils.create_volume(self.context,
+                                           status='retyping',
+                                           previous_status='in-use')
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        volume = tests_utils.attach_volume(self.context, volume['id'],
+                                           instance_uuid, None, '/dev/fake')
+        fake_volume_id = volume.id
         topic = 'fake_topic'
-        volume_id = fake_volume_id
         request_spec = {'volume_id': fake_volume_id, 'volume_type': {'id': 3},
                         'migration_policy': 'on-demand'}
-        vol_info = {'id': fake_volume_id, 'status': 'in-use',
-                    'volume_attachment': [{'id': 'fake_id',
-                                           'instance_uuid': 'foo',
-                                           'attached_host': None}]}
-
-        _mock_vol_get.return_value = vol_info
+        _mock_vol_get.return_value = volume
         _mock_vol_update.return_value = {'status': 'in-use'}
         _mock_find_retype_host = mock.Mock(
             side_effect=exception.NoValidHost(reason=""))
         orig_retype = self.manager.driver.find_retype_host
         self.manager.driver.find_retype_host = _mock_find_retype_host
 
-        self.manager.retype(self.context, topic, volume_id,
+        self.manager.retype(self.context, topic, fake_volume_id,
                             request_spec=request_spec,
                             filter_properties={})
 

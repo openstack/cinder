@@ -14,7 +14,6 @@
 
 from oslo_log import log as logging
 import oslo_messaging as messaging
-from oslo_utils import strutils
 import webob
 from webob import exc
 
@@ -26,6 +25,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder import rpc
+from cinder import utils
 from cinder import volume
 
 
@@ -127,12 +127,12 @@ class VolumeAdminController(AdminController):
     # Perhaps we don't even want any definitions in the abstract
     # parent class?
     valid_status = AdminController.valid_status.union(
-        set(['attaching', 'in-use', 'detaching']))
+        ('attaching', 'in-use', 'detaching', 'maintenance'))
 
-    valid_attach_status = set(['detached', 'attached', ])
-    valid_migration_status = set(['migrating', 'error',
-                                  'completing', 'none',
-                                  'starting', ])
+    valid_attach_status = ('detached', 'attached',)
+    valid_migration_status = ('migrating', 'error',
+                              'success', 'completing',
+                              'none', 'starting',)
 
     def _update(self, *args, **kwargs):
         db.volume_update(*args, **kwargs)
@@ -220,15 +220,11 @@ class VolumeAdminController(AdminController):
         try:
             host = params['host']
         except KeyError:
-            raise exc.HTTPBadRequest(explanation=_("Must specify 'host'"))
-        force_host_copy = params.get('force_host_copy', 'False')
-        try:
-            force_host_copy = strutils.bool_from_string(force_host_copy,
-                                                        strict=True)
-        except ValueError as e:
-            msg = (_("Invalid value for force_host_copy: '%s'") % e.message)
-            raise exc.HTTPBadRequest(explanation=msg)
-        self.volume_api.migrate_volume(context, volume, host, force_host_copy)
+            raise exc.HTTPBadRequest(explanation=_("Must specify 'host'."))
+        force_host_copy = utils.get_bool_param('force_host_copy', params)
+        lock_volume = utils.get_bool_param('lock_volume', params)
+        self.volume_api.migrate_volume(context, volume, host, force_host_copy,
+                                       lock_volume)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-migrate_volume_completion')

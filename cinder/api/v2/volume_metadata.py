@@ -30,12 +30,17 @@ class Controller(wsgi.Controller):
         super(Controller, self).__init__()
 
     def _get_metadata(self, context, volume_id):
+        # The metadata is at the second position of the tuple returned
+        # from _get_volume_and_metadata
+        return self._get_volume_and_metadata(context, volume_id)[1]
+
+    def _get_volume_and_metadata(self, context, volume_id):
         try:
             volume = self.volume_api.get(context, volume_id)
             meta = self.volume_api.get_volume_metadata(context, volume)
         except exception.VolumeNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
-        return meta
+        return (volume, meta)
 
     @wsgi.serializers(xml=common.MetadataTemplate)
     def index(self, req, volume_id):
@@ -133,14 +138,13 @@ class Controller(wsgi.Controller):
         """Deletes an existing metadata."""
         context = req.environ['cinder.context']
 
-        metadata = self._get_metadata(context, volume_id)
+        volume, metadata = self._get_volume_and_metadata(context, volume_id)
 
         if id not in metadata:
             msg = _("Metadata item was not found")
             raise webob.exc.HTTPNotFound(explanation=msg)
 
         try:
-            volume = self.volume_api.get(context, volume_id)
             self.volume_api.delete_volume_metadata(
                 context,
                 volume,

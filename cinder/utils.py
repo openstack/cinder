@@ -49,6 +49,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import encodeutils
 from oslo_utils import importutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 import retrying
 import six
@@ -660,6 +661,16 @@ def _get_disk_of_partition(devpath, st=None):
     if st is None:
         st = os.stat(devpath)
     return (devpath, st)
+
+
+def get_bool_param(param_string, params):
+    param = params.get(param_string, False)
+    if not is_valid_boolstr(param):
+        msg = _('Value %(param)s for %(param_string)s is not a '
+                'boolean.') % {'param': param, 'param_string': param_string}
+        raise exception.InvalidParameterValue(err=msg)
+
+    return strutils.bool_from_string(param, strict=True)
 
 
 def get_blkdev_major_minor(path, lookup_for_file=True):
