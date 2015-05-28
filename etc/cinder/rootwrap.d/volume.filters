@@ -188,3 +188,6 @@ aureplicationmon: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, 
 
 # cinder/volume/drivers/tintri.py
 mv: CommandFilter, mv, root
+
+# cinder/volume/drivers/hgst.py
+vgc-cluster: CommandFilter, vgc-cluster, root
