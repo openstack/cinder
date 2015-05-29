@@ -1,4 +1,5 @@
 # Copyright (c) 2014 Andrew Kerr.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,10 +17,14 @@
 Mock unit tests for the NetApp nfs storage driver
 """
 
+import os
+
+import copy
 import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_utils import units
 
+from cinder import exception
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder import utils
@@ -43,6 +48,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
             with mock.patch.object(remotefs_brick, 'RemoteFsClient',
                                    return_value=mock.Mock()):
                 self.driver = nfs_base.NetAppNfsDriver(**kwargs)
+                self.driver.ssc_enabled = False
 
     @mock.patch.object(nfs.NfsDriver, 'do_setup')
     @mock.patch.object(na_utils, 'check_flags')
@@ -98,3 +104,189 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.assertEqual(expected, result)
         get_capacity.assert_has_calls([
             mock.call(fake.EXPORT_PATH)])
+
+    def test_create_volume(self):
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(na_utils, 'get_volume_extra_specs')
+        self.mock_object(self.driver, '_do_create_volume')
+        self.mock_object(self.driver, '_do_qos_for_volume')
+        update_ssc = self.mock_object(self.driver, '_update_stale_vols')
+        expected = {'provider_location': fake.NFS_SHARE}
+
+        result = self.driver.create_volume(fake.NFS_VOLUME)
+
+        self.assertEqual(expected, result)
+        self.assertEqual(0, update_ssc.call_count)
+
+    def test_create_volume_no_pool(self):
+        volume = copy.deepcopy(fake.NFS_VOLUME)
+        volume['host'] = '%s@%s' % (fake.HOST_NAME, fake.BACKEND_NAME)
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+
+        self.assertRaises(exception.InvalidHost,
+                          self.driver.create_volume,
+                          volume)
+
+    def test_create_volume_exception(self):
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(na_utils, 'get_volume_extra_specs')
+        mock_create = self.mock_object(self.driver, '_do_create_volume')
+        mock_create.side_effect = Exception
+        update_ssc = self.mock_object(self.driver, '_update_stale_vols')
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume,
+                          fake.NFS_VOLUME)
+
+        self.assertEqual(0, update_ssc.call_count)
+
+    def test_create_volume_from_snapshot(self):
+        provider_location = fake.POOL_NAME
+        snapshot = fake.CLONE_SOURCE
+        self.mock_object(self.driver, '_clone_source_to_destination_volume',
+                         mock.Mock(return_value=provider_location))
+
+        result = self.driver.create_cloned_volume(fake.NFS_VOLUME,
+                                                  snapshot)
+
+        self.assertEqual(provider_location, result)
+
+    def test_clone_source_to_destination_volume(self):
+        self.mock_object(self.driver, '_get_volume_location', mock.Mock(
+            return_value=fake.POOL_NAME))
+        self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
+            return_value=fake.EXTRA_SPECS))
+        self.mock_object(
+            self.driver,
+            '_clone_with_extension_check')
+        self.mock_object(self.driver, '_do_qos_for_volume')
+        expected = {'provider_location': fake.POOL_NAME}
+
+        result = self.driver._clone_source_to_destination_volume(
+            fake.CLONE_SOURCE, fake.CLONE_DESTINATION)
+
+        self.assertEqual(expected, result)
+
+    def test_clone_source_to_destination_volume_with_do_qos_exception(self):
+        self.mock_object(self.driver, '_get_volume_location', mock.Mock(
+            return_value=fake.POOL_NAME))
+        self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
+            return_value=fake.EXTRA_SPECS))
+        self.mock_object(
+            self.driver,
+            '_clone_with_extension_check')
+        self.mock_object(self.driver, '_do_qos_for_volume', mock.Mock(
+            side_effect=Exception))
+
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver._clone_source_to_destination_volume,
+            fake.CLONE_SOURCE,
+            fake.CLONE_DESTINATION)
+
+    def test_clone_with_extension_check_equal_sizes(self):
+        clone_source = copy.deepcopy(fake.CLONE_SOURCE)
+        clone_source['size'] = fake.VOLUME['size']
+        self.mock_object(self.driver, '_clone_backing_file_for_volume')
+        self.mock_object(self.driver, 'local_path')
+        mock_discover = self.mock_object(self.driver,
+                                         '_discover_file_till_timeout')
+        mock_discover.return_value = True
+        self.mock_object(self.driver, '_set_rw_permissions')
+        mock_extend_volume = self.mock_object(self.driver, 'extend_volume')
+
+        self.driver._clone_with_extension_check(clone_source, fake.NFS_VOLUME)
+
+        self.assertEqual(0, mock_extend_volume.call_count)
+
+    def test_clone_with_extension_check_unequal_sizes(self):
+        clone_source = copy.deepcopy(fake.CLONE_SOURCE)
+        clone_source['size'] = fake.VOLUME['size'] + 1
+        self.mock_object(self.driver, '_clone_backing_file_for_volume')
+        self.mock_object(self.driver, 'local_path')
+        mock_discover = self.mock_object(self.driver,
+                                         '_discover_file_till_timeout')
+        mock_discover.return_value = True
+        self.mock_object(self.driver, '_set_rw_permissions')
+        mock_extend_volume = self.mock_object(self.driver, 'extend_volume')
+
+        self.driver._clone_with_extension_check(clone_source, fake.NFS_VOLUME)
+
+        self.assertEqual(1, mock_extend_volume.call_count)
+
+    def test_clone_with_extension_check_extend_exception(self):
+        clone_source = copy.deepcopy(fake.CLONE_SOURCE)
+        clone_source['size'] = fake.VOLUME['size'] + 1
+        self.mock_object(self.driver, '_clone_backing_file_for_volume')
+        self.mock_object(self.driver, 'local_path')
+        mock_discover = self.mock_object(self.driver,
+                                         '_discover_file_till_timeout')
+        mock_discover.return_value = True
+        self.mock_object(self.driver, '_set_rw_permissions')
+        mock_extend_volume = self.mock_object(self.driver, 'extend_volume')
+        mock_extend_volume.side_effect = Exception
+        mock_cleanup = self.mock_object(self.driver,
+                                        '_cleanup_volume_on_failure')
+
+        self.assertRaises(exception.CinderException,
+                          self.driver._clone_with_extension_check,
+                          clone_source,
+                          fake.NFS_VOLUME)
+
+        self.assertEqual(1, mock_cleanup.call_count)
+
+    def test_clone_with_extension_check_no_discovery(self):
+        self.mock_object(self.driver, '_clone_backing_file_for_volume')
+        self.mock_object(self.driver, 'local_path')
+        self.mock_object(self.driver, '_set_rw_permissions')
+        mock_discover = self.mock_object(self.driver,
+                                         '_discover_file_till_timeout')
+        mock_discover.return_value = False
+
+        self.assertRaises(exception.CinderException,
+                          self.driver._clone_with_extension_check,
+                          fake.CLONE_SOURCE,
+                          fake.NFS_VOLUME)
+
+    def test_create_cloned_volume(self):
+        provider_location = fake.POOL_NAME
+        src_vref = fake.CLONE_SOURCE
+        self.mock_object(self.driver, '_clone_source_to_destination_volume',
+                         mock.Mock(return_value=provider_location))
+
+        result = self.driver.create_cloned_volume(fake.NFS_VOLUME,
+                                                  src_vref)
+        self.assertEqual(provider_location, result)
+
+    def test_do_qos_for_volume(self):
+        self.assertRaises(NotImplementedError,
+                          self.driver._do_qos_for_volume,
+                          fake.NFS_VOLUME,
+                          fake.EXTRA_SPECS)
+
+    def test_cleanup_volume_on_failure(self):
+        path = '%s/%s' % (fake.NFS_SHARE, fake.NFS_VOLUME['name'])
+        mock_local_path = self.mock_object(self.driver, 'local_path')
+        mock_local_path.return_value = path
+        mock_exists_check = self.mock_object(os.path, 'exists')
+        mock_exists_check.return_value = True
+        mock_delete = self.mock_object(self.driver, '_delete_file_at_path')
+
+        self.driver._cleanup_volume_on_failure(fake.NFS_VOLUME)
+
+        mock_delete.assert_has_calls([mock.call(path)])
+
+    def test_cleanup_volume_on_failure_no_path(self):
+        self.mock_object(self.driver, 'local_path')
+        mock_exists_check = self.mock_object(os.path, 'exists')
+        mock_exists_check.return_value = False
+        mock_delete = self.mock_object(self.driver, '_delete_file_at_path')
+
+        self.driver._cleanup_volume_on_failure(fake.NFS_VOLUME)
+
+        self.assertEqual(0, mock_delete.call_count)
+
+    def test_get_vol_for_share(self):
+        self.assertRaises(NotImplementedError,
+                          self.driver._get_vol_for_share,
+                          fake.NFS_SHARE)

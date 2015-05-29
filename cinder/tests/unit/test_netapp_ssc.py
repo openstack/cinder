@@ -1,5 +1,5 @@
-# Copyright (c) 2012 NetApp, Inc.
-# All Rights Reserved.
+# Copyright (c) 2012 NetApp, Inc. All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -360,6 +360,16 @@ class SscUtilsTestCase(test.TestCase):
                               dedup=True, compression=False,
                               raid='raid4', ha='cfo', disk='SAS')
 
+    test_vols = {vol1, vol2, vol3, vol4, vol5}
+
+    ssc_map = {
+        'mirrored': {vol1},
+        'dedup': {vol1, vol2, vol3},
+        'compression': {vol3, vol4},
+        'thin': {vol5, vol2},
+        'all': test_vols
+    }
+
     def setUp(self):
         super(SscUtilsTestCase, self).setUp()
         self.stubs.Set(httplib, 'HTTPConnection',
@@ -504,17 +514,37 @@ class SscUtilsTestCase(test.TestCase):
 
     def test_vols_for_optional_specs(self):
         """Test ssc for optional specs."""
-        test_vols =\
-            set([self.vol1, self.vol2, self.vol3, self.vol4, self.vol5])
-        ssc_map = {'mirrored': set([self.vol1]),
-                   'dedup': set([self.vol1, self.vol2, self.vol3]),
-                   'compression': set([self.vol3, self.vol4]),
-                   'thin': set([self.vol5, self.vol2]), 'all': test_vols}
         extra_specs =\
             {'netapp_dedup': 'true',
              'netapp:raid_type': 'raid4', 'netapp:disk_type': 'SSD'}
-        res = ssc_cmode.get_volumes_for_specs(ssc_map, extra_specs)
+        res = ssc_cmode.get_volumes_for_specs(self.ssc_map, extra_specs)
         self.assertEqual(len(res), 1)
+
+    def test_get_volumes_for_specs_none_specs(self):
+        none_specs = None
+        expected = self.ssc_map['all']
+
+        result = ssc_cmode.get_volumes_for_specs(self.ssc_map, none_specs)
+
+        self.assertEqual(expected, result)
+
+    def test_get_volumes_for_specs_empty_dict(self):
+        empty_dict = {}
+        expected = self.ssc_map['all']
+
+        result = ssc_cmode.get_volumes_for_specs(
+            self.ssc_map, empty_dict)
+
+        self.assertEqual(expected, result)
+
+    def test_get_volumes_for_specs_not_a_dict(self):
+        not_a_dict = False
+        expected = self.ssc_map['all']
+
+        result = ssc_cmode.get_volumes_for_specs(
+            self.ssc_map, not_a_dict)
+
+        self.assertEqual(expected, result)
 
     def test_query_cl_vols_for_ssc(self):
         na_server = api.NaServer('127.0.0.1')

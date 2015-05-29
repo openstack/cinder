@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -67,7 +68,7 @@ class Client(object):
         return self.connection.invoke_successfully(request, enable_tunneling)
 
     def create_lun(self, volume_name, lun_name, size, metadata,
-                   qos_policy_group=None):
+                   qos_policy_group_name=None):
         """Issues API request for creating LUN on volume."""
 
         path = '/vol/%s/%s' % (volume_name, lun_name)
@@ -76,8 +77,8 @@ class Client(object):
             **{'path': path, 'size': six.text_type(size),
                'ostype': metadata['OsType'],
                'space-reservation-enabled': metadata['SpaceReserved']})
-        if qos_policy_group:
-            lun_create.add_new_child('qos-policy-group', qos_policy_group)
+        if qos_policy_group_name:
+            lun_create.add_new_child('qos-policy-group', qos_policy_group_name)
 
         try:
             self.connection.invoke_successfully(lun_create, True)

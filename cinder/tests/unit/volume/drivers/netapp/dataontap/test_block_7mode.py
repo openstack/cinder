@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -305,6 +306,14 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
             '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',
             'newFakeLUN', 'true', block_count=0, dest_block=0, src_block=0)
 
+    def test_clone_lun_qos_supplied(self):
+        """Test for qos supplied in clone lun invocation."""
+        self.assertRaises(exception.VolumeDriverException,
+                          self.library._clone_lun,
+                          'fakeLUN',
+                          'newFakeLUN',
+                          qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME)
+
     def test_get_fc_target_wwpns(self):
         ports1 = [fake.FC_FORMATTED_TARGET_WWPNS[0],
                   fake.FC_FORMATTED_TARGET_WWPNS[1]]
@@ -347,23 +356,52 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
     def test_create_lun(self):
         self.library.vol_refresh_voluntary = False
 
-        self.library._create_lun(fake.VOLUME, fake.LUN,
-                                 fake.SIZE, fake.METADATA)
+        self.library._create_lun(fake.VOLUME_ID, fake.LUN_ID,
+                                 fake.LUN_SIZE, fake.LUN_METADATA)
 
         self.library.zapi_client.create_lun.assert_called_once_with(
-            fake.VOLUME, fake.LUN, fake.SIZE, fake.METADATA, None)
+            fake.VOLUME_ID, fake.LUN_ID, fake.LUN_SIZE, fake.LUN_METADATA,
+            None)
         self.assertTrue(self.library.vol_refresh_voluntary)
 
-    @mock.patch.object(na_utils, 'get_volume_extra_specs')
-    def test_check_volume_type_for_lun_qos_not_supported(self, get_specs):
-        get_specs.return_value = {'specs': 's',
-                                  'netapp:qos_policy_group': 'qos'}
-        mock_lun = block_base.NetAppLun('handle', 'name', '1',
-                                        {'Volume': 'name', 'Path': '/vol/lun'})
+    def test_create_lun_with_qos_policy_group(self):
+        self.assertRaises(exception.VolumeDriverException,
+                          self.library._create_lun, fake.VOLUME_ID,
+                          fake.LUN_ID, fake.LUN_SIZE, fake.LUN_METADATA,
+                          qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME)
+
+    def test_check_volume_type_for_lun_legacy_qos_not_supported(self):
+        mock_get_volume_type = self.mock_object(na_utils,
+                                                'get_volume_type_from_volume')
+
         self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
                           self.library._check_volume_type_for_lun,
-                          {'vol': 'vol'}, mock_lun, {'ref': 'ref'})
-        get_specs.assert_called_once_with({'vol': 'vol'})
+                          na_fakes.VOLUME, {}, {}, na_fakes.LEGACY_EXTRA_SPECS)
+
+        self.assertEqual(0, mock_get_volume_type.call_count)
+
+    def test_check_volume_type_for_lun_no_volume_type(self):
+        mock_get_volume_type = self.mock_object(na_utils,
+                                                'get_volume_type_from_volume')
+        mock_get_volume_type.return_value = None
+        mock_get_backend_spec = self.mock_object(
+            na_utils, 'get_backend_qos_spec_from_volume_type')
+
+        self.library._check_volume_type_for_lun(na_fakes.VOLUME, {}, {}, None)
+
+        self.assertEqual(0, mock_get_backend_spec.call_count)
+
+    def test_check_volume_type_for_lun_qos_spec_not_supported(self):
+        mock_get_volume_type = self.mock_object(na_utils,
+                                                'get_volume_type_from_volume')
+        mock_get_volume_type.return_value = na_fakes.VOLUME_TYPE
+        mock_get_backend_spec = self.mock_object(
+            na_utils, 'get_backend_qos_spec_from_volume_type')
+        mock_get_backend_spec.return_value = na_fakes.QOS_SPEC
+
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.library._check_volume_type_for_lun,
+                          na_fakes.VOLUME, {}, {}, na_fakes.EXTRA_SPECS)
 
     def test_get_preferred_target_from_list(self):
 
@@ -371,3 +409,54 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
             fake.ISCSI_TARGET_DETAILS_LIST)
 
         self.assertEqual(fake.ISCSI_TARGET_DETAILS_LIST[0], result)
+
+    def test_mark_qos_policy_group_for_deletion(self):
+        result = self.library._mark_qos_policy_group_for_deletion(
+            fake.QOS_POLICY_GROUP_INFO)
+
+        self.assertEqual(None, result)
+
+    def test_setup_qos_for_volume(self):
+        result = self.library._setup_qos_for_volume(fake.VOLUME,
+                                                    fake.EXTRA_SPECS)
+
+        self.assertEqual(None, result)
+
+    def test_manage_existing_lun_same_name(self):
+        mock_lun = block_base.NetAppLun('handle', 'name', '1',
+                                        {'Path': '/vol/vol1/name'})
+        self.library._get_existing_vol_with_manage_ref = mock.Mock(
+            return_value=mock_lun)
+        self.mock_object(na_utils, 'get_volume_extra_specs')
+        self.mock_object(na_utils, 'log_extra_spec_warnings')
+        self.library._check_volume_type_for_lun = mock.Mock()
+        self.library._add_lun_to_table = mock.Mock()
+        self.zapi_client.move_lun = mock.Mock()
+
+        self.library.manage_existing({'name': 'name'}, {'ref': 'ref'})
+
+        self.library._get_existing_vol_with_manage_ref.assert_called_once_with(
+            {'ref': 'ref'})
+        self.assertEqual(1, self.library._check_volume_type_for_lun.call_count)
+        self.assertEqual(1, self.library._add_lun_to_table.call_count)
+        self.assertEqual(0, self.zapi_client.move_lun.call_count)
+
+    def test_manage_existing_lun_new_path(self):
+        mock_lun = block_base.NetAppLun(
+            'handle', 'name', '1', {'Path': '/vol/vol1/name'})
+        self.library._get_existing_vol_with_manage_ref = mock.Mock(
+            return_value=mock_lun)
+        self.mock_object(na_utils, 'get_volume_extra_specs')
+        self.mock_object(na_utils, 'log_extra_spec_warnings')
+        self.library._check_volume_type_for_lun = mock.Mock()
+        self.library._add_lun_to_table = mock.Mock()
+        self.zapi_client.move_lun = mock.Mock()
+
+        self.library.manage_existing({'name': 'volume'}, {'ref': 'ref'})
+
+        self.assertEqual(
+            2, self.library._get_existing_vol_with_manage_ref.call_count)
+        self.assertEqual(1, self.library._check_volume_type_for_lun.call_count)
+        self.assertEqual(1, self.library._add_lun_to_table.call_count)
+        self.zapi_client.move_lun.assert_called_once_with(
+            '/vol/vol1/name', '/vol/vol1/volume')
