@@ -106,7 +106,7 @@ def main():
     volumes = db.volume_get_active_by_window(admin_context,
                                              begin,
                                              end)
-    LOG.debug("Found %d volumes"), len(volumes)
+    LOG.debug("Found %d volumes", len(volumes))
     for volume_ref in volumes:
         try:
             LOG.debug("Send exists notification for <volume_id: "
@@ -178,7 +178,7 @@ def main():
     snapshots = db.snapshot_get_active_by_window(admin_context,
                                                  begin,
                                                  end)
-    LOG.debug("Found %d snapshots"), len(snapshots)
+    LOG.debug("Found %d snapshots", len(snapshots))
     for snapshot_ref in snapshots:
         try:
             LOG.debug("Send notification for <snapshot_id: %(snapshot_id)s> "

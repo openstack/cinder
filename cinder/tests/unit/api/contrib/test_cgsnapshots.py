@@ -351,7 +351,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         consistencygroup_id = utils.create_consistencygroup(self.context)['id']
         utils.create_volume(
             self.context,
-            consistencygroup_id=consistencygroup_id)['id']
+            consistencygroup_id=consistencygroup_id)
 
         body = {"cgsnapshot": {"name": "cg1",
                                "description":
@@ -394,7 +394,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         consistencygroup_id = utils.create_consistencygroup(self.context)['id']
         utils.create_volume(
             self.context,
-            consistencygroup_id=consistencygroup_id)['id']
+            consistencygroup_id=consistencygroup_id)
 
         body = {"cgsnapshot": {"name": "cg1",
                                "description":
@@ -419,7 +419,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         consistencygroup_id = utils.create_consistencygroup(self.context)['id']
         utils.create_volume(
             self.context,
-            consistencygroup_id=consistencygroup_id)['id']
+            consistencygroup_id=consistencygroup_id)
 
         body = {"cgsnapshot": {"name": "cg1",
                                "description":

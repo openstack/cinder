@@ -626,7 +626,7 @@ class NetAppBlockStorageLibrary(object):
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref, reason=reason)
         lun_info = {}
-        lun_info.setdefault('path', path) if path else None
+        lun_info.setdefault('path', path if path else None)
         if hasattr(self, 'vserver') and uuid:
             lun_info['uuid'] = uuid
         luns = self.zapi_client.get_lun_by_args(**lun_info)
