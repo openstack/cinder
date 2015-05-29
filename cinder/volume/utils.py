@@ -43,6 +43,9 @@ def null_safe_str(s):
 
 
 def _usage_from_volume(volume_ref, **kw):
+    now = timeutils.utcnow()
+    launched_at = volume_ref['launched_at'] or now
+    created_at = volume_ref['created_at'] or now
     usage_info = dict(
         tenant_id=volume_ref['project_id'],
         host=volume_ref['host'],
@@ -51,8 +54,8 @@ def _usage_from_volume(volume_ref, **kw):
         volume_id=volume_ref['id'],
         volume_type=volume_ref['volume_type_id'],
         display_name=volume_ref['display_name'],
-        launched_at=timeutils.isotime(at=volume_ref['launched_at']),
-        created_at=timeutils.isotime(at=volume_ref['created_at']),
+        launched_at=launched_at.isoformat(),
+        created_at=created_at.isoformat(),
         status=volume_ref['status'],
         snapshot_id=volume_ref['snapshot_id'],
         size=volume_ref['size'],
@@ -183,7 +186,7 @@ def _usage_from_consistencygroup(group_ref, **kw):
                       availability_zone=group_ref['availability_zone'],
                       consistencygroup_id=group_ref['id'],
                       name=group_ref['name'],
-                      created_at=timeutils.isotime(at=group_ref['created_at']),
+                      created_at=group_ref['created_at'].isoformat(),
                       status=group_ref['status'])
 
     usage_info.update(kw)
@@ -214,7 +217,7 @@ def _usage_from_cgsnapshot(cgsnapshot_ref, **kw):
         cgsnapshot_id=cgsnapshot_ref['id'],
         name=cgsnapshot_ref['name'],
         consistencygroup_id=cgsnapshot_ref['consistencygroup_id'],
-        created_at=timeutils.isotime(at=cgsnapshot_ref['created_at']),
+        created_at=cgsnapshot_ref['created_at'].isoformat(),
         status=cgsnapshot_ref['status'])
 
     usage_info.update(kw)

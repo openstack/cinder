@@ -25,6 +25,7 @@ Cinder Specific Commandments
 - [C305] Prevent use of deprecated contextlib.nested.
 - [C306] timeutils.strtime() must not be used (deprecated).
 - [C307] LOG.warn is deprecated. Enforce use of LOG.warning.
+- [C308] timeutils.isotime() must not be used (deprecated).
 
 General
 -------

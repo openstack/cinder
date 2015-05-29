@@ -149,7 +149,7 @@ class VolumeTypesApiTest(test.TestCase):
     def test_view_builder_show(self):
         view_builder = views_types.ViewBuilder()
 
-        now = timeutils.isotime()
+        now = timeutils.utcnow().isoformat()
         raw_volume_type = dict(
             name='new_type',
             description='new_type_desc',
@@ -176,7 +176,7 @@ class VolumeTypesApiTest(test.TestCase):
     def test_view_builder_list(self):
         view_builder = views_types.ViewBuilder()
 
-        now = timeutils.isotime()
+        now = timeutils.utcnow().isoformat()
         raw_volume_types = []
         for i in range(0, 10):
             raw_volume_types.append(

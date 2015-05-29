@@ -15,8 +15,6 @@
 
 import datetime
 
-from oslo_utils import timeutils
-
 
 class ViewBuilder(object):
     """OpenStack API base limits view builder."""
@@ -97,5 +95,5 @@ class ViewBuilder(object):
             "value": rate_limit["value"],
             "remaining": int(rate_limit["remaining"]),
             "unit": rate_limit["unit"],
-            "next-available": timeutils.isotime(at=next_avail),
+            "next-available": next_avail.isoformat(),
         }
