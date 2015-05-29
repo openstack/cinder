@@ -343,7 +343,9 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         return model_update
 
-    def _do_clone_volume(self, src_uuid, src_project_id, v_ref):
+    def _do_clone_volume(self, src_uuid,
+                         src_project_id,
+                         v_ref):
         """Create a clone of an existing volume.
 
         Currently snapshots are the same as clones on the SF cluster.
@@ -353,17 +355,11 @@ class SolidFireDriver(san.SanISCSIDriver):
         implemented in the pre-release version of the SolidFire Cluster.
 
         """
+
         attributes = {}
         qos = {}
 
         sfaccount = self._get_sfaccount(src_project_id)
-        params = {'accountID': sfaccount['accountID']}
-
-        sf_vol = self._get_sf_volume(src_uuid, params)
-
-        if sf_vol is None:
-            raise exception.VolumeNotFound(volume_id=src_uuid)
-
         if src_project_id != v_ref['project_id']:
             sfaccount = self._create_sfaccount(v_ref['project_id'])
 
@@ -372,12 +368,30 @@ class SolidFireDriver(san.SanISCSIDriver):
         else:
             new_size = v_ref['volume_size']
 
-        params = {'volumeID': int(sf_vol['volumeID']),
-                  'name': 'UUID-%s' % v_ref['id'],
+        params = {'name': 'UUID-%s' % v_ref['id'],
                   'newSize': int(new_size * units.Gi),
                   'newAccountID': sfaccount['accountID']}
-        data = self._issue_api_request('CloneVolume', params)
 
+        # NOTE(jdg): First check the SF snapshots
+        # if we don't find a snap by the given name, just move on to check
+        # volumes.  This may be a running system that was updated from
+        # before we did snapshots, so need to check both
+        snap_name = 'UUID-%s' % src_uuid
+        snaps = self._get_sf_snapshots()
+        snap = next((s for s in snaps if s["name"] == snap_name), None)
+        is_clone = False
+        if snap:
+            params['snapshotID'] = int(snap['snapshotID'])
+            params['volumeID'] = int(snap['volumeID'])
+        else:
+            sf_vol = self._get_sf_volume(
+                src_uuid, {'accountID': sfaccount['accountID']})
+            if sf_vol is None:
+                raise exception.VolumeNotFound(volume_id=src_uuid)
+            params['volumeID'] = int(sf_vol['volumeID'])
+            is_clone = True
+
+        data = self._issue_api_request('CloneVolume', params, version='6.0')
         if (('result' not in data) or ('volumeID' not in data['result'])):
             msg = _("API response: %s") % data
             raise exception.SolidFireAPIException(msg)
@@ -415,19 +429,20 @@ class SolidFireDriver(san.SanISCSIDriver):
             raise exception.SolidFireAPIException(mesg)
 
         # Increment the usage count, just for data collection
-        cloned_count = sf_vol['attributes'].get('cloned_count', 0)
-        cloned_count += 1
-        attributes = sf_vol['attributes']
-        attributes['cloned_count'] = cloned_count
+        # We're only doing this for clones, not create_from snaps
+        if is_clone:
+            cloned_count = sf_vol['attributes'].get('cloned_count', 0)
+            cloned_count += 1
+            attributes = sf_vol['attributes']
+            attributes['cloned_count'] = cloned_count
 
-        params = {'volumeID': int(sf_vol['volumeID'])}
-        params['attributes'] = attributes
-        data = self._issue_api_request('ModifyVolume', params)
+            params = {'volumeID': int(sf_vol['volumeID'])}
+            params['attributes'] = attributes
+            data = self._issue_api_request('ModifyVolume', params)
         return (data, sfaccount, model_update)
 
     def _do_volume_create(self, project_id, params):
         sfaccount = self._create_sfaccount(project_id)
-
         params['accountID'] = sfaccount['accountID']
         data = self._issue_api_request('CreateVolume', params)
 
@@ -437,6 +452,13 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         sf_volume_id = data['result']['volumeID']
         return self._get_model_info(sfaccount, sf_volume_id)
+
+    def _do_snapshot_create(self, params):
+        data = self._issue_api_request('CreateSnapshot', params, version='6.0')
+        if (('result' not in data) or ('snapshotID' not in data['result'])):
+            msg = _("Failed snapshot create: %s") % data
+            raise exception.SolidFireAPIException(msg)
+        return data['result']['snapshotID']
 
     def _set_qos_presets(self, volume):
         qos = {}
@@ -480,9 +502,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         return qos
 
     def _get_sf_volume(self, uuid, params):
-        # TODO(jdg): Going to fix this shortly to not iterate
-        # but instead use the cinder UUID and our internal
-        # mapping to get this more efficiently
         data = self._issue_api_request('ListVolumesForAccount', params)
         if 'result' not in data:
             msg = _("Failed to get SolidFire Volume: %s") % data
@@ -517,6 +536,16 @@ class SolidFireDriver(san.SanISCSIDriver):
             raise exception.DuplicateSfVolumeNames(vol_name=uuid)
 
         return sf_volref
+
+    def _get_sf_snapshots(self, sf_volid=None):
+        params = {}
+        if sf_volid:
+            params = {'volumeID': sf_volid}
+        data = self._issue_api_request('ListSnapshots', params, version='6.0')
+        if 'result' not in data:
+            msg = _("Failed to get SolidFire Snapshot: %s") % data
+            raise exception.SolidFireAPIException(msg)
+        return data['result']['snapshots']
 
     def _create_image_volume(self, context,
                              image_meta, image_service,
@@ -743,9 +772,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         volumeID is what's guaranteed unique.
 
         """
-
-        LOG.debug("Enter SolidFire delete_volume...")
-
         sfaccount = self._get_sfaccount(volume['project_id'])
         if sfaccount is None:
             LOG.error(_LE("Account for Volume ID %s was not found on "
@@ -756,7 +782,6 @@ class SolidFireDriver(san.SanISCSIDriver):
             return
 
         params = {'accountID': sfaccount['accountID']}
-
         sf_vol = self._get_sf_volume(volume['id'], params)
 
         if sf_vol is not None:
@@ -771,11 +796,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                           "the SolidFire Cluster while attempting "
                           "delete_volume operation!"), volume['id'])
 
-        LOG.debug("Leaving SolidFire delete_volume")
-
     def ensure_export(self, context, volume):
         """Verify the iscsi export info."""
-        LOG.debug("Executing SolidFire ensure_export...")
         try:
             return self._do_export(volume)
         except exception.SolidFireAPIException:
@@ -783,29 +805,50 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def create_export(self, context, volume):
         """Setup the iscsi export info."""
-        LOG.debug("Executing SolidFire create_export...")
         return self._do_export(volume)
 
     def delete_snapshot(self, snapshot):
         """Delete the specified snapshot from the SolidFire cluster."""
-        self.delete_volume(snapshot)
+        sf_snap_name = 'UUID-%s' % snapshot['id']
+        sfaccount = self._get_sfaccount(snapshot['project_id'])
+        params = {'accountID': sfaccount['accountID'],
+                  'name': sf_snap_name}
+        params = {'accountID': sfaccount['accountID']}
+
+        # Get the parent volume of the snapshot
+        sf_vol = self._get_sf_volume(snapshot['volume_id'], params)
+        sf_snaps = self._get_sf_snapshots(sf_vol['volumeID'])
+        snap = next((s for s in sf_snaps if s["name"] == sf_snap_name), None)
+        if snap:
+            params = {'snapshotID': snap['snapshotID']}
+            data = self._issue_api_request('DeleteSnapshot',
+                                           params,
+                                           version='6.0')
+            if 'result' not in data:
+                msg = (_("Failed to delete SolidFire Snapshot: %s") %
+                       data)
+                raise exception.SolidFireAPIException(msg)
+        else:
+            # Make sure it's not "old style" using clones as snaps
+            LOG.debug("Snapshot not found, checking old style clones.")
+            self.delete_volume(snapshot)
 
     def create_snapshot(self, snapshot):
-        """Create a snapshot of a volume on the SolidFire cluster.
+        sfaccount = self._get_sfaccount(snapshot['project_id'])
+        if sfaccount is None:
+            LOG.error(_LE("Account for Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "create_snapshot operation!"), snapshot['volume_id'])
 
-        Note that for SolidFire Clusters currently there is no snapshot
-        implementation.  Due to the way SF does cloning there's no performance
-        hit or extra space used.  The only thing that's lacking from this is
-        the ability to restore snaps.
+        params = {'accountID': sfaccount['accountID']}
+        sf_vol = self._get_sf_volume(snapshot['volume_id'], params)
 
-        After GA a true snapshot implementation will be available with
-        restore at which time we'll rework this appropriately.
+        if sf_vol is None:
+            raise exception.VolumeNotFound(volume_id=snapshot['volume_id'])
+        params = {'volumeID': sf_vol['volumeID'],
+                  'name': 'UUID-%s' % snapshot['id']}
 
-        """
-        (_data, _sfaccount, _model) = self._do_clone_volume(
-            snapshot['volume_id'],
-            snapshot['project_id'],
-            snapshot)
+        self._do_snapshot_create(params)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from the specified snapshot."""
@@ -834,8 +877,6 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume."""
-        LOG.debug("Entering SolidFire extend_volume...")
-
         sfaccount = self._get_sfaccount(volume['project_id'])
         params = {'accountID': sfaccount['accountID']}
 
@@ -857,13 +898,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         if 'result' not in data:
             raise exception.SolidFireAPIDataException(data=data)
 
-        LOG.debug("Leaving SolidFire extend_volume")
-
     def _update_cluster_status(self):
         """Retrieve status info for the Cluster."""
-
-        LOG.debug("Updating cluster status info")
-
         params = {}
 
         # NOTE(jdg): The SF api provides an UNBELIEVABLE amount
@@ -901,7 +937,6 @@ class SolidFireDriver(san.SanISCSIDriver):
                       instance_uuid, host_name,
                       mountpoint):
 
-        LOG.debug("Entering SolidFire attach_volume...")
         sfaccount = self._get_sfaccount(volume['project_id'])
         params = {'accountID': sfaccount['accountID']}
 
@@ -926,8 +961,6 @@ class SolidFireDriver(san.SanISCSIDriver):
             raise exception.SolidFireAPIDataException(data=data)
 
     def detach_volume(self, context, volume, attachment=None):
-
-        LOG.debug("Entering SolidFire attach_volume...")
         sfaccount = self._get_sfaccount(volume['project_id'])
         params = {'accountID': sfaccount['accountID']}
 
@@ -980,7 +1013,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         volume['project_id'] = new_project
         volume['user_id'] = new_user
         model_update = self._do_export(volume)
-        LOG.debug("Leaving SolidFire transfer volume")
         return model_update
 
     def retype(self, ctxt, volume, new_type, diff, host):
@@ -1101,7 +1133,6 @@ class SolidFireDriver(san.SanISCSIDriver):
     def unmanage(self, volume):
         """Mark SolidFire Volume as unmanaged (export from Cinder)."""
 
-        LOG.debug("Enter SolidFire unmanage...")
         sfaccount = self._get_sfaccount(volume['project_id'])
         if sfaccount is None:
             LOG.error(_LE("Account for Volume ID %s was not found on "
