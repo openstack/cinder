@@ -141,6 +141,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
 
         volume = DumbVolume()
+        volume['id'] = self.VOLUME_UUID
         volume['provider_location'] = self.TEST_EXPORT1
         volume['name'] = 'volume-123'
 
@@ -605,6 +606,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_ensure_shares_mounted:
             volume = DumbVolume()
             volume['size'] = self.TEST_SIZE_IN_GB
+            volume['id'] = self.VOLUME_UUID
             drv.create_volume(volume)
             self.assertTrue(mock_ensure_shares_mounted.called)
             self.assertTrue(mock_do_create_volume.called)
@@ -623,6 +625,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             volume = DumbVolume()
             volume['size'] = self.TEST_SIZE_IN_GB
+            volume['id'] = self.VOLUME_UUID
             result = drv.create_volume(volume)
             self.assertEqual(self.TEST_EXPORT1, result['provider_location'])
             self.assertTrue(mock_ensure_shares_mounted.called)
@@ -905,6 +908,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock.patch.object(drv, '_ensure_share_mounted') as \
                 mock_ensure_share_mounted:
             volume = DumbVolume()
+            volume['id'] = self.VOLUME_UUID
             volume['name'] = 'volume-123'
             volume['provider_location'] = self.TEST_EXPORT1
 
@@ -922,6 +926,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock.patch.object(drv, '_ensure_share_mounted') as \
                 mock_ensure_share_mounted:
             volume = DumbVolume()
+            volume['id'] = self.VOLUME_UUID
             volume['name'] = 'volume-123'
             volume['provider_location'] = None
 
@@ -1513,6 +1518,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                     'status': 'available'}
 
         new_volume = DumbVolume()
+        new_volume['id'] = self.VOLUME_UUID
         new_volume['size'] = snap_ref['size']
 
         with mock.patch.object(drv, '_ensure_shares_mounted') as \
