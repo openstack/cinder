@@ -363,7 +363,8 @@ class EMCVNXCLIDriverTestData(object):
     }
 
     test_lun_id = 1
-    test_existing_ref = {'id': test_lun_id}
+    test_existing_ref = {'source-id': test_lun_id}
+    test_existing_ref_source_name = {'source-name': 'vol1'}
     test_pool_name = 'unit_test_pool'
     device_map = {
         '1122334455667788': {
@@ -2389,11 +2390,25 @@ Time Remaining:  0 second(s)
         commands = [lun_rename_cmd]
 
         results = [SUCCEED]
+        self.configuration.storage_vnx_pool_name = \
+            self.testData.test_pool_name
         fake_cli = self.driverSetup(commands, results)
-        self.driver.cli._client.command_execute = fake_cli
         self.driver.manage_existing(
             self.testData.test_volume_with_type,
             self.testData.test_existing_ref)
+        expected = [mock.call(*lun_rename_cmd, poll=False)]
+        fake_cli.assert_has_calls(expected)
+
+    def test_manage_existing_source_name(self):
+        lun_rename_cmd = ('lun', '-modify', '-l', self.testData.test_lun_id,
+                          '-newName', 'vol_with_type', '-o')
+        commands = [lun_rename_cmd]
+
+        results = [SUCCEED]
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.manage_existing(
+            self.testData.test_volume_with_type,
+            self.testData.test_existing_ref_source_name)
         expected = [mock.call(*lun_rename_cmd, poll=False)]
         fake_cli.assert_has_calls(expected)
 
@@ -2401,11 +2416,13 @@ Time Remaining:  0 second(s)
         get_lun_cmd = ('lun', '-list', '-l', self.testData.test_lun_id,
                        '-state', '-userCap', '-owner',
                        '-attachedSnapshot', '-poolName')
-        commands = [get_lun_cmd]
         invalid_pool_name = "fake_pool"
+        commands = [get_lun_cmd]
         results = [self.testData.LUN_PROPERTY('lun_name',
                                               pool_name=invalid_pool_name)]
+        self.configuration.storage_vnx_pool_name = invalid_pool_name
         fake_cli = self.driverSetup(commands, results)
+        # mock the command executor
         ex = self.assertRaises(
             exception.ManageExistingInvalidReference,
             self.driver.manage_existing_get_size,
@@ -2424,7 +2441,11 @@ Time Remaining:  0 second(s)
         test_size = 2
         commands = [get_lun_cmd]
         results = [self.testData.LUN_PROPERTY('lun_name', size=test_size)]
+
+        self.configuration.storage_vnx_pool_name = \
+            self.testData.test_pool_name
         fake_cli = self.driverSetup(commands, results)
+
         get_size = self.driver.manage_existing_get_size(
             self.testData.test_volume_with_type,
             self.testData.test_existing_ref)
