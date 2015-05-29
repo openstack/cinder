@@ -15,7 +15,6 @@
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import strutils
-import six
 import webob
 from webob import exc
 
@@ -222,17 +221,13 @@ class VolumeAdminController(AdminController):
             host = params['host']
         except KeyError:
             raise exc.HTTPBadRequest(explanation=_("Must specify 'host'"))
-        force_host_copy = params.get('force_host_copy', False)
-        if isinstance(force_host_copy, six.string_types):
-            try:
-                force_host_copy = strutils.bool_from_string(force_host_copy,
-                                                            strict=True)
-            except ValueError:
-                raise exc.HTTPBadRequest(
-                    explanation=_("Bad value for 'force_host_copy'"))
-        elif not isinstance(force_host_copy, bool):
-            raise exc.HTTPBadRequest(
-                explanation=_("'force_host_copy' not string or bool"))
+        force_host_copy = params.get('force_host_copy', 'False')
+        try:
+            force_host_copy = strutils.bool_from_string(force_host_copy,
+                                                        strict=True)
+        except ValueError as e:
+            msg = (_("Invalid value for force_host_copy: '%s'") % e.message)
+            raise exc.HTTPBadRequest(explanation=msg)
         self.volume_api.migrate_volume(context, volume, host, force_host_copy)
         return webob.Response(status_int=202)
 
