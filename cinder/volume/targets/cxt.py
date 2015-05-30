@@ -37,7 +37,7 @@ class CxtAdm(iscsi.ISCSITarget):
     """
 
     TARGET_FMT = """
-               target:
+              target:
                        TargetName=%s
                        TargetDevice=%s
                        PortalGroup=1@%s
@@ -114,6 +114,18 @@ class CxtAdm(iscsi.ISCSITarget):
         LOG.debug('Failed to find CHAP auth from config for %s', vol_id)
         return None
 
+    @staticmethod
+    def _get_portal(ip, port=None):
+        # ipv6 addresses use [ip]:port format, ipv4 use ip:port
+        portal_port = ':%d' % port if port else ''
+
+        if netutils.is_valid_ipv4(ip):
+            portal_ip = ip
+        else:
+            portal_ip = '[' + ip + ']'
+
+        return portal_ip + portal_port
+
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
 
@@ -127,19 +139,17 @@ class CxtAdm(iscsi.ISCSITarget):
 
         vol_id = name.split(':')[1]
 
-        if netutils.is_valid_ipv4(self.configuration.iscsi_ip_address):
-            portal = "%s:%s" % (self.configuration.iscsi_ip_address,
-                                self.configuration.iscsi_port)
-        else:
-            # ipv6 addresses use [ip]:port format, ipv4 use ip:port
-            portal = "[%s]:%s" % (self.configuration.iscsi_ip_address,
-                                  self.configuration.iscsi_port)
+        cfg_port = kwargs.get('portals_port')
+        cfg_ips = kwargs.get('portals_ips')
+
+        portals = ','.join(map(lambda ip: self._get_portal(ip, cfg_port),
+                               cfg_ips))
 
         if chap_auth is None:
-            volume_conf = self.TARGET_FMT % (name, path, portal)
+            volume_conf = self.TARGET_FMT % (name, path, portals)
         else:
             volume_conf = self.TARGET_FMT_WITH_CHAP % (name,
-                                                       path, portal,
+                                                       path, portals,
                                                        '"%s":"%s"' % chap_auth)
         LOG.debug('Creating iscsi_target for: %s', vol_id)
         volume_path = os.path.join(volumes_dir, vol_id)

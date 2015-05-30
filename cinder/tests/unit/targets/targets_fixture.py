@@ -29,6 +29,7 @@ class TargetDriverFixture(test.TestCase):
         self.configuration.append_config_values = mock.Mock(return_value=0)
         self.configuration.safe_get = mock.Mock(side_effect=self.fake_safe_get)
         self.configuration.iscsi_ip_address = '10.9.8.7'
+        self.configuration.iscsi_port = 3260
 
         self.fake_volumes_dir = tempfile.mkdtemp()
         fileutils.ensure_tree(self.fake_volumes_dir)
@@ -65,9 +66,11 @@ class TargetDriverFixture(test.TestCase):
              'size': 1,
              'id': self.fake_volume_id,
              'volume_type_id': None,
-             'provider_location': '10.9.8.7:3260 '
-                                  'iqn.2010-10.org.openstack:'
-                                  'volume-%s 2' % self.fake_volume_id,
+             'provider_location': ('%(ip)s:%(port)d%(iqn)svolume-%(vol)s 2' %
+                                   {'ip': self.configuration.iscsi_ip_address,
+                                    'port': self.configuration.iscsi_port,
+                                    'iqn': self.iscsi_target_prefix,
+                                    'vol': self.fake_volume_id}),
              'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
                               'c76370d66b 2FE0CQ8J196R',
              'provider_geometry': '512 512',
