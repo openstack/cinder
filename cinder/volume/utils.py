@@ -26,6 +26,7 @@ from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder.brick.local_dev import lvm as brick_lvm
+from cinder import db
 from cinder import exception
 from cinder.i18n import _LI, _LW
 from cinder import rpc
@@ -42,7 +43,7 @@ def null_safe_str(s):
     return str(s) if s else ''
 
 
-def _usage_from_volume(volume_ref, **kw):
+def _usage_from_volume(context, volume_ref, **kw):
     now = timeutils.utcnow()
     launched_at = volume_ref['launched_at'] or now
     created_at = volume_ref['created_at'] or now
@@ -61,9 +62,18 @@ def _usage_from_volume(volume_ref, **kw):
         size=volume_ref['size'],
         replication_status=volume_ref['replication_status'],
         replication_extended_status=volume_ref['replication_extended_status'],
-        replication_driver_data=volume_ref['replication_driver_data'],)
+        replication_driver_data=volume_ref['replication_driver_data'],
+        metadata=volume_ref.get('volume_metadata'),)
 
     usage_info.update(kw)
+    try:
+        glance_meta = db.volume_glance_metadata_get(context, volume_ref['id'])
+        if glance_meta:
+            usage_info['glance_metadata'] = glance_meta
+    except exception.GlanceMetadataNotFound:
+        pass
+    except exception.VolumeNotFound:
+        LOG.debug("Can not find volume %s at notify usage", volume_ref['id'])
     return usage_info
 
 
@@ -94,7 +104,7 @@ def notify_about_volume_usage(context, volume, event_suffix,
     if not extra_usage_info:
         extra_usage_info = {}
 
-    usage_info = _usage_from_volume(volume, **extra_usage_info)
+    usage_info = _usage_from_volume(context, volume, **extra_usage_info)
 
     rpc.get_notifier("volume", host).info(context, 'volume.%s' % event_suffix,
                                           usage_info)
@@ -126,7 +136,8 @@ def _usage_from_snapshot(snapshot_ref, **extra_usage_info):
         'display_name': snapshot_ref['display_name'],
         'created_at': str(snapshot_ref['created_at']),
         'status': snapshot_ref['status'],
-        'deleted': null_safe_str(snapshot_ref['deleted'])
+        'deleted': null_safe_str(snapshot_ref['deleted']),
+        'metadata': null_safe_str(snapshot_ref.get('metadata')),
     }
 
     usage_info.update(extra_usage_info)
@@ -156,7 +167,7 @@ def notify_about_replication_usage(context, volume, suffix,
     if not extra_usage_info:
         extra_usage_info = {}
 
-    usage_info = _usage_from_volume(volume,
+    usage_info = _usage_from_volume(context, volume,
                                     **extra_usage_info)
 
     rpc.get_notifier('replication', host).info(context,
@@ -172,7 +183,7 @@ def notify_about_replication_error(context, volume, suffix,
     if not extra_error_info:
         extra_error_info = {}
 
-    usage_info = _usage_from_volume(volume,
+    usage_info = _usage_from_volume(context, volume,
                                     **extra_error_info)
 
     rpc.get_notifier('replication', host).error(context,
