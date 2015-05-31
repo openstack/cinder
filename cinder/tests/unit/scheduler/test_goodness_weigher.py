@@ -24,6 +24,19 @@ class GoodnessWeigherTestCase(test.TestCase):
     def setUp(self):
         super(GoodnessWeigherTestCase, self).setUp()
 
+    def test_goodness_weigher_with_no_goodness_function(self):
+        weigher = goodness.GoodnessWeigher()
+        host_state = fakes.FakeHostState('host1', {
+            'host': 'host.example.com',
+            'capabilities': {
+                'foo': '50'
+            }
+        })
+
+        weight_properties = {}
+        weight = weigher._weigh_object(host_state, weight_properties)
+        self.assertEqual(0, weight)
+
     def test_goodness_weigher_passing_host(self):
         weigher = goodness.GoodnessWeigher()
         host_state = fakes.FakeHostState('host1', {
