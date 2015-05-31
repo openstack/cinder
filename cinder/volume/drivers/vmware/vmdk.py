@@ -109,7 +109,14 @@ vmdk_opts = [
                     'backup and restore.'),
     cfg.StrOpt('vmware_ca_file',
                default=None,
-               help='CA bundle file to verify vCenter server certificate.')
+               help='CA bundle file to use in verifying the vCenter server '
+                    'certificate.'),
+    cfg.BoolOpt('vmware_insecure',
+                default=False,
+                help='If true, the vCenter server certificate is not '
+                     'verified. If false, then the default CA truststore is '
+                     'used for verification. This option is ignored if '
+                     '"vmware_ca_file" is set.'),
 ]
 
 CONF = cfg.CONF
@@ -1887,12 +1894,14 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             wsdl_loc = self.configuration.safe_get('vmware_wsdl_location')
             pbm_wsdl = self.pbm_wsdl if hasattr(self, 'pbm_wsdl') else None
             ca_file = self.configuration.vmware_ca_file
+            insecure = self.configuration.vmware_insecure
             self._session = api.VMwareAPISession(ip, username,
                                                  password, api_retry_count,
                                                  task_poll_interval,
                                                  wsdl_loc=wsdl_loc,
                                                  pbm_wsdl_loc=pbm_wsdl,
-                                                 cacert=ca_file)
+                                                 cacert=ca_file,
+                                                 insecure=insecure)
         return self._session
 
     def _get_vc_version(self):
