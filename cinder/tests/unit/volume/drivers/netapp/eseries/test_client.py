@@ -1085,7 +1085,32 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
 
         client.RestClient._init_features(self.my_client)
 
-        self.assertTrue(self.my_client.features.AUTOSUPPORT.supported)
+        self.assertTrue(self.my_client.features.AUTOSUPPORT)
+
+    @ddt.data('00.00.00.00', '01.52.9000.2', '01.52.9001.2', '01.51.9000.3',
+              '01.51.9001.3', '01.51.9010.5', '0.53.9000.3', '0.53.9001.4')
+    def test_api_version_not_support_chap(self, api_version):
+
+        self.mock_object(client.RestClient,
+                         'get_eseries_api_info',
+                         mock.Mock(return_value=('proxy', api_version)))
+
+        client.RestClient._init_features(self.my_client)
+
+        self.assertFalse(self.my_client.features.CHAP_AUTHENTICATION)
+
+    @ddt.data('01.53.9000.15', '01.53.9000.16', '01.53.8999.15',
+              '01.54.8999.16', '01.54.9010.15', '01.54.9090.15',
+              '02.52.9000.15', '02.53.8999.15', '02.54.8999.14')
+    def test_api_version_supports_chap(self, api_version):
+
+        self.mock_object(client.RestClient,
+                         'get_eseries_api_info',
+                         mock.Mock(return_value=('proxy', api_version)))
+
+        client.RestClient._init_features(self.my_client)
+
+        self.assertTrue(self.my_client.features.CHAP_AUTHENTICATION)
 
     @ddt.data('00.00.00.00', '01.52.9000.1', '01.52.9001.2', '00.53.9001.3',
               '01.53.9090.1', '1.53.9010.14', '0.53.9011.15')

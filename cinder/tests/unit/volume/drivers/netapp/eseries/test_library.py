@@ -42,6 +42,7 @@ from cinder.volume.drivers.netapp.eseries import host_mapper
 from cinder.volume.drivers.netapp.eseries import library
 from cinder.volume.drivers.netapp.eseries import utils
 from cinder.volume.drivers.netapp import utils as na_utils
+from cinder.volume import utils as volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 
@@ -584,6 +585,23 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             self.library._client.get_volume_mappings_for_volume.called)
         self.assertTrue(host_mapper.map_volume_to_single_host.called)
 
+    def test_initialize_connection_iscsi_without_chap(self):
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
+        self.mock_object(self.library._client,
+                         'get_volume_mappings_for_volume',
+                         mock.Mock(return_value=[]))
+        self.mock_object(host_mapper,
+                         'map_volume_to_single_host',
+                         mock.Mock(return_value=eseries_fake.VOLUME_MAPPING))
+        mock_configure_chap = self.mock_object(self.library, '_configure_chap')
+
+        self.library.initialize_connection_iscsi(get_fake_volume(), connector)
+
+        self.assertTrue(
+            self.library._client.get_volume_mappings_for_volume.called)
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+        self.assertFalse(mock_configure_chap.called)
+
     def test_initialize_connection_iscsi_volume_not_mapped_host_does_not_exist(
             self):
         connector = {'initiator': eseries_fake.INITIATOR_NAME}
@@ -841,7 +859,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             'driver_volume_type': 'fibre_channel',
             'data': {
                 'target_discovered': True,
-                'target_lun': 0,
+                'target_lun': 1,
                 'target_wwn': [eseries_fake.WWPN_2],
                 'initiator_target_map': {
                     eseries_fake.WWPN: [eseries_fake.WWPN_2]
@@ -2444,3 +2462,107 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
                                         eseries_fake.INITIATOR_NAME)
 
         self.assertTrue(host_mapper.map_volume_to_multiple_hosts.called)
+
+
+class NetAppEseriesISCSICHAPAuthenticationTestCase(test.TestCase):
+    """Test behavior when the use_chap_auth configuration option is True."""
+
+    def setUp(self):
+        super(NetAppEseriesISCSICHAPAuthenticationTestCase, self).setUp()
+        config = eseries_fake.create_configuration_eseries()
+        config.use_chap_auth = True
+        config.chap_password = None
+        config.chap_username = None
+
+        kwargs = {'configuration': config}
+
+        self.library = library.NetAppESeriesLibrary("FAKE", **kwargs)
+        self.library._client = eseries_fake.FakeEseriesClient()
+        self.library._client.features = mock.Mock()
+        self.library._client.features = na_utils.Features()
+        self.library._client.features.add_feature('CHAP_AUTHENTICATION',
+                                                  supported=True,
+                                                  min_version="1.53.9010.15")
+        self.mock_object(self.library,
+                         '_check_storage_system')
+        self.library.check_for_setup_error()
+
+    def test_initialize_connection_with_chap(self):
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
+        self.mock_object(self.library._client, 'get_volume_mappings',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.library._client, 'list_hosts',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.library._client, 'create_host_with_ports',
+                         mock.Mock(return_value=[eseries_fake.HOST]))
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(return_value=eseries_fake.VOLUME_MAPPING))
+        mock_configure_chap = (
+            self.mock_object(self.library,
+                             '_configure_chap',
+                             mock.Mock(return_value=(
+                                 eseries_fake.FAKE_CHAP_USERNAME,
+                                 eseries_fake.FAKE_CHAP_SECRET))))
+
+        properties = self.library.initialize_connection_iscsi(
+            get_fake_volume(), connector)
+
+        mock_configure_chap.assert_called_with(eseries_fake.FAKE_TARGET_IQN)
+        self.assertDictEqual(eseries_fake.FAKE_TARGET_DICT, properties)
+
+    def test_configure_chap_with_no_chap_secret_specified(self):
+        mock_invoke_generate_random_secret = self.mock_object(
+            volume_utils,
+            'generate_password',
+            mock.Mock(return_value=eseries_fake.FAKE_CHAP_SECRET))
+        mock_invoke_set_chap_authentication = self.mock_object(
+            self.library._client,
+            'set_chap_authentication',
+            mock.Mock(return_value=eseries_fake.FAKE_CHAP_POST_DATA))
+
+        username, password = self.library._configure_chap(
+            eseries_fake.FAKE_TARGET_IQN)
+
+        self.assertTrue(mock_invoke_generate_random_secret.called)
+        mock_invoke_set_chap_authentication.assert_called_with(
+            *eseries_fake.FAKE_CLIENT_CHAP_PARAMETERS)
+        self.assertEqual(eseries_fake.FAKE_CHAP_USERNAME, username)
+        self.assertEqual(eseries_fake.FAKE_CHAP_SECRET, password)
+
+    def test_configure_chap_with_no_chap_username_specified(self):
+        mock_invoke_generate_random_secret = self.mock_object(
+            volume_utils,
+            'generate_password',
+            mock.Mock(return_value=eseries_fake.FAKE_CHAP_SECRET))
+        mock_invoke_set_chap_authentication = self.mock_object(
+            self.library._client,
+            'set_chap_authentication',
+            mock.Mock(return_value=eseries_fake.FAKE_CHAP_POST_DATA))
+        mock_log = self.mock_object(library, 'LOG')
+        warn_msg = 'No CHAP username found for CHAP user'
+
+        username, password = self.library._configure_chap(
+            eseries_fake.FAKE_TARGET_IQN)
+
+        self.assertTrue(mock_invoke_generate_random_secret.called)
+        self.assertTrue(mock_log.warning.find(warn_msg))
+        mock_invoke_set_chap_authentication.assert_called_with(
+            *eseries_fake.FAKE_CLIENT_CHAP_PARAMETERS)
+        self.assertEqual(eseries_fake.FAKE_CHAP_USERNAME, username)
+        self.assertEqual(eseries_fake.FAKE_CHAP_SECRET, password)
+
+    def test_configure_chap_with_invalid_version(self):
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
+        self.mock_object(self.library._client,
+                         'get_volume_mappings_for_volume',
+                         mock.Mock(return_value=[]))
+        self.mock_object(host_mapper,
+                         'map_volume_to_single_host',
+                         mock.Mock(return_value=eseries_fake.VOLUME_MAPPING))
+        self.library._client.features.CHAP_AUTHENTICATION.supported = False
+        self.library._client.api_version = "1.52.9010.01"
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.initialize_connection_iscsi,
+                          get_fake_volume(),
+                          connector)

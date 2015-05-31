@@ -3,6 +3,7 @@
 # Copyright (c) 2015 Alex Meade
 # Copyright (c) 2015 Rushil Chugh
 # Copyright (c) 2015 Yogesh Kshirsagar
+# Copyright (c) 2015 Jose Porrua
 # Copyright (c) 2015 Michael Price
 #  All Rights Reserved.
 #
@@ -100,6 +101,7 @@ class RestClient(WebserviceClient):
     NAME = 'label'
 
     ASUP_VALID_VERSION = (1, 52, 9000, 3)
+    CHAP_VALID_VERSION = (1, 53, 9010, 15)
     # We need to check for both the release and the pre-release versions
     SSC_VALID_VERSIONS = ((1, 53, 9000, 1), (1, 53, 9010, 17))
     REST_1_3_VERSION = (1, 53, 9000, 1)
@@ -179,8 +181,19 @@ class RestClient(WebserviceClient):
         api_version_tuple = tuple(int(version)
                                   for version in self.api_version.split('.'))
 
+        chap_valid_version = self._validate_version(
+            self.CHAP_VALID_VERSION, api_version_tuple)
+        self.features.add_feature('CHAP_AUTHENTICATION',
+                                  supported=chap_valid_version,
+                                  min_version=self._version_tuple_to_str(
+                                      self.CHAP_VALID_VERSION))
+
         asup_api_valid_version = self._validate_version(
             self.ASUP_VALID_VERSION, api_version_tuple)
+        self.features.add_feature('AUTOSUPPORT',
+                                  supported=asup_api_valid_version,
+                                  min_version=self._version_tuple_to_str(
+                                      self.ASUP_VALID_VERSION))
 
         rest_1_3_api_valid_version = self._validate_version(
             self.REST_1_3_VERSION, api_version_tuple)
@@ -193,11 +206,6 @@ class RestClient(WebserviceClient):
                                                            api_version_tuple)
                                     for valid_version
                                     in self.SSC_VALID_VERSIONS)
-
-        self.features.add_feature('AUTOSUPPORT',
-                                  supported=asup_api_valid_version,
-                                  min_version=self._version_tuple_to_str(
-                                      self.ASUP_VALID_VERSION))
         self.features.add_feature('SSC_API_V2',
                                   supported=ssc_api_valid_version,
                                   min_version=self._version_tuple_to_str(
@@ -933,6 +941,19 @@ class RestClient(WebserviceClient):
         """Delete volume copy job."""
         path = "/storage-systems/{system-id}/volume-copy-jobs/{object-id}"
         return self._invoke('DELETE', path, **{'object-id': object_id})
+
+    def set_chap_authentication(self, target_iqn, chap_username,
+                                chap_password):
+        """Configures CHAP credentials for target IQN from backend."""
+        path = "/storage-systems/{system-id}/iscsi/target-settings/"
+        data = {
+            'iqn': target_iqn,
+            'enableChapAuthentication': True,
+            'alias': chap_username,
+            'authMethod': 'chap',
+            'chapSecret': chap_password,
+        }
+        return self._invoke('POST', path, data)
 
     def add_autosupport_data(self, key, data):
         """Register driver statistics via autosupport log."""
