@@ -53,6 +53,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 destroy snapshot on migration destination.
         1.2.2 - Fixed Lun 0 issue.
         1.3.0 - Added retype method.
+        1.3.0.1 - Backport imports (logging, translations) for Juno.
     """
 
     VERSION = VERSION
