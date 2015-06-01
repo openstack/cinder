@@ -341,6 +341,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                                             chap_secret))
         if not self.configuration.sf_emulate_512:
             model_update['provider_geometry'] = ('%s %s' % (4096, 4096))
+        model_update['provider_id'] = ('%s' % sf_volume_id)
 
         return model_update
 
