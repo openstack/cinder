@@ -31,11 +31,16 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
         self.target.db = mock.MagicMock(
             volume_get=lambda x, y: {'provider_auth': 'IncomingUser foo bar'})
 
-    def test_get_target(self):
-        with mock.patch('cinder.utils.execute',
-                        return_value=(self.test_vol, None)):
-            self.assertEqual(self.test_vol,
-                             self.target._get_target(self.test_vol))
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
+    @mock.patch.object(lio.LioAdm, '_persist_configuration')
+    @mock.patch('cinder.utils.execute')
+    def test_get_target(self, mexecute, mpersist_cfg, mlock_exec):
+        mexecute.return_value = (self.test_vol, None)
+        self.assertEqual(self.test_vol, self.target._get_target(self.test_vol))
+        self.assertFalse(mpersist_cfg.called)
+        expected_args = ('cinder-rtstool', 'get-targets')
+        mlock_exec.assert_called_once_with(*expected_args, run_as_root=True)
+        mexecute.assert_called_once_with(*expected_args, run_as_root=True)
 
     def test_get_iscsi_target(self):
         ctxt = context.get_admin_context()
@@ -58,10 +63,12 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
                          self.target._get_target_chap_auth(ctxt,
                                                            self.test_vol))
 
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch('cinder.utils.execute')
     @mock.patch.object(lio.LioAdm, '_get_target')
-    def test_create_iscsi_target(self, mget_target, mexecute, mpersist_cfg):
+    def test_create_iscsi_target(self, mget_target, mexecute, mpersist_cfg,
+                                 mlock_exec):
 
         mget_target.return_value = 1
         # create_iscsi_target sends volume_name instead of volume_id on error
@@ -83,9 +90,12 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
             self.target.iscsi_protocol == 'iser',
             run_as_root=True)
 
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
+    @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch.object(utils, 'execute')
     @mock.patch.object(lio.LioAdm, '_get_target', return_value=1)
-    def test_create_iscsi_target_port_ip(self, mget_target, mexecute):
+    def test_create_iscsi_target_port_ip(self, mget_target, mexecute,
+                                         mpersist_cfg, mlock_exec):
         test_vol = 'iqn.2010-10.org.openstack:'\
                    'volume-83c2e877-feed-46be-8435-77884fe55b45'
         ip = '10.0.0.15'
@@ -100,7 +110,7 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
                 path=self.fake_volumes_dir,
                 **{'portals_port': port, 'portals_ips': [ip]}))
 
-        mexecute.assert_any_call(
+        expected_args = (
             'cinder-rtstool',
             'create',
             self.fake_volumes_dir,
@@ -109,12 +119,18 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
             '',
             self.target.iscsi_protocol == 'iser',
             '-p%s' % port,
-            '-a' + ip,
-            run_as_root=True)
+            '-a' + ip)
 
+        mlock_exec.assert_any_call(*expected_args, run_as_root=True)
+        mexecute.assert_any_call(*expected_args, run_as_root=True)
+        mpersist_cfg.assert_called_once_with(self.volume_name)
+
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
+    @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch.object(utils, 'execute')
     @mock.patch.object(lio.LioAdm, '_get_target', return_value=1)
-    def test_create_iscsi_target_port_ips(self, mget_target, mexecute):
+    def test_create_iscsi_target_port_ips(self, mget_target, mexecute,
+                                          mpersist_cfg, mlock_exec):
         test_vol = 'iqn.2010-10.org.openstack:'\
                    'volume-83c2e877-feed-46be-8435-77884fe55b45'
         ips = ['10.0.0.15', '127.0.0.1']
@@ -129,7 +145,7 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
                 path=self.fake_volumes_dir,
                 **{'portals_port': port, 'portals_ips': ips}))
 
-        mexecute.assert_any_call(
+        expected_args = (
             'cinder-rtstool',
             'create',
             self.fake_volumes_dir,
@@ -138,15 +154,19 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
             '',
             self.target.iscsi_protocol == 'iser',
             '-p%s' % port,
-            '-a' + ','.join(ips),
-            run_as_root=True)
+            '-a' + ','.join(ips))
 
+        mlock_exec.assert_any_call(*expected_args, run_as_root=True)
+        mexecute.assert_any_call(*expected_args, run_as_root=True)
+        mpersist_cfg.assert_called_once_with(self.volume_name)
+
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch('cinder.utils.execute',
                 side_effect=putils.ProcessExecutionError)
     @mock.patch.object(lio.LioAdm, '_get_target')
     def test_create_iscsi_target_already_exists(self, mget_target, mexecute,
-                                                mpersist_cfg):
+                                                mpersist_cfg, mlock_exec):
         chap_auth = ('foo', 'bar')
         self.assertRaises(exception.ISCSITargetCreateFailed,
                           self.target.create_iscsi_target,
@@ -155,25 +175,31 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
                           0,
                           self.fake_volumes_dir,
                           chap_auth)
-        self.assertEqual(0, mpersist_cfg.call_count)
+        self.assertFalse(mpersist_cfg.called)
+        expected_args = ('cinder-rtstool', 'create', self.fake_volumes_dir,
+                         self.test_vol, chap_auth[0], chap_auth[1], False)
+        mlock_exec.assert_called_once_with(*expected_args, run_as_root=True)
+        mexecute.assert_called_once_with(*expected_args, run_as_root=True)
 
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch('cinder.utils.execute')
-    def test_remove_iscsi_target(self, mexecute, mpersist_cfg):
+    def test_remove_iscsi_target(self, mexecute, mpersist_cfg, mlock_exec):
         # Test the normal case
         self.target.remove_iscsi_target(0,
                                         0,
                                         self.testvol['id'],
                                         self.testvol['name'])
-        mexecute.assert_called_once_with('cinder-rtstool',
-                                         'delete',
-                                         self.iscsi_target_prefix +
-                                         self.testvol['name'],
-                                         run_as_root=True)
+        expected_args = ('cinder-rtstool', 'delete',
+                         self.iscsi_target_prefix + self.testvol['name'])
 
+        mlock_exec.assert_called_once_with(*expected_args, run_as_root=True)
+        mexecute.assert_called_once_with(*expected_args, run_as_root=True)
         mpersist_cfg.assert_called_once_with(self.fake_volume_id)
 
         # Test the failure case: putils.ProcessExecutionError
+        mlock_exec.reset_mock()
+        mpersist_cfg.reset_mock()
         mexecute.side_effect = putils.ProcessExecutionError
         self.assertRaises(exception.ISCSITargetRemoveFailed,
                           self.target.remove_iscsi_target,
@@ -181,9 +207,10 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
                           0,
                           self.testvol['id'],
                           self.testvol['name'])
+        mlock_exec.assert_called_once_with(*expected_args, run_as_root=True)
 
-        # Ensure there have been no more calls to persist configuration
-        self.assertEqual(1, mpersist_cfg.call_count)
+        # Ensure there have been no calls to persist configuration
+        self.assertFalse(mpersist_cfg.called)
 
     @mock.patch.object(lio.LioAdm, '_get_target_chap_auth')
     @mock.patch.object(lio.LioAdm, 'create_iscsi_target')
@@ -203,11 +230,12 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
             portals_ips=[self.configuration.iscsi_ip_address],
             portals_port=self.configuration.iscsi_port)
 
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch('cinder.utils.execute')
     @mock.patch.object(lio.LioAdm, '_get_iscsi_properties')
     def test_initialize_connection(self, mock_get_iscsi, mock_execute,
-                                   mpersist_cfg):
+                                   mpersist_cfg, mlock_exec):
         target_id = self.iscsi_target_prefix + 'volume-' + self.fake_volume_id
         connector = {'initiator': 'fake_init'}
 
@@ -219,48 +247,64 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
                          self.target.initialize_connection(self.testvol,
                                                            connector))
 
-        mock_execute.assert_called_once_with(
-            'cinder-rtstool', 'add-initiator', target_id,
-            self.expected_iscsi_properties['auth_username'],
-            '2FE0CQ8J196R', connector['initiator'],
-            run_as_root=True)
+        expected_args = ('cinder-rtstool', 'add-initiator', target_id,
+                         self.expected_iscsi_properties['auth_username'],
+                         '2FE0CQ8J196R', connector['initiator'])
 
+        mlock_exec.assert_called_once_with(*expected_args, run_as_root=True)
+        mock_execute.assert_called_once_with(*expected_args, run_as_root=True)
         mpersist_cfg.assert_called_once_with(self.fake_volume_id)
 
         # Test the failure case: putils.ProcessExecutionError
+        mlock_exec.reset_mock()
+        mpersist_cfg.reset_mock()
         mock_execute.side_effect = putils.ProcessExecutionError
         self.assertRaises(exception.ISCSITargetAttachFailed,
                           self.target.initialize_connection,
                           self.testvol,
                           connector)
 
+        mlock_exec.assert_called_once_with(*expected_args, run_as_root=True)
+
+        # Ensure there have been no calls to persist configuration
+        self.assertFalse(mpersist_cfg.called)
+
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch('cinder.utils.execute')
-    def test_terminate_connection(self, _mock_execute, mpersist_cfg):
+    def test_terminate_connection(self, mock_execute, mpersist_cfg,
+                                  mlock_exec):
 
         target_id = self.iscsi_target_prefix + 'volume-' + self.fake_volume_id
 
         connector = {'initiator': 'fake_init'}
         self.target.terminate_connection(self.testvol,
                                          connector)
-        _mock_execute.assert_called_once_with(
-            'cinder-rtstool', 'delete-initiator', target_id,
-            connector['initiator'],
-            run_as_root=True)
+        expected_args = ('cinder-rtstool', 'delete-initiator', target_id,
+                         connector['initiator'])
 
+        mlock_exec.assert_called_once_with(*expected_args, run_as_root=True)
+        mock_execute.assert_called_once_with(*expected_args, run_as_root=True)
         mpersist_cfg.assert_called_once_with(self.fake_volume_id)
 
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
     @mock.patch('cinder.utils.execute')
-    def test_terminate_connection_fail(self, _mock_execute, mpersist_cfg):
+    def test_terminate_connection_fail(self, mock_execute, mpersist_cfg,
+                                       mlock_exec):
 
-        _mock_execute.side_effect = putils.ProcessExecutionError
+        target_id = self.iscsi_target_prefix + 'volume-' + self.fake_volume_id
+        mock_execute.side_effect = putils.ProcessExecutionError
         connector = {'initiator': 'fake_init'}
         self.assertRaises(exception.ISCSITargetDetachFailed,
                           self.target.terminate_connection,
                           self.testvol,
                           connector)
-        self.assertEqual(0, mpersist_cfg.call_count)
+        mlock_exec.assert_called_once_with('cinder-rtstool',
+                                           'delete-initiator', target_id,
+                                           connector['initiator'],
+                                           run_as_root=True)
+        self.assertFalse(mpersist_cfg.called)
 
     def test_iscsi_protocol(self):
         self.assertEqual(self.target.iscsi_protocol, 'iscsi')
