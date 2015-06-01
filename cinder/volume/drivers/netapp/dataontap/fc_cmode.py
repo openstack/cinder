@@ -21,6 +21,7 @@ from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.zonemanager import utils as fczm_utils
 
+
 LOG = logging.getLogger(__name__)
 
 
@@ -72,6 +73,15 @@ class NetAppCmodeFibreChannelDriver(driver.FibreChannelDriver):
 
     def remove_export(self, context, volume):
         self.library.remove_export(context, volume)
+
+    def manage_existing(self, volume, existing_ref):
+        return self.library.manage_existing(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        return self.library.manage_existing_get_size(volume, existing_ref)
+
+    def unmanage(self, volume):
+        return self.library.unmanage(volume)
 
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
