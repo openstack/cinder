@@ -36,9 +36,10 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
     Version history:
         1.0.0 - Initial driver
+        1.1.0 - Add chap support and minor bug fixes
     """
 
-    VERSION = '1.0.0'
+    VERSION = '1.1.0'
     volume_stats = {}
 
     def __init__(self, *args, **kwargs):
@@ -49,6 +50,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
             options.cloudbyte_create_volume_opts)
         self.configuration.append_config_values(
             options.cloudbyte_connection_opts)
+        self.cb_use_chap = self.configuration.use_chap_auth
         self.get_volume_stats()
 
     def _get_url(self, cmd, params, apikey):
@@ -374,7 +376,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
         return qosgroup_id
 
-    def _build_provider_details_from_volume(self, volume):
+    def _build_provider_details_from_volume(self, volume, chap):
         model_update = {}
 
         model_update['provider_location'] = (
@@ -384,14 +386,21 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         # Will provide CHAP Authentication on forthcoming patches/release
         model_update['provider_auth'] = None
 
+        if chap:
+            model_update['provider_auth'] = ('CHAP %(username)s %(password)s'
+                                             % chap)
+
         model_update['provider_id'] = volume['id']
 
-        LOG.debug("CloudByte volume [%(vol)s] properties: [%(props)s].",
-                  {'vol': volume['iqnname'], 'props': model_update})
+        LOG.debug("CloudByte volume iqn: [%(iqn)s] provider id: [%(proid)s].",
+                  {'iqn': volume['iqnname'], 'proid': volume['id']})
 
         return model_update
 
-    def _build_provider_details_from_response(self, cb_volumes, volume_name):
+    def _build_provider_details_from_response(self,
+                                              cb_volumes,
+                                              volume_name,
+                                              chap):
         """Get provider information."""
 
         model_update = {}
@@ -399,7 +408,8 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
         for vol in volumes:
             if vol['name'] == volume_name:
-                model_update = self._build_provider_details_from_volume(vol)
+                model_update = self._build_provider_details_from_volume(vol,
+                                                                        chap)
                 break
 
         return model_update
@@ -457,11 +467,15 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         else:
             return iscsi_id
 
-    def _request_update_iscsi_service(self, iscsi_id, ig_id):
+    def _request_update_iscsi_service(self, iscsi_id, ig_id, ag_id):
         params = {
             "id": iscsi_id,
             "igid": ig_id
         }
+
+        if ag_id:
+            params['authgroupid'] = ag_id
+            params['authmethod'] = "CHAP"
 
         self._api_request_for_cloudbyte(
             'updateVolumeiSCSIService', params)
@@ -570,6 +584,97 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
         return data
 
+    def _get_auth_group_id_from_response(self, data):
+        """Find iSCSI auth group id."""
+
+        chap_group = self.configuration.cb_auth_group
+
+        ag_list_res = data.get('listiSCSIAuthGroupResponse')
+
+        if ag_list_res is None:
+            msg = _("Null response received from CloudByte's "
+                    "list iscsi auth groups.")
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        ag_list = ag_list_res.get('authgroup')
+
+        if ag_list is None:
+            msg = _('No iscsi auth groups were found in CloudByte.')
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        ag_id = None
+
+        for ag in ag_list:
+            if ag.get('name') == chap_group:
+                ag_id = ag['id']
+                break
+        else:
+            msg = _("Auth group [%s] details not found in "
+                    "CloudByte storage.") % chap_group
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        return ag_id
+
+    def _get_auth_group_info(self, account_id, ag_id):
+        """Fetch the auth group details."""
+
+        params = {"accountid": account_id, "authgroupid": ag_id}
+
+        auth_users = self._api_request_for_cloudbyte(
+            'listiSCSIAuthUser', params)
+
+        auth_user_details_res = auth_users.get('listiSCSIAuthUsersResponse')
+
+        if auth_user_details_res is None:
+            msg = _("No response was received from CloudByte storage "
+                    "list iSCSI auth user API call.")
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        auth_user_details = auth_user_details_res.get('authuser')
+
+        if auth_user_details is None:
+            msg = _("Auth user details not found in CloudByte storage.")
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        chapuser = auth_user_details[0].get('chapusername')
+        chappassword = auth_user_details[0].get('chappassword')
+
+        if chapuser is None or chappassword is None:
+            msg = _("Invalid chap user details found in CloudByte storage.")
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        data = {'username': chapuser, 'password': chappassword, 'ag_id': ag_id}
+
+        return data
+
+    def _get_chap_info(self, account_id):
+        """Fetch the chap details."""
+
+        params = {"accountid": account_id}
+
+        iscsi_auth_data = self._api_request_for_cloudbyte(
+            'listiSCSIAuthGroup', params)
+
+        ag_id = self._get_auth_group_id_from_response(
+            iscsi_auth_data)
+
+        return self._get_auth_group_info(account_id, ag_id)
+
+    def _export(self):
+        model_update = {'provider_auth': None}
+
+        if self.cb_use_chap is True:
+            account_name = self.configuration.cb_account_name
+
+            account_id = self._get_account_id_from_name(account_name)
+
+            chap = self._get_chap_info(account_id)
+
+            model_update['provider_auth'] = ('CHAP %(username)s %(password)s'
+                                             % chap)
+
+        return model_update
+
     def create_volume(self, volume):
 
         tsm_name = self.configuration.cb_tsm_name
@@ -636,16 +741,25 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         LOG.debug("Updating iscsi service for CloudByte volume [%s].",
                   cb_volume_name)
 
+        ag_id = None
+        chap_info = {}
+
+        if self.cb_use_chap is True:
+            chap_info = self._get_chap_info(account_id)
+            ag_id = chap_info['ag_id']
+
         # Update the iscsi service with above fetched iscsi_id & ig_id
-        self._request_update_iscsi_service(iscsi_id, ig_id)
+        self._request_update_iscsi_service(iscsi_id, ig_id, ag_id)
 
         LOG.debug("CloudByte volume [%(vol)s] updated with "
-                  "iscsi id [%(iscsi)s] and ig id [%(ig)s].",
-                  {'vol': cb_volume_name, 'iscsi': iscsi_id, 'ig': ig_id})
+                  "iscsi id [%(iscsi)s] and initiator group [%(ig)s] and "
+                  "authentication group [%(ag)s].",
+                  {'vol': cb_volume_name, 'iscsi': iscsi_id,
+                   'ig': ig_id, 'ag': ag_id})
 
         # Provide the model after successful completion of above steps
         provider = self._build_provider_details_from_response(
-            cb_volumes, cb_volume_name)
+            cb_volumes, cb_volume_name, chap_info)
 
         LOG.info(_LI("Successfully created a CloudByte volume [%(cb_vol)s] "
                  "w.r.t OpenStack volume [%(stack_vol)s]."),
@@ -829,7 +943,20 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
              'cb_snap': cb_snapshot_path,
              'stack_vol': parent_volume_id})
 
-        return self._build_provider_details_from_volume(cb_vol)
+        chap_info = {}
+
+        if self.cb_use_chap is True:
+            account_name = self.configuration.cb_account_name
+
+            # Get account id of this account
+            account_id = self._get_account_id_from_name(account_name)
+
+            chap_info = self._get_chap_info(account_id)
+
+        model_update = self._build_provider_details_from_volume(cb_vol,
+                                                                chap_info)
+
+        return model_update
 
     def delete_snapshot(self, snapshot):
         """Delete a snapshot at CloudByte."""
@@ -888,21 +1015,13 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
     def create_export(self, context, volume):
         """Setup the iscsi export info."""
-        model_update = {}
 
-        # Will provide CHAP Authentication on forthcoming patches/release
-        model_update['provider_auth'] = None
-
-        return model_update
+        return self._export()
 
     def ensure_export(self, context, volume):
         """Verify the iscsi export info."""
-        model_update = {}
 
-        # Will provide CHAP Authentication on forthcoming patches/release
-        model_update['provider_auth'] = None
-
-        return model_update
+        return self._export()
 
     def get_volume_stats(self, refresh=False):
         """Get volume statistics.
