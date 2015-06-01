@@ -180,6 +180,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'qos': None,
                              'iqn': test_name}]}}
             return result
+        elif method is 'DeleteSnapshot':
+            return {'result': {}}
         else:
             # Crap, unimplemented API call in Fake
             return None
@@ -206,13 +208,13 @@ class SolidFireVolumeTestCase(test.TestCase):
     def fake_get_model_info(self, account, vid):
         return {'fake': 'fake-model'}
 
-    def test_create_with_qos_type(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_set_qos_by_volume_type',
-                       self.fake_set_qos_by_volume_type)
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
+    def test_create_volume_with_qos_type(self,
+                                         _mock_create_template_account,
+                                         _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
@@ -220,52 +222,128 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'volume_type_id': 'fast',
                    'created_at': timeutils.utcnow()}
 
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        model_update = sfv.create_volume(testvol)
-        self.assertIsNotNone(model_update)
+        fake_sfaccounts = [{'accountID': 5,
+                            'name': 'testprjid',
+                            'targetSecret': 'shhhh',
+                            'username': 'john-wayne'}]
 
-    def test_create_volume(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        test_type = {'name': 'sf-1',
+                     'qos_specs_id': 'fb0576d7-b4b5-4cad-85dc-ca92e6a497d1',
+                     'deleted': False,
+                     'created_at': '2014-02-06 04:58:11',
+                     'updated_at': None,
+                     'extra_specs': {},
+                     'deleted_at': None,
+                     'id': 'e730e97b-bc7d-4af3-934a-32e59b218e81'}
+
+        test_qos_spec = {'id': 'asdfafdasdf',
+                         'specs': {'minIOPS': '1000',
+                                   'maxIOPS': '2000',
+                                   'burstIOPS': '3000'}}
+
+        def _fake_get_volume_type(ctxt, type_id):
+            return test_type
+
+        def _fake_get_qos_spec(ctxt, spec_id):
+            return test_qos_spec
+
+        def _fake_do_volume_create(account, params):
+            return params
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+                mock.patch.object(sfv,
+                                  '_issue_api_request',
+                                  side_effect=self.fake_issue_api_request), \
+                mock.patch.object(sfv,
+                                  '_get_account_create_availability',
+                                  return_value=fake_sfaccounts[0]), \
+                mock.patch.object(sfv,
+                                  '_do_volume_create',
+                                  side_effect=_fake_do_volume_create), \
+                mock.patch.object(volume_types,
+                                  'get_volume_type',
+                                  side_effect=_fake_get_volume_type), \
+                mock.patch.object(qos_specs,
+                                  'get_qos_specs',
+                                  side_effect=_fake_get_qos_spec):
+
+            self.assertEqual({'burstIOPS': 3000,
+                              'minIOPS': 1000,
+                              'maxIOPS': 2000},
+                             sfv.create_volume(testvol)['qos'])
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
+    def test_create_volume(self,
+                           _mock_create_template_account,
+                           _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'volume_type_id': None,
                    'created_at': timeutils.utcnow()}
+        fake_sfaccounts = [{'accountID': 5,
+                            'name': 'testprjid',
+                            'targetSecret': 'shhhh',
+                            'username': 'john-wayne'}]
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        model_update = sfv.create_volume(testvol)
-        self.assertIsNotNone(model_update)
-        self.assertIsNone(model_update.get('provider_geometry', None))
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+            mock.patch.object(sfv,
+                              '_issue_api_request',
+                              side_effect=self.fake_issue_api_request), \
+            mock.patch.object(sfv,
+                              '_get_account_create_availability',
+                              return_value=fake_sfaccounts[0]):
 
-    def test_create_volume_non_512(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+            model_update = sfv.create_volume(testvol)
+            self.assertIsNotNone(model_update)
+            self.assertIsNone(model_update.get('provider_geometry', None))
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
+    def test_create_volume_non_512e(self,
+                                    _mock_create_template_account,
+                                    _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'volume_type_id': None,
                    'created_at': timeutils.utcnow()}
+        fake_sfaccounts = [{'accountID': 5,
+                            'name': 'testprjid',
+                            'targetSecret': 'shhhh',
+                            'username': 'john-wayne'}]
 
-        self.configuration.sf_emulate_512 = False
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        model_update = sfv.create_volume(testvol)
-        self.assertEqual(model_update.get('provider_geometry', None),
-                         '4096 4096')
-        self.configuration.sf_emulate_512 = True
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+            mock.patch.object(sfv,
+                              '_issue_api_request',
+                              side_effect=self.fake_issue_api_request), \
+            mock.patch.object(sfv,
+                              '_get_account_create_availability',
+                              return_value=fake_sfaccounts[0]):
+
+            self.configuration.sf_emulate_512 = False
+            model_update = sfv.create_volume(testvol)
+            self.configuration.sf_emulate_512 = True
+            self.assertEqual(model_update.get('provider_geometry', None),
+                             '4096 4096')
 
     def test_create_delete_snapshot(self):
-        testvol = {'project_id': 'testprjid',
-                   'name': 'testvol',
-                   'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'volume_type_id': None,
-                   'created_at': timeutils.utcnow()}
-
         testsnap = {'project_id': 'testprjid',
                     'name': 'testvol',
                     'volume_size': 1,
@@ -275,21 +353,26 @@ class SolidFireVolumeTestCase(test.TestCase):
                     'created_at': timeutils.utcnow()}
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        sfv.create_volume(testvol)
         sfv.create_snapshot(testsnap)
         with mock.patch.object(solidfire.SolidFireDriver,
                                '_get_sf_snapshots',
                                return_value=[{'snapshotID': '1',
-                                              'name': 'testvol'}]):
+                                              'name': 'UUID-b831c4d1-d1f0-11e1-9b23-0800200c9a66'}]), \
+                mock.patch.object(sfv,
+                                  '_get_sfaccounts_for_tenant',
+                                  return_value=[{'accountID': 5,
+                                                 'name': 'testprjid'}]):
             sfv.delete_snapshot(testsnap)
 
-    def test_create_clone(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_get_model_info',
-                       self.fake_get_model_info)
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
+    def test_create_clone(self,
+                          _mock_create_template_account,
+                          _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_create_template_account.return_value = 1
+        _fake_get_snaps = [{'snapshotID': 5, 'name': 'testvol'}]
+
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
@@ -304,10 +387,19 @@ class SolidFireVolumeTestCase(test.TestCase):
                      'volume_type_id': None,
                      'created_at': timeutils.utcnow()}
 
-        with mock.patch.object(solidfire.SolidFireDriver,
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        with mock.patch.object(sfv,
                                '_get_sf_snapshots',
-                               return_value=[]):
-            sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+                               return_value=_fake_get_snaps), \
+                mock.patch.object(sfv,
+                                  '_issue_api_request',
+                                  side_effect=self.fake_issue_api_request), \
+                mock.patch.object(sfv,
+                                  '_get_sfaccounts_for_tenant',
+                                  return_value=[]), \
+                mock.patch.object(sfv,
+                                  '_get_model_info',
+                                  return_value={}):
             sfv.create_cloned_volume(testvol_b, testvol)
 
     def test_initialize_connector_with_blocksizes(self):
@@ -330,25 +422,6 @@ class SolidFireVolumeTestCase(test.TestCase):
         properties = sfv.initialize_connection(testvol, connector)
         self.assertEqual('4096', properties['data']['physical_block_size'])
         self.assertEqual('4096', properties['data']['logical_block_size'])
-
-    def test_create_volume_with_qos(self):
-        preset_qos = {}
-        preset_qos['qos'] = 'fast'
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
-
-        testvol = {'project_id': 'testprjid',
-                   'name': 'testvol',
-                   'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'metadata': [preset_qos],
-                   'volume_type_id': None,
-                   'created_at': timeutils.utcnow()}
-
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        model_update = sfv.create_volume(testvol)
-        self.assertIsNotNone(model_update)
 
     def test_create_volume_fails(self):
         # NOTE(JDG) This test just fakes update_cluster_status
@@ -403,18 +476,41 @@ class SolidFireVolumeTestCase(test.TestCase):
         account = sfv._get_sfaccount_by_name('some-name')
         self.assertIsNone(account)
 
-    def test_delete_volume(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
+    def test_delete_volume(self,
+                           _mock_create_template_account,
+                           _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'test_volume',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'created_at': timeutils.utcnow()}
+        fake_sfaccounts = [{'accountID': 5,
+                            'name': 'testprjid',
+                            'targetSecret': 'shhhh',
+                            'username': 'john-wayne'}]
+
+        def _fake_do_v_create(project_id, params):
+            return project_id, params
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        sfv.delete_volume(testvol)
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+                mock.patch.object(sfv,
+                                  '_issue_api_request',
+                                  side_effect=self.fake_issue_api_request), \
+                mock.patch.object(sfv,
+                                  '_get_account_create_availability',
+                                  return_value=fake_sfaccounts[0]), \
+                mock.patch.object(sfv,
+                                  '_do_volume_create',
+                                  side_effect=_fake_do_v_create):
+
+            sfv.delete_volume(testvol)
 
     def test_delete_volume_fails_no_volume(self):
         self.stubs.Set(solidfire.SolidFireDriver,
@@ -432,26 +528,6 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.fail("Should have thrown Error")
         except Exception:
             pass
-
-    def test_delete_volume_fails_account_lookup(self):
-        # NOTE(JDG) This test just fakes update_cluster_status
-        # this is inentional for this test
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_update_cluster_status',
-                       self.fake_update_cluster_status)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request_fails)
-        testvol = {'project_id': 'testprjid',
-                   'name': 'no-name',
-                   'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'created_at': timeutils.utcnow()}
-
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.assertRaises(exception.SolidFireAccountNotFound,
-                          sfv.delete_volume,
-                          testvol)
 
     def test_get_cluster_info(self):
         self.stubs.Set(solidfire.SolidFireDriver,
@@ -690,16 +766,13 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertIsNotNone(model_update)
         self.assertIsNone(model_update.get('provider_geometry', None))
 
-    def test_create_volume_for_migration(self):
-        def _fake_do_v_create(self, project_id, params):
-            return project_id, params
-
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_do_volume_create', _fake_do_v_create)
-
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
+    def test_create_volume_for_migration(self,
+                                         _mock_create_template_account,
+                                         _mock_issue_api_request):
+        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
@@ -708,15 +781,35 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'created_at': timeutils.utcnow(),
                    'migration_status': 'target:'
                                        'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+        fake_sfaccounts = [{'accountID': 5,
+                            'name': 'testprjid',
+                            'targetSecret': 'shhhh',
+                            'username': 'john-wayne'}]
+
+        def _fake_do_v_create(project_id, params):
+            return project_id, params
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        proj_id, sf_vol_object = sfv.create_volume(testvol)
-        self.assertEqual('a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                         sf_vol_object['attributes']['uuid'])
-        self.assertEqual('b830b3c0-d1f0-11e1-9b23-1900200c9a77',
-                         sf_vol_object['attributes']['migration_uuid'])
-        self.assertEqual('UUID-a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                         sf_vol_object['name'])
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+                mock.patch.object(sfv,
+                                  '_issue_api_request',
+                                  side_effect=self.fake_issue_api_request), \
+                mock.patch.object(sfv,
+                                  '_get_account_create_availability',
+                                  return_value=fake_sfaccounts[0]), \
+                mock.patch.object(sfv,
+                                  '_do_volume_create',
+                                  side_effect=_fake_do_v_create):
+
+            proj_id, sf_vol_object = sfv.create_volume(testvol)
+            self.assertEqual('a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                             sf_vol_object['attributes']['uuid'])
+            self.assertEqual('b830b3c0-d1f0-11e1-9b23-1900200c9a77',
+                             sf_vol_object['attributes']['migration_uuid'])
+            self.assertEqual('UUID-a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                             sf_vol_object['name'])
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
     @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
@@ -808,9 +901,10 @@ class SolidFireVolumeTestCase(test.TestCase):
                                          self.fake_image_meta,
                                          'fake'))
 
-    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    def test_clone_image_authorization(self, _mock_issue_api_request):
-        _mock_issue_api_request.return_value = self.mock_stats_data
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
+    def test_clone_image_authorization(self, _mock_create_template_account):
+        _mock_create_template_account.return_value = 1
+
         self.configuration.sf_allow_template_caching = True
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
 
@@ -824,33 +918,40 @@ class SolidFireVolumeTestCase(test.TestCase):
                             'properties': {'virtual_size': 1},
                             'is_public': False,
                             'owner': 'wrong-owner'}
-        self.assertEqual((None, False),
-                         sfv.clone_image(self.ctxt,
-                                         self.mock_volume,
-                                         'fake',
-                                         _fake_image_meta,
-                                         'fake'))
+        with mock.patch.object(sfv, '_do_clone_volume',
+                               return_value=('fe', 'fi', 'fo')):
+            self.assertEqual((None, False),
+                             sfv.clone_image(self.ctxt,
+                                             self.mock_volume,
+                                             'fake',
+                                             _fake_image_meta,
+                                             'fake'))
 
-        # And is_public False, but the correct owner does work
-        # expect raise AccountNotFound as that's the next call after
-        # auth checks
-        _fake_image_meta['owner'] = 'testprjid'
-        self.assertRaises(exception.SolidFireAccountNotFound,
-                          sfv.clone_image, self.ctxt,
-                          self.mock_volume, 'fake',
-                          _fake_image_meta, 'fake')
+            # And is_public False, but the correct owner does work
+            _fake_image_meta['owner'] = 'testprjid'
+            self.assertEqual(('fo', True), sfv.clone_image(self.ctxt,
+                                                           self.mock_volume,
+                                                           'fake',
+                                                           _fake_image_meta,
+                                                           'fake'))
 
-        # And is_public True, even if not the correct owner
-        _fake_image_meta['is_public'] = True
-        _fake_image_meta['owner'] = 'wrong-owner'
-        self.assertRaises(exception.SolidFireAccountNotFound,
-                          sfv.clone_image, self.ctxt,
-                          self.mock_volume, 'fake',
-                          _fake_image_meta, 'fake')
+            # And is_public True, even if not the correct owner
+            _fake_image_meta['is_public'] = True
+            _fake_image_meta['owner'] = 'wrong-owner'
+            self.assertEqual(('fo', True), sfv.clone_image(self.ctxt,
+                                                           self.mock_volume,
+                                                           'fake',
+                                                           _fake_image_meta,
+                                                           'fake'))
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    def test_clone_image_virt_size_not_set(self, _mock_issue_api_request):
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
+    def test_clone_image_virt_size_not_set(self,
+                                           _mock_create_template_account,
+                                           _mock_issue_api_request):
         _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_create_template_account.return_value = 1
+
         self.configuration.sf_allow_template_caching = True
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
 
