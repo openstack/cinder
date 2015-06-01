@@ -18,22 +18,26 @@
 import ast
 import math
 import re
+import time
 import uuid
 
 from Crypto.Random import random
+import eventlet
+from eventlet import tpool
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
+import six
 from six.moves import range
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder.i18n import _LI, _LW
+from cinder.i18n import _, _LI, _LW, _LE
 from cinder import rpc
 from cinder import utils
 from cinder.volume import throttling
@@ -301,8 +305,9 @@ def check_for_odirect_support(src, dest, flag='oflag=direct'):
         return False
 
 
-def _copy_volume(prefix, srcstr, deststr, size_in_m, blocksize, sync=False,
-                 execute=utils.execute, ionice=None, sparse=False):
+def _copy_volume_with_path(prefix, srcstr, deststr, size_in_m, blocksize,
+                           sync=False, execute=utils.execute, ionice=None,
+                           sparse=False):
     # Use O_DIRECT to avoid thrashing the system buffer cache
     extra_flags = []
     if check_for_odirect_support(srcstr, deststr, 'iflag=direct'):
@@ -354,15 +359,107 @@ def _copy_volume(prefix, srcstr, deststr, size_in_m, blocksize, sync=False,
              {'size_in_m': size_in_m, 'mbps': mbps})
 
 
-def copy_volume(srcstr, deststr, size_in_m, blocksize, sync=False,
+def _open_volume_with_path(path, mode):
+    try:
+        with utils.temporary_chown(path):
+            handle = open(path, mode)
+            return handle
+    except Exception:
+        LOG.error(_LE("Failed to open volume from %(path)s."), {'path': path})
+
+
+def _transfer_data(src, dest, length, chunk_size):
+    """Transfer data between files (Python IO objects)."""
+
+    chunks = int(math.ceil(length / chunk_size))
+    remaining_length = length
+
+    LOG.debug("%(chunks)s chunks of %(bytes)s bytes to be transferred.",
+              {'chunks': chunks, 'bytes': chunk_size})
+
+    for chunk in xrange(0, chunks):
+        before = time.time()
+        data = tpool.execute(src.read, min(chunk_size, remaining_length))
+
+        # If we have reached end of source, discard any extraneous bytes from
+        # destination volume if trim is enabled and stop writing.
+        if data == '':
+            break
+
+        tpool.execute(dest.write, data)
+        remaining_length -= len(data)
+        delta = (time.time() - before)
+        rate = (chunk_size / delta) / units.Ki
+        LOG.debug("Transferred chunk %(chunk)s of %(chunks)s (%(rate)dK/s).",
+                  {'chunk': chunk + 1, 'chunks': chunks, 'rate': rate})
+
+        # yield to any other pending operations
+        eventlet.sleep(0)
+
+    tpool.execute(dest.flush)
+
+
+def _copy_volume_with_file(src, dest, size_in_m):
+    src_handle = src
+    if isinstance(src, six.string_types):
+        src_handle = _open_volume_with_path(src, 'rb')
+
+    dest_handle = dest
+    if isinstance(dest, six.string_types):
+        dest_handle = _open_volume_with_path(dest, 'wb')
+
+    if not src_handle:
+        raise exception.DeviceUnavailable(
+            _("Failed to copy volume, source device unavailable."))
+
+    if not dest_handle:
+        raise exception.DeviceUnavailable(
+            _("Failed to copy volume, destination device unavailable."))
+
+    start_time = timeutils.utcnow()
+
+    _transfer_data(src_handle, dest_handle, size_in_m * units.Mi, units.Mi * 4)
+
+    duration = max(1, timeutils.delta_seconds(start_time, timeutils.utcnow()))
+
+    if isinstance(src, six.string_types):
+        src_handle.close()
+    if isinstance(dest, six.string_types):
+        dest_handle.close()
+
+    mbps = (size_in_m / duration)
+    LOG.info(_LI("Volume copy completed (%(size_in_m).2f MB at "
+                 "%(mbps).2f MB/s)."),
+             {'size_in_m': size_in_m, 'mbps': mbps})
+
+
+def copy_volume(src, dest, size_in_m, blocksize, sync=False,
                 execute=utils.execute, ionice=None, throttle=None,
                 sparse=False):
-    if not throttle:
-        throttle = throttling.Throttle.get_default()
-    with throttle.subcommand(srcstr, deststr) as throttle_cmd:
-        _copy_volume(throttle_cmd['prefix'], srcstr, deststr,
-                     size_in_m, blocksize, sync=sync,
-                     execute=execute, ionice=ionice, sparse=sparse)
+    """Copy data from the source volume to the destination volume.
+
+    The parameters 'src' and 'dest' are both typically of type str, which
+    represents the path to each volume on the filesystem.  Connectors can
+    optionally return a volume handle of type RawIOBase for volumes that are
+    not available on the local filesystem for open/close operations.
+
+    If either 'src' or 'dest' are not of type str, then they are assumed to be
+    of type RawIOBase or any derivative that supports file operations such as
+    read and write.  In this case, the handles are treated as file handles
+    instead of file paths and, at present moment, throttling is unavailable.
+    """
+
+    if (isinstance(src, six.string_types) and
+            isinstance(dest, six.string_types)):
+        if not throttle:
+            throttle = throttling.Throttle.get_default()
+        with throttle.subcommand(src, dest) as throttle_cmd:
+            _copy_volume_with_path(throttle_cmd['prefix'], src, dest,
+                                   size_in_m, blocksize, sync=sync,
+                                   execute=execute, ionice=ionice,
+                                   sparse=sparse)
+    else:
+        _copy_volume_with_file(src, dest, size_in_m)
 
 
 def clear_volume(volume_size, volume_path, volume_clear=None,

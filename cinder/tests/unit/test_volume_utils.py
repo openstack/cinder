@@ -17,6 +17,7 @@
 
 
 import datetime
+import io
 import mock
 
 from oslo_concurrency import processutils
@@ -625,6 +626,23 @@ class CopyVolumeTestCase(test.TestCase):
                                           'count=5678', 'bs=1234',
                                           'iflag=direct', 'oflag=direct',
                                           'conv=sparse', run_as_root=True)
+
+    @mock.patch('cinder.volume.utils._copy_volume_with_file')
+    def test_copy_volume_handles(self, mock_copy):
+        handle1 = io.RawIOBase()
+        handle2 = io.RawIOBase()
+        output = volume_utils.copy_volume(handle1, handle2, 1024, 1)
+        self.assertIsNone(output)
+        mock_copy.assert_called_once_with(handle1, handle2, 1024)
+
+    @mock.patch('cinder.volume.utils._transfer_data')
+    @mock.patch('cinder.volume.utils._open_volume_with_path')
+    def test_copy_volume_handle_transfer(self, mock_open, mock_transfer):
+        handle = io.RawIOBase()
+        output = volume_utils.copy_volume('/foo/bar', handle, 1024, 1)
+        self.assertIsNone(output)
+        mock_transfer.assert_called_once_with(mock.ANY, mock.ANY,
+                                              1073741824, mock.ANY)
 
 
 class VolumeUtilsTestCase(test.TestCase):
