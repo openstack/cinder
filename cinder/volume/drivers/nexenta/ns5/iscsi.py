@@ -23,6 +23,7 @@
 from oslo_log import log as logging
 from oslo_utils import units
 
+from cinder import context, db
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.volume import driver
@@ -193,6 +194,44 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     #              {'id': volume['id'], 'size': new_size})
     #     self.nms.zvol.set_child_prop(self._get_zvol_name(volume['name']),
     #                                  'volsize', '%sG' % new_size)
+
+    def create_snapshot(self, snapshot):
+        """Creates a snapshot.
+
+        :param snapshot: snapshot reference
+        """
+        volume = self._get_snapshot_volume(snapshot)
+        volume_name = self._get_zvol_name(volume['name'])
+        pool, group, volume = volume_name.split('/')
+        url = 'storage/pools/%(pool)s/datasetGroups/%(group)s/' \
+              'volumes/%(volume)s/snapshots' % {
+                  'pool': pool,
+                  'group': group,
+                  'volume': volume
+              }
+        data = {'name': snapshot['name']}
+        self.nef(url, data)
+
+    def delete_snapshot(self, snapshot):
+        """Delete volume's snapshot on appliance.
+
+        :param snapshot: snapshot reference
+        """
+        volume = self._get_snapshot_volume(snapshot)
+        volume_name = self._get_zvol_name(volume['name'])
+        pool, group, volume = volume_name.split('/')
+        url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
+               'volumes/%(volume)s/snapshots/%(snapshot)s') % {
+                  'pool': pool,
+                  'group': group,
+                  'volume': volume,
+                  'snapshot': snapshot['name']
+              }
+        self.nef(url, method='DELETE')
+
+    def _get_snapshot_volume(self, snapshot):
+        ctxt = context.get_admin_context()
+        return db.volume_get(ctxt, snapshot['volume_id'])
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.

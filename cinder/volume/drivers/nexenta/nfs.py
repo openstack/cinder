@@ -55,6 +55,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         1.1.3 - Redefined volume_backend_name attribute inherited from
                 RemoteFsDriver.
         1.2.0 - Added migrate and retype methods.
+        1.3.0 - Extend volume method.
     """
 
     driver_prefix = 'nexenta'
