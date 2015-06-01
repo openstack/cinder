@@ -200,26 +200,26 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param snapshot: snapshot reference
         """
-        volume = self._get_snapshot_volume(snapshot)
-        volume_name = self._get_zvol_name(volume['name'])
-        pool, group, volume = volume_name.split('/')
+        LOG.info(_('Creating snapshot %s of volume %s' % (
+            snapshot['name'], snapshot['volume']['name'])))
+        zvol_name = self._get_zvol_name(snapshot['volume']['name'])
+        pool, group, volume = zvol_name.split('/')
         url = 'storage/pools/%(pool)s/datasetGroups/%(group)s/' \
               'volumes/%(volume)s/snapshots' % {
                   'pool': pool,
                   'group': group,
                   'volume': volume
               }
-        data = {'name': snapshot['name']}
-        self.nef(url, data)
+        self.nef(url, {'name': snapshot['name']})
 
     def delete_snapshot(self, snapshot):
         """Delete volume's snapshot on appliance.
 
         :param snapshot: snapshot reference
         """
-        volume = self._get_snapshot_volume(snapshot)
-        volume_name = self._get_zvol_name(volume['name'])
-        pool, group, volume = volume_name.split('/')
+        LOG.info(_('Deleting snapshot: %s' % snapshot['name']))
+        zvol_name = self._get_zvol_name(snapshot['volume']['name'])
+        pool, group, volume = zvol_name.split('/')
         url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
                'volumes/%(volume)s/snapshots/%(snapshot)s') % {
                   'pool': pool,
@@ -228,6 +228,24 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                   'snapshot': snapshot['name']
               }
         self.nef(url, method='DELETE')
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Create new volume from other's snapshot on appliance.
+
+        :param volume: reference of volume to be created
+        :param snapshot: reference of source snapshot
+        """
+        LOG.info(_('Creating volume from snapshot: %s' % snapshot['name']))
+        zvol_name = self._get_zvol_name(snapshot['volume']['name'])
+        pool, group, snapshot_vol = zvol_name.split('/')
+        url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
+               'volumes/%(volume)s/snapshots/%(snapshot)s/clone') % {
+                  'pool': pool,
+                  'group': group,
+                  'volume': snapshot_vol,
+                  'snapshot': snapshot['name']
+              }
+        self.nef(url, {'name': volume['name']})
 
     def _get_snapshot_volume(self, snapshot):
         ctxt = context.get_admin_context()
