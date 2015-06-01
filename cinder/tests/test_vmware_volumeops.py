@@ -1026,7 +1026,7 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(mock.sentinel.new_backing, ret)
         disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
         get_clone_spec.assert_called_with(datastore, disk_move_type, snapshot,
-                                          backing, None, None)
+                                          backing, None, None, None)
         expected = [mock.call(vim_util, 'get_object_property',
                               self.session.vim, backing, 'parent'),
                     mock.call(self.session.vim, 'CloneVM_Task', backing,
@@ -1042,7 +1042,7 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(mock.sentinel.new_backing, ret)
         disk_move_type = 'createNewChildDiskBacking'
         get_clone_spec.assert_called_with(datastore, disk_move_type, snapshot,
-                                          backing, None, None)
+                                          backing, None, None, None)
         expected = [mock.call(vim_util, 'get_object_property',
                               self.session.vim, backing, 'parent'),
                     mock.call(self.session.vim, 'CloneVM_Task', backing,
@@ -1053,14 +1053,15 @@ class VolumeOpsTestCase(test.TestCase):
         clone_type = None
         disk_type = 'thin'
         host = mock.sentinel.host
+        rp = mock.sentinel.rp
         self.session.invoke_api.reset_mock()
         ret = self.vops.clone_backing(name, backing, snapshot, clone_type,
-                                      datastore, disk_type, host)
+                                      datastore, disk_type, host, rp)
 
         self.assertEqual(mock.sentinel.new_backing, ret)
         disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
         get_clone_spec.assert_called_with(datastore, disk_move_type, snapshot,
-                                          backing, disk_type, host)
+                                          backing, disk_type, host, rp)
         expected = [mock.call(vim_util, 'get_object_property',
                               self.session.vim, backing, 'parent'),
                     mock.call(self.session.vim, 'CloneVM_Task', backing,
