@@ -26,7 +26,7 @@ from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder.volume.drivers.san import san
 
 
@@ -83,6 +83,11 @@ class HPLeftHandCLIQProxy(san.SanISCSIDriver):
     def __init__(self, *args, **kwargs):
         super(HPLeftHandCLIQProxy, self).__init__(*args, **kwargs)
         self.cluster_vip = None
+        LOG.warning(_LW('The HPLeftHandISCSIDriver CLIQ driver has been '
+                        'DEPRECATED as of the 2015.2 release. This driver '
+                        'will be removed in the 2016.1 release. Please use '
+                        'the HPLeftHandISCSIDriver REST based driver '
+                        'instead.'))
 
     def do_setup(self, context):
         pass
