@@ -23,6 +23,7 @@ from cinder.api.v2 import snapshots
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
@@ -289,9 +290,29 @@ class SnapshotApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.show, req, snapshot_id)
 
-    def test_snapshot_detail(self):
-        self.stubs.Set(volume.api.API, "get_all_snapshots",
-                       stub_snapshot_get_all)
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch('cinder.objects.Snapshot.get_by_id')
+    @mock.patch('cinder.volume.api.API.get_all_snapshots')
+    def test_snapshot_detail(self, get_all_snapshots, snapshot_get_by_id,
+                             volume_get_by_id, snapshot_metadata_get):
+        snapshot = {
+            'id': UUID,
+            'volume_id': 1,
+            'status': 'available',
+            'volume_size': 100,
+            'display_name': 'Default name',
+            'display_description': 'Default description',
+            'expected_attrs': ['metadata']
+        }
+        ctx = context.RequestContext('admin', 'fake', True)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_get_by_id.return_value = snapshot_obj
+        volume_get_by_id.return_value = fake_volume_obj
+        snapshots = objects.SnapshotList(objects=[snapshot_obj])
+        get_all_snapshots.return_value = snapshots
+
         req = fakes.HTTPRequest.blank('/v2/snapshots/detail')
         resp_dict = self.controller.detail(req)
 
@@ -401,7 +422,9 @@ class SnapshotApiTest(test.TestCase):
         self.assertIn('snapshots', res)
         self.assertEqual(1, len(res['snapshots']))
 
-    def test_list_snapshots_with_limit_and_offset(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_list_snapshots_with_limit_and_offset(self,
+                                                  snapshot_metadata_get):
         def list_snapshots_with_limit_and_offset(is_admin):
             def stub_snapshot_get_all_by_project(context, project_id):
                 return [
@@ -420,7 +443,7 @@ class SnapshotApiTest(test.TestCase):
 
             self.assertIn('snapshots', res)
             self.assertEqual(1, len(res['snapshots']))
-            self.assertEqual(2, res['snapshots'][0]['id'])
+            self.assertEqual('2', res['snapshots'][0]['id'])
 
         # admin case
         list_snapshots_with_limit_and_offset(is_admin=True)
