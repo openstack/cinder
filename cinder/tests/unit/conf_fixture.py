@@ -52,3 +52,5 @@ def set_defaults(conf):
         os.path.join(os.path.dirname(__file__), '..', '..', '..')))
     conf.set_default('policy_dirs', [])
     conf.set_default('auth_strategy', 'noauth')
+    conf.set_default('backup_enable_progress_timer', False)
+    conf.set_default('backup_swift_enable_progress_timer', False)
