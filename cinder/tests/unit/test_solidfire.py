@@ -18,7 +18,6 @@ import datetime
 
 import mock
 from mox3 import mox
-from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 
@@ -29,8 +28,6 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers import solidfire
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
-
-LOG = logging.getLogger(__name__)
 
 
 def create_configuration():
@@ -101,7 +98,6 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def fake_issue_api_request(obj, method, params, version='1.0'):
         if method is 'GetClusterCapacity' and version == '1.0':
-            LOG.info('Called Fake GetClusterCapacity...')
             data = {'result':
                     {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
                                          'usedSpace': 1073741824,
@@ -111,7 +107,6 @@ class SolidFireVolumeTestCase(test.TestCase):
             return data
 
         elif method is 'GetClusterInfo' and version == '1.0':
-            LOG.info('Called Fake GetClusterInfo...')
             results = {'result': {'clusterInfo':
                                   {'name': 'fake-cluster',
                                    'mvip': '1.1.1.1',
@@ -122,11 +117,9 @@ class SolidFireVolumeTestCase(test.TestCase):
             return results
 
         elif method is 'AddAccount' and version == '1.0':
-            LOG.info('Called Fake AddAccount...')
             return {'result': {'accountID': 25}, 'id': 1}
 
         elif method is 'GetAccountByName' and version == '1.0':
-            LOG.info('Called Fake GetAccountByName...')
             results = {'result': {'account':
                                   {'accountID': 25,
                                    'username': params['username'],
@@ -139,15 +132,15 @@ class SolidFireVolumeTestCase(test.TestCase):
             return results
 
         elif method is 'CreateVolume' and version == '1.0':
-            LOG.info('Called Fake CreateVolume...')
             return {'result': {'volumeID': 5}, 'id': 1}
 
+        elif method is 'CreateSnapshot' and version == '6.0':
+            return {'result': {'snapshotID': 5}, 'id': 1}
+
         elif method is 'DeleteVolume' and version == '1.0':
-            LOG.info('Called Fake DeleteVolume...')
             return {'result': {}, 'id': 1}
 
         elif method is 'ModifyVolume' and version == '5.0':
-            LOG.info('Called Fake ModifyVolume...')
             return {'result': {}, 'id': 1}
 
         elif method is 'CloneVolume':
@@ -158,7 +151,6 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         elif method is 'ListVolumesForAccount' and version == '1.0':
             test_name = 'OS-VOLID-a720b3c0-d1f0-11e1-9b23-0800200c9a66'
-            LOG.info('Called Fake ListVolumesForAccount...')
             result = {'result': {
                 'volumes': [{'volumeID': 5,
                              'name': test_name,
@@ -189,7 +181,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'iqn': test_name}]}}
             return result
         else:
-            LOG.error('Crap, unimplemented API call in Fake:%s' % method)
+            # Crap, unimplemented API call in Fake
+            return None
 
     def fake_issue_api_request_fails(obj, method,
                                      params, version='1.0',
@@ -265,13 +258,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                          '4096 4096')
         self.configuration.sf_emulate_512 = True
 
-    def test_create_snapshot(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_get_model_info',
-                       self.fake_get_model_info)
+    def test_create_delete_snapshot(self):
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
@@ -290,6 +277,11 @@ class SolidFireVolumeTestCase(test.TestCase):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         sfv.create_volume(testvol)
         sfv.create_snapshot(testsnap)
+        with mock.patch.object(solidfire.SolidFireDriver,
+                               '_get_sf_snapshots',
+                               return_value=[{'snapshotID': '1',
+                                              'name': 'testvol'}]):
+            sfv.delete_snapshot(testsnap)
 
     def test_create_clone(self):
         self.stubs.Set(solidfire.SolidFireDriver,
@@ -312,8 +304,11 @@ class SolidFireVolumeTestCase(test.TestCase):
                      'volume_type_id': None,
                      'created_at': timeutils.utcnow()}
 
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        sfv.create_cloned_volume(testvol_b, testvol)
+        with mock.patch.object(solidfire.SolidFireDriver,
+                               '_get_sf_snapshots',
+                               return_value=[]):
+            sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+            sfv.create_cloned_volume(testvol_b, testvol)
 
     def test_initialize_connector_with_blocksizes(self):
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
