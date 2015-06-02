@@ -92,9 +92,9 @@ class DellCommonDriver(san.SanDriver):
         # We use id as our name as it is unique.
         volume_name = volume.get('id')
         volume_size = volume.get('size')
-        LOG.debug('Creating volume %(n)s of size %(s)s',
-                  {'n': volume_name,
-                   's': volume_size})
+        LOG.debug('Creating volume %(name)s of size %(size)s',
+                  {'name': volume_name,
+                   'size': volume_size})
         scvolume = None
         with self._client.open_connection() as api:
             try:
@@ -183,9 +183,9 @@ class DellCommonDriver(san.SanDriver):
                     LOG.error(_LE('Failed to create volume %s'),
                               volume_name)
         if scvolume is not None:
-            LOG.debug('Volume %(n)s created from %(s)s',
-                      {'n': volume_name,
-                       's': snapshot_id})
+            LOG.debug('Volume %(vol)s created from %(snap)s',
+                      {'vol': volume_name,
+                       'snap': snapshot_id})
         else:
             raise exception.VolumeBackendAPIException(
                 _('Failed to create volume %s') % volume_name)
@@ -210,9 +210,9 @@ class DellCommonDriver(san.SanDriver):
                     LOG.error(_LE('Failed to create volume %s'),
                               volume_name)
         if scvolume is not None:
-            LOG.debug('Volume %(n)s cloned from %(s)s',
-                      {'n': volume_name,
-                       's': src_volume_name})
+            LOG.debug('Volume %(vol)s cloned from %(src)s',
+                      {'vol': volume_name,
+                       'src': src_volume_name})
         else:
             raise exception.VolumeBackendAPIException(
                 _('Failed to create volume %s') % volume_name)
@@ -263,7 +263,7 @@ class DellCommonDriver(san.SanDriver):
                               volume_name)
         if scvolume is None:
             raise exception.VolumeBackendAPIException(
-                _('unable to find volume %s') % volume_name)
+                _('Unable to find volume %s') % volume_name)
 
     def remove_export(self, context, volume):
         '''Remove an export of a volume.
@@ -277,7 +277,8 @@ class DellCommonDriver(san.SanDriver):
         '''Extend the size of the volume.'''
         volume_name = volume.get('id')
         LOG.debug('Extending volume %(vol)s to %(size)s',
-                  {'vol': volume_name, 'size': new_size})
+                  {'vol': volume_name,
+                   'size': new_size})
         if volume is not None:
             with self._client.open_connection() as api:
                 if api.find_sc():
@@ -323,25 +324,25 @@ class DellCommonDriver(san.SanDriver):
                 data['free_capacity_gb'] = freespacegb
             data['QoS_support'] = False
             self._stats = data
-            LOG.debug('Total cap %(t)s Free cap %(f)s',
-                      {'t': data['total_capacity_gb'],
-                       'f': data['free_capacity_gb']})
+            LOG.debug('Total cap %(total)s Free cap %(free)s',
+                      {'total': data['total_capacity_gb'],
+                       'free': data['free_capacity_gb']})
 
     def update_migrated_volume(self, ctxt, volume, new_volume):
-        """Return model update for migrated volume.
+        '''Return model update for migrated volume.
 
         :param volume: The original volume that was migrated to this backend
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
         :return model_update to update DB with any needed changes
-        """
+        '''
         # We use id as our volume name so we need to rename the backend
         # volume to the original volume name.
         original_volume_name = volume.get('id')
         current_name = new_volume.get('id')
-        LOG.debug('update_migrated_volume: %(c)s to %(o)s',
-                  {'c': current_name,
-                   'o': original_volume_name})
+        LOG.debug('update_migrated_volume: %(current)s to %(original)s',
+                  {'current': current_name,
+                   'original': original_volume_name})
         if original_volume_name:
             with self._client.open_connection() as api:
                 if api.find_sc():
