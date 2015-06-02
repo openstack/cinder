@@ -212,8 +212,8 @@ class TestHandleProcessExecutionError(test.TestCase):
                     message='', info_message='', reraise=True):
                 raise processutils.ProcessExecutionError(description='Oops')
 
-        self.assertRaisesRegexp(processutils.ProcessExecutionError,
-                                r'^Oops', f)
+        self.assertRaisesRegex(processutils.ProcessExecutionError,
+                               r'^Oops', f)
 
     def test_reraise_false(self):
         with srb.handle_process_execution_error(
@@ -226,7 +226,7 @@ class TestHandleProcessExecutionError(test.TestCase):
                     message='', info_message='', reraise=RuntimeError('Oops')):
                 raise processutils.ProcessExecutionError
 
-        self.assertRaisesRegexp(RuntimeError, r'^Oops', f)
+        self.assertRaisesRegex(RuntimeError, r'^Oops', f)
 
 
 class SRBDriverTestCase(test.TestCase):
