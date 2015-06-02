@@ -21,6 +21,7 @@ from xml.dom import minidom
 
 import mock
 from oslo_log import log as logging
+from oslo_utils import units
 import six
 
 from cinder import exception
@@ -273,7 +274,7 @@ class EMCVMAXCommonData(object):
     subscribedcapacity_bits = '500000000000'
     totalmanagedspace_gbs = 931
     subscribedcapacity_gbs = 466
-
+    fake_host = 'HostX@Backend#gold+1234567891011'
     unit_creationclass = 'CIM_ProtocolControllerForUnit'
     storage_type = 'gold'
     keybindings = {'CreationClassName': u'Symm_StorageVolume',
@@ -540,6 +541,8 @@ class FakeEcomConnection(object):
             result = self._enum_storagevolumes()
         elif name == 'Symm_StorageVolume':
             result = self._enum_storagevolumes()
+        elif name == 'CIM_StorageVolume':
+            result = self._enum_storagevolumes()
         elif name == 'CIM_ProtocolControllerForUnit':
             result = self._enum_unitnames()
         elif name == 'EMC_LunMaskingSCSIProtocolController':
@@ -556,6 +559,8 @@ class FakeEcomConnection(object):
             result = self._enum_policyrules()
         elif name == 'CIM_ReplicationServiceCapabilities':
             result = self._enum_repservcpbls()
+        elif name == 'SE_StorageSynchronized_SV_SV':
+            result = self._enum_storageSyncSvSv()
         else:
             result = self._default_enum()
         return result
@@ -612,6 +617,9 @@ class FakeEcomConnection(object):
             result = self._default_getinstance(objectpath)
 
         return result
+
+    def ModifyInstance(self, objectpath, PropertyList=None):
+        pass
 
     def DeleteInstance(self, objectpath):
         pass
@@ -1439,6 +1447,21 @@ class FakeEcomConnection(object):
 
     def _enum_metavolume(self):
         return []
+
+    def _enum_storageSyncSvSv(self):
+        conn = FakeEcomConnection()
+        sourceVolume = {}
+        sourceVolume['CreationClassName'] = 'Symm_StorageVolume'
+        sourceVolume['DeviceID'] = self.data.test_volume['device_id']
+        sourceInstanceName = conn.GetInstance(sourceVolume)
+        svInstances = []
+        svInstance = {}
+        svInstance['SyncedElement'] = 'SyncedElement'
+        svInstance['SystemElement'] = sourceInstanceName
+        svInstance['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
+        svInstance['PercentSynced'] = 100
+        svInstances.append(svInstance)
+        return svInstances
 
     def _default_enum(self):
         names = []
@@ -2886,6 +2909,79 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         common._create_composite_volume.assert_called_with(
             volume, "TargetBaseVol", 1234567, extraSpecs, 1)
 
+    def test_find_volume_by_device_id_on_array(self):
+        conn = self.fake_ecom_connection()
+        utils = self.driver.common.utils
+        volumeInstanceName = utils.find_volume_by_device_id_on_array(
+            conn, self.data.storage_system, self.data.test_volume['device_id'])
+        expectVolume = {}
+        expectVolume['CreationClassName'] = 'Symm_StorageVolume'
+        expectVolume['DeviceID'] = self.data.test_volume['device_id']
+        expect = conn.GetInstance(expectVolume)
+        self.assertEqual(volumeInstanceName, expect)
+
+    def test_get_volume_element_name(self):
+        volumeId = 'ea95aa39-080b-4f11-9856-a03acf9112ad'
+        utils = self.driver.common.utils
+        volumeElementName = utils.get_volume_element_name(volumeId)
+        expectVolumeElementName = (
+            emc_vmax_utils.VOLUME_ELEMENT_NAME_PREFIX + volumeId)
+        self.assertEqual(volumeElementName, expectVolumeElementName)
+
+    def test_get_associated_replication_from_source_volume(self):
+        conn = self.fake_ecom_connection()
+        utils = self.driver.common.utils
+        repInstanceName = (
+            utils.get_associated_replication_from_source_volume(
+                conn, self.data.storage_system,
+                self.data.test_volume['device_id']))
+        expectInstanceName = (
+            conn.EnumerateInstanceNames('SE_StorageSynchronized_SV_SV')[0])
+        self.assertEqual(repInstanceName, expectInstanceName)
+
+    def test_get_array_and_device_id_success(self):
+        deviceId = '0123'
+        arrayId = u'array1234'
+        external_ref = {u'source-name': deviceId}
+        volume = {'volume_metadata': [{'key': 'array', 'value': arrayId}]
+                  }
+        utils = self.driver.common.utils
+        (arrId, devId) = utils.get_array_and_device_id(volume, external_ref)
+        self.assertEqual(arrId, arrayId)
+        self.assertEqual(devId, deviceId)
+
+    def test_get_array_and_device_id_failed(self):
+        deviceId = '0123'
+        arrayId = u'array1234'
+        external_ref = {u'no-source-name': deviceId}
+        volume = {'volume_metadata': [{'key': 'array', 'value': arrayId}]
+                  }
+        utils = self.driver.common.utils
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          utils.get_array_and_device_id,
+                          volume,
+                          external_ref)
+
+    def test_rename_volume(self):
+        conn = self.fake_ecom_connection()
+        utils = self.driver.common.utils
+        newName = 'new_name'
+        volume = {}
+        volume['CreationClassName'] = 'Symm_StorageVolume'
+        volume['DeviceID'] = '1'
+        volume['ElementName'] = 'original_name'
+        pywbem = mock.Mock()
+        pywbem.cim_obj = mock.Mock()
+        pywbem.cim_obj.CIMInstance = mock.Mock()
+        emc_vmax_utils.pywbem = pywbem
+        volumeInstance = conn.GetInstance(volume)
+        originalName = volumeInstance['ElementName']
+        volumeInstance = utils.rename_volume(conn, volumeInstance, newName)
+        self.assertEqual(newName, volumeInstance['ElementName'])
+        volumeInstance = utils.rename_volume(
+            conn, volumeInstance, originalName)
+        self.assertEqual(originalName, volumeInstance['ElementName'])
+
     def _cleanup(self):
         if self.config_file_path:
             bExists = os.path.exists(self.config_file_path)
@@ -3965,6 +4061,135 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         if bExists:
             os.remove(self.config_file_parse_port_group)
 
+    def test_manage_existing_get_size(self):
+        volume = {}
+        metadata = {'key': 'array',
+                    'value': '12345'}
+        volume['volume_metadata'] = [metadata]
+        external_ref = {'source-name': '0123'}
+        utils = self.driver.common.utils
+        gbSize = 2
+        utils.get_volume_size = mock.Mock(
+            return_value=gbSize * units.Gi)
+        volumeInstanceName = {'CreationClassName': "Symm_StorageVolume",
+                              'DeviceID': "0123",
+                              'SystemName': "12345"}
+        utils.find_volume_by_device_id_on_array = mock.Mock(
+            return_value=volumeInstanceName)
+        size = self.driver.manage_existing_get_size(volume, external_ref)
+        self.assertEqual(gbSize, size)
+
+    def test_manage_existing_no_fast_success(self):
+        volume = {}
+        metadata = {'key': 'array',
+                    'value': '12345'}
+        poolInstanceName = {}
+        storageSystem = {}
+        poolInstanceName['InstanceID'] = "SATA_GOLD1"
+        storageSystem['InstanceID'] = "SYMMETRIX+00019870000"
+        volume['volume_metadata'] = [metadata]
+        volume['name'] = "test-volume"
+        external_ref = {'source-name': '0123'}
+        utils = self.driver.common.utils
+        gbSize = 2
+        utils.get_volume_size = mock.Mock(
+            return_value=gbSize * units.Gi)
+        utils.get_associated_replication_from_source_volume = mock.Mock(
+            return_value=None)
+        utils.get_assoc_pool_from_volume = mock.Mock(
+            return_value=(poolInstanceName))
+
+        vol = EMC_StorageVolume()
+        vol['CreationClassName'] = 'Symm_StorageVolume'
+        vol['ElementName'] = 'OS-' + volume['name']
+        vol['DeviceID'] = external_ref['source-name']
+        vol['SystemName'] = storageSystem['InstanceID']
+        vol['SystemCreationClassName'] = 'Symm_StorageSystem'
+        vol.path = vol
+        utils.rename_volume = mock.Mock(
+            return_value=vol)
+        common = self.driver.common
+        common._initial_setup = mock.Mock(
+            return_value={'volume_backend_name': 'FCNoFAST',
+                          'storagetype:fastpolicy': None})
+        common._get_pool_and_storage_system = mock.Mock(
+            return_value=(poolInstanceName, storageSystem))
+        volumeInstanceName = {'CreationClassName': "Symm_StorageVolume",
+                              'DeviceID': "0123",
+                              'SystemName': "12345"}
+        utils.find_volume_by_device_id_on_array = mock.Mock(
+            return_value=volumeInstanceName)
+        masking = self.driver.common.masking
+        masking.get_masking_view_from_storage_group = mock.Mock(
+            return_value=None)
+        self.driver.manage_existing(volume, external_ref)
+        utils.rename_volume.assert_called_once_with(
+            common.conn, volumeInstanceName, volume['name'])
+
+    def test_unmanage_no_fast_success(self):
+        keybindings = {'CreationClassName': u'Symm_StorageVolume',
+                       'SystemName': u'SYMMETRIX+000195900000',
+                       'DeviceID': u'1',
+                       'SystemCreationClassName': u'Symm_StorageSystem'}
+        provider_location = {'classname': 'Symm_StorageVolume',
+                             'keybindings': keybindings}
+
+        volume = {'name': 'vol1',
+                  'size': 1,
+                  'id': '1',
+                  'device_id': '1',
+                  'provider_auth': None,
+                  'project_id': 'project',
+                  'display_name': 'vol1',
+                  'display_description': 'test volume',
+                  'volume_type_id': 'abc',
+                  'provider_location': six.text_type(provider_location),
+                  'status': 'available',
+                  'host': self.data.fake_host,
+                  'NumberOfBlocks': 100,
+                  'BlockSize': 512
+                  }
+        common = self.driver.common
+        common._initial_setup = mock.Mock(
+            return_value={'volume_backend_name': 'FCNoFAST',
+                          'storagetype:fastpolicy': None})
+        utils = self.driver.common.utils
+        utils.rename_volume = mock.Mock(return_value=None)
+        self.driver.unmanage(volume)
+        utils.rename_volume.assert_called_once_with(
+            common.conn, common._find_lun(volume), '1')
+
+    def test_unmanage_no_fast_failed(self):
+        keybindings = {'CreationClassName': u'Symm_StorageVolume',
+                       'SystemName': u'SYMMETRIX+000195900000',
+                       'DeviceID': u'999',
+                       'SystemCreationClassName': u'Symm_StorageSystem'}
+        provider_location = {'classname': 'Symm_StorageVolume',
+                             'keybindings': keybindings}
+
+        volume = {'name': 'NO_SUCH_VOLUME',
+                  'size': 1,
+                  'id': '999',
+                  'device_id': '999',
+                  'provider_auth': None,
+                  'project_id': 'project',
+                  'display_name': 'No such volume',
+                  'display_description': 'volume not on the array',
+                  'volume_type_id': 'abc',
+                  'provider_location': six.text_type(provider_location),
+                  'status': 'available',
+                  'host': self.data.fake_host,
+                  'NumberOfBlocks': 100,
+                  'BlockSize': 512
+                  }
+        common = self.driver.common
+        common._initial_setup = mock.Mock(
+            return_value={'volume_backend_name': 'FCNoFAST',
+                          'fastpolicy': None})
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.unmanage,
+                          volume)
+
     def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)
         if bExists:
@@ -4601,6 +4826,26 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
                           self.data.test_volume,
                           EMCVMAXCommonData.test_source_volume)
 
+    def test_manage_existing_fast_failed(self):
+        volume = {}
+        metadata = {'key': 'array',
+                    'value': '12345'}
+        poolInstanceName = {}
+        storageSystem = {}
+        poolInstanceName['InstanceID'] = "SATA_GOLD1"
+        storageSystem['InstanceID'] = "SYMMETRIX+00019870000"
+        volume['volume_metadata'] = [metadata]
+        volume['name'] = "test-volume"
+        external_ref = {'source-name': '0123'}
+        common = self.driver.common
+        common._initial_setup = mock.Mock(
+            return_value={'volume_backend_name': 'FCFAST',
+                          'storagetype:fastpolicy': 'GOLD'})
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.manage_existing,
+                          volume,
+                          external_ref)
+
     def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)
         if bExists:
@@ -5135,7 +5380,6 @@ class EMCV3DriverTestCase(test.TestCase):
         common._create_v3_volume = (
             mock.Mock(return_value=(0L, volumeDict, self.data.storage_system)))
         conn = self.fake_ecom_connection()
-        storageConfigService = []
         storageConfigService = {}
         storageConfigService['SystemName'] = EMCVMAXCommonData.storage_system
         storageConfigService['CreationClassName'] = \

@@ -45,9 +45,10 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         2.1.1 - Fixed issue with mismatched config (bug #1442376)
         2.1.2 - Clean up failed clones (bug #1440154)
         2.1.3 - Fixed a problem with FAST support (bug #1435069)
+        2.2.0 - Add manage/unmanage
     """
 
-    VERSION = "2.1.3"
+    VERSION = "2.2.0"
 
     def __init__(self, *args, **kwargs):
 
@@ -326,3 +327,27 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
             if 'iscsi_ip_address' in open(CINDER_CONF).read():
                 return True
         return False
+
+    def manage_existing(self, volume, external_ref):
+        """Manages an existing VMAX Volume (import to Cinder).
+
+        Renames the Volume to match the expected name for the volume.
+        Also need to consider things like QoS, Emulation, account/tenant.
+        """
+        return self.common.manage_existing(volume, external_ref)
+
+    def manage_existing_get_size(self, volume, external_ref):
+        """Return size of an existing VMAX volume to manage_existing.
+
+        :param self: reference to class
+        :param volume: the volume object including the volume_type_id
+        :param external_ref: reference to the existing volume
+        :returns: size of the volume in GB
+        """
+        return self.common.manage_existing_get_size(volume, external_ref)
+
+    def unmanage(self, volume):
+        """Export VMAX volume from Cinder, leave the volume intact on the
+        backend array.
+        """
+        return self.common.unmanage(volume)
