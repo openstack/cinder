@@ -1590,11 +1590,11 @@ Time Remaining:  0 second(s)
                                       "unit_test_pool2|fakeSerial",
                                       'storage_protocol': 'iSCSI'}}
 
-        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                "Migration of LUN 1 has been stopped or"
-                                " faulted.",
-                                self.driver.migrate_volume,
-                                None, self.testData.test_volume, fake_host)
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               "Migration of LUN 1 has been stopped or"
+                               " faulted.",
+                               self.driver.migrate_volume,
+                               None, self.testData.test_volume, fake_host)
 
         expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(),
                                 retry_disable=True,
@@ -2022,11 +2022,11 @@ Time Remaining:  0 second(s)
         self.driverSetup(commands, results)
         offline_volume = self.testData.test_volume.copy()
         offline_volume.update({'name': volume_name})
-        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                "Volume %s was created in VNX, but in"
-                                " Offline state." % volume_name,
-                                self.driver.create_volume,
-                                offline_volume)
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               "Volume %s was created in VNX, but in"
+                               " Offline state." % volume_name,
+                               self.driver.create_volume,
+                               offline_volume)
 
     def test_create_volume_snapshot_failed(self):
         commands = [self.testData.SNAP_CREATE_CMD('failed_snapshot')]
@@ -3056,14 +3056,14 @@ Time Remaining:  0 second(s)
                                {'storagetype:provisioning': 'compressed'}]))
     def test_create_consistency_group_failed_with_compression(self):
         self.driverSetup([], [])
-        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                "Failed to create consistency group "
-                                "consistencygroup_id "
-                                "because VNX consistency group cannot "
-                                "accept compressed LUNs as members.",
-                                self.driver.create_consistencygroup,
-                                None,
-                                self.testData.test_cg_with_type)
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               "Failed to create consistency group "
+                               "consistencygroup_id "
+                               "because VNX consistency group cannot "
+                               "accept compressed LUNs as members.",
+                               self.driver.create_consistencygroup,
+                               None,
+                               self.testData.test_cg_with_type)
 
     def test_delete_consistency_group(self):
         cg_name = self.testData.test_cg['id']
@@ -3483,13 +3483,13 @@ Time Remaining:  0 second(s)
                    FAKE_ERROR_RETURN]
 
         fake_cli = self.driverSetup(commands, results)
-        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                'Migrate volume failed',
-                                self.driver.create_consistencygroup_from_src,
-                                None, new_cg, [vol1_in_new_cg, vol2_in_new_cg],
-                                cgsnapshot=src_cgsnap,
-                                snapshots=[snap1_in_src_cgsnap,
-                                           snap2_in_src_cgsnap])
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               'Migrate volume failed',
+                               self.driver.create_consistencygroup_from_src,
+                               None, new_cg, [vol1_in_new_cg, vol2_in_new_cg],
+                               cgsnapshot=src_cgsnap,
+                               snapshots=[snap1_in_src_cgsnap,
+                                          snap2_in_src_cgsnap])
 
         expect_cmd = [
             mock.call(*self.testData.LUN_DELETE_CMD(
