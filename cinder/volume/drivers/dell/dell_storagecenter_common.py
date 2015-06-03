@@ -307,6 +307,8 @@ class DellCommonDriver(san.SanDriver):
             data['driver_version'] = self.VERSION
             data['storage_protocol'] = 'iSCSI'
             data['reserved_percentage'] = 0
+            data['free_capacity_gb'] = 'unavailable'
+            data['total_capacity_gb'] = 'unavailable'
             # In theory if storageusage is None then we should have
             # blown up getting it.  If not just report unavailable.
             if storageusage is not None:
@@ -316,15 +318,11 @@ class DellCommonDriver(san.SanDriver):
                 freespace = storageusage.get('freeSpace')
                 freespacegb = self._bytes_to_gb(freespace)
                 data['free_capacity_gb'] = freespacegb
-            if data.get('total_capacity_gb') is None:
-                data['total_capacity_gb'] = 'unavailable'
-            if data.get('free_capacity_gb') is None:
-                data['free_capacity_gb'] = 'unavailable'
             data['QoS_support'] = False
             self._stats = data
             LOG.debug('Total cap %(t)s Free cap %(f)s',
-                      {'t': totalcapacitygb,
-                       'f': freespacegb})
+                      {'t': data['total_capacity_gb'],
+                       'f': data['free_capacity_gb']})
 
     def update_migrated_volume(self, ctxt, volume, new_volume):
         """Return model update for migrated volume.
