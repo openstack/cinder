@@ -183,16 +183,22 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                          ' assuming it is already gone: %(exc)s'),
                      {'volume': volume, 'exc': exc})
 
-    # def extend_volume(self, volume, new_size):
-    #     """Extend an existing volume.
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume.
 
-    #     :param volume: volume reference
-    #     :param new_size: volume new size in GB
-    #     """
-    #     LOG.info(_LI('Extending volume: %(id)s New size: %(size)s GB'),
-    #              {'id': volume['id'], 'size': new_size})
-    #     self.nms.zvol.set_child_prop(self._get_zvol_name(volume['name']),
-    #                                  'volsize', '%sG' % new_size)
+        :param volume: volume reference
+        :param new_size: volume new size in GB
+        """
+        LOG.info(_('Extending volume: %(id)s New size: %(size)s GB'),
+                 {'id': volume['id'], 'size': new_size})
+        pool, group, name = self._get_zvol_name(volume['name']).split('/')
+        url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
+               'volumes/%(name)s') % {
+                    'pool': pool,
+                    'group': group,
+                    'name': name
+                }
+        self.nef(url, {'volumeSize': new_size * units.Gi}, method='PUT')
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
