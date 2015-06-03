@@ -89,7 +89,7 @@ class CapacityFilter(filters.BaseHostFilter):
                 host_state.max_over_subscription_ratio > 1):
             provisioned_ratio = ((host_state.provisioned_capacity_gb +
                                   volume_size) / total)
-            if provisioned_ratio >= host_state.max_over_subscription_ratio:
+            if provisioned_ratio > host_state.max_over_subscription_ratio:
                 LOG.warning(_LW(
                     "Insufficient free space for thin provisioning. "
                     "The ratio of provisioned capacity over total capacity "
