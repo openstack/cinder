@@ -111,10 +111,11 @@ class SolidFireDriver(san.SanISCSIDriver):
         1.2.1 - Add export/import support
         1.2.2 - Catch VolumeNotFound on accept xfr
         2.0.0 - Move from httplib to requests
+        2.0.1 - Implement SolidFire Snapshots
 
     """
 
-    VERSION = '2.0.0'
+    VERSION = '2.0.1'
 
     sf_qos_dict = {'slow': {'minIOPS': 100,
                             'maxIOPS': 200,
