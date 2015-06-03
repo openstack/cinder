@@ -874,8 +874,8 @@ class CephBackupDriver(driver.BackupDriver):
             self._full_backup(backup_id, volume_id, volume_file,
                               volume_name, length)
 
-        self.db.backup_update(self.context, backup_id,
-                              {'container': self._ceph_backup_pool})
+        backup.container = self._ceph_backup_pool
+        backup.save()
 
         if backup_metadata:
             try:

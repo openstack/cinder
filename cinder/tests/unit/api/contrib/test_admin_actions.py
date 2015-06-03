@@ -198,10 +198,14 @@ class AdminActionsTest(test.TestCase):
 
     def test_backup_reset_status_as_admin(self):
         ctx = context.RequestContext('admin', 'fake', True)
-        volume = db.volume_create(ctx, {'status': 'available'})
+        volume = db.volume_create(ctx, {'status': 'available',
+                                        'user_id': 'user',
+                                        'project_id': 'project'})
         backup = db.backup_create(ctx, {'status': 'available',
                                         'size': 1,
-                                        'volume_id': volume['id']})
+                                        'volume_id': volume['id'],
+                                        'user_id': 'user',
+                                        'project_id': 'project'})
 
         resp = self._issue_backup_reset(ctx,
                                         backup,
@@ -225,7 +229,9 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
                                         'provider_location': '', 'size': 1})
         backup = db.backup_create(ctx, {'status': 'available',
-                                        'volume_id': volume['id']})
+                                        'volume_id': volume['id'],
+                                        'user_id': 'user',
+                                        'project_id': 'project'})
 
         resp = self._issue_backup_reset(ctx,
                                         backup,

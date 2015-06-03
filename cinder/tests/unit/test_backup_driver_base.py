@@ -23,6 +23,7 @@ from cinder.backup import driver
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.backup import fake_service
 
@@ -40,8 +41,10 @@ class BackupBaseDriverTestCase(test.TestCase):
         vol = {'id': id, 'size': size, 'status': 'available'}
         return db.volume_create(self.ctxt, vol)['id']
 
-    def _create_backup_db_entry(self, backupid, volid, size):
-        backup = {'id': backupid, 'size': size, 'volume_id': volid}
+    def _create_backup_db_entry(self, backupid, volid, size,
+                                userid='user-id', projectid='project-id'):
+        backup = {'id': backupid, 'size': size, 'volume_id': volid,
+                  'user_id': userid, 'project_id': projectid}
         return db.backup_create(self.ctxt, backup)['id']
 
     def setUp(self):
@@ -53,7 +56,7 @@ class BackupBaseDriverTestCase(test.TestCase):
 
         self._create_backup_db_entry(self.backup_id, self.volume_id, 1)
         self._create_volume_db_entry(self.volume_id, 1)
-        self.backup = db.backup_get(self.ctxt, self.backup_id)
+        self.backup = objects.Backup.get_by_id(self.ctxt, self.backup_id)
         self.driver = fake_service.FakeBackupService(self.ctxt)
 
     def test_get_metadata(self):

@@ -77,7 +77,7 @@ from cinder import db
 from cinder.db import migration as db_migration
 from cinder.db.sqlalchemy import api as db_api
 from cinder.i18n import _
-from cinder.objects import base as objects_base
+from cinder import objects
 from cinder import rpc
 from cinder import utils
 from cinder import version
@@ -272,7 +272,7 @@ class VolumeCommands(object):
             if not rpc.initialized():
                 rpc.init(CONF)
                 target = messaging.Target(topic=CONF.volume_topic)
-                serializer = objects_base.CinderObjectSerializer()
+                serializer = objects.base.CinderObjectSerializer()
                 self._client = rpc.get_client(target, serializer=serializer)
 
         return self._client
@@ -402,7 +402,7 @@ class BackupCommands(object):
         on which the backup operation is running.
         """
         ctxt = context.get_admin_context()
-        backups = db.backup_get_all(ctxt)
+        backups = objects.BackupList.get_all(ctxt)
 
         hdr = "%-32s\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12s\t%-12s"
         print(hdr % (_('ID'),
@@ -531,6 +531,7 @@ def fetch_func_args(func):
 
 
 def main():
+    objects.register_all()
     """Parse options and call the appropriate class/method."""
     CONF.register_cli_opt(category_opt)
     script_name = sys.argv[0]

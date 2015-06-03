@@ -36,6 +36,7 @@ import six
 from cinder.backup import driver
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import objects
 from cinder.openstack.common import loopingcall
 from cinder.volume import utils as volume_utils
 
@@ -152,18 +153,15 @@ class ChunkedBackupDriver(driver.BackupDriver):
         return
 
     def _create_container(self, context, backup):
-        backup_id = backup['id']
-        backup['container'] = self.update_container_name(backup,
-                                                         backup['container'])
-        container = backup['container']
+        backup.container = self.update_container_name(backup, backup.container)
         LOG.debug('_create_container started, container: %(container)s,'
                   'backup: %(backup_id)s.',
-                  {'container': container, 'backup_id': backup_id})
-        if container is None:
-            container = self.backup_default_container
-        self.db.backup_update(context, backup_id, {'container': container})
-        self.put_container(container)
-        return container
+                  {'container': backup.container, 'backup_id': backup.id})
+        if backup.container is None:
+            backup.container = self.backup_default_container
+        backup.save()
+        self.put_container(backup.container)
+        return backup.container
 
     def _generate_object_names(self, backup):
         prefix = backup['service_metadata']
@@ -249,9 +247,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
 
     def _prepare_backup(self, backup):
         """Prepare the backup process and return the backup metadata."""
-        backup_id = backup['id']
-        volume_id = backup['volume_id']
-        volume = self.db.volume_get(self.context, volume_id)
+        volume = self.db.volume_get(self.context, backup.volume_id)
 
         if volume['size'] <= 0:
             err = _('volume size %d is invalid.') % volume['size']
@@ -260,9 +256,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
         container = self._create_container(self.context, backup)
 
         object_prefix = self._generate_object_name_prefix(backup)
-        backup['service_metadata'] = object_prefix
-        self.db.backup_update(self.context, backup_id, {'service_metadata':
-                                                        object_prefix})
+        backup.service_metadata = object_prefix
+        backup.save()
+
         volume_size_bytes = volume['size'] * units.Gi
         availability_zone = self.az
         LOG.debug('starting backup of volume: %(volume_id)s,'
@@ -270,7 +266,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                   ' prefix %(object_prefix)s, availability zone:'
                   ' %(availability_zone)s',
                   {
-                      'volume_id': volume_id,
+                      'volume_id': backup.volume_id,
                       'volume_size_bytes': volume_size_bytes,
                       'object_prefix': object_prefix,
                       'availability_zone': availability_zone,
@@ -349,17 +345,17 @@ class ChunkedBackupDriver(driver.BackupDriver):
         sha256_list = object_sha256['sha256s']
         extra_metadata = object_meta.get('extra_metadata')
         self._write_sha256file(backup,
-                               backup['volume_id'],
+                               backup.volume_id,
                                container,
                                sha256_list)
         self._write_metadata(backup,
-                             backup['volume_id'],
+                             backup.volume_id,
                              container,
                              object_list,
                              volume_meta,
                              extra_metadata)
-        self.db.backup_update(self.context, backup['id'],
-                              {'object_count': object_id})
+        backup.object_count = object_id
+        backup.save()
         LOG.debug('backup %s finished.', backup['id'])
 
     def _backup_metadata(self, backup, object_meta):
@@ -410,9 +406,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
         # is given.
         parent_backup_shafile = None
         parent_backup = None
-        if backup['parent_id']:
-            parent_backup = self.db.backup_get(self.context,
-                                               backup['parent_id'])
+        if backup.parent_id:
+            parent_backup = objects.Backup.get_by_id(self.context,
+                                                     backup.parent_id)
             parent_backup_shafile = self._read_sha256file(parent_backup)
             parent_backup_shalist = parent_backup_shafile['sha256s']
             if (parent_backup_shafile['chunk_size'] !=
@@ -425,7 +421,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 raise exception.InvalidBackup(reason=err)
             # If the volume size increased since the last backup, fail
             # the incremental backup and ask user to do a full backup.
-            if backup['size'] > parent_backup['size']:
+            if backup.size > parent_backup.size:
                 err = _('Volume size increased since the last '
                         'backup. Do a full backup.')
                 raise exception.InvalidBackup(reason=err)
@@ -637,9 +633,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
         backup_list = []
         backup_list.append(backup)
         current_backup = backup
-        while current_backup['parent_id']:
-            prev_backup = (self.db.backup_get(
-                self.context, current_backup['parent_id']))
+        while current_backup.parent_id:
+            prev_backup = objects.Backup.get_by_id(self.context,
+                                                   current_backup.parent_id)
             backup_list.append(prev_backup)
             current_backup = prev_backup
 

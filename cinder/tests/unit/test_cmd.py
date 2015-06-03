@@ -574,7 +574,9 @@ class TestCinderManageCmd(test.TestCase):
                   'container': 'fake-container',
                   'status': 'fake-status',
                   'size': 123,
-                  'object_count': 1}
+                  'object_count': 1,
+                  'volume_id': 'fake-volume-id',
+                  }
         backup_get_all.return_value = [backup]
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
             hdr = ('%-32s\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12s'
@@ -605,7 +607,7 @@ class TestCinderManageCmd(test.TestCase):
             backup_cmds.list()
 
             get_admin_context.assert_called_once_with()
-            backup_get_all.assert_called_once_with(ctxt)
+            backup_get_all.assert_called_once_with(ctxt, None)
             self.assertEqual(expected_out, fake_out.getvalue())
 
     @mock.patch('cinder.utils.service_is_up')
