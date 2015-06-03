@@ -18,6 +18,7 @@ Volume driver test for Tintri storage.
 import mock
 
 from oslo_log import log as logging
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception
@@ -48,7 +49,8 @@ class TintriDriverTestCase(test.TestCase):
         self._driver._hostname = 'host'
         self._driver._username = 'user'
         self._driver._password = 'password'
-        self._provider_location = 'host:/share'
+        self._driver._api_version = 'v310'
+        self._provider_location = 'localhost:/share'
         self._driver._mounted_shares = [self._provider_location]
         self.fake_stubs()
 
@@ -179,3 +181,61 @@ class TintriDriverTestCase(test.TestCase):
                            'bootable': False}, False),
                          self._driver.clone_image(
                          None, volume, 'image-name', FakeImage(), None))
+
+    def test_manage_existing(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        existing = {'source-name': self._provider_location + '/' +
+                    volume.name}
+        with mock.patch('os.path.isfile', return_value=True):
+            self.assertEqual({'provider_location': self._provider_location},
+                             self._driver.manage_existing(volume, existing))
+
+    def test_manage_existing_invalid_ref(self):
+        existing = fake_volume.fake_volume_obj(self.context)
+        volume = fake_volume.fake_volume_obj(self.context)
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self._driver.manage_existing, volume, existing)
+
+    def test_manage_existing_not_found(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        existing = {'source-name': self._provider_location + '/' +
+                    volume.name}
+        with mock.patch('os.path.isfile', return_value=False):
+            self.assertRaises(exception.ManageExistingInvalidReference,
+                              self._driver.manage_existing, volume, existing)
+
+    @mock.patch.object(TintriDriver, '_move_file', mock.Mock(
+        return_value=False))
+    def test_manage_existing_move_failure(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        existing = {'source-name': self._provider_location + '/source-volume'}
+        with mock.patch('os.path.isfile', return_value=True):
+            self.assertRaises(exception.VolumeDriverException,
+                              self._driver.manage_existing,
+                              volume, existing)
+
+    def test_manage_existing_get_size(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        existing = {'source-name': self._provider_location + '/' +
+                    volume.name}
+        file = mock.Mock(st_size=123 * units.Gi)
+        with mock.patch('os.path.isfile', return_value=True):
+            with mock.patch('os.stat', return_value=file):
+                self.assertEqual(float(file.st_size / units.Gi),
+                                 self._driver.manage_existing_get_size(
+                                     volume, existing))
+
+    def test_manage_existing_get_size_failure(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        existing = {'source-name': self._provider_location + '/' +
+                    volume.name}
+        with mock.patch('os.path.isfile', return_value=True):
+            with mock.patch('os.stat', side_effect=OSError):
+                self.assertRaises(exception.VolumeDriverException,
+                                  self._driver.manage_existing_get_size,
+                                  volume, existing)
+
+    def test_unmanage(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        volume.provider_location = self._provider_location
+        self._driver.unmanage(volume)
