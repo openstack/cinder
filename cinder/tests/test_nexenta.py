@@ -81,7 +81,8 @@ class TestNexentaISCSIDriver(test.TestCase):
             setattr(self.nms_mock, mod, self.mox.CreateMockAnything())
         self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
                        lambda *_, **__: self.nms_mock)
-        self.drv = iscsi_ns.NexentaISCSIDriver(configuration=self.configuration)
+        self.drv = iscsi_ns.NexentaISCSIDriver(
+            configuration=self.configuration)
         self.drv.do_setup({})
 
     def test_setup_error(self):
@@ -339,6 +340,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.assertEqual(stats['reserved_percentage'], 0)
         self.assertEqual(stats['QoS_support'], False)
 
+
 class TestNexentaJSONRPC(test.TestCase):
     HOST = 'example.com'
     URL = 'http://%s/' % HOST
@@ -427,6 +429,7 @@ class TestNexentaJSONRPC(test.TestCase):
         self.mox.ReplayAll()
         self.assertRaises(jsonrpc.NexentaJSONException,
                           self.proxy, 'arg1', 'arg2')
+
 
 class TestNexentaNfsDriver(test.TestCase):
     TEST_EXPORT1 = 'host1:/volumes/stack/share'
