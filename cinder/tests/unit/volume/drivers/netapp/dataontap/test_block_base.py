@@ -3,6 +3,7 @@
 # Copyright (c) 2014 Andrew Kerr.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
 # Copyright (c) 2015 Goutham Pacha Ravi. All rights reserved.
+# Copyright (c) 2015 Dustin Schoenbrun. All rights reserved.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -524,6 +525,27 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         target_info = self.library.initialize_connection_iscsi(volume,
                                                                connector)
 
+        self.assertEqual(
+            fake.ISCSI_CONNECTION_PROPERTIES['data']['auth_method'],
+            target_info['data']['auth_method'])
+        self.assertEqual(
+            fake.ISCSI_CONNECTION_PROPERTIES['data']['auth_password'],
+            target_info['data']['auth_password'])
+        self.assertTrue('auth_password' in target_info['data'])
+
+        self.assertEqual(
+            fake.ISCSI_CONNECTION_PROPERTIES['data']['discovery_auth_method'],
+            target_info['data']['discovery_auth_method'])
+        self.assertEqual(
+            fake.ISCSI_CONNECTION_PROPERTIES['data']
+            ['discovery_auth_password'],
+            target_info['data']['discovery_auth_password'])
+        self.assertTrue('auth_password' in target_info['data'])
+        self.assertEqual(
+            fake.ISCSI_CONNECTION_PROPERTIES['data']
+            ['discovery_auth_username'],
+            target_info['data']['discovery_auth_username'])
+
         self.assertEqual(fake.ISCSI_CONNECTION_PROPERTIES, target_info)
         block_base.NetAppBlockStorageLibrary._map_lun.assert_called_once_with(
             fake.ISCSI_VOLUME['name'], [fake.ISCSI_CONNECTOR['initiator']],
@@ -666,8 +688,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.configuration.netapp_lun_ostype = 'linux'
         self.library.configuration.netapp_host_type = 'future_os'
         self.library.do_setup(mock.Mock())
+
         self.assertRaises(exception.NetAppDriverException,
                           self.library.check_for_setup_error)
+
         msg = _("Invalid value for NetApp configuration"
                 " option netapp_host_type.")
         block_base.LOG.error.assert_called_once_with(msg)
@@ -998,3 +1022,28 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertFalse(mock_get_lun_geometry.called)
         self.assertFalse(mock_do_direct_resize.called)
         self.assertFalse(mock_do_sub_clone_resize.called)
+
+    def test_configure_chap_generate_username_and_password(self):
+        """Ensure that a CHAP username and password are generated."""
+        initiator_name = fake.ISCSI_CONNECTOR['initiator']
+
+        username, password = self.library._configure_chap(initiator_name)
+
+        self.assertEqual(na_utils.DEFAULT_CHAP_USER_NAME, username)
+        self.assertIsNotNone(password)
+        self.assertEqual(len(password), na_utils.CHAP_SECRET_LENGTH)
+
+    def test_add_chap_properties(self):
+        """Ensure that CHAP properties are added to the properties dictionary
+
+        """
+        properties = {'data': {}}
+        self.library._add_chap_properties(properties, 'user1', 'pass1')
+
+        data = properties['data']
+        self.assertEqual('CHAP', data['auth_method'])
+        self.assertEqual('user1', data['auth_username'])
+        self.assertEqual('pass1', data['auth_password'])
+        self.assertEqual('CHAP', data['discovery_auth_method'])
+        self.assertEqual('user1', data['discovery_auth_username'])
+        self.assertEqual('pass1', data['discovery_auth_password'])

@@ -78,6 +78,8 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
     @mock.patch.object(block_base.NetAppBlockStorageLibrary, 'do_setup')
     def test_do_setup(self, super_do_setup, mock_do_partner_setup,
                       mock_get_root_volume_name):
+
+        self.mock_object(client_base.Client, '_init_ssh_client')
         mock_get_root_volume_name.return_value = 'vol0'
         context = mock.Mock()
 
@@ -90,6 +92,7 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.MagicMock(return_value=(1, 20)))
     def test_do_partner_setup(self):
+        self.mock_object(client_base.Client, '_init_ssh_client')
         self.library.configuration.netapp_partner_backend_name = 'partner'
 
         self.library._do_partner_setup()
@@ -99,7 +102,7 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.MagicMock(return_value=(1, 20)))
     def test_do_partner_setup_no_partner(self):
-
+        self.mock_object(client_base.Client, '_init_ssh_client')
         self.library._do_partner_setup()
 
         self.assertFalse(hasattr(self.library, 'partner_zapi_client'))

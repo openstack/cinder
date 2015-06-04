@@ -6,6 +6,8 @@
 # Copyright (c) 2014 Andrew Kerr.  All rights reserved.
 # Copyright (c) 2014 Jeff Applewhite.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2015 Chuck Fouts.  All rights reserved.
+# Copyright (c) 2015 Dustin Schoenbrun. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -41,7 +43,6 @@ from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 from cinder.zonemanager import utils as fczm_utils
-
 
 LOG = logging.getLogger(__name__)
 
@@ -778,7 +779,31 @@ class NetAppBlockStorageLibrary(object):
         properties = na_utils.get_iscsi_connection_properties(lun_id, volume,
                                                               iqn, address,
                                                               port)
+
+        if self.configuration.use_chap_auth:
+            chap_username, chap_password = self._configure_chap(initiator_name)
+            self._add_chap_properties(properties, chap_username, chap_password)
+
         return properties
+
+    def _configure_chap(self, initiator_name):
+        password = volume_utils.generate_password(na_utils.CHAP_SECRET_LENGTH)
+        username = na_utils.DEFAULT_CHAP_USER_NAME
+
+        self.zapi_client.set_iscsi_chap_authentication(initiator_name,
+                                                       username,
+                                                       password)
+        LOG.debug("Set iSCSI CHAP authentication.")
+
+        return username, password
+
+    def _add_chap_properties(self, properties, username, password):
+        properties['data']['auth_method'] = 'CHAP'
+        properties['data']['auth_username'] = username
+        properties['data']['auth_password'] = password
+        properties['data']['discovery_auth_method'] = 'CHAP'
+        properties['data']['discovery_auth_username'] = username
+        properties['data']['discovery_auth_password'] = password
 
     def _get_preferred_target_from_list(self, target_details_list,
                                         filter=None):

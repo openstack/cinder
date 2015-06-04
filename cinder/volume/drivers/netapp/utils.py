@@ -53,6 +53,10 @@ DEPRECATED_SSC_SPECS = {'netapp_unmirrored': 'netapp_mirrored',
 QOS_KEYS = frozenset(['maxIOPS', 'maxIOPSperGiB', 'maxBPS', 'maxBPSperGiB'])
 BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
 
+# Secret length cannot be less than 96 bits. http://tools.ietf.org/html/rfc3723
+CHAP_SECRET_LENGTH = 16
+DEFAULT_CHAP_USER_NAME = 'NetApp_iSCSI_CHAP_Username'
+
 
 def validate_instantiation(**kwargs):
     """Checks if a driver is instantiated other than by the unified driver.

@@ -81,6 +81,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
     @mock.patch.object(na_utils, 'check_flags')
     @mock.patch.object(block_base.NetAppBlockStorageLibrary, 'do_setup')
     def test_do_setup(self, super_do_setup, mock_check_flags):
+        self.mock_object(client_base.Client, '_init_ssh_client')
         context = mock.Mock()
 
         self.library.do_setup(context)

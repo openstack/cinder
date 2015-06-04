@@ -38,12 +38,23 @@ LOG = logging.getLogger(__name__)
 class Client(object):
 
     def __init__(self, **kwargs):
+        host = kwargs['hostname']
+        username = kwargs['username']
+        password = kwargs['password']
         self.connection = netapp_api.NaServer(
-            host=kwargs['hostname'],
+            host=host,
             transport_type=kwargs['transport_type'],
             port=kwargs['port'],
-            username=kwargs['username'],
-            password=kwargs['password'])
+            username=username,
+            password=password)
+
+        self.ssh_client = self._init_ssh_client(host, username, password)
+
+    def _init_ssh_client(self, host, username, password):
+        return netapp_api.SSHUtil(
+            host=host,
+            username=username,
+            password=password)
 
     def _init_features(self):
         """Set up the repository of available Data ONTAP features."""
@@ -229,6 +240,14 @@ class Client(object):
 
     def get_iscsi_service_details(self):
         """Returns iscsi iqn."""
+        raise NotImplementedError()
+
+    def check_iscsi_initiator_exists(self, iqn):
+        """Returns True if initiator exists."""
+        raise NotImplementedError()
+
+    def set_iscsi_chap_authentication(self, iqn, username, password):
+        """Provides NetApp host's CHAP credentials to the backend."""
         raise NotImplementedError()
 
     def get_lun_list(self):

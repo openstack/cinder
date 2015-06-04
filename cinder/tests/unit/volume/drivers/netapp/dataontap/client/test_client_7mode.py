@@ -18,8 +18,10 @@ import uuid
 
 from lxml import etree
 import mock
+import paramiko
 import six
 
+from cinder import ssh_utils
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fakes as fake_client)
@@ -42,12 +44,14 @@ class NetApp7modeClientTestCase(test.TestCase):
 
         self.fake_volume = six.text_type(uuid.uuid4())
 
+        self.mock_object(client_7mode.Client, '_init_ssh_client')
         with mock.patch.object(client_7mode.Client,
                                'get_ontapi_version',
                                return_value=(1, 20)):
             self.client = client_7mode.Client([self.fake_volume],
                                               **CONNECTION_INFO)
 
+        self.client.ssh_client = mock.MagicMock()
         self.client.connection = mock.MagicMock()
         self.connection = self.client.connection
         self.fake_lun = six.text_type(uuid.uuid4())
@@ -729,3 +733,38 @@ class NetApp7modeClientTestCase(test.TestCase):
         result = self.client.get_system_name()
 
         self.assertEqual(fake_client.NODE_NAME, result)
+
+    def test_check_iscsi_initiator_exists_when_no_initiator_exists(self):
+        self.connection.invoke_successfully = mock.Mock(
+            side_effect=netapp_api.NaApiError)
+        initiator = fake_client.INITIATOR_IQN
+
+        initiator_exists = self.client.check_iscsi_initiator_exists(initiator)
+
+        self.assertFalse(initiator_exists)
+
+    def test_check_iscsi_initiator_exists_when_initiator_exists(self):
+        self.connection.invoke_successfully = mock.Mock()
+        initiator = fake_client.INITIATOR_IQN
+
+        initiator_exists = self.client.check_iscsi_initiator_exists(initiator)
+
+        self.assertTrue(initiator_exists)
+
+    def test_set_iscsi_chap_authentication(self):
+        ssh = mock.Mock(paramiko.SSHClient)
+        sshpool = mock.Mock(ssh_utils.SSHPool)
+        self.client.ssh_client.ssh_pool = sshpool
+        self.mock_object(self.client.ssh_client, 'execute_command')
+        sshpool.item().__enter__ = mock.Mock(return_value=ssh)
+        sshpool.item().__exit__ = mock.Mock(return_value=False)
+
+        self.client.set_iscsi_chap_authentication(fake_client.INITIATOR_IQN,
+                                                  fake_client.USER_NAME,
+                                                  fake_client.PASSWORD)
+
+        command = ('iscsi security add -i iqn.2015-06.com.netapp:fake_iqn '
+                   '-s CHAP -p passw0rd -n fake_user')
+        self.client.ssh_client.execute_command.assert_has_calls(
+            [mock.call(ssh, command)]
+        )

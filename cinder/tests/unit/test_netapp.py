@@ -578,6 +578,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
                        FakeDirectCmodeHTTPConnection)
         driver.do_setup(context='')
         self.driver = driver
+        self.mock_object(self.driver.library.zapi_client, '_init_ssh_client')
         self.driver.ssc_vols = self.ssc_map
 
     def _set_config(self, configuration):
