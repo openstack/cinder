@@ -29,8 +29,7 @@ from cinder import db
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder import transfer
-import cinder.volume
+import cinder.transfer
 
 
 LOG = logging.getLogger(__name__)
@@ -41,7 +40,7 @@ class VolumeTransferAPITestCase(test.TestCase):
 
     def setUp(self):
         super(VolumeTransferAPITestCase, self).setUp()
-        self.volume_transfer_api = transfer.API()
+        self.volume_transfer_api = cinder.transfer.API()
         self.controller = volume_transfer.VolumeTransferController()
 
     def _create_transfer(self, volume_id=1,
