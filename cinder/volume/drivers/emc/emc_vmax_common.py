@@ -236,7 +236,7 @@ class EMCVMAXCommon(object):
         storageSystem = snapshotInstance['SystemName']
 
         syncName = self.utils.find_sync_sv_by_target(
-            self.conn, storageSystem, snapshotInstance, True)
+            self.conn, storageSystem, snapshotInstance, extraSpecs, True)
         if syncName is not None:
             repservice = self.utils.find_replication_service(self.conn,
                                                              storageSystem)
@@ -1338,12 +1338,13 @@ class EMCVMAXCommon(object):
 
         return foundVolumeinstance
 
-    def _find_storage_sync_sv_sv(self, snapshot, volume,
+    def _find_storage_sync_sv_sv(self, snapshot, volume, extraSpecs,
                                  waitforsync=True):
         """Find the storage synchronized name.
 
         :param snapshot: snapshot object
         :param volume: volume object
+        :param extraSpecs: extra specifications
         :param waitforsync: boolean -- Wait for Solutions Enabler sync.
         :returns: string -- foundsyncname
         :returns: string -- storage_system
@@ -1374,7 +1375,8 @@ class EMCVMAXCommon(object):
                        'sync': foundsyncname})
             # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
             if waitforsync:
-                self.utils.wait_for_sync(self.conn, foundsyncname)
+                self.utils.wait_for_sync(self.conn, foundsyncname,
+                                         extraSpecs)
 
         return foundsyncname, storage_system
 
@@ -2278,7 +2280,8 @@ class EMCVMAXCommon(object):
             # Wait for it to fully sync in case there is an ongoing
             # create volume from snapshot request.
             syncName = self.utils.find_sync_sv_by_target(
-                self.conn, storageSystem, snapshotInstance, True)
+                self.conn, storageSystem, snapshotInstance, extraSpecs,
+                True)
 
             if syncName is None:
                 LOG.info(_LI(
@@ -2549,7 +2552,8 @@ class EMCVMAXCommon(object):
                     targetCgInstanceName, relationName, extraSpecs)
             # Break the replica group relationship.
             rgSyncInstanceName = self.utils.find_group_sync_rg_by_target(
-                self.conn, storageSystem, targetCgInstanceName, True)
+                self.conn, storageSystem, targetCgInstanceName, extraSpecs,
+                True)
             if rgSyncInstanceName is not None:
                 repservice = self.utils.find_replication_service(
                     self.conn, storageSystem)
@@ -3791,7 +3795,8 @@ class EMCVMAXCommon(object):
         cloneVolume['provider_location'] = six.text_type(cloneDict)
 
         syncInstanceName, _storageSystem = (
-            self._find_storage_sync_sv_sv(cloneVolume, sourceVolume, True))
+            self._find_storage_sync_sv_sv(cloneVolume, sourceVolume,
+                                          extraSpecs, True))
 
         # Detach/dissolve the clone/snap relationship.
         # 8 - Detach operation.

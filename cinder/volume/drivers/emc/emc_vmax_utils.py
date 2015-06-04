@@ -387,11 +387,12 @@ class EMCVMAXUtils(object):
         else:
             return True
 
-    def wait_for_sync(self, conn, syncName):
+    def wait_for_sync(self, conn, syncName, extraSpecs=None):
         """Given the sync name wait for it to fully synchronize.
 
         :param conn: connection to the ecom server
         :param syncName: the syncName
+        :param extraSpecs: extra specifications
         :raises: loopingcall.LoopingCallDone
         :raises: VolumeBackendAPIException
         """
@@ -403,10 +404,11 @@ class EMCVMAXUtils(object):
             :raises: VolumeBackendAPIException
             """
             retries = kwargs['retries']
+            maxJobRetries = self._get_max_job_retries(extraSpecs)
             wait_for_sync_called = kwargs['wait_for_sync_called']
             if self._is_sync_complete(conn, syncName):
                 raise loopingcall.LoopingCallDone()
-            if retries > JOB_RETRIES:
+            if retries > maxJobRetries:
                 LOG.error(_LE("_wait_for_sync failed after %(retries)d "
                               "tries."),
                           {'retries': retries})
@@ -424,8 +426,9 @@ class EMCVMAXUtils(object):
 
         kwargs = {'retries': 0,
                   'wait_for_sync_called': False}
+        intervalInSecs = self._get_interval_in_secs(extraSpecs)
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_sync)
-        timer.start(interval=INTERVAL_10_SEC).wait()
+        timer.start(interval=intervalInSecs).wait()
 
     def _is_sync_complete(self, conn, syncName):
         """Check if the job is finished.
@@ -1420,12 +1423,14 @@ class EMCVMAXUtils(object):
         return six.text_type(datetime.timedelta(seconds=int(delta)))
 
     def find_sync_sv_by_target(
-            self, conn, storageSystem, target, waitforsync=True):
+            self, conn, storageSystem, target, extraSpecs,
+            waitforsync=True):
         """Find the storage synchronized name by target device ID.
 
         :param conn: connection to the ecom server
         :param storageSystem: the storage system name
         :param target: target volume object
+        :param extraSpecs: the extraSpecs dict
         :param waitforsync: wait for the synchronization to complete if True
         :returns: foundSyncInstanceName
         """
@@ -1456,17 +1461,19 @@ class EMCVMAXUtils(object):
         else:
             # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
             if waitforsync:
-                self.wait_for_sync(conn, foundSyncInstanceName)
+                self.wait_for_sync(conn, foundSyncInstanceName, extraSpecs)
 
         return foundSyncInstanceName
 
     def find_group_sync_rg_by_target(
-            self, conn, storageSystem, targetRgInstanceName, waitforsync=True):
+            self, conn, storageSystem, targetRgInstanceName, extraSpecs,
+            waitforsync=True):
         """Find the SE_GroupSynchronized_RG_RG instance name by target group.
 
         :param conn: connection to the ecom server
         :param storageSystem: the storage system name
         :param targetRgInstanceName: target group instance name
+        :param extraSpecs: the extraSpecs dict
         :param waitforsync: wait for synchronization to complete
         :returns: foundSyncInstanceName
         """
@@ -1496,7 +1503,7 @@ class EMCVMAXUtils(object):
         else:
             # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
             if waitforsync:
-                self.wait_for_sync(conn, foundSyncInstanceName)
+                self.wait_for_sync(conn, foundSyncInstanceName, extraSpecs)
 
         return foundSyncInstanceName
 
