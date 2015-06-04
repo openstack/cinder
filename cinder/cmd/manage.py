@@ -547,6 +547,9 @@ def main():
         CONF(sys.argv[1:], project='cinder',
              version=version.version_string())
         logging.setup(CONF, "cinder")
+    except cfg.ConfigDirNotFoundError as details:
+        print(_("Invalid directory: %s") % details)
+        sys.exit(2)
     except cfg.ConfigFilesNotFoundError:
         cfgfile = CONF.config_file[-1] if CONF.config_file else None
         if cfgfile and not os.access(cfgfile, os.R_OK):
