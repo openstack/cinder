@@ -129,7 +129,8 @@ class DateraDriver(san.SanISCSIDriver):
         if result['status'] == 'available':
             return
         else:
-            raise exception.VolumeDriverException(msg=_('Resource not ready.'))
+            raise exception.VolumeDriverException(message=
+                                                  _('Resource not ready.'))
 
     def _create_resource(self, resource, resource_type, body):
         result = self._issue_api_request(resource_type, 'post', body=body)
