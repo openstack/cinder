@@ -737,6 +737,14 @@ MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator?range=[0-256]/GET'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/'] = (
     FAKE_ISCSI_INITIATOR_RESPONSE)
 
+MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/POST'] = (
+    FAKE_ISCSI_INITIATOR_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/PUT'] = (
+    FAKE_ISCSI_INITIATOR_RESPONSE)
+MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/'
+                             'iqn.1993-08.debian:01:ec2bff7ac3a3/PUT'] = (
+    FAKE_ISCSI_INITIATOR_RESPONSE)
 # mock host info map
 MAP_COMMAND_TO_FAKE_RESPONSE['host?range=[0-65535]/GET'] = (
     FAKE_GET_ALL_HOST_INFO_RESPONSE)
@@ -805,6 +813,7 @@ class Fake18000Client(rest_client.RestClient):
         self.deviceid = None
         self.test_fail = False
         self.checkFlag = False
+        self.remove_chap_flag = False
 
     def _change_file_mode(self, filepath):
         pass
@@ -1043,6 +1052,34 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
                                                      self.configuration)
         self.assertEqual('0', host_os)
 
+    def test_find_chap_info(self):
+        self.driver.restclient.login()
+        tmp_dict = {}
+        iscsi_info = {}
+        tmp_dict['Name'] = 'iqn.1993-08.debian:01:ec2bff7ac3a3'
+        tmp_dict['CHAPinfo'] = 'mm-user;mm-user@storage'
+        ini_list = [tmp_dict]
+        iscsi_info['Initiator'] = ini_list
+        initiator_name = FakeConnector['initiator']
+        chapinfo = self.driver.restclient.find_chap_info(iscsi_info,
+                                                         initiator_name)
+        chap_username, chap_password = chapinfo.split(';')
+        self.assertEqual('mm-user', chap_username)
+        self.assertEqual('mm-user@storage', chap_password)
+
+    def test_find_alua_info(self):
+        self.driver.restclient.login()
+        tmp_dict = {}
+        iscsi_info = {}
+        tmp_dict['Name'] = 'iqn.1993-08.debian:01:ec2bff7ac3a3'
+        tmp_dict['ALUA'] = '1'
+        ini_list = [tmp_dict]
+        iscsi_info['Initiator'] = ini_list
+        initiator_name = FakeConnector['initiator']
+        type = self.driver.restclient._find_alua_info(iscsi_info,
+                                                      initiator_name)
+        self.assertEqual('1', type)
+
     def create_fake_conf_file(self):
         """Create a fake Config file.
 
@@ -1115,6 +1152,8 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         initiator = doc.createElement('Initiator')
         initiator.setAttribute('Name', 'iqn.1993-08.debian:01:ec2bff7ac3a3')
         initiator.setAttribute('TargetIP', '192.168.100.2')
+        initiator.setAttribute('CHAPinfo', 'mm-user;mm-user@storage')
+        initiator.setAttribute('ALUA', '1')
         iscsi.appendChild(initiator)
 
         host = doc.createElement('Host')

@@ -354,7 +354,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                                                       host_name_before_hash)
 
         # Add initiator to the host.
-        self.restclient.ensure_initiator_added(initiator_name, host_id)
+        self.restclient.ensure_initiator_added(self.xml_file_path,
+                                               initiator_name,
+                                               host_id)
         hostgroup_id = self.restclient.add_host_into_hostgroup(host_id)
 
         # Mapping lungroup and hostgroup to view.
@@ -368,6 +370,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         LOG.info(_LI("initialize_connection_iscsi, host lun id is: %s."),
                  hostlun_id)
 
+        iscsi_conf = huawei_utils.get_iscsi_conf(self.xml_file_path)
+        chapinfo = self.restclient.find_chap_info(iscsi_conf,
+                                                  initiator_name)
         # Return iSCSI properties.
         properties = {}
         properties['target_discovered'] = False
@@ -375,6 +380,13 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         properties['target_iqn'] = iscsi_iqn
         properties['target_lun'] = int(hostlun_id)
         properties['volume_id'] = volume['id']
+
+        # If use CHAP, return CHAP info.
+        if chapinfo:
+            chap_username, chap_password = chapinfo.split(';')
+            properties['auth_method'] = 'CHAP'
+            properties['auth_username'] = chap_username
+            properties['auth_password'] = chap_password
 
         LOG.info(_LI("initialize_connection_iscsi success. Return data: %s."),
                  properties)
@@ -434,6 +446,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                 self.restclient.delete_portgroup_mapping_view(view_id,
                                                               portgroup_id)
         if view_id and (int(left_lunnum) <= 0):
+            self.restclient.remove_chap(initiator_name)
+
             if self.restclient.lungroup_associated(view_id, lungroup_id):
                 self.restclient.delete_lungroup_mapping_view(view_id,
                                                              lungroup_id)
