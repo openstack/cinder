@@ -25,19 +25,15 @@ import urllib2
 
 from cinder.volume.drivers import nexenta
 
-try:
-    from oslo_log import log as logging
-except:
-    try:
-        from oslo.log import log as logging
-    except:
-        from cinder.openstack.common import log as logging
+from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
+
 
 # placeholder text formatting handler
 def __(text):
     return text
+
 
 class NexentaJSONException(nexenta.NexentaException):
     pass
