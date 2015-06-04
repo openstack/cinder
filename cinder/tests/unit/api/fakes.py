@@ -98,7 +98,7 @@ class FakeToken(object):
 class FakeRequestContext(context.RequestContext):
     def __init__(self, *args, **kwargs):
         kwargs['auth_token'] = kwargs.get('auth_token', 'fake_auth_token')
-        return super(FakeRequestContext, self).__init__(*args, **kwargs)
+        super(FakeRequestContext, self).__init__(*args, **kwargs)
 
 
 class HTTPRequest(webob.Request):
