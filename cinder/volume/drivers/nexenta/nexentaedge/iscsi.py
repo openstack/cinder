@@ -28,10 +28,7 @@ import json
 
 from oslo_log import log as logging
 
-try:
-    from oslo_config import cfg
-except:
-    from oslo.config import cfg
+from oslo_config import cfg
 
 NEXENTA_EDGE_OPTIONS = [
     cfg.StrOpt('nexenta_rest_address',
