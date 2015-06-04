@@ -109,10 +109,10 @@ CONF = cfg.CONF
 CONF.register_opts(volume_manager_opts)
 
 MAPPING = {
-    'cinder.volume.drivers.huawei.huawei_hvs.HuaweiHVSISCSIDriver':
-    'cinder.volume.drivers.huawei.huawei_18000.Huawei18000ISCSIDriver',
-    'cinder.volume.drivers.huawei.huawei_hvs.HuaweiHVSFCDriver':
-    'cinder.volume.drivers.huawei.huawei_18000.Huawei18000FCDriver',
+    'cinder.volume.drivers.huawei.huawei_18000.Huawei18000ISCSIDriver':
+    'cinder.volume.drivers.huawei.huawei_driver.Huawei18000ISCSIDriver',
+    'cinder.volume.drivers.huawei.huawei_18000.Huawei18000FCDriver':
+    'cinder.volume.drivers.huawei.huawei_driver.Huawei18000FCDriver',
     'cinder.volume.drivers.fujitsu_eternus_dx_fc.FJDXFCDriver':
     'cinder.volume.drivers.fujitsu.eternus_dx_fc.FJDXFCDriver',
     'cinder.volume.drivers.fujitsu_eternus_dx_iscsi.FJDXISCSIDriver':
