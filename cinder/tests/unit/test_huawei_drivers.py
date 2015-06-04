@@ -26,6 +26,7 @@ from oslo_log import log as logging
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import huawei_driver
 from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume.drivers.huawei import rest_client
@@ -45,6 +46,20 @@ test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
                'host': 'ubuntu@huawei#OpenStack_Pool',
                'provider_location': '11',
                }
+
+error_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0637',
+                'size': 2,
+                'volume_name': 'vol2',
+                'id': '21ec7341-9256-497b-97d9-ef48edcf0637',
+                'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0637',
+                'provider_auth': None,
+                'project_id': 'project',
+                'display_name': 'vol2',
+                'display_description': 'test error_volume',
+                'volume_type_id': None,
+                'host': 'ubuntu@huawei#OpenStack_Pool_error',
+                'provider_location': '12',
+                }
 
 test_snap = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
              'size': 1,
@@ -593,6 +608,26 @@ FAKE_PORT_GROUP_RESPONSE = """
 }
 """
 
+FAKE_ISCSI_INITIATOR_RESPONSE = """
+{
+    "error":{
+        "code":0
+    },
+    "data":[{
+        "CHAPNAME":"mm-user",
+        "HEALTHSTATUS":"1",
+        "ID":"iqn.1993-08.org.debian:01:9073aba6c6f",
+        "ISFREE":"true",
+        "MULTIPATHTYPE":"1",
+        "NAME":"",
+        "OPERATIONSYSTEM":"255",
+        "RUNNINGSTATUS":"28",
+        "TYPE":222,
+        "USECHAP":"true"
+    }]
+}
+"""
+
 FAKE_ERROR_INFO_RESPONSE = """
 {
     "error":{
@@ -975,6 +1010,9 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, test_volume)
 
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume, error_volume)
+
     def test_delete_volume_fail(self):
         self.driver.restclient.login()
         self.driver.restclient.test_fail = True
@@ -995,7 +1033,7 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         self.assertEqual(1, iscsi_properties['data']['target_lun'])
 
     def test_get_default_timeout(self):
-        result = huawei_utils._get_default_timeout(self.xml_file_path)
+        result = huawei_utils.get_default_timeout(self.xml_file_path)
         self.assertEqual('43200', result)
 
     def test_get_wait_interval(self):
@@ -1005,14 +1043,14 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
 
     def test_lun_is_associated_to_lungroup(self):
         self.driver.restclient.login()
-        self.driver.restclient._associate_lun_to_lungroup('11', '11')
+        self.driver.restclient.associate_lun_to_lungroup('11', '11')
         result = self.driver.restclient._is_lun_associated_to_lungroup('11',
                                                                        '11')
         self.assertTrue(result)
 
     def test_lun_is_not_associated_to_lun_group(self):
         self.driver.restclient.login()
-        self.driver.restclient._associate_lun_to_lungroup('12', '12')
+        self.driver.restclient.associate_lun_to_lungroup('12', '12')
         self.driver.restclient.remove_lun_from_lungroup('12', '12')
         result = self.driver.restclient._is_lun_associated_to_lungroup('12',
                                                                        '12')
@@ -1079,6 +1117,36 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         type = self.driver.restclient._find_alua_info(iscsi_info,
                                                       initiator_name)
         self.assertEqual('1', type)
+
+    def test_find_pool_info(self):
+        self.driver.restclient.login()
+        pools = {
+            "error": {"code": 0},
+            "data": [{
+                "NAME": "test001",
+                "ID": "0",
+                "USERFREECAPACITY": "36",
+                "USERTOTALCAPACITY": "48",
+                "USAGETYPE": constants.BLOCK_STORAGE_POOL_TYPE},
+                {"NAME": "test002",
+                 "ID": "1",
+                 "USERFREECAPACITY": "37",
+                 "USERTOTALCAPACITY": "49",
+                 "USAGETYPE": constants.FILE_SYSTEM_POOL_TYPE}]}
+        pool_name = 'test001'
+        test_info = {'CAPACITY': '36', 'ID': '0', 'TOTALCAPACITY': '48'}
+        pool_info = self.driver.restclient.find_pool_info(pool_name, pools)
+        self.assertEqual(test_info, pool_info)
+
+        pool_name = 'test002'
+        test_info = {}
+        pool_info = self.driver.restclient.find_pool_info(pool_name, pools)
+        self.assertEqual(test_info, pool_info)
+
+        pool_name = 'test000'
+        test_info = {}
+        pool_info = self.driver.restclient.find_pool_info(pool_name, pools)
+        self.assertEqual(test_info, pool_info)
 
     def create_fake_conf_file(self):
         """Create a fake Config file.
@@ -1252,6 +1320,9 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, test_volume)
 
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume, error_volume)
+
     def test_delete_volume_fail(self):
         self.driver.restclient.login()
         self.driver.restclient.test_fail = True
@@ -1272,7 +1343,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
                           test_volume, FakeConnector)
 
     def test_get_default_timeout(self):
-        result = huawei_utils._get_default_timeout(self.xml_file_path)
+        result = huawei_utils.get_default_timeout(self.xml_file_path)
         self.assertEqual('43200', result)
 
     def test_get_wait_interval(self):
@@ -1282,14 +1353,14 @@ class Huawei18000FCDriverTestCase(test.TestCase):
 
     def test_lun_is_associated_to_lungroup(self):
         self.driver.restclient.login()
-        self.driver.restclient._associate_lun_to_lungroup('11', '11')
+        self.driver.restclient.associate_lun_to_lungroup('11', '11')
         result = self.driver.restclient._is_lun_associated_to_lungroup('11',
                                                                        '11')
         self.assertTrue(result)
 
     def test_lun_is_not_associated_to_lun_group(self):
         self.driver.restclient.login()
-        self.driver.restclient._associate_lun_to_lungroup('12', '12')
+        self.driver.restclient.associate_lun_to_lungroup('12', '12')
         self.driver.restclient.remove_lun_from_lungroup('12', '12')
         result = self.driver.restclient._is_lun_associated_to_lungroup('12',
                                                                        '12')

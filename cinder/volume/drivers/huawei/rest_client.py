@@ -14,6 +14,7 @@
 #    under the License.
 
 import json
+import socket
 import time
 
 from oslo_log import log as logging
@@ -47,16 +48,18 @@ class RestClient(object):
         Send HTTPS call, get response in JSON.
         Convert response into Python Object and return it.
         """
-        opener = urllib.build_opener(urllib.HTTPCookieProcessor(self.cookie))
-        urllib.install_opener(opener)
+
+        handler = urllib.request.HTTPCookieProcessor(self.cookie)
+        opener = urllib.request.build_opener(handler)
+        urllib.request.install_opener(opener)
         res_json = None
 
         try:
-            urllib.socket.setdefaulttimeout(720)
-            req = urllib.Request(url, data, self.headers)
+            socket.setdefaulttimeout(constants.SOCKET_TIME_OUT)
+            req = urllib.request.Request(url, data, self.headers)
             if method:
                 req.get_method = lambda: method
-            res = urllib.urlopen(req).read().decode("utf-8")
+            res = urllib.request.urlopen(req).read().decode("utf-8")
 
             if "xx/sessions" not in url:
                 LOG.info(_LI('\n\n\n\nRequest URL: %(url)s\n\n'
@@ -98,15 +101,15 @@ class RestClient(object):
             if result['error']['code'] == constants.ERROR_CONNECT_TO_SERVER:
                 continue
 
-            if (result['error']['code'] != 0) or ("data" not in result):
+            if (result['error']['code'] != 0) or ('data' not in result):
                 msg = (_("Login error, reason is: %s.") % result)
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
-            deviceid = result['data']['deviceid']
-            self.url = item_url + deviceid
+            device_id = result['data']['deviceid']
+            self.url = item_url + device_id
             self.headers['iBaseToken'] = result['data']['iBaseToken']
-            return deviceid
+            return device_id
 
         msg = _("Login error: Can't connect to server.")
         LOG.error(msg)
@@ -121,7 +124,7 @@ class RestClient(object):
             raise exception.VolumeBackendAPIException(data=msg)
 
     def _assert_data_in_result(self, result, msg):
-        if "data" not in result:
+        if 'data' not in result:
             err_msg = (_('%s "data" was not in result.') % msg)
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
@@ -159,34 +162,33 @@ class RestClient(object):
         result = self.call(url, data, "DELETE")
         self._assert_rest_result(result, 'Delete lun error.')
 
-    def find_pool_info(self):
-        root = huawei_utils.parse_xml_file(self.xml_file_path)
-        pool_name = root.findtext('Storage/StoragePool')
-        if not pool_name:
-            err_msg = (_("Invalid resource pool: %s.") % pool_name)
-            LOG.error(err_msg)
-            raise exception.InvalidInput(err_msg)
-
+    def find_all_pools(self):
         url = self.url + "/storagepool"
         result = self.call(url, None)
         self._assert_rest_result(result, 'Query resource pool error.')
+        self._assert_data_in_result(result, 'Query resource pool error.')
+        return result
 
+    def find_pool_info(self, pool_name, result):
         poolinfo = {}
-        if "data" in result:
+        if not pool_name:
+            return poolinfo
+
+        if 'data' in result:
             for item in result['data']:
                 if pool_name.strip() == item['NAME']:
+                    # USAGETYPE means pool type.
+                    if ('USAGETYPE' in item and
+                       item['USAGETYPE'] == constants.FILE_SYSTEM_POOL_TYPE):
+                        break
                     poolinfo['ID'] = item['ID']
                     poolinfo['CAPACITY'] = item['USERFREECAPACITY']
                     poolinfo['TOTALCAPACITY'] = item['USERTOTALCAPACITY']
                     break
-        if not poolinfo:
-            msg = (_('Get pool info error, pool name is: %s.') % pool_name)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
         return poolinfo
 
     def _get_id_from_result(self, result, name, key):
-        if "data" in result:
+        if 'data' in result:
             for item in result['data']:
                 if name == item[key]:
                     return item['ID']
@@ -358,7 +360,7 @@ class RestClient(object):
             is_associated = self._is_lun_associated_to_lungroup(lungroup_id,
                                                                 lun_id)
             if not is_associated:
-                self._associate_lun_to_lungroup(lungroup_id, lun_id)
+                self.associate_lun_to_lungroup(lungroup_id, lun_id)
 
             if view_id is None:
                 view_id = self._add_mapping_view(mapping_view_name)
@@ -519,7 +521,7 @@ class RestClient(object):
         self._assert_rest_result(result, 'Find host lun id error.')
 
         host_lun_id = 1
-        if "data" in result:
+        if 'data' in result:
             for item in result['data']:
                 if lun_id == item['ID']:
                     associate_data = item['ASSOCIATEMETADATA']
@@ -587,7 +589,7 @@ class RestClient(object):
         result = self.call(url, data)
         self._assert_rest_result(result, 'Add new host error.')
 
-        if "data" in result:
+        if 'data' in result:
             return result['data']['ID']
         else:
             return
@@ -629,7 +631,7 @@ class RestClient(object):
         result = self.call(url, data)
         self._assert_rest_result(result, 'Associate host to hostgroup error.')
 
-    def _associate_lun_to_lungroup(self, lungroup_id, lun_id):
+    def associate_lun_to_lungroup(self, lungroup_id, lun_id):
         """Associate lun to lungroup."""
         url = self.url + "/lungroup/associate"
         data = json.dumps({"ID": lungroup_id,
@@ -655,7 +657,7 @@ class RestClient(object):
         self._assert_rest_result(result,
                                  'Check initiator added to array error.')
 
-        if "data" in result:
+        if 'data' in result:
             for item in result['data']:
                 if item["ID"] == ininame:
                     return True
@@ -668,7 +670,7 @@ class RestClient(object):
         self._assert_rest_result(result,
                                  'Check initiator associated to host error.')
 
-        if "data" in result:
+        if 'data' in result:
             for item in result['data']:
                 if item['ID'] == ininame and item['ISFREE'] == "true":
                     return False
@@ -870,7 +872,7 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, 'Find lun number error.')
         lunnum = -1
-        if "data" in result:
+        if 'data' in result:
             lunnum = result['data']['COUNT']
         return lunnum
 
@@ -905,9 +907,9 @@ class RestClient(object):
         result = self.call(url, data, "PUT")
         self._assert_rest_result(result, 'Start LUNcopy error.')
 
-    def _get_capacity(self):
+    def _get_capacity(self, pool_name, result):
         """Get free capacity and total capacity of the pool."""
-        poolinfo = self.find_pool_info()
+        poolinfo = self.find_pool_info(pool_name, result)
         pool_capacity = {'total_capacity': 0.0,
                          'free_capacity': 0.0}
 
@@ -927,7 +929,7 @@ class RestClient(object):
         self._assert_rest_result(result, 'Get LUNcopy information error.')
 
         luncopyinfo = {}
-        if "data" in result:
+        if 'data' in result:
             for item in result['data']:
                 if luncopyid == item['ID']:
                     luncopyinfo['name'] = item['NAME']
@@ -1031,7 +1033,7 @@ class RestClient(object):
         self._assert_rest_result(result, msg)
 
         fc_wwpns = None
-        if "data" in result:
+        if 'data' in result:
             for item in result['data']:
                 if wwn == item['INITIATOR_PORT_WWN']:
                     fc_wwpns = item['TARGET_PORT_WWN']
@@ -1041,25 +1043,27 @@ class RestClient(object):
 
     def update_volume_stats(self):
         root = huawei_utils.parse_xml_file(self.xml_file_path)
-        pool_name = root.findtext('Storage/StoragePool')
-        if not pool_name:
+        pool_names = root.findtext('Storage/StoragePool')
+        if not pool_names:
             msg = (_(
                 'Invalid resource pool name. '
                 'Please check the config file.'))
             LOG.error(msg)
             raise exception.InvalidInput(msg)
         data = {}
-        capacity = self._get_capacity()
         data["pools"] = []
-        pool = {}
-        pool.update(dict(
-            pool_name=pool_name,
-            total_capacity_gb=capacity['total_capacity'],
-            free_capacity_gb=capacity['free_capacity'],
-            reserved_percentage=0,
-            QoS_support=True,
-        ))
-        data["pools"].append(pool)
+        result = self.find_all_pools()
+        for pool_name in pool_names.split(";"):
+            pool_name = pool_name.strip(' \t\n\r')
+            capacity = self._get_capacity(pool_name, result)
+            pool = {'pool_name': pool_name,
+                    'total_capacity_gb': capacity['total_capacity'],
+                    'free_capacity_gb': capacity['free_capacity'],
+                    'reserved_percentage': 0,
+                    'QoS_support': True,
+                    }
+
+            data["pools"].append(pool)
         return data
 
     def _find_qos_policy_info(self, policy_name):
@@ -1070,7 +1074,7 @@ class RestClient(object):
         self._assert_rest_result(result, msg)
 
         qos_info = {}
-        if "data" in result:
+        if 'data' in result:
             for item in result['data']:
                 if policy_name == item['NAME']:
                     qos_info['ID'] = item['ID']
@@ -1099,7 +1103,7 @@ class RestClient(object):
         self._assert_rest_result(result, msg)
         self._assert_data_in_result(result, msg)
 
-        if "data" in result:
+        if 'data' in result:
             for item in result['data']:
                 if (item['IPV4ADDR'] and item['HEALTHSTATUS'] ==
                     constants.STATUS_HEALTH
