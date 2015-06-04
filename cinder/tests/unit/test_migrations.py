@@ -883,6 +883,15 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertNotIn('object_current_version', services.c)
         self.assertNotIn('object_available_version', services.c)
 
+    def _check_054(self, engine, data):
+        backups = db_utils.get_table(engine, 'backups')
+        self.assertIsInstance(backups.c.num_dependent_backups.type,
+                              sqlalchemy.types.INTEGER)
+
+    def _post_downgrade_054(self, engine):
+        backups = db_utils.get_table(engine, 'backups')
+        self.assertNotIn('num_dependent_backups', backups.c)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 

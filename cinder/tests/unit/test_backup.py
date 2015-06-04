@@ -758,6 +758,16 @@ class BackupTestCase(BaseBackupTest):
         result = self.backup_mgr.check_support_to_force_delete(self.ctxt)
         self.assertTrue(result)
 
+    def test_backup_has_dependent_backups(self):
+        """Test backup has dependent backups.
+
+        Test the query of has_dependent_backups in backup object is correct.
+        """
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(size=vol_size)
+        backup = self._create_backup_db_entry(volume_id=vol_id)
+        self.assertFalse(backup.has_dependent_backups)
+
 
 class BackupTestCaseWithVerify(BaseBackupTest):
     """Test Case for backups."""

@@ -88,6 +88,7 @@ def _usage_from_volume(context, volume_ref, **kw):
 
 
 def _usage_from_backup(backup_ref, **kw):
+    num_dependent_backups = backup_ref['num_dependent_backups']
     usage_info = dict(tenant_id=backup_ref['project_id'],
                       user_id=backup_ref['user_id'],
                       availability_zone=backup_ref['availability_zone'],
@@ -100,7 +101,10 @@ def _usage_from_backup(backup_ref, **kw):
                       size=backup_ref['size'],
                       service_metadata=backup_ref['service_metadata'],
                       service=backup_ref['service'],
-                      fail_reason=backup_ref['fail_reason'])
+                      fail_reason=backup_ref['fail_reason'],
+                      parent_id=backup_ref['parent_id'],
+                      num_dependent_backups=num_dependent_backups,
+                      )
 
     usage_info.update(kw)
     return usage_info

@@ -86,7 +86,8 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         self.assertEqual('3', backup.temp_snapshot_id)
 
     def test_import_record(self):
-        backup = objects.Backup(context=self.context, id=1)
+        backup = objects.Backup(context=self.context, id=1, parent_id=None,
+                                num_dependent_backups=0)
         export_string = backup.encode_record()
         imported_backup = objects.Backup.decode_record(export_string)
 
@@ -94,7 +95,8 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         self.assertDictEqual(dict(backup), imported_backup)
 
     def test_import_record_additional_info(self):
-        backup = objects.Backup(context=self.context, id=1)
+        backup = objects.Backup(context=self.context, id=1, parent_id=None,
+                                num_dependent_backups=0)
         extra_info = {'driver': {'key1': 'value1', 'key2': 'value2'}}
         extra_info_copy = extra_info.copy()
         export_string = backup.encode_record(extra_info=extra_info)
@@ -110,7 +112,8 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         self.assertDictEqual(expected, imported_backup)
 
     def test_import_record_additional_info_cant_overwrite(self):
-        backup = objects.Backup(context=self.context, id=1)
+        backup = objects.Backup(context=self.context, id=1, parent_id=None,
+                                num_dependent_backups=0)
         export_string = backup.encode_record(id='fake_id')
         imported_backup = objects.Backup.decode_record(export_string)
 

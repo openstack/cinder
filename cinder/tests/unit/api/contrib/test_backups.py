@@ -57,7 +57,8 @@ class BackupsAPITestCase(test.TestCase):
                        snapshot=False,
                        incremental=False,
                        parent_id=None,
-                       size=0, object_count=0, host='testhost'):
+                       size=0, object_count=0, host='testhost',
+                       num_dependent_backups=0):
         """Create a backup object."""
         backup = {}
         backup['volume_id'] = volume_id
@@ -75,6 +76,7 @@ class BackupsAPITestCase(test.TestCase):
         backup['snapshot'] = snapshot
         backup['incremental'] = incremental
         backup['parent_id'] = parent_id
+        backup['num_dependent_backups'] = num_dependent_backups
         return db.backup_create(context.get_admin_context(), backup)['id']
 
     @staticmethod
@@ -104,6 +106,8 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(0, res_dict['backup']['size'])
         self.assertEqual('creating', res_dict['backup']['status'])
         self.assertEqual(volume_id, res_dict['backup']['volume_id'])
+        self.assertFalse(res_dict['backup']['is_incremental'])
+        self.assertFalse(res_dict['backup']['has_dependent_backups'])
 
         db.backup_destroy(context.get_admin_context(), backup_id)
         db.volume_destroy(context.get_admin_context(), volume_id)
@@ -207,7 +211,7 @@ class BackupsAPITestCase(test.TestCase):
         res_dict = json.loads(res.body)
 
         self.assertEqual(200, res.status_int)
-        self.assertEqual(12, len(res_dict['backups'][0]))
+        self.assertEqual(14, len(res_dict['backups'][0]))
         self.assertEqual('az1', res_dict['backups'][0]['availability_zone'])
         self.assertEqual('volumebackups',
                          res_dict['backups'][0]['container'])
@@ -221,7 +225,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual('creating', res_dict['backups'][0]['status'])
         self.assertEqual('1', res_dict['backups'][0]['volume_id'])
 
-        self.assertEqual(12, len(res_dict['backups'][1]))
+        self.assertEqual(14, len(res_dict['backups'][1]))
         self.assertEqual('az1', res_dict['backups'][1]['availability_zone'])
         self.assertEqual('volumebackups',
                          res_dict['backups'][1]['container'])
@@ -235,7 +239,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual('creating', res_dict['backups'][1]['status'])
         self.assertEqual('1', res_dict['backups'][1]['volume_id'])
 
-        self.assertEqual(12, len(res_dict['backups'][2]))
+        self.assertEqual(14, len(res_dict['backups'][2]))
         self.assertEqual('az1', res_dict['backups'][2]['availability_zone'])
         self.assertEqual('volumebackups',
                          res_dict['backups'][2]['container'])
@@ -1643,3 +1647,52 @@ class BackupsAPITestCase(test.TestCase):
         backup = self.backup_api.get(self.context, backup_id)
         self.assertRaises(exception.NotSupportedOperation,
                           self.backup_api.delete, self.context, backup, True)
+
+    def test_show_incremental_backup(self):
+        volume_id = utils.create_volume(self.context, size=5)['id']
+        parent_backup_id = self._create_backup(volume_id, status="available",
+                                               num_dependent_backups=1)
+        backup_id = self._create_backup(volume_id, status="available",
+                                        incremental=True,
+                                        parent_id=parent_backup_id,
+                                        num_dependent_backups=1)
+        child_backup_id = self._create_backup(volume_id, status="available",
+                                              incremental=True,
+                                              parent_id=backup_id)
+
+        req = webob.Request.blank('/v2/fake/backups/%s' %
+                                  backup_id)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertTrue(res_dict['backup']['is_incremental'])
+        self.assertTrue(res_dict['backup']['has_dependent_backups'])
+
+        req = webob.Request.blank('/v2/fake/backups/%s' %
+                                  parent_backup_id)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertFalse(res_dict['backup']['is_incremental'])
+        self.assertTrue(res_dict['backup']['has_dependent_backups'])
+
+        req = webob.Request.blank('/v2/fake/backups/%s' %
+                                  child_backup_id)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertTrue(res_dict['backup']['is_incremental'])
+        self.assertFalse(res_dict['backup']['has_dependent_backups'])
+
+        db.backup_destroy(context.get_admin_context(), child_backup_id)
+        db.backup_destroy(context.get_admin_context(), backup_id)
+        db.volume_destroy(context.get_admin_context(), volume_id)

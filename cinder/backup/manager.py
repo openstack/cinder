@@ -361,6 +361,13 @@ class BackupManager(manager.SchedulerDependentManager):
         backup.size = volume['size']
         backup.availability_zone = self.az
         backup.save()
+        # Handle the num_dependent_backups of parent backup when child backup
+        # has created successfully.
+        if backup.parent_id:
+            parent_backup = objects.Backup.get_by_id(context,
+                                                     backup.parent_id)
+            parent_backup.num_dependent_backups += 1
+            parent_backup.save()
         LOG.info(_LI('Create backup finished. backup: %s.'), backup.id)
         self._notify_about_backup_usage(context, backup, "create.end")
 
@@ -513,7 +520,14 @@ class BackupManager(manager.SchedulerDependentManager):
             LOG.exception(_LE("Failed to update usages deleting backup"))
 
         backup.destroy()
-
+        # If this backup is incremental backup, handle the
+        # num_dependent_backups of parent backup
+        if backup.parent_id:
+            parent_backup = objects.Backup.get_by_id(context,
+                                                     backup.parent_id)
+            if parent_backup.has_dependent_backups:
+                parent_backup.num_dependent_backups -= 1
+                parent_backup.save()
         # Commit the reservations
         if reservations:
             QUOTAS.commit(context, reservations,
