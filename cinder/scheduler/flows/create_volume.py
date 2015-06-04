@@ -126,20 +126,13 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
         try:
             self.driver_api.schedule_create_volume(context, request_spec,
                                                    filter_properties)
-        except exception.NoValidHost as e:
-            # No host found happened, notify on the scheduler queue and log
-            # that this happened and set the volume to errored out and
-            # *do not* reraise the error (since whats the point).
-            try:
-                self._handle_failure(context, request_spec, e)
-            finally:
-                common.error_out_volume(context, self.db_api,
-                                        request_spec['volume_id'], reason=e)
         except Exception as e:
-            # Some other error happened, notify on the scheduler queue and log
-            # that this happened and set the volume to errored out and
-            # *do* reraise the error.
-            with excutils.save_and_reraise_exception():
+            # An error happened, notify on the scheduler queue and log that
+            # this happened and set the volume to errored out and reraise the
+            # error *if* exception caught isn't NoValidHost. Otherwise *do not*
+            # reraise (since what's the point?)
+            with excutils.save_and_reraise_exception(
+                    reraise=not isinstance(e, exception.NoValidHost)):
                 try:
                     self._handle_failure(context, request_spec, e)
                 finally:
@@ -157,11 +150,9 @@ def get_flow(context, db_api, driver_api, request_spec=None,
     This flow will do the following:
 
     1. Inject keys & values for dependent tasks.
-    2. Extracts a scheduler specification from the provided inputs.
-    3. Attaches 2 activated only on *failure* tasks (one to update the db
-       status and one to notify on the MQ of the failure that occurred).
-    4. Uses provided driver to then select and continue processing of
-       volume request.
+    2. Extract a scheduler specification from the provided inputs.
+    3. Use provided scheduler driver to select host and pass volume creation
+       request further.
     """
     create_what = {
         'context': context,
