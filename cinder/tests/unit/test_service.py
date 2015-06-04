@@ -149,6 +149,7 @@ class ServiceTestCase(test.TestCase):
             serv.start()
             serv.report_state()
             self.assertTrue(serv.model_disconnected)
+            self.assertFalse(mock_db.service_update.called)
 
     def test_report_state_newly_connected(self):
         host = 'foo'
@@ -176,6 +177,33 @@ class ServiceTestCase(test.TestCase):
             serv.report_state()
 
             self.assertFalse(serv.model_disconnected)
+            self.assertTrue(mock_db.service_update.called)
+
+    def test_report_state_manager_not_working(self):
+        host = 'foo'
+        binary = 'bar'
+        topic = 'test'
+        service_ref = {'host': host,
+                       'binary': binary,
+                       'topic': topic,
+                       'report_count': 0,
+                       'availability_zone': 'nova',
+                       'id': 1}
+        with mock.patch.object(service, 'db') as mock_db:
+            mock_db.service_get.return_value = service_ref
+
+            serv = service.Service(
+                host,
+                binary,
+                topic,
+                'cinder.tests.unit.test_service.FakeManager'
+            )
+            serv.manager.is_working = mock.Mock(return_value=False)
+            serv.start()
+            serv.report_state()
+
+            serv.manager.is_working.assert_called_once_with()
+            self.assertFalse(mock_db.service_update.called)
 
     def test_service_with_long_report_interval(self):
         self.override_config('service_down_time', 10)

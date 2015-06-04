@@ -330,6 +330,14 @@ class VolumeTestCase(BaseVolumeTestCase):
             manager.init_host()
         self.assertEqual(0, mock_add_p_task.call_count)
 
+    def test_is_working(self):
+        # By default we have driver mocked to be initialized...
+        self.assertTrue(self.volume.is_working())
+
+        # ...lets switch it and check again!
+        self.volume.driver._initialized = False
+        self.assertFalse(self.volume.is_working())
+
     def test_create_volume_fails_with_creating_and_downloading_status(self):
         """Test init_host in case of volume.
 
