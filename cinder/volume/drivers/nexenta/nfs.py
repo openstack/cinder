@@ -473,8 +473,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             self._create_sparsed_file(nms, volume_path, new_size)
         else:
             block_size_mb = 1
-            block_count = ((new_size - volume['size']) * units.Gi
-                           / (block_size_mb * units.Mi))
+            block_count = ((new_size - volume['size']) * units.Gi /
+                           (block_size_mb * units.Mi))
 
             nms.appliance.execute(
                 'dd if=/dev/zero seek=%(seek)d of=%(path)s'
