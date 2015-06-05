@@ -38,8 +38,8 @@ opts_capability = {
     'smarttier': False,
     'smartcache': False,
     'smartpartition': False,
-    'thin_provisioning': False,
-    'thick_provisioning': False,
+    'thin_provisioning_support': False,
+    'thick_provisioning_support': False,
 }
 
 
@@ -384,7 +384,7 @@ def wait_for_condition(xml_file_path, func, interval, timeout=None):
         try:
             res = func()
         except Exception as ex:
-            raise exception.VolumeBackendAPIException(ex)
+            raise exception.VolumeBackendAPIException(data=ex)
         if res:
             raise loopingcall.LoopingCallDone()
 

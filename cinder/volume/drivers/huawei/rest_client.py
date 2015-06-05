@@ -170,7 +170,7 @@ class RestClient(object):
         self._assert_data_in_result(result, msg)
         return result
 
-    def find_pool_info(self, pool_name, result):
+    def find_pool_info(self, pool_name=None, result=None):
         pool_info = {}
         if not pool_name:
             return pool_info
@@ -201,11 +201,11 @@ class RestClient(object):
 
         return self._get_id_from_result(result, name, 'NAME')
 
-    def active_snapshot(self, snapshot_id):
-        activeurl = self.url + "/snapshot/activate"
+    def activate_snapshot(self, snapshot_id):
+        activate_url = self.url + "/snapshot/activate"
         data = json.dumps({"SNAPSHOTLIST": [snapshot_id]})
-        result = self.call(activeurl, data)
-        self._assert_rest_result(result, _('Active snapshot error.'))
+        result = self.call(activate_url, data)
+        self._assert_rest_result(result, _('Activate snapshot error.'))
 
     def create_snapshot(self, snapshot):
         snapshot_name = huawei_utils.encode_name(snapshot['id'])
@@ -660,7 +660,7 @@ class RestClient(object):
 
         if 'data' in result:
             for item in result['data']:
-                if item["ID"] == ininame:
+                if item['ID'] == ininame:
                     return True
         return False
 
@@ -988,9 +988,9 @@ class RestClient(object):
 
         return iscsi_port_info
 
-    def _get_tgt_iqn(self, iscsiip):
+    def _get_tgt_iqn(self, iscsi_ip):
         """Get target iSCSI iqn."""
-        ip_info = self._get_iscsi_port_info(iscsiip)
+        ip_info = self._get_iscsi_port_info(iscsi_ip)
         iqn_prefix = self._get_iscsi_tgt_port()
         if not ip_info:
             err_msg = (_(
@@ -1016,7 +1016,7 @@ class RestClient(object):
                 if iqn_suffix[i] != '0':
                     iqn_suffix = iqn_suffix[i:]
                     break
-            iqn = iqn_prefix + ':' + iqn_suffix + ':' + iscsiip
+            iqn = iqn_prefix + ':' + iqn_suffix + ':' + iscsi_ip
             LOG.info(_LI('_get_tgt_iqn: iSCSI target iqn is: %s.'), iqn)
             return iqn
         else:
@@ -1043,9 +1043,9 @@ class RestClient(object):
         root = huawei_utils.parse_xml_file(self.xml_file_path)
         pool_names = root.findtext('Storage/StoragePool')
         if not pool_names:
-            msg = (_(
+            msg = _(
                 'Invalid resource pool name. '
-                'Please check the config file.'))
+                'Please check the config file.')
             LOG.error(msg)
             raise exception.InvalidInput(msg)
         data = {}
@@ -1054,13 +1054,22 @@ class RestClient(object):
         for pool_name in pool_names.split(";"):
             pool_name = pool_name.strip(' \t\n\r')
             capacity = self._get_capacity(pool_name, result)
-            pool = {'pool_name': pool_name,
-                    'total_capacity_gb': capacity['total_capacity'],
-                    'free_capacity_gb': capacity['free_capacity'],
-                    'reserved_percentage': 0,
-                    'QoS_support': True,
-                    }
-
+            pool = {}
+            pool.update(dict(
+                pool_name=pool_name,
+                total_capacity_gb=capacity['total_capacity'],
+                free_capacity_gb=capacity['free_capacity'],
+                reserved_percentage=self.configuration.safe_get(
+                    'reserved_percentage'),
+                QoS_support=True,
+                max_over_subscription_ratio=self.configuration.safe_get(
+                    'max_over_subscription_ratio'),
+                thin_provisioning_support=True,
+                thick_provisioning_support=True,
+                smarttier=True,
+                smartcache=True,
+                smartpartition=True,
+            ))
             data['pools'].append(pool)
         return data
 
@@ -1083,11 +1092,11 @@ class RestClient(object):
 
         return qos_info
 
-    def _update_qos_policy_lunlist(self, lunlist, policy_id):
+    def _update_qos_policy_lunlist(self, lun_list, policy_id):
         url = self.url + "/ioclass/" + policy_id
         data = json.dumps({"TYPE": "230",
                            "ID": policy_id,
-                           "LUNLIST": lunlist})
+                           "LUNLIST": lun_list})
         result = self.call(url, data, "PUT")
         self._assert_rest_result(result, _('Update QoS policy error.'))
 
@@ -1212,18 +1221,19 @@ class RestClient(object):
         result = self.call(url, data, 'DELETE')
         self._assert_rest_result(result, _('Delete QoS policy error.'))
 
-    def active_deactive_qos(self, qos_id, enablestatus):
-        """Active or deactive QoS.
+    def activate_deactivate_qos(self, qos_id, enablestatus):
+        """Activate or deactivate QoS.
 
-        enablestatus: true (active)
-        enbalestatus: false (deactive)
+        enablestatus: true (activate)
+        enbalestatus: false (deactivate)
         """
         url = self.url + "/ioclass/active/" + qos_id
         data = json.dumps({"TYPE": 230,
                            "ID": qos_id,
                            "ENABLESTATUS": enablestatus})
         result = self.call(url, data, "PUT")
-        self._assert_rest_result(result, _('Active or deactive QoS error.'))
+        self._assert_rest_result(
+            result, _('Activate or deactivate QoS error.'))
 
     def get_qos_info(self, qos_id):
         """Get QoS information."""
@@ -1234,6 +1244,31 @@ class RestClient(object):
         self._assert_rest_result(result, _('Get QoS information error.'))
 
         return result['data']
+
+    def get_lun_list_in_qos(self, qos_id):
+        """Get the lun list in QoS."""
+        qos_info = self.get_qos_info(qos_id)
+        lun_list = []
+        lun_string = qos_info['LUNLIST'][1:-1]
+
+        for lun in lun_string.split(","):
+            str = lun[1:-1]
+            lun_list.append(str)
+
+        return lun_list
+
+    def remove_lun_from_qos(self, lun_id, lun_list, qos_id):
+        """Remove lun from QoS."""
+        lun_list = [i for i in lun_list if i != lun_id]
+        url = self.url + "/ioclass/" + qos_id
+        data = json.dumps({"LUNLIST": lun_list,
+                           "TYPE": 230,
+                           "ID": qos_id})
+        result = self.call(url, data, "PUT")
+
+        msg = _('Remove lun from Qos error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
 
     def change_lun_priority(self, lun_id):
         """Change lun priority to high."""
@@ -1289,6 +1324,107 @@ class RestClient(object):
         self._assert_data_in_result(result, msg)
 
         return result['data']
+
+    def get_partition_id_by_name(self, name):
+        url = self.url + "/cachepartition"
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get partition by name error.'))
+
+        if 'data' in result:
+            for item in result['data']:
+                LOG.debug('get_partition_id_by_name item %(item)s.',
+                          {'item': item})
+                if name == item['NAME']:
+                    return item['ID']
+
+        return
+
+    def get_partition_info_by_id(self, partition_id):
+
+        url = self.url + '/cachepartition/' + partition_id
+        data = json.dumps({"TYPE": '268',
+                           "ID": partition_id})
+
+        result = self.call(url, data, "GET")
+        self._assert_rest_result(result,
+                                 _('Get partition by partition id error.'))
+
+        return result['data']
+
+    def add_lun_to_partition(self, lun_id, partition_id):
+        url = self.url + "/lun/associate/cachepartition"
+        data = json.dumps({"ID": partition_id,
+                           "ASSOCIATEOBJTYPE": 11,
+                           "ASSOCIATEOBJID": lun_id, })
+        result = self.call(url, data, "POST")
+        self._assert_rest_result(result, _('Add lun to partition error.'))
+
+    def get_cache_id_by_name(self, name):
+        url = self.url + "/SMARTCACHEPARTITION"
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get cache by name error.'))
+
+        if 'data' in result:
+            for item in result['data']:
+                if name == item['NAME']:
+                    return item['ID']
+        return
+
+    def find_available_qos(self, qos):
+        """"Find available QoS on the array."""
+        qos_id = None
+        lun_list = []
+        url = self.url + "/ioclass?range=[0-100]"
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get QoS information error.'))
+
+        if 'data' in result:
+            for item in result['data']:
+                qos_flag = 0
+                for key in qos:
+                    if key not in item:
+                        break
+                    elif qos[key] != item[key]:
+                        break
+                    qos_flag = qos_flag + 1
+                if qos_flag == len(qos):
+                    qos_id = item['ID']
+                    lun_list = item['LUNLIST']
+                    break
+
+        return (qos_id, lun_list)
+
+    def add_lun_to_qos(self, qos_id, lun_id, lun_list):
+        url = self.url + "/ioclass/" + qos_id
+        lun_list = []
+        lun_string = lun_list[1:-1]
+        for lun in lun_string.split(","):
+            str = lun[1:-1]
+            lun_list.append(str)
+        lun_list.append(lun_id)
+        data = json.dumps({"LUNLIST": lun_list,
+                           "TYPE": 230,
+                           "ID": qos_id})
+        result = self.call(url, data, "PUT")
+        msg = _('Associate lun to Qos error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+
+    def add_lun_to_cache(self, lun_id, cache_id):
+        url = self.url + "/SMARTCACHEPARTITION/CREATE_ASSOCIATE"
+        data = json.dumps({"ID": cache_id,
+                           "ASSOCIATEOBJTYPE": 11,
+                           "ASSOCIATEOBJID": lun_id,
+                           "TYPE": 273})
+        result = self.call(url, data, "PUT")
+
+        self._assert_rest_result(result, _('Add lun to cache error.'))
+
+    def find_array_version(self):
+        url = self.url + "/system/"
+        result = self.call(url, None)
+        self._assert_rest_result(result, _('Find array version error.'))
+        return result['data']['PRODUCTVERSION']
 
     def remove_host(self, host_id):
         url = self.url + "/host/%s" % host_id

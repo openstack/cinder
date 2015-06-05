@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
 import uuid
 
 from oslo_config import cfg
@@ -27,6 +28,7 @@ from cinder.volume import driver
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume.drivers.huawei import rest_client
+from cinder.volume.drivers.huawei import smartx
 from cinder.volume import utils as volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
@@ -70,6 +72,10 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     @utils.synchronized('huawei', external=True)
     def create_volume(self, volume):
         """Create a volume."""
+        opts = huawei_utils.get_volume_params(volume)
+        smartx_opts = smartx.SmartX().get_smartx_specs_opts(opts)
+        params = huawei_utils.get_lun_params(self.xml_file_path,
+                                             smartx_opts)
         pool_name = volume_utils.extract_host(volume['host'],
                                               level='pool')
         pools = self.restclient.find_all_pools()
@@ -88,7 +94,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             {'volume': volume_name,
              'size': volume_size})
 
-        params = huawei_utils.get_lun_conf_params(self.xml_file_path)
         params['pool_id'] = pool_info['ID']
         params['volume_size'] = volume_size
         params['volume_description'] = volume_description
@@ -99,6 +104,14 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         # Create LUN on the array.
         lun_info = self.restclient.create_volume(lun_param)
         lun_id = lun_info['ID']
+        qos = huawei_utils.get_volume_qos(volume)
+        if qos:
+            smart_qos = smartx.SmartQos(self.restclient)
+            smart_qos.create_qos(qos, lun_id)
+        smartpartition = smartx.SmartPartition(self.restclient)
+        smartpartition.add(opts, lun_id)
+        smartcache = smartx.SmartCache(self.restclient)
+        smartcache.add(opts, lun_id)
 
         return {'provider_location': lun_info['ID'],
                 'ID': lun_id,
@@ -119,12 +132,27 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                  {'name': name, 'lun_id': lun_id},)
         if lun_id:
             if self.restclient.check_lun_exist(lun_id):
+                qos_id = self.restclient.get_qosid_by_lunid(lun_id)
+                if qos_id:
+                    self.remove_qos_lun(lun_id, qos_id)
+
                 self.restclient.delete_lun(lun_id)
         else:
             LOG.warning(_LW("Can't find lun %s on the array."), lun_id)
             return False
 
         return True
+
+    def remove_qos_lun(self, lun_id, qos_id):
+        lun_list = self.restclient.get_lun_list_in_qos(qos_id)
+        lun_count = len(lun_list)
+        if lun_count <= 1:
+            qos = smartx.SmartQos(self.restclient)
+            qos.delete_qos(qos_id)
+        else:
+            self.restclient.remove_lun_from_qos(lun_id,
+                                                lun_list,
+                                                qos_id)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot.
@@ -238,7 +266,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     def create_snapshot(self, snapshot):
         snapshot_info = self.restclient.create_snapshot(snapshot)
         snapshot_id = snapshot_info['ID']
-        self.restclient.active_snapshot(snapshot_id)
+        self.restclient.activate_snapshot(snapshot_id)
 
         return {'provider_location': snapshot_info['ID'],
                 'lun_info': snapshot_info}
@@ -283,9 +311,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         host_name_before_hash = None
         host_name = connector['host']
-        if host_name and (len(host_name) > constants.MAX_HOSTNAME_LENTH):
+        if host_name and (len(host_name) > constants.MAX_HOSTNAME_LENGTH):
             host_name_before_hash = host_name
-            host_name = str(hash(host_name))
+            host_name = six.text_type(hash(host_name))
 
         # Create hostgroup if not exist.
         host_id = self.restclient.add_host_with_check(host_name,
@@ -356,9 +384,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         # Create hostgroup if not exist.
         host_name = connector['host']
         host_name_before_hash = None
-        if host_name and (len(host_name) > constants.MAX_HOSTNAME_LENTH):
+        if host_name and (len(host_name) > constants.MAX_HOSTNAME_LENGTH):
             host_name_before_hash = host_name
-            host_name = str(hash(host_name))
+            host_name = six.text_type(hash(host_name))
         host_id = self.restclient.add_host_with_check(host_name,
                                                       host_name_before_hash)
 
@@ -604,6 +632,7 @@ class Huawei18000ISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
                 CHAP support
                 Multiple pools support
                 ISCSI multipath support
+                SmartX support
     """
 
     VERSION = "1.1.1"
@@ -640,6 +669,7 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         1.1.0 - Provide Huawei OceanStor 18000 storage volume driver
         1.1.1 - Code refactor
                 Multiple pools support
+                SmartX support
     """
 
     VERSION = "1.1.1"

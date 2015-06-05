@@ -30,6 +30,7 @@ from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import huawei_driver
 from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume.drivers.huawei import rest_client
+from cinder.volume.drivers.huawei import smartx
 
 LOG = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
                'display_name': 'vol1',
                'display_description': 'test volume',
                'volume_type_id': None,
-               'host': 'ubuntu@huawei#OpenStack_Pool',
+               'host': 'ubuntu001@backend001#OpenStack_Pool',
                'provider_location': '11',
                }
 
@@ -80,12 +81,23 @@ FakeConnector = {'initiator': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
                  'host': 'ubuntuc',
                  }
 
+smarttier_opts = {'smarttier': 'true',
+                  'smartpartition': False,
+                  'smartcache': False,
+                  'thin_provisioning_support': True,
+                  'thick_provisioning_support': False,
+                  'policy': '3',
+                  'readcachepolicy': '1',
+                  'writecachepolicy': None,
+                  }
+
 # A fake response of success response storage
 FAKE_COMMON_SUCCESS_RESPONSE = """
 {
     "error": {
         "code": 0
-    }
+    },
+    "data":{}
 }
 """
 
@@ -154,7 +166,8 @@ FAKE_LUN_DELETE_SUCCESS_RESPONSE = """
         "NAME": "5mFHcBv4RkCcD+JyrWc0SA",
         "RUNNINGSTATUS": "2",
         "HEALTHSTATUS": "1",
-        "RUNNINGSTATUS": "27"
+        "RUNNINGSTATUS": "27",
+        "LUNLIST": ""
     }
 }
 """
@@ -312,7 +325,7 @@ FAKE_GET_ETH_INFO_RESPONSE = """
         "MACADDRESS": "00:22:a1:0a:79:57",
         "ETHNEGOTIATE": "-1",
         "ERRORPACKETS": "0",
-        "IPV4ADDR": "198.100.10.1",
+        "IPV4ADDR": "192.168.1.2",
         "IPV6GATEWAY": "",
         "IPV6MASK": "0",
         "OVERFLOWEDPACKETS": "0",
@@ -342,7 +355,7 @@ FAKE_GET_ETH_INFO_RESPONSE = """
         "MACADDRESS": "00:22:a1:0a:79:57",
         "ETHNEGOTIATE": "-1",
         "ERRORPACKETS": "0",
-        "IPV4ADDR": "198.100.10.2",
+        "IPV4ADDR": "192.168.1.1",
         "IPV6GATEWAY": "",
         "IPV6MASK": "0",
         "OVERFLOWEDPACKETS": "0",
@@ -376,12 +389,12 @@ FAKE_GET_ETH_ASSOCIATE_RESPONSE = """
         "code":0
     },
     "data":[{
-        "IPV4ADDR": "198.100.10.1",
+        "IPV4ADDR": "192.168.1.1",
         "HEALTHSTATUS": "1",
         "RUNNINGSTATUS": "10"
     },
     {
-        "IPV4ADDR": "198.100.10.2",
+        "IPV4ADDR": "192.168.1.2",
         "HEALTHSTATUS": "1",
         "RUNNINGSTATUS": "10"
     }
@@ -448,7 +461,7 @@ FAKE_GET_ALL_HOST_GROUP_INFO_RESPONSE = """
         "code": 0
     },
     "data": [{
-        "NAME":"OpenStack_HostGroup_1",
+        "NAME": "OpenStack_HostGroup_1",
         "DESCRIPTION":"",
         "ID":"0",
         "TYPE":14
@@ -645,7 +658,7 @@ FAKE_PORT_GROUP_RESPONSE = """
     },
     "data":[{
         "ID":11,
-        "NAME":"portgroup-test"
+        "NAME": "portgroup-test"
     }]
 }
 """
@@ -653,19 +666,19 @@ FAKE_PORT_GROUP_RESPONSE = """
 FAKE_ISCSI_INITIATOR_RESPONSE = """
 {
     "error":{
-        "code":0
+        "code": 0
     },
     "data":[{
-        "CHAPNAME":"mm-user",
-        "HEALTHSTATUS":"1",
-        "ID":"iqn.1993-08.org.debian:01:9073aba6c6f",
-        "ISFREE":"true",
-        "MULTIPATHTYPE":"1",
-        "NAME":"",
-        "OPERATIONSYSTEM":"255",
-        "RUNNINGSTATUS":"28",
-        "TYPE":222,
-        "USECHAP":"true"
+        "CHAPNAME": "mm-user",
+        "HEALTHSTATUS": "1",
+        "ID": "iqn.1993-08.org.debian:01:9073aba6c6f",
+        "ISFREE": "true",
+        "MULTIPATHTYPE": "1",
+        "NAME": "",
+        "OPERATIONSYSTEM": "255",
+        "RUNNINGSTATUS": "28",
+        "TYPE": 222,
+        "USECHAP": "true"
     }]
 }
 """
@@ -710,6 +723,29 @@ FAKE_ERROR_LUN_INFO_RESPONSE = """
     }
 }
 """
+
+FAKE_SYSTEM_VERSION_RESPONSE = """
+{
+    "error":{
+        "code": 0
+    },
+    "data":{
+        "PRODUCTVERSION": "V100R001C10"
+    }
+}
+"""
+
+FAKE_QOS_INFO_RESPONSE = """
+{
+    "error":{
+        "code": 0
+    },
+    "data":{
+        "ID": "11"
+    }
+}
+"""
+
 # mock login info map
 MAP_COMMAND_TO_FAKE_RESPONSE = {}
 MAP_COMMAND_TO_FAKE_RESPONSE['/xx/sessions'] = (
@@ -732,6 +768,9 @@ MAP_COMMAND_TO_FAKE_RESPONSE['lun/1/GET'] = (
     FAKE_LUN_DELETE_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['lun/11/DELETE'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['lun/1/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['lun?range=[0-65535]/GET'] = (
@@ -768,6 +807,10 @@ MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?ID=11&ASSOCIATEOBJTYPE=11'
 
 MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?TYPE=256&ASSOCIATEOBJTYPE=11'
                              '&ASSOCIATEOBJID=11/GET'] = (
+    FAKE_LUN_ASSOCIATE_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?TYPE=256&ASSOCIATEOBJTYPE=11'
+                             '&ASSOCIATEOBJID=1/GET'] = (
     FAKE_LUN_ASSOCIATE_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?ID=11&ASSOCIATEOBJTYPE=11'
@@ -813,6 +856,9 @@ MAP_COMMAND_TO_FAKE_RESPONSE['ioclass/11/DELETE'] = (
 
 MAP_COMMAND_TO_FAKE_RESPONSE['ioclass/active/11/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['ioclass/'] = (
+    FAKE_QOS_INFO_RESPONSE)
 
 # mock iscsi info map
 MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_tgt_port/GET'] = (
@@ -896,6 +942,10 @@ MAP_COMMAND_TO_FAKE_RESPONSE['host_link?INITIATOR_TYPE=223'
 MAP_COMMAND_TO_FAKE_RESPONSE['portgroup?range=[0-8191]&TYPE=257/GET'] = (
     FAKE_PORT_GROUP_RESPONSE)
 
+# mock system info map
+MAP_COMMAND_TO_FAKE_RESPONSE['system/'] = (
+    FAKE_SYSTEM_VERSION_RESPONSE)
+
 
 def Fake_sleep(time):
     pass
@@ -940,6 +990,18 @@ class Fake18000Client(rest_client.RestClient):
 
     def _check_snapshot_exist(self, snapshot_id):
         return True
+
+    def get_partition_id_by_name(self, name):
+        return "11"
+
+    def add_lun_to_partition(self, lunid, partition_id):
+        pass
+
+    def get_cache_id_by_name(self, name):
+        return "11"
+
+    def add_lun_to_cache(self, lunid, cache_id):
+        pass
 
     def call(self, url=False, data=None, method=None):
         url = url.replace('http://100.115.10.69:8082/deviceManager/rest', '')
@@ -1002,11 +1064,11 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         self.driver.do_setup()
         self.portgroup = 'portgroup-test'
         self.iscsi_iqns = ['iqn.2006-08.com.huawei:oceanstor:21000022a:'
-                           ':20500:198.100.10.1',
+                           ':20503:192.168.1.1',
                            'iqn.2006-08.com.huawei:oceanstor:21000022a:'
-                           ':20503:198.100.10.2']
-        self.target_ips = ['198.100.10.1',
-                           '198.100.10.2']
+                           ':20500:192.168.1.2']
+        self.target_ips = ['192.168.1.1',
+                           '192.168.1.2']
         self.portgroup_id = 11
 
     def test_login_success(self):
@@ -1128,8 +1190,8 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
     def test_get_tgtip(self):
         self.driver.restclient.login()
         portg_id = self.driver.restclient.find_tgt_port_group(self.portgroup)
-        result = self.driver.restclient._get_tgt_ip_from_portgroup(portg_id)
-        self.assertEqual(self.target_ips, result)
+        target_ip = self.driver.restclient._get_tgt_ip_from_portgroup(portg_id)
+        self.assertEqual(self.target_ips, target_ip)
 
     def test_get_iscsi_params(self):
         self.driver.restclient.login()
@@ -1226,6 +1288,33 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         pool_info = self.driver.restclient.find_pool_info(pool_name, pools)
         self.assertEqual(test_info, pool_info)
 
+    def test_get_smartx_specs_opts(self):
+        self.driver.restclient.login()
+        smartx_opts = smartx.SmartX().get_smartx_specs_opts(smarttier_opts)
+        self.assertEqual('3', smartx_opts['policy'])
+
+    @mock.patch.object(huawei_utils, 'get_volume_qos',
+                       return_value={'MAXIOPS': '100',
+                                     'IOType': '2'})
+    def test_create_smartqos(self, mock_qos_value):
+        self.driver.restclient.login()
+        lun_info = self.driver.create_volume(test_volume)
+        self.assertEqual('1', lun_info['provider_location'])
+
+    @mock.patch.object(huawei_utils, 'get_volume_params',
+                       return_value={'smarttier': 'true',
+                                     'smartcache': 'true',
+                                     'smartpartition': 'true',
+                                     'thin_provisioning_support': 'true',
+                                     'thick_provisioning_support': False,
+                                     'policy': '2',
+                                     'cachename': 'cache-test',
+                                     'partitionname': 'partition-test'})
+    def test_creat_smartx(self, mock_volume_types):
+        self.driver.restclient.login()
+        lun_info = self.driver.create_volume(test_volume)
+        self.assertEqual('1', lun_info['provider_location'])
+
     def create_fake_conf_file(self):
         """Create a fake Config file.
 
@@ -1297,7 +1386,7 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         iscsi.appendChild(defaulttargetip)
         initiator = doc.createElement('Initiator')
         initiator.setAttribute('Name', 'iqn.1993-08.debian:01:ec2bff7ac3a3')
-        initiator.setAttribute('TargetIP', '192.168.100.2')
+        initiator.setAttribute('TargetIP', '192.168.1.2')
         initiator.setAttribute('CHAPinfo', 'mm-user;mm-user@storage')
         initiator.setAttribute('ALUA', '1')
         initiator.setAttribute('TargetPortGroup', 'portgroup-test')
@@ -1534,7 +1623,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         iscsi.appendChild(defaulttargetip)
         initiator = doc.createElement('Initiator')
         initiator.setAttribute('Name', 'iqn.1993-08.debian:01:ec2bff7ac3a3')
-        initiator.setAttribute('TargetIP', '192.168.100.2')
+        initiator.setAttribute('TargetIP', '192.168.1.2')
         iscsi.appendChild(initiator)
 
         prefetch = doc.createElement('Prefetch')
