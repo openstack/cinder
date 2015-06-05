@@ -901,28 +901,3 @@ class WebDAVClientError(CinderException):
 # XtremIO Drivers
 class XtremIOAlreadyMappedError(CinderException):
     message = _("Volume to Initiator Group mapping already exists")
-
-
-# DOTHILL
-class DotHillInvalidBackend(CinderException):
-    message = _("Backend doesn't exist (%(backend)s)")
-
-
-class DotHillConnectionError(CinderException):
-    message = _("%(message)s")
-
-
-class DotHillAuthenticationError(CinderException):
-    message = _("%(message)s")
-
-
-class DotHillNotEnoughSpace(CinderException):
-    message = _("Not enough space on backend (%(backend)s)")
-
-
-class DotHillRequestError(CinderException):
-    message = _("%(message)s")
-
-
-class DotHillNotTargetPortal(CinderException):
-    message = _("No active iscsi portals with supplied iscsi ips")
