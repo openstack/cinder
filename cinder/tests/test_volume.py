@@ -410,10 +410,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertRaises(exception.DriverNotInitialized,
                           self.volume.create_volume,
                           self.context, volume_id,
-                          {'volume_properties': self.volume_params})
-        # NOTE(dulek): Volume should be rescheduled as we passed request_spec,
-        # assert that it wasn't counted in allocated_capacity tracking.
-        self.assertEqual(self.volume.stats['pools'], {})
+                          {'volume_properties': self.volume_params},
+                          {'retry': {'num_attempts': 1, 'host': []}})
+        # NOTE(dulek): Volume should be rescheduled as we passed request_spec
+        # and filter_properties, assert that it wasn't counted in
+        # allocated_capacity tracking.
+        self.assertEqual({}, self.volume.stats['pools'])
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
@@ -431,10 +433,12 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.assertRaises(processutils.ProcessExecutionError,
                               self.volume.create_volume,
                               self.context, volume_id,
-                              {'volume_properties': params})
-        # NOTE(dulek): Volume should be rescheduled as we passed request_spec,
-        # assert that it wasn't counted in allocated_capacity tracking.
-        self.assertEqual(self.volume.stats['pools'], {})
+                              {'volume_properties': params},
+                              {'retry': {'num_attempts': 1, 'host': []}})
+        # NOTE(dulek): Volume should be rescheduled as we passed request_spec
+        # and filter_properties, assert that it wasn't counted in
+        # allocated_capacity tracking.
+        self.assertEqual({}, self.volume.stats['pools'])
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
