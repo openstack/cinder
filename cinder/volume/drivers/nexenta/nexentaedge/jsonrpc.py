@@ -23,9 +23,9 @@
 import json
 import urllib2
 
-from oslo_log import log as logging
 from cinder.i18n import _LE, _LI
 from cinder.volume.drivers import nexenta
+from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 
