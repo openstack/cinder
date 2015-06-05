@@ -424,7 +424,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 LOG.info(_LI('Snapshot %s has dependent clones, will be '
                              'deleted later.'), snapshot_name)
                 return
-                #raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
             raise
 
     def local_path(self, volume):
