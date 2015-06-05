@@ -34,7 +34,10 @@ common_opts = [
                help='Name of the server folder to use on the Storage Center'),
     cfg.StrOpt('dell_sc_volume_folder',
                default='openstack',
-               help='Name of the volume folder to use on the Storage Center')
+               help='Name of the volume folder to use on the Storage Center'),
+    cfg.BoolOpt('dell_sc_verify_cert',
+                default=False,
+                help='Enable HTTPS SC certificate verification.')
 ]
 
 LOG = logging.getLogger(__name__)
@@ -341,15 +344,13 @@ class DellCommonDriver(san.SanDriver):
                    'o': original_volume_name})
         if original_volume_name:
             with self._client.open_connection() as api:
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
-                if ssn is not None:
-                    scvolume = api.find_volume(ssn,
-                                               current_name)
-                    if scvolume:
-                        if api.rename_volume(scvolume, original_volume_name):
-                            model_update = {'_name_id': None}
-                            return model_update
+                if api.find_sc():
+                    scvolume = api.find_volume(current_name)
+                    if (scvolume and
+                       api.rename_volume(scvolume, original_volume_name)):
+                        model_update = {'_name_id': None}
+                        return model_update
         # The world was horrible to us so we should error and leave.
-        LOG.error(_LE('Unabled to rename the logical volume for volume: %s'),
+        LOG.error(_LE('Unable to rename the logical volume for volume: %s'),
                   original_volume_name)
         return None
