@@ -23,16 +23,11 @@
 import json
 import urllib2
 
+from oslo_log import log as logging
+from cinder.i18n import _LE, _LI
 from cinder.volume.drivers import nexenta
 
-from oslo_log import log as logging
-
 LOG = logging.getLogger(__name__)
-
-
-# placeholder text formatting handler
-def __(text):
-    return text
 
 
 class NexentaJSONException(nexenta.NexentaException):
@@ -84,7 +79,7 @@ class NexentaEdgeJSONProxy(object):
             'Authorization': 'Basic %s' % auth
         }
 
-        LOG.debug(__('Sending JSON data: %s') % self.url)
+        LOG.info(_LI('Sending JSON data: %s') % self.url)
 
         try:
             request = urllib2.Request(self.url, data, headers)
@@ -102,10 +97,10 @@ class NexentaEdgeJSONProxy(object):
             # Handle 'auto' switch mode.. from HTTP to HTTPS
             if response_obj.info().status == 'EOF in headers':
                 if not self.auto or self.protocol != 'http':
-                    LOG.error(__('No headers in server response'))
-                    raise NexentaJSONException(__('Bad response from server'))
+                    LOG.error(_LE('No headers in server response'))
+                    raise NexentaJSONException(_LE('Bad response from server'))
                 LOG.info(
-                    __('Auto switching to HTTPS connection to %s') % self.url)
+                    _LI('Auto switching to HTTPS connection to %s') % self.url)
                 self.protocol = 'https'
                 request = urllib2.Request(self.url, data, headers)
                 if self.method == 'get':
@@ -127,9 +122,9 @@ class NexentaEdgeJSONProxy(object):
             rsp = {'code': str(e.reason), 'message': str(e)}
         except Exception as e:
             rsp = {'code': 'UNKNOWN_ERROR',
-                   "message": __('Error: %s') % str(e)}
+                   "message": _LE('Error: %s') % str(e)}
 
-        LOG.debug(__('Got response: %s') % rsp)
+        LOG.info(_LI('Got response: %s') % rsp)
 
         if 'code' in rsp:
             raise NexentaJSONException(rsp['message'])
