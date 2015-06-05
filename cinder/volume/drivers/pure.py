@@ -31,8 +31,10 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
+from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
+from cinder.zonemanager import utils as fczm_utils
 
 try:
     import purestorage
@@ -211,19 +213,26 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
         raise NotImplementedError
 
-    @log_debug_trace
-    def terminate_connection(self, volume, connector, **kwargs):
-        """Terminate connection."""
+    def _disconnect(self, volume, connector, **kwargs):
         vol_name = self._get_vol_name(volume)
         host = self._get_host(connector)
         if host:
             host_name = host["name"]
-            self._disconnect_host(host_name, vol_name)
+            result = self._disconnect_host(host_name, vol_name)
         else:
             LOG.error(_LE("Unable to disconnect host from volume."))
+            result = False
+
+        return result
+
+    @log_debug_trace
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Terminate connection."""
+        self._disconnect(volume, connector, **kwargs)
 
     @log_debug_trace
     def _disconnect_host(self, host_name, vol_name):
+        """Return value indicates if host was deleted on array or not"""
         try:
             self._array.disconnect_host(host_name, vol_name)
         except purestorage.PureHTTPError as err:
@@ -239,6 +248,9 @@ class PureBaseVolumeDriver(san.SanDriver):
             LOG.info(_LI("Deleting unneeded host %(host_name)r."),
                      {"host_name": host_name})
             self._array.delete_host(host_name)
+            return True
+
+        return False
 
     @log_debug_trace
     def get_volume_stats(self, refresh=False):
@@ -748,3 +760,113 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                 connection["initiator_update"] = initiator_update
 
         return connection
+
+
+class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
+
+    VERSION = "1.0.0"
+
+    def __init__(self, *args, **kwargs):
+        execute = kwargs.pop("execute", utils.execute)
+        super(PureFCDriver, self).__init__(execute=execute, *args, **kwargs)
+        self._storage_protocol = "FC"
+        self._lookup_service = fczm_utils.create_lookup_service()
+
+    def do_setup(self, context):
+        super(PureFCDriver, self).do_setup(context)
+
+    def _get_host(self, connector):
+        """Return dict describing existing Purity host object or None."""
+        hosts = self._array.list_hosts()
+        for host in hosts:
+            for wwn in connector["wwpns"]:
+                if wwn in str(host["wwn"]).lower():
+                    return host
+
+    def _get_array_wwns(self):
+        """Return list of wwns from the array"""
+        ports = self._array.list_ports()
+        return [port["wwn"] for port in ports if port["wwn"]]
+
+    @log_debug_trace
+    @fczm_utils.AddFCZone
+    def initialize_connection(self, volume, connector, initiator_data=None):
+        """Allow connection to connector and return connection info."""
+
+        connection = self._connect(volume, connector, initiator_data)
+        target_wwns = self._get_array_wwns()
+        init_targ_map = self._build_initiator_target_map(target_wwns,
+                                                         connector)
+        properties = {
+            "driver_volume_type": "fibre_channel",
+            "data": {
+                'target_discovered': True,
+                "target_lun": connection["lun"],
+                "target_wwn": target_wwns,
+                'access_mode': 'rw',
+                'initiator_target_map': init_targ_map,
+            }
+        }
+
+        return properties
+
+    @utils.synchronized('PureFCDriver._connect', external=True)
+    def _connect(self, volume, connector, initiator_data):
+        """Connect the host and volume; return dict describing connection."""
+        wwns = connector["wwpns"]
+
+        vol_name = self._get_vol_name(volume)
+        host = self._get_host(connector)
+
+        if host:
+            host_name = host["name"]
+            LOG.info(_LI("Re-using existing purity host %(host_name)r"),
+                     {"host_name": host_name})
+        else:
+            host_name = self._generate_purity_host_name(connector["host"])
+            LOG.info(_LI("Creating host object %(host_name)r with WWN:"
+                         " %(wwn)s."), {"host_name": host_name, "wwn": wwns})
+            self._array.create_host(host_name, wwnlist=wwns)
+
+        return self._connect_host_to_vol(host_name, vol_name)
+
+    def _build_initiator_target_map(self, target_wwns, connector):
+        """Build the target_wwns and the initiator target map."""
+        init_targ_map = {}
+
+        if self._lookup_service:
+            # use FC san lookup to determine which NSPs to use
+            # for the new VLUN.
+            dev_map = self._lookup_service.get_device_mapping_from_network(
+                connector['wwpns'],
+                target_wwns)
+
+            for fabric_name in dev_map:
+                fabric = dev_map[fabric_name]
+                for initiator in fabric['initiator_port_wwn_list']:
+                    if initiator not in init_targ_map:
+                        init_targ_map[initiator] = []
+                    init_targ_map[initiator] += fabric['target_port_wwn_list']
+                    init_targ_map[initiator] = list(set(
+                        init_targ_map[initiator]))
+        else:
+            init_targ_map = dict.fromkeys(connector["wwpns"], target_wwns)
+
+        return init_targ_map
+
+    @log_debug_trace
+    @fczm_utils.RemoveFCZone
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Terminate connection."""
+        no_more_connections = self._disconnect(volume, connector, **kwargs)
+
+        properties = {"driver_volume_type": "fibre_channel", "data": {}}
+
+        if no_more_connections:
+            target_wwns = self._get_array_wwns()
+            init_targ_map = self._build_initiator_target_map(target_wwns,
+                                                             connector)
+            properties["data"] = {"target_wwn": target_wwns,
+                                  "initiator_target_map": init_targ_map}
+
+        return properties
