@@ -69,9 +69,10 @@ loc_opts = [
     cfg.StrOpt('naviseccli_path',
                default='',
                help='Naviseccli Path.'),
-    cfg.StrOpt('storage_vnx_pool_name',
+    cfg.StrOpt('storage_vnx_pool_names',
                default=None,
-               help='Storage pool name.'),
+               deprecated_name='storage_vnx_pool_name',
+               help='Comma-separated list of storage pool names to be used.'),
     cfg.StrOpt('san_secondary_ip',
                default=None,
                help='VNX secondary SP IP Address.'),
@@ -1699,6 +1700,8 @@ class EMCVnxCliBase(object):
                          "Please register initiator manually."))
         self.hlu_set = set(xrange(1, self.max_luns_per_sg + 1))
         self._client = CommandLineHelper(self.configuration)
+        conf_pools = self.configuration.safe_get("storage_vnx_pool_names")
+        self.storage_pools = self._get_managed_storage_pools(conf_pools)
         self.array_serial = None
         if self.protocol == 'iSCSI':
             self.iscsi_targets = self._client.get_iscsi_targets(poll=True)
@@ -1710,8 +1713,34 @@ class EMCVnxCliBase(object):
         self.max_over_subscription_ratio = (
             self.configuration.max_over_subscription_ratio)
 
-    def get_target_storagepool(self, volume, source_volume=None):
-        raise NotImplementedError
+    def _get_managed_storage_pools(self, pools):
+        storage_pools = set()
+        if pools:
+            storage_pools = set([po.strip() for po in pools.split(",")])
+            array_pools = self._client.get_pool_list(
+                [self._client.POOL_STATE], False)
+            array_pools = set([po['pool_name'] for po in array_pools])
+            un_exist_pools = storage_pools.difference(array_pools)
+            storage_pools.difference_update(un_exist_pools)
+            if not storage_pools:
+                msg = _("All the specified storage pools to be managed "
+                        "do not exist. Please check your configuration. "
+                        "Non-existent pools: %s") % ",".join(un_exist_pools)
+                raise exception.VolumeBackendAPIException(data=msg)
+            if un_exist_pools:
+                LOG.warning(_LW("The following specified storage pools "
+                                "do not exist: %(unexist)s. "
+                                "This host will only manage the storage "
+                                "pools: %(exist)s"),
+                            {'unexist': ",".join(un_exist_pools),
+                             'exist': ",".join(storage_pools)})
+            else:
+                LOG.debug("This host will manage the storage pools: %s.",
+                          ",".join(storage_pools))
+        else:
+            LOG.debug("No storage pool is configured. This host will "
+                      "manage all the pools on the VNX system.")
+        return storage_pools
 
     def get_array_serial(self):
         if not self.array_serial:
@@ -2091,7 +2120,7 @@ class EMCVnxCliBase(object):
                 return False
         return True
 
-    def _build_pool_stats(self, pool):
+    def _build_pool_stats(self, pool, pool_feature=None):
         pool_stats = {}
         pool_stats['pool_name'] = pool['pool_name']
         pool_stats['total_capacity_gb'] = pool['total_capacity_gb']
@@ -2119,7 +2148,7 @@ class EMCVnxCliBase(object):
                                                     (min(reserved, 100)))
             if self.check_max_pool_luns_threshold:
                 pool_feature = self._client.get_pool_feature_properties(
-                    poll=False)
+                    poll=False) if not pool_feature else pool_feature
                 if (pool_feature['max_pool_luns'] <=
                         pool_feature['total_pool_luns']):
                     LOG.warning(_LW("Maximum number of Pool LUNs, %s, "
@@ -2156,9 +2185,8 @@ class EMCVnxCliBase(object):
 
         return pool_stats
 
-    @log_enter_exit
-    def update_volume_stats(self):
-        """Gets the common stats shared by pool and array backend."""
+    def update_enabler_in_volume_stats(self):
+        """Updates the enabler information in stats."""
         if not self.determine_all_enablers_exist(self.enablers):
             self.enablers = self._client.get_enablers_on_array()
 
@@ -2176,9 +2204,6 @@ class EMCVnxCliBase(object):
 
         self.stats['consistencygroup_support'] = (
             'True' if '-VNXSnapshots' in self.enablers else 'False')
-
-        if self.protocol == 'iSCSI':
-            self.iscsi_targets = self._client.get_iscsi_targets(poll=False)
 
         return self.stats
 
@@ -3130,55 +3155,13 @@ class EMCVnxCliBase(object):
 
         return None, volume_model_updates
 
-
-@decorate_all_methods(log_enter_exit)
-class EMCVnxCliPool(EMCVnxCliBase):
-
-    def __init__(self, prtcl, configuration):
-        super(EMCVnxCliPool, self).__init__(prtcl, configuration=configuration)
-        self.storage_pool = configuration.storage_vnx_pool_name.strip()
-        self._client.get_pool(self.storage_pool)
-
-    def get_target_storagepool(self,
-                               volume,
-                               source_volume=None):
-        return self.storage_pool
-
-    def update_volume_stats(self):
-        """Retrieves stats info."""
-        super(EMCVnxCliPool, self).update_volume_stats()
-        if '-FASTCache' in self.enablers:
-            properties = [self._client.POOL_FREE_CAPACITY,
-                          self._client.POOL_TOTAL_CAPACITY,
-                          self._client.POOL_FAST_CACHE,
-                          self._client.POOL_STATE,
-                          self._client.POOL_SUBSCRIBED_CAPACITY]
-        else:
-            properties = [self._client.POOL_FREE_CAPACITY,
-                          self._client.POOL_TOTAL_CAPACITY,
-                          self._client.POOL_STATE,
-                          self._client.POOL_SUBSCRIBED_CAPACITY]
-
-        pool = self._client.get_pool(self.storage_pool,
-                                     properties=properties,
-                                     poll=False)
-        self.stats['pools'] = [self._build_pool_stats(pool)]
-        return self.stats
-
-
-@decorate_all_methods(log_enter_exit)
-class EMCVnxCliArray(EMCVnxCliBase):
-
-    def __init__(self, prtcl, configuration):
-        super(EMCVnxCliArray, self).__init__(prtcl,
-                                             configuration=configuration)
-
     def get_target_storagepool(self, volume, source_volume=None):
         pool = vol_utils.extract_host(volume['host'], 'pool')
 
-        # For new created volume that is not from snapshot or cloned,
+        # For new created volume that is not from snapshot or cloned
+        # or the pool is the managed pool,
         # just use the pool selected by scheduler
-        if not source_volume:
+        if not source_volume or pool in self.storage_pools:
             return pool
 
         # For volume created from snapshot or cloned from volume, the pool to
@@ -3188,11 +3171,9 @@ class EMCVnxCliArray(EMCVnxCliBase):
         # use the pool selected by scheduler
         provider_location = source_volume.get('provider_location')
 
-        if (provider_location and
-                self._extract_provider_location_for_lun(provider_location,
-                                                        'version')):
-            return pool
-        else:
+        if (not provider_location or
+                not self._extract_provider_location_for_lun(provider_location,
+                                                            'version')):
             LOG.warning(_LW("The source volume is a legacy volume. "
                             "Create volume in the pool where the source "
                             "volume %s is created."),
@@ -3205,11 +3186,23 @@ class EMCVnxCliArray(EMCVnxCliBase):
                        % source_volume['name'])
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            return data[self._client.LUN_POOL.key]
+            pool = data[self._client.LUN_POOL.key]
+
+        if self.storage_pools and pool not in self.storage_pools:
+            msg = (_("The source volume %s is not in the pool which "
+                     "is managed by the current host.")
+                   % source_volume['name'])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return pool
 
     def update_volume_stats(self):
         """Retrieves stats info."""
-        super(EMCVnxCliArray, self).update_volume_stats()
+        self.update_enabler_in_volume_stats()
+
+        if self.protocol == 'iSCSI':
+            self.iscsi_targets = self._client.get_iscsi_targets(poll=False)
+
         if '-FASTCache' in self.enablers:
             properties = [self._client.POOL_FREE_CAPACITY,
                           self._client.POOL_TOTAL_CAPACITY,
@@ -3223,19 +3216,20 @@ class EMCVnxCliArray(EMCVnxCliBase):
                           self._client.POOL_SUBSCRIBED_CAPACITY]
         pool_list = self._client.get_pool_list(properties, False)
 
-        self.stats['pools'] = map(lambda pool: self._build_pool_stats(pool),
-                                  pool_list)
+        if self.storage_pools:
+            pool_list = filter(lambda a: a['pool_name'] in self.storage_pools,
+                               pool_list)
+        pool_feature = (self._client.get_pool_feature_properties(poll=False)
+                        if self.check_max_pool_luns_threshold else None)
+        self.stats['pools'] = map(
+            lambda pool: self._build_pool_stats(pool, pool_feature), pool_list)
+
         return self.stats
 
 
 def getEMCVnxCli(prtcl, configuration=None):
     configuration.append_config_values(loc_opts)
-    pool_name = configuration.safe_get("storage_vnx_pool_name")
-
-    if pool_name is None or len(pool_name.strip()) == 0:
-        return EMCVnxCliArray(prtcl, configuration=configuration)
-    else:
-        return EMCVnxCliPool(prtcl, configuration=configuration)
+    return EMCVnxCliBase(prtcl, configuration=configuration)
 
 
 class CreateSMPTask(task.Task):
