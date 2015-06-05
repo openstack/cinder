@@ -60,8 +60,8 @@ class SmbFsTestCase(test.TestCase):
 
     def setUp(self):
         super(SmbFsTestCase, self).setUp()
-        smbfs.SmbfsDriver.__init__ = lambda x: None
-        self._smbfs_driver = smbfs.SmbfsDriver()
+
+        self._smbfs_driver = smbfs.SmbfsDriver(configuration=mock.Mock())
         self._smbfs_driver._remotefsclient = mock.Mock()
         self._smbfs_driver._local_volume_dir = mock.Mock(
             return_value=self._FAKE_MNT_POINT)
