@@ -112,6 +112,14 @@ class Manager(base.Base, periodic_task.PeriodicTasks):
             config[key] = CONF.get(key, None)
         return config
 
+    def is_working(self):
+        """Method indicating if service is working correctly.
+
+        This method is supposed to be overriden by subclasses and return if
+        manager is working correctly.
+        """
+        return True
+
 
 class SchedulerDependentManager(Manager):
     """Periodically send capability updates to the Scheduler services.

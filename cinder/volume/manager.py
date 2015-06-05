@@ -394,6 +394,15 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource={'type': 'driver',
                            'id': self.driver.__class__.__name__})
 
+    def is_working(self):
+        """Return if Manager is ready to accept requests.
+
+        This is to inform Service class that in case of volume driver
+        initialization failure the manager is actually down and not ready to
+        accept any requests.
+        """
+        return self.driver.initialized
+
     def create_volume(self, context, volume_id, request_spec=None,
                       filter_properties=None, allow_reschedule=True,
                       snapshot_id=None, image_id=None, source_volid=None,
