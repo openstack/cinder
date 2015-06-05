@@ -20,6 +20,7 @@ from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_snapshot
 
 
 # This list of fake volumes is used by our tests.  Each is configured in a
@@ -90,7 +91,9 @@ def db_snapshot_get_all_for_volume(context, volume_id):
     inspect the contents.
     """
     if volume_id == snapshot_vol_id:
-        return ['fake_snapshot']
+        db_snapshot = {'volume_id': volume_id}
+        snapshot = fake_snapshot.fake_db_snapshot(**db_snapshot)
+        return [snapshot]
     return []
 
 
@@ -155,7 +158,8 @@ class VolumeUnmanageTest(test.TestCase):
         res = self._get_resp(attached_vol_id)
         self.assertEqual(res.status_int, 400, res)
 
-    def test_unmanage_volume_with_snapshots(self):
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_unmanage_volume_with_snapshots(self, metadata_get):
         """Return 400 if the volume exists but has snapshots."""
         res = self._get_resp(snapshot_vol_id)
         self.assertEqual(res.status_int, 400, res)

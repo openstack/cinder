@@ -28,6 +28,7 @@ from oslo_utils import timeutils
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
+from cinder import objects
 import cinder.policy
 from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi
@@ -207,7 +208,7 @@ class API(base.Base):
 
     def _create_cg_from_cgsnapshot(self, context, group, cgsnapshot):
         try:
-            snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+            snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
                 context, cgsnapshot['id'])
 
             if not snapshots:
@@ -380,8 +381,8 @@ class API(base.Base):
                 LOG.error(msg)
                 raise exception.InvalidConsistencyGroup(reason=msg)
 
-            snapshots = self.db.snapshot_get_all_for_volume(context,
-                                                            volume['id'])
+            snapshots = objects.SnapshotList.get_all_for_volume(context,
+                                                                volume['id'])
             if snapshots:
                 msg = _("Volume in consistency group still has "
                         "dependent snapshots.")
