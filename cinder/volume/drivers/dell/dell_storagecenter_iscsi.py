@@ -43,14 +43,28 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
             or 'Dell-iSCSI')
 
     def initialize_connection(self, volume, connector):
+        # Initialize_connection will find or create a server identified by the
+        # connector on the Dell backend.  It will then map the volume to it
+        # and return the properties as follows..
+        # {'driver_volume_type': 'iscsi',
+        #  data = {'target_discovered': False,
+        #          'target_iqn': preferred iqn,
+        #           'target_iqns': all iqns,
+        #           'target_portal': preferred portal,
+        #           'target_portals': all portals,
+        #           'target_lun': preferred lun,
+        #           'target_luns': all luns,
+        #           'access_mode': access_mode
+        #         }
+
         # We use id to name the volume name as it is a
         # known unique name.
         volume_name = volume.get('id')
         initiator_name = connector.get('initiator')
         multipath = connector.get('multipath', False)
-        LOG.info(_LI('initialize_ connection: %(n)s:%(i)s'),
-                 {'n': volume_name,
-                  'i': initiator_name})
+        LOG.info(_LI('initialize_ connection: %(vol)s:%(initiator)s'),
+                 {'vol': volume_name,
+                  'initiator': initiator_name})
 
         with self._client.open_connection() as api:
             try:
@@ -70,50 +84,43 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
                         # Since we just mapped our volume we had best update
                         # our sc volume object.
                         scvolume = api.find_volume(volume_name)
-
-                        if multipath:
-                            # Just return our properties with all the mappings
-                            idx, iscsiproperties = (
-                                api.find_iscsi_properties(scvolume,
-                                                          None,
-                                                          None))
-                            return {'driver_volume_type': 'iscsi',
-                                    'data': iscsiproperties}
-                        else:
-                            # Only return the iqn for the user specified port.
+                        # Our return.
+                        iscsiprops = {}
+                        ip = None
+                        port = None
+                        if not multipath:
+                            # We want to make sure we point to the specified
+                            # ip address for our target_portal return.  This
+                            # isn't an issue with multipath since it should
+                            # try all the alternate portal.
                             ip = self.configuration.iscsi_ip_address
                             port = self.configuration.iscsi_port
-                            idx, iscsiproperties = (
-                                api.find_iscsi_properties(scvolume,
-                                                          ip,
-                                                          port))
-                            properties = {}
-                            properties['target_discovered'] = False
-                            portals = iscsiproperties['target_portals']
-                            # We'll key off of target_portals.  If we have
-                            # one listed we can assume that we found what
-                            # we are looking for.  Otherwise error.
-                            if len(portals) > 0:
-                                properties['target_portal'] = portals[idx]
-                                properties['target_iqn'] = (
-                                    iscsiproperties['target_iqns'][idx])
-                                properties['target_lun'] = (
-                                    iscsiproperties['target_luns'][idx])
-                                properties['access_mode'] = (
-                                    iscsiproperties['access_mode'])
-                                LOG.debug(properties)
-                                return {'driver_volume_type': 'iscsi',
-                                        'data': properties
-                                        }
-                            else:
-                                LOG.error(
-                                    _LE('Volume mapped to invalid path.'))
+
+                        # Three cases that should all be satisfied with the
+                        # same return of Target_Portal and Target_Portals.
+                        # 1. Nova is calling us so we need to return the
+                        #    Target_Portal stuff.  It should ignore the
+                        #    Target_Portals stuff.
+                        # 2. OS brick is calling us in multipath mode so we
+                        #    want to return Target_Portals.  It will ignore
+                        #    the Target_Portal stuff.
+                        # 3. OS brick is calling us in single path mode so
+                        #    we want to return Target_Portal and
+                        #    Target_Portals as alternates.
+                        iscsiprops = (api.find_iscsi_properties(scvolume,
+                                                                ip,
+                                                                port))
+
+                        # Return our iscsi properties.
+                        return {'driver_volume_type': 'iscsi',
+                                'data': iscsiprops}
             except Exception:
-                with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to initialize connection '
-                                  ' %(i)s %(n)s'),
-                              {'i': initiator_name,
-                               'n': volume_name})
+                error = (_('Failed to initialize connection '
+                           '%(initiator)s %(vol)s') %
+                         {'initiator': initiator_name,
+                          'vol': volume_name})
+                LOG.error(error)
+                raise exception.VolumeBackendAPIException(error)
 
         # We get here because our mapping is none or we have no valid iqn to
         # return so blow up.
@@ -124,9 +131,9 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
         # Grab some initial info.
         initiator_name = connector.get('initiator')
         volume_name = volume.get('id')
-        LOG.debug('Terminate connection: %(n)s:%(i)s',
-                  {'n': volume_name,
-                   'i': initiator_name})
+        LOG.debug('Terminate connection: %(vol)s:%(initiator)s',
+                  {'vol': volume_name,
+                   'initiator': initiator_name})
         with self._client.open_connection() as api:
             try:
                 scserver = api.find_server(initiator_name)
@@ -142,8 +149,8 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to terminate connection '
-                                  '%(i)s %(n)s'),
-                              {'i': initiator_name,
-                               'n': volume_name})
+                                  '%(initiator)s %(vol)s'),
+                              {'initiator': initiator_name,
+                               'vol': volume_name})
         raise exception.VolumeBackendAPIException(
             _('Terminate connection failed'))
