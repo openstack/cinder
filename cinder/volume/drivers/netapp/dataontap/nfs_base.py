@@ -4,6 +4,7 @@
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Bob Callaway.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -73,6 +74,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
         super(NetAppNfsDriver, self).do_setup(context)
         self._context = context
         na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
+        self.zapi_client = None
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -292,7 +294,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
                 self.configuration.thres_avl_size_perc_stop
             for share in getattr(self, '_mounted_shares', []):
                 try:
-                    total_size, total_avl, _total_alc = \
+                    total_size, total_avl = \
                         self._get_capacity_info(share)
                     avl_percent = int((total_avl / total_size) * 100)
                     if avl_percent <= thres_size_perc_start:
@@ -625,7 +627,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
 
     def _check_share_can_hold_size(self, share, size):
         """Checks if volume can hold image with size."""
-        _tot_size, tot_available, _tot_allocated = self._get_capacity_info(
+        _tot_size, tot_available = self._get_capacity_info(
             share)
         if tot_available < size:
             msg = _("Container size smaller than required file size.")
@@ -666,22 +668,38 @@ class NetAppNfsDriver(nfs.NfsDriver):
                 'A volume ID or share was not specified.')
         return host_ip, export_path
 
-    def _get_extended_capacity_info(self, nfs_share):
-        """Returns an extended set of share capacity metrics."""
+    def _get_share_capacity_info(self, nfs_share):
+        """Returns the share capacity metrics needed by the scheduler."""
 
-        total_size, total_available, total_allocated = \
-            self._get_capacity_info(nfs_share)
+        used_ratio = self.configuration.nfs_used_ratio
+        oversub_ratio = self.configuration.nfs_oversub_ratio
 
-        used_ratio = (total_size - total_available) / total_size
-        subscribed_ratio = total_allocated / total_size
-        apparent_size = max(0, total_size * self.configuration.nfs_used_ratio)
-        apparent_available = max(0, apparent_size - total_allocated)
+        # The scheduler's capacity filter will reduce the amount of
+        # free space that we report to it by the reserved percentage.
+        reserved_ratio = 1 - used_ratio
+        reserved_percentage = round(100 * reserved_ratio)
 
-        return {'total_size': total_size, 'total_available': total_available,
-                'total_allocated': total_allocated, 'used_ratio': used_ratio,
-                'subscribed_ratio': subscribed_ratio,
-                'apparent_size': apparent_size,
-                'apparent_available': apparent_available}
+        total_size, total_available = self._get_capacity_info(nfs_share)
+
+        apparent_size = total_size * oversub_ratio
+        apparent_size_gb = na_utils.round_down(
+            apparent_size / units.Gi, '0.01')
+
+        apparent_free_size = total_available * oversub_ratio
+        apparent_free_gb = na_utils.round_down(
+            float(apparent_free_size) / units.Gi, '0.01')
+
+        capacity = dict()
+        capacity['reserved_percentage'] = reserved_percentage
+        capacity['total_capacity_gb'] = apparent_size_gb
+        capacity['free_capacity_gb'] = apparent_free_gb
+
+        return capacity
+
+    def _get_capacity_info(self, nfs_share):
+        """Get total capacity and free capacity in bytes for an nfs share."""
+        export_path = nfs_share.rsplit(':', 1)[1]
+        return self.zapi_client.get_flexvol_capacity(export_path)
 
     def _check_volume_type(self, volume, share, file_name):
         """Match volume type for share file."""

@@ -4,6 +4,7 @@
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Bob Callaway.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -21,7 +22,6 @@ Volume driver for NetApp NFS storage.
 """
 
 from oslo_log import log as logging
-from oslo_utils import units
 import six
 
 from cinder import exception
@@ -138,28 +138,12 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
 
         for nfs_share in self._mounted_shares:
 
-            capacity = self._get_extended_capacity_info(nfs_share)
+            capacity = self._get_share_capacity_info(nfs_share)
 
             pool = dict()
             pool['pool_name'] = nfs_share
             pool['QoS_support'] = False
-            pool['reserved_percentage'] = 0
-
-            # Report pool as reserved when over the configured used_ratio
-            if capacity['used_ratio'] > self.configuration.nfs_used_ratio:
-                pool['reserved_percentage'] = 100
-
-            # Report pool as reserved when over the subscribed ratio
-            if capacity['subscribed_ratio'] >=\
-                    self.configuration.nfs_oversub_ratio:
-                pool['reserved_percentage'] = 100
-
-            # convert sizes to GB
-            total = float(capacity['apparent_size']) / units.Gi
-            pool['total_capacity_gb'] = na_utils.round_down(total, '0.01')
-
-            free = float(capacity['apparent_available']) / units.Gi
-            pool['free_capacity_gb'] = na_utils.round_down(free, '0.01')
+            pool.update(capacity)
 
             pools.append(pool)
 

@@ -1,4 +1,5 @@
 # Copyright (c) 2014 Alex Meade.
+# Copyright (c) 2015 Dustin Schoenbrun.
 # All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -670,3 +671,28 @@ class NetAppCmodeClientTestCase(test.TestCase):
             self.client.get_operational_network_interface_addresses())
 
         self.assertEqual(expected_result, address_list)
+
+    def test_get_flexvol_capacity(self):
+        expected_total_size = 1000
+        expected_available_size = 750
+        fake_flexvol_path = '/fake/vol'
+        response = netapp_api.NaElement(
+            etree.XML("""
+            <results status="passed">
+                <attributes-list>
+                    <volume-attributes>
+                        <volume-space-attributes>
+                            <size-available>%(available_size)s</size-available>
+                            <size-total>%(total_size)s</size-total>
+                        </volume-space-attributes>
+                    </volume-attributes>
+                </attributes-list>
+            </results>""" % {'available_size': expected_available_size,
+                             'total_size': expected_total_size}))
+        self.connection.invoke_successfully.return_value = response
+
+        total_size, available_size = (
+            self.client.get_flexvol_capacity(fake_flexvol_path))
+
+        self.assertEqual(expected_total_size, total_size)
+        self.assertEqual(expected_available_size, available_size)

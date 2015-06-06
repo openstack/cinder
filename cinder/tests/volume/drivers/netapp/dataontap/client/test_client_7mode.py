@@ -1,4 +1,5 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
+# Copyright (c) 2015 Dustin Schoenbrun. All rights reserved.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -643,3 +644,26 @@ class NetApp7modeClientTestCase(test.TestCase):
         wwpns = self.client.get_fc_target_wwpns()
 
         self.assertSetEqual(set(wwpns), set([wwpn1, wwpn2]))
+
+    def test_get_flexvol_capacity(self):
+        expected_total_bytes = 1000
+        expected_available_bytes = 750
+        fake_flexvol_path = '/fake/vol'
+        response = netapp_api.NaElement(
+            etree.XML("""
+            <results status="passed">
+                <volumes>
+                    <volume-info>
+                        <size-total>%(total_bytes)s</size-total>
+                        <size-available>%(available_bytes)s</size-available>
+                    </volume-info>
+                </volumes>
+            </results>""" % {'total_bytes': expected_total_bytes,
+                             'available_bytes': expected_available_bytes}))
+        self.connection.invoke_successfully.return_value = response
+
+        total_bytes, available_bytes = (
+            self.client.get_flexvol_capacity(fake_flexvol_path))
+
+        self.assertEqual(expected_total_bytes, total_bytes)
+        self.assertEqual(expected_available_bytes, available_bytes)
