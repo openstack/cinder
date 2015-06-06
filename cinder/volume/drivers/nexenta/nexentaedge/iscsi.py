@@ -26,8 +26,8 @@ from cinder.i18n import _LE
 from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc as jsonrpc
-from oslo_log import log as logging
 from oslo_config import cfg
+from oslo_log import log as logging
 
 
 NEXENTA_EDGE_OPTIONS = [
@@ -140,7 +140,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except Exception as exc:
             LOG.error(_LE('Error verifying iSCSI service %s on host %s')
                       % (self.iscsi_service, self.restapi_host))
-            LOG.error(str(exc))
+            LOG.error(_LE(exc))
             raise
 
     def check_for_setup_error(self):
@@ -149,7 +149,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except Exception as exc:
             LOG.error(_LE('Error verifying LUN container %s')
                       % self.bucket_path)
-            LOG.error(str(exc))
+            LOG.error(_LE(exc))
             raise
 
     def _get_lun_number(self, volname):
@@ -161,7 +161,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 })
         except Exception as exc:
             LOG.error(_LE('Error retrieving LUN %s number') % volname)
-            LOG.error(str(exc))
+            LOG.error(_LE(exc))
             raise
 
         return rsp['data']
@@ -186,7 +186,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 'chunkSize': self.LUN_CHUNKSIZE
             })
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error creating volume: %s') % unicode(e))
+            LOG.error(_LE('Error creating volume: %s') % e)
             raise
 
     def delete_volume(self, volume):
@@ -195,7 +195,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                                 '/iscsi', {'objectPath': self.bucket_path +
                                            '/' + volume['name']})
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error deleting volume: %s') % unicode(e))
+            LOG.error(_LE('Error deleting volume: %s') % e)
             raise
 
     def extend_volume(self, volume, new_size):
@@ -204,7 +204,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                              {'objectPath': self.bucket_path + '/' +
                               volume['name'], 'newSizeMB': new_size * 1024})
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error extending volume: %s') % unicode(e))
+            LOG.error(_LE('Error extending volume: %s') % e)
             raise
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -218,7 +218,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     'snapName': snapshot['name']
                 })
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error cloning volume: %s') % unicode(e))
+            LOG.error(_LE('Error cloning volume: %s') % e)
             raise
 
     def create_snapshot(self, snapshot):
@@ -231,7 +231,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     'snapName': snapshot['name']
                 })
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error creating snapshot: %s') % unicode(e))
+            LOG.error(_LE('Error creating snapshot: %s') % e)
             raise
 
     def delete_snapshot(self, snapshot):
@@ -244,7 +244,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     'snapName': snapshot['name']
                 })
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error deleting snapshot: %s') % unicode(e))
+            LOG.error(_LE('Error deleting snapshot: %s') % e)
             raise
 
     def create_cloned_volume(self, volume, src_vref):
@@ -264,7 +264,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 'chunkSize': self.LUN_CHUNKSIZE,
             })
         except nexenta.NexentaException as e:
-            LOG.error(_LE('Error creating cloned volume: %s') % unicode(e))
+            LOG.error(_LE('Error creating cloned volume: %s') % e)
             raise
 
     def create_export(self, context, volume):
