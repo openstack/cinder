@@ -561,3 +561,36 @@ class BackupSwiftTestCase(test.TestCase):
         compressor = service._get_compressor('bz2')
         self.assertEqual(compressor, bz2)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
+
+    def test_prepare_output_data_effective_compression(self):
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        # Set up buffer of 128 zeroed bytes
+        fake_data = buffer(bytearray(128))
+
+        result = service._prepare_output_data(fake_data)
+
+        self.assertEqual('zlib', result[0])
+        self.assertTrue(len(result) < len(fake_data))
+
+    def test_prepare_output_data_no_compresssion(self):
+        self.flags(backup_compression_algorithm='none')
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        # Set up buffer of 128 zeroed bytes
+        fake_data = buffer(bytearray(128))
+
+        result = service._prepare_output_data(fake_data)
+
+        self.assertEqual('none', result[0])
+        self.assertEqual(fake_data, result[1])
+
+    def test_prepare_output_data_ineffective_compression(self):
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        # Set up buffer of 128 zeroed bytes
+        fake_data = buffer(bytearray(128))
+        # Pre-compress so that compression in the driver will be ineffective.
+        already_compressed_data = service.compressor.compress(fake_data)
+
+        result = service._prepare_output_data(already_compressed_data)
+
+        self.assertEqual('none', result[0])
+        self.assertEqual(already_compressed_data, result[1])
