@@ -119,6 +119,47 @@ def parse_nms_url(url):
     return auto, scheme, user, password, host, port, '/rest/nms/'
 
 
+def parse_nef_url(url):
+    """Parse NMS url into normalized parts like scheme, user, host and others.
+
+    Example NMS URL:
+        auto://admin:nexenta@192.168.1.1:8080/
+
+    NMS URL parts:
+        auto                True if url starts with auto://, protocol will be
+                            automatically switched to https if http not
+                            supported;
+        scheme (auto)       connection protocol (http or https);
+        user (admin)        NMS user;
+        password (nexenta)  NMS password;
+        host (192.168.1.1)  NMS host;
+        port (8080)         NMS port.
+
+    :param url: url string
+    :return: tuple (auto, scheme, user, password, host, port)
+    """
+    pr = urlparse.urlparse(url)
+    scheme = pr.scheme
+    auto = scheme == 'auto'
+    if auto:
+        scheme = 'http'
+    user = 'admin'
+    password = 'nexenta'
+    if '@' not in pr.netloc:
+        host_and_port = pr.netloc
+    else:
+        user_and_password, host_and_port = pr.netloc.split('@', 1)
+        if ':' in user_and_password:
+            user, password = user_and_password.split(':')
+        else:
+            user = user_and_password
+    if ':' in host_and_port:
+        host, port = host_and_port.split(':', 1)
+    else:
+        host, port = host_and_port, '8080'
+    return auto, scheme, user, password, host, port
+
+
 def get_migrate_snapshot_name(volume):
     """Return name for snapshot that will be used to migrate the volume."""
     return 'cinder-migrate-snapshot-%(id)s' % volume
