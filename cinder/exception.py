@@ -932,6 +932,10 @@ class XtremIOAlreadyMappedError(CinderException):
     message = _("Volume to Initiator Group mapping already exists")
 
 
+class XtremIOArrayBusy(CinderException):
+    message = _("System is busy, retry operation.")
+
+
 # StorPool driver
 class StorPoolConfigurationMissing(CinderException):
     message = _("Missing parameter %(param)s in the %(section)s section "
