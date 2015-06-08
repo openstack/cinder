@@ -134,7 +134,7 @@ class SmartX(object):
             else:
                 opts['LUNType'] = 1
         if opts['thick_provisioning_support'] == 'true':
-                opts['LUNType'] = 0
+            opts['LUNType'] = 0
 
         return opts
 

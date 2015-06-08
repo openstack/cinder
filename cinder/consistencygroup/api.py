@@ -531,11 +531,11 @@ class API(base.Base):
 
         if (not name and not description and not add_volumes_new and
                 not remove_volumes_new):
-                msg = (_("Cannot update consistency group %(group_id)s "
-                         "because no valid name, description, add_volumes, "
-                         "or remove_volumes were provided.") %
-                       {'group_id': group.id})
-                raise exception.InvalidConsistencyGroup(reason=msg)
+            msg = (_("Cannot update consistency group %(group_id)s "
+                     "because no valid name, description, add_volumes, "
+                     "or remove_volumes were provided.") %
+                   {'group_id': group.id})
+            raise exception.InvalidConsistencyGroup(reason=msg)
 
         fields = {'updated_at': timeutils.utcnow()}
 

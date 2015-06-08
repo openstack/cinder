@@ -1236,27 +1236,27 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
             mock.patch.object(self.volume.driver, '_clone') as mock_clone, \
             mock.patch.object(self.volume.driver, '_resize') \
                 as mock_resize:
-                mock_is_cloneable.side_effect = cloneable_side_effect
-                image_loc = ('rbd://bee/bi/bo/bum',
-                             [{'url': 'rbd://bee/bi/bo/bum'},
-                              {'url': 'rbd://fee/fi/fo/fum'}])
-                volume = {'name': 'vol1'}
-                image_meta = mock.sentinel.image_meta
-                image_service = mock.sentinel.image_service
+            mock_is_cloneable.side_effect = cloneable_side_effect
+            image_loc = ('rbd://bee/bi/bo/bum',
+                         [{'url': 'rbd://bee/bi/bo/bum'},
+                          {'url': 'rbd://fee/fi/fo/fum'}])
+            volume = {'name': 'vol1'}
+            image_meta = mock.sentinel.image_meta
+            image_service = mock.sentinel.image_service
 
-                actual = driver.clone_image(self.context,
-                                            volume,
-                                            image_loc,
-                                            image_meta,
-                                            image_service)
+            actual = driver.clone_image(self.context,
+                                        volume,
+                                        image_loc,
+                                        image_meta,
+                                        image_service)
 
-                self.assertEqual(expected, actual)
-                self.assertEqual(2, mock_is_cloneable.call_count)
-                mock_clone.assert_called_once_with(volume,
-                                                   'fi', 'fo', 'fum')
-                mock_is_cloneable.assert_called_with('rbd://fee/fi/fo/fum',
-                                                     image_meta)
-                mock_resize.assert_called_once_with(volume)
+            self.assertEqual(expected, actual)
+            self.assertEqual(2, mock_is_cloneable.call_count)
+            mock_clone.assert_called_once_with(volume,
+                                               'fi', 'fo', 'fum')
+            mock_is_cloneable.assert_called_with('rbd://fee/fi/fo/fum',
+                                                 image_meta)
+            mock_resize.assert_called_once_with(volume)
 
     def test_clone_multilocation_failure(self):
         expected = ({}, False)
@@ -1267,24 +1267,24 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
             mock.patch.object(self.volume.driver, '_clone') as mock_clone, \
             mock.patch.object(self.volume.driver, '_resize') \
                 as mock_resize:
-                image_loc = ('rbd://bee/bi/bo/bum',
-                             [{'url': 'rbd://bee/bi/bo/bum'},
-                              {'url': 'rbd://fee/fi/fo/fum'}])
+            image_loc = ('rbd://bee/bi/bo/bum',
+                         [{'url': 'rbd://bee/bi/bo/bum'},
+                          {'url': 'rbd://fee/fi/fo/fum'}])
 
-                volume = {'name': 'vol1'}
-                image_meta = mock.sentinel.image_meta
-                image_service = mock.sentinel.image_service
-                actual = driver.clone_image(self.context,
-                                            volume,
-                                            image_loc,
-                                            image_meta,
-                                            image_service)
+            volume = {'name': 'vol1'}
+            image_meta = mock.sentinel.image_meta
+            image_service = mock.sentinel.image_service
+            actual = driver.clone_image(self.context,
+                                        volume,
+                                        image_loc,
+                                        image_meta,
+                                        image_service)
 
-                self.assertEqual(expected, actual)
-                self.assertEqual(2, mock_is_cloneable.call_count)
-                mock_is_cloneable.assert_any_call('rbd://bee/bi/bo/bum',
-                                                  image_meta)
-                mock_is_cloneable.assert_any_call('rbd://fee/fi/fo/fum',
-                                                  image_meta)
-                self.assertFalse(mock_clone.called)
-                self.assertFalse(mock_resize.called)
+            self.assertEqual(expected, actual)
+            self.assertEqual(2, mock_is_cloneable.call_count)
+            mock_is_cloneable.assert_any_call('rbd://bee/bi/bo/bum',
+                                              image_meta)
+            mock_is_cloneable.assert_any_call('rbd://fee/fi/fo/fum',
+                                              image_meta)
+            self.assertFalse(mock_clone.called)
+            self.assertFalse(mock_resize.called)

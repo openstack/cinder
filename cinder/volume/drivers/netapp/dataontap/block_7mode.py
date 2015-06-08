@@ -169,11 +169,11 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
                         initiator_info.get_child_content('initiator-name'))
 
                 if initiator_set == initiator_set_for_igroup:
-                        igroup = initiator_group_info.get_child_content(
-                            'initiator-group-name')
-                        lun_id = initiator_group_info.get_child_content(
-                            'lun-id')
-                        return igroup, lun_id
+                    igroup = initiator_group_info.get_child_content(
+                        'initiator-group-name')
+                    lun_id = initiator_group_info.get_child_content(
+                        'lun-id')
+                    return igroup, lun_id
 
         return None, None
 

@@ -3077,10 +3077,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                             metadata['key']: metadata['value']
                             for metadata in volume.get('volume_metadata')}
                 elif key == 'admin_metadata':
-                        model_update_new[key] = {
-                            metadata['key']: metadata['value']
-                            for metadata in volume.get(
-                                'volume_admin_metadata')}
+                    model_update_new[key] = {
+                        metadata['key']: metadata['value']
+                        for metadata in volume.get('volume_admin_metadata')}
                 else:
                     model_update_new[key] = volume[key]
             self.db.volume_update(ctxt.elevated(), new_volume['id'],

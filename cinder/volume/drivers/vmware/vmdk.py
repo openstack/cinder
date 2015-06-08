@@ -1634,13 +1634,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                        'backup_id': backup['id']})
             self._download_vmdk(context, volume, backing, tmp_file_path)
             with open(tmp_file_path, "rb") as tmp_file:
-                    LOG.debug("Calling backup service to backup file: %s.",
-                              tmp_file_path)
-                    backup_service.backup(backup, tmp_file)
-                    LOG.debug("Created backup: %(backup_id)s for volume: "
-                              "%(name)s.",
-                              {'backup_id': backup['id'],
-                               'name': volume['name']})
+                LOG.debug("Calling backup service to backup file: %s.",
+                          tmp_file_path)
+                backup_service.backup(backup, tmp_file)
+                LOG.debug("Created backup: %(backup_id)s for volume: "
+                          "%(name)s.",
+                          {'backup_id': backup['id'],
+                           'name': volume['name']})
 
     def _create_backing_from_stream_optimized_file(
             self, context, name, volume, tmp_file_path, file_size_bytes):
@@ -1787,35 +1787,35 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         tmp_vmdk_name = uuidutils.generate_uuid()
         with self._temporary_file(suffix=".vmdk",
                                   prefix=tmp_vmdk_name) as tmp_file_path:
-                LOG.debug("Using temporary file: %(tmp_path)s for restoring "
-                          "backup: %(backup_id)s.",
-                          {'tmp_path': tmp_file_path,
-                           'backup_id': backup['id']})
-                with open(tmp_file_path, "wb") as tmp_file:
-                    LOG.debug("Calling backup service to restore backup: "
-                              "%(backup_id)s to file: %(tmp_path)s.",
-                              {'backup_id': backup['id'],
-                               'tmp_path': tmp_file_path})
-                    backup_service.restore(backup, volume['id'], tmp_file)
-                    LOG.debug("Backup: %(backup_id)s restored to file: "
-                              "%(tmp_path)s.",
-                              {'backup_id': backup['id'],
-                               'tmp_path': tmp_file_path})
-                self._restore_backing(context, volume, backing, tmp_file_path,
-                                      backup['size'] * units.Gi)
-
-                if backup['size'] < volume['size']:
-                    # Current backing size is backup size.
-                    LOG.debug("Backup size: %(backup_size)d is less than "
-                              "volume size: %(vol_size)d; extending volume.",
-                              {'backup_size': backup['size'],
-                               'vol_size': volume['size']})
-                    self.extend_volume(volume, volume['size'])
-
-                LOG.debug("Backup: %(backup_id)s restored to volume: "
-                          "%(name)s.",
+            LOG.debug("Using temporary file: %(tmp_path)s for restoring "
+                      "backup: %(backup_id)s.",
+                      {'tmp_path': tmp_file_path,
+                       'backup_id': backup['id']})
+            with open(tmp_file_path, "wb") as tmp_file:
+                LOG.debug("Calling backup service to restore backup: "
+                          "%(backup_id)s to file: %(tmp_path)s.",
                           {'backup_id': backup['id'],
-                           'name': volume['name']})
+                           'tmp_path': tmp_file_path})
+                backup_service.restore(backup, volume['id'], tmp_file)
+                LOG.debug("Backup: %(backup_id)s restored to file: "
+                          "%(tmp_path)s.",
+                          {'backup_id': backup['id'],
+                           'tmp_path': tmp_file_path})
+            self._restore_backing(context, volume, backing, tmp_file_path,
+                                  backup['size'] * units.Gi)
+
+            if backup['size'] < volume['size']:
+                # Current backing size is backup size.
+                LOG.debug("Backup size: %(backup_size)d is less than "
+                          "volume size: %(vol_size)d; extending volume.",
+                          {'backup_size': backup['size'],
+                           'vol_size': volume['size']})
+                self.extend_volume(volume, volume['size'])
+
+            LOG.debug("Backup: %(backup_id)s restored to volume: "
+                      "%(name)s.",
+                      {'backup_id': backup['id'],
+                       'name': volume['name']})
 
 
 class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
