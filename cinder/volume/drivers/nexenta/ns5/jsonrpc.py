@@ -62,7 +62,8 @@ class NexentaJSONProxy(object):
             'Content-Type': 'application/json',
             'Authorization': 'Basic %s' % auth
         }
-        LOG.debug('Sending JSON data: %s', data)
+        LOG.debug('Sending JSON to url: %s, data: %s, method: %s' % (
+            path, data, method))
         url = self.url + path
         if data:
             data = jsonutils.dumps(data)

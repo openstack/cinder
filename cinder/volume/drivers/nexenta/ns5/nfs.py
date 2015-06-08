@@ -202,7 +202,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
               'filesystems/%(fs)s/snapshots/%(snap)s/clone' % {
                 'pool': pool,
                 'ds': dataset,
-                'fs': snapshot['volume']['name'],
+                'fs': snapshot_vol['name'],
                 'snap': snapshot['name']
               }
         data = {'name': volume['name']}
@@ -267,7 +267,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             nef = self.share2nef[nfs_share]
             pool, dataset = self._get_share_datasets(nfs_share)
             url = 'storage/pools/%(pool)s/datasetGroups/' \
-                  '%(ds)s/filesystems/%(fs)s' % {
+                  '%(ds)s/filesystems/%(fs)s?snapshots=true' % {
                       'pool': pool,
                       'ds': dataset,
                       'fs': volume['name']
@@ -275,14 +275,14 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             origin = nef(url).get('originalSnapshot')
             nef(url, method='DELETE')
             if origin and self._is_clone_snapshot_name(origin):
-                url = 'storage/pools/%(pool)s/datasetGroups/%(ds)s/' \
-                      'filesystems/%(fs)s/snapshots/%(snap)s' % {
-                          'pool': pool,
-                          'ds': dataset,
-                          'fs': volume['name'],
-                          'snap': origin.split('@')[-1]
-                      }
-                nef(url, method='DELETE')
+                snap_url = ('storage/pools/%(pool)s/datasetGroups/%(ds)s/'
+                            'filesystems/%(fs)s/snapshots/%(snap)s') % {
+                                'pool': pool,
+                                'ds': dataset,
+                                'fs': origin.split('@')[-2].split('/')[-1],
+                                'snap': origin.split('@')[-1]
+                            }
+                nef(snap_url, method='DELETE')
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
@@ -318,7 +318,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                   'fs': volume['name'],
                   'snap': snapshot['name']
               }
-        nef(url, method='DELETE')
+        try:
+            nef(url, method='DELETE')
+        except nexenta.NexentaException as exc:
+            if 'EBUSY' is exc:
+                LOG.warning(
+                    _('Could not delete snapshot %s - it has dependencies' %
+                        snapshot['name']))
 
     def local_path(self, volume):
         """Get volume path (mounted locally fs path) for given volume.
@@ -405,8 +411,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         dataset_props = nef(url)
         free = utils.str2size(dataset_props['bytesAvailable'])
         allocated = utils.str2size(dataset_props['bytesUsed'])
-        capacity_mult = self.configuration.nexenta_capacitycheck / 100
-        total = (free + allocated) * capacity_mult
+        total = free + allocated
         return total, free, allocated
 
     def _get_nef_for_url(self, url):
