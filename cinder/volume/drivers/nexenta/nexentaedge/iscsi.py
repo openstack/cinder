@@ -119,8 +119,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
             rsp = self.restapi.get('service/'
                                    + self.iscsi_service + '/iscsi/status')
-            self.target_name = rsp['data'][rsp['data']
-                .keys()[0]].split('\n', 1)[0].split(' ')[2]
+            data_keys = rsp['data'][rsp['data'].keys()[0]]
+            self.target_name = data_keys.split('\n', 1)[0].split(' ')[2]
 
             rsp = self.restapi.get('service/' + self.iscsi_service)
             if ('X-VIPS' in rsp['data']):
@@ -138,18 +138,18 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     raise Exception('No service VIP configured and ' +
                                     'no nexenta_client_address')
         except Exception as exc:
-            LOG.error(_LE('Error verifying iSCSI service %s on host %s')
-                      % (self.iscsi_service, self.restapi_host))
-            LOG.error(_LE(exc))
+            LOG.error(_LE('Error verifying iSCSI service %(serv)s on '
+                          'host %(hst)s: %(err)s'),
+                      {'serv': self.iscsi_service, 'hst': self.restapi_host,
+                       'err': exc})
             raise
 
     def check_for_setup_error(self):
         try:
             self.restapi.get(self.bucket_url + '/objects/')
         except Exception as exc:
-            LOG.error(_LE('Error verifying LUN container %s')
-                      % self.bucket_path)
-            LOG.error(_LE(exc))
+            LOG.error(_LE('Error verifying LUN container %(bkt)s: %(err)s'),
+                      {'bkt': self.bucket_path, 'err': exc})
             raise
 
     def _get_lun_number(self, volname):
@@ -160,8 +160,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     'objectPath': self.bucket_path + '/' + volname
                 })
         except Exception as exc:
-            LOG.error(_LE('Error retrieving LUN %s number') % volname)
-            LOG.error(_LE(exc))
+            LOG.error(_LE('Error retrieving LUN %(vol)s number: %(err)s'),
+                      {'vol': volname, 'err': exc})
             raise
 
         return rsp['data']

@@ -119,10 +119,10 @@ class NexentaEdgeJSONProxy(object):
             response_data = e.read()
             rsp = json.loads(response_data)
         except urllib2.URLError as e:
-            rsp = {'code': str(e.reason), 'message': str(e)}
+            rsp = {'code': e.reason, 'message': e}
         except Exception as e:
             rsp = {'code': 'UNKNOWN_ERROR',
-                   "message": _LE('Error: %s') % str(e)}
+                   "message": _LE('Error: %s') % e}
 
         LOG.info(_LI('Got response: %s') % rsp)
 
