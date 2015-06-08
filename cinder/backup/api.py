@@ -243,7 +243,7 @@ class API(base.Base):
 
         return backup
 
-    def restore(self, context, backup_id, volume_id=None):
+    def restore(self, context, backup_id, volume_id=None, name=None):
         """Make the RPC call to restore a volume backup."""
         check_policy(context, 'restore')
         backup = self.get(context, backup_id)
@@ -259,11 +259,13 @@ class API(base.Base):
         # Create a volume if none specified. If a volume is specified check
         # it is large enough for the backup
         if volume_id is None:
-            name = 'restore_backup_%s' % backup_id
+            if name is None:
+                name = 'restore_backup_%s' % backup_id
+
             description = 'auto-created_from_restore_from_backup'
 
             LOG.info(_LI("Creating volume of %(size)s GB for restore of "
-                         "backup %(backup_id)s"),
+                         "backup %(backup_id)s."),
                      {'size': size, 'backup_id': backup_id},
                      context=context)
             volume = self.volume_api.create(context, size, name, description)
