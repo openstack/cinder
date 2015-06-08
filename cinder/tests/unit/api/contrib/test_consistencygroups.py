@@ -443,6 +443,42 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             cg['id'])
         self.assertEqual(cg['status'], 'deleted')
 
+    def test_delete_consistencygroup_with_invalid_body(self):
+        consistencygroup_id = self._create_consistencygroup(status='available')
+        req = webob.Request.blank('/v2/fake/consistencygroups/%s/delete' %
+                                  consistencygroup_id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        body = {"invalid_request_element": {"force": False}}
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+
+        self.assertEqual(400, res.status_int)
+
+    def test_delete_consistencygroup_with_invalid_force_value_in_body(self):
+        consistencygroup_id = self._create_consistencygroup(status='available')
+        req = webob.Request.blank('/v2/fake/consistencygroups/%s/delete' %
+                                  consistencygroup_id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        body = {"consistencygroup": {"force": "abcd"}}
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+
+        self.assertEqual(400, res.status_int)
+
+    def test_delete_consistencygroup_with_empty_force_value_in_body(self):
+        consistencygroup_id = self._create_consistencygroup(status='available')
+        req = webob.Request.blank('/v2/fake/consistencygroups/%s/delete' %
+                                  consistencygroup_id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        body = {"consistencygroup": {"force": ""}}
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+
+        self.assertEqual(400, res.status_int)
+
     def test_create_consistencygroup_failed_no_volume_type(self):
         name = 'cg1'
         body = {"consistencygroup": {"name": name,
