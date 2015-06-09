@@ -106,6 +106,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         target_name = self._get_target_name()
         target_group_name = self._get_target_group_name()
+        ensure = True
         if not self._target_exists(target_name):
             try:
                 self.nms.iscsitarget.create_target({
