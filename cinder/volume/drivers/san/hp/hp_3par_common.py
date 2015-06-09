@@ -174,10 +174,11 @@ class HP3PARCommon(object):
         2.0.39 - Added support for updated detach_volume attachment.
         2.0.40 - Make the 3PAR drivers honor the pool in create  bug #1432876
         2.0.41 - Only log versions at startup.  bug #1447697
+        2.0.42 - Fix type for snapshot config settings. bug #1461640
 
     """
 
-    VERSION = "2.0.41"
+    VERSION = "2.0.42"
 
     stats = {}
 
@@ -1495,11 +1496,11 @@ class HP3PARCommon(object):
                         'readOnly': True}
             if self.config.hp3par_snapshot_expiration:
                 optional['expirationHours'] = (
-                    self.config.hp3par_snapshot_expiration)
+                    int(self.config.hp3par_snapshot_expiration))
 
             if self.config.hp3par_snapshot_retention:
                 optional['retentionHours'] = (
-                    self.config.hp3par_snapshot_retention)
+                    int(self.config.hp3par_snapshot_retention))
 
             self.client.createSnapshot(snap_name, vol_name, optional)
         except hpexceptions.HTTPForbidden as ex:
