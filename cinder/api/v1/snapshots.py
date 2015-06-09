@@ -148,7 +148,7 @@ class SnapshotsController(wsgi.Controller):
 
         snapshots = self.volume_api.get_all_snapshots(context,
                                                       search_opts=search_opts)
-        limited_list = common.limited(snapshots, req)
+        limited_list = common.limited(snapshots.objects, req)
         req.cache_db_snapshots(limited_list)
         res = [entity_maker(context, snapshot) for snapshot in limited_list]
         return {'snapshots': res}

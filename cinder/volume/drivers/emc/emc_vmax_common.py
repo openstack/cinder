@@ -18,6 +18,8 @@ import os.path
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import units
+
 import six
 
 from cinder import exception
@@ -234,7 +236,7 @@ class EMCVMAXCommon(object):
         storageSystem = snapshotInstance['SystemName']
 
         syncName = self.utils.find_sync_sv_by_target(
-            self.conn, storageSystem, snapshotInstance, True)
+            self.conn, storageSystem, snapshotInstance, extraSpecs, True)
         if syncName is not None:
             repservice = self.utils.find_replication_service(self.conn,
                                                              storageSystem)
@@ -334,7 +336,7 @@ class EMCVMAXCommon(object):
         device_number = device_info['hostlunid']
         if device_number is None:
             LOG.info(_LI("Volume %s is not mapped. No volume to unmap."),
-                     (volumename))
+                     volumename)
             return
 
         vol_instance = self._find_lun(volume)
@@ -369,7 +371,7 @@ class EMCVMAXCommon(object):
         portGroupName = OS-<target>-PG  The portGroupName will come from
                         the EMC configuration xml file.
                         These are precreated. If the portGroup does not exist
-                        then a error will be returned to the user
+                        then an error will be returned to the user
         maskingView  = OS-<shortHostName>-<poolName>-<shortProtocol>-MV
                        e.g OS-myShortHost-SATA_BRONZ1-I-MV
 
@@ -444,7 +446,7 @@ class EMCVMAXCommon(object):
                 (self.masking
                     ._check_if_rollback_action_for_masking_required(
                         self.conn, rollbackDict))
-            exception_message = ("Error Attaching volume %(vol)s."
+            exception_message = (_("Error Attaching volume %(vol)s.")
                                  % {'vol': volumeName})
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
@@ -634,7 +636,7 @@ class EMCVMAXCommon(object):
         :param diff: Unused parameter.
         :param host: The host dict holding the relevant target(destination)
             information
-        :returns: boolean -- True if retype succeeded, Fasle if error
+        :returns: boolean -- True if retype succeeded, False if error
         """
 
         volumeName = volume['name']
@@ -673,12 +675,12 @@ class EMCVMAXCommon(object):
         :returns: boolean -- Always returns True
         :returns: dict -- Empty dict {}
         """
-        LOG.warn(_LW("The VMAX plugin only supports Retype. "
-                     "If a pool based migration is necessary "
-                     "this will happen on a Retype "
-                     "From the command line: "
-                     "cinder --os-volume-api-version 2 retype "
-                     "<volumeId> <volumeType> --migration-policy on-demand"))
+        LOG.warning(_LW("The VMAX plugin only supports Retype. "
+                        "If a pool based migration is necessary "
+                        "this will happen on a Retype "
+                        "From the command line: "
+                        "cinder --os-volume-api-version 2 retype <volumeId> "
+                        "<volumeType> --migration-policy on-demand"))
         return True, {}
 
     def _migrate_volume(
@@ -710,7 +712,7 @@ class EMCVMAXCommon(object):
         if moved is False and sourceFastPolicyName is not None:
             # Return the volume to the default source fast policy storage
             # group because the migrate was unsuccessful.
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Failed to migrate: %(volumeName)s from "
                 "default source storage group "
                 "for FAST policy: %(sourceFastPolicyName)s. "
@@ -738,7 +740,7 @@ class EMCVMAXCommon(object):
             if not self._migrate_volume_fast_target(
                     volumeInstance, storageSystemName,
                     targetFastPolicyName, volumeName, extraSpecs):
-                LOG.warn(_LW(
+                LOG.warning(_LW(
                     "Attempting a rollback of: %(volumeName)s to "
                     "original pool %(sourcePoolInstanceName)s."),
                     {'volumeName': volumeName,
@@ -770,8 +772,8 @@ class EMCVMAXCommon(object):
         :param extraSpecs: extra specifications
         """
 
-        LOG.warn(_LW("_migrate_rollback on : %(volumeName)s."),
-                 {'volumeName': volumeName})
+        LOG.warning(_LW("_migrate_rollback on : %(volumeName)s."),
+                    {'volumeName': volumeName})
 
         storageRelocationService = self.utils.find_storage_relocation_service(
             conn, storageSystemName)
@@ -803,42 +805,41 @@ class EMCVMAXCommon(object):
         :param sourceFastPolicyName: the source FAST policy name
         :param volumeName: the volume Name
         :param extraSpecs: extra specifications
+        :returns: boolean -- True/False
         """
 
-        LOG.warn(_LW("_migrate_cleanup on : %(volumeName)s."),
-                 {'volumeName': volumeName})
-
+        LOG.warning(_LW("_migrate_cleanup on : %(volumeName)s."),
+                    {'volumeName': volumeName})
+        return_to_default = True
         controllerConfigurationService = (
             self.utils.find_controller_configuration_service(
                 conn, storageSystemName))
 
         # Check to see what SG it is in.
-        assocStorageGroupInstanceName = (
-            self.utils.get_storage_group_from_volume(conn,
-                                                     volumeInstance.path))
+        assocStorageGroupInstanceNames = (
+            self.utils.get_storage_groups_from_volume(conn,
+                                                      volumeInstance.path))
         # This is the SG it should be in.
         defaultStorageGroupInstanceName = (
             self.fast.get_policy_default_storage_group(
                 conn, controllerConfigurationService, sourceFastPolicyName))
 
-        # It is not in any storage group.  Must add it to default source.
-        if assocStorageGroupInstanceName is None:
-            self.add_to_default_SG(conn, volumeInstance,
-                                   storageSystemName, sourceFastPolicyName,
-                                   volumeName, extraSpecs)
-
-        # It is in the incorrect storage group.
-        if (assocStorageGroupInstanceName is not None and
-                (assocStorageGroupInstanceName !=
-                    defaultStorageGroupInstanceName)):
-            self.provision.remove_device_from_storage_group(
-                conn, controllerConfigurationService,
-                assocStorageGroupInstanceName,
-                volumeInstance.path, volumeName, extraSpecs)
-
+        for assocStorageGroupInstanceName in assocStorageGroupInstanceNames:
+            # It is in the incorrect storage group.
+            if (assocStorageGroupInstanceName !=
+                    defaultStorageGroupInstanceName):
+                self.provision.remove_device_from_storage_group(
+                    conn, controllerConfigurationService,
+                    assocStorageGroupInstanceName,
+                    volumeInstance.path, volumeName, extraSpecs)
+            else:
+                # The volume is already in the default.
+                return_to_default = False
+        if return_to_default:
             self.add_to_default_SG(
                 conn, volumeInstance, storageSystemName, sourceFastPolicyName,
                 volumeName, extraSpecs)
+        return return_to_default
 
     def _migrate_volume_fast_target(
             self, volumeInstance, storageSystemName,
@@ -911,7 +912,7 @@ class EMCVMAXCommon(object):
         LOG.debug("sourceFastPolicyName is : %(sourceFastPolicyName)s.",
                   {'sourceFastPolicyName': sourceFastPolicyName})
 
-        # If the source volume is is FAST enabled it must first be removed
+        # If the source volume is FAST enabled it must first be removed
         # from the default storage group for that policy.
         if sourceFastPolicyName is not None:
             self.remove_from_default_SG(
@@ -926,7 +927,7 @@ class EMCVMAXCommon(object):
             self.conn, targetPoolName, storageSystemName)
         if targetPoolInstanceName is None:
             LOG.error(_LE(
-                "Error finding targe pool instance name for pool: "
+                "Error finding target pool instance name for pool: "
                 "%(targetPoolName)s."),
                 {'targetPoolName': targetPoolName})
             return falseRet
@@ -934,11 +935,10 @@ class EMCVMAXCommon(object):
             rc = self.provision.migrate_volume_to_storage_pool(
                 self.conn, storageRelocationService, volumeInstance.path,
                 targetPoolInstanceName, extraSpecs)
-        except Exception as e:
+        except Exception:
             # Rollback by deleting the volume if adding the volume to the
             # default storage group were to fail.
-            LOG.error(_LE("Exception: %s"), e)
-            LOG.error(_LE(
+            LOG.exception(_LE(
                 "Error migrating volume: %(volumename)s. "
                 "to target pool %(targetPoolName)s."),
                 {'volumename': volumeName,
@@ -993,8 +993,7 @@ class EMCVMAXCommon(object):
                     conn, controllerConfigurationService,
                     volumeInstance.path, volumeName, sourceFastPolicyName,
                     extraSpecs))
-        except Exception as ex:
-            LOG.error(_LE("Exception: %s"), ex)
+        except Exception:
             exceptionMessage = (_(
                 "Failed to remove: %(volumename)s. "
                 "from the default storage group for "
@@ -1002,11 +1001,11 @@ class EMCVMAXCommon(object):
                 % {'volumename': volumeName,
                    'fastPolicyName': sourceFastPolicyName})
 
-            LOG.error(exceptionMessage)
+            LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         if defaultStorageGroupInstanceName is None:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "The volume: %(volumename)s "
                 "was not first part of the default storage "
                 "group for FAST policy %(fastPolicyName)s."),
@@ -1043,7 +1042,7 @@ class EMCVMAXCommon(object):
 
     def _is_valid_for_storage_assisted_migration_v3(
             self, volumeInstanceName, host, sourceArraySerialNumber,
-            sourcePoolName, volumeName, volumeStatus):
+            sourcePoolName, volumeName, volumeStatus, sgName):
         """Check if volume is suitable for storage assisted (pool) migration.
 
         :param volumeInstanceName: the volume instance id
@@ -1052,7 +1051,8 @@ class EMCVMAXCommon(object):
             the original volume
         :param sourcePoolName: the pool name of the original volume
         :param volumeName: the name of the volume to be migrated
-        :param volumeStatus: the status of the volume e.g
+        :param volumeStatus: the status of the volume
+        :param sgName: storage group name
         :returns: boolean -- True/False
         :returns: string -- targetSlo
         :returns: string -- targetWorkload
@@ -1096,9 +1096,9 @@ class EMCVMAXCommon(object):
 
         foundStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(
-                self.conn, volumeInstanceName))
+                self.conn, volumeInstanceName, sgName))
         if foundStorageGroupInstanceName is None:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Volume: %(volumeName)s is not currently "
                 "belonging to any storage group."),
                 {'volumeName': volumeName})
@@ -1163,7 +1163,7 @@ class EMCVMAXCommon(object):
                  'targetArraySerialNumber': targetArraySerialNumber})
             return falseRet
 
-        # Get the pool from the source array and check that is is different
+        # Get the pool from the source array and check that is different
         # to the pool in the target array.
         assocPoolInstanceName = self.utils.get_assoc_pool_from_volume(
             self.conn, volumeInstanceName)
@@ -1338,12 +1338,13 @@ class EMCVMAXCommon(object):
 
         return foundVolumeinstance
 
-    def _find_storage_sync_sv_sv(self, snapshot, volume,
+    def _find_storage_sync_sv_sv(self, snapshot, volume, extraSpecs,
                                  waitforsync=True):
         """Find the storage synchronized name.
 
         :param snapshot: snapshot object
         :param volume: volume object
+        :param extraSpecs: extra specifications
         :param waitforsync: boolean -- Wait for Solutions Enabler sync.
         :returns: string -- foundsyncname
         :returns: string -- storage_system
@@ -1374,7 +1375,8 @@ class EMCVMAXCommon(object):
                        'sync': foundsyncname})
             # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
             if waitforsync:
-                self.utils.wait_for_sync(self.conn, foundsyncname)
+                self.utils.wait_for_sync(self.conn, foundsyncname,
+                                         extraSpecs)
 
         return foundsyncname, storage_system
 
@@ -1484,19 +1486,18 @@ class EMCVMAXCommon(object):
                 _rc, targetEndpoints = (
                     self.provision.get_target_endpoints(
                         self.conn, storageHardwareService, hardwareIdInstance))
-            except Exception as ex:
-                LOG.error(_LE("Exception: %s"), ex)
+            except Exception:
                 errorMessage = (_(
                     "Unable to get target endpoints for hardwareId "
                     "%(hardwareIdInstance)s.")
                     % {'hardwareIdInstance': hardwareIdInstance})
-                LOG.error(errorMessage)
+                LOG.exception(errorMessage)
                 raise exception.VolumeBackendAPIException(data=errorMessage)
 
             if targetEndpoints:
                 endpoints = targetEndpoints['TargetEndpoints']
 
-                LOG.debug("There are  %(len)lu endpoints.",
+                LOG.debug("There are %(len)lu endpoints.",
                           {'len': len(endpoints)})
                 for targetendpoint in endpoints:
                     wwn = targetendpoint['Name']
@@ -1657,7 +1658,7 @@ class EMCVMAXCommon(object):
                 "Unable to get configuration information necessary to create "
                 "a volume. Please check that there is a configuration file "
                 "for each config group, if multi-backend is enabled. "
-                "The should be in the following format "
+                "The file should be in the following format "
                 "/etc/cinder/cinder_emc_config_<CONFIG_GROUP>.xml."))
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
@@ -1778,13 +1779,14 @@ class EMCVMAXCommon(object):
             controllerConfigurationService = (
                 self.utils.find_controller_configuration_service(
                     self.conn, storageSystemName))
+            defaultSgName = self.fast.format_default_sg_string(fastPolicyName)
 
             self.fast.add_volume_to_default_storage_group_for_fast_policy(
                 self.conn, controllerConfigurationService, volumeInstance,
                 volumeName, fastPolicyName, extraSpecs)
             foundStorageGroupInstanceName = (
                 self.utils.get_storage_group_from_volume(
-                    self.conn, volumeInstance.path))
+                    self.conn, volumeInstance.path, defaultSgName))
 
             if foundStorageGroupInstanceName is None:
                 exceptionMessage = (_(
@@ -1795,14 +1797,13 @@ class EMCVMAXCommon(object):
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
-        except Exception as e:
+        except Exception:
             # Rollback by deleting the volume if adding the volume to the
             # default storage group were to fail.
-            LOG.error(_LE("Exception: %s"), e)
             errorMessage = (_(
                 "Rolling back %(volumeName)s by deleting it.")
                 % {'volumeName': volumeName})
-            LOG.error(errorMessage)
+            LOG.exception(errorMessage)
             self.provision.delete_volume_from_pool(
                 self.conn, storageConfigService, volumeInstance.path,
                 volumeName, extraSpecs)
@@ -2113,7 +2114,7 @@ class EMCVMAXCommon(object):
     def _remove_device_from_storage_group(
             self, controllerConfigurationService, volumeInstanceName,
             volumeName, extraSpecs):
-        """Check is volume is part of a storage group prior to delete.
+        """Check if volume is part of a storage group prior to delete.
 
         Log a warning if volume is part of storage group.
 
@@ -2126,7 +2127,7 @@ class EMCVMAXCommon(object):
             self.masking.get_associated_masking_groups_from_device(
                 self.conn, volumeInstanceName))
         if storageGroupInstanceNames:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Pre check for deletion. "
                 "Volume: %(volumeName)s is part of a storage group. "
                 "Attempting removal from %(storageGroupInstanceNames)s."),
@@ -2279,7 +2280,8 @@ class EMCVMAXCommon(object):
             # Wait for it to fully sync in case there is an ongoing
             # create volume from snapshot request.
             syncName = self.utils.find_sync_sv_by_target(
-                self.conn, storageSystem, snapshotInstance, True)
+                self.conn, storageSystem, snapshotInstance, extraSpecs,
+                True)
 
             if syncName is None:
                 LOG.info(_LI(
@@ -2289,10 +2291,9 @@ class EMCVMAXCommon(object):
                 repservice = self.utils.find_replication_service(self.conn,
                                                                  storageSystem)
                 if repservice is None:
-                    exception_message = (_LE(
+                    exception_message = _(
                         "Cannot find Replication Service to"
-                        " delete snapshot %s.") %
-                        snapshotname)
+                        " delete snapshot %s.") % snapshotname
                     raise exception.VolumeBackendAPIException(
                         data=exception_message)
                 # Break the replication relationship
@@ -2339,12 +2340,11 @@ class EMCVMAXCommon(object):
                 self.conn, storageSystem)
             self.provision.create_consistency_group(
                 self.conn, replicationService, cgName, extraSpecs)
-        except Exception as ex:
-            LOG.error(_LE("Exception: %(ex)s"), {'ex': ex})
+        except Exception:
             exceptionMessage = (_("Failed to create consistency group:"
                                   " %(cgName)s.")
                                 % {'cgName': cgName})
-            LOG.error(exceptionMessage)
+            LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         return modelUpdate
@@ -2402,12 +2402,11 @@ class EMCVMAXCommon(object):
                     storageSystem, memberInstanceNames, storageConfigservice,
                     volumes, modelUpdate, extraSpecs[ISV3], extraSpecs)
 
-        except Exception as ex:
-            LOG.error(_LE("Exception: %s"), ex)
+        except Exception:
             exceptionMessage = (_(
                 "Failed to delete consistency group: %(cgName)s.")
                 % {'cgName': cgName})
-            LOG.error(exceptionMessage)
+            LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         return modelUpdate, volumes
@@ -2553,7 +2552,8 @@ class EMCVMAXCommon(object):
                     targetCgInstanceName, relationName, extraSpecs)
             # Break the replica group relationship.
             rgSyncInstanceName = self.utils.find_group_sync_rg_by_target(
-                self.conn, storageSystem, targetCgInstanceName, True)
+                self.conn, storageSystem, targetCgInstanceName, extraSpecs,
+                True)
             if rgSyncInstanceName is not None:
                 repservice = self.utils.find_replication_service(
                     self.conn, storageSystem)
@@ -2574,15 +2574,14 @@ class EMCVMAXCommon(object):
                                                          rgSyncInstanceName,
                                                          extraSpecs)
 
-        except Exception as ex:
+        except Exception:
             modelUpdate['status'] = 'error'
             self.utils.populate_cgsnapshot_status(
                 context, db, cgsnapshot['id'], modelUpdate['status'])
-            LOG.error(_LE("Exception: %(ex)s"), {'ex': ex})
             exceptionMessage = (_("Failed to create snapshot for cg:"
                                   " %(cgName)s.")
                                 % {'cgName': cgName})
-            LOG.error(exceptionMessage)
+            LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         snapshots = self.utils.populate_cgsnapshot_status(
@@ -2623,15 +2622,14 @@ class EMCVMAXCommon(object):
             modelUpdate, snapshots = self._delete_cg_and_members(
                 storageSystem, targetCgName, modelUpdate,
                 snapshots, extraSpecs)
-        except Exception as ex:
+        except Exception:
             modelUpdate['status'] = 'error_deleting'
             self.utils.populate_cgsnapshot_status(
                 context, db, cgsnapshot['id'], modelUpdate['status'])
-            LOG.error(_LE("Exception: %(ex)s"), {'ex': ex})
             exceptionMessage = (_("Failed to delete snapshot for cg: "
                                   "%(cgId)s.")
                                 % {'cgId': cgsnapshot['consistencygroup_id']})
-            LOG.error(exceptionMessage)
+            LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         snapshots = self.utils.populate_cgsnapshot_status(
@@ -2671,41 +2669,47 @@ class EMCVMAXCommon(object):
         return memberInstanceNames
 
     def _create_composite_volume(
-            self, volume, volumeName, volumeSize, extraSpecs):
+            self, volume, volumeName, volumeSize, extraSpecs,
+            memberCount=None):
         """Create a composite volume (V2).
 
         :param volume: the volume object
         :param volumeName: the name of the volume
         :param volumeSize: the size of the volume
         :param extraSpecs: extra specifications
+        :param memberCount: the number of meta members in a composite volume
         :returns: int -- return code
         :returns: dict -- volumeDict
         :returns: string -- storageSystemName
         :raises: VolumeBackendAPIException
         """
-        memberCount, errorDesc = self.utils.determine_member_count(
-            volume['size'], extraSpecs[MEMBERCOUNT],
-            extraSpecs[COMPOSITETYPE])
-        if errorDesc is not None:
-            exceptionMessage = (_("The striped meta count of %(memberCount)s "
-                                  "is too small for volume: %(volumeName)s "
-                                  "with size %(volumeSize)s.")
-                                % {'memberCount': memberCount,
-                                   'volumeName': volumeName,
-                                   'volumeSize': volume['size']})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+        if not memberCount:
+            memberCount, errorDesc = self.utils.determine_member_count(
+                volume['size'], extraSpecs[MEMBERCOUNT],
+                extraSpecs[COMPOSITETYPE])
+            if errorDesc is not None:
+                exceptionMessage = (_("The striped meta count of "
+                                      "%(memberCount)s is too small for "
+                                      "volume: %(volumeName)s, "
+                                      "with size %(volumeSize)s.")
+                                    % {'memberCount': memberCount,
+                                       'volumeName': volumeName,
+                                       'volumeSize': volume['size']})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
 
         poolInstanceName, storageSystemName = (
             self._get_pool_and_storage_system(extraSpecs))
 
         LOG.debug("Create Volume: %(volume)s  Pool: %(pool)s "
                   "Storage System: %(storageSystem)s "
-                  "Size: %(size)lu.",
+                  "Size: %(size)lu  MemberCount: %(memberCount)s.",
                   {'volume': volumeName,
                    'pool': poolInstanceName,
                    'storageSystem': storageSystemName,
-                   'size': volumeSize})
+                   'size': volumeSize,
+                   'memberCount': memberCount})
 
         elementCompositionService = (
             self.utils.find_element_composition_service(self.conn,
@@ -2813,7 +2817,7 @@ class EMCVMAXCommon(object):
                 extraSpecs))
         if not self.utils.is_in_range(
                 volumeSize, maximumVolumeSize, minimumVolumeSize):
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Volume: %(volume)s with size: %(volumeSize)s bits "
                 "is not in the Performance Capacity range: "
                 "%(minimumVolumeSize)s-%(maximumVolumeSize)s bits. "
@@ -2951,11 +2955,14 @@ class EMCVMAXCommon(object):
         :param extraSpecs: extra specifications
         :returns: boolean -- True if migration succeeded, False if error.
         """
+        storageGroupName = self.utils.get_v3_storage_group_name(
+            extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD])
         volumeInstanceName = volumeInstance.path
         isValid, targetSlo, targetWorkload = (
             self._is_valid_for_storage_assisted_migration_v3(
                 volumeInstanceName, host, extraSpecs[ARRAY],
-                extraSpecs[POOL], volumeName, volumeStatus))
+                extraSpecs[POOL], volumeName, volumeStatus,
+                storageGroupName))
 
         storageSystemName = volumeInstance['SystemName']
 
@@ -2983,7 +2990,7 @@ class EMCVMAXCommon(object):
             targetWorkload, storageSystemName, newType, extraSpecs):
         """Migrate from one slo/workload combination to another (V3).
 
-        This requires moving the volume from it's current SG to a
+        This requires moving the volume from its current SG to a
         new or existing SG that has the target attributes.
 
         :param volume: the volume object
@@ -3001,12 +3008,14 @@ class EMCVMAXCommon(object):
         controllerConfigService = (
             self.utils.find_controller_configuration_service(
                 self.conn, storageSystemName))
+        defaultSgName = self.utils.get_v3_storage_group_name(
+            extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD])
 
         foundStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(
-                self.conn, volumeInstance.path))
+                self.conn, volumeInstance.path, defaultSgName))
         if foundStorageGroupInstanceName is None:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Volume : %(volumeName)s is not currently "
                 "belonging to any storage group."),
                 {'volumeName': volumeName})
@@ -3020,7 +3029,7 @@ class EMCVMAXCommon(object):
             # Check that it has been removed.
             sgFromVolRemovedInstanceName = (
                 self.utils.wrap_get_storage_group_from_volume(
-                    self.conn, volumeInstance.path))
+                    self.conn, volumeInstance.path, defaultSgName))
             if sgFromVolRemovedInstanceName is not None:
                 LOG.error(_LE(
                     "Volume : %(volumeName)s has not been "
@@ -3047,7 +3056,7 @@ class EMCVMAXCommon(object):
         # Check that it has been added.
         sgFromVolAddedInstanceName = (
             self.utils.get_storage_group_from_volume(
-                self.conn, volumeInstance.path))
+                self.conn, volumeInstance.path, storageGroupName))
         if sgFromVolAddedInstanceName is None:
             LOG.error(_LE(
                 "Volume : %(volumeName)s has not been "
@@ -3204,8 +3213,8 @@ class EMCVMAXCommon(object):
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
 
-        # Get the FAST policy from the file this value can be None if the
-        # user doesnt want to associate with any FAST policy.
+        # Get the FAST policy from the file. This value can be None if the
+        # user doesn't want to associate with any FAST policy.
         fastPolicyName = self.utils.parse_fast_policy_name_from_file(
             configurationFile)
         if fastPolicyName is not None:
@@ -3308,7 +3317,7 @@ class EMCVMAXCommon(object):
                     volumeInstance.path, volumeName, fastPolicyName,
                     extraSpecs))
             if defaultStorageGroupInstanceName is None:
-                LOG.warn(_LW(
+                LOG.warning(_LW(
                     "The volume: %(volumename)s. was not first part of the "
                     "default storage group for FAST policy %(fastPolicyName)s"
                     "."),
@@ -3337,7 +3346,7 @@ class EMCVMAXCommon(object):
                 self.conn, storageConfigService, volumeInstance.path,
                 volumeName, extraSpecs)
 
-        except Exception as e:
+        except Exception:
             # If we cannot successfully delete the volume then we want to
             # return the volume to the default storage group.
             if (fastPolicyName is not None and
@@ -3359,10 +3368,9 @@ class EMCVMAXCommon(object):
                         {'volumeName': volumeName,
                          'fastPolicyName': fastPolicyName})
 
-            LOG.error(_LE("Exception: %s."), e)
             errorMessage = (_("Failed to delete volume %(volumeName)s.") %
                             {'volumeName': volumeName})
-            LOG.error(errorMessage)
+            LOG.exception(errorMessage)
             raise exception.VolumeBackendAPIException(data=errorMessage)
 
         return rc
@@ -3404,7 +3412,7 @@ class EMCVMAXCommon(object):
                 self.conn, storageConfigService, volumeInstance.path,
                 volumeName, extraSpecs)
 
-        except Exception as e:
+        except Exception:
             # If we cannot successfully delete the volume, then we want to
             # return the volume to the default storage group,
             # which should be the SG it previously belonged to.
@@ -3426,10 +3434,9 @@ class EMCVMAXCommon(object):
                     storageGroupInstanceName, volumeInstance, volumeName,
                     storageGroupName, extraSpecs)
 
-            LOG.error(_LE("Exception: %s."), e)
             errorMessage = (_("Failed to delete volume %(volumeName)s.") %
                             {'volumeName': volumeName})
-            LOG.error(errorMessage)
+            LOG.exception(errorMessage)
             raise exception.VolumeBackendAPIException(data=errorMessage)
 
         return rc
@@ -3480,10 +3487,10 @@ class EMCVMAXCommon(object):
                     baseVolumeName = "TargetBaseVol"
                     volume = {'size': int(self.utils.convert_bits_to_gbs(
                         volumeSizeInbits))}
-                    rc, baseVolumeDict, storageSystemName = (
+                    _rc, baseVolumeDict, storageSystemName = (
                         self._create_composite_volume(
                             volume, baseVolumeName, volumeSizeInbits,
-                            extraSpecs))
+                            extraSpecs, 1))
                     baseTargetVolumeInstance = self.utils.find_volume_instance(
                         self.conn, baseVolumeDict, baseVolumeName)
                     LOG.debug("Base target volume %(targetVol)s created. "
@@ -3506,6 +3513,10 @@ class EMCVMAXCommon(object):
                         exceptionMessage = (_(
                             "Error Creating unbound volume."))
                         LOG.error(exceptionMessage)
+                        # Remove target volume
+                        self._delete_target_volume_v2(storageConfigService,
+                                                      baseTargetVolumeInstance,
+                                                      extraSpecs)
                         raise exception.VolumeBackendAPIException(
                             data=exceptionMessage)
 
@@ -3513,26 +3524,43 @@ class EMCVMAXCommon(object):
                     # base target composite volume.
                     baseTargetVolumeInstance = self.utils.find_volume_instance(
                         self.conn, baseVolumeDict, baseVolumeName)
-                    elementCompositionService = (
-                        self.utils.find_element_composition_service(
-                            self.conn, storageSystemName))
-                    compositeType = self.utils.get_composite_type(
-                        extraSpecs[COMPOSITETYPE])
-                    rc, modifiedVolumeDict = (
-                        self._modify_and_get_composite_volume_instance(
-                            self.conn,
-                            elementCompositionService,
-                            baseTargetVolumeInstance,
-                            unboundVolumeInstance.path,
-                            targetVolumeName,
-                            compositeType,
-                            extraSpecs))
-                    if modifiedVolumeDict is None:
+                    try:
+                        elementCompositionService = (
+                            self.utils.find_element_composition_service(
+                                self.conn, storageSystemName))
+                        compositeType = self.utils.get_composite_type(
+                            extraSpecs[COMPOSITETYPE])
+                        _rc, modifiedVolumeDict = (
+                            self._modify_and_get_composite_volume_instance(
+                                self.conn,
+                                elementCompositionService,
+                                baseTargetVolumeInstance,
+                                unboundVolumeInstance.path,
+                                targetVolumeName,
+                                compositeType,
+                                extraSpecs))
+                        if modifiedVolumeDict is None:
+                            exceptionMessage = (_(
+                                "Error appending volume %(volumename)s to "
+                                "target base volume.")
+                                % {'volumename': targetVolumeName})
+                            LOG.error(exceptionMessage)
+                            raise exception.VolumeBackendAPIException(
+                                data=exceptionMessage)
+                    except Exception:
                         exceptionMessage = (_(
-                            "Error appending volume %(volumename)s to "
-                            "target base volume.")
-                            % {'volumename': targetVolumeName})
+                            "Exception appending meta volume to target volume "
+                            "%(volumename)s.")
+                            % {'volumename': baseVolumeName})
                         LOG.error(exceptionMessage)
+                        # Remove append volume and target base volume
+                        self._delete_target_volume_v2(
+                            storageConfigService, unboundVolumeInstance,
+                            extraSpecs)
+                        self._delete_target_volume_v2(
+                            storageConfigService, baseTargetVolumeInstance,
+                            extraSpecs)
+
                         raise exception.VolumeBackendAPIException(
                             data=exceptionMessage)
 
@@ -3559,11 +3587,43 @@ class EMCVMAXCommon(object):
         """
         sourceName = sourceVolume['name']
         cloneName = cloneVolume['name']
-        rc, job = self.provision.create_element_replica(
-            self.conn, repServiceInstanceName, cloneName, sourceName,
-            sourceInstance, targetInstance, extraSpecs)
+
+        try:
+            rc, job = self.provision.create_element_replica(
+                self.conn, repServiceInstanceName, cloneName, sourceName,
+                sourceInstance, targetInstance, extraSpecs)
+        except Exception:
+            exceptionMessage = (_(
+                "Exception during create element replica. "
+                "Clone name: %(cloneName)s "
+                "Source name: %(sourceName)s "
+                "Extra specs: %(extraSpecs)s ")
+                % {'cloneName': cloneName,
+                   'sourceName': sourceName,
+                   'extraSpecs': extraSpecs})
+            LOG.error(exceptionMessage)
+
+            if targetInstance is not None:
+                # Check if the copy session exists.
+                storageSystem = targetInstance['SystemName']
+                syncInstanceName = self.utils.find_sync_sv_by_target(
+                    self.conn, storageSystem, targetInstance, False)
+                if syncInstanceName is not None:
+                    # Remove the Clone relationship.
+                    rc, job = self.provision.delete_clone_relationship(
+                        self.conn, repServiceInstanceName, syncInstanceName,
+                        extraSpecs, True)
+                storageConfigService = (
+                    self.utils.find_storage_configuration_service(
+                        self.conn, storageSystem))
+                self._delete_target_volume_v2(
+                    storageConfigService, targetInstance, extraSpecs)
+
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
         cloneDict = self.provision.get_volume_dict_from_job(
             self.conn, job['Job'])
+
         fastPolicyName = extraSpecs[FASTPOLICY]
         if isSnapshot:
             if fastPolicyName is not None:
@@ -3580,7 +3640,8 @@ class EMCVMAXCommon(object):
 
         cloneVolume['provider_location'] = six.text_type(cloneDict)
         syncInstanceName, storageSystemName = (
-            self._find_storage_sync_sv_sv(cloneVolume, sourceVolume))
+            self._find_storage_sync_sv_sv(cloneVolume, sourceVolume,
+                                          extraSpecs))
 
         # Remove the Clone relationship so it can be used as a regular lun.
         # 8 - Detach operation.
@@ -3665,7 +3726,10 @@ class EMCVMAXCommon(object):
         :returns: dict -- cloneDict
         """
         cloneName = cloneVolume['name']
-        syncType = self.utils.get_num(8, '16')  # Default syncType 8: clone.
+        # Default syncType 8: clone.
+        syncType = self.utils.get_num(8, '16')
+        # Default operation 8: Detach for clone.
+        operation = self.utils.get_num(8, '16')
 
         # Create target volume
         extraSpecs = self._initial_setup(cloneVolume)
@@ -3689,18 +3753,50 @@ class EMCVMAXCommon(object):
         if isSnapshot:
             # SyncType 7: snap, VG3R default snapshot is snapVx.
             syncType = self.utils.get_num(7, '16')
+            # Operation 9: Dissolve for snapVx.
+            operation = self.utils.get_num(9, '16')
 
-        _rc, job = (
-            self.provisionv3.create_element_replica(
-                self.conn, repServiceInstanceName, cloneName, syncType,
-                sourceInstance, extraSpecs, targetInstance))
+        try:
+            _rc, job = (
+                self.provisionv3.create_element_replica(
+                    self.conn, repServiceInstanceName, cloneName, syncType,
+                    sourceInstance, extraSpecs, targetInstance))
+        except Exception:
+            LOG.warning(_LW(
+                "Clone failed on V3. Cleaning up the target volume. "
+                "Clone name: %(cloneName)s "),
+                {'cloneName': cloneName})
+            # Check if the copy session exists.
+            storageSystem = targetInstance['SystemName']
+            syncInstanceName = self.utils.find_sync_sv_by_target(
+                self.conn, storageSystem, targetInstance, False)
+            if syncInstanceName is not None:
+                # Break the clone relationship.
+                rc, job = self.provisionv3.break_replication_relationship(
+                    self.conn, repServiceInstanceName, syncInstanceName,
+                    operation, extraSpecs, True)
+            storageConfigService = (
+                self.utils.find_storage_configuration_service(
+                    self.conn, storageSystem))
+            deviceId = targetInstance['DeviceID']
+            volumeName = targetInstance['Name']
+            storageGroupName = self.utils.get_v3_storage_group_name(
+                extraSpecs[POOL], extraSpecs[SLO],
+                extraSpecs[WORKLOAD])
+            rc = self._delete_from_pool_v3(
+                storageConfigService, targetInstance, volumeName,
+                deviceId, storageGroupName, extraSpecs)
+            # Re-throw the exception.
+            raise
+
         cloneDict = self.provisionv3.get_volume_dict_from_job(
             self.conn, job['Job'])
 
         cloneVolume['provider_location'] = six.text_type(cloneDict)
 
         syncInstanceName, _storageSystem = (
-            self._find_storage_sync_sv_sv(cloneVolume, sourceVolume, True))
+            self._find_storage_sync_sv_sv(cloneVolume, sourceVolume,
+                                          extraSpecs, True))
 
         # Detach/dissolve the clone/snap relationship.
         # 8 - Detach operation.
@@ -3780,3 +3876,182 @@ class EMCVMAXCommon(object):
                     volumeRef['status'] = 'error_deleting'
                     modelUpdate['status'] = 'error_deleting'
         return modelUpdate, volumes
+
+    def _delete_target_volume_v2(
+            self, storageConfigService, targetVolumeInstance, extraSpecs):
+        """Helper function to delete the clone target volume instance.
+
+        :param storageConfigService: storage configuration service instance
+        :param targetVolumeInstance: clone target volume instance
+        :param extraSpecs: extra specifications
+        """
+        deviceId = targetVolumeInstance['DeviceID']
+        volumeName = targetVolumeInstance['Name']
+        rc = self._delete_from_pool(storageConfigService,
+                                    targetVolumeInstance,
+                                    volumeName, deviceId,
+                                    extraSpecs[FASTPOLICY],
+                                    extraSpecs)
+        return rc
+
+    def manage_existing(self, volume, external_ref):
+        """Manages an existing VMAX Volume (import to Cinder).
+
+        Renames the existing volume to match the expected name for the volume.
+        Also need to consider things like QoS, Emulation, account/tenant.
+
+        :param volume: the volume object including the volume_type_id
+        :param external_ref: reference to the existing volume
+        :returns: dict -- model_update
+        :raises: VolumeBackendAPIException
+        """
+        extraSpecs = self._initial_setup(volume)
+        self.conn = self._get_ecom_connection()
+        arrayName, deviceId = self.utils.get_array_and_device_id(volume,
+                                                                 external_ref)
+
+        # Manage existing volume is not supported if fast enabled.
+        if extraSpecs[FASTPOLICY]:
+            LOG.warning(_LW(
+                "FAST is enabled. Policy: %(fastPolicyName)s."),
+                {'fastPolicyName': extraSpecs[FASTPOLICY]})
+            exceptionMessage = (_(
+                "Manage volume is not supported if FAST is enable. "
+                "FAST policy: %(fastPolicyName)s.")
+                % {'fastPolicyName': extraSpecs[FASTPOLICY]})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+        # Check if the volume is attached by checking if in any masking view.
+        volumeInstanceName = (
+            self.utils.find_volume_by_device_id_on_array(self.conn,
+                                                         arrayName, deviceId))
+        sgInstanceNames = (
+            self.utils.get_storage_groups_from_volume(
+                self.conn, volumeInstanceName))
+
+        for sgInstanceName in sgInstanceNames:
+            mvInstanceName = self.masking.get_masking_view_from_storage_group(
+                self.conn, sgInstanceName)
+            if mvInstanceName:
+                exceptionMessage = (_(
+                    "Unable to import volume %(deviceId)s to cinder. "
+                    "Volume is in masking view %(mv)s.")
+                    % {'deviceId': deviceId,
+                       'mv': mvInstanceName})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+
+        # Check if there is any associated snapshots with the volume.
+        cinderPoolInstanceName, storageSystemName = (
+            self._get_pool_and_storage_system(extraSpecs))
+        repSessionInstanceName = (
+            self.utils.get_associated_replication_from_source_volume(
+                self.conn, storageSystemName, deviceId))
+        if repSessionInstanceName:
+            exceptionMessage = (_(
+                "Unable to import volume %(deviceId)s to cinder. "
+                "It is the source volume of replication session %(sync)s.")
+                % {'deviceId': deviceId,
+                   'sync': repSessionInstanceName})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+
+        # Make sure the existing external volume is in the same storage pool.
+        volumePoolInstanceName = (
+            self.utils.get_assoc_pool_from_volume(self.conn,
+                                                  volumeInstanceName))
+        volumePoolName = volumePoolInstanceName['InstanceID']
+        cinderPoolName = cinderPoolInstanceName['InstanceID']
+        LOG.debug("Storage pool of existing volume: %(volPool)s, "
+                  "Storage pool currently managed by cinder: %(cinderPool)s.",
+                  {'volPool': volumePoolName,
+                   'cinderPool': cinderPoolName})
+        if volumePoolName != cinderPoolName:
+            exceptionMessage = (_(
+                "Unable to import volume %(deviceId)s to cinder. The external "
+                "volume is not in the pool managed by current cinder host.")
+                % {'deviceId': deviceId})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+
+        # Rename the volume
+        volumeId = volume['name']
+        volumeElementName = self.utils.get_volume_element_name(volumeId)
+        LOG.debug("Rename volume %(vol)s to %(elementName)s.",
+                  {'vol': volumeInstanceName,
+                   'elementName': volumeElementName})
+        volumeInstance = self.utils.rename_volume(self.conn,
+                                                  volumeInstanceName,
+                                                  volumeElementName)
+        keys = {}
+        volpath = volumeInstance.path
+        keys['CreationClassName'] = volpath['CreationClassName']
+        keys['SystemName'] = volpath['SystemName']
+        keys['DeviceID'] = volpath['DeviceID']
+        keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
+
+        model_update = {}
+        provider_location = {}
+        provider_location['classname'] = volpath['CreationClassName']
+        provider_location['keybindings'] = keys
+
+        model_update.update({'display_name': volumeElementName})
+        volume['provider_location'] = six.text_type(provider_location)
+        model_update.update({'provider_location': volume['provider_location']})
+        return model_update
+
+    def manage_existing_get_size(self, volume, external_ref):
+        """Return size of an existing VMAX volume to manage_existing.
+
+        :param self: reference to class
+        :param volume: the volume object including the volume_type_id
+        :param external_ref: reference to the existing volume
+        :returns: size of the volume in GB
+        """
+        LOG.debug("Volume in manage_existing_get_size: %(volume)s.",
+                  {'volume': volume})
+        arrayName, deviceId = self.utils.get_array_and_device_id(volume,
+                                                                 external_ref)
+        volumeInstanceName = (
+            self.utils.find_volume_by_device_id_on_array(self.conn,
+                                                         arrayName, deviceId))
+        volumeInstance = self.conn.GetInstance(volumeInstanceName)
+        byteSize = self.utils.get_volume_size(self.conn, volumeInstance)
+        gbSize = int(byteSize) / units.Gi
+        LOG.debug(
+            "Size of volume %(deviceID)s is %(volumeSize)s GB.",
+            {'deviceID': deviceId,
+             'volumeSize': gbSize})
+        return gbSize
+
+    def unmanage(self, volume):
+        """Export VMAX volume from Cinder.
+
+        Leave the volume intact on the backend array.
+
+        :param volume: the volume object
+        :raises: VolumeBackendAPIException
+        """
+        volumeName = volume['name']
+        volumeId = volume['id']
+        LOG.debug("Unmanage volume %(name)s, id=%(id)s",
+                  {'name': volumeName,
+                   'id': volumeId})
+        self._initial_setup(volume)
+        self.conn = self._get_ecom_connection()
+        volumeInstance = self._find_lun(volume)
+        if volumeInstance is None:
+            exceptionMessage = (_("Cannot find Volume: %(id)s. "
+                                  "unmanage operation.  Exiting...")
+                                % {'id': volumeId})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+        # Rename the volume to volumeId, thus remove the 'OS-' prefix.
+        volumeInstance = self.utils.rename_volume(self.conn,
+                                                  volumeInstance,
+                                                  volumeId)

@@ -110,9 +110,10 @@ class IetAdm(iscsi.ISCSITarget):
             # Missing config file is unxepected sisuation. But we will create
             # new config file during create_iscsi_target(). Just we warn the
             # operator here.
-            LOG.warn(_LW("Failed to find CHAP auth from config for "
-                         "%(vol_id)s. Config file %(conf)s does not exist."),
-                     {'vol_id': vol_id, 'conf': self.iet_conf})
+            LOG.warning(_LW("Failed to find CHAP auth from config for "
+                            "%(vol_id)s. Config file %(conf)s does not "
+                            "exist."),
+                        {'vol_id': vol_id, 'conf': self.iet_conf})
             return None
 
     def create_iscsi_target(self, name, tid, lun, path,
@@ -219,14 +220,14 @@ class IetAdm(iscsi.ISCSITarget):
                         iet_conf_text.writelines(new_iet_conf_txt)
             except Exception:
                 LOG.exception(_LE("Failed to update %(conf)s for volume id "
-                                  "%(vol_id) after removing iscsi target"),
+                                  "%(vol_id)s after removing iscsi target"),
                               {'conf': conf_file, 'vol_id': vol_id})
                 raise exception.ISCSITargetRemoveFailed(volume_id=vol_id)
         else:
-            LOG.warn(_LW("Failed to update %(conf)s for volume id %(vol_id) "
-                         "after removing iscsi target. "
-                         "%(conf)s does not exist."),
-                     {'conf': conf_file, 'vol_id': vol_id})
+            LOG.warning(_LW("Failed to update %(conf)s for volume id "
+                            "%(vol_id)s after removing iscsi target. "
+                            "%(conf)s does not exist."),
+                        {'conf': conf_file, 'vol_id': vol_id})
 
     def _find_sid_cid_for_target(self, tid, name, vol_id):
         """Find sid, cid for existing iscsi target"""

@@ -106,7 +106,7 @@ class EMCVMAXFast(object):
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name (String)
         :param fastPolicyName: the fast policy name (String)
-        :returns: foundDefaultStorageGroupInstanceName
+        :returns: foundDefaultStorageGroupInstanceName, defaultSgName
         """
         foundDefaultStorageGroupInstanceName = None
         storageSystemInstanceName = self.utils.find_storage_system(
@@ -117,9 +117,11 @@ class EMCVMAXFast(object):
                 "FAST is not supported on this array."))
             raise
 
+        defaultSgName = self.format_default_sg_string(fastPolicyName)
         assocStorageGroupInstanceName = (
-            self.utils.get_storage_group_from_volume(conn, volumeInstanceName))
-        defaultSgName = self._format_default_sg_string(fastPolicyName)
+            self.utils.get_storage_group_from_volume(conn, volumeInstanceName,
+                                                     defaultSgName))
+
         defaultStorageGroupInstanceName = (
             self.utils.find_storage_masking_group(conn,
                                                   controllerConfigService,
@@ -135,14 +137,14 @@ class EMCVMAXFast(object):
             foundDefaultStorageGroupInstanceName = (
                 assocStorageGroupInstanceName)
         else:
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Volume: %(volumeName)s Does not belong "
-                "to storage storage group %(defaultSgGroupName)s."),
+                "to storage group %(defaultSgName)s."),
                 {'volumeName': volumeName,
-                 'defaultSgGroupName': defaultSgName})
-        return foundDefaultStorageGroupInstanceName
+                 'defaultSgName': defaultSgName})
+        return foundDefaultStorageGroupInstanceName, defaultSgName
 
-    def _format_default_sg_string(self, fastPolicyName):
+    def format_default_sg_string(self, fastPolicyName):
         """Format the default storage group name
 
         :param fastPolicyName: the fast policy name
@@ -171,14 +173,13 @@ class EMCVMAXFast(object):
             associated with the volume
         """
         failedRet = None
-        defaultSgName = self._format_default_sg_string(fastPolicyName)
+        defaultSgName = self.format_default_sg_string(fastPolicyName)
         storageGroupInstanceName = self.utils.find_storage_masking_group(
             conn, controllerConfigService, defaultSgName)
         if storageGroupInstanceName is None:
             LOG.error(_LE(
-                "Unable to create default storage group for "
-                "FAST policy : %(fastPolicyName)s."),
-                {'fastPolicyName': fastPolicyName})
+                "Unable to get default storage group %(defaultSgName)s."),
+                {'defaultSgName': defaultSgName})
             return failedRet
 
         self.provision.add_members_to_masking_group(
@@ -187,7 +188,8 @@ class EMCVMAXFast(object):
         # Check to see if the volume is in the storage group.
         assocStorageGroupInstanceName = (
             self.utils.get_storage_group_from_volume(conn,
-                                                     volumeInstance.path))
+                                                     volumeInstance.path,
+                                                     defaultSgName))
         return assocStorageGroupInstanceName
 
     def _create_default_storage_group(self, conn, controllerConfigService,
@@ -406,7 +408,7 @@ class EMCVMAXFast(object):
 
         if len(storageTierInstanceNames) == 0:
             storageTierInstanceNames = None
-            LOG.warn(_LW(
+            LOG.warning(_LW(
                 "Unable to get storage tiers from tier policy rule."))
 
         return storageTierInstanceNames
@@ -519,9 +521,8 @@ class EMCVMAXFast(object):
                     conn, tierPolicyServiceInstanceName,
                     storageGroupInstanceName, tierPolicyRuleInstanceName,
                     storageGroupName, fastPolicyName, extraSpecs)
-            except Exception as ex:
-                LOG.error(_LE("Exception: %s"), ex)
-                LOG.error(_LE(
+            except Exception:
+                LOG.exception(_LE(
                     "Failed to add storage group %(storageGroupInstanceName)s "
                     "to tier policy rule %(tierPolicyRuleInstanceName)s."),
                     {'storageGroupInstanceName': storageGroupInstanceName,
@@ -751,7 +752,7 @@ class EMCVMAXFast(object):
         :returns: defaultStorageGroupInstanceName - the default storage group
                                                     instance name
         """
-        defaultSgName = self._format_default_sg_string(fastPolicyName)
+        defaultSgName = self.format_default_sg_string(fastPolicyName)
         defaultStorageGroupInstanceName = (
             self.utils.find_storage_masking_group(conn,
                                                   controllerConfigService,

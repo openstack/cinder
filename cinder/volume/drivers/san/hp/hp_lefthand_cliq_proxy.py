@@ -26,7 +26,7 @@ from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder.volume.drivers.san import san
 
 
@@ -83,6 +83,11 @@ class HPLeftHandCLIQProxy(san.SanISCSIDriver):
     def __init__(self, *args, **kwargs):
         super(HPLeftHandCLIQProxy, self).__init__(*args, **kwargs)
         self.cluster_vip = None
+        LOG.warning(_LW('The HPLeftHandISCSIDriver CLIQ driver has been '
+                        'DEPRECATED as of the 2015.2 release. This driver '
+                        'will be removed in the 2016.1 release. Please use '
+                        'the HPLeftHandISCSIDriver REST based driver '
+                        'instead.'))
 
     def do_setup(self, context):
         pass
@@ -203,7 +208,7 @@ class HPLeftHandCLIQProxy(san.SanISCSIDriver):
             for k, v in status_node.attrib.items():
                 volume_attributes["permission." + k] = v
 
-        LOG.debug("Volume info: %(volume_name)s => %(volume_attributes)s" %
+        LOG.debug("Volume info: %(volume_name)s => %(volume_attributes)s",
                   {'volume_name': volume_name,
                    'volume_attributes': volume_attributes})
         return volume_attributes
@@ -259,7 +264,7 @@ class HPLeftHandCLIQProxy(san.SanISCSIDriver):
             for k, v in status_node.attrib.items():
                 snapshot_attributes["permission." + k] = v
 
-        LOG.debug("Snapshot info: %(name)s => %(attributes)s" %
+        LOG.debug("Snapshot info: %(name)s => %(attributes)s",
                   {'name': snapshot_name, 'attributes': snapshot_attributes})
         return snapshot_attributes
 

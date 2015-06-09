@@ -35,7 +35,6 @@ netapp_proxy_opts = [
                      'operating in 7-Mode, ontap_cluster for using '
                      'clustered Data ONTAP, or eseries for using E-Series.')),
     cfg.StrOpt('netapp_storage_protocol',
-               default='iscsi',
                choices=['iscsi', 'fc', 'nfs'],
                help=('The storage protocol to be used on the data path with '
                      'the storage system.')), ]
@@ -161,12 +160,16 @@ netapp_eseries_opts = [
                      'currently supported. Specify the value of this option to'
                      ' be a comma separated list of disk pool names to be used'
                      ' for provisioning.')),
-    cfg.StrOpt('netapp_eseries_host_type',
-               default='linux_dm_mp',
-               help=('This option is used to define how the controllers in '
-                     'the E-Series storage array will work with the '
-                     'particular operating system on the hosts that are '
-                     'connected to it.')), ]
+    cfg.BoolOpt('netapp_enable_multiattach',
+                default=True,
+                help='This option specifies whether the driver should allow '
+                     'operations that require multiple attachments to a '
+                     'volume. An example would be live migration of servers '
+                     'that have volumes attached. When enabled, this backend '
+                     'is limited to 256 total volumes in order to '
+                     'guarantee volumes can be accessed by more than one '
+                     'host.'),
+]
 netapp_nfs_extra_opts = [
     cfg.StrOpt('netapp_copyoffload_tool_path',
                default=None,
@@ -174,6 +177,19 @@ netapp_nfs_extra_opts = [
                      'offload tool binary. Ensure that the binary has execute '
                      'permissions set which allow the effective user of the '
                      'cinder-volume process to execute the file.')), ]
+netapp_san_opts = [
+    cfg.StrOpt('netapp_lun_ostype',
+               default=None,
+               help=('This option defines the type of operating system that'
+                     ' will access a LUN exported from Data ONTAP; it is'
+                     ' assigned to the LUN at the time it is created.')),
+    cfg.StrOpt('netapp_host_type',
+               deprecated_name='netapp_eseries_host_type',
+               default=None,
+               help=('This option defines the type of operating system for'
+                     ' all initiators that can access a LUN. This information'
+                     ' is used when mapping LUNs to individual hosts or'
+                     ' groups of hosts.'))]
 
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts)
@@ -186,3 +202,4 @@ CONF.register_opts(netapp_provisioning_opts)
 CONF.register_opts(netapp_img_cache_opts)
 CONF.register_opts(netapp_eseries_opts)
 CONF.register_opts(netapp_nfs_extra_opts)
+CONF.register_opts(netapp_san_opts)

@@ -514,6 +514,25 @@ class VMwareVolumeOps(object):
                                         self._session.vim, datacenter,
                                         'vmFolder')
 
+    def _get_child_folder(self, parent_folder, child_folder_name):
+        # Get list of child entities for the parent folder
+        prop_val = self._session.invoke_api(vim_util, 'get_object_property',
+                                            self._session.vim, parent_folder,
+                                            'childEntity')
+
+        if prop_val and hasattr(prop_val, 'ManagedObjectReference'):
+            child_entities = prop_val.ManagedObjectReference
+
+            # Return if the child folder with input name is already present
+            for child_entity in child_entities:
+                if child_entity._type != 'Folder':
+                    continue
+                child_entity_name = self.get_entity_name(child_entity)
+                if child_entity_name and (urllib.unquote(child_entity_name) ==
+                                          child_folder_name):
+                    LOG.debug("Child folder: %s exists.", child_folder_name)
+                    return child_entity
+
     def create_folder(self, parent_folder, child_folder_name):
         """Creates child folder with given name under the given parent folder.
 
@@ -531,30 +550,20 @@ class VMwareVolumeOps(object):
                   {'child_folder_name': child_folder_name,
                    'parent_folder': parent_folder})
 
-        # Get list of child entities for the parent folder
-        prop_val = self._session.invoke_api(vim_util, 'get_object_property',
-                                            self._session.vim, parent_folder,
-                                            'childEntity')
-
-        if prop_val and hasattr(prop_val, 'ManagedObjectReference'):
-            child_entities = prop_val.ManagedObjectReference
-
-            # Return if the child folder with input name is already present
-            for child_entity in child_entities:
-                if child_entity._type != 'Folder':
-                    continue
-                child_entity_name = self.get_entity_name(child_entity)
-                if child_entity_name and (urllib.unquote(child_entity_name) ==
-                                          child_folder_name):
-                    LOG.debug("Child folder: %s already present.",
-                              child_folder_name)
-                    return child_entity
-
-        # Need to create the child folder
-        child_folder = self._session.invoke_api(self._session.vim,
-                                                'CreateFolder', parent_folder,
-                                                name=child_folder_name)
-        LOG.debug("Created child folder: %s.", child_folder)
+        child_folder = self._get_child_folder(parent_folder, child_folder_name)
+        if not child_folder:
+            # Need to create the child folder.
+            try:
+                child_folder = self._session.invoke_api(self._session.vim,
+                                                        'CreateFolder',
+                                                        parent_folder,
+                                                        name=child_folder_name)
+                LOG.debug("Created child folder: %s.", child_folder)
+            except exceptions.DuplicateName:
+                # Another thread is trying to create the same folder, ignore
+                # the exception.
+                child_folder = self._get_child_folder(parent_folder,
+                                                      child_folder_name)
         return child_folder
 
     def extend_virtual_disk(self, requested_size_in_gb, name, dc_ref,
@@ -1012,7 +1021,7 @@ class VMwareVolumeOps(object):
         return self._get_parent(backing, 'Folder')
 
     def _get_clone_spec(self, datastore, disk_move_type, snapshot, backing,
-                        disk_type, host=None):
+                        disk_type, host=None, resource_pool=None):
         """Get the clone spec.
 
         :param datastore: Reference to datastore
@@ -1021,6 +1030,7 @@ class VMwareVolumeOps(object):
         :param backing: Source backing VM
         :param disk_type: Disk type of clone
         :param host: Target host
+        :param resource_pool: Target resource pool
         :return: Clone spec
         """
         if disk_type is not None:
@@ -1028,7 +1038,7 @@ class VMwareVolumeOps(object):
         else:
             disk_device = None
 
-        relocate_spec = self._get_relocate_spec(datastore, None, host,
+        relocate_spec = self._get_relocate_spec(datastore, resource_pool, host,
                                                 disk_move_type, disk_type,
                                                 disk_device)
         cf = self._session.vim.client.factory
@@ -1042,7 +1052,7 @@ class VMwareVolumeOps(object):
         return clone_spec
 
     def clone_backing(self, name, backing, snapshot, clone_type, datastore,
-                      disk_type=None, host=None):
+                      disk_type=None, host=None, resource_pool=None):
         """Clone backing.
 
         If the clone_type is 'full', then a full clone of the source volume
@@ -1056,21 +1066,23 @@ class VMwareVolumeOps(object):
         :param datastore: Reference to the datastore entity
         :param disk_type: Disk type of the clone
         :param host: Target host
+        :param resource_pool: Target resource pool
         """
         LOG.debug("Creating a clone of backing: %(back)s, named: %(name)s, "
                   "clone type: %(type)s from snapshot: %(snap)s on "
-                  "host: %(host)s, datastore: %(ds)s with disk type: "
-                  "%(disk_type)s.",
+                  "resource pool: %(resource_pool)s, host: %(host)s, "
+                  "datastore: %(ds)s with disk type: %(disk_type)s.",
                   {'back': backing, 'name': name, 'type': clone_type,
                    'snap': snapshot, 'ds': datastore, 'disk_type': disk_type,
-                   'host': host})
+                   'host': host, 'resource_pool': resource_pool})
         folder = self._get_folder(backing)
         if clone_type == LINKED_CLONE_TYPE:
             disk_move_type = 'createNewChildDiskBacking'
         else:
             disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
         clone_spec = self._get_clone_spec(datastore, disk_move_type, snapshot,
-                                          backing, disk_type, host)
+                                          backing, disk_type, host,
+                                          resource_pool)
         task = self._session.invoke_api(self._session.vim, 'CloneVM_Task',
                                         backing, folder=folder, name=name,
                                         spec=clone_spec)
@@ -1182,6 +1194,28 @@ class VMwareVolumeOps(object):
         LOG.debug("Initiated deletion via task: %s.", task)
         self._session.wait_for_task(task)
         LOG.info(_LI("Successfully deleted file: %s."), file_path)
+
+    def create_datastore_folder(self, ds_name, folder_path, datacenter):
+        """Creates a datastore folder.
+
+        This method returns silently if the folder already exists.
+
+        :param ds_name: datastore name
+        :param folder_path: path of folder to create
+        :param datacenter: datacenter of target datastore
+        """
+        fileManager = self._session.vim.service_content.fileManager
+        ds_folder_path = "[%s] %s" % (ds_name, folder_path)
+        LOG.debug("Creating datastore folder: %s.", ds_folder_path)
+        try:
+            self._session.invoke_api(self._session.vim,
+                                     'MakeDirectory',
+                                     fileManager,
+                                     name=ds_folder_path,
+                                     datacenter=datacenter)
+            LOG.info(_LI("Created datastore folder: %s."), folder_path)
+        except exceptions.FileAlreadyExistsException:
+            LOG.debug("Datastore folder: %s already exists.", folder_path)
 
     def get_path_name(self, backing):
         """Get path name of the backing.
@@ -1308,26 +1342,31 @@ class VMwareVolumeOps(object):
         LOG.debug("Created descriptor: %s.",
                   path.get_descriptor_ds_file_path())
 
-    def copy_vmdk_file(self, dc_ref, src_vmdk_file_path, dest_vmdk_file_path):
+    def copy_vmdk_file(self, src_dc_ref, src_vmdk_file_path,
+                       dest_vmdk_file_path, dest_dc_ref=None):
         """Copy contents of the src vmdk file to dest vmdk file.
 
-        During the copy also coalesce snapshots of src if present.
-        dest_vmdk_file_path will be created if not already present.
-
-        :param dc_ref: Reference to datacenter containing src and dest
+        :param src_dc_ref: Reference to datacenter containing src datastore
         :param src_vmdk_file_path: Source vmdk file path
         :param dest_vmdk_file_path: Destination vmdk file path
+        :param dest_dc_ref: Reference to datacenter of dest datastore.
+                            If unspecified, source datacenter is used.
         """
-        LOG.debug('Copying disk data before snapshot of the VM')
+        LOG.debug('Copying disk: %(src)s to %(dest)s.',
+                  {'src': src_vmdk_file_path,
+                   'dest': dest_vmdk_file_path})
+
+        dest_dc_ref = dest_dc_ref or src_dc_ref
         diskMgr = self._session.vim.service_content.virtualDiskManager
         task = self._session.invoke_api(self._session.vim,
                                         'CopyVirtualDisk_Task',
                                         diskMgr,
                                         sourceName=src_vmdk_file_path,
-                                        sourceDatacenter=dc_ref,
+                                        sourceDatacenter=src_dc_ref,
                                         destName=dest_vmdk_file_path,
-                                        destDatacenter=dc_ref,
+                                        destDatacenter=dest_dc_ref,
                                         force=True)
+
         LOG.debug("Initiated copying disk data via task: %s.", task)
         self._session.wait_for_task(task)
         LOG.info(_LI("Successfully copied disk at: %(src)s to: %(dest)s."),

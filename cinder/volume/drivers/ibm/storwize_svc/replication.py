@@ -17,7 +17,7 @@
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -89,8 +89,8 @@ class StorwizeSVCReplicationStretchedCluster(StorwizeSVCReplication):
             self.driver._helpers.rm_vdisk_copy(volume['name'],
                                                secondary['copy_id'])
         else:
-            LOG.info(('Could not find replica to delete of'
-                      ' volume %(vol)s.') % {'vol': vdisk})
+            LOG.info(_LI('Could not find replica to delete of'
+                         ' volume %(vol)s.'), {'vol': vdisk})
 
     def test_replica(self, tgt_volume, src_volume):
         vdisk = src_volume['name']
@@ -135,35 +135,44 @@ class StorwizeSVCReplicationStretchedCluster(StorwizeSVCReplication):
 
         primary = copies.get('primary', None)
         secondary = copies.get('secondary', None)
-        status = None
 
-        # Check status of primary copy
+        # Check status of primary copy, set status 'error' as default
+        status = 'error'
         if not primary:
             primary = {'status': 'not found',
                        'sync': 'no'}
-        if primary['status'] != 'online':
-            status = 'error'
         else:
-            status = 'active'
+            if primary['status'] == 'online':
+                status = 'active'
 
         extended1 = (_('Primary copy status: %(status)s'
                        ' and synchronized: %(sync)s') %
                      {'status': primary['status'],
                       'sync': primary['sync']})
+
         # Check status of secondary copy
         if not secondary:
             secondary = {'status': 'not found',
                          'sync': 'no',
                          'sync_progress': '0'}
-
-        if secondary['status'] != 'online':
             status = 'error'
         else:
-            if secondary['sync'] == 'yes':
-                status = 'active'
-                secondary['sync_progress'] = '100'
+            if secondary['status'] != 'online':
+                status = 'error'
             else:
-                status = 'copying'
+                if secondary['sync'] == 'yes':
+                    secondary['sync_progress'] = '100'
+                    # Only change the status if not in error state
+                    if status != 'error':
+                        status = 'active'
+                    else:
+                        # Primary offline, secondary online, data consistent,
+                        # stop copying
+                        status = 'active-stop'
+                else:
+                    # Primary and secondary both online, the status is copying
+                    if status != 'error':
+                        status = 'copying'
 
         extended2 = (_('Secondary copy status: %(status)s'
                        ' and synchronized: %(sync)s,'

@@ -127,7 +127,7 @@ class Client(client_base.Client):
                         lun_list.extend(luns)
                 except netapp_api.NaApiError:
                     LOG.warning(_LW("Error finding LUNs for volume %s."
-                                    " Verify volume exists.") % vol)
+                                    " Verify volume exists."), vol)
         else:
             luns = self._get_vol_luns(None)
             lun_list.extend(luns)
@@ -262,10 +262,10 @@ class Client(client_base.Client):
                 if clone_ops_info.get_child_content('clone-state')\
                         == 'completed':
                     LOG.debug("Clone operation with src %(name)s"
-                              " and dest %(new_name)s completed" % fmt)
+                              " and dest %(new_name)s completed", fmt)
                 else:
                     LOG.debug("Clone operation with src %(name)s"
-                              " and dest %(new_name)s failed" % fmt)
+                              " and dest %(new_name)s failed", fmt)
                     raise netapp_api.NaApiError(
                         clone_ops_info.get_child_content('error'),
                         clone_ops_info.get_child_content('reason'))
@@ -312,9 +312,8 @@ class Client(client_base.Client):
                                  % (export_path))
 
     def clone_file(self, src_path, dest_path):
-        msg_fmt = {'src_path': src_path, 'dest_path': dest_path}
-        LOG.debug("""Cloning with src %(src_path)s, dest %(dest_path)s"""
-                  % msg_fmt)
+        LOG.debug("Cloning with src %(src_path)s, dest %(dest_path)s",
+                  {'src_path': src_path, 'dest_path': dest_path})
         clone_start = netapp_api.NaElement.create_node_with_children(
             'clone-start',
             **{'source-path': src_path,
@@ -333,7 +332,7 @@ class Client(client_base.Client):
             except netapp_api.NaApiError as e:
                 if e.code != 'UnknownCloneId':
                     self._clear_clone(clone_id)
-                raise e
+                raise
 
     def _wait_for_clone_finish(self, clone_op_id, vol_uuid):
         """Waits till a clone operation is complete or errored out."""
@@ -392,10 +391,27 @@ class Client(client_base.Client):
             'file-usage-get', **{'path': path})
         res = self.connection.invoke_successfully(file_use)
         bytes = res.get_child_content('unique-bytes')
-        LOG.debug('file-usage for path %(path)s is %(bytes)s'
-                  % {'path': path, 'bytes': bytes})
+        LOG.debug('file-usage for path %(path)s is %(bytes)s',
+                  {'path': path, 'bytes': bytes})
         return bytes
 
     def get_ifconfig(self):
         ifconfig = netapp_api.NaElement('net-ifconfig-get')
         return self.connection.invoke_successfully(ifconfig)
+
+    def get_flexvol_capacity(self, flexvol_path):
+        """Gets total capacity and free capacity, in bytes, of the flexvol."""
+
+        api_args = {'volume': flexvol_path, 'verbose': 'false'}
+
+        result = self.send_request('volume-list-info', api_args)
+
+        flexvol_info_list = result.get_child_by_name('volumes')
+        flexvol_info = flexvol_info_list.get_children()[0]
+
+        total_bytes = float(
+            flexvol_info.get_child_content('size-total'))
+        available_bytes = float(
+            flexvol_info.get_child_content('size-available'))
+
+        return total_bytes, available_bytes

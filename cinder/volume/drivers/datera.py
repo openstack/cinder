@@ -20,9 +20,10 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 import requests
+import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import versionutils
 from cinder import utils
 from cinder.volume.drivers.san import san
@@ -128,7 +129,8 @@ class DateraDriver(san.SanISCSIDriver):
         if result['status'] == 'available':
             return
         else:
-            raise exception.VolumeDriverException(msg=_('Resource not ready.'))
+            raise exception.VolumeDriverException(message=
+                                                  _('Resource not ready.'))
 
     def _create_resource(self, resource, resource_type, body):
         result = self._issue_api_request(resource_type, 'post', body=body)
@@ -160,28 +162,37 @@ class DateraDriver(san.SanISCSIDriver):
         try:
             self._issue_api_request('volumes', 'delete', volume['id'])
         except exception.NotFound:
-            msg = _("Tried to delete volume %s, but it was not found in the "
-                    "Datera cluster. Continuing with delete.")
-            LOG.info(msg, volume['id'])
+            LOG.info(_LI("Tried to delete volume %s, but it was not found in "
+                         "the Datera cluster. Continuing with delete."),
+                     volume['id'])
 
     def _do_export(self, context, volume):
         """Gets the associated account, retrieves CHAP info and updates."""
-        if volume['provider_location']:
-            return {'provider_location': volume['provider_location']}
+        portal = None
+        iqn = None
+        datera_volume = self._issue_api_request('volumes',
+                                                resource=volume['id'])
+        if len(datera_volume['targets']) == 0:
+            export = self._issue_api_request(
+                'volumes', action='export', method='post',
+                body={'ctype': 'TC_BLOCK_ISCSI'}, resource=volume['id'])
 
-        export = self._issue_api_request(
-            'volumes', action='export', method='post',
-            body={'ctype': 'TC_BLOCK_ISCSI'}, resource=volume['id'])
+            portal = "%s:3260" % export['_ipColl'][0]
 
-        # NOTE(thingee): Refer to the Datera test for a stub of what this looks
-        # like. We're just going to pull the first IP that the Datera cluster
-        # makes available for the portal.
-        iscsi_portal = export['_ipColl'][0] + ':3260'
-        iqn = export['targetIds'].itervalues().next()['ids'][0]['id']
+            # NOTE(thingee): Refer to the Datera test for a stub of what this
+            # looks like. We're just going to pull the first IP that the Datera
+            # cluster makes available for the portal.
+            iqn = export['targetIds'].itervalues().next()['ids'][0]['id']
+        else:
+            export = self._issue_api_request(
+                'export_configs',
+                resource=datera_volume['targets'][0]
+            )
+            portal = export['endpoint_addrs'][0] + ':3260'
+            iqn = export['endpoint_idents'][0]
 
-        provider_location = '%s %s %s' % (iscsi_portal, iqn, 0)
-        model_update = {'provider_location': provider_location}
-        return model_update
+        provider_location = '%s %s %s' % (portal, iqn, 0)
+        return {'provider_location': provider_location}
 
     def ensure_export(self, context, volume):
         return self._do_export(context, volume)
@@ -194,18 +205,17 @@ class DateraDriver(san.SanISCSIDriver):
             self._issue_api_request('volumes', 'delete', resource=volume['id'],
                                     action='export')
         except exception.NotFound:
-            msg = _("Tried to delete export for volume %s, but it was not "
-                    "found in the Datera cluster. Continuing with volume "
-                    "detach")
-            LOG.info(msg, volume['id'])
+            LOG.info(_LI("Tried to delete export for volume %s, but it was "
+                         "not found in the Datera cluster. Continuing with "
+                         "volume detach"), volume['id'])
 
     def delete_snapshot(self, snapshot):
         try:
             self._issue_api_request('snapshots', 'delete', snapshot['id'])
         except exception.NotFound:
-            msg = _("Tried to delete snapshot %s, but was not found in Datera "
-                    "cluster. Continuing with delete.")
-            LOG.info(msg, snapshot['id'])
+            LOG.info(_LI("Tried to delete snapshot %s, but was not found in "
+                         "Datera cluster. Continuing with delete."),
+                     snapshot['id'])
 
     def create_snapshot(self, snapshot):
         body = {
@@ -235,7 +245,8 @@ class DateraDriver(san.SanISCSIDriver):
             try:
                 self._update_cluster_stats()
             except exception.DateraAPIException:
-                LOG.error('Failed to get updated stats from Datera cluster.')
+                LOG.error(_LE('Failed to get updated stats from Datera '
+                              'cluster.'))
                 pass
 
         return self.cluster_stats
@@ -351,7 +362,7 @@ class DateraDriver(san.SanISCSIDriver):
                                                  verify=False, cert=cert_data)
         except requests.exceptions.RequestException as ex:
             msg = _('Failed to make a request to Datera cluster endpoint due '
-                    'to the following reason: %s') % ex.message
+                    'to the following reason: %s') % six.text_type(ex.message)
             LOG.error(msg)
             raise exception.DateraAPIException(msg)
 

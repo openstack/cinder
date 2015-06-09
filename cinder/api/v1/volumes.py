@@ -120,7 +120,7 @@ def _translate_volume_summary_view(context, vol, image_id=None):
 
     if vol.get('volume_metadata'):
         metadata = vol.get('volume_metadata')
-        d['metadata'] = dict((item['key'], item['value']) for item in metadata)
+        d['metadata'] = {item['key']: item['value'] for item in metadata}
     # avoid circular ref when vol is a Volume instance
     elif vol.get('metadata') and isinstance(vol.get('metadata'), dict):
         d['metadata'] = vol['metadata']

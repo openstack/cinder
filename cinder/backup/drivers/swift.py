@@ -33,6 +33,8 @@
 :backup_compression_algorithm: Compression algorithm to use for volume
                                backups. Supported options are:
                                None (to disable), zlib and bz2 (default: zlib)
+:backup_swift_ca_cert_file: The location of the CA certificate file to use
+                            for swift client requests (default: None)
 """
 
 import hashlib
@@ -101,6 +103,10 @@ swiftbackup_service_opts = [
                      'progress notifications to Ceilometer when backing '
                      'up the volume to the Swift backend storage. The '
                      'default value is True to enable the timer.'),
+    cfg.StrOpt('backup_swift_ca_cert_file',
+               default=None,
+               help='Location of the CA certificate file to use for swift '
+                    'client requests.'),
 ]
 
 CONF = cfg.CONF
@@ -160,14 +166,16 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                 user=CONF.backup_swift_user,
                 key=CONF.backup_swift_key,
                 retries=self.swift_attempts,
-                starting_backoff=self.swift_backoff)
+                starting_backoff=self.swift_backoff,
+                cacert=CONF.backup_swift_ca_cert_file)
         else:
             self.conn = swift.Connection(retries=self.swift_attempts,
                                          preauthurl=self.swift_url,
                                          preauthtoken=self.context.auth_token,
-                                         starting_backoff=self.swift_backoff)
+                                         starting_backoff=self.swift_backoff,
+                                         cacert=CONF.backup_swift_ca_cert_file)
 
-    class SwiftObjectWriter:
+    class SwiftObjectWriter(object):
         def __init__(self, container, object_name, conn):
             self.container = container
             self.object_name = object_name
@@ -203,7 +211,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                 raise exception.InvalidBackup(reason=err)
             return md5
 
-    class SwiftObjectReader:
+    class SwiftObjectReader(object):
         def __init__(self, container, object_name, conn):
             self.container = container
             self.object_name = object_name
@@ -266,7 +274,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         az = 'az_%s' % self.az
         backup_name = '%s_backup_%s' % (az, backup['id'])
         volume = 'volume_%s' % (backup['volume_id'])
-        timestamp = timeutils.strtime(fmt="%Y%m%d%H%M%S")
+        timestamp = timeutils.utcnow().strftime("%Y%m%d%H%M%S")
         prefix = volume + '/' + timestamp + '/' + backup_name
         LOG.debug('generate_object_name_prefix: %s', prefix)
         return prefix

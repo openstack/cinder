@@ -38,7 +38,14 @@ cloudbyte_connection_opts = [
                default=3,
                help="Will confirm a successful volume "
                     "creation in CloudByte storage by making "
-                    "this many number of attempts."), ]
+                    "this many number of attempts."),
+    cfg.StrOpt("cb_auth_group",
+               default="None",
+               help="This corresponds to the discovery authentication "
+                    "group in CloudByte storage. "
+                    "Chap users are added to this group. "
+                    "Driver uses the first user found for this group. "
+                    "Default value is None."), ]
 
 cloudbyte_add_qosgroup_opts = [
     cfg.DictOpt('cb_add_qosgroup',

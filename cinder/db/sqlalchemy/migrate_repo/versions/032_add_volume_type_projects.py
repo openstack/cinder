@@ -14,7 +14,7 @@ from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime, UniqueConstraint
 from sqlalchemy import Integer, MetaData, String, Table, ForeignKey
 
-from cinder.i18n import _
+from cinder.i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def upgrade(migrate_engine):
         # pylint: disable=E1120
         volume_types.update().values(is_public=True).execute()
     except Exception:
-        LOG.error(_("Column |%s| not created!"), repr(is_public))
+        LOG.error(_LE("Column |%s| not created!"), repr(is_public))
         raise
 
     volume_type_projects = Table(
@@ -50,7 +50,7 @@ def upgrade(migrate_engine):
     try:
         volume_type_projects.create()
     except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(volume_type_projects))
+        LOG.error(_LE("Table |%s| not created!"), repr(volume_type_projects))
         raise
 
 
@@ -63,12 +63,12 @@ def downgrade(migrate_engine):
     try:
         volume_types.drop_column(is_public)
     except Exception:
-        LOG.error(_("volume_types.is_public column not dropped"))
+        LOG.error(_LE("volume_types.is_public column not dropped"))
         raise
 
     volume_type_projects = Table('volume_type_projects', meta, autoload=True)
     try:
         volume_type_projects.drop()
     except Exception:
-        LOG.error(_("volume_type_projects table not dropped"))
+        LOG.error(_LE("volume_type_projects table not dropped"))
         raise

@@ -42,9 +42,13 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                 performance enhancement.
         2.0.0 - Add driver requirement functions
         2.1.0 - Add consistency group functions
+        2.1.1 - Fixed issue with mismatched config (bug #1442376)
+        2.1.2 - Clean up failed clones (bug #1440154)
+        2.1.3 - Fixed a problem with FAST support (bug #1435069)
+        2.2.0 - Add manage/unmanage
     """
 
-    VERSION = "2.1.0"
+    VERSION = "2.2.0"
 
     def __init__(self, *args, **kwargs):
 
@@ -150,7 +154,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         iscsi_properties = self.smis_get_iscsi_properties(
             volume, connector)
 
-        LOG.info(_LI("Leaving initialize_connection: %s"), (iscsi_properties))
+        LOG.info(_LI("Leaving initialize_connection: %s"), iscsi_properties)
         return {
             'driver_volume_type': 'iscsi',
             'data': iscsi_properties
@@ -200,7 +204,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                                           " for volume %(volumeName)s.")
                                           % {'volumeName': volume['name']})
 
-        LOG.debug("ISCSI Discovery: Found %s", (location))
+        LOG.debug("ISCSI Discovery: Found %s", location)
         properties['target_discovered'] = True
 
         device_info = self.common.find_device_number(volume)
@@ -242,7 +246,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                 properties['auth_username'] = auth_username
                 properties['auth_password'] = auth_secret
 
-                LOG.info(_LI("AUTH properties: %s."), (properties))
+                LOG.info(_LI("AUTH properties: %s."), properties)
 
         return properties
 
@@ -291,7 +295,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         :param new_type: the new volume type.
         :param diff: Unused parameter in common.retype
         :param host: the host dict holding the relevant target information
-        :returns: boolean -- True if retype succeeded, Fasle if error
+        :returns: boolean -- True if retype succeeded, False if error
         """
         return self.common.retype(ctxt, volume, new_type, diff, host)
 
@@ -323,3 +327,27 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
             if 'iscsi_ip_address' in open(CINDER_CONF).read():
                 return True
         return False
+
+    def manage_existing(self, volume, external_ref):
+        """Manages an existing VMAX Volume (import to Cinder).
+
+        Renames the Volume to match the expected name for the volume.
+        Also need to consider things like QoS, Emulation, account/tenant.
+        """
+        return self.common.manage_existing(volume, external_ref)
+
+    def manage_existing_get_size(self, volume, external_ref):
+        """Return size of an existing VMAX volume to manage_existing.
+
+        :param self: reference to class
+        :param volume: the volume object including the volume_type_id
+        :param external_ref: reference to the existing volume
+        :returns: size of the volume in GB
+        """
+        return self.common.manage_existing_get_size(volume, external_ref)
+
+    def unmanage(self, volume):
+        """Export VMAX volume from Cinder, leave the volume intact on the
+        backend array.
+        """
+        return self.common.unmanage(volume)

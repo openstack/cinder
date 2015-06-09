@@ -35,6 +35,7 @@ from xml import sax
 from xml.sax import expatreader
 from xml.sax import saxutils
 
+from os_brick.initiator import connector
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -44,7 +45,6 @@ from oslo_utils import timeutils
 import retrying
 import six
 
-from cinder.brick.initiator import connector
 from cinder import exception
 from cinder.i18n import _, _LE
 

@@ -40,6 +40,7 @@ import json
 import math
 import pprint
 import re
+import six
 import uuid
 
 from oslo_utils import importutils
@@ -172,10 +173,12 @@ class HP3PARCommon(object):
         2.0.38 - Add stats for hp3par goodness_function and filter_function
         2.0.39 - Added support for updated detach_volume attachment.
         2.0.40 - Make the 3PAR drivers honor the pool in create  bug #1432876
+        2.0.41 - Only log versions at startup.  bug #1447697
+        2.0.42 - Fix type for snapshot config settings. bug #1461640
 
     """
 
-    VERSION = "2.0.40"
+    VERSION = "2.0.42"
 
     stats = {}
 
@@ -267,9 +270,8 @@ class HP3PARCommon(object):
             known_hosts_file=known_hosts_file)
 
     def client_logout(self):
-        LOG.info(_LI("Disconnect from 3PAR REST and SSH %s"), self.uuid)
+        LOG.debug("Disconnect from 3PAR REST and SSH %s", self.uuid)
         self.client.logout()
-        LOG.info(_LI("logout Done %s"), self.uuid)
 
     def do_setup(self, context):
         if hp3parclient is None:
@@ -281,9 +283,13 @@ class HP3PARCommon(object):
             self.API_VERSION = wsapi_version['build']
         except hpexceptions.UnsupportedVersion as ex:
             raise exception.InvalidInput(ex)
-        LOG.info(_LI("HP3PARCommon %(common_ver)s, hp3parclient %(rest_ver)s"),
-                 {"common_ver": self.VERSION,
-                  "rest_ver": hp3parclient.get_version_string()})
+
+        if context:
+            # The context is None except at driver startup.
+            LOG.info(_LI("HP3PARCommon %(common_ver)s,"
+                         "hp3parclient %(rest_ver)s"),
+                     {"common_ver": self.VERSION,
+                      "rest_ver": hp3parclient.get_version_string()})
         if self.config.hp3par_debug:
             self.client.debug_rest(True)
 
@@ -767,9 +773,8 @@ class HP3PARCommon(object):
                     break
 
         if found_vlun is None:
-            msg = (_("3PAR vlun %(name)s not found on host %(host)s") %
-                   {'name': volume_name, 'host': hostname})
-            LOG.info(msg)
+            LOG.info(_LI("3PAR vlun %(name)s not found on host %(host)s"),
+                     {'name': volume_name, 'host': hostname})
         return found_vlun
 
     def create_vlun(self, volume, host, nsp=None):
@@ -789,10 +794,8 @@ class HP3PARCommon(object):
             if volume_name in vlun['volumeName']:
                 break
         else:
-            msg = (
-                _("3PAR vlun for volume %(name)s not found on host %(host)s") %
-                {'name': volume_name, 'host': hostname})
-            LOG.info(msg)
+            LOG.info(_LI("3PAR vlun for volume %(name)s not found on host "
+                         "%(host)s"), {'name': volume_name, 'host': hostname})
             return
 
         # VLUN Type of MATCHED_SET 4 requires the port to be provided
@@ -828,13 +831,11 @@ class HP3PARCommon(object):
                 # for future needs (e.g. export volume to host set).
 
                 # The log info explains why the host was left alone.
-                msg = (_("3PAR vlun for volume '%(name)s' was deleted, "
-                         "but the host '%(host)s' was not deleted because: "
-                         "%(reason)s") %
-                       {'name': volume_name,
-                        'host': hostname,
-                        'reason': ex.get_description()})
-                LOG.info(msg)
+                LOG.info(_LI("3PAR vlun for volume '%(name)s' was deleted, "
+                             "but the host '%(host)s' was not deleted "
+                             "because: %(reason)s"),
+                         {'name': volume_name, 'host': hostname,
+                          'reason': ex.get_description()})
 
     def _get_volume_type(self, type_id):
         ctxt = context.get_admin_context()
@@ -1210,23 +1211,23 @@ class HP3PARCommon(object):
                 except exception.InvalidInput as ex:
                     # Delete the volume if unable to add it to the volume set
                     self.client.deleteVolume(volume_name)
-                    LOG.error(ex)
+                    LOG.error(_LE("Exception: %s"), ex)
                     raise exception.CinderException(ex)
         except hpexceptions.HTTPConflict:
             msg = _("Volume (%s) already exists on array") % volume_name
             LOG.error(msg)
             raise exception.Duplicate(msg)
         except hpexceptions.HTTPBadRequest as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.Invalid(ex.get_description())
         except exception.InvalidInput as ex:
-            LOG.error(ex)
-            raise ex
+            LOG.error(_LE("Exception: %s"), ex)
+            raise
         except exception.CinderException as ex:
-            LOG.error(ex)
-            raise ex
+            LOG.error(_LE("Exception: %s"), ex)
+            raise
         except Exception as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.CinderException(ex)
 
         return self._get_model_update(volume['host'], cpg)
@@ -1310,7 +1311,7 @@ class HP3PARCommon(object):
         except hpexceptions.HTTPNotFound:
             raise exception.NotFound()
         except Exception as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.CinderException(ex)
 
     def delete_volume(self, volume):
@@ -1331,11 +1332,11 @@ class HP3PARCommon(object):
                         # the volume once it stops the copy.
                         self.client.stopOnlinePhysicalCopy(volume_name)
                     else:
-                        LOG.error(ex)
-                        raise ex
+                        LOG.error(_LE("Exception: %s"), ex)
+                        raise
                 else:
-                    LOG.error(ex)
-                    raise ex
+                    LOG.error(_LE("Exception: %s"), ex)
+                    raise
             except hpexceptions.HTTPConflict as ex:
                 if ex.get_code() == 34:
                     # This is a special case which means the
@@ -1365,23 +1366,23 @@ class HP3PARCommon(object):
                     LOG.error(msg)
                     raise exception.VolumeIsBusy(message=msg)
                 else:
-                    LOG.error(ex)
+                    LOG.error(_LE("Exception: %s"), ex)
                     raise exception.VolumeIsBusy(message=ex.get_description())
 
         except hpexceptions.HTTPNotFound as ex:
             # We'll let this act as if it worked
             # it helps clean up the cinder entries.
-            msg = _("Delete volume id not found. Removing from cinder: "
-                    "%(id)s Ex: %(msg)s") % {'id': volume['id'], 'msg': ex}
-            LOG.warning(msg)
+            LOG.warning(_LW("Delete volume id not found. Removing from "
+                            "cinder: %(id)s Ex: %(msg)s"),
+                        {'id': volume['id'], 'msg': ex})
         except hpexceptions.HTTPForbidden as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotAuthorized(ex.get_description())
         except hpexceptions.HTTPConflict as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.VolumeIsBusy(message=ex.get_description())
         except Exception as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.CinderException(ex)
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -1456,16 +1457,16 @@ class HP3PARCommon(object):
                 except Exception as ex:
                     # Delete the volume if unable to add it to the volume set
                     self.client.deleteVolume(volume_name)
-                    LOG.error(ex)
+                    LOG.error(_LE("Exception: %s"), ex)
                     raise exception.CinderException(ex)
         except hpexceptions.HTTPForbidden as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotFound()
         except Exception as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.CinderException(ex)
         return model_update
 
@@ -1495,18 +1496,18 @@ class HP3PARCommon(object):
                         'readOnly': True}
             if self.config.hp3par_snapshot_expiration:
                 optional['expirationHours'] = (
-                    self.config.hp3par_snapshot_expiration)
+                    int(self.config.hp3par_snapshot_expiration))
 
             if self.config.hp3par_snapshot_retention:
                 optional['retentionHours'] = (
-                    self.config.hp3par_snapshot_retention)
+                    int(self.config.hp3par_snapshot_retention))
 
             self.client.createSnapshot(snap_name, vol_name, optional)
         except hpexceptions.HTTPForbidden as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotFound()
 
     def update_volume_key_value_pair(self, volume, key, value):
@@ -1544,7 +1545,8 @@ class HP3PARCommon(object):
             volume_name = self._get_3par_vol_name(volume['id'])
             self.client.removeVolumeMetaData(volume_name, key)
         except Exception as ex:
-            msg = _('Failure in clear_volume_key_value_pair:%s') % ex
+            msg = _('Failure in clear_volume_key_value_pair: '
+                    '%s') % six.text_type(ex)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -1680,16 +1682,16 @@ class HP3PARCommon(object):
             LOG.error(msg)
             raise exception.Duplicate(msg)
         except hpexceptions.HTTPBadRequest as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.Invalid(ex.get_description())
         except exception.InvalidInput as ex:
-            LOG.error(ex)
-            raise ex
+            LOG.error(_LE("Exception: %s"), ex)
+            raise
         except exception.CinderException as ex:
-            LOG.error(ex)
-            raise ex
+            LOG.error(_LE("Exception: %s"), ex)
+            raise
         except Exception as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.CinderException(ex)
 
         return self._get_model_update(volume['host'], cpg)
@@ -1702,16 +1704,16 @@ class HP3PARCommon(object):
             snap_name = self._get_3par_snap_name(snapshot['id'])
             self.client.deleteVolume(snap_name)
         except hpexceptions.HTTPForbidden as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotAuthorized()
         except hpexceptions.HTTPNotFound as ex:
             # We'll let this act as if it worked
             # it helps clean up the cinder entries.
-            msg = _("Delete Snapshot id not found. Removing from cinder: "
-                    "%(id)s Ex: %(msg)s") % {'id': snapshot['id'], 'msg': ex}
-            LOG.warning(msg)
+            LOG.warning(_LW("Delete Snapshot id not found. Removing from "
+                            "cinder: %(id)s Ex: %(msg)s"),
+                        {'id': snapshot['id'], 'msg': ex})
         except hpexceptions.HTTPConflict as ex:
-            LOG.error(ex)
+            LOG.error(_LE("Exception: %s"), ex)
             raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
 
     def _get_3par_hostname_from_wwn_iqn(self, wwns, iqns):
@@ -1757,12 +1759,12 @@ class HP3PARCommon(object):
                 # use the wwn to see if we can find the hostname
                 hostname = self._get_3par_hostname_from_wwn_iqn(wwn, iqn)
                 # no 3par host, re-throw
-                if (hostname is None):
-                    LOG.error(e)
+                if hostname is None:
+                    LOG.error(_LE("Exception: %s"), e)
                     raise
             else:
                 # not a 'host does not exist' HTTPNotFound exception, re-throw
-                LOG.error(e)
+                LOG.error(_LE("Exception: %s"), e)
                 raise
 
         # try again with name retrieved from 3par
@@ -1817,17 +1819,17 @@ class HP3PARCommon(object):
             if new_tpvv:
                 cop = self.CONVERT_TO_THIN
                 LOG.info(_LI("Converting %(volume_name)s to thin provisioning "
-                             "with userCPG=%(new_cpg)s") %
+                             "with userCPG=%(new_cpg)s"),
                          {'volume_name': volume_name, 'new_cpg': new_cpg})
             elif new_tdvv:
                 cop = self.CONVERT_TO_DEDUP
                 LOG.info(_LI("Converting %(volume_name)s to thin dedup "
-                             "provisioning with userCPG=%(new_cpg)s") %
+                             "provisioning with userCPG=%(new_cpg)s"),
                          {'volume_name': volume_name, 'new_cpg': new_cpg})
             else:
                 cop = self.CONVERT_TO_FULL
                 LOG.info(_LI("Converting %(volume_name)s to full provisioning "
-                             "with userCPG=%(new_cpg)s") %
+                             "with userCPG=%(new_cpg)s"),
                          {'volume_name': volume_name, 'new_cpg': new_cpg})
 
             try:
@@ -1838,13 +1840,13 @@ class HP3PARCommon(object):
                      'userCPG': new_cpg,
                      'conversionOperation': cop})
             except hpexceptions.HTTPBadRequest as ex:
-                if ex.get_code() == 40 and "keepVV" in str(ex):
+                if ex.get_code() == 40 and "keepVV" in six.text_type(ex):
                     # Cannot retype with snapshots because we don't want to
                     # use keepVV and have straggling volumes.  Log additional
                     # info and then raise.
                     LOG.info(_LI("tunevv failed because the volume '%s' "
                                  "has snapshots."), volume_name)
-                    raise ex
+                    raise
 
             task_id = body['taskid']
             status = self.TaskWaiter(self.client, task_id).wait_for_task()
@@ -2236,7 +2238,7 @@ class ModifySpecsTask(flow_utils.CinderTask):
                 if ex.get_code() != 102:
                     LOG.error(_LE("Unexpected error when retype() tried to "
                                   "deleteVolumeSet(%s)"), vvs_name)
-                    raise ex
+                    raise
 
             if new_vvs or new_qos or new_flash_cache:
                 common._add_volume_to_volume_set(

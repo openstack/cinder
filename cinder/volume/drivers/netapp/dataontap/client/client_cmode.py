@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -21,13 +22,14 @@ from oslo_log import log as logging
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
 LOG = logging.getLogger(__name__)
+DELETED_PREFIX = 'deleted_cinder_'
 
 
 class Client(client_base.Client):
@@ -98,7 +100,7 @@ class Client(client_base.Client):
             attr_list = result.get_child_by_name('attributes-list')
             iscsi_service = attr_list.get_child_by_name('iscsi-service-info')
             return iscsi_service.get_child_content('node-name')
-        LOG.debug('No iSCSI service found for vserver %s' % (self.vserver))
+        LOG.debug('No iSCSI service found for vserver %s', self.vserver)
         return None
 
     def get_lun_list(self):
@@ -236,7 +238,8 @@ class Client(client_base.Client):
         return igroup_list
 
     def clone_lun(self, volume, name, new_name, space_reserved='true',
-                  src_block=0, dest_block=0, block_count=0):
+                  qos_policy_group_name=None, src_block=0, dest_block=0,
+                  block_count=0):
         # zAPI can only handle 2^24 blocks per range
         bc_limit = 2 ** 24  # 8GB
         # zAPI can only handle 32 block ranges per call
@@ -257,6 +260,9 @@ class Client(client_base.Client):
                 **{'volume': volume, 'source-path': name,
                    'destination-path': new_name,
                    'space-reserve': space_reserved})
+            if qos_policy_group_name is not None:
+                clone_create.add_new_child('qos-policy-group-name',
+                                           qos_policy_group_name)
             if block_count > 0:
                 block_ranges = netapp_api.NaElement("block-ranges")
                 segments = int(math.ceil(block_count / float(bc_limit)))
@@ -295,22 +301,111 @@ class Client(client_base.Client):
             return []
         return attr_list.get_children()
 
-    def file_assign_qos(self, flex_vol, qos_policy_group, file_path):
-        """Retrieves LUN with specified args."""
-        file_assign_qos = netapp_api.NaElement.create_node_with_children(
-            'file-assign-qos',
-            **{'volume': flex_vol,
-               'qos-policy-group-name': qos_policy_group,
-               'file': file_path,
-               'vserver': self.vserver})
-        self.connection.invoke_successfully(file_assign_qos, True)
+    def file_assign_qos(self, flex_vol, qos_policy_group_name, file_path):
+        """Assigns the named QoS policy-group to a file."""
+        api_args = {
+            'volume': flex_vol,
+            'qos-policy-group-name': qos_policy_group_name,
+            'file': file_path,
+            'vserver': self.vserver,
+        }
+        return self.send_request('file-assign-qos', api_args, False)
+
+    def provision_qos_policy_group(self, qos_policy_group_info):
+        """Create QOS policy group on the backend if appropriate."""
+        if qos_policy_group_info is None:
+            return
+
+        # Legacy QOS uses externally provisioned QOS policy group,
+        # so we don't need to create one on the backend.
+        legacy = qos_policy_group_info.get('legacy')
+        if legacy is not None:
+            return
+
+        spec = qos_policy_group_info.get('spec')
+        if spec is not None:
+            self.qos_policy_group_create(spec['policy_name'],
+                                         spec['max_throughput'])
+
+    def qos_policy_group_create(self, qos_policy_group_name, max_throughput):
+        """Creates a QOS policy group."""
+        api_args = {
+            'policy-group': qos_policy_group_name,
+            'max-throughput': max_throughput,
+            'vserver': self.vserver,
+        }
+        return self.send_request('qos-policy-group-create', api_args, False)
+
+    def qos_policy_group_delete(self, qos_policy_group_name):
+        """Attempts to delete a QOS policy group."""
+        api_args = {
+            'policy-group': qos_policy_group_name,
+        }
+        return self.send_request('qos-policy-group-delete', api_args, False)
+
+    def qos_policy_group_rename(self, qos_policy_group_name, new_name):
+        """Renames a QOS policy group."""
+        api_args = {
+            'policy-group-name': qos_policy_group_name,
+            'new-name': new_name,
+        }
+        return self.send_request('qos-policy-group-rename', api_args, False)
+
+    def mark_qos_policy_group_for_deletion(self, qos_policy_group_info):
+        """Do (soft) delete of backing QOS policy group for a cinder volume."""
+        if qos_policy_group_info is None:
+            return
+
+        spec = qos_policy_group_info.get('spec')
+
+        # For cDOT we want to delete the QoS policy group that we created for
+        # this cinder volume.  Because the QoS policy may still be "in use"
+        # after the zapi call to delete the volume itself returns successfully,
+        # we instead rename the QoS policy group using a specific pattern and
+        # later attempt on a best effort basis to delete any QoS policy groups
+        # matching that pattern.
+        if spec is not None:
+            current_name = spec['policy_name']
+            new_name = DELETED_PREFIX + current_name
+            try:
+                self.qos_policy_group_rename(current_name, new_name)
+            except netapp_api.NaApiError as ex:
+                msg = _LW('Rename failure in cleanup of cDOT QOS policy group '
+                          '%(name)s: %(ex)s')
+                LOG.warning(msg, {'name': current_name, 'ex': ex})
+
+        # Attempt to delete any QoS policies named "delete-openstack-*".
+        self.remove_unused_qos_policy_groups()
+
+    def remove_unused_qos_policy_groups(self):
+        """Deletes all QOS policy groups that are marked for deletion."""
+        api_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': '%s*' % DELETED_PREFIX,
+                    'vserver': self.vserver,
+                }
+            },
+            'max-records': 3500,
+            'continue-on-failure': 'true',
+            'return-success-list': 'false',
+            'return-failure-list': 'false',
+        }
+
+        try:
+            self.send_request('qos-policy-group-delete-iter', api_args, False)
+        except netapp_api.NaApiError as ex:
+            msg = 'Could not delete QOS policy groups. Details: %(ex)s'
+            msg_args = {'ex': ex}
+            LOG.debug(msg % msg_args)
 
     def set_lun_qos_policy_group(self, path, qos_policy_group):
         """Sets qos_policy_group on a LUN."""
-        set_qos_group = netapp_api.NaElement.create_node_with_children(
-            'lun-set-qos-policy-group',
-            **{'path': path, 'qos-policy-group': qos_policy_group})
-        self.connection.invoke_successfully(set_qos_group, True)
+        api_args = {
+            'path': path,
+            'qos-policy-group': qos_policy_group,
+        }
+        return self.send_request('lun-set-qos-policy-group', api_args)
 
     def get_if_info_by_ip(self, ip):
         """Gets the network interface info by ip."""
@@ -327,7 +422,7 @@ class Client(client_base.Client):
             attr_list = result.get_child_by_name('attributes-list')
             return attr_list.get_children()
         raise exception.NotFound(
-            _('No interface found on cluster for ip %s') % (ip))
+            _('No interface found on cluster for ip %s') % ip)
 
     def get_vol_by_junc_vserver(self, vserver, junction):
         """Gets the volume by junction path and vserver."""
@@ -360,11 +455,10 @@ class Client(client_base.Client):
     def clone_file(self, flex_vol, src_path, dest_path, vserver,
                    dest_exists=False):
         """Clones file on vserver."""
-        msg = ("Cloning with params volume %(volume)s, src %(src_path)s,"
-               "dest %(dest_path)s, vserver %(vserver)s")
-        msg_fmt = {'volume': flex_vol, 'src_path': src_path,
-                   'dest_path': dest_path, 'vserver': vserver}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Cloning with params volume %(volume)s, src %(src_path)s, "
+                  "dest %(dest_path)s, vserver %(vserver)s",
+                  {'volume': flex_vol, 'src_path': src_path,
+                   'dest_path': dest_path, 'vserver': vserver})
         clone_create = netapp_api.NaElement.create_node_with_children(
             'clone-create',
             **{'volume': flex_vol, 'source-path': src_path,
@@ -381,8 +475,8 @@ class Client(client_base.Client):
             'file-usage-get', **{'path': path})
         res = self._invoke_vserver_api(file_use, vserver)
         unique_bytes = res.get_child_content('unique-bytes')
-        LOG.debug('file-usage for path %(path)s is %(bytes)s'
-                  % {'path': path, 'bytes': unique_bytes})
+        LOG.debug('file-usage for path %(path)s is %(bytes)s',
+                  {'path': path, 'bytes': unique_bytes})
         return unique_bytes
 
     def get_vserver_ips(self, vserver):
@@ -460,3 +554,62 @@ class Client(client_base.Client):
                 msg = _("Data ONTAP API version could not be determined.")
                 raise exception.VolumeBackendAPIException(data=msg)
         return failed_apis
+
+    def get_operational_network_interface_addresses(self):
+        """Gets the IP addresses of operational LIFs on the vserver."""
+
+        api_args = {
+            'query': {
+                'net-interface-info': {
+                    'operational-status': 'up'
+                }
+            },
+            'desired-attributes': {
+                'net-interface-info': {
+                    'address': None,
+                }
+            }
+        }
+        result = self.send_request('net-interface-get-iter', api_args)
+
+        lif_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        return [lif_info.get_child_content('address') for lif_info in
+                lif_info_list.get_children()]
+
+    def get_flexvol_capacity(self, flexvol_path):
+        """Gets total capacity and free capacity, in bytes, of the flexvol."""
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'junction-path': flexvol_path
+                    }
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-space-attributes': {
+                        'size-available': None,
+                        'size-total': None,
+                    }
+                }
+            },
+        }
+
+        result = self.send_request('volume-get-iter', api_args)
+
+        attributes_list = result.get_child_by_name('attributes-list')
+        volume_attributes = attributes_list.get_child_by_name(
+            'volume-attributes')
+        volume_space_attributes = volume_attributes.get_child_by_name(
+            'volume-space-attributes')
+
+        size_available = float(
+            volume_space_attributes.get_child_content('size-available'))
+        size_total = float(
+            volume_space_attributes.get_child_content('size-total'))
+
+        return size_total, size_available

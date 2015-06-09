@@ -450,10 +450,10 @@ class HDSNFSDriver(nfs.NfsDriver):
                 conf[key]['path'] = path
                 conf[key]['hdp'] = hdp
                 conf[key]['fslabel'] = fslabel
-                msg = _("nfs_info: %(key)s: %(path)s, HDP: \
-                        %(fslabel)s FSID: %(hdp)s")
-                LOG.info(msg, {'key': key, 'path': path, 'fslabel': fslabel,
-                               'hdp': hdp})
+                LOG.info(_LI("nfs_info: %(key)s: %(path)s, HDP: %(fslabel)s "
+                             "FSID: %(hdp)s"),
+                         {'key': key, 'path': path,
+                          'fslabel': fslabel, 'hdp': hdp})
 
         return conf
 

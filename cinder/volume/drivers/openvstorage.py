@@ -66,8 +66,9 @@ class OVSVolumeDriver(driver.VolumeDriver):
         Options come from CONF
         """
         super(OVSVolumeDriver, self).__init__(*args, **kwargs)
-        LOG.debug('INIT %s %s %s ', CONF.vpool_name, str(args),
-                  str(kwargs))
+        LOG.debug('INIT %(pool_name)s %(arg)s %(kwarg)s ',
+                  {'pool_name': CONF.vpool_name, 'arg': args,
+                   'kwarg': kwargs})
         self.configuration.append_config_values(OPTS)
         self._vpool_name = self.configuration.vpool_name
         if vpoollist is not None:
@@ -102,7 +103,8 @@ class OVSVolumeDriver(driver.VolumeDriver):
         location = '{}/{}.raw'.format(mountpoint, name)
         size = volume.size
 
-        LOG.debug('DO_CREATE_VOLUME %s %s', location, size)
+        LOG.debug('DO_CREATE_VOLUME %(location)s %(size)s',
+                  {'location': location, 'size': size})
         vdisklib.VDiskController.create_volume(location = location,
                                                size = size)
         volume['provider_location'] = location
@@ -136,7 +138,8 @@ class OVSVolumeDriver(driver.VolumeDriver):
         Downloads image from glance server into local .raw
         :param volume: volume reference (sqlalchemy Model)
         """
-        LOG.debug("CP_IMG_TO_VOL %s %s", image_service, image_id)
+        LOG.debug("CP_IMG_TO_VOL %(image_service)s %(image_id)s",
+                  {'image_service': image_service, 'image_id': image_id})
 
         name = volume.display_name
         if not name:
@@ -172,7 +175,8 @@ class OVSVolumeDriver(driver.VolumeDriver):
         Called on "cinder upload-to-image ...volume... ...image-name..."
         :param volume: volume reference (sqlalchemy Model)
         """
-        LOG.debug("CP_VOL_TO_IMG %s %s", image_service, image_meta)
+        LOG.debug("CP_VOL_TO_IMG %(image_service)s %(image_meta)s",
+                  {'image_service': image_service, 'image_meta': image_meta})
         super(OVSVolumeDriver, self).copy_volume_to_image(
             context, volume, image_service, image_meta)
 
@@ -222,8 +226,8 @@ class OVSVolumeDriver(driver.VolumeDriver):
             vdisk = vdiskhybrid.VDisk(disk_meta['diskguid'])
             vdisk.cinder_id = volume.id
             vdisk.name = name
-            LOG.debug('[CREATE FROM TEMPLATE] Updating meta %s %s',
-                      volume.id, name)
+            LOG.debug('[CREATE FROM TEMPLATE] Updating meta %(volume_id)s '
+                      '%(name)s', {'volume_id': volume.id, 'name': name})
             vdisk.save()
         else:
             LOG.debug('[THIN CLONE] VDisk %s is not a template',
@@ -239,7 +243,8 @@ class OVSVolumeDriver(driver.VolumeDriver):
                             'machineguid': source_ovs_disk.vmachine_guid,
                             'is_automatic': False}
 
-                LOG.debug('CREATE_SNAP %s %s', name, str(metadata))
+                LOG.debug('CREATE_SNAP %(name)s %(metadata)s',
+                          {'name': name, 'metadata': metadata})
                 snapshotid = vdisklib.VDiskController.create_snapshot(
                     diskguid = source_ovs_disk.guid,
                     metadata = metadata,
@@ -306,8 +311,8 @@ class OVSVolumeDriver(driver.VolumeDriver):
                     'machineguid': ovs_disk.vmachine_guid,
                     'is_automatic': False}
 
-        LOG.debug('CREATE_SNAP %s %s', snapshot.display_name,
-                  str(metadata))
+        LOG.debug('CREATE_SNAP %(name)s %(metadata)s',
+                  {'name': snapshot.display_name, 'metadata': metadata})
         vdisklib.VDiskController.create_snapshot(diskguid = ovs_disk.guid,
                                                  metadata = metadata,
                                                  snapshotid =
@@ -352,9 +357,10 @@ class OVSVolumeDriver(driver.VolumeDriver):
         pmachineguid = self._find_ovs_model_pmachine_guid_by_hostname(
             six.text_type(volume.host))
 
-        LOG.debug('[CLONE FROM SNAP] %s %s %s %s',
-                  ovs_snap_disk.guid, snapshot.id, devicename,
-                  pmachineguid)
+        LOG.debug('[CLONE FROM SNAP] %(disk)s %(snapshot)s %(device)s '
+                  '%(machine)s',
+                  {'disk': ovs_snap_disk.guid, 'snapshot': snapshot.id,
+                   'device': devicename, 'machine': pmachineguid})
         disk_meta = vdisklib.VDiskController.clone(
             diskguid = ovs_snap_disk.guid,
             snapshotid = snapshot.id,
@@ -383,7 +389,7 @@ class OVSVolumeDriver(driver.VolumeDriver):
         """Callback for volume attached to instance or host."""
         pass
 
-    def detach_volume(self, context, volume):
+    def detach_volume(self, context, volume, attachment=None):
         """Callback for volume detached."""
         pass
 
@@ -427,7 +433,8 @@ class OVSVolumeDriver(driver.VolumeDriver):
         The volume is a .raw file on a virtual filesystem.
         Connection is always allowed based on POSIX permissions.
         """
-        LOG.debug('TERM_CONN %s %s ', six.text_type(connector), force)
+        LOG.debug('TERM_CONN %(connector)s %(force)s ',
+                  {'connector': six.text_type(connector), 'force': force})
 
     def check_for_setup_error(self):
         """Validate driver setup"""
@@ -493,12 +500,15 @@ class OVSVolumeDriver(driver.VolumeDriver):
                             _location = "{0}/{1}".format(vsr.mountpoint,
                                                          vd.devicename)
                             if _location == location:
-                                LOG.debug('Location %s Disk found %s',
-                                          (location, vd.guid))
+                                LOG.debug('Location %(location)s Disk '
+                                          'found %(id)s',
+                                          {'location': location,
+                                           'id': vd.guid})
                                 disk = vdiskhybrid.VDisk(vd.guid)
                                 return disk
-            msg = 'NO RESULT Attempt %s timeout %s max attempts %s'
-            LOG.debug(msg, attempt, timeout, retry)
+            LOG.debug('NO RESULT Attempt %(attempt)s timeout %(timeout)s max '
+                      'attempts %(retry)s',
+                      {'attempt': attempt, 'timeout': timeout, 'retry': retry})
             if timeout:
                 time.sleep(timeout)
             attempt += 1
@@ -511,16 +521,16 @@ class OVSVolumeDriver(driver.VolumeDriver):
         :return guid: GUID
         """
         hostname = self._get_real_hostname(hostname)
-        LOG.debug('[_FIND OVS PMACHINE] Hostname %s' % (hostname))
+        LOG.debug('[_FIND OVS PMACHINE] Hostname %s', hostname)
         mapping = [(pm.guid, six.text_type(sr.name))
                    for pm in pmachinelist.PMachineList.get_pmachines()
                    for sr in pm.storagerouters]
         for item in mapping:
             if item[1] == str(hostname):
-                msg = 'Found pmachineguid %s for Hostname %s'
-                LOG.debug(msg, item[0], hostname)
+                LOG.debug('Found pmachineguid %(item)s for Hostname %(host)s',
+                          {'item': item[0], 'host': hostname})
                 return item[0]
-        msg = (_('No PMachine guid found for Hostname %s'), hostname)
+        msg = (_('No PMachine guid found for Hostname %s') % hostname)
         LOG.exception(msg)
         raise exception.VolumeBackendAPIException(data=msg)
 
@@ -528,13 +538,14 @@ class OVSVolumeDriver(driver.VolumeDriver):
         """Find OVS disk object based on snapshot id
         :return VDisk: OVS DAL model object
         """
-        LOG.debug('[_FIND OVS DISK] Snapshotid %s' % snapshotid)
+        LOG.debug('[_FIND OVS DISK] Snapshotid %s', snapshotid)
         for disk in vdisklist.VDiskList.get_vdisks():
             snaps_guid = [s['guid'] for s in disk.snapshots]
             if str(snapshotid) in snaps_guid:
-                LOG.debug('[_FIND OVS DISK] Snapshot id %s Disk found %s',
-                          (snapshotid, disk))
+                LOG.debug('[_FIND OVS DISK] Snapshot id %(snapshot)s Disk '
+                          'found %(disk)s',
+                          {'snapshot': snapshotid, 'disk': disk})
                 return disk
-        msg = (_('No disk found for snapshotid %s'), snapshotid)
+        msg = (_('No disk found for snapshotid %s') % snapshotid)
         LOG.exception(msg)
         raise exception.VolumeBackendAPIException(data=msg)

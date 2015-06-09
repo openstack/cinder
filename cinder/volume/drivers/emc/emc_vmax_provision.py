@@ -18,7 +18,7 @@ from oslo_log import log as logging
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 from cinder.volume.drivers.emc import emc_vmax_utils
 
 
@@ -613,11 +613,10 @@ class EMCVMAXProvision(object):
                 try:
                     rc = self._terminate_migrate_session(
                         conn, volumeInstanceName, extraSpecs)
-                except Exception as ex:
-                    LOG.error(_LE('Exception: %s.'), ex)
+                except Exception:
                     exceptionMessage = (_(
                         "Failed to terminate migrate session."))
-                    LOG.error(exceptionMessage)
+                    LOG.exception(exceptionMessage)
                     raise exception.VolumeBackendAPIException(
                         data=exceptionMessage)
                 try:
@@ -625,19 +624,17 @@ class EMCVMAXProvision(object):
                         conn, storageRelocationServiceInstanceName,
                         volumeInstanceName, targetPoolInstanceName,
                         extraSpecs)
-                except Exception as ex:
-                    LOG.error(_LE('Exception: %s'), ex)
+                except Exception:
                     exceptionMessage = (_(
                         "Failed to migrate volume for the second time."))
-                    LOG.error(exceptionMessage)
+                    LOG.exception(exceptionMessage)
                     raise exception.VolumeBackendAPIException(
                         data=exceptionMessage)
 
             else:
-                LOG.error(_LE('Exception: %s'), ex)
                 exceptionMessage = (_(
                     "Failed to migrate volume for the first time."))
-                LOG.error(exceptionMessage)
+                LOG.exception(exceptionMessage)
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
 

@@ -51,6 +51,7 @@ INTERVAL_10_SEC = 10
 INTERVAL = 'storagetype:interval'
 RETRIES = 'storagetype:retries'
 CIM_ERR_NOT_FOUND = 6
+VOLUME_ELEMENT_NAME_PREFIX = 'OS-'
 
 
 class EMCVMAXUtils(object):
@@ -141,10 +142,11 @@ class EMCVMAXUtils(object):
         for elementCompositionService in elementCompositionServices:
             if storageSystemName == elementCompositionService['SystemName']:
                 foundElementCompositionService = elementCompositionService
-                LOG.debug("Found Element Composition Service:"
-                          "%(elementCompositionService)s."
-                          % {'elementCompositionService':
-                              elementCompositionService})
+                LOG.debug(
+                    "Found Element Composition Service: "
+                    "%(elementCompositionService)s.", {
+                        'elementCompositionService':
+                            elementCompositionService})
                 break
         if foundElementCompositionService is None:
             exceptionMessage = (_("Element Composition Service not found "
@@ -324,10 +326,9 @@ class EMCVMAXUtils(object):
                 if not wait_for_job_called:
                     if self._is_job_finished(conn, job):
                         kwargs['wait_for_job_called'] = True
-            except Exception as e:
-                LOG.error(_LE("Exception: %s.") % six.text_type(e))
+            except Exception:
                 exceptionMessage = (_("Issue encountered waiting for job."))
-                LOG.error(exceptionMessage)
+                LOG.exception(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
         kwargs = {'retries': 0,
@@ -386,11 +387,12 @@ class EMCVMAXUtils(object):
         else:
             return True
 
-    def wait_for_sync(self, conn, syncName):
+    def wait_for_sync(self, conn, syncName, extraSpecs=None):
         """Given the sync name wait for it to fully synchronize.
 
         :param conn: connection to the ecom server
         :param syncName: the syncName
+        :param extraSpecs: extra specifications
         :raises: loopingcall.LoopingCallDone
         :raises: VolumeBackendAPIException
         """
@@ -402,10 +404,11 @@ class EMCVMAXUtils(object):
             :raises: VolumeBackendAPIException
             """
             retries = kwargs['retries']
+            maxJobRetries = self._get_max_job_retries(extraSpecs)
             wait_for_sync_called = kwargs['wait_for_sync_called']
             if self._is_sync_complete(conn, syncName):
                 raise loopingcall.LoopingCallDone()
-            if retries > JOB_RETRIES:
+            if retries > maxJobRetries:
                 LOG.error(_LE("_wait_for_sync failed after %(retries)d "
                               "tries."),
                           {'retries': retries})
@@ -415,17 +418,17 @@ class EMCVMAXUtils(object):
                 if not wait_for_sync_called:
                     if self._is_sync_complete(conn, syncName):
                         kwargs['wait_for_sync_called'] = True
-            except Exception as e:
-                LOG.error(_LE("Exception: %s") % six.text_type(e))
+            except Exception:
                 exceptionMessage = (_("Issue encountered waiting for "
                                       "synchronization."))
-                LOG.error(exceptionMessage)
+                LOG.exception(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
         kwargs = {'retries': 0,
                   'wait_for_sync_called': False}
+        intervalInSecs = self._get_interval_in_secs(extraSpecs)
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_sync)
-        timer.start(interval=INTERVAL_10_SEC).wait()
+        timer.start(interval=intervalInSecs).wait()
 
     def _is_sync_complete(self, conn, syncName):
         """Check if the job is finished.
@@ -490,7 +493,7 @@ class EMCVMAXUtils(object):
 
         return foundStorageSystemInstanceName
 
-    def get_storage_group_from_volume(self, conn, volumeInstanceName):
+    def get_storage_group_from_volume(self, conn, volumeInstanceName, sgName):
         """Returns the storage group for a particular volume.
 
         Given the volume instance name get the associated storage group if it
@@ -506,14 +509,50 @@ class EMCVMAXUtils(object):
             volumeInstanceName,
             ResultClass='CIM_DeviceMaskingGroup')
 
-        if len(storageGroupInstanceNames) > 0:
-            foundStorageGroupInstanceName = storageGroupInstanceNames[0]
+        if len(storageGroupInstanceNames) > 1:
+            LOG.info(_LI(
+                "The volume belongs to more than one storage group. "
+                "Returning storage group %(sgName)s."),
+                {'sgName': sgName})
+        for storageGroupInstanceName in storageGroupInstanceNames:
+            instance = self.get_existing_instance(
+                conn, storageGroupInstanceName)
+            if instance and sgName == instance['ElementName']:
+                foundStorageGroupInstanceName = storageGroupInstanceName
+                break
 
         return foundStorageGroupInstanceName
 
-    def wrap_get_storage_group_from_volume(self, conn, volumeInstanceName):
+    def get_storage_groups_from_volume(self, conn, volumeInstanceName):
+        """Returns all the storage group for a particular volume.
+
+        Given the volume instance name get all the associated storage groups.
+
+        :param conn: connection to the ecom server
+        :param volumeInstanceName: the volume instance name
+        :returns: foundStorageGroupInstanceName
+        """
+        storageGroupInstanceNames = conn.AssociatorNames(
+            volumeInstanceName,
+            ResultClass='CIM_DeviceMaskingGroup')
+
+        if storageGroupInstanceNames:
+            LOG.debug("There are %(len)d storage groups associated "
+                      "with volume %(volumeInstanceName)s.",
+                      {'len': len(storageGroupInstanceNames),
+                       'volumeInstanceName': volumeInstanceName})
+        else:
+            LOG.debug("There are no storage groups associated "
+                      "with volume %(volumeInstanceName)s.",
+                      {'volumeInstanceName': volumeInstanceName})
+
+        return storageGroupInstanceNames
+
+    def wrap_get_storage_group_from_volume(self, conn, volumeInstanceName,
+                                           sgName):
         """Unit test aid"""
-        return self.get_storage_group_from_volume(conn, volumeInstanceName)
+        return self.get_storage_group_from_volume(conn, volumeInstanceName,
+                                                  sgName)
 
     def find_storage_masking_group(self, conn, controllerConfigService,
                                    storageGroupName):
@@ -869,21 +908,23 @@ class EMCVMAXUtils(object):
 
         idarray = poolInstanceId.split('+')
         if len(idarray) > 2:
-            systemName = self._format_system_name(idarray[0], idarray[1])
+            systemName = self._format_system_name(idarray[0], idarray[1], '+')
 
         LOG.debug("Pool name: %(poolName)s  System name: %(systemName)s.",
                   {'poolName': poolName, 'systemName': systemName})
         return poolName, systemName
 
-    def _format_system_name(self, part1, part2):
+    def _format_system_name(self, part1, part2, sep):
         """Join to make up system name
 
         :param part1: the prefix
+        :param sep: the separator
         :param part2: the postfix
         :returns: systemName
         """
-        return ("%(part1)s+%(part2)s"
+        return ("%(part1)s%(sep)s%(part2)s"
                 % {'part1': part1,
+                   'sep': sep,
                    'part2': part2})
 
     def parse_pool_instance_id_v3(self, poolInstanceId):
@@ -903,7 +944,8 @@ class EMCVMAXUtils(object):
 
         idarray = poolInstanceId.split('-+-')
         if len(idarray) > 2:
-            systemName = self._format_system_name(idarray[0], idarray[1])
+            systemName = (
+                self._format_system_name(idarray[0], idarray[1], '-+-'))
 
         LOG.debug("Pool name: %(poolName)s  System name: %(systemName)s.",
                   {'poolName': poolName, 'systemName': systemName})
@@ -1381,12 +1423,14 @@ class EMCVMAXUtils(object):
         return six.text_type(datetime.timedelta(seconds=int(delta)))
 
     def find_sync_sv_by_target(
-            self, conn, storageSystem, target, waitforsync=True):
+            self, conn, storageSystem, target, extraSpecs,
+            waitforsync=True):
         """Find the storage synchronized name by target device ID.
 
         :param conn: connection to the ecom server
         :param storageSystem: the storage system name
         :param target: target volume object
+        :param extraSpecs: the extraSpecs dict
         :param waitforsync: wait for the synchronization to complete if True
         :returns: foundSyncInstanceName
         """
@@ -1417,17 +1461,19 @@ class EMCVMAXUtils(object):
         else:
             # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
             if waitforsync:
-                self.wait_for_sync(conn, foundSyncInstanceName)
+                self.wait_for_sync(conn, foundSyncInstanceName, extraSpecs)
 
         return foundSyncInstanceName
 
     def find_group_sync_rg_by_target(
-            self, conn, storageSystem, targetRgInstanceName, waitforsync=True):
+            self, conn, storageSystem, targetRgInstanceName, extraSpecs,
+            waitforsync=True):
         """Find the SE_GroupSynchronized_RG_RG instance name by target group.
 
         :param conn: connection to the ecom server
         :param storageSystem: the storage system name
         :param targetRgInstanceName: target group instance name
+        :param extraSpecs: the extraSpecs dict
         :param waitforsync: wait for synchronization to complete
         :returns: foundSyncInstanceName
         """
@@ -1457,7 +1503,7 @@ class EMCVMAXUtils(object):
         else:
             # Wait for SE_StorageSynchronized_SV_SV to be fully synced.
             if waitforsync:
-                self.wait_for_sync(conn, foundSyncInstanceName)
+                self.wait_for_sync(conn, foundSyncInstanceName, extraSpecs)
 
         return foundSyncInstanceName
 
@@ -1530,7 +1576,7 @@ class EMCVMAXUtils(object):
 
             if six.text_type(poolName) == six.text_type(poolnameStr):
                 try:
-                    # Check that pool hasnt suddently been deleted.
+                    # Check that pool hasn't suddenly been deleted.
                     srpPoolInstance = conn.GetInstance(srpPoolInstanceName)
                     propertiesList = srpPoolInstance.properties.items()
                     for properties in propertiesList:
@@ -1550,7 +1596,7 @@ class EMCVMAXUtils(object):
         return totalCapacityGb, remainingCapacityGb
 
     def isArrayV3(self, conn, arrayName):
-        """Check is the array is V2 or V3.
+        """Check if the array is V2 or V3.
 
         :param conn: the connection to the ecom server
         :param arrayName: the array name
@@ -1588,7 +1634,7 @@ class EMCVMAXUtils(object):
                 poolInstanceId)
             if poolnameStr is not None and systemNameStr is not None:
                 if six.text_type(poolNameInStr) == six.text_type(poolnameStr):
-                    # check that the pool hasnt recently been deleted.
+                    # check that the pool hasn't recently been deleted.
                     try:
                         conn.GetInstance(vpoolInstanceName)
                         foundPoolInstanceName = vpoolInstanceName
@@ -1888,3 +1934,181 @@ class EMCVMAXUtils(object):
                     LOG.debug("Clone is licensed and enabled.")
                     return True
         return False
+
+    def create_storage_hardwareId_instance_name(
+            self, conn, hardwareIdManagementService, initiator):
+        """Create storage hardware ID instance name based on the WWPN/IQN.
+
+        :param conn: connection to the ecom server
+        :param hardwareIdManagementService: the hardware ID management service
+        :param initiator: initiator(IQN or WWPN) to create the hardware ID
+            instance
+        :returns: hardwareIdList
+        """
+        hardwareIdList = None
+        hardwareIdType = self._get_hardware_type(initiator)
+        rc, ret = conn.InvokeMethod(
+            'CreateStorageHardwareID',
+            hardwareIdManagementService,
+            StorageID=initiator,
+            IDType=self.get_num(hardwareIdType, '16'))
+
+        if 'HardwareID' in ret:
+            LOG.debug("Created hardware ID instance for initiator:"
+                      "%(initiator)s rc=%(rc)d, ret=%(ret)s",
+                      {'initiator': initiator, 'rc': rc, 'ret': ret})
+            hardwareIdList = ret['HardwareID']
+        else:
+            LOG.warning(_LW("CreateStorageHardwareID failed. initiator: "
+                            "%(initiator)s, rc=%(rc)d, ret=%(ret)s."),
+                        {'initiator': initiator, 'rc': rc, 'ret': ret})
+        return hardwareIdList
+
+    def _get_hardware_type(
+            self, initiator):
+        """Determine the hardware type based on the initiator.
+
+        :param initiator: initiator(IQN or WWPN)
+        :returns: hardwareTypeId
+        """
+        hardwareTypeId = 0
+        try:
+            int(initiator, 16)
+            hardwareTypeId = 2
+        except Exception:
+            if 'iqn' in initiator.lower():
+                hardwareTypeId = 5
+        if hardwareTypeId == 0:
+            LOG.warning(_LW("Cannot determine the hardware type."))
+        return hardwareTypeId
+
+    def find_volume_by_device_id_on_array(self, conn, storageSystem, deviceID):
+        """Find the volume by device ID on a specific array.
+
+        :param conn: connection to the ecom server
+        :param storageSystem: the storage system name
+        :param deviceID: string value of the volume device ID
+        :returns: foundVolumeInstanceName
+        """
+        foundVolumeInstanceName = None
+        volumeInstanceNames = conn.EnumerateInstanceNames(
+            'CIM_StorageVolume')
+        for volumeInstanceName in volumeInstanceNames:
+            if storageSystem not in volumeInstanceName['SystemName']:
+                continue
+            if deviceID == volumeInstanceName['DeviceID']:
+                foundVolumeInstanceName = volumeInstanceName
+                LOG.debug("Found volume: %(vol)s",
+                          {'vol': foundVolumeInstanceName})
+                break
+        if foundVolumeInstanceName is None:
+            exceptionMessage = (_("Volume %(deviceID)s not found.")
+                                % {'deviceID': deviceID})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+        return foundVolumeInstanceName
+
+    def get_volume_element_name(self, volumeId):
+        """Get volume element name follows naming convention, i.e. 'OS-UUID'.
+
+        :param volumeId: volume id containing uuid
+        :returns: volume element name in format of OS-UUID
+        """
+        elementName = volumeId
+        uuid_regex = (re.compile(
+            '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',
+            re.I))
+        match = uuid_regex.search(volumeId)
+        if match:
+            volumeUUID = match.group()
+            elementName = ("%(prefix)s%(volumeUUID)s"
+                           % {'prefix': VOLUME_ELEMENT_NAME_PREFIX,
+                              'volumeUUID': volumeUUID})
+            LOG.debug(
+                "get_volume_element_name elementName:  %(elementName)s.",
+                {'elementName': elementName})
+        return elementName
+
+    def rename_volume(self, conn, volume, newName):
+        """Change the volume ElementName to specified new name.
+
+        :param conn: connection to the ecom server
+        :param volume: the volume instance name or volume instance
+        :param newName: new ElementName of the volume
+        :returns: volumeInstance after rename
+        """
+        if type(volume) is pywbem.cim_obj.CIMInstance:
+            volumeInstance = volume
+        else:
+            volumeInstance = conn.GetInstance(volume)
+            volumeInstance['ElementName'] = newName
+
+        LOG.debug("Rename volume to new ElementName %(newName)s.",
+                  {'newName': newName})
+
+        conn.ModifyInstance(volumeInstance, PropertyList=['ElementName'])
+
+        return volumeInstance
+
+    def get_array_and_device_id(self, volume, external_ref):
+        """Helper function for manage volume to get array name and device ID.
+
+        :param volume: volume object from API
+        :param external_ref: the existing volume object to be manged
+        :returns: string value of the array name and device ID
+        """
+        deviceId = external_ref.get(u'source-name', None)
+        arrayName = ''
+        for metadata in volume['volume_metadata']:
+            if metadata['key'].lower() == 'array':
+                arrayName = metadata['value']
+                break
+
+        if deviceId:
+            LOG.debug("Get device ID of existing volume - device ID: "
+                      "%(deviceId)s, Array: %(arrayName)s.",
+                      {'deviceId': deviceId,
+                       'arrayName': arrayName})
+        else:
+            exception_message = (_("Source volume device ID is required."))
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        return (arrayName, deviceId)
+
+    def get_associated_replication_from_source_volume(
+            self, conn, storageSystem, sourceDeviceId):
+        """Given the source volume device ID, find associated replication
+        storage synchronized instance names.
+
+        :param conn: connection to the ecom server
+        :param storageSystem: the storage system name
+        :param source: target volume object
+        :returns: foundSyncName (String)
+        """
+        foundSyncInstanceName = None
+        syncInstanceNames = conn.EnumerateInstanceNames(
+            'SE_StorageSynchronized_SV_SV')
+        for syncInstanceName in syncInstanceNames:
+            sourceVolume = syncInstanceName['SystemElement']
+            if storageSystem != sourceVolume['SystemName']:
+                continue
+            if sourceVolume['DeviceID'] == sourceDeviceId:
+                # Check that it hasn't recently been deleted.
+                try:
+                    conn.GetInstance(syncInstanceName)
+                    foundSyncInstanceName = syncInstanceName
+                    LOG.debug("Found sync Name: "
+                              "%(syncName)s.",
+                              {'syncName': foundSyncInstanceName})
+                except Exception:
+                    foundSyncInstanceName = None
+                break
+
+        if foundSyncInstanceName is None:
+            LOG.info(_LI(
+                "No replication synchronization session found associated "
+                "with source volume %(source)s on %(storageSystem)s."),
+                {'source': sourceDeviceId, 'storageSystem': storageSystem})
+
+        return foundSyncInstanceName

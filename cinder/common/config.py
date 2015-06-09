@@ -167,7 +167,7 @@ global_opts = [
                default='cinder.backup.api.API',
                help='The full class name of the volume backup API class'),
     cfg.StrOpt('auth_strategy',
-               default='noauth',
+               default='keystone',
                choices=['noauth', 'keystone', 'deprecated'],
                help='The strategy to use for auth. Supports noauth, keystone, '
                     'and deprecated.'),

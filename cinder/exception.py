@@ -26,6 +26,7 @@ import sys
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_versionedobjects import exception as obj_exc
 import six
 import webob.exc
 
@@ -112,7 +113,7 @@ class CinderException(Exception):
         return self.kwargs['message'] is None or '%(message)' in self.message
 
     def __unicode__(self):
-        return unicode(self.msg)
+        return six.text_type(self.msg)
 
 
 class VolumeBackendAPIException(CinderException):
@@ -169,10 +170,6 @@ class InvalidVolumeAttachMode(Invalid):
 
 class VolumeAttached(Invalid):
     message = _("Volume %(volume_id)s is still attached, detach volume first.")
-
-
-class SfJsonEncodeFailure(CinderException):
-    message = _("Failed to load data into json format")
 
 
 class InvalidResults(Invalid):
@@ -663,92 +660,30 @@ class EvaluatorParseException(Exception):
     message = _("Error during evaluator parsing: %(reason)s")
 
 
-class ObjectActionError(CinderException):
-    msg_fmt = _('Object action %(action)s failed because: %(reason)s')
+UnsupportedObjectError = obj_exc.UnsupportedObjectError
+OrphanedObjectError = obj_exc.OrphanedObjectError
+IncompatibleObjectVersion = obj_exc.IncompatibleObjectVersion
+ReadOnlyFieldError = obj_exc.ReadOnlyFieldError
+ObjectActionError = obj_exc.ObjectActionError
+ObjectFieldInvalid = obj_exc.ObjectFieldInvalid
 
 
-class ObjectFieldInvalid(CinderException):
-    msg_fmt = _('Field %(field)s of %(objname)s is not an instance of Field')
+class VolumeGroupNotFound(CinderException):
+    msg_fmt = _('Unable to find Volume Group: %(vg_name)s')
 
 
-class UnsupportedObjectError(CinderException):
-    msg_fmt = _('Unsupported object type %(objtype)s')
+class VolumeGroupCreationFailed(CinderException):
+    msg_fmt = _('Failed to create Volume Group: %(vg_name)s')
 
 
-class OrphanedObjectError(CinderException):
-    msg_fmt = _('Cannot call %(method)s on orphaned %(objtype)s object')
-
-
-class IncompatibleObjectVersion(CinderException):
-    msg_fmt = _('Version %(objver)s of %(objname)s is not supported')
-
-
-class ReadOnlyFieldError(CinderException):
-    msg_fmt = _('Cannot modify readonly field %(field)s')
+class VolumeDeviceNotFound(CinderException):
+    msg_fmt = _('Volume device not found at %(device)s.')
 
 
 # Driver specific exceptions
-# Coraid
-class CoraidException(VolumeDriverException):
-    message = _('Coraid Cinder Driver exception.')
-
-
-class CoraidJsonEncodeFailure(CoraidException):
-    message = _('Failed to encode json data.')
-
-
-class CoraidESMBadCredentials(CoraidException):
-    message = _('Login on ESM failed.')
-
-
-class CoraidESMReloginFailed(CoraidException):
-    message = _('Relogin on ESM failed.')
-
-
-class CoraidESMBadGroup(CoraidException):
-    message = _('Group with name "%(group_name)s" not found.')
-
-
-class CoraidESMConfigureError(CoraidException):
-    message = _('ESM configure request failed: %(reason)s')
-
-
-class CoraidESMNotAvailable(CoraidException):
-    message = _('Coraid ESM not available with reason: %(reason)s')
-
-
 # Pure Storage
 class PureDriverException(VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")
-
-
-# Zadara
-class ZadaraException(VolumeDriverException):
-    message = _('Zadara Cinder Driver exception.')
-
-
-class ZadaraServerCreateFailure(ZadaraException):
-    message = _("Unable to create server object for initiator %(name)s")
-
-
-class ZadaraServerNotFound(ZadaraException):
-    message = _("Unable to find server object for initiator %(name)s")
-
-
-class ZadaraVPSANoActiveController(ZadaraException):
-    message = _("Unable to find any active VPSA controller")
-
-
-class ZadaraAttachmentsNotFound(ZadaraException):
-    message = _("Failed to retrieve attachments for volume %(name)s")
-
-
-class ZadaraInvalidAttachmentInfo(ZadaraException):
-    message = _("Invalid attachment info for volume %(name)s: %(reason)s")
-
-
-class BadHTTPResponseStatus(ZadaraException):
-    message = _("Bad HTTP response status %(status)s")
 
 
 # SolidFire
@@ -828,23 +763,6 @@ class GlusterfsNoSharesMounted(RemoteFSNoSharesMounted):
 
 class GlusterfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
     message = _("There is no share which can host %(volume_size)sG")
-
-
-# HP MSA
-class HPMSAVolumeDriverException(VolumeDriverException):
-    message = _("HP MSA Volume Driver exception")
-
-
-class HPMSAInvalidVDisk(HPMSAVolumeDriverException):
-    message = _("VDisk doesn't exist (%(vdisk)s)")
-
-
-class HPMSAConnectionError(HPMSAVolumeDriverException):
-    message = _("Unable to connect to MSA array")
-
-
-class HPMSANotEnoughSpace(HPMSAVolumeDriverException):
-    message = _("Not enough space on VDisk (%(vdisk)s)")
 
 
 # Fibre Channel Zone Manager

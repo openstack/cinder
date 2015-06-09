@@ -18,6 +18,7 @@
 
 import ast
 
+from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import uuidutils
 import webob
@@ -36,6 +37,18 @@ from cinder import volume as cinder_volume
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
+
+query_volume_filters_opt = cfg.ListOpt('query_volume_filters',
+                                       default=['name', 'status', 'metadata',
+                                                'availability_zone'],
+                                       help="Volume filter options which "
+                                            "non-admin user could use to "
+                                            "query volumes. Default values "
+                                            "are: ['name', 'status', "
+                                            "'metadata', 'availability_zone']")
+
+CONF = cfg.CONF
+CONF.register_opt(query_volume_filters_opt)
 
 LOG = logging.getLogger(__name__)
 SCHEDULER_HINTS_NAMESPACE =\
@@ -436,7 +449,7 @@ class VolumeController(wsgi.Controller):
 
     def _get_volume_filter_options(self):
         """Return volume search options allowed by non-admin."""
-        return ('name', 'status', 'metadata')
+        return CONF.query_volume_filters
 
     @wsgi.serializers(xml=VolumeTemplate)
     def update(self, req, id, body):

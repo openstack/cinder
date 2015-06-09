@@ -21,7 +21,8 @@ from taskflow.types import failure as ft
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
+from cinder import objects
 from cinder import policy
 from cinder import quota
 from cinder import utils
@@ -283,17 +284,17 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         for (k, v) in metadata.iteritems():
             if len(k) == 0:
                 msg = _("Metadata property key blank")
-                LOG.warn(msg)
+                LOG.warning(msg)
                 raise exception.InvalidVolumeMetadata(reason=msg)
             if len(k) > 255:
                 msg = _("Metadata property key %s greater than 255 "
                         "characters") % k
-                LOG.warn(msg)
+                LOG.warning(msg)
                 raise exception.InvalidVolumeMetadataSize(reason=msg)
             if len(v) > 255:
                 msg = _("Metadata property key %s value greater than"
                         " 255 characters") % k
-                LOG.warn(msg)
+                LOG.warning(msg)
                 raise exception.InvalidVolumeMetadataSize(reason=msg)
 
     def _extract_availability_zone(self, availability_zone, snapshot,
@@ -329,7 +330,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 availability_zone = CONF.storage_availability_zone
         if availability_zone not in self.availability_zones:
             msg = _("Availability zone '%s' is invalid") % (availability_zone)
-            LOG.warn(msg)
+            LOG.warning(msg)
             raise exception.InvalidInput(reason=msg)
 
         # If the configuration only allows cloning to the same availability
@@ -386,9 +387,9 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 current_volume_type_id = volume_type.get('id')
                 if (current_volume_type_id !=
                         snapshot['volume_type_id']):
-                    msg = _("Volume type will be changed to "
-                            "be the same as the source volume.")
-                    LOG.warn(msg)
+                    msg = _LW("Volume type will be changed to "
+                              "be the same as the source volume.")
+                    LOG.warning(msg)
             volume_type_id = snapshot['volume_type_id']
         else:
             volume_type_id = volume_type.get('id')
@@ -593,23 +594,23 @@ class QuotaReserveTask(flow_utils.CinderTask):
                 return False
 
             if _is_over('gigabytes'):
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "%(s_size)sG volume (%(d_consumed)dG "
-                        "of %(d_quota)dG already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                's_size': size,
-                                'd_consumed': _consumed('gigabytes'),
-                                'd_quota': quotas['gigabytes']})
+                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                          "%(s_size)sG volume (%(d_consumed)dG "
+                          "of %(d_quota)dG already consumed)")
+                LOG.warning(msg, {'s_pid': context.project_id,
+                                  's_size': size,
+                                  'd_consumed': _consumed('gigabytes'),
+                                  'd_quota': quotas['gigabytes']})
                 raise exception.VolumeSizeExceedsAvailableQuota(
                     requested=size,
                     consumed=_consumed('gigabytes'),
                     quota=quotas['gigabytes'])
             elif _is_over('volumes'):
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "volume (%(d_consumed)d volumes "
-                        "already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                'd_consumed': _consumed('volumes')})
+                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                          "volume (%(d_consumed)d volumes "
+                          "already consumed)")
+                LOG.warning(msg, {'s_pid': context.project_id,
+                                  'd_consumed': _consumed('volumes')})
                 raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
             else:
                 # If nothing was reraised, ensure we reraise the initial error
@@ -722,9 +723,9 @@ class VolumeCastTask(flow_utils.CinderTask):
             # If snapshot_id is set, make the call create volume directly to
             # the volume host where the snapshot resides instead of passing it
             # through the scheduler. So snapshot can be copy to new volume.
-            snapshot_ref = self.db.snapshot_get(context, snapshot_id)
+            snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
             source_volume_ref = self.db.volume_get(context,
-                                                   snapshot_ref['volume_id'])
+                                                   snapshot.volume_id)
             host = source_volume_ref['host']
         elif source_volid:
             source_volume_ref = self.db.volume_get(context, source_volid)

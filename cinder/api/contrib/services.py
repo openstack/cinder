@@ -106,8 +106,14 @@ class ServiceController(wsgi.Controller):
 
         svcs = []
         for svc in services:
+            updated_at = svc['updated_at']
             delta = now - (svc['updated_at'] or svc['created_at'])
-            alive = abs(delta.total_seconds()) <= CONF.service_down_time
+            delta_sec = delta.total_seconds()
+            if svc['modified_at']:
+                delta_mod = now - svc['modified_at']
+                if abs(delta_sec) >= abs(delta_mod.total_seconds()):
+                    updated_at = svc['modified_at']
+            alive = abs(delta_sec) <= CONF.service_down_time
             art = (alive and "up") or "down"
             active = 'enabled'
             if svc['disabled']:
@@ -115,7 +121,7 @@ class ServiceController(wsgi.Controller):
             ret_fields = {'binary': svc['binary'], 'host': svc['host'],
                           'zone': svc['availability_zone'],
                           'status': active, 'state': art,
-                          'updated_at': svc['updated_at']}
+                          'updated_at': updated_at}
             if detailed:
                 ret_fields['disabled_reason'] = svc['disabled_reason']
             svcs.append(ret_fields)

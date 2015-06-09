@@ -84,10 +84,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.14 - Do not allow a different iSCSI IP (hp3par_iscsi_ips) to be
                  used during live-migration.  bug #1423958
         2.0.15 - Added support for updated detach_volume attachment.
+        2.0.16 - Added encrypted property to initialize_connection #1439917
 
     """
 
-    VERSION = "2.0.15"
+    VERSION = "2.0.16"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -158,8 +159,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 elif len(ip) == 2:
                     temp_iscsi_ip[ip[0]] = {'ip_port': ip[1]}
                 else:
-                    msg = _("Invalid IP address format '%s'") % ip_addr
-                    LOG.warn(msg)
+                    LOG.warning(_LW("Invalid IP address format '%s'"), ip_addr)
 
         # add the single value iscsi_ip_address option to the IP dictionary.
         # This way we can see if it's a valid iSCSI IP. If it's not valid,
@@ -192,15 +192,15 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
         # lets see if there are invalid iSCSI IPs left in the temp dict
         if len(temp_iscsi_ip) > 0:
-            msg = (_("Found invalid iSCSI IP address(s) in configuration "
-                     "option(s) hp3par_iscsi_ips or iscsi_ip_address '%s.'") %
-                   (", ".join(temp_iscsi_ip)))
-            LOG.warn(msg)
+            LOG.warning(_LW("Found invalid iSCSI IP address(s) in "
+                            "configuration option(s) hp3par_iscsi_ips or "
+                            "iscsi_ip_address '%s.'"),
+                        (", ".join(temp_iscsi_ip)))
 
         if not len(self.iscsi_ips) > 0:
             msg = _('At least one valid iSCSI IP address must be set.')
             LOG.error(msg)
-            raise exception.InvalidInput(reason=(msg))
+            raise exception.InvalidInput(reason=msg)
 
     def check_for_setup_error(self):
         """Setup errors are already checked for in do_setup so return pass."""
@@ -266,6 +266,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             {
                 'driver_volume_type': 'iscsi'
                 'data': {
+                    'encrypted': False,
                     'target_discovered': True,
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_protal': '127.0.0.1:3260',
@@ -310,9 +311,8 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             vlun = common.create_vlun(volume, host, least_used_nsp)
 
             if least_used_nsp is None:
-                msg = _("Least busy iSCSI port not found, "
-                        "using first iSCSI port in list.")
-                LOG.warn(msg)
+                LOG.warning(_LW("Least busy iSCSI port not found, "
+                                "using first iSCSI port in list."))
                 iscsi_ip = self.iscsi_ips.keys()[0]
             else:
                 iscsi_ip = self._get_ip_using_nsp(least_used_nsp)
@@ -332,6 +332,9 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 info['data']['auth_method'] = 'CHAP'
                 info['data']['auth_username'] = username
                 info['data']['auth_password'] = password
+
+            encryption_key_id = volume.get('encryption_key_id', None)
+            info['data']['encrypted'] = encryption_key_id is not None
 
             return info
         finally:
@@ -461,10 +464,9 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 host = common._get_3par_host(hostname)
             elif (not host['initiatorChapEnabled'] and
                     self.configuration.hp3par_iscsi_chap_enabled):
-                LOG.warn(_LW("Host exists without CHAP credentials set "
-                             "and has iSCSI attachments but CHAP is "
-                             "enabled.  Updating host with new CHAP "
-                             "credentials."))
+                LOG.warning(_LW("Host exists without CHAP credentials set and "
+                                "has iSCSI attachments but CHAP is enabled. "
+                                "Updating host with new CHAP credentials."))
                 self._set_3par_chaps(
                     common,
                     hostname,
@@ -494,11 +496,12 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             host_info = common.client.getHost(chap_username)
 
             if not host_info['initiatorChapEnabled']:
-                LOG.warn(_LW("Host has no CHAP key, but CHAP is enabled."))
+                LOG.warning(_LW("Host has no CHAP key, but CHAP is enabled."))
 
         except hpexceptions.HTTPNotFound:
             chap_password = volume_utils.generate_password(16)
-            LOG.warn(_LW("No host or VLUNs exist. Generating new CHAP key."))
+            LOG.warning(_LW("No host or VLUNs exist. Generating new "
+                            "CHAP key."))
         else:
             # Get a list of all iSCSI VLUNs and see if there is already a CHAP
             # key assigned to one of them.  Use that CHAP key if present,
@@ -523,15 +526,15 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                         break
                     except hpexceptions.HTTPNotFound:
                         LOG.debug("The VLUN %s is missing CHAP credentials "
-                                  "but CHAP is enabled. Skipping." %
+                                  "but CHAP is enabled. Skipping.",
                                   vlun['remoteName'])
                 else:
-                    LOG.warn(_LW("Non-iSCSI VLUN detected."))
+                    LOG.warning(_LW("Non-iSCSI VLUN detected."))
 
             if not chap_exists:
                 chap_password = volume_utils.generate_password(16)
-                LOG.warn(_LW("No VLUN contained CHAP credentials. "
-                             "Generating new CHAP key."))
+                LOG.warning(_LW("No VLUN contained CHAP credentials. "
+                                "Generating new CHAP key."))
 
         # Add CHAP credentials to the volume metadata
         vol_name = common._get_3par_vol_name(volume['id'])
@@ -713,7 +716,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
             protocol = host['capabilities']['storage_protocol']
             if protocol != 'iSCSI':
                 LOG.debug("3PAR ISCSI driver cannot migrate in-use volume "
-                          "to a host with storage_protocol=%s." % protocol)
+                          "to a host with storage_protocol=%s.", protocol)
                 return False, None
 
         common = self._login()

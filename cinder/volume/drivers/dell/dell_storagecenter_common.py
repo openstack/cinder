@@ -34,7 +34,10 @@ common_opts = [
                help='Name of the server folder to use on the Storage Center'),
     cfg.StrOpt('dell_sc_volume_folder',
                default='openstack',
-               help='Name of the volume folder to use on the Storage Center')
+               help='Name of the volume folder to use on the Storage Center'),
+    cfg.BoolOpt('dell_sc_verify_cert',
+                default=False,
+                help='Enable HTTPS SC certificate verification.')
 ]
 
 LOG = logging.getLogger(__name__)
@@ -81,30 +84,23 @@ class DellCommonDriver(san.SanDriver):
     def check_for_setup_error(self):
         '''Validates the configuration information.'''
         with self._client.open_connection() as api:
-            ssn = self.configuration.safe_get('dell_sc_ssn')
-            api.find_sc(ssn)
+            api.find_sc()
 
     def create_volume(self, volume):
         '''Create a volume.'''
+
+        # We use id as our name as it is unique.
         volume_name = volume.get('id')
         volume_size = volume.get('size')
-        LOG.debug('Creating volume %(name)s of size %(size)s',
-                  {'name': volume_name, 'size': volume_size})
+        LOG.debug('Creating volume %(n)s of size %(s)s',
+                  {'n': volume_name,
+                   's': volume_size})
         scvolume = None
         with self._client.open_connection() as api:
             try:
-                # we use id as our name as it s unique
-                volume_folder = self.configuration.dell_sc_volume_folder
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
-                LOG.debug('create_volume: %(name)s on %(ssn)s in %(vf)s',
-                          {'name': volume_name,
-                           'ssn': ssn,
-                           'vf': volume_folder})
-                if ssn is not None:
+                if api.find_sc():
                     scvolume = api.create_volume(volume_name,
-                                                 volume_size,
-                                                 ssn,
-                                                 volume_folder)
+                                                 volume_size)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to create volume %s'),
@@ -115,15 +111,13 @@ class DellCommonDriver(san.SanDriver):
 
     def delete_volume(self, volume):
         deleted = False
-        # we use id as our name as it s unique
+        # We use id as our name as it is unique.
         volume_name = volume.get('id')
         LOG.debug('Deleting volume %s', volume_name)
         with self._client.open_connection() as api:
             try:
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
-                if ssn is not None:
-                    deleted = api.delete_volume(ssn,
-                                                volume_name)
+                if api.find_sc():
+                    deleted = api.delete_volume(volume_name)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to delete volume %s'),
@@ -141,12 +135,11 @@ class DellCommonDriver(san.SanDriver):
         volume_name = snapshot.get('volume_id')
         snapshot_id = snapshot.get('id')
         LOG.debug('Creating snapshot %(snap)s on volume %(vol)s',
-                  {'snap': snapshot_id, 'vol': volume_name})
+                  {'snap': snapshot_id,
+                   'vol': volume_name})
         with self._client.open_connection() as api:
-            ssn = api.find_sc(self.configuration.dell_sc_ssn)
-            if ssn is not None:
-                scvolume = api.find_volume(ssn,
-                                           volume_name)
+            if api.find_sc():
+                scvolume = api.find_volume(volume_name)
                 if scvolume is not None:
                     if api.create_replay(scvolume,
                                          snapshot_id,
@@ -176,18 +169,15 @@ class DellCommonDriver(san.SanDriver):
              'src': src_volume_name})
         with self._client.open_connection() as api:
             try:
-                volume_folder = self.configuration.dell_sc_volume_folder
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
-                srcvol = api.find_volume(ssn,
-                                         src_volume_name)
-                if srcvol is not None:
-                    replay = api.find_replay(srcvol,
-                                             snapshot_id)
-                    if replay is not None:
-                        volume_name = volume.get('id')
-                        scvolume = api.create_view_volume(volume_name,
-                                                          volume_folder,
-                                                          replay)
+                if api.find_sc():
+                    srcvol = api.find_volume(src_volume_name)
+                    if srcvol is not None:
+                        replay = api.find_replay(srcvol,
+                                                 snapshot_id)
+                        if replay is not None:
+                            volume_name = volume.get('id')
+                            scvolume = api.create_view_volume(volume_name,
+                                                              replay)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to create volume %s'),
@@ -210,14 +200,11 @@ class DellCommonDriver(san.SanDriver):
                    'vol': src_volume_name})
         with self._client.open_connection() as api:
             try:
-                volume_folder = self.configuration.dell_sc_volume_folder
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
-                srcvol = api.find_volume(ssn,
-                                         src_volume_name)
-                if srcvol is not None:
-                    scvolume = api.create_cloned_volume(volume_name,
-                                                        volume_folder,
-                                                        srcvol)
+                if api.find_sc():
+                    srcvol = api.find_volume(src_volume_name)
+                    if srcvol is not None:
+                        scvolume = api.create_cloned_volume(volume_name,
+                                                            srcvol)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to create volume %s'),
@@ -238,10 +225,8 @@ class DellCommonDriver(san.SanDriver):
                   {'snap': snapshot_id,
                    'vol': volume_name})
         with self._client.open_connection() as api:
-            ssn = api.find_sc(self.configuration.dell_sc_ssn)
-            if ssn is not None:
-                scvolume = api.find_volume(ssn,
-                                           volume_name)
+            if api.find_sc():
+                scvolume = api.find_volume(volume_name)
                 if scvolume is not None:
                     if api.delete_replay(scvolume,
                                          snapshot_id):
@@ -270,10 +255,8 @@ class DellCommonDriver(san.SanDriver):
         LOG.debug('Checking existence of volume %s', volume_name)
         with self._client.open_connection() as api:
             try:
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
-                if ssn is not None:
-                    scvolume = api.find_volume(ssn,
-                                               volume_name)
+                if api.find_sc():
+                    scvolume = api.find_volume(volume_name)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to ensure export of volume %s'),
@@ -297,10 +280,8 @@ class DellCommonDriver(san.SanDriver):
                   {'vol': volume_name, 'size': new_size})
         if volume is not None:
             with self._client.open_connection() as api:
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
-                if ssn is not None:
-                    scvolume = api.find_volume(ssn,
-                                               volume_name)
+                if api.find_sc():
+                    scvolume = api.find_volume(volume_name)
                     if api.expand_volume(scvolume, new_size) is not None:
                         return
         # If we are here nothing good happened.
@@ -320,8 +301,7 @@ class DellCommonDriver(san.SanDriver):
     def _update_volume_stats(self):
         '''Retrieve stats info from volume group.'''
         with self._client.open_connection() as api:
-            ssn = api.find_sc(self.configuration.dell_sc_ssn)
-            storageusage = api.get_storage_usage(ssn)
+            storageusage = api.get_storage_usage() if api.find_sc() else None
 
             # all of this is basically static for now
             data = {}
@@ -330,8 +310,10 @@ class DellCommonDriver(san.SanDriver):
             data['driver_version'] = self.VERSION
             data['storage_protocol'] = 'iSCSI'
             data['reserved_percentage'] = 0
-            # in theory if storageusage is None then we should have
-            # blown up getting it.  If not just report inifinite.
+            data['free_capacity_gb'] = 'unavailable'
+            data['total_capacity_gb'] = 'unavailable'
+            # In theory if storageusage is None then we should have
+            # blown up getting it.  If not just report unavailable.
             if storageusage is not None:
                 totalcapacity = storageusage.get('availableSpace')
                 totalcapacitygb = self._bytes_to_gb(totalcapacity)
@@ -339,12 +321,36 @@ class DellCommonDriver(san.SanDriver):
                 freespace = storageusage.get('freeSpace')
                 freespacegb = self._bytes_to_gb(freespace)
                 data['free_capacity_gb'] = freespacegb
-            if data.get('total_capacity_gb') is None:
-                data['total_capacity_gb'] = 'unavailable'
-            if data.get('free_capacity_gb') is None:
-                data['free_capacity_gb'] = 'unavailable'
             data['QoS_support'] = False
             self._stats = data
             LOG.debug('Total cap %(t)s Free cap %(f)s',
-                      {'t': totalcapacitygb,
-                       'f': freespacegb})
+                      {'t': data['total_capacity_gb'],
+                       'f': data['free_capacity_gb']})
+
+    def update_migrated_volume(self, ctxt, volume, new_volume):
+        """Return model update for migrated volume.
+
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :return model_update to update DB with any needed changes
+        """
+        # We use id as our volume name so we need to rename the backend
+        # volume to the original volume name.
+        original_volume_name = volume.get('id')
+        current_name = new_volume.get('id')
+        LOG.debug('update_migrated_volume: %(c)s to %(o)s',
+                  {'c': current_name,
+                   'o': original_volume_name})
+        if original_volume_name:
+            with self._client.open_connection() as api:
+                if api.find_sc():
+                    scvolume = api.find_volume(current_name)
+                    if (scvolume and
+                       api.rename_volume(scvolume, original_volume_name)):
+                        model_update = {'_name_id': None}
+                        return model_update
+        # The world was horrible to us so we should error and leave.
+        LOG.error(_LE('Unable to rename the logical volume for volume: %s'),
+                  original_volume_name)
+        return None

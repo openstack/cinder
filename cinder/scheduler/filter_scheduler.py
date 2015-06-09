@@ -24,7 +24,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _, _LE, _LW
 from cinder.scheduler import driver
 from cinder.scheduler import scheduler_options
 from cinder.volume import utils
@@ -72,7 +72,7 @@ class FilterScheduler(driver.Scheduler):
             filter_properties_list)
 
         if not weighed_host:
-            raise exception.NoValidHost(reason="No weighed hosts available")
+            raise exception.NoValidHost(reason=_("No weighed hosts available"))
 
         host = weighed_host.obj.host
 
@@ -86,7 +86,7 @@ class FilterScheduler(driver.Scheduler):
                                       filter_properties)
 
         if not weighed_host:
-            raise exception.NoValidHost(reason="No weighed hosts available")
+            raise exception.NoValidHost(reason=_("No weighed hosts available"))
 
         host = weighed_host.obj.host
         volume_id = request_spec['volume_id']
@@ -116,9 +116,10 @@ class FilterScheduler(driver.Scheduler):
             if host_state.host == host:
                 return host_state
 
-        msg = (_('Cannot place volume %(id)s on %(host)s')
-               % {'id': request_spec['volume_id'], 'host': host})
-        raise exception.NoValidHost(reason=msg)
+        raise exception.NoValidHost(reason=_('Cannot place volume %(id)s on '
+                                             '%(host)s') %
+                                    {'id': request_spec['volume_id'],
+                                     'host': host})
 
     def find_retype_host(self, context, request_spec, filter_properties=None,
                          migration_policy='never'):
@@ -133,10 +134,10 @@ class FilterScheduler(driver.Scheduler):
         weighed_hosts = self._get_weighted_candidates(context, request_spec,
                                                       filter_properties)
         if not weighed_hosts:
-            msg = (_('No valid hosts for volume %(id)s with type %(type)s')
-                   % {'id': request_spec['volume_id'],
-                      'type': request_spec['volume_type']})
-            raise exception.NoValidHost(reason=msg)
+            raise exception.NoValidHost(reason=_('No valid hosts for volume '
+                                                 '%(id)s with type %(type)s') %
+                                        {'id': request_spec['volume_id'],
+                                         'type': request_spec['volume_type']})
 
         for weighed_host in weighed_hosts:
             host_state = weighed_host.obj
@@ -159,11 +160,12 @@ class FilterScheduler(driver.Scheduler):
                     return host_state
 
         if migration_policy == 'never':
-            msg = (_('Current host not valid for volume %(id)s with type '
-                     '%(type)s, migration not allowed')
-                   % {'id': request_spec['volume_id'],
-                      'type': request_spec['volume_type']})
-            raise exception.NoValidHost(reason=msg)
+            raise exception.NoValidHost(reason=_('Current host not valid for '
+                                                 'volume %(id)s with type '
+                                                 '%(type)s, migration not '
+                                                 'allowed') %
+                                        {'id': request_spec['volume_id'],
+                                         'type': request_spec['volume_type']})
 
         top_host = self._choose_top_host(weighed_hosts, request_spec)
         return top_host.obj
@@ -194,9 +196,9 @@ class FilterScheduler(driver.Scheduler):
     def _max_attempts(self):
         max_attempts = CONF.scheduler_max_attempts
         if max_attempts < 1:
-            msg = _("Invalid value for 'scheduler_max_attempts', "
-                    "must be >=1")
-            raise exception.InvalidParameterValue(err=msg)
+            raise exception.InvalidParameterValue(
+                err=_("Invalid value for 'scheduler_max_attempts', "
+                      "must be >=1"))
         return max_attempts
 
     def _log_volume_error(self, volume_id, retry):
@@ -212,13 +214,11 @@ class FilterScheduler(driver.Scheduler):
             return  # no previously attempted hosts, skip
 
         last_host = hosts[-1]
-        msg = _("Error scheduling %(volume_id)s from last vol-service: "
-                "%(last_host)s : %(exc)s") % {
-                    'volume_id': volume_id,
-                    'last_host': last_host,
-                    'exc': exc,
-        }
-        LOG.error(msg)
+        LOG.error(_LE("Error scheduling %(volume_id)s from last vol-service: "
+                      "%(last_host)s : %(exc)s"),
+                  {'volume_id': volume_id,
+                   'last_host': last_host,
+                   'exc': exc})
 
     def _populate_retry(self, filter_properties, properties):
         """Populate filter properties with history of retries for this
@@ -245,12 +245,11 @@ class FilterScheduler(driver.Scheduler):
         self._log_volume_error(volume_id, retry)
 
         if retry['num_attempts'] > max_attempts:
-            msg = _("Exceeded max scheduling attempts %(max_attempts)d for "
-                    "volume %(volume_id)s") % {
-                        'max_attempts': max_attempts,
-                        'volume_id': volume_id,
-            }
-            raise exception.NoValidHost(reason=msg)
+            raise exception.NoValidHost(
+                reason=_("Exceeded max scheduling attempts %(max_attempts)d "
+                         "for volume %(volume_id)s") %
+                {'max_attempts': max_attempts,
+                 'volume_id': volume_id})
 
     def _get_weighted_candidates(self, context, request_spec,
                                  filter_properties=None):
@@ -289,6 +288,9 @@ class FilterScheduler(driver.Scheduler):
         multiattach = volume_properties.get('multiattach', False)
         if multiattach and 'multiattach' not in resource_type.get(
                 'extra_specs', {}):
+            if 'extra_specs' not in resource_type:
+                resource_type['extra_specs'] = {}
+
             resource_type['extra_specs'].update(
                 multiattach='<is> True')
 
@@ -306,7 +308,7 @@ class FilterScheduler(driver.Scheduler):
         if not hosts:
             return []
 
-        LOG.debug("Filtered %s" % hosts)
+        LOG.debug("Filtered %s", hosts)
         # weighted_host = WeightedHost() ... the best
         # host for the job.
         weighed_hosts = self.host_manager.get_weighed_hosts(hosts,
@@ -377,7 +379,7 @@ class FilterScheduler(driver.Scheduler):
             if not hosts:
                 return []
 
-            LOG.debug("Filtered %s" % hosts)
+            LOG.debug("Filtered %s", hosts)
 
             # weighted_host = WeightedHost() ... the best
             # host for the job.
@@ -425,7 +427,7 @@ class FilterScheduler(driver.Scheduler):
     def _choose_top_host(self, weighed_hosts, request_spec):
         top_host = weighed_hosts[0]
         host_state = top_host.obj
-        LOG.debug("Choosing %s" % host_state.host)
+        LOG.debug("Choosing %s", host_state.host)
         volume_properties = request_spec['volume_properties']
         host_state.consume_from_volume(volume_properties)
         return top_host
@@ -433,5 +435,5 @@ class FilterScheduler(driver.Scheduler):
     def _choose_top_host_group(self, weighed_hosts, request_spec_list):
         top_host = weighed_hosts[0]
         host_state = top_host.obj
-        LOG.debug("Choosing %s" % host_state.host)
+        LOG.debug("Choosing %s", host_state.host)
         return top_host

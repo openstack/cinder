@@ -16,6 +16,7 @@
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import strutils
+import six
 import webob
 
 from cinder.api import extensions
@@ -113,9 +114,21 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Invalid request to attach volume with an invalid mode. "
                     "Attaching mode should be 'rw' or 'ro'")
             raise webob.exc.HTTPBadRequest(explanation=msg)
+        try:
+            self.volume_api.attach(context, volume,
+                                   instance_uuid, host_name, mountpoint, mode)
+        except messaging.RemoteError as error:
+            if error.exc_type in ['InvalidVolume', 'InvalidUUID',
+                                  'InvalidVolumeAttachMode']:
+                msg = "Error attaching volume - %(err_type)s: %(err_msg)s" % {
+                      'err_type': error.exc_type, 'err_msg': error.value}
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            else:
+                # There are also few cases where attach call could fail due to
+                # db or volume driver errors. These errors shouldn't be exposed
+                # to the user and in such cases it should raise 500 error.
+                raise
 
-        self.volume_api.attach(context, volume,
-                               instance_uuid, host_name, mountpoint, mode)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-detach')
@@ -131,7 +144,19 @@ class VolumeActionsController(wsgi.Controller):
         if body['os-detach']:
             attachment_id = body['os-detach'].get('attachment_id', None)
 
-        self.volume_api.detach(context, volume, attachment_id)
+        try:
+            self.volume_api.detach(context, volume, attachment_id)
+        except messaging.RemoteError as error:
+            if error.exc_type in ['VolumeAttachmentNotFound', 'InvalidVolume']:
+                msg = "Error detaching volume - %(err_type)s: %(err_msg)s" % \
+                      {'err_type': error.exc_type, 'err_msg': error.value}
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            else:
+                # There are also few cases where detach call could fail due to
+                # db or volume driver errors. These errors shouldn't be exposed
+                # to the user and in such cases it should raise 500 error.
+                raise
+
         return webob.Response(status_int=202)
 
     @wsgi.action('os-reserve')
@@ -269,13 +294,13 @@ class VolumeActionsController(wsgi.Controller):
         except exception.InvalidVolume as error:
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
         except ValueError as error:
-            raise webob.exc.HTTPBadRequest(explanation=unicode(error))
+            raise webob.exc.HTTPBadRequest(explanation=six.text_type(error))
         except messaging.RemoteError as error:
             msg = "%(err_type)s: %(err_msg)s" % {'err_type': error.exc_type,
                                                  'err_msg': error.value}
             raise webob.exc.HTTPBadRequest(explanation=msg)
         except Exception as error:
-            raise webob.exc.HTTPBadRequest(explanation=unicode(error))
+            raise webob.exc.HTTPBadRequest(explanation=six.text_type(error))
         return {'os-volume_upload_image': response}
 
     @wsgi.action('os-extend')

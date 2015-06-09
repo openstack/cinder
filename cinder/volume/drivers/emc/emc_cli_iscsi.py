@@ -52,6 +52,9 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         5.1.0 - iSCSI multipath enhancement
         5.2.0 - Pool-aware scheduler support
         5.3.0 - Consistency group modification support
+        6.0.0 - Over subscription support
+                Create consistency group from cgsnapshot support
+                Multiple pools support enhancement
     """
 
     def __init__(self, *args, **kwargs):
@@ -190,7 +193,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
             'id':lun_id
         }
         """
-        LOG.debug("Reference lun id %s." % existing_ref['id'])
+        LOG.debug("Reference lun id %s.", existing_ref['id'])
         self.cli.manage_existing(volume, existing_ref)
 
     def manage_existing_get_size(self, volume, existing_ref):
@@ -231,3 +234,12 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
     def unmanage(self, volume):
         """Unmanages a volume."""
         self.cli.unmanage(volume)
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None):
+        """Creates a consistency group from source."""
+        return self.cli.create_consistencygroup_from_src(context,
+                                                         group,
+                                                         volumes,
+                                                         cgsnapshot,
+                                                         snapshots)

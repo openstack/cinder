@@ -128,32 +128,21 @@ class WindowsDriver(driver.ISCSIDriver):
         snapshot_name = snapshot['name']
         self.utils.delete_snapshot(snapshot_name)
 
-    def _do_export(self, _ctx, volume, ensure=False):
-        """Do all steps to get disk exported as LUN 0 at separate target.
+    def ensure_export(self, context, volume):
+        # iSCSI targets exported by WinTarget persist after host reboot.
+        pass
 
-        :param volume: reference of volume to be exported
-        :param ensure: if True, ignore errors caused by already existing
-            resources
-        :return: iscsiadm-formatted provider location string
-        """
+    def create_export(self, context, volume):
+        """Driver entry point to get the export info for a new volume."""
         target_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                 volume['name'])
-        self.utils.create_iscsi_target(target_name, ensure)
+        self.utils.create_iscsi_target(target_name)
 
         # Get the disk to add
         vol_name = volume['name']
         self.utils.add_disk_to_target(vol_name, target_name)
 
-        return target_name
-
-    def ensure_export(self, context, volume):
-        """Driver entry point to get the export info for an existing volume."""
-        self._do_export(context, volume, ensure=True)
-
-    def create_export(self, context, volume):
-        """Driver entry point to get the export info for a new volume."""
-        loc = self._do_export(context, volume, ensure=False)
-        return {'provider_location': loc}
+        return {'provider_location': target_name}
 
     def remove_export(self, context, volume):
         """Driver entry point to remove an export for a volume.
@@ -208,11 +197,20 @@ class WindowsDriver(driver.ISCSIDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        # Create a new volume
-        # Copy VHD file of the volume to clone to the created volume
-        self.create_volume(volume)
-        self.utils.copy_vhd_disk(self.local_path(src_vref),
-                                 self.local_path(volume))
+        vol_name = volume['name']
+        vol_size = volume['size']
+        src_vol_size = src_vref['size']
+
+        new_vhd_path = self.local_path(volume)
+        src_vhd_path = self.local_path(src_vref)
+
+        self.utils.copy_vhd_disk(src_vhd_path,
+                                 new_vhd_path)
+
+        if self.utils.is_resize_needed(new_vhd_path, vol_size, src_vol_size):
+            self.vhdutils.resize_vhd(new_vhd_path, vol_size << 30)
+
+        self.utils.import_wt_disk(new_vhd_path, vol_name)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.

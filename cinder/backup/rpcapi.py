@@ -78,10 +78,10 @@ class BackupAPI(object):
                       backup_url,
                       backup_hosts):
         LOG.debug("import_record rpcapi backup id %(id)s "
-                  "on host %(host)s "
-                  "for backup_url %(url)s." % {'id': backup_id,
-                                               'host': host,
-                                               'url': backup_url})
+                  "on host %(host)s for backup_url %(url)s.",
+                  {'id': backup_id,
+                   'host': host,
+                   'url': backup_url})
         cctxt = self.client.prepare(server=host)
         cctxt.cast(ctxt, 'import_record',
                    backup_id=backup_id,

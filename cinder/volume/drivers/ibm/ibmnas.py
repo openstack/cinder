@@ -36,6 +36,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
@@ -170,7 +171,8 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
             self._run_ssh(ssh_cmd)
         except processutils.ProcessExecutionError as e:
             msg = (_('Failed in _ssh_operation while execution of ssh_cmd:'
-                   '%(cmd)s. Error: %(error)s') % {'cmd': ssh_cmd, 'error': e})
+                   '%(cmd)s. Error: %(error)s') %
+                   {'cmd': ssh_cmd, 'error': six.text_type(e)})
             LOG.exception(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -224,7 +226,7 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
             msg = (_("Failed to resize volume "
                      "%(volume_id)s, error: %(error)s") %
                    {'volume_id': os.path.basename(path).split('-')[1],
-                    'error': e.stderr})
+                    'error': six.text_type(e.stderr)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return True
@@ -247,7 +249,8 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
         try:
             (out, _err) = self._run_ssh(ssh_cmd, check_exit_code=False)
         except processutils.ProcessExecutionError as e:
-            msg = (_("Failed in _delete_snapfiles. Error: %s") % e.stderr)
+            msg = (_("Failed in _delete_snapfiles. Error: %s") %
+                   six.text_type(e.stderr))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         fparent = None
@@ -285,9 +288,9 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         if not volume['provider_location']:
-            LOG.warn(_LW('Volume %s does not have '
-                         'provider_location specified, '
-                         'skipping.'), volume['name'])
+            LOG.warning(_LW('Volume %s does not have '
+                            'provider_location specified, '
+                            'skipping.'), volume['name'])
             return
 
         export_path = self._get_export_path(volume['id'])

@@ -27,7 +27,7 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.volume import configuration as config
 from cinder.zonemanager import fc_common
 from cinder.zonemanager import fc_zone_manager
@@ -88,6 +88,6 @@ class FCSanLookupService(fc_common.FCCommon):
             device_map = self.lookup_service.get_device_mapping_from_network(
                 initiator_list, target_list)
         except Exception as e:
-            LOG.error(e)
+            LOG.exception(_LE('Unable to get device mapping from network.'))
             raise exception.FCSanLookupServiceException(e)
         return device_map

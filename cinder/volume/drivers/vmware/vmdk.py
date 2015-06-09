@@ -58,6 +58,8 @@ CREATE_PARAM_ADAPTER_TYPE = 'adapter_type'
 CREATE_PARAM_DISK_LESS = 'disk_less'
 CREATE_PARAM_BACKING_NAME = 'name'
 
+TMP_IMAGES_DATASTORE_FOLDER_PATH = "cinder_temp/"
+
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
                default=None,
@@ -104,7 +106,17 @@ vmdk_opts = [
     cfg.StrOpt('vmware_tmp_dir',
                default='/tmp',
                help='Directory where virtual disks are stored during volume '
-                    'backup and restore.')
+                    'backup and restore.'),
+    cfg.StrOpt('vmware_ca_file',
+               default=None,
+               help='CA bundle file to use in verifying the vCenter server '
+                    'certificate.'),
+    cfg.BoolOpt('vmware_insecure',
+                default=False,
+                help='If true, the vCenter server certificate is not '
+                     'verified. If false, then the default CA truststore is '
+                     'used for verification. This option is ignored if '
+                     '"vmware_ca_file" is set.'),
 ]
 
 CONF = cfg.CONF
@@ -150,7 +162,7 @@ def _get_volume_type_extra_spec(type_id, spec_key, possible_values=None,
     LOG.debug("Invalid spec value: %s specified.", spec_value)
 
 
-class ImageDiskType:
+class ImageDiskType(object):
     """Supported disk types in images."""
 
     PREALLOCATED = "preallocated"
@@ -196,10 +208,10 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     VERSION = '1.4.0'
 
     def _do_deprecation_warning(self):
-        LOG.warn(_LW('The VMware ESX VMDK driver is now deprecated '
-                     'and will be removed in the Juno release. The VMware '
-                     'vCenter VMDK driver will remain and continue to be '
-                     'supported.'))
+        LOG.warning(_LW('The VMware ESX VMDK driver is now deprecated '
+                        'and will be removed in the Juno release. The VMware '
+                        'vCenter VMDK driver will remain and continue to be '
+                        'supported.'))
 
     def __init__(self, *args, **kwargs):
         super(VMwareEsxVmdkDriver, self).__init__(*args, **kwargs)
@@ -472,9 +484,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 LOG.error(msg, storage_profile)
                 raise exceptions.VimException(msg % storage_profile)
         elif storage_profile:
-            LOG.warn(_LW("Ignoring storage profile %s requirement for this "
-                         "volume since policy based placement is "
-                         "disabled."), storage_profile)
+            LOG.warning(_LW("Ignoring storage profile %s requirement for this "
+                            "volume since policy based placement is "
+                            "disabled."), storage_profile)
 
         size_bytes = volume['size'] * units.Gi
         datastore_summary = self._select_datastore_summary(size_bytes,
@@ -564,7 +576,22 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     def _relocate_backing(self, volume, backing, host):
         pass
 
-    def _select_ds_for_volume(self, volume, host=None):
+    def _select_datastore(self, req, host=None):
+        """Selects datastore satisfying the given requirements.
+
+        :return: (host, resource_pool, summary)
+        """
+
+        hosts = [host] if host else None
+        best_candidate = self.ds_sel.select_datastore(req, hosts=hosts)
+        if not best_candidate:
+            LOG.error(_LE("There is no valid datastore satisfying "
+                          "requirements: %s."), req)
+            raise vmdk_exceptions.NoValidDatastoreException()
+
+        return best_candidate
+
+    def _select_ds_for_volume(self, volume, host=None, create_params=None):
         """Select datastore that can accommodate the given volume's backing.
 
         Returns the selected datastore summary along with a compute host and
@@ -577,16 +604,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         req[hub.DatastoreSelector.PROFILE_NAME] = self._get_storage_profile(
             volume)
 
-        # Select datastore satisfying the requirements.
-        hosts = [host] if host else None
-        best_candidate = self.ds_sel.select_datastore(req, hosts=hosts)
-        if not best_candidate:
-            LOG.error(_LE("There is no valid datastore to create backing for "
-                          "volume: %s."),
-                      volume['name'])
-            raise vmdk_exceptions.NoValidDatastoreException()
-
-        (host_ref, resource_pool, summary) = best_candidate
+        (host_ref, resource_pool, summary) = self._select_datastore(req, host)
         dc = self.volumeops.get_dc(resource_pool)
         folder = self._get_volume_group_folder(dc)
 
@@ -628,8 +646,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             if not backing:
                 # Create a backing in case it does not exist. It is a bad use
                 # case to boot from an empty volume.
-                LOG.warn(_LW("Trying to boot from an empty volume: %s."),
-                         volume['name'])
+                LOG.warning(_LW("Trying to boot from an empty volume: %s."),
+                            volume['name'])
                 # Create backing
                 backing = self._create_backing(volume)
 
@@ -901,18 +919,18 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             self.volumeops.delete_vmdk_file(
                 descriptor_ds_file_path, dc_ref)
         except exceptions.VimException:
-            LOG.warn(_LW("Error occurred while deleting temporary "
-                         "disk: %s."),
-                     descriptor_ds_file_path,
-                     exc_info=True)
+            LOG.warning(_LW("Error occurred while deleting temporary "
+                            "disk: %s."),
+                        descriptor_ds_file_path, exc_info=True)
 
-    def _copy_temp_virtual_disk(self, dc_ref, src_path, dest_path):
+    def _copy_temp_virtual_disk(self, src_dc_ref, src_path, dest_dc_ref,
+                                dest_path):
         """Clones a temporary virtual disk and deletes it finally."""
 
         try:
             self.volumeops.copy_vmdk_file(
-                dc_ref, src_path.get_descriptor_ds_file_path(),
-                dest_path.get_descriptor_ds_file_path())
+                src_dc_ref, src_path.get_descriptor_ds_file_path(),
+                dest_path.get_descriptor_ds_file_path(), dest_dc_ref)
         except exceptions.VimException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Error occurred while copying %(src)s to "
@@ -922,7 +940,29 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         finally:
             # Delete temporary disk.
             self._delete_temp_disk(src_path.get_descriptor_ds_file_path(),
-                                   dc_ref)
+                                   src_dc_ref)
+
+    def _get_temp_image_folder(self, image_size_in_bytes):
+        """Get datastore folder for downloading temporary images."""
+        # Form requirements for datastore selection.
+        req = {}
+        req[hub.DatastoreSelector.SIZE_BYTES] = image_size_in_bytes
+        # vSAN datastores don't support virtual disk with
+        # flat extent; skip such datastores.
+        req[hub.DatastoreSelector.HARD_AFFINITY_DS_TYPE] = (
+            hub.DatastoreType.get_all_types() - {hub.DatastoreType.VSAN})
+
+        # Select datastore satisfying the requirements.
+        (host_ref, _resource_pool, summary) = self._select_datastore(req)
+
+        ds_name = summary.name
+        dc_ref = self.volumeops.get_dc(host_ref)
+
+        # Create temporary datastore folder.
+        folder_path = TMP_IMAGES_DATASTORE_FOLDER_PATH
+        self.volumeops.create_datastore_folder(ds_name, folder_path, dc_ref)
+
+        return (dc_ref, ds_name, folder_path)
 
     def _create_virtual_disk_from_sparse_image(
             self, context, image_service, image_id, image_size_in_bytes,
@@ -947,19 +987,42 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         dest_path = volumeops.FlatExtentVirtualDiskPath(ds_name,
                                                         folder_path,
                                                         disk_name)
-        self._copy_temp_virtual_disk(dc_ref, src_path, dest_path)
+        self._copy_temp_virtual_disk(dc_ref, src_path, dc_ref, dest_path)
         LOG.debug("Created virtual disk: %s from sparse vmdk image.",
                   dest_path.get_descriptor_ds_file_path())
         return dest_path
 
     def _create_virtual_disk_from_preallocated_image(
             self, context, image_service, image_id, image_size_in_bytes,
-            dc_ref, ds_name, folder_path, disk_name, adapter_type):
+            dest_dc_ref, dest_ds_name, dest_folder_path, dest_disk_name,
+            adapter_type):
         """Creates virtual disk from an image which is a flat extent."""
 
-        path = volumeops.FlatExtentVirtualDiskPath(ds_name,
-                                                   folder_path,
-                                                   disk_name)
+        # Upload the image and use it as a flat extent to create a virtual
+        # disk. First, find the datastore folder to download the image.
+        (dc_ref, ds_name,
+         folder_path) = self._get_temp_image_folder(image_size_in_bytes)
+
+        # pylint: disable=E1101
+        if ds_name == dest_ds_name and dc_ref.value == dest_dc_ref.value:
+            # Temporary image folder and destination path are on the same
+            # datastore. We can directly download the image to the destination
+            # folder to save one virtual disk copy.
+            path = volumeops.FlatExtentVirtualDiskPath(dest_ds_name,
+                                                       dest_folder_path,
+                                                       dest_disk_name)
+            dest_path = path
+        else:
+            # Use the image to create a temporary virtual disk which is then
+            # copied to the destination folder.
+            disk_name = uuidutils.generate_uuid()
+            path = volumeops.FlatExtentVirtualDiskPath(ds_name,
+                                                       folder_path,
+                                                       disk_name)
+            dest_path = volumeops.FlatExtentVirtualDiskPath(dest_ds_name,
+                                                            dest_folder_path,
+                                                            dest_disk_name)
+
         LOG.debug("Creating virtual disk: %(path)s from (flat extent) image: "
                   "%(image_id)s.",
                   {'path': path.get_descriptor_ds_file_path(),
@@ -987,14 +1050,18 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                     self.volumeops.delete_file(
                         path.get_descriptor_ds_file_path(), dc_ref)
                 except exceptions.VimException:
-                    LOG.warn(_LW("Error occurred while deleting "
-                                 "descriptor: %s."),
-                             path.get_descriptor_ds_file_path(),
-                             exc_info=True)
+                    LOG.warning(_LW("Error occurred while deleting "
+                                    "descriptor: %s."),
+                                path.get_descriptor_ds_file_path(),
+                                exc_info=True)
+
+        if dest_path != path:
+            # Copy temporary disk to given destination.
+            self._copy_temp_virtual_disk(dc_ref, path, dest_dc_ref, dest_path)
 
         LOG.debug("Created virtual disk: %s from flat extent image.",
-                  path.get_descriptor_ds_file_path())
-        return path
+                  dest_path.get_descriptor_ds_file_path())
+        return dest_path
 
     def _check_disk_conversion(self, image_disk_type, extra_spec_disk_type):
         """Check if disk type conversion is needed."""
@@ -1016,9 +1083,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         try:
             self.volumeops.delete_backing(backing)
         except exceptions.VimException:
-            LOG.warn(_LW("Error occurred while deleting backing: %s."),
-                     backing,
-                     exc_info=True)
+            LOG.warning(_LW("Error occurred while deleting backing: %s."),
+                        backing, exc_info=True)
 
     def _create_volume_from_non_stream_optimized_image(
             self, context, volume, image_service, image_id,
@@ -1086,7 +1152,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
             if disk_conversion:
                 # Clone the temporary backing for disk type conversion.
-                (host, _rp, _folder, summary) = self._select_ds_for_volume(
+                (host, rp, _folder, summary) = self._select_ds_for_volume(
                     volume)
                 datastore = summary.datastore
                 LOG.debug("Cloning temporary backing: %s for disk type "
@@ -1097,7 +1163,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                              volumeops.FULL_CLONE_TYPE,
                                              datastore,
                                              disk_type,
-                                             host)
+                                             host,
+                                             rp)
                 self._delete_temp_backing(backing)
         except Exception:
             # Delete backing and virtual disk created from image.
@@ -1171,13 +1238,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 vm_import_spec=vm_import_spec,
                 image_size=image_size)
         except (exceptions.VimException,
-                exceptions.VMwareDriverException) as excep:
+                exceptions.VMwareDriverException):
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Exception in copy_image_to_volume: %s."),
-                              excep)
+                LOG.exception(_LE("Error occurred while copying image: %(id)s "
+                                  "to volume: %(vol)s."),
+                              {'id': image_id, 'vol': volume['name']})
                 backing = self.volumeops.get_backing(volume['name'])
                 if backing:
-                    LOG.exception(_LE("Deleting the backing: %s"), backing)
                     # delete the backing
                     self.volumeops.delete_backing(backing)
 
@@ -1240,8 +1307,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         # Validate container format; only 'bare' is supported currently.
         container_format = metadata.get('container_format')
         if (container_format and container_format != 'bare'):
-            msg = _("Container format: %s is unsupported, only 'bare' is "
-                    "supported.") % container_format
+            msg = _("Container format: %s is unsupported by the VMDK driver, "
+                    "only 'bare' is supported.") % container_format
             LOG.error(msg)
             raise exception.ImageUnacceptable(image_id=image_id, reason=msg)
 
@@ -1271,10 +1338,11 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                     context, volume, image_service, image_id,
                     image_size_in_bytes, image_adapter_type, image_disk_type)
         except (exceptions.VimException,
-                exceptions.VMwareDriverException) as excep:
+                exceptions.VMwareDriverException):
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Exception in copying the image to the "
-                                  "volume: %s."), excep)
+                LOG.exception(_LE("Error occurred while copying image: %(id)s "
+                                  "to volume: %(vol)s."),
+                              {'id': image_id, 'vol': volume['name']})
 
         LOG.debug("Volume: %(id)s created from image: %(image_id)s.",
                   {'id': volume['id'],
@@ -1309,7 +1377,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
 
         # if volume is attached raise exception
-        if volume['instance_uuid'] or volume['attached_host']:
+        if (volume['volume_attachment'] and
+                len(volume['volume_attachment']) > 0):
             msg = _("Upload to glance of attached volume is not supported.")
             LOG.error(msg)
             raise exception.InvalidVolume(msg)
@@ -1343,13 +1412,14 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                     vmdk_size=volume['size'] * units.Gi,
                                     image_name=image_meta['name'],
                                     image_version=1,
-                                    is_public=True)
+                                    is_public=image_meta['is_public'])
         LOG.info(_LI("Done copying volume %(vol)s to a new image %(img)s"),
                  {'vol': volume['name'], 'img': image_meta['name']})
 
     def _in_use(self, volume):
         """Check if the given volume is in use."""
-        return volume['instance_uuid'] is not None
+        return (volume['volume_attachment'] and
+                len(volume['volume_attachment']) > 0)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
@@ -1373,8 +1443,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
         # Can't attempt retype if the volume is in use.
         if self._in_use(volume):
-            LOG.warn(_LW("Volume: %s is in use, can't retype."),
-                     volume['name'])
+            LOG.warning(_LW("Volume: %s is in use, can't retype."),
+                        volume['name'])
             return False
 
         # If the backing doesn't exist, retype is NOP.
@@ -1442,9 +1512,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             best_candidate = self.ds_sel.select_datastore(req)
             if not best_candidate:
                 # No candidate datastores; can't retype.
-                LOG.warn(_LW("There are no datastores matching new "
-                             "requirements; can't retype volume: %s."),
-                         volume['name'])
+                LOG.warning(_LW("There are no datastores matching new "
+                                "requirements; can't retype volume: %s."),
+                            volume['name'])
                 return False
 
             (host, rp, summary) = best_candidate
@@ -1474,7 +1544,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                     new_backing = self.volumeops.clone_backing(
                         volume['name'], backing, None,
                         volumeops.FULL_CLONE_TYPE, datastore, new_disk_type,
-                        host)
+                        host, rp)
                     self._delete_temp_backing(backing)
                     backing = new_backing
                 except exceptions.VimException:
@@ -1494,12 +1564,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                 self.volumeops.rename_backing(backing,
                                                               volume['name'])
                             except exceptions.VimException:
-                                LOG.warn(_LW("Changing backing: %(backing)s "
-                                             "name from %(new_name)s to "
-                                             "%(old_name)s failed."),
-                                         {'backing': backing,
-                                          'new_name': tmp_name,
-                                          'old_name': volume['name']})
+                                LOG.warning(_LW("Changing backing: "
+                                                "%(backing)s name from "
+                                                "%(new_name)s to %(old_name)s "
+                                                "failed."),
+                                            {'backing': backing,
+                                             'new_name': tmp_name,
+                                             'old_name': volume['name']})
 
         # Update the backing's storage profile if needed.
         if need_profile_change:
@@ -1701,13 +1772,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         renamed = False
         try:
             # Find datastore for clone.
-            (host, _rp, _folder, summary) = self._select_ds_for_volume(volume)
+            (host, rp, _folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
 
             disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
             dest = self.volumeops.clone_backing(dest_name, src, None,
                                                 volumeops.FULL_CLONE_TYPE,
-                                                datastore, disk_type, host)
+                                                datastore, disk_type, host, rp)
             if new_backing:
                 LOG.debug("Created new backing: %s for restoring backup.",
                           dest_name)
@@ -1737,12 +1808,12 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                             self.volumeops.rename_backing(backing,
                                                           volume['name'])
                         except exceptions.VimException:
-                            LOG.warn(_LW("Cannot undo volume rename; old name "
-                                         "was %(old_name)s and new name is "
-                                         "%(new_name)s."),
-                                     {'old_name': volume['name'],
-                                      'new_name': tmp_backing_name},
-                                     exc_info=True)
+                            LOG.warning(_LW("Cannot undo volume rename; old "
+                                            "name was %(old_name)s and new "
+                                            "name is %(new_name)s."),
+                                        {'old_name': volume['name'],
+                                         'new_name': tmp_backing_name},
+                                        exc_info=True)
         finally:
             # Delete the temporary backing.
             self._delete_temp_backing(src)
@@ -1822,11 +1893,15 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             task_poll_interval = self.configuration.vmware_task_poll_interval
             wsdl_loc = self.configuration.safe_get('vmware_wsdl_location')
             pbm_wsdl = self.pbm_wsdl if hasattr(self, 'pbm_wsdl') else None
+            ca_file = self.configuration.vmware_ca_file
+            insecure = self.configuration.vmware_insecure
             self._session = api.VMwareAPISession(ip, username,
                                                  password, api_retry_count,
                                                  task_poll_interval,
                                                  wsdl_loc=wsdl_loc,
-                                                 pbm_wsdl_loc=pbm_wsdl)
+                                                 pbm_wsdl_loc=pbm_wsdl,
+                                                 cacert=ca_file,
+                                                 insecure=insecure)
         return self._session
 
     def _get_vc_version(self):
@@ -1970,13 +2045,14 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         """
         datastore = None
         host = None
+        rp = None
         if not clone_type == volumeops.LINKED_CLONE_TYPE:
             # Pick a datastore where to create the full clone under any host
-            (host, _rp, _folder, summary) = self._select_ds_for_volume(volume)
+            (host, rp, _folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
         clone = self.volumeops.clone_backing(volume['name'], backing,
                                              snapshot, clone_type, datastore,
-                                             host=host)
+                                             host=host, resource_pool=rp)
         # If the volume size specified by the user is greater than
         # the size of the source volume, the newly created volume will
         # allocate the capacity to the size of the source volume in the backend

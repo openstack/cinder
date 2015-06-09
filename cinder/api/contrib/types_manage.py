@@ -25,6 +25,7 @@ from cinder.api.views import types as views_types
 from cinder import exception
 from cinder.i18n import _
 from cinder import rpc
+from cinder import utils
 from cinder.volume import volume_types
 
 
@@ -65,6 +66,13 @@ class VolumeTypesManageController(wsgi.Controller):
         if name is None or len(name.strip()) == 0:
             msg = _("Volume type name can not be empty.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        utils.check_string_length(name, 'Type name',
+                                  min_length=1, max_length=255)
+
+        if description is not None:
+            utils.check_string_length(description, 'Type description',
+                                      min_length=0, max_length=255)
 
         try:
             volume_types.create(context,
@@ -111,6 +119,14 @@ class VolumeTypesManageController(wsgi.Controller):
         if name is None and description is None:
             msg = _("Specify either volume type name and/or description.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        if name:
+            utils.check_string_length(name, 'Type name',
+                                      min_length=1, max_length=255)
+
+        if description is not None:
+            utils.check_string_length(description, 'Type description',
+                                      min_length=0, max_length=255)
 
         try:
             volume_types.update(context, id, name, description)

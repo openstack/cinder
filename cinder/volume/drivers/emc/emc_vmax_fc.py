@@ -34,9 +34,13 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
                 performance enhancement.
         2.0.0 - Add driver requirement functions
         2.1.0 - Add consistency group functions
+        2.1.1 - Fixed issue with mismatched config (bug #1442376)
+        2.1.2 - Clean up failed clones (bug #1440154)
+        2.1.3 - Fixed a problem with FAST support (bug #1435069)
+        2.2.0 - Add manage/unmanage
     """
 
-    VERSION = "2.1.0"
+    VERSION = "2.2.0"
 
     def __init__(self, *args, **kwargs):
 
@@ -184,7 +188,8 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         :returns: dict -- the target_wwns and initiator_target_map if the
             zone is to be removed, otherwise empty
         """
-        data = {}
+        data = {'driver_volume_type': 'fibre_channel',
+                'data': {}}
         loc = volume['provider_location']
         name = eval(loc)
         storage_system = name['keybindings']['SystemName']
@@ -193,8 +198,6 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
 
         mvInstanceName = self.common.get_masking_view_by_volume(
             volume, connector)
-        data = {'driver_volume_type': 'fibre_channel',
-                'data': {}}
         if mvInstanceName is not None:
             portGroupInstanceName = (
                 self.common.get_port_group_from_masking_view(
@@ -224,8 +227,8 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
             LOG.debug("Return FC data for zone removal: %(data)s.",
                       {'data': data})
         else:
-            LOG.warn(_LW("Volume %(volume)s is not in any masking view."),
-                     {'volume': volume['name']})
+            LOG.warning(_LW("Volume %(volume)s is not in any masking view."),
+                        {'volume': volume['name']})
         return data
 
     def _build_initiator_target_map(self, storage_system, volume, connector):
@@ -297,7 +300,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         :param diff: Unused parameter.
         :param host: the host dict holding the relevant
             target(destination) information
-        :returns: boolean -- True if retype succeeded, Fasle if error
+        :returns: boolean -- True if retype succeeded, False if error
         """
         return self.common.retype(ctxt, volume, new_type, diff, host)
 
@@ -318,3 +321,28 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
     def delete_cgsnapshot(self, context, cgsnapshot):
         """Deletes a cgsnapshot."""
         return self.common.delete_cgsnapshot(context, cgsnapshot, self.db)
+
+    def manage_existing(self, volume, external_ref):
+        """Manages an existing VMAX Volume (import to Cinder).
+
+        Renames the Volume to match the expected name for the volume.
+        Also need to consider things like QoS, Emulation, account/tenant.
+        """
+        return self.common.manage_existing(volume, external_ref)
+
+    def manage_existing_get_size(self, volume, external_ref):
+        """Return size of an existing VMAX volume to manage_existing.
+
+        :param self: reference to class
+        :param volume: the volume object including the volume_type_id
+        :param external_ref: reference to the existing volume
+        :returns: size of the volume in GB
+        """
+        return self.common.manage_existing_get_size(volume, external_ref)
+
+    def unmanage(self, volume):
+        """Export VMAX volume from Cinder.
+
+        Leave the volume intact on the backend array.
+        """
+        return self.common.unmanage(volume)

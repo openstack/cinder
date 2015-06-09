@@ -18,7 +18,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from sqlalchemy import MetaData, Table
 
-from cinder.i18n import _
+from cinder.i18n import _LE, _LI
 
 # Get default values via config.  The defaults will either
 # come from the default values set in the quota option
@@ -45,8 +45,8 @@ def upgrade(migrate_engine):
 
     # Do not add entries if there are already 'consistencygroups' entries.
     if rows:
-        LOG.info(_("Found existing 'consistencygroups' entries in the"
-                 "quota_classes table.  Skipping insertion."))
+        LOG.info(_LI("Found existing 'consistencygroups' entries in the "
+                     "quota_classes table.  Skipping insertion."))
         return
 
     try:
@@ -57,11 +57,11 @@ def upgrade(migrate_engine):
                      'resource': 'consistencygroups',
                      'hard_limit': CONF.quota_consistencygroups,
                      'deleted': False, })
-        LOG.info(_("Added default consistencygroups quota class data into "
-                 "the DB."))
+        LOG.info(_LI("Added default consistencygroups quota class data into "
+                     "the DB."))
     except Exception:
-        LOG.error(_("Default consistencygroups quota class data not inserted "
-                  "into the DB."))
+        LOG.error(_LE("Default consistencygroups quota class data not "
+                      "inserted into the DB."))
         raise
 
 

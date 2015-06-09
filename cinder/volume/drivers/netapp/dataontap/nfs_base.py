@@ -4,6 +4,7 @@
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Bob Callaway.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -30,8 +31,8 @@ import time
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import excutils
 from oslo_utils import units
+import six
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception
@@ -41,9 +42,11 @@ from cinder import utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
+CONF = cfg.CONF
 
 
 class NetAppNfsDriver(nfs.NfsDriver):
@@ -73,6 +76,8 @@ class NetAppNfsDriver(nfs.NfsDriver):
         super(NetAppNfsDriver, self).do_setup(context)
         self._context = context
         na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
+        self.zapi_client = None
+        self.ssc_enabled = False
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -86,39 +91,128 @@ class NetAppNfsDriver(nfs.NfsDriver):
         """
         return volume['provider_location']
 
+    def create_volume(self, volume):
+        """Creates a volume.
+
+        :param volume: volume reference
+        """
+        LOG.debug('create_volume on %s', volume['host'])
+        self._ensure_shares_mounted()
+
+        # get share as pool name
+        pool_name = volume_utils.extract_host(volume['host'], level='pool')
+
+        if pool_name is None:
+            msg = _("Pool is not available in the volume host field.")
+            raise exception.InvalidHost(reason=msg)
+
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+
+        try:
+            volume['provider_location'] = pool_name
+            LOG.debug('Using pool %s.', pool_name)
+            self._do_create_volume(volume)
+            self._do_qos_for_volume(volume, extra_specs)
+            return {'provider_location': volume['provider_location']}
+        except Exception:
+            LOG.exception(_LE("Exception creating vol %(name)s on "
+                          "pool %(pool)s."),
+                          {'name': volume['name'],
+                           'pool': volume['provider_location']})
+            # We need to set this for the model update in order for the
+            # manager to behave correctly.
+            volume['provider_location'] = None
+        finally:
+            if self.ssc_enabled:
+                self._update_stale_vols(self._get_vol_for_share(pool_name))
+
+        msg = _("Volume %(vol)s could not be created in pool %(pool)s.")
+        raise exception.VolumeBackendAPIException(data=msg % {
+            'vol': volume['name'], 'pool': pool_name})
+
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        vol_size = volume.size
-        snap_size = snapshot.volume_size
+        source = {
+            'name': snapshot['name'],
+            'size': snapshot['volume_size'],
+            'id': snapshot['volume_id'],
+        }
+        return self._clone_source_to_destination_volume(source, volume)
 
-        self._clone_volume(snapshot.name, volume.name, snapshot.volume_id)
-        share = self._get_volume_location(snapshot.volume_id)
-        volume['provider_location'] = share
-        path = self.local_path(volume)
-        run_as_root = self._execute_as_root
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume."""
+        source = {'name': src_vref['name'],
+                  'size': src_vref['size'],
+                  'id': src_vref['id']}
 
+        return self._clone_source_to_destination_volume(source, volume)
+
+    def _clone_source_to_destination_volume(self, source, destination_volume):
+        share = self._get_volume_location(source['id'])
+
+        extra_specs = na_utils.get_volume_extra_specs(destination_volume)
+
+        try:
+            destination_volume['provider_location'] = share
+            self._clone_with_extension_check(
+                source, destination_volume)
+            self._do_qos_for_volume(destination_volume, extra_specs)
+            return {'provider_location': destination_volume[
+                'provider_location']}
+        except Exception:
+            LOG.exception(_LE("Exception creating volume %(name)s from source "
+                              "%(source)s on share %(share)s."),
+                          {'name': destination_volume['id'],
+                           'source': source['name'],
+                           'share': destination_volume['provider_location']})
+        msg = _("Volume %s could not be created on shares.")
+        raise exception.VolumeBackendAPIException(data=msg % (
+            destination_volume['id']))
+
+    def _clone_with_extension_check(self, source, destination_volume):
+        source_size = source['size']
+        source_id = source['id']
+        source_name = source['name']
+        destination_volume_size = destination_volume['size']
+        self._clone_backing_file_for_volume(source_name,
+                                            destination_volume['name'],
+                                            source_id)
+        path = self.local_path(destination_volume)
         if self._discover_file_till_timeout(path):
             self._set_rw_permissions(path)
-            if vol_size != snap_size:
+            if destination_volume_size != source_size:
                 try:
-                    self.extend_volume(volume, vol_size)
+                    self.extend_volume(destination_volume,
+                                       destination_volume_size)
                 except Exception:
-                    with excutils.save_and_reraise_exception():
-                        LOG.error(
-                            _LE("Resizing %s failed. Cleaning volume."),
-                            volume.name)
-                        self._execute('rm', path, run_as_root=run_as_root)
+                    LOG.error(_LE("Resizing %s failed. Cleaning "
+                                  "volume."), destination_volume['name'])
+                    self._cleanup_volume_on_failure(destination_volume)
+                    raise exception.CinderException(
+                        _("Resizing clone %s failed.")
+                        % destination_volume['name'])
         else:
-            raise exception.CinderException(
-                _("NFS file %s not discovered.") % volume['name'])
+            raise exception.CinderException(_("NFS file %s not discovered.")
+                                            % destination_volume['name'])
 
-        return {'provider_location': volume['provider_location']}
+    def _cleanup_volume_on_failure(self, volume):
+        LOG.debug('Cleaning up, failed operation on %s', volume['name'])
+        vol_path = self.local_path(volume)
+        if os.path.exists(vol_path):
+            LOG.debug('Found %s, deleting ...', vol_path)
+            self._delete_file_at_path(vol_path)
+        else:
+            LOG.debug('Could not find  %s, continuing ...', vol_path)
+
+    def _do_qos_for_volume(self, volume, extra_specs, cleanup=False):
+        """Set QoS policy on backend from volume type information."""
+        raise NotImplementedError()
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        self._clone_volume(snapshot['volume_name'],
-                           snapshot['name'],
-                           snapshot['volume_id'])
+        self._clone_backing_file_for_volume(snapshot['volume_name'],
+                                            snapshot['name'],
+                                            snapshot['volume_id'])
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
@@ -136,8 +230,9 @@ class NetAppNfsDriver(nfs.NfsDriver):
         export_path = self._get_export_path(volume_id)
         return nfs_server_ip + ':' + export_path
 
-    def _clone_volume(self, volume_name, clone_name, volume_id, share=None):
-        """Clones mounted volume using NetApp API."""
+    def _clone_backing_file_for_volume(self, volume_name, clone_name,
+                                       volume_id, share=None):
+        """Clone backing file for Cinder volume."""
         raise NotImplementedError()
 
     def _get_provider_location(self, volume_id):
@@ -192,33 +287,6 @@ class NetAppNfsDriver(nfs.NfsDriver):
         return os.path.join(self._get_mount_point_for_share(nfs_share),
                             volume_name)
 
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
-        vol_size = volume.size
-        src_vol_size = src_vref.size
-        self._clone_volume(src_vref.name, volume.name, src_vref.id)
-        share = self._get_volume_location(src_vref.id)
-        volume['provider_location'] = share
-        path = self.local_path(volume)
-
-        if self._discover_file_till_timeout(path):
-            self._set_rw_permissions(path)
-            if vol_size != src_vol_size:
-                try:
-                    self.extend_volume(volume, vol_size)
-                except Exception as e:
-                    LOG.error(
-                        _LE("Resizing %s failed. Cleaning volume."),
-                        volume.name)
-                    self._execute('rm', path,
-                                  run_as_root=self._execute_as_root)
-                    raise e
-        else:
-            raise exception.CinderException(
-                _("NFS file %s not discovered.") % volume['name'])
-
-        return {'provider_location': volume['provider_location']}
-
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
         raise NotImplementedError()
@@ -228,7 +296,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
         super(NetAppNfsDriver, self).copy_image_to_volume(
             context, volume, image_service, image_id)
         LOG.info(_LI('Copied image to volume %s using regular download.'),
-                 volume['name'])
+                 volume['id'])
         self._register_image_in_cache(volume, image_id)
 
     def _register_image_in_cache(self, volume, image_id):
@@ -241,8 +309,8 @@ class NetAppNfsDriver(nfs.NfsDriver):
                 volume['provider_location'], file_name)
         except Exception as e:
             LOG.warning(_LW('Exception while registering image %(image_id)s'
-                            ' in cache. Exception: %(exc)s')
-                        % {'image_id': image_id, 'exc': e.__str__()})
+                            ' in cache. Exception: %(exc)s'),
+                        {'image_id': image_id, 'exc': e})
 
     def _find_image_in_cache(self, image_id):
         """Finds image in cache and returns list of shares with file name."""
@@ -254,8 +322,8 @@ class NetAppNfsDriver(nfs.NfsDriver):
                 file_path = '%s/%s' % (dir, file_name)
                 if os.path.exists(file_path):
                     LOG.debug('Found cache file for image %(image_id)s'
-                              ' on share %(share)s'
-                              % {'image_id': image_id, 'share': share})
+                              ' on share %(share)s',
+                              {'image_id': image_id, 'share': share})
                     result.append((share, file_name))
         return result
 
@@ -267,7 +335,8 @@ class NetAppNfsDriver(nfs.NfsDriver):
             file_path = '%s/%s' % (dir, dst)
             if not os.path.exists(file_path):
                 LOG.info(_LI('Cloning from cache to destination %s'), dst)
-                self._clone_volume(src, dst, volume_id=None, share=share)
+                self._clone_backing_file_for_volume(src, dst, volume_id=None,
+                                                    share=share)
         _do_clone()
 
     @utils.synchronized('clean_cache')
@@ -292,7 +361,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
                 self.configuration.thres_avl_size_perc_stop
             for share in getattr(self, '_mounted_shares', []):
                 try:
-                    total_size, total_avl, _total_alc = \
+                    total_size, total_avl = \
                         self._get_capacity_info(share)
                     avl_percent = int((total_avl / total_size) * 100)
                     if avl_percent <= thres_size_perc_start:
@@ -309,8 +378,8 @@ class NetAppNfsDriver(nfs.NfsDriver):
                         continue
                 except Exception as e:
                     LOG.warning(_LW('Exception during cache cleaning'
-                                    ' %(share)s. Message - %(ex)s')
-                                % {'share': share, 'ex': e.__str__()})
+                                    ' %(share)s. Message - %(ex)s'),
+                                {'share': share, 'ex': e})
                     continue
         finally:
             LOG.debug('Image cache cleaning done.')
@@ -349,7 +418,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
 
                     @utils.synchronized(f[0], external=True)
                     def _do_delete():
-                        if self._delete_file(file_path):
+                        if self._delete_file_at_path(file_path):
                             return True
                         return False
 
@@ -358,7 +427,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
                         if bytes_to_free <= 0:
                             return
 
-    def _delete_file(self, path):
+    def _delete_file_at_path(self, path):
         """Delete file from disk and return result as boolean."""
         try:
             LOG.debug('Deleting file at path %s', path)
@@ -366,7 +435,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
             self._execute(*cmd, run_as_root=self._execute_as_root)
             return True
         except Exception as ex:
-            LOG.warning(_LW('Exception during deleting %s'), ex.__str__())
+            LOG.warning(_LW('Exception during deleting %s'), ex)
             return False
 
     def clone_image(self, context, volume,
@@ -384,6 +453,9 @@ class NetAppNfsDriver(nfs.NfsDriver):
         image_id = image_meta['id']
         cloned = False
         post_clone = False
+
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+
         try:
             cache_result = self._find_image_in_cache(image_id)
             if cache_result:
@@ -392,16 +464,13 @@ class NetAppNfsDriver(nfs.NfsDriver):
                 cloned = self._direct_nfs_clone(volume, image_location,
                                                 image_id)
             if cloned:
+                self._do_qos_for_volume(volume, extra_specs)
                 post_clone = self._post_clone_image(volume)
         except Exception as e:
-            msg = e.msg if getattr(e, 'msg', None) else e.__str__()
+            msg = e.msg if getattr(e, 'msg', None) else e
             LOG.info(_LI('Image cloning unsuccessful for image'
-                         ' %(image_id)s. Message: %(msg)s')
-                     % {'image_id': image_id, 'msg': msg})
-            vol_path = self.local_path(volume)
-            volume['provider_location'] = None
-            if os.path.exists(vol_path):
-                self._delete_file(vol_path)
+                         ' %(image_id)s. Message: %(msg)s'),
+                     {'image_id': image_id, 'msg': msg})
         finally:
             cloned = cloned and post_clone
             share = volume['provider_location'] if cloned else None
@@ -436,7 +505,6 @@ class NetAppNfsDriver(nfs.NfsDriver):
         image_location = self._construct_image_nfs_url(image_location)
         share = self._is_cloneable_share(image_location)
         run_as_root = self._execute_as_root
-
         if share and self._is_share_vol_compatible(volume, share):
             LOG.debug('Share is cloneable %s', share)
             volume['provider_location'] = share
@@ -447,7 +515,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
                                                  run_as_root=run_as_root)
             if img_info.file_format == 'raw':
                 LOG.debug('Image is raw %s', image_id)
-                self._clone_volume(
+                self._clone_backing_file_for_volume(
                     img_file, volume['name'],
                     volume_id=None, share=share)
                 cloned = True
@@ -625,7 +693,7 @@ class NetAppNfsDriver(nfs.NfsDriver):
 
     def _check_share_can_hold_size(self, share, size):
         """Checks if volume can hold image with size."""
-        _tot_size, tot_available, _tot_allocated = self._get_capacity_info(
+        _tot_size, tot_available = self._get_capacity_info(
             share)
         if tot_available < size:
             msg = _("Container size smaller than required file size.")
@@ -645,8 +713,8 @@ class NetAppNfsDriver(nfs.NfsDriver):
         try:
             return _move_file(source_path, dest_path)
         except Exception as e:
-            LOG.warning(_LW('Exception moving file %(src)s. Message - %(e)s')
-                        % {'src': source_path, 'e': e})
+            LOG.warning(_LW('Exception moving file %(src)s. Message - %(e)s'),
+                        {'src': source_path, 'e': e})
         return False
 
     def _get_export_ip_path(self, volume_id=None, share=None):
@@ -666,24 +734,40 @@ class NetAppNfsDriver(nfs.NfsDriver):
                 'A volume ID or share was not specified.')
         return host_ip, export_path
 
-    def _get_extended_capacity_info(self, nfs_share):
-        """Returns an extended set of share capacity metrics."""
+    def _get_share_capacity_info(self, nfs_share):
+        """Returns the share capacity metrics needed by the scheduler."""
 
-        total_size, total_available, total_allocated = \
-            self._get_capacity_info(nfs_share)
+        used_ratio = self.configuration.nfs_used_ratio
+        oversub_ratio = self.configuration.nfs_oversub_ratio
 
-        used_ratio = (total_size - total_available) / total_size
-        subscribed_ratio = total_allocated / total_size
-        apparent_size = max(0, total_size * self.configuration.nfs_used_ratio)
-        apparent_available = max(0, apparent_size - total_allocated)
+        # The scheduler's capacity filter will reduce the amount of
+        # free space that we report to it by the reserved percentage.
+        reserved_ratio = 1 - used_ratio
+        reserved_percentage = round(100 * reserved_ratio)
 
-        return {'total_size': total_size, 'total_available': total_available,
-                'total_allocated': total_allocated, 'used_ratio': used_ratio,
-                'subscribed_ratio': subscribed_ratio,
-                'apparent_size': apparent_size,
-                'apparent_available': apparent_available}
+        total_size, total_available = self._get_capacity_info(nfs_share)
 
-    def _check_volume_type(self, volume, share, file_name):
+        apparent_size = total_size * oversub_ratio
+        apparent_size_gb = na_utils.round_down(
+            apparent_size / units.Gi, '0.01')
+
+        apparent_free_size = total_available * oversub_ratio
+        apparent_free_gb = na_utils.round_down(
+            float(apparent_free_size) / units.Gi, '0.01')
+
+        capacity = dict()
+        capacity['reserved_percentage'] = reserved_percentage
+        capacity['total_capacity_gb'] = apparent_size_gb
+        capacity['free_capacity_gb'] = apparent_free_gb
+
+        return capacity
+
+    def _get_capacity_info(self, nfs_share):
+        """Get total capacity and free capacity in bytes for an nfs share."""
+        export_path = nfs_share.rsplit(':', 1)[1]
+        return self.zapi_client.get_flexvol_capacity(export_path)
+
+    def _check_volume_type(self, volume, share, file_name, extra_specs):
         """Match volume type for share file."""
         raise NotImplementedError()
 
@@ -778,7 +862,11 @@ class NetAppNfsDriver(nfs.NfsDriver):
         LOG.debug("Asked to manage NFS volume %(vol)s, with vol ref %(ref)s",
                   {'vol': volume['id'],
                    'ref': existing_vol_ref['source-name']})
-        self._check_volume_type(volume, nfs_share, vol_path)
+
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+
+        self._check_volume_type(volume, nfs_share, vol_path, extra_specs)
+
         if vol_path == volume['name']:
             LOG.debug("New Cinder volume %s name matches reference name: "
                       "no need to rename.", volume['name'])
@@ -797,6 +885,14 @@ class NetAppNfsDriver(nfs.NfsDriver):
                                  {'name': existing_vol_ref['source-name'],
                                   'msg': err})
                 raise exception.VolumeBackendAPIException(data=exception_msg)
+        try:
+            self._do_qos_for_volume(volume, extra_specs, cleanup=False)
+        except Exception as err:
+            exception_msg = (_("Failed to set QoS for existing volume "
+                               "%(name)s, Error msg: %(msg)s.") %
+                             {'name': existing_vol_ref['source-name'],
+                              'msg': six.text_type(err)})
+            raise exception.VolumeBackendAPIException(data=exception_msg)
         return {'provider_location': nfs_share}
 
     def manage_existing_get_size(self, volume, existing_vol_ref):
@@ -839,8 +935,16 @@ class NetAppNfsDriver(nfs.NfsDriver):
 
            :param volume: Cinder volume to unmanage
         """
-        CONF = cfg.CONF
         vol_str = CONF.volume_name_template % volume['id']
         vol_path = os.path.join(volume['provider_location'], vol_str)
         LOG.info(_LI("Cinder NFS volume with current path \"%(cr)s\" is "
                      "no longer being managed."), {'cr': vol_path})
+
+    @utils.synchronized('update_stale')
+    def _update_stale_vols(self, volume=None, reset=False):
+        """Populates stale vols with vol and returns set copy."""
+        raise NotImplementedError
+
+    def _get_vol_for_share(self, nfs_share):
+        """Gets the ssc vol with given share."""
+        raise NotImplementedError

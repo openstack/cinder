@@ -135,10 +135,9 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
     def _export_fc(self, volumeid, targetwwpns, initiatorwwpns, volumename):
         ret = 0
         output = ''
-        msg = _('Export fc: %(volume)s, %(wwpns)s, %(iqn)s, %(volumename)s') \
-            % {'volume': volumeid, 'wwpns': targetwwpns,
-               'iqn': initiatorwwpns, 'volumename': volumename}
-        LOG.debug(msg)
+        LOG.debug('Export fc: %(volume)s, %(wwpns)s, %(iqn)s, %(volumename)s',
+                  {'volume': volumeid, 'wwpns': targetwwpns,
+                   'iqn': initiatorwwpns, 'volumename': volumename})
         try:
             ret, output = self.dpl.assign_vdev_fc(
                 self._conver_uuid2hex(volumeid), targetwwpns,

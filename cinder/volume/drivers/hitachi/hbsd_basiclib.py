@@ -23,7 +23,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder import utils
 
 SMPL = 1
@@ -168,7 +168,7 @@ def set_msg(msg_id, **kwargs):
 def output_err(msg_id, **kwargs):
     msg = HBSD_ERR_MSG.get(msg_id) % kwargs
 
-    LOG.error("MSGID%04d-E: %s", msg_id, msg)
+    LOG.error(_LE("MSGID%(id)04d-E: %(msg)s"), {'id': msg_id, 'msg': msg})
 
     return msg
 
@@ -236,10 +236,10 @@ class HBSDBasicLib(object):
     def exec_command(self, cmd, args=None, printflag=True):
         if printflag:
             if args:
-                LOG.debug('cmd: %(cmd)s, args: %(args)s' %
+                LOG.debug('cmd: %(cmd)s, args: %(args)s',
                           {'cmd': cmd, 'args': args})
             else:
-                LOG.debug('cmd: %s' % cmd)
+                LOG.debug('cmd: %s', cmd)
 
         cmd = [cmd]
 
@@ -257,11 +257,11 @@ class HBSDBasicLib(object):
             stdout = e.stdout
             stderr = e.stderr
 
-            LOG.debug('cmd: %s' % six.text_type(cmd))
-            LOG.debug('from: %s' % six.text_type(inspect.stack()[2]))
-            LOG.debug('ret: %d' % ret)
-            LOG.debug('stdout: %s' % stdout.replace(os.linesep, ' '))
-            LOG.debug('stderr: %s' % stderr.replace(os.linesep, ' '))
+            LOG.debug('cmd: %s', cmd)
+            LOG.debug('from: %s', inspect.stack()[2])
+            LOG.debug('ret: %d', ret)
+            LOG.debug('stdout: %s', stdout.replace(os.linesep, ' '))
+            LOG.debug('stderr: %s', stderr.replace(os.linesep, ' '))
 
         return ret, stdout, stderr
 

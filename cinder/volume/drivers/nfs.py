@@ -17,13 +17,13 @@ import errno
 import os
 import time
 
+from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 import six
 
-from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
@@ -108,6 +108,8 @@ class NfsDriver(remotefs.RemoteFSDriver):
             nfs_mount_point_base=self.base,
             nfs_mount_options=opts)
 
+        self._sparse_copy_volume_data = True
+
     def set_execute(self, execute):
         super(NfsDriver, self).set_execute(execute)
         if self._remotefsclient:
@@ -121,26 +123,25 @@ class NfsDriver(remotefs.RemoteFSDriver):
         if not config:
             msg = (_("There's no NFS config file configured (%s)") %
                    'nfs_shares_config')
-            LOG.warn(msg)
+            LOG.warning(msg)
             raise exception.NfsException(msg)
         if not os.path.exists(config):
             msg = (_("NFS config file at %(config)s doesn't exist") %
                    {'config': config})
-            LOG.warn(msg)
+            LOG.warning(msg)
             raise exception.NfsException(msg)
         if not self.configuration.nfs_oversub_ratio > 0:
             msg = _("NFS config 'nfs_oversub_ratio' invalid.  Must be > 0: "
                     "%s") % self.configuration.nfs_oversub_ratio
 
             LOG.error(msg)
-            raise exception.NfsException(msg)
-
-        if ((not self.configuration.nfs_used_ratio > 0) and
+            raise exception.InvalidConfigurationValue(msg)
+        if not ((self.configuration.nfs_used_ratio > 0) and
                 (self.configuration.nfs_used_ratio <= 1)):
             msg = _("NFS config 'nfs_used_ratio' invalid.  Must be > 0 "
                     "and <= 1.0: %s") % self.configuration.nfs_used_ratio
             LOG.error(msg)
-            raise exception.NfsException(msg)
+            raise exception.InvalidConfigurationValue(msg)
 
         self.shares = {}  # address : options
 
@@ -155,7 +156,7 @@ class NfsDriver(remotefs.RemoteFSDriver):
                 msg = _('%s is not installed') % package
                 raise exception.NfsException(msg)
             else:
-                raise exc
+                raise
 
         # Now that all configuration data has been loaded (shares),
         # we can "set" our final NAS file security options.
@@ -173,12 +174,13 @@ class NfsDriver(remotefs.RemoteFSDriver):
             except Exception as e:
                 if attempt == (num_attempts - 1):
                     LOG.error(_LE('Mount failure for %(share)s after '
-                                  '%(count)d attempts.') % {
+                                  '%(count)d attempts.'), {
                               'share': nfs_share,
                               'count': num_attempts})
-                    raise exception.NfsException(e)
-                LOG.debug('Mount attempt %d failed: %s.\nRetrying mount ...' %
-                          (attempt, six.text_type(e)))
+                    raise exception.NfsException(six.text_type(e))
+                LOG.debug('Mount attempt %(attempt)d failed: %(exc)s.\n'
+                          'Retrying mount ...',
+                          {'attempt': attempt, 'exc': e})
                 time.sleep(1)
 
     def _find_share(self, volume_size_in_gib):
@@ -333,16 +335,16 @@ class NfsDriver(remotefs.RemoteFSDriver):
                 self.configuration.nas_secure_file_permissions,
                 nfs_mount, is_new_cinder_install)
 
-        LOG.debug('NAS variable secure_file_permissions setting is: %s' %
+        LOG.debug('NAS variable secure_file_permissions setting is: %s',
                   self.configuration.nas_secure_file_permissions)
 
         if self.configuration.nas_secure_file_permissions == 'false':
-            LOG.warn(_LW("The NAS file permissions mode will be 666 (allowing "
-                         "other/world read & write access). "
-                         "This is considered an insecure NAS environment. "
-                         "Please see %s for information on a secure "
-                         "NFS configuration.") %
-                     doc_html)
+            LOG.warning(_LW("The NAS file permissions mode will be 666 "
+                            "(allowing other/world read & write access). "
+                            "This is considered an insecure NAS environment. "
+                            "Please see %s for information on a secure "
+                            "NFS configuration."),
+                        doc_html)
 
         self.configuration.nas_secure_file_operations = \
             self._determine_nas_security_option_setting(
@@ -354,13 +356,13 @@ class NfsDriver(remotefs.RemoteFSDriver):
         if self.configuration.nas_secure_file_operations == 'true':
             self._execute_as_root = False
 
-        LOG.debug('NAS variable secure_file_operations setting is: %s' %
+        LOG.debug('NAS variable secure_file_operations setting is: %s',
                   self.configuration.nas_secure_file_operations)
 
         if self.configuration.nas_secure_file_operations == 'false':
-            LOG.warn(_LW("The NAS file operations will be run as "
-                         "root: allowing root level access at the storage "
-                         "backend. This is considered an insecure NAS "
-                         "environment. Please see %s "
-                         "for information on a secure NAS configuration.") %
-                     doc_html)
+            LOG.warning(_LW("The NAS file operations will be run as "
+                            "root: allowing root level access at the storage "
+                            "backend. This is considered an insecure NAS "
+                            "environment. Please see %s "
+                            "for information on a secure NAS configuration."),
+                        doc_html)

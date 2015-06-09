@@ -19,7 +19,7 @@ from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import ForeignKey, MetaData, String, Table
 from migrate import ForeignKeyConstraint
 
-from cinder.i18n import _
+from cinder.i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def upgrade(migrate_engine):
     try:
         quality_of_service_specs.create()
     except Exception:
-        LOG.error(_("Table quality_of_service_specs not created!"))
+        LOG.error(_LE("Table quality_of_service_specs not created!"))
         raise
 
     volume_types = Table('volume_types', meta, autoload=True)
@@ -58,7 +58,8 @@ def upgrade(migrate_engine):
         volume_types.create_column(qos_specs_id)
         volume_types.update().values(qos_specs_id=None).execute()
     except Exception:
-        LOG.error(_("Added qos_specs_id column to volume type table failed."))
+        LOG.error(_LE("Added qos_specs_id column to volume type table "
+                      "failed."))
         raise
 
 
@@ -83,7 +84,7 @@ def downgrade(migrate_engine):
             fkey = ForeignKeyConstraint(**params)
             fkey.drop()
         except Exception:
-            LOG.error(_("Dropping foreign key volume_types_ibfk_1 failed"))
+            LOG.error(_LE("Dropping foreign key volume_types_ibfk_1 failed"))
 
     volume_types = Table('volume_types', meta, autoload=True)
     qos_specs_id = Column('qos_specs_id', String(36))
@@ -91,12 +92,12 @@ def downgrade(migrate_engine):
     try:
         volume_types.drop_column(qos_specs_id)
     except Exception:
-        LOG.error(_("Dropping qos_specs_id column failed."))
+        LOG.error(_LE("Dropping qos_specs_id column failed."))
         raise
 
     try:
         qos_specs.drop()
 
     except Exception:
-        LOG.error(_("Dropping quality_of_service_specs table failed."))
+        LOG.error(_LE("Dropping quality_of_service_specs table failed."))
         raise

@@ -59,7 +59,7 @@ class QuotaSetsController(wsgi.Controller):
     def _validate_quota_limit(self, limit):
         try:
             limit = int(limit)
-        except ValueError:
+        except (ValueError, TypeError):
             msg = _("Quota limit must be specified as an integer value.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
@@ -76,7 +76,7 @@ class QuotaSetsController(wsgi.Controller):
         if usages:
             return values
         else:
-            return dict((k, v['limit']) for k, v in values.items())
+            return {k: v['limit'] for k, v in values.items()}
 
     @wsgi.serializers(xml=QuotaTemplate)
     def show(self, req, id):
@@ -107,6 +107,8 @@ class QuotaSetsController(wsgi.Controller):
 
         bad_keys = []
 
+        # NOTE(ankit): Pass #1 - In this loop for body['quota_set'].items(),
+        # we figure out if we have any bad keys.
         for key, value in body['quota_set'].items():
             if (key not in QUOTAS and key not in NON_QUOTA_KEYS):
                 bad_keys.append(key)
@@ -116,11 +118,22 @@ class QuotaSetsController(wsgi.Controller):
             msg = _("Bad key(s) in quota set: %s") % ",".join(bad_keys)
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
+        # NOTE(ankit): Pass #2 - In this loop for body['quota_set'].keys(),
+        # we validate the quota limits to ensure that we can bail out if
+        # any of the items in the set is bad.
+        valid_quotas = {}
         for key in body['quota_set'].keys():
             if key in NON_QUOTA_KEYS:
                 continue
 
             value = self._validate_quota_limit(body['quota_set'][key])
+            valid_quotas[key] = value
+
+        # NOTE(ankit): Pass #3 - At this point we know that all the keys and
+        # values are valid and we can iterate and update them all in one shot
+        # without having to worry about rolling back etc as we have done
+        # the validation up front in the 2 loops above.
+        for key, value in valid_quotas.items():
             try:
                 db.quota_update(context, project_id, key, value)
             except exception.ProjectQuotaNotFound:
@@ -142,7 +155,7 @@ class QuotaSetsController(wsgi.Controller):
         authorize_delete(context)
 
         try:
-            db.quota_destroy_all_by_project(context, id)
+            db.quota_destroy_by_project(context, id)
         except exception.AdminRequired:
             raise webob.exc.HTTPForbidden()
 

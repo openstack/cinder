@@ -136,9 +136,8 @@ class GPFSDriver(driver.VolumeDriver):
         gpfs_state = lines[1].split(':')[state_token]
         if gpfs_state != 'active':
             LOG.error(_LE('GPFS is not active.  Detailed output: %s.'), out)
-            exception_message = (_('GPFS is not running, state: %s.') %
-                                 gpfs_state)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            raise exception.VolumeBackendAPIException(
+                data=_('GPFS is not running, state: %s.') % gpfs_state)
 
     def _get_filesystem_from_path(self, path):
         """Return filesystem for specified path."""

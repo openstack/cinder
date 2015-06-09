@@ -36,6 +36,12 @@ class DatastoreType(object):
     VMFS = "vmfs"
     VSAN = "vsan"
 
+    _ALL_TYPES = {NFS, VMFS, VSAN}
+
+    @staticmethod
+    def get_all_types():
+        return DatastoreType._ALL_TYPES
+
 
 class DatastoreSelector(object):
     """Class for selecting datastores which satisfy input requirements."""
@@ -217,8 +223,8 @@ class DatastoreSelector(object):
             except exceptions.VimException:
                 # TODO(vbala) volumeops.get_dss_rp shouldn't throw VimException
                 # for empty datastore list.
-                LOG.warn(_LW("Unable to fetch datastores connected "
-                             "to host %s."), host_ref, exc_info=True)
+                LOG.warning(_LW("Unable to fetch datastores connected "
+                                "to host %s."), host_ref, exc_info=True)
                 continue
 
             if not datastores:

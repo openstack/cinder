@@ -17,6 +17,7 @@ import os.path
 import re
 
 from lxml import etree
+import six
 
 from cinder.i18n import _
 from cinder import utils
@@ -338,12 +339,12 @@ class TemplateElement(object):
 
         # Start with the text...
         if self.text is not None:
-            elem.text = unicode(self.text(obj))
+            elem.text = six.text_type(self.text(obj))
 
         # Now set up all the attributes...
         for key, value in self.attrib.items():
             try:
-                elem.set(key, unicode(value(obj, True)))
+                elem.set(key, six.text_type(value(obj, True)))
             except KeyError:
                 # Attribute has no value, so don't include it
                 pass

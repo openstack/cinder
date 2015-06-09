@@ -80,7 +80,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
             pass
 
         err = _('unsupported compression algorithm: %s') % algorithm
-        raise ValueError(unicode(err))
+        raise ValueError(err)
 
     def __init__(self, context, chunk_size_bytes, sha_block_size_bytes,
                  backup_default_container, enable_progress_timer,
@@ -297,33 +297,17 @@ class ChunkedBackupDriver(driver.BackupDriver):
         obj[object_name] = {}
         obj[object_name]['offset'] = data_offset
         obj[object_name]['length'] = len(data)
-        LOG.debug('reading chunk of data from volume')
-        if self.compressor is not None:
-            algorithm = CONF.backup_compression_algorithm.lower()
-            obj[object_name]['compression'] = algorithm
-            data_size_bytes = len(data)
-            data = self.compressor.compress(data)
-            comp_size_bytes = len(data)
-            LOG.debug('compressed %(data_size_bytes)d bytes of data '
-                      'to %(comp_size_bytes)d bytes using '
-                      '%(algorithm)s' %
-                      {
-                          'data_size_bytes': data_size_bytes,
-                          'comp_size_bytes': comp_size_bytes,
-                          'algorithm': algorithm,
-                      })
-        else:
-            LOG.debug('not compressing data')
-            obj[object_name]['compression'] = 'none'
-
+        LOG.debug('Backing up chunk of data from volume.')
+        algorithm, output_data = self._prepare_output_data(data)
+        obj[object_name]['compression'] = algorithm
         LOG.debug('About to put_object')
         with self.get_object_writer(
                 container, object_name, extra_metadata=extra_metadata
         ) as writer:
-            writer.write(data)
+            writer.write(output_data)
         md5 = hashlib.md5(data).hexdigest()
         obj[object_name]['md5'] = md5
-        LOG.debug('backup MD5 for %(object_name)s: %(md5)s' %
+        LOG.debug('backup MD5 for %(object_name)s: %(md5)s',
                   {'object_name': object_name, 'md5': md5})
         object_list.append(obj)
         object_id += 1
@@ -332,6 +316,30 @@ class ChunkedBackupDriver(driver.BackupDriver):
 
         LOG.debug('Calling eventlet.sleep(0)')
         eventlet.sleep(0)
+
+    def _prepare_output_data(self, data):
+        if self.compressor is None:
+            return 'none', data
+        data_size_bytes = len(data)
+        compressed_data = self.compressor.compress(data)
+        comp_size_bytes = len(compressed_data)
+        algorithm = CONF.backup_compression_algorithm.lower()
+        if comp_size_bytes >= data_size_bytes:
+            LOG.debug('Compression of this chunk was ineffective: '
+                      'original length: %(data_size_bytes)d, '
+                      'compressed length: %(compressed_size_bytes)d. '
+                      'Using original data for this chunk.',
+                      {'data_size_bytes': data_size_bytes,
+                       'comp_size_bytes': comp_size_bytes,
+                       })
+            return 'none', data
+        LOG.debug('Compressed %(data_size_bytes)d bytes of data '
+                  'to %(comp_size_bytes)d bytes using %(algorithm)s.',
+                  {'data_size_bytes': data_size_bytes,
+                   'comp_size_bytes': comp_size_bytes,
+                   'algorithm': algorithm,
+                   })
+        return algorithm, compressed_data
 
     def _finalize_backup(self, backup, container, object_meta, object_sha256):
         """Write the backup's metadata to the backup repository."""
@@ -526,9 +534,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
             # Whatever goes wrong, we want to log, cleanup, and re-raise.
             except Exception as err:
                 with excutils.save_and_reraise_exception():
-                    LOG.exception(
-                        _LE("Backup volume metadata failed: %s."),
-                        err)
+                    LOG.exception(_LE("Backup volume metadata failed: %s."),
+                                  err)
                     self.delete(backup)
 
         self._finalize_backup(backup, container, object_meta, object_sha256)
@@ -573,7 +580,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
             decompressor = self._get_compressor(compression_algorithm)
             volume_file.seek(metadata_object.values()[0]['offset'])
             if decompressor is not None:
-                LOG.debug('decompressing data using %s algorithm' %
+                LOG.debug('decompressing data using %s algorithm',
                           compression_algorithm)
                 decompressed = decompressor.decompress(body)
                 volume_file.write(decompressed)
@@ -588,7 +595,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 fileno = volume_file.fileno()
             except IOError:
                 LOG.info(_LI("volume_file does not support "
-                             "fileno() so skipping"
+                             "fileno() so skipping "
                              "fsync()"))
             else:
                 os.fsync(fileno)
@@ -605,8 +612,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
         backup_id = backup['id']
         container = backup['container']
         object_prefix = backup['service_metadata']
-        LOG.debug('starting restore of backup %(object_prefix)s'
-                  ' container: %(container)s, to volume %(volume_id)s, '
+        LOG.debug('starting restore of backup %(object_prefix)s '
+                  'container: %(container)s, to volume %(volume_id)s, '
                   'backup: %(backup_id)s.',
                   {
                       'object_prefix': object_prefix,
@@ -662,16 +669,19 @@ class ChunkedBackupDriver(driver.BackupDriver):
     def delete(self, backup):
         """Delete the given backup."""
         container = backup['container']
-        LOG.debug('delete started, backup: %s, container: %s, prefix: %s.',
-                  backup['id'], container, backup['service_metadata'])
+        LOG.debug('delete started, backup: %(id)s, container: %(cont)s, '
+                  'prefix: %(pre)s.',
+                  {'id': backup['id'],
+                   'cont': container,
+                   'pre': backup['service_metadata']})
 
         if container is not None:
             object_names = []
             try:
                 object_names = self._generate_object_names(backup)
             except Exception:
-                LOG.warn(_LW('swift error while listing objects, continuing'
-                             ' with delete.'))
+                LOG.warning(_LW('swift error while listing objects, continuing'
+                                ' with delete.'))
 
             for object_name in object_names:
                 self.delete_object(container, object_name)

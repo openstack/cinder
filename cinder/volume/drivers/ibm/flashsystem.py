@@ -73,6 +73,8 @@ class FlashSystemDriver(san.SanDriver):
     Version history:
     1.0.0 - Initial driver
     1.0.1 - Code clean up
+    1.0.2 - Add lock into vdisk map/unmap, connection
+            initialize/terminate
 
     """
 
@@ -161,9 +163,9 @@ class FlashSystemDriver(san.SanDriver):
                 invalid_ch_in_host = invalid_ch_in_host + ch
 
         host_name = connector['host']
-        if isinstance(host_name, unicode):
-            unicode_host_name_filter = dict((ord(unicode(char)), u'-')
-                                            for char in invalid_ch_in_host)
+        if isinstance(host_name, six.text_type):
+            unicode_host_name_filter = {ord(six.text_type(char)): u'-'
+                                        for char in invalid_ch_in_host}
             host_name = host_name.translate(unicode_host_name_filter)
         elif isinstance(host_name, str):
             string_host_name_filter = string.maketrans(
@@ -265,7 +267,6 @@ class FlashSystemDriver(san.SanDriver):
             self._set_vdisk_copy_in_progress,
             [src_vdisk_name, dest_vdisk_name])
         timer.start(interval=self._check_lock_interval).wait()
-        timer.stop()
 
         try:
             self._copy_vdisk_data(src_vdisk_name, src_vdisk_id,
@@ -405,7 +406,7 @@ class FlashSystemDriver(san.SanDriver):
             out, err = self._ssh(ssh_cmd)
         except processutils.ProcessExecutionError:
             LOG.warning(_LW('_execute_command_and_parse_attributes: Failed to '
-                            'run command: %s.'), six.text_type(ssh_cmd))
+                            'run command: %s.'), ssh_cmd)
             # Does not raise exception when command encounters error.
             # Only return and the upper logic decides what to do.
             return None
@@ -458,7 +459,7 @@ class FlashSystemDriver(san.SanDriver):
             (_('_get_hdr_dic: attribute headers and values do not match.\n '
                'Headers: %(header)s\n Values: %(row)s.')
              % {'header': six.text_type(header), 'row': six.text_type(row)}))
-        dic = dict((a, v) for a, v in map(None, attributes, values))
+        dic = {a: v for a, v in map(None, attributes, values)}
         return dic
 
     def _get_conn_fc_wwpns(self):
@@ -763,6 +764,7 @@ class FlashSystemDriver(san.SanDriver):
                    'out': six.text_type(out),
                    'err': six.text_type(err)})
 
+    @utils.synchronized('flashsystem-map', external=True)
     def _map_vdisk_to_host(self, vdisk_name, connector):
         """Create a mapping between a vdisk to a host."""
 
@@ -886,6 +888,7 @@ class FlashSystemDriver(san.SanDriver):
 
         LOG.debug('leave: _scan_device')
 
+    @utils.synchronized('flashsystem-unmap', external=True)
     def _unmap_vdisk_from_host(self, vdisk_name, connector):
         if 'host' in connector:
             host_name = self._get_host_from_connector(connector)
@@ -1010,7 +1013,6 @@ class FlashSystemDriver(san.SanDriver):
         timer = loopingcall.FixedIntervalLoopingCall(
             self._is_vdisk_copy_in_progress, vdisk_name)
         timer.start(interval=self._check_lock_interval).wait()
-        timer.stop()
 
     def do_setup(self, ctxt):
         """Check that we have all configuration details from the storage."""
@@ -1138,9 +1140,8 @@ class FlashSystemDriver(san.SanDriver):
     def validate_connector(self, connector):
         """Check connector."""
         if 'FC' == self._protocol and 'wwpns' not in connector:
-            msg = (_LE('The connector does not contain the '
-                       'required information: wwpns is missing'))
-            LOG.error(msg)
+            LOG.error(_LE('The connector does not contain the '
+                          'required information: wwpns is missing'))
             raise exception.InvalidConnectorException(missing='wwpns')
 
     def create_volume(self, volume):
@@ -1175,6 +1176,7 @@ class FlashSystemDriver(san.SanDriver):
         LOG.debug('leave: extend_volume: volume %s.', volume['name'])
 
     @fczm_utils.AddFCZone
+    @utils.synchronized('flashsystem-init-conn', external=True)
     def initialize_connection(self, volume, connector):
         """Perform the necessary work so that a FC connection can
         be made.
@@ -1228,6 +1230,7 @@ class FlashSystemDriver(san.SanDriver):
         return properties
 
     @fczm_utils.RemoveFCZone
+    @utils.synchronized('flashsystem-term-conn', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after connection has been terminated.
 

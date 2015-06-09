@@ -185,6 +185,14 @@ class ISCSITarget(driver.Target):
                 return target
         return None
 
+    def _get_portals_config(self):
+        # Prepare portals configuration
+        portals_ips = ([self.configuration.iscsi_ip_address]
+                       + self.configuration.iscsi_secondary_ip_addresses or [])
+
+        return {'portals_ips': portals_ips,
+                'portals_port': self.configuration.iscsi_port}
+
     def create_export(self, context, volume, volume_path):
         """Creates an export for a logical volume."""
         # 'iscsi_name': 'iqn.2010-10.org.openstack:volume-00000001'
@@ -199,13 +207,17 @@ class ISCSITarget(driver.Target):
             chap_auth = (vutils.generate_username(),
                          vutils.generate_password())
 
+        # Get portals ips and port
+        portals_config = self._get_portals_config()
+
         # NOTE(jdg): For TgtAdm case iscsi_name is the ONLY param we need
         # should clean this all up at some point in the future
         tid = self.create_iscsi_target(iscsi_name,
                                        iscsi_target,
                                        lun,
                                        volume_path,
-                                       chap_auth)
+                                       chap_auth,
+                                       **portals_config)
         data = {}
         data['location'] = self._iscsi_location(
             self.configuration.iscsi_ip_address, tid, iscsi_name, lun,
@@ -254,11 +266,14 @@ class ISCSITarget(driver.Target):
             LOG.info(_LI("Skipping ensure_export. No iscsi_target "
                          "provision for volume: %s"), volume['id'])
 
+        # Get portals ips and port
+        portals_config = self._get_portals_config()
+
         iscsi_target, lun = self._get_target_and_lun(context, volume)
         self.create_iscsi_target(
             iscsi_name, iscsi_target, lun, volume_path,
             chap_auth, check_exit_code=False,
-            old_name=None)
+            old_name=None, **portals_config)
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.

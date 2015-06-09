@@ -50,8 +50,9 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
         # In the future we might want to have a lock on the volume_id so that
         # the volume can not be deleted while its still being created?
         if not volume_id:
-            msg = _("No volume_id provided to populate a request_spec from")
-            raise exception.InvalidInput(reason=msg)
+            raise exception.InvalidInput(
+                reason=_("No volume_id provided to populate a "
+                         "request_spec from"))
         volume_ref = self.db_api.volume_get(context, volume_id)
         volume_type_id = volume_ref.get('volume_type_id')
         vol_type = self.db_api.volume_type_get(context, volume_type_id)
@@ -100,7 +101,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
         try:
             self._notify_failure(context, request_spec, cause)
         finally:
-            LOG.error(_LE("Failed to run task %(name)s: %(cause)s") %
+            LOG.error(_LE("Failed to run task %(name)s: %(cause)s"),
                       {'cause': cause, 'name': self.name})
 
     def _notify_failure(self, context, request_spec, cause):
@@ -118,27 +119,20 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                                                 payload)
         except exception.CinderException:
             LOG.exception(_LE("Failed notifying on %(topic)s "
-                              "payload %(payload)s") %
+                              "payload %(payload)s"),
                           {'topic': self.FAILURE_TOPIC, 'payload': payload})
 
     def execute(self, context, request_spec, filter_properties):
         try:
             self.driver_api.schedule_create_volume(context, request_spec,
                                                    filter_properties)
-        except exception.NoValidHost as e:
-            # No host found happened, notify on the scheduler queue and log
-            # that this happened and set the volume to errored out and
-            # *do not* reraise the error (since whats the point).
-            try:
-                self._handle_failure(context, request_spec, e)
-            finally:
-                common.error_out_volume(context, self.db_api,
-                                        request_spec['volume_id'], reason=e)
         except Exception as e:
-            # Some other error happened, notify on the scheduler queue and log
-            # that this happened and set the volume to errored out and
-            # *do* reraise the error.
-            with excutils.save_and_reraise_exception():
+            # An error happened, notify on the scheduler queue and log that
+            # this happened and set the volume to errored out and reraise the
+            # error *if* exception caught isn't NoValidHost. Otherwise *do not*
+            # reraise (since what's the point?)
+            with excutils.save_and_reraise_exception(
+                    reraise=not isinstance(e, exception.NoValidHost)):
                 try:
                     self._handle_failure(context, request_spec, e)
                 finally:
@@ -156,11 +150,9 @@ def get_flow(context, db_api, driver_api, request_spec=None,
     This flow will do the following:
 
     1. Inject keys & values for dependent tasks.
-    2. Extracts a scheduler specification from the provided inputs.
-    3. Attaches 2 activated only on *failure* tasks (one to update the db
-       status and one to notify on the MQ of the failure that occurred).
-    4. Uses provided driver to then select and continue processing of
-       volume request.
+    2. Extract a scheduler specification from the provided inputs.
+    3. Use provided scheduler driver to select host and pass volume creation
+       request further.
     """
     create_what = {
         'context': context,

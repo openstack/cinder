@@ -167,10 +167,10 @@ class StorwizeSSH(object):
             if not multihostmap:
                 LOG.error(_LE('storwize_svc_multihostmap_enabled is set '
                               'to False, not allowing multi host mapping.'))
-                msg = 'CMMVC6071E The VDisk-to-host mapping '\
-                      'was not created because the VDisk is '\
-                      'already mapped to a host.\n"'
-                raise exception.VolumeDriverException(message=msg)
+                raise exception.VolumeDriverException(
+                    message=_('CMMVC6071E The VDisk-to-host mapping was not '
+                              'created because the VDisk is already mapped '
+                              'to a host.\n"'))
 
         ssh_cmd.insert(ssh_cmd.index('mkvdiskhostmap') + 1, '-force')
         return self.run_ssh_check_created(ssh_cmd)

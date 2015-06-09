@@ -54,6 +54,8 @@ class BarbicanKeyManager(key_mgr.KeyManager):
         :param ctxt: the user context for authentication
         :return: a Barbican Client object
         :throws NotAuthorized: if the ctxt is None
+        :throws KeyManagerError: if ctxt is missing project_id
+                                 or project_id is None
         """
 
         if not self._barbican_client:
@@ -63,10 +65,16 @@ class BarbicanKeyManager(key_mgr.KeyManager):
                 LOG.error(msg)
                 raise exception.NotAuthorized(msg)
 
+            if not hasattr(ctxt, 'project_id') or ctxt.project_id is None:
+                msg = _("Unable to create Barbican Client without project_id.")
+                LOG.error(msg)
+                raise exception.KeyManagerError(msg)
+
             try:
                 auth = identity.v3.Token(
                     auth_url=CONF.keymgr.encryption_auth_url,
-                    token=ctxt.auth_token)
+                    token=ctxt.auth_token,
+                    project_id=ctxt.project_id)
                 sess = session.Session(auth=auth)
                 self._barbican_client = barbican_client.Client(
                     session=sess,

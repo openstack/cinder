@@ -45,6 +45,10 @@ xiv_ds8k_opts = [
         choices=['disabled', 'enabled'],
         help='CHAP authentication mode, effective only for iscsi'
         ' (disabled|enabled)'),
+    cfg.StrOpt(
+        'management_ips',
+        default='',
+        help='List of Management IP addresses (separated by commas)'),
 ]
 
 CONF = cfg.CONF
@@ -78,7 +82,8 @@ class XIVDS8KDriver(san.SanDriver):
                 "xiv_ds8k_vol_pool": self.configuration.san_clustername,
                 "xiv_ds8k_connection_type":
                 self.configuration.xiv_ds8k_connection_type,
-                "xiv_chap": self.configuration.xiv_chap
+                "xiv_chap": self.configuration.xiv_chap,
+                "management_ips": self.configuration.management_ips
             },
             LOG,
             exception,

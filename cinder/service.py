@@ -287,6 +287,14 @@ class Service(service.Service):
 
     def report_state(self):
         """Update the state of this service in the datastore."""
+        if not self.manager.is_working():
+            # NOTE(dulek): If manager reports a problem we're not sending
+            # heartbeats - to indicate that service is actually down.
+            LOG.error(_LE('Manager for service %s is reporting problems, skip '
+                          'sending heartbeat. Service will appear "down".'),
+                      self.binary)
+            return
+
         ctxt = context.get_admin_context()
         zone = CONF.storage_availability_zone
         state_catalog = {}

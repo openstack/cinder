@@ -35,7 +35,7 @@ except ImportError:
 
 import eventlet
 from eventlet import event
-from oslo.config import cfg
+from oslo_config import cfg
 
 from cinder.openstack.common import eventlet_backdoor
 from cinder.openstack.common._i18n import _LE, _LI, _LW
@@ -199,6 +199,13 @@ class ServiceWrapper(object):
 
 
 class ProcessLauncher(object):
+    _signal_handlers_set = set()
+
+    @classmethod
+    def _handle_class_signals(cls, *args, **kwargs):
+        for handler in cls._signal_handlers_set:
+            handler(*args, **kwargs)
+
     def __init__(self, wait_interval=0.01):
         """Constructor.
 
@@ -214,7 +221,8 @@ class ProcessLauncher(object):
         self.handle_signal()
 
     def handle_signal(self):
-        _set_signals_handler(self._handle_signal)
+        self._signal_handlers_set.add(self._handle_signal)
+        _set_signals_handler(self._handle_class_signals)
 
     def _handle_signal(self, signo, frame):
         self.sigcaught = signo
@@ -234,15 +242,12 @@ class ProcessLauncher(object):
 
     def _child_process_handle_signal(self):
         # Setup child signal handlers differently
-        def _sigterm(*args):
-            signal.signal(signal.SIGTERM, signal.SIG_DFL)
-            raise SignalExit(signal.SIGTERM)
-
         def _sighup(*args):
             signal.signal(signal.SIGHUP, signal.SIG_DFL)
             raise SignalExit(signal.SIGHUP)
 
-        signal.signal(signal.SIGTERM, _sigterm)
+        # Parent signals with SIGTERM when it wants us to go away.
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         if _sighup_supported():
             signal.signal(signal.SIGHUP, _sighup)
         # Block SIGINT and let the parent send us a SIGTERM
@@ -391,8 +396,14 @@ class ProcessLauncher(object):
                 if not _is_sighup_and_daemon(self.sigcaught):
                     break
 
+                cfg.CONF.reload_config_files()
+                for service in set(
+                        [wrap.service for wrap in self.children.values()]):
+                    service.reset()
+
                 for pid in self.children:
                     os.kill(pid, signal.SIGHUP)
+
                 self.running = True
                 self.sigcaught = None
         except eventlet.greenlet.GreenletExit:

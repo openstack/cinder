@@ -54,6 +54,9 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         5.1.0 - iSCSI multipath enhancement
         5.2.0 - Pool-aware scheduler support
         5.3.0 - Consistency group modification support
+        6.0.0 - Over subscription support
+                Create consistency group from cgsnapshot support
+                Multiple pools support enhancement
     """
 
     def __init__(self, *args, **kwargs):
@@ -166,8 +169,8 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         conn_info = self.cli.initialize_connection(volume,
                                                    connector)
         LOG.debug("Exit initialize_connection"
-                  " - Returning FC connection info: %(conn_info)s."
-                  % {'conn_info': conn_info})
+                  " - Returning FC connection info: %(conn_info)s.",
+                  {'conn_info': conn_info})
         return conn_info
 
     @zm_utils.RemoveFCZone
@@ -175,8 +178,8 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         """Disallow connection from connector."""
         conn_info = self.cli.terminate_connection(volume, connector)
         LOG.debug("Exit terminate_connection"
-                  " - Returning FC connection info: %(conn_info)s."
-                  % {'conn_info': conn_info})
+                  " - Returning FC connection info: %(conn_info)s.",
+                  {'conn_info': conn_info})
         return conn_info
 
     def get_volume_stats(self, refresh=False):
@@ -211,7 +214,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
             'id':lun_id
         }
         """
-        LOG.debug("Reference lun id %s." % existing_ref['id'])
+        LOG.debug("Reference lun id %s.", existing_ref['id'])
         self.cli.manage_existing(volume, existing_ref)
 
     def manage_existing_get_size(self, volume, existing_ref):
@@ -252,3 +255,12 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
     def unmanage(self, volume):
         """Unmanages a volume."""
         return self.cli.unmanage(volume)
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None):
+        """Creates a consistency group from source."""
+        return self.cli.create_consistencygroup_from_src(context,
+                                                         group,
+                                                         volumes,
+                                                         cgsnapshot,
+                                                         snapshots)

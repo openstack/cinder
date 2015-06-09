@@ -18,7 +18,7 @@ from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import ForeignKey, MetaData, String, Table
 
-from cinder.i18n import _
+from cinder.i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def upgrade(migrate_engine):
     try:
         consistencygroups.create()
     except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(consistencygroups))
+        LOG.error(_LE("Table |%s| not created!"), repr(consistencygroups))
         raise
 
     # New table
@@ -76,7 +76,7 @@ def upgrade(migrate_engine):
     try:
         cgsnapshots.create()
     except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(cgsnapshots))
+        LOG.error(_LE("Table |%s| not created!"), repr(cgsnapshots))
         raise
 
     # Add column to volumes table
@@ -87,8 +87,8 @@ def upgrade(migrate_engine):
         volumes.create_column(consistencygroup_id)
         volumes.update().values(consistencygroup_id=None).execute()
     except Exception:
-        LOG.error(_("Adding consistencygroup_id column to volumes table"
-                  " failed."))
+        LOG.error(_LE("Adding consistencygroup_id column to volumes table"
+                      " failed."))
         raise
 
     # Add column to snapshots table
@@ -100,8 +100,8 @@ def upgrade(migrate_engine):
         snapshots.create_column(cgsnapshot_id)
         snapshots.update().values(cgsnapshot_id=None).execute()
     except Exception:
-        LOG.error(_("Adding cgsnapshot_id column to snapshots table"
-                  " failed."))
+        LOG.error(_LE("Adding cgsnapshot_id column to snapshots table"
+                      " failed."))
         raise
 
 
@@ -124,8 +124,8 @@ def downgrade(migrate_engine):
             fkey = ForeignKeyConstraint(**params)
             fkey.drop()
         except Exception:
-            LOG.error(_("Dropping foreign key 'cgsnapshot_id' in "
-                        "the 'snapshots' table failed."))
+            LOG.error(_LE("Dropping foreign key 'cgsnapshot_id' in "
+                          "the 'snapshots' table failed."))
 
     snapshots = Table('snapshots', meta, autoload=True)
     cgsnapshot_id = snapshots.columns.cgsnapshot_id
@@ -146,8 +146,8 @@ def downgrade(migrate_engine):
             fkey = ForeignKeyConstraint(**params)
             fkey.drop()
         except Exception:
-            LOG.error(_("Dropping foreign key 'consistencygroup_id' in "
-                        "the 'volumes' table failed."))
+            LOG.error(_LE("Dropping foreign key 'consistencygroup_id' in "
+                          "the 'volumes' table failed."))
 
     volumes = Table('volumes', meta, autoload=True)
     consistencygroup_id = volumes.columns.consistencygroup_id
@@ -158,7 +158,7 @@ def downgrade(migrate_engine):
     try:
         cgsnapshots.drop()
     except Exception:
-        LOG.error(_("cgsnapshots table not dropped"))
+        LOG.error(_LE("cgsnapshots table not dropped"))
         raise
 
     # Drop table
@@ -166,5 +166,5 @@ def downgrade(migrate_engine):
     try:
         consistencygroups.drop()
     except Exception:
-        LOG.error(_("consistencygroups table not dropped"))
+        LOG.error(_LE("consistencygroups table not dropped"))
         raise

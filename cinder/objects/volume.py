@@ -14,13 +14,13 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_versionedobjects import fields
 
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
-from cinder.objects import fields
 from cinder import utils
 
 CONF = cfg.CONF
@@ -28,6 +28,7 @@ OPTIONAL_FIELDS = []
 LOG = logging.getLogger(__name__)
 
 
+@base.CinderObjectRegistry.register
 class Volume(base.CinderPersistentObject, base.CinderObject,
              base.CinderObjectDictCompat):
     # Version 1.0: Initial version
@@ -56,6 +57,7 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         'display_name': fields.StringField(nullable=True),
         'display_description': fields.StringField(nullable=True),
 
+        'provider_id': fields.UUIDField(nullable=True),
         'provider_location': fields.StringField(nullable=True),
         'provider_auth': fields.StringField(nullable=True),
         'provider_geometry': fields.StringField(nullable=True),
@@ -73,6 +75,10 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         'replication_extended_status': fields.StringField(nullable=True),
         'replication_driver_data': fields.StringField(nullable=True),
     }
+
+    # NOTE(thangp): obj_extra_fields is used to hold properties that are not
+    # usually part of the model
+    obj_extra_fields = ['name', 'name_id']
 
     @property
     def name_id(self):
@@ -111,27 +117,28 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         return cls._from_db_object(context, cls(context), db_volume)
 
     @base.remotable
-    def create(self, context):
+    def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
                                               reason=_('already created'))
         updates = self.obj_get_changes()
-        db_volume = db.volume_create(context, updates)
-        self._from_db_object(context, self, db_volume)
+        db_volume = db.volume_create(self._context, updates)
+        self._from_db_object(self._context, self, db_volume)
 
+    @base.remotable
     def save(self):
-        context = self._context
         updates = self.obj_get_changes()
         if updates:
-            db.volume_update(context, self.id, updates)
+            db.volume_update(self._context, self.id, updates)
 
         self.obj_reset_changes()
 
     @base.remotable
-    def destroy(self, context):
-        db.volume_destroy(context, self.id)
+    def destroy(self):
+        db.volume_destroy(self._context, self.id)
 
 
+@base.CinderObjectRegistry.register
 class VolumeList(base.ObjectListBase, base.CinderObject):
     VERSION = '1.0'
 

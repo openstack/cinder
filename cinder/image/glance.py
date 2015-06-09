@@ -74,8 +74,7 @@ def _parse_image_ref(image_href):
     return (image_id, netloc, use_ssl)
 
 
-def _create_glance_client(context, netloc, use_ssl,
-                          version=CONF.glance_api_version):
+def _create_glance_client(context, netloc, use_ssl, version=None):
     """Instantiate a new glanceclient.Client object."""
     if version is None:
         version = CONF.glance_api_version
@@ -161,7 +160,7 @@ class GlanceClientWrapper(object):
         retry the request according to CONF.glance_num_retries.
         """
         version = self.version
-        if version in kwargs:
+        if 'version' in kwargs:
             version = kwargs['version']
 
         retry_excs = (glanceclient.exc.ServiceUnavailable,
@@ -243,8 +242,9 @@ class GlanceImageService(object):
         return base_image_meta
 
     def get_location(self, context, image_id):
-        """Returns the direct url representing the backend storage location,
-        or None if this attribute is not shown by Glance.
+        """Returns a tuple of the direct url and locations representing the
+        backend storage location, or (None, None) if these attributes are not
+        shown by Glance.
         """
         if CONF.glance_api_version == 1:
             # image location not available in v1
@@ -267,16 +267,20 @@ class GlanceImageService(object):
 
     def download(self, context, image_id, data=None):
         """Calls out to Glance for data and writes data."""
-        if 'file' in CONF.allowed_direct_url_schemes:
-            location = self.get_location(context, image_id)
-            o = urlparse.urlparse(location)
-            if o.scheme == "file":
-                with open(o.path, "r") as f:
+        if data and 'file' in CONF.allowed_direct_url_schemes:
+            direct_url, locations = self.get_location(context, image_id)
+            urls = [direct_url] + [loc.get('url') for loc in locations or []]
+            for url in urls:
+                if url is None:
+                    continue
+                parsed_url = urlparse.urlparse(url)
+                if parsed_url.scheme == "file":
                     # a system call to cp could have significant performance
                     # advantages, however we do not have the path to files at
                     # this point in the abstraction.
-                    shutil.copyfileobj(f, data)
-                return
+                    with open(parsed_url.path, "r") as f:
+                        shutil.copyfileobj(f, data)
+                    return
 
         try:
             image_chunks = self._client.call(context, 'data', image_id)
@@ -448,6 +452,17 @@ def _extract_attributes(image):
             output[attr] = getattr(image, attr, None)
 
     output['properties'] = getattr(image, 'properties', {})
+
+    # NOTE(jbernard): Update image properties for API version 2.  For UEC
+    # images stored in glance, the necessary boot information is stored in the
+    # properties dict in version 1 so there is nothing more to do.  However, in
+    # version 2 these are standalone fields in the GET response.  This bit of
+    # code moves them back into the properties dict as the caller expects, thus
+    # producing a volume with correct metadata for booting.
+    for attr in ('kernel_id', 'ramdisk_id'):
+        value = getattr(image, attr, None)
+        if value:
+            output['properties'][attr] = value
 
     return output
 

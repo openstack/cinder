@@ -182,7 +182,7 @@ class HnasBackend(object):
 
         newout = ""
         for line in lines:
-            if 'Not mounted' in line:
+            if 'Not mounted' in line or 'Not determined' in line:
                 continue
             if 'not' not in line and 'EVS' in line:
                 single_evs = False
@@ -482,7 +482,7 @@ class HnasBackend(object):
                 if lunline[0].isdigit():
                     # see if already mounted
                     if vol[:29] == lun[:29]:
-                        LOG.info(_LI('lun: %(lun)s already mounted (lline)%s'),
+                        LOG.info(_LI('lun: %(lun)s already mounted %(lline)s'),
                                  {'lun': lun, 'lline': lunline})
                         conn = (int(lunline), lun, initiator, hlun, fulliqn,
                                 hlun, hdp, port)
@@ -502,7 +502,7 @@ class HnasBackend(object):
         out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
                                 "--evs", _evsid,
                                 'iscsi-target', 'addlu',
-                                iqn, lun, hlun,
+                                iqn, lun, six.text_type(hlun),
                                 check_exit_code=True)
 
         conn = (int(hlun), lun, initiator, int(hlun), fulliqn, int(hlun),
@@ -593,6 +593,8 @@ class HnasBackend(object):
                                         'iscsi-target', 'add',
                                         targetalias, secret,
                                         check_exit_code=True)
+            if "success" in out:
+                return targetalias
 
         lines = out.split('\n')
         # returns the first iqn

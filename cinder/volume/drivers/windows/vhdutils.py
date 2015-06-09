@@ -30,6 +30,7 @@ import ctypes
 import os
 
 if os.name == 'nt':
+    from ctypes import wintypes
     kernel32 = ctypes.windll.kernel32
     virtdisk = ctypes.windll.virtdisk
 
@@ -43,97 +44,97 @@ LOG = logging.getLogger(__name__)
 
 if os.name == 'nt':
     class Win32_GUID(ctypes.Structure):
-        _fields_ = [("Data1", ctypes.wintypes.DWORD),
-                    ("Data2", ctypes.wintypes.WORD),
-                    ("Data3", ctypes.wintypes.WORD),
-                    ("Data4", ctypes.wintypes.BYTE * 8)]
+        _fields_ = [("Data1", wintypes.DWORD),
+                    ("Data2", wintypes.WORD),
+                    ("Data3", wintypes.WORD),
+                    ("Data4", wintypes.BYTE * 8)]
 
     class Win32_VIRTUAL_STORAGE_TYPE(ctypes.Structure):
         _fields_ = [
-            ('DeviceId', ctypes.wintypes.ULONG),
+            ('DeviceId', wintypes.ULONG),
             ('VendorId', Win32_GUID)
         ]
 
     class Win32_RESIZE_VIRTUAL_DISK_PARAMETERS(ctypes.Structure):
         _fields_ = [
-            ('Version', ctypes.wintypes.DWORD),
+            ('Version', wintypes.DWORD),
             ('NewSize', ctypes.c_ulonglong)
         ]
 
     class Win32_OPEN_VIRTUAL_DISK_PARAMETERS_V1(ctypes.Structure):
         _fields_ = [
-            ('Version', ctypes.wintypes.DWORD),
+            ('Version', wintypes.DWORD),
             ('RWDepth', ctypes.c_ulong),
         ]
 
     class Win32_OPEN_VIRTUAL_DISK_PARAMETERS_V2(ctypes.Structure):
         _fields_ = [
-            ('Version', ctypes.wintypes.DWORD),
-            ('GetInfoOnly', ctypes.wintypes.BOOL),
-            ('ReadOnly', ctypes.wintypes.BOOL),
+            ('Version', wintypes.DWORD),
+            ('GetInfoOnly', wintypes.BOOL),
+            ('ReadOnly', wintypes.BOOL),
             ('ResiliencyGuid', Win32_GUID)
         ]
 
     class Win32_MERGE_VIRTUAL_DISK_PARAMETERS(ctypes.Structure):
         _fields_ = [
-            ('Version', ctypes.wintypes.DWORD),
+            ('Version', wintypes.DWORD),
             ('MergeDepth', ctypes.c_ulong)
         ]
 
     class Win32_CREATE_VIRTUAL_DISK_PARAMETERS(ctypes.Structure):
         _fields_ = [
-            ('Version', ctypes.wintypes.DWORD),
+            ('Version', wintypes.DWORD),
             ('UniqueId', Win32_GUID),
             ('MaximumSize', ctypes.c_ulonglong),
-            ('BlockSizeInBytes', ctypes.wintypes.ULONG),
-            ('SectorSizeInBytes', ctypes.wintypes.ULONG),
-            ('PhysicalSectorSizeInBytes', ctypes.wintypes.ULONG),
-            ('ParentPath', ctypes.wintypes.LPCWSTR),
-            ('SourcePath', ctypes.wintypes.LPCWSTR),
-            ('OpenFlags', ctypes.wintypes.DWORD),
+            ('BlockSizeInBytes', wintypes.ULONG),
+            ('SectorSizeInBytes', wintypes.ULONG),
+            ('PhysicalSectorSizeInBytes', wintypes.ULONG),
+            ('ParentPath', wintypes.LPCWSTR),
+            ('SourcePath', wintypes.LPCWSTR),
+            ('OpenFlags', wintypes.DWORD),
             ('ParentVirtualStorageType', Win32_VIRTUAL_STORAGE_TYPE),
             ('SourceVirtualStorageType', Win32_VIRTUAL_STORAGE_TYPE),
             ('ResiliencyGuid', Win32_GUID)
         ]
 
     class Win32_SIZE(ctypes.Structure):
-        _fields_ = [("VirtualSize", ctypes.wintypes.ULARGE_INTEGER),
-                    ("PhysicalSize", ctypes.wintypes.ULARGE_INTEGER),
-                    ("BlockSize", ctypes.wintypes.ULONG),
-                    ("SectorSize", ctypes.wintypes.ULONG)]
+        _fields_ = [("VirtualSize", wintypes.ULARGE_INTEGER),
+                    ("PhysicalSize", wintypes.ULARGE_INTEGER),
+                    ("BlockSize", wintypes.ULONG),
+                    ("SectorSize", wintypes.ULONG)]
 
     class Win32_PARENT_LOCATION(ctypes.Structure):
-        _fields_ = [('ParentResolved', ctypes.wintypes.BOOL),
-                    ('ParentLocationBuffer', ctypes.wintypes.WCHAR * 512)]
+        _fields_ = [('ParentResolved', wintypes.BOOL),
+                    ('ParentLocationBuffer', wintypes.WCHAR * 512)]
 
     class Win32_PHYSICAL_DISK(ctypes.Structure):
-        _fields_ = [("LogicalSectorSize", ctypes.wintypes.ULONG),
-                    ("PhysicalSectorSize", ctypes.wintypes.ULONG),
-                    ("IsRemote", ctypes.wintypes.BOOL)]
+        _fields_ = [("LogicalSectorSize", wintypes.ULONG),
+                    ("PhysicalSectorSize", wintypes.ULONG),
+                    ("IsRemote", wintypes.BOOL)]
 
     class Win32_VHD_INFO(ctypes.Union):
         _fields_ = [("Size", Win32_SIZE),
                     ("Identifier", Win32_GUID),
                     ("ParentLocation", Win32_PARENT_LOCATION),
                     ("ParentIdentifier", Win32_GUID),
-                    ("ParentTimestamp", ctypes.wintypes.ULONG),
+                    ("ParentTimestamp", wintypes.ULONG),
                     ("VirtualStorageType", Win32_VIRTUAL_STORAGE_TYPE),
-                    ("ProviderSubtype", ctypes.wintypes.ULONG),
-                    ("Is4kAligned", ctypes.wintypes.BOOL),
+                    ("ProviderSubtype", wintypes.ULONG),
+                    ("Is4kAligned", wintypes.BOOL),
                     ("PhysicalDisk", Win32_PHYSICAL_DISK),
-                    ("VhdPhysicalSectorSize", ctypes.wintypes.ULONG),
+                    ("VhdPhysicalSectorSize", wintypes.ULONG),
                     ("SmallestSafeVirtualSize",
-                        ctypes.wintypes.ULARGE_INTEGER),
-                    ("FragmentationPercentage", ctypes.wintypes.ULONG)]
+                        wintypes.ULARGE_INTEGER),
+                    ("FragmentationPercentage", wintypes.ULONG)]
 
     class Win32_GET_VIRTUAL_DISK_INFO_PARAMETERS(ctypes.Structure):
-        _fields_ = [("VERSION", ctypes.wintypes.UINT),
+        _fields_ = [("VERSION", wintypes.UINT),
                     ("VhdInfo", Win32_VHD_INFO)]
 
     class Win32_SET_VIRTUAL_DISK_INFO_PARAMETERS(ctypes.Structure):
         _fields_ = [
-            ('Version', ctypes.wintypes.DWORD),
-            ('ParentFilePath', ctypes.wintypes.LPCWSTR)
+            ('Version', wintypes.DWORD),
+            ('ParentFilePath', wintypes.LPCWSTR)
         ]
 
 
@@ -162,6 +163,12 @@ GET_VIRTUAL_DISK_INFO_VIRTUAL_STORAGE_TYPE = 6
 GET_VIRTUAL_DISK_INFO_PROVIDER_SUBTYPE = 7
 SET_VIRTUAL_DISK_INFO_PARENT_PATH = 1
 
+FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
+FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100
+FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
+
+ERROR_VHD_INVALID_TYPE = 0xC03A001B
+
 
 class VHDUtils(object):
 
@@ -186,13 +193,46 @@ class VHDUtils(object):
             self._msft_vendor_id = (
                 self.get_WIN32_VIRTUAL_STORAGE_TYPE_VENDOR_MSFT())
 
+    def _run_and_check_output(self, func, *args, **kwargs):
+        """Convenience helper method for running Win32 API methods."""
+        ignored_error_codes = kwargs.pop('ignored_error_codes', [])
+
+        ret_val = func(*args, **kwargs)
+
+        # The VHD Win32 API functions return non-zero error codes
+        # in case of failure.
+        if ret_val and ret_val not in ignored_error_codes:
+            error_message = self._get_error_message(ret_val)
+            func_name = getattr(func, '__name__', '')
+            err = (_("Executing Win32 API function %(func_name)s failed. "
+                     "Error code: %(error_code)s. "
+                     "Error message: %(error_message)s") %
+                   {'func_name': func_name,
+                    'error_code': ret_val,
+                    'error_message': error_message})
+            LOG.exception(err)
+            raise exception.VolumeBackendAPIException(err)
+
+    @staticmethod
+    def _get_error_message(error_code):
+        message_buffer = ctypes.c_char_p()
+
+        kernel32.FormatMessageA(
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER |
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+            None, error_code, 0, ctypes.byref(message_buffer), 0, None)
+
+        error_message = message_buffer.value
+        kernel32.LocalFree(message_buffer)
+        return error_message
+
     @staticmethod
     def get_WIN32_VIRTUAL_STORAGE_TYPE_VENDOR_MSFT():
         guid = Win32_GUID()
         guid.Data1 = 0xec984aec
         guid.Data2 = 0xa0f9
         guid.Data3 = 0x47e9
-        ByteArray8 = ctypes.wintypes.BYTE * 8
+        ByteArray8 = wintypes.BYTE * 8
         guid.Data4 = ByteArray8(0x90, 0x1f, 0x71, 0x41, 0x5a, 0x66, 0x34, 0x5b)
         return guid
 
@@ -205,17 +245,15 @@ class VHDUtils(object):
         vst.DeviceId = device_id
         vst.VendorId = self._msft_vendor_id
 
-        handle = ctypes.wintypes.HANDLE()
+        handle = wintypes.HANDLE()
 
-        ret_val = virtdisk.OpenVirtualDisk(ctypes.byref(vst),
-                                           ctypes.c_wchar_p(vhd_path),
-                                           open_access_mask,
-                                           open_flag,
-                                           open_params,
-                                           ctypes.byref(handle))
-        if ret_val:
-            raise exception.VolumeBackendAPIException(
-                _("Opening virtual disk failed with error: %s") % ret_val)
+        self._run_and_check_output(virtdisk.OpenVirtualDisk,
+                                   ctypes.byref(vst),
+                                   ctypes.c_wchar_p(vhd_path),
+                                   open_access_mask,
+                                   open_flag,
+                                   open_params,
+                                   ctypes.byref(handle))
         return handle
 
     def _close(self, handle):
@@ -236,15 +274,14 @@ class VHDUtils(object):
         params.Version = RESIZE_VIRTUAL_DISK_VERSION_1
         params.NewSize = new_max_size
 
-        ret_val = virtdisk.ResizeVirtualDisk(
-            handle,
-            RESIZE_VIRTUAL_DISK_FLAG_NONE,
-            ctypes.byref(params),
-            None)
-        self._close(handle)
-        if ret_val:
-            raise exception.VolumeBackendAPIException(
-                _("Virtual disk resize failed with error: %s") % ret_val)
+        try:
+            self._run_and_check_output(virtdisk.ResizeVirtualDisk,
+                                       handle,
+                                       RESIZE_VIRTUAL_DISK_FLAG_NONE,
+                                       ctypes.byref(params),
+                                       None)
+        finally:
+            self._close(handle)
 
     def merge_vhd(self, vhd_path):
         open_params = Win32_OPEN_VIRTUAL_DISK_PARAMETERS_V1()
@@ -258,15 +295,14 @@ class VHDUtils(object):
         params.Version = MERGE_VIRTUAL_DISK_VERSION_1
         params.MergeDepth = 1
 
-        ret_val = virtdisk.MergeVirtualDisk(
-            handle,
-            MERGE_VIRTUAL_DISK_FLAG_NONE,
-            ctypes.byref(params),
-            None)
-        self._close(handle)
-        if ret_val:
-            raise exception.VolumeBackendAPIException(
-                _("Virtual disk merge failed with error: %s") % ret_val)
+        try:
+            self._run_and_check_output(virtdisk.MergeVirtualDisk,
+                                       handle,
+                                       MERGE_VIRTUAL_DISK_FLAG_NONE,
+                                       ctypes.byref(params),
+                                       None)
+        finally:
+            self._close(handle)
 
     def _create_vhd(self, new_vhd_path, new_vhd_type, src_path=None,
                     max_internal_size=0, parent_path=None):
@@ -295,25 +331,23 @@ class VHDUtils(object):
             params.SourceVirtualStorageType.DeviceId = src_device_id
             params.SourceVirtualStorageType.VendorId = self._msft_vendor_id
 
-        handle = ctypes.wintypes.HANDLE()
+        handle = wintypes.HANDLE()
         create_virtual_disk_flag = self.create_virtual_disk_flags.get(
             new_vhd_type)
 
-        ret_val = virtdisk.CreateVirtualDisk(
-            ctypes.byref(vst),
-            ctypes.c_wchar_p(new_vhd_path),
-            VIRTUAL_DISK_ACCESS_NONE,
-            None,
-            create_virtual_disk_flag,
-            0,
-            ctypes.byref(params),
-            None,
-            ctypes.byref(handle))
-        self._close(handle)
-
-        if ret_val:
-            raise exception.VolumeBackendAPIException(
-                _("Virtual disk creation failed with error: %s") % ret_val)
+        try:
+            self._run_and_check_output(virtdisk.CreateVirtualDisk,
+                                       ctypes.byref(vst),
+                                       ctypes.c_wchar_p(new_vhd_path),
+                                       VIRTUAL_DISK_ACCESS_NONE,
+                                       None,
+                                       create_virtual_disk_flag,
+                                       0,
+                                       ctypes.byref(params),
+                                       None,
+                                       ctypes.byref(handle))
+        finally:
+            self._close(handle)
 
     def get_vhd_info(self, vhd_path, info_members=None):
         vhd_info = {}
@@ -322,11 +356,13 @@ class VHDUtils(object):
         handle = self._open(vhd_path,
                             open_access_mask=VIRTUAL_DISK_ACCESS_GET_INFO)
 
-        for member in info_members:
-            info = self._get_vhd_info_member(handle, member)
-            vhd_info = dict(vhd_info.items() + info.items())
+        try:
+            for member in info_members:
+                info = self._get_vhd_info_member(handle, member)
+                vhd_info = dict(vhd_info.items() + info.items())
+        finally:
+            self._close(handle)
 
-        self._close(handle)
         return vhd_info
 
     def _get_vhd_info_member(self, vhd_file, info_member):
@@ -335,20 +371,20 @@ class VHDUtils(object):
 
         infoSize = ctypes.sizeof(virt_disk_info)
 
-        virtdisk.GetVirtualDiskInformation.restype = ctypes.wintypes.DWORD
+        virtdisk.GetVirtualDiskInformation.restype = wintypes.DWORD
 
-        ret_val = virtdisk.GetVirtualDiskInformation(
-            vhd_file, ctypes.byref(ctypes.c_ulong(infoSize)),
-            ctypes.byref(virt_disk_info), 0)
+        # Note(lpetrut): If the vhd has no parent image, this will
+        # return an error. No need to raise an exception in this case.
+        ignored_error_codes = []
+        if info_member == GET_VIRTUAL_DISK_INFO_PARENT_LOCATION:
+            ignored_error_codes.append(ERROR_VHD_INVALID_TYPE)
 
-        if (ret_val and info_member !=
-                GET_VIRTUAL_DISK_INFO_PARENT_LOCATION):
-            # Note(lpetrut): If the vhd has no parent image, this will
-            # return an non-zero exit code. No need to raise an exception
-            # in this case.
-            self._close(vhd_file)
-            raise exception.VolumeBackendAPIException(
-                "Error getting vhd info. Error code: %s" % ret_val)
+        self._run_and_check_output(virtdisk.GetVirtualDiskInformation,
+                                   vhd_file,
+                                   ctypes.byref(ctypes.c_ulong(infoSize)),
+                                   ctypes.byref(virt_disk_info),
+                                   0,
+                                   ignored_error_codes=ignored_error_codes)
 
         return self._parse_vhd_info(virt_disk_info, info_member)
 
@@ -411,11 +447,9 @@ class VHDUtils(object):
         params.Version = SET_VIRTUAL_DISK_INFO_PARENT_PATH
         params.ParentFilePath = parent_path
 
-        ret_val = virtdisk.SetVirtualDiskInformation(
-            handle,
-            ctypes.byref(params))
-        self._close(handle)
-
-        if ret_val:
-            raise exception.VolumeBackendAPIException(
-                _("Virtual disk reconnect failed with error: %s") % ret_val)
+        try:
+            self._run_and_check_output(virtdisk.SetVirtualDiskInformation,
+                                       handle,
+                                       ctypes.byref(params))
+        finally:
+            self._close(handle)

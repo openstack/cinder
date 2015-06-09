@@ -13,6 +13,7 @@
 #   under the License.
 
 from oslo_log import log as logging
+import oslo_messaging as messaging
 from oslo_utils import strutils
 import webob
 from webob import exc
@@ -23,6 +24,7 @@ from cinder import backup
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder import objects
 from cinder import rpc
 from cinder import volume
 
@@ -188,7 +190,21 @@ class VolumeAdminController(AdminController):
 
         attachment_id = body['os-force_detach'].get('attachment_id', None)
 
-        self.volume_api.detach(context, volume, attachment_id)
+        try:
+            self.volume_api.detach(context, volume, attachment_id)
+        except messaging.RemoteError as error:
+            if error.exc_type in ['VolumeAttachmentNotFound',
+                                  'InvalidVolume']:
+                msg = "Error force detaching volume - %(err_type)s: " \
+                      "%(err_msg)s" % {'err_type': error.exc_type,
+                                       'err_msg': error.value}
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            else:
+                # There are also few cases where force-detach call could fail
+                # due to db or volume driver errors. These errors shouldn't
+                # be exposed to the user and in such cases it should raise
+                # 500 error.
+                raise
         return webob.Response(status_int=202)
 
     @wsgi.action('os-migrate_volume')
@@ -250,7 +266,12 @@ class SnapshotAdminController(AdminController):
     collection = 'snapshots'
 
     def _update(self, *args, **kwargs):
-        db.snapshot_update(*args, **kwargs)
+        context = args[0]
+        snapshot_id = args[1]
+        fields = args[2]
+        snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
+        snapshot.update(fields)
+        snapshot.save()
 
     def _get(self, *args, **kwargs):
         return self.volume_api.get_snapshot(*args, **kwargs)

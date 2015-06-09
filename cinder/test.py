@@ -28,7 +28,6 @@ import uuid
 
 import fixtures
 import mock
-import mox
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
@@ -36,7 +35,7 @@ from oslo_log import log
 from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import strutils
 from oslo_utils import timeutils
-import stubout
+from oslotest import moxstubout
 import testtools
 
 from cinder.common import config  # noqa Need to register global_opts
@@ -46,8 +45,8 @@ from cinder import i18n
 from cinder import objects
 from cinder import rpc
 from cinder import service
-from cinder.tests import conf_fixture
-from cinder.tests import fake_notifier
+from cinder.tests.unit import conf_fixture
+from cinder.tests.unit import fake_notifier
 
 test_opts = [
     cfg.StrOpt('sqlite_clean_db',
@@ -165,7 +164,7 @@ class TestCase(testtools.TestCase):
                                                    format=log_format,
                                                    level=level))
 
-        rpc.add_extra_exmods("cinder.tests")
+        rpc.add_extra_exmods("cinder.tests.unit")
         self.addCleanup(rpc.clear_extra_exmods)
         self.addCleanup(rpc.cleanup)
 
@@ -196,13 +195,10 @@ class TestCase(testtools.TestCase):
 
         # emulate some of the mox stuff, we can't use the metaclass
         # because it screws with our generators
-        self.mox = mox.Mox()
-        self.stubs = stubout.StubOutForTesting()
+        mox_fixture = self.useFixture(moxstubout.MoxStubout())
+        self.mox = mox_fixture.mox
+        self.stubs = mox_fixture.stubs
         self.addCleanup(CONF.reset)
-        self.addCleanup(self.mox.UnsetStubs)
-        self.addCleanup(self.stubs.UnsetAll)
-        self.addCleanup(self.stubs.SmartUnsetAll)
-        self.addCleanup(self.mox.VerifyAll)
         self.addCleanup(self._common_cleanup)
         self.injected = []
         self._services = []
@@ -225,7 +221,7 @@ class TestCase(testtools.TestCase):
                                          '..',
                                      )
                                  ),
-                                 'cinder/tests/policy.json'))
+                                 'cinder/tests/unit/policy.json'))
 
     def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""

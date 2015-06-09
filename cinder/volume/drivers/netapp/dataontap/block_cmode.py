@@ -5,6 +5,7 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Andrew Kerr.  All rights reserved.
 # Copyright (c) 2014 Jeff Applewhite.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -28,10 +29,10 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
+from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import block_base
-from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import options as na_opts
@@ -39,6 +40,7 @@ from cinder.volume.drivers.netapp import utils as na_utils
 
 
 LOG = logging.getLogger(__name__)
+QOS_CLEANUP_INTERVAL_SECONDS = 60
 
 
 class NetAppBlockStorageCmodeLibrary(block_base.
@@ -75,13 +77,22 @@ class NetAppBlockStorageCmodeLibrary(block_base.
         """Check that the driver is working and can communicate."""
         ssc_cmode.check_ssc_api_permissions(self.zapi_client)
         super(NetAppBlockStorageCmodeLibrary, self).check_for_setup_error()
+        self._start_periodic_tasks()
+
+    def _start_periodic_tasks(self):
+        # Start the task that harvests soft-deleted QoS policy groups.
+        harvest_qos_periodic_task = loopingcall.FixedIntervalLoopingCall(
+            self.zapi_client.remove_unused_qos_policy_groups)
+        harvest_qos_periodic_task.start(
+            interval=QOS_CLEANUP_INTERVAL_SECONDS,
+            initial_delay=QOS_CLEANUP_INTERVAL_SECONDS)
 
     def _create_lun(self, volume_name, lun_name, size,
-                    metadata, qos_policy_group=None):
+                    metadata, qos_policy_group_name=None):
         """Creates a LUN, handling Data ONTAP differences as needed."""
 
         self.zapi_client.create_lun(
-            volume_name, lun_name, size, metadata, qos_policy_group)
+            volume_name, lun_name, size, metadata, qos_policy_group_name)
 
         self._update_stale_vols(
             volume=ssc_cmode.NetAppVolume(volume_name, self.vserver))
@@ -98,20 +109,23 @@ class NetAppBlockStorageCmodeLibrary(block_base.
         if initiator_igroups and lun_maps:
             for igroup in initiator_igroups:
                 igroup_name = igroup['initiator-group-name']
-                if igroup_name.startswith(self.IGROUP_PREFIX):
+                if igroup_name.startswith(na_utils.OPENSTACK_PREFIX):
                     for lun_map in lun_maps:
                         if lun_map['initiator-group'] == igroup_name:
                             return igroup_name, lun_map['lun-id']
         return None, None
 
     def _clone_lun(self, name, new_name, space_reserved='true',
-                   src_block=0, dest_block=0, block_count=0):
+                   qos_policy_group_name=None, src_block=0, dest_block=0,
+                   block_count=0):
         """Clone LUN with the given handle to the new name."""
         metadata = self._get_lun_attr(name, 'metadata')
         volume = metadata['Volume']
         self.zapi_client.clone_lun(volume, name, new_name, space_reserved,
-                                   src_block=0, dest_block=0, block_count=0)
-        LOG.debug("Cloned LUN with new name %s" % new_name)
+                                   qos_policy_group_name=qos_policy_group_name,
+                                   src_block=0, dest_block=0,
+                                   block_count=0)
+        LOG.debug("Cloned LUN with new name %s", new_name)
         lun = self.zapi_client.get_lun_by_args(vserver=self.vserver,
                                                path='/vol/%s/%s'
                                                % (volume, new_name))
@@ -181,7 +195,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.
         for vol in self.ssc_vols['all']:
             pool = dict()
             pool['pool_name'] = vol.id['name']
-            pool['QoS_support'] = False
+            pool['QoS_support'] = True
             pool['reserved_percentage'] = 0
 
             # convert sizes to GB and de-rate by NetApp multiplier
@@ -241,15 +255,23 @@ class NetAppBlockStorageCmodeLibrary(block_base.
         if lun:
             netapp_vol = lun.get_metadata_property('Volume')
         super(NetAppBlockStorageCmodeLibrary, self).delete_volume(volume)
+        try:
+            qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
+                volume)
+        except exception.Invalid:
+            # Delete even if there was invalid qos policy specified for the
+            # volume.
+            qos_policy_group_info = None
+        self._mark_qos_policy_group_for_deletion(qos_policy_group_info)
         if netapp_vol:
             self._update_stale_vols(
                 volume=ssc_cmode.NetAppVolume(netapp_vol, self.vserver))
+        msg = 'Deleted LUN with name %(name)s and QoS info %(qos)s'
+        LOG.debug(msg, {'name': volume['name'], 'qos': qos_policy_group_info})
 
-    def _check_volume_type_for_lun(self, volume, lun, existing_ref):
+    def _check_volume_type_for_lun(self, volume, lun, existing_ref,
+                                   extra_specs):
         """Check if LUN satisfies volume type."""
-        extra_specs = na_utils.get_volume_extra_specs(volume)
-        match_write = False
-
         def scan_ssc_data():
             volumes = ssc_cmode.get_volumes_for_specs(self.ssc_vols,
                                                       extra_specs)
@@ -264,22 +286,62 @@ class NetAppBlockStorageCmodeLibrary(block_base.
                 self, self.zapi_client.get_connection(), self.vserver)
             match_read = scan_ssc_data()
 
-        qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
-            if extra_specs else None
-        if qos_policy_group:
-            if match_read:
-                try:
-                    path = lun.get_metadata_property('Path')
-                    self.zapi_client.set_lun_qos_policy_group(path,
-                                                              qos_policy_group)
-                    match_write = True
-                except netapp_api.NaApiError as nae:
-                    LOG.error(_LE("Failure setting QoS policy group. %s"), nae)
-        else:
-            match_write = True
-        if not (match_read and match_write):
+        if not match_read:
             raise exception.ManageExistingVolumeTypeMismatch(
                 reason=(_("LUN with given ref %(ref)s does not satisfy volume"
                           " type. Ensure LUN volume with ssc features is"
                           " present on vserver %(vs)s.")
                         % {'ref': existing_ref, 'vs': self.vserver}))
+
+    def _get_preferred_target_from_list(self, target_details_list,
+                                        filter=None):
+        # cDOT iSCSI LIFs do not migrate from controller to controller
+        # in failover.  Rather, an iSCSI LIF must be configured on each
+        # controller and the initiator has to take responsibility for
+        # using a LIF that is UP.  In failover, the iSCSI LIF on the
+        # downed controller goes DOWN until the controller comes back up.
+        #
+        # Currently Nova only accepts a single target when obtaining
+        # target details from Cinder, so we pass back the first portal
+        # with an UP iSCSI LIF.  There are plans to have Nova accept
+        # and try multiple targets.  When that happens, we can and should
+        # remove this filter and return all targets since their operational
+        # state could change between the time we test here and the time
+        # Nova uses the target.
+
+        operational_addresses = (
+            self.zapi_client.get_operational_network_interface_addresses())
+
+        return (super(NetAppBlockStorageCmodeLibrary, self)
+                ._get_preferred_target_from_list(target_details_list,
+                                                 filter=operational_addresses))
+
+    def _setup_qos_for_volume(self, volume, extra_specs):
+        try:
+            qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
+                volume, extra_specs)
+        except exception.Invalid:
+            msg = _('Invalid QoS specification detected while getting QoS '
+                    'policy for volume %s') % volume['id']
+            raise exception.VolumeBackendAPIException(data=msg)
+        self.zapi_client.provision_qos_policy_group(qos_policy_group_info)
+        return qos_policy_group_info
+
+    def _mark_qos_policy_group_for_deletion(self, qos_policy_group_info):
+        self.zapi_client.mark_qos_policy_group_for_deletion(
+            qos_policy_group_info)
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management.
+
+           Does not delete the underlying backend storage object.
+        """
+        try:
+            qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
+                volume)
+        except exception.Invalid:
+            # Unmanage even if there was invalid qos policy specified for the
+            # volume.
+            qos_policy_group_info = None
+        self._mark_qos_policy_group_for_deletion(qos_policy_group_info)
+        super(NetAppBlockStorageCmodeLibrary, self).unmanage(volume)

@@ -16,6 +16,8 @@
 Implementation of the class of ProphetStor DPL storage adapter of Federator.
     # v2.0.1 Consistency group support
     # v2.0.2 Pool aware scheduler
+    # v2.0.3 Consistency group modification support
+    # v2.0.4 Port ProphetStor driver to use new driver model
 """
 
 import base64
@@ -31,6 +33,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
+from cinder import objects
 from cinder.openstack.common import loopingcall
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import options
@@ -158,8 +161,8 @@ class DPLCommand(object):
                     retcode = errno.EFAULT
                     break
 
-        if retcode == 0 and response.status in expected_status and\
-                response.status == httplib.NOT_FOUND:
+        if (retcode == 0 and response.status in expected_status
+                and response.status == httplib.NOT_FOUND):
             retcode = errno.ENODATA
         elif retcode == 0 and response.status not in expected_status:
             LOG.error(_LE('%(method)s %(url)s unexpected response status: '
@@ -188,9 +191,9 @@ class DPLCommand(object):
                 LOG.error(_LE('Read response raised an exception: %s.'),
                           e)
                 retcode = errno.ENOEXEC
-        elif retcode == 0 and \
-                response.status in [httplib.OK, httplib.CREATED] and \
-                httplib.NO_CONTENT not in expected_status:
+        elif (retcode == 0 and
+                response.status in [httplib.OK, httplib.CREATED] and
+                httplib.NO_CONTENT not in expected_status):
             try:
                 data = response.read()
                 data = json.loads(data)
@@ -681,9 +684,11 @@ class DPLVolume(object):
                              [httplib.OK, httplib.ACCEPTED])
 
 
-class DPLCOMMONDriver(driver.VolumeDriver):
-    """class of dpl storage adapter."""
-    VERSION = '2.0.2'
+class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
+                      driver.CloneableVD, driver.CloneableImageVD,
+                      driver.SnapshotVD, driver.LocalVD, driver.BaseVD):
+    """Class of dpl storage adapter."""
+    VERSION = '2.0.4'
 
     def __init__(self, *args, **kwargs):
         super(DPLCOMMONDriver, self).__init__(*args, **kwargs)
@@ -714,10 +719,10 @@ class DPLCOMMONDriver(driver.VolumeDriver):
         ret = 0
         event_uuid = ""
 
-        if type(output) is dict and \
-                output.get("metadata") and output["metadata"]:
-            if output["metadata"].get("event_uuid") and  \
-                    output["metadata"]["event_uuid"]:
+        if (type(output) is dict and
+                output.get("metadata") and output["metadata"]):
+            if (output["metadata"].get("event_uuid") and
+                    output["metadata"]["event_uuid"]):
                 event_uuid = output["metadata"]["event_uuid"]
             else:
                 ret = errno.EINVAL
@@ -773,9 +778,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                 break
         return status
 
-    def _join_volume_group(self, volume):
+    def _join_volume_group(self, volume, cgId):
         # Join volume group if consistency group id not empty
-        cgId = volume['consistencygroup_id']
         msg = ''
         try:
             ret, output = self.dpl.join_vg(
@@ -794,6 +798,29 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=msg)
         else:
             LOG.info(_LI('Flexvisor succeeded to add volume %(id)s to '
+                         'group %(cgid)s.'),
+                     {'id': volume['id'], 'cgid': cgId})
+
+    def _leave_volume_group(self, volume, cgId):
+        # Leave volume group if consistency group id not empty
+        msg = ''
+        try:
+            ret, output = self.dpl.leave_vg(
+                self._conver_uuid2hex(volume['id']),
+                self._conver_uuid2hex(cgId))
+        except Exception as e:
+            ret = errno.EFAULT
+            msg = _('Fexvisor failed to remove volume %(id)s '
+                    'due to %(reason)s.') % {"id": volume['id'],
+                                             "reason": six.text_type(e)}
+        if ret:
+            if not msg:
+                msg = _('Flexvisor failed to remove volume %(id)s '
+                        'from group %(cgid)s.') % {'id': volume['id'],
+                                                   'cgid': cgId}
+            raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            LOG.info(_LI('Flexvisor succeeded to remove volume %(id)s from '
                          'group %(cgid)s.'),
                      {'id': volume['id'], 'cgid': cgId})
 
@@ -881,26 +908,24 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
     def create_cgsnapshot(self, context, cgsnapshot):
         """Creates a cgsnapshot."""
-        cgId = cgsnapshot['consistencygroup_id']
-        cgsnapshot_id = cgsnapshot['id']
-        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
-            context, cgsnapshot_id)
-
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+            context, cgsnapshot['id'])
         model_update = {}
         LOG.info(_LI('Start to create cgsnapshot for consistency group'
-                     ': %(group_name)s'), {'group_name': cgId})
-
+                     ': %(group_name)s'),
+                 {'group_name': cgsnapshot['consistencygroup_id']})
         try:
-            self.dpl.create_vdev_snapshot(self._conver_uuid2hex(cgId),
-                                          self._conver_uuid2hex(cgsnapshot_id),
-                                          cgsnapshot['name'],
-                                          cgsnapshot['description'],
-                                          True)
+            self.dpl.create_vdev_snapshot(
+                self._conver_uuid2hex(cgsnapshot['consistencygroup_id']),
+                self._conver_uuid2hex(cgsnapshot['id']),
+                cgsnapshot['name'],
+                cgsnapshot.get('description', ''),
+                True)
             for snapshot in snapshots:
-                snapshot['status'] = 'available'
+                snapshot.status = 'available'
         except Exception as e:
             msg = _('Failed to create cg snapshot %(id)s '
-                    'due to %(reason)s.') % {'id': cgsnapshot_id,
+                    'due to %(reason)s.') % {'id': cgsnapshot['id'],
                                              'reason': six.text_type(e)}
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -910,32 +935,73 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
     def delete_cgsnapshot(self, context, cgsnapshot):
         """Deletes a cgsnapshot."""
-        cgId = cgsnapshot['consistencygroup_id']
-        cgsnapshot_id = cgsnapshot['id']
-        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
-            context, cgsnapshot_id)
-
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+            context, cgsnapshot['id'])
         model_update = {}
         model_update['status'] = cgsnapshot['status']
         LOG.info(_LI('Delete cgsnapshot %(snap_name)s for consistency group: '
                      '%(group_name)s'),
                  {'snap_name': cgsnapshot['id'],
                   'group_name': cgsnapshot['consistencygroup_id']})
-
         try:
-            self.dpl.delete_vdev_snapshot(self._conver_uuid2hex(cgId),
-                                          self._conver_uuid2hex(cgsnapshot_id),
-                                          True)
+            self.dpl.delete_vdev_snapshot(
+                self._conver_uuid2hex(cgsnapshot['consistencygroup_id']),
+                self._conver_uuid2hex(cgsnapshot['id']), True)
             for snapshot in snapshots:
-                snapshot['status'] = 'deleted'
+                snapshot.status = 'deleted'
         except Exception as e:
             msg = _('Failed to delete cgsnapshot %(id)s due to '
-                    '%(reason)s.') % {'id': cgsnapshot_id,
+                    '%(reason)s.') % {'id': cgsnapshot['id'],
                                       'reason': six.text_type(e)}
             raise exception.VolumeBackendAPIException(data=msg)
 
         model_update['status'] = 'deleted'
         return model_update, snapshots
+
+    def update_consistencygroup(self, context, group, add_volumes=None,
+                                remove_volumes=None):
+        addvollist = []
+        removevollist = []
+        cgid = group['id']
+        vid = ''
+        model_update = {'status': 'available'}
+        # Get current group info in backend storage.
+        ret, output = self.dpl.get_vg(self._conver_uuid2hex(cgid))
+        if ret == 0:
+            group_members = output.get('children', [])
+
+        if add_volumes:
+            addvollist = add_volumes
+        if remove_volumes:
+            removevollist = remove_volumes
+
+        # Process join volumes.
+        try:
+            for volume in addvollist:
+                vid = volume['id']
+                # Verify the volume exists in the group or not.
+                if self._conver_uuid2hex(vid) in group_members:
+                    continue
+                self._join_volume_group(volume, cgid)
+        except exception as e:
+            msg = _("Fexvisor failed to join the volume %(vol)s in the "
+                    "group %(group)s due to "
+                    "%(ret)s.") % {"vol": vid, "group": cgid,
+                                   "ret": six.text_type(e)}
+            raise exception.VolumeBackendAPIException(data=msg)
+        # Process leave volumes.
+        try:
+            for volume in removevollist:
+                vid = volume['id']
+                if self._conver_uuid2hex(vid) in group_members:
+                    self._leave_volume_group(volume, cgid)
+        except exception as e:
+            msg = _("Fexvisor failed to remove the volume %(vol)s in the "
+                    "group %(group)s due to "
+                    "%(ret)s.") % {"vol": vid, "group": cgid,
+                                   "ret": six.text_type(e)}
+            raise exception.VolumeBackendAPIException(data=msg)
+        return model_update, None, None
 
     def create_volume(self, volume):
         """Create a volume."""
@@ -983,7 +1049,7 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
         if volume.get('consistencygroup_id', None):
             try:
-                self._join_volume_group(volume)
+                self._join_volume_group(volume, volume['consistencygroup_id'])
             except Exception:
                 # Delete volume if volume failed to join group.
                 self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
@@ -1066,7 +1132,7 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
         if volume.get('consistencygroup_id', None):
             try:
-                self._join_volume_group(volume)
+                self._join_volume_group(volume, volume['consistencygroup_id'])
             except Exception:
                 # Delete volume if volume failed to join group.
                 self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
@@ -1154,7 +1220,7 @@ class DPLCOMMONDriver(driver.VolumeDriver):
 
         if volume.get('consistencygroup_id', None):
             try:
-                self._join_volume_group(volume)
+                self._join_volume_group(volume, volume['consistencygroup_id'])
             except Exception:
                 # Delete volume if volume failed to join group.
                 self.dpl.delete_vdev(self._conver_uuid2hex(volume['id']))
@@ -1252,14 +1318,14 @@ class DPLCOMMONDriver(driver.VolumeDriver):
                                           snapshot['volume_id'],
                                           event_uuid)
                 if status['state'] != 'available':
-                    msg = _('Flexvisor failed to create snapshot for volume '
-                            '%(id)s: %(status)s.') % \
-                        {'id': snapshot['volume_id'], 'status': ret}
+                    msg = (_('Flexvisor failed to create snapshot for volume '
+                             '%(id)s: %(status)s.') %
+                           {'id': snapshot['volume_id'], 'status': ret})
                     raise exception.VolumeBackendAPIException(data=msg)
             else:
-                msg = _('Flexvisor failed to create snapshot for volume '
-                        '(failed to get event) %(id)s.') % \
-                    {'id': snapshot['volume_id']}
+                msg = (_('Flexvisor failed to create snapshot for volume '
+                         '(failed to get event) %(id)s.') %
+                       {'id': snapshot['volume_id']})
                 raise exception.VolumeBackendAPIException(data=msg)
         elif ret != 0:
             msg = _('Flexvisor failed to create snapshot for volume %(id)s: '
@@ -1334,15 +1400,15 @@ class DPLCOMMONDriver(driver.VolumeDriver):
             if ret == 0:
                 pool = {}
                 pool['pool_name'] = output['metadata']['pool_uuid']
-                pool['total_capacity_gb'] = \
+                pool['total_capacity_gb'] = (
                     self._convert_size_GB(
-                        int(output['metadata']['total_capacity']))
-                pool['free_capacity_gb'] = \
+                        int(output['metadata']['total_capacity'])))
+                pool['free_capacity_gb'] = (
                     self._convert_size_GB(
-                        int(output['metadata']['available_capacity']))
-                pool['allocated_capacity_gb'] = \
+                        int(output['metadata']['available_capacity'])))
+                pool['allocated_capacity_gb'] = (
                     self._convert_size_GB(
-                        int(output['metadata']['used_capacity']))
+                        int(output['metadata']['used_capacity'])))
                 pool['QoS_support'] = False
                 pool['reserved_percentage'] = 0
                 pools.append(pool)
@@ -1358,8 +1424,8 @@ class DPLCOMMONDriver(driver.VolumeDriver):
         """
         data = {}
         pools = self._get_pools()
-        data['volume_backend_name'] = \
-            self.configuration.safe_get('volume_backend_name')
+        data['volume_backend_name'] = (
+            self.configuration.safe_get('volume_backend_name'))
         location_info = '%(driver)s:%(host)s:%(volume)s' % {
             'driver': self.__class__.__name__,
             'host': self.configuration.san_ip,

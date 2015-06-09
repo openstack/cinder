@@ -514,7 +514,7 @@ def get_arg_string(args):
             # This is long optional arg
             arg = args[2:]
         else:
-            arg = args[3:]
+            arg = args[1:]
     else:
         arg = args
 

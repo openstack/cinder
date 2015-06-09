@@ -127,7 +127,9 @@ class API(base.Base):
         volume = self.volume_api.get(context, volume_id)
 
         if volume['status'] != "available":
-            msg = _('Volume to be backed up must be available')
+            msg = (_('Volume to be backed up must be available '
+                     'but the current status is "%s".')
+                   % volume['status'])
             raise exception.InvalidVolume(reason=msg)
 
         volume_host = volume_utils.extract_host(volume['host'], 'host')
@@ -153,10 +155,10 @@ class API(base.Base):
                     msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
                               "%(s_size)sG backup (%(d_consumed)dG of "
                               "%(d_quota)dG already consumed)")
-                    LOG.warn(msg % {'s_pid': context.project_id,
-                                    's_size': volume['size'],
-                                    'd_consumed': _consumed(over),
-                                    'd_quota': quotas[over]})
+                    LOG.warning(msg, {'s_pid': context.project_id,
+                                      's_size': volume['size'],
+                                      'd_consumed': _consumed(over),
+                                      'd_quota': quotas[over]})
                     raise exception.VolumeBackupSizeExceedsAvailableQuota(
                         requested=volume['size'],
                         consumed=_consumed('backup_gigabytes'),
@@ -166,8 +168,8 @@ class API(base.Base):
                               "backups (%(d_consumed)d backups "
                               "already consumed)")
 
-                    LOG.warn(msg % {'s_pid': context.project_id,
-                                    'd_consumed': _consumed(over)})
+                    LOG.warning(msg, {'s_pid': context.project_id,
+                                      'd_consumed': _consumed(over)})
                     raise exception.BackupLimitExceeded(
                         allowed=quotas[over])
 
@@ -260,8 +262,8 @@ class API(base.Base):
             msg = _('Volume to be restored to must be available')
             raise exception.InvalidVolume(reason=msg)
 
-        LOG.debug('Checking backup size %s against volume size %s',
-                  size, volume['size'])
+        LOG.debug('Checking backup size %(bs)s against volume size %(vs)s',
+                  {'bs': size, 'vs': volume['size']})
         if size > volume['size']:
             msg = (_('volume size %(volume_size)d is too small to restore '
                      'backup of size %(size)d.') %
