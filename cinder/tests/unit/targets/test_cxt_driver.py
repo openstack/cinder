@@ -15,9 +15,9 @@
 
 import contextlib
 import os
-import StringIO
 
 import mock
+import six
 
 from cinder import context
 from cinder.tests.unit.targets import targets_fixture as tf
@@ -50,7 +50,7 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
             self.assertTrue(m_exec.called)
 
     def test_get_target_chap_auth(self):
-        tmp_file = StringIO.StringIO()
+        tmp_file = six.StringIO()
         tmp_file.write(
             'target:\n'
             '        TargetName=iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa

@@ -18,7 +18,6 @@
 import errno
 import os
 import six
-import StringIO
 import traceback
 
 import mock
@@ -130,7 +129,7 @@ class QuobyteDriverTestCase(test.TestCase):
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open:
             # Content of /proc/mount (not mounted yet).
-            mock_open.return_value = StringIO.StringIO(
+            mock_open.return_value = six.StringIO(
                 "/dev/sda5 / ext4 rw,relatime,data=ordered 0 0")
 
             self._driver._mount_quobyte(self.TEST_QUOBYTE_VOLUME,
@@ -154,7 +153,7 @@ class QuobyteDriverTestCase(test.TestCase):
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open:
             # Content of /proc/mount (already mounted).
-            mock_open.return_value = StringIO.StringIO(
+            mock_open.return_value = six.StringIO(
                 "quobyte@%s %s fuse rw,nosuid,nodev,noatime,user_id=1000"
                 ",group_id=100,default_permissions,allow_other 0 0"
                 % (self.TEST_QUOBYTE_VOLUME, self.TEST_MNT_POINT))
@@ -180,7 +179,7 @@ class QuobyteDriverTestCase(test.TestCase):
                            '.read_proc_mount') as mock_open, \
                 mock.patch('cinder.volume.drivers.quobyte.LOG') as mock_LOG:
             # Content of /proc/mount (empty).
-            mock_open.return_value = StringIO.StringIO()
+            mock_open.return_value = six.StringIO()
             mock_execute.side_effect = [None, putils.ProcessExecutionError(
                 stderr='is busy or already mounted')]
 
@@ -206,7 +205,7 @@ class QuobyteDriverTestCase(test.TestCase):
         with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
                            '.read_proc_mount') as mock_open:
-            mock_open.return_value = StringIO.StringIO()
+            mock_open.return_value = six.StringIO()
             mock_execute.side_effect = [
                 None,  # mkdir
                 putils.ProcessExecutionError(  # mount
