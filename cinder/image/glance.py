@@ -31,7 +31,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
-import six.moves.urllib.parse as urlparse
+from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _LE, _LW
@@ -67,7 +67,7 @@ def _parse_image_ref(image_href):
     :raises ValueError
 
     """
-    url = urlparse.urlparse(image_href)
+    url = urllib.parse.urlparse(image_href)
     netloc = url.netloc
     image_id = url.path.split('/')[-1]
     use_ssl = (url.scheme == 'https')
@@ -106,7 +106,7 @@ def get_api_servers():
     for api_server in CONF.glance_api_servers:
         if '//' not in api_server:
             api_server = 'http://' + api_server
-        url = urlparse.urlparse(api_server)
+        url = urllib.parse.urlparse(api_server)
         netloc = url.netloc
         use_ssl = (url.scheme == 'https')
         api_servers.append((netloc, use_ssl))
@@ -273,7 +273,7 @@ class GlanceImageService(object):
             for url in urls:
                 if url is None:
                     continue
-                parsed_url = urlparse.urlparse(url)
+                parsed_url = urllib.parse.urlparse(url)
                 if parsed_url.scheme == "file":
                     # a system call to cp could have significant performance
                     # advantages, however we do not have the path to files at

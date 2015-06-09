@@ -19,9 +19,9 @@ import httplib
 import json
 import StringIO
 import time
-import urllib2
 
 from oslo_log import log
+from six.moves import urllib
 
 from cinder.i18n import _LE, _LI
 
@@ -129,7 +129,7 @@ class RestClientError(Exception):
 
 
 class RestClientURL(object):
-    """ZFSSA urllib2 client"""
+    """ZFSSA urllib client"""
     def __init__(self, url, **kwargs):
         """Initialize a REST client.
 
@@ -262,7 +262,7 @@ class RestClientURL(object):
             out_hdrs['content-length'] = len(body)
 
         zfssaurl = self._path(path, kwargs.get("base_path"))
-        req = urllib2.Request(zfssaurl, body, out_hdrs)
+        req = urllib.request.Request(zfssaurl, body, out_hdrs)
         req.get_method = lambda: request
         maxreqretries = kwargs.get("maxreqretries", 10)
         retry = 0
@@ -275,8 +275,8 @@ class RestClientURL(object):
 
         while retry < maxreqretries:
             try:
-                response = urllib2.urlopen(req, timeout=self.timeout)
-            except urllib2.HTTPError as err:
+                response = urllib.request.urlopen(req, timeout=self.timeout)
+            except urllib.error.HTTPError as err:
                 if err.code == httplib.NOT_FOUND:
                     LOG.debug('REST Not Found: %s', err.code)
                 else:
@@ -306,7 +306,7 @@ class RestClientURL(object):
 
                 return RestResult(err=err)
 
-            except urllib2.URLError as err:
+            except urllib.error.URLError as err:
                 LOG.error(_LE('URLError: %s'), err.reason)
                 raise RestClientError(-1, name="ERR_URLError",
                                       message=err.reason)

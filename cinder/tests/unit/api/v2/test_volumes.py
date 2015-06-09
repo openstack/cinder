@@ -21,7 +21,7 @@ import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
 import six
-import six.moves.urllib.parse as urlparse
+from six.moves import urllib
 import webob
 
 from cinder.api import extensions
@@ -932,9 +932,9 @@ class VolumeApiTest(test.TestCase):
         # need to manually insert the limit and sort information.
         links = res_dict['volumes_links']
         self.assertEqual(links[0]['rel'], 'next')
-        href_parts = urlparse.urlparse(links[0]['href'])
+        href_parts = urllib.parse.urlparse(links[0]['href'])
         self.assertEqual('/v2/fakeproject/volumes', href_parts.path)
-        params = urlparse.parse_qs(href_parts.query)
+        params = urllib.parse.parse_qs(href_parts.query)
         self.assertEqual(str(volumes[0]['id']), params['marker'][0])
         self.assertEqual('1', params['limit'][0])
         self.assertEqual('foo', params['name'][0])
@@ -1025,9 +1025,9 @@ class VolumeApiTest(test.TestCase):
         # Ensure that the next link is correctly formatted
         links = res_dict['volumes_links']
         self.assertEqual(links[0]['rel'], 'next')
-        href_parts = urlparse.urlparse(links[0]['href'])
+        href_parts = urllib.parse.urlparse(links[0]['href'])
         self.assertEqual('/v2/fakeproject/volumes/detail', href_parts.path)
-        params = urlparse.parse_qs(href_parts.query)
+        params = urllib.parse.parse_qs(href_parts.query)
         self.assertTrue('marker' in params)
         self.assertEqual('1', params['limit'][0])
 
@@ -1105,7 +1105,7 @@ class VolumeApiTest(test.TestCase):
         def _verify_links(links, url_key):
             '''Verify next link and url.'''
             self.assertEqual(links[0]['rel'], 'next')
-            href_parts = urlparse.urlparse(links[0]['href'])
+            href_parts = urllib.parse.urlparse(links[0]['href'])
             self.assertEqual('/v2/fakeproject/%s' % key, href_parts.path)
 
         # Verify both the index and detail queries

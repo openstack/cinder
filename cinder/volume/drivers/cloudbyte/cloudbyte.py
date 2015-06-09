@@ -15,12 +15,12 @@
 
 import httplib
 import json
-import urllib
 import uuid
 
 from oslo_log import log as logging
 from oslo_utils import units
 import six
+from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
@@ -69,7 +69,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
             if value is not None:
                 sanitized_params[key] = six.text_type(value)
 
-        sanitized_params = urllib.urlencode(sanitized_params)
+        sanitized_params = urllib.parse.urlencode(sanitized_params)
         url = ('/client/api?%s' % sanitized_params)
 
         LOG.debug("CloudByte URL to be executed: [%s].", url)
@@ -77,7 +77,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         # Add the apikey
         api = {}
         api['apiKey'] = apikey
-        url = url + '&' + urllib.urlencode(api)
+        url = url + '&' + urllib.parse.urlencode(api)
 
         return url
 

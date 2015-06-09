@@ -24,7 +24,7 @@ from cinder.volume.drivers import nimble
 
 CONF = cfg.CONF
 NIMBLE_CLIENT = 'cinder.volume.drivers.nimble.client'
-NIMBLE_URLLIB2 = 'cinder.volume.drivers.nimble.urllib2'
+NIMBLE_URLLIB2 = 'six.moves.urllib.request'
 NIMBLE_RANDOM = 'cinder.volume.drivers.nimble.random'
 LOG = logging.getLogger(__name__)
 

@@ -17,12 +17,12 @@
 Implements operations on volumes residing on VMware datastores.
 """
 
-import urllib
 
 from oslo_log import log as logging
 from oslo_utils import units
 from oslo_vmware import exceptions
 from oslo_vmware import vim_util
+from six.moves import urllib
 
 from cinder.i18n import _, _LE, _LI
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
@@ -528,8 +528,9 @@ class VMwareVolumeOps(object):
                 if child_entity._type != 'Folder':
                     continue
                 child_entity_name = self.get_entity_name(child_entity)
-                if child_entity_name and (urllib.unquote(child_entity_name) ==
-                                          child_folder_name):
+                if (child_entity_name
+                    and (urllib.parse.unquote(child_entity_name)
+                         == child_folder_name)):
                     LOG.debug("Child folder: %s exists.", child_folder_name)
                     return child_entity
 

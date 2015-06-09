@@ -23,11 +23,11 @@ import random
 import re
 import six
 import string
-import urllib2
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
+from six.moves import urllib
 from suds import client
 
 from cinder import exception
@@ -425,7 +425,7 @@ class NimbleAPIExecutor(object):
         self.login()
 
     def _create_err_code_to_str_mapper(self, wsdl_url):
-        f = urllib2.urlopen(wsdl_url)
+        f = urllib.request.urlopen(wsdl_url)
         wsdl_file = f.read()
         err_enums = re.findall(
             r'<simpleType name="SmErrorType">(.*?)</simpleType>',

@@ -19,7 +19,6 @@ import json
 import math
 import os
 import tempfile
-import urllib
 
 from eventlet import tpool
 from oslo_config import cfg
@@ -27,6 +26,7 @@ from oslo_log import log as logging
 from oslo_utils import encodeutils
 from oslo_utils import units
 import six
+from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -795,7 +795,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         if not location.startswith(prefix):
             reason = _('Not stored in rbd')
             raise exception.ImageUnacceptable(image_id=location, reason=reason)
-        pieces = map(urllib.unquote, location[len(prefix):].split('/'))
+        pieces = map(urllib.parse.unquote, location[len(prefix):].split('/'))
         if any(map(lambda p: p == '', pieces)):
             reason = _('Blank components')
             raise exception.ImageUnacceptable(image_id=location, reason=reason)

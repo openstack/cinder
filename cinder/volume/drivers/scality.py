@@ -18,13 +18,12 @@ Scality SOFS Volume Driver.
 
 
 import os
-import urllib2
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
-import six.moves.urllib.parse as urlparse
+from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LI
@@ -76,12 +75,12 @@ class ScalityDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=msg)
 
         # config can be a file path or a URL, check it
-        if urlparse.urlparse(config).scheme == '':
+        if urllib.parse.urlparse(config).scheme == '':
             # turn local path into URL
             config = 'file://%s' % config
         try:
-            urllib2.urlopen(config, timeout=5).close()
-        except urllib2.URLError as e:
+            urllib.request.urlopen(config, timeout=5).close()
+        except urllib.error.URLError as e:
             msg = _("Cannot access 'scality_sofs_config': %s") % e
             LOG.warning(msg)
             raise exception.VolumeBackendAPIException(data=msg)
