@@ -221,7 +221,8 @@ class TestCase(testtools.TestCase):
                                          '..',
                                      )
                                  ),
-                                 'cinder/tests/unit/policy.json'))
+                                 'cinder/tests/unit/policy.json'),
+                             group='oslo_policy')
 
     def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""
