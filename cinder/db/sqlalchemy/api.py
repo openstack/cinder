@@ -1387,7 +1387,7 @@ def volume_get_all_by_host(context, host, filters=None):
     # now be either form below:
     #     Host
     #     Host#Pool
-    if host and isinstance(host, basestring):
+    if host and isinstance(host, six.string_types):
         session = get_session()
         with session.begin():
             host_attr = getattr(models.Volume, 'host')

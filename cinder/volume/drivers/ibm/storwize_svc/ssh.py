@@ -18,6 +18,7 @@ import re
 
 from oslo_concurrency import processutils
 from oslo_log import log as logging
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE
@@ -380,7 +381,7 @@ class CLIResponse(object):
             vs = []
             for k in keys:
                 v = a.get(k, None)
-                if isinstance(v, basestring) or v is None:
+                if isinstance(v, six.string_types) or v is None:
                     v = [v]
                 if isinstance(v, list):
                     vs.append(v)
@@ -414,7 +415,7 @@ class CLIResponse(object):
                 else:
                     yield []
 
-        if isinstance(self.raw, basestring):
+        if isinstance(self.raw, six.string_types):
             stdout, stderr = self.raw, ''
         else:
             stdout, stderr = self.raw

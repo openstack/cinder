@@ -266,7 +266,7 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         force = params.get('force', False)
-        if isinstance(force, basestring):
+        if isinstance(force, six.string_types):
             try:
                 force = strutils.bool_from_string(force, strict=False)
             except ValueError:
@@ -337,7 +337,7 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Must specify readonly in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if isinstance(readonly_flag, basestring):
+        if isinstance(readonly_flag, six.string_types):
             try:
                 readonly_flag = strutils.bool_from_string(readonly_flag,
                                                           strict=True)
@@ -382,7 +382,7 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Must specify bootable in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if isinstance(bootable, basestring):
+        if isinstance(bootable, six.string_types):
             try:
                 bootable = strutils.bool_from_string(bootable,
                                                      strict=True)
