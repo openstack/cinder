@@ -459,7 +459,7 @@ def make_dev_path(dev, partition=None, base='/dev'):
 
 def sanitize_hostname(hostname):
     """Return a hostname which conforms to RFC-952 and RFC-1123 specs."""
-    if isinstance(hostname, unicode):
+    if isinstance(hostname, six.text_type):
         hostname = hostname.encode('latin-1', 'ignore')
 
     hostname = re.sub('[ _]', '-', hostname)
