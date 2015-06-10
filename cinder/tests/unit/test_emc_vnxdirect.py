@@ -287,7 +287,7 @@ class EMCVNXCLIDriverTestData(object):
     test_volume4 = {'migration_status': None, 'availability_zone': 'nova',
                     'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce24',
                     'name': 'vol4',
-                    'size': 2L,
+                    'size': 2,
                     'status': 'available',
                     'volume_type_id':
                     '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',

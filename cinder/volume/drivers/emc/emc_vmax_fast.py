@@ -317,10 +317,10 @@ class EMCVMAXFast(object):
             PolicyRule=tierPolicyRuleInstanceName,
             Operation=self.utils.get_num(modificationType, '16'),
             InElements=[storageGroupInstanceName])
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error associating storage group : %(storageGroupName)s. "
                     "To fast Policy: %(fastPolicyName)s with error "
@@ -585,10 +585,10 @@ class EMCVMAXFast(object):
                 PolicyRule=tierPolicyRuleInstanceName,
                 Operation=self.utils.get_num(modificationType, '16'),
                 InElements=[storageGroupInstanceName])
-            if rc != 0L:
+            if rc != 0:
                 rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                                  extraSpecs)
-                if rc != 0L:
+                if rc != 0:
                     LOG.error(_LE("Error disassociating storage group from "
                               "policy: %s."), errordesc)
                 else:
