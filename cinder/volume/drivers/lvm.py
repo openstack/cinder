@@ -270,7 +270,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         vg_list = volutils.get_all_volume_groups(
             self.configuration.volume_group)
         vg_dict = \
-            (vg for vg in vg_list if vg['name'] == self.vg.vg_name).next()
+            next(vg for vg in vg_list if vg['name'] == self.vg.vg_name)
         if vg_dict is None:
             message = (_("Volume Group %s does not exist") %
                        self.configuration.volume_group)
@@ -541,7 +541,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         if dest_vg != self.vg.vg_name:
             vg_list = volutils.get_all_volume_groups()
             try:
-                (vg for vg in vg_list if vg['name'] == dest_vg).next()
+                next(vg for vg in vg_list if vg['name'] == dest_vg)
             except StopIteration:
                 LOG.error(_LE("Destination Volume Group %s does not exist"),
                           dest_vg)

@@ -897,8 +897,7 @@ class TestCinderRtstoolCmd(test.TestCase):
             [{'node_acls': mock.sentinel.initiator_iqn}]
         acl = mock.MagicMock(node_wwn=mock.sentinel.initiator_iqn)
         tpg = mock.MagicMock(node_acls=[acl])
-        tpgs = mock.MagicMock()
-        tpgs.next.return_value = tpg
+        tpgs = iter([tpg])
         target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
         rtsroot.return_value = mock.MagicMock(targets=[target])
 
@@ -917,7 +916,8 @@ class TestCinderRtstoolCmd(test.TestCase):
         target_iqn.tpgs.return_value = \
             [{'node_acls': mock.sentinel.initiator_iqn}]
         tpg = mock.MagicMock()
-        target = mock.MagicMock(tpgs=tpg, wwn=target_iqn)
+        tpgs = iter([tpg])
+        target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
         rtsroot.return_value = mock.MagicMock(targets=[target])
 
         acl_new = mock.MagicMock(chap_userid=mock.sentinel.userid,
@@ -928,7 +928,7 @@ class TestCinderRtstoolCmd(test.TestCase):
                                      mock.sentinel.initiator_iqn,
                                      mock.sentinel.userid,
                                      mock.sentinel.password)
-        node_acl.assert_called_once_with(tpg.next(),
+        node_acl.assert_called_once_with(tpg,
                                          mock.sentinel.initiator_iqn,
                                          mode='create')
         mapped_lun.assert_called_once_with(acl_new, 0, tpg_lun=0)
