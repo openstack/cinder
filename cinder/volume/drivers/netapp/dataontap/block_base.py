@@ -341,7 +341,7 @@ class NetAppBlockStorageLibrary(object):
             if lun_id is not None:
                 return lun_id
             else:
-                raise exc_info[0], exc_info[1], exc_info[2]
+                six.reraise(*exc_info)
 
     def _unmap_lun(self, path, initiator_list):
         """Unmaps a LUN from given initiator."""

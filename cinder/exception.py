@@ -97,7 +97,7 @@ class CinderException(Exception):
                     LOG.error(_LE("%(name)s: %(value)s"),
                               {'name': name, 'value': value})
                 if CONF.fatal_exception_format_errors:
-                    raise exc_info[0], exc_info[1], exc_info[2]
+                    six.reraise(*exc_info)
                 # at least get the core message out if something happened
                 message = self.message
         elif isinstance(message, Exception):

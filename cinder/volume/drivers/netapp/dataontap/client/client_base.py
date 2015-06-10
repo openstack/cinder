@@ -134,7 +134,7 @@ class Client(object):
             if e.code == '13115' or e.code == '9016':
                 pass
             else:
-                raise exc_info[0], exc_info[1], exc_info[2]
+                six.reraise(*exc_info)
 
     def create_igroup(self, igroup, igroup_type='iscsi', os_type='default'):
         """Creates igroup with specified args."""
