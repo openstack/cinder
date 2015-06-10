@@ -431,8 +431,7 @@ class EMCVMAXFast(object):
         storageMaskingGroupInstances = conn.Associators(
             controllerConfigService, ResultClass='CIM_DeviceMaskingGroup')
 
-        for storageMaskingGroupInstance in \
-                storageMaskingGroupInstances:
+        for storageMaskingGroupInstance in storageMaskingGroupInstances:
 
             if ('_default_' in storageMaskingGroupInstance['ElementName'] and
                     policyName in storageMaskingGroupInstance['ElementName']):
