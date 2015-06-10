@@ -106,13 +106,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         target_name = self._get_target_name()
         target_group_name = self._get_target_group_name()
-        ensure = True
         if not self._target_exists(target_name):
             try:
                 self.nms.iscsitarget.create_target({
                     'target_name': target_name})
             except nexenta.NexentaException as exc:
-                if ensure and 'already configured' in exc.args[0]:
+                if 'already contains' in exc.args[0]:
                     LOG.info('Ignored target creation error "%s" while '
                              'ensuring export', exc)
                 else:
@@ -121,7 +120,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             try:
                 self.nms.stmf.create_targetgroup(target_group_name)
             except nexenta.NexentaException as exc:
-                if ((ensure and 'already exists' in exc.args[0]) or
+                if ('already exists' in exc.args[0] or
                         'target must be offline' in exc.args[0]):
                     LOG.info('Ignored target group creation error "%s" '
                              'while ensuring export', exc)
@@ -133,13 +132,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.nms.stmf.add_targetgroup_member(target_group_name,
                                                      target_name)
             except nexenta.NexentaException as exc:
-                if ((ensure and 'already exists' in exc.args[0]) or
+                if ('already exists' in exc.args[0] or
                         'target must be offline' in exc.args[0]):
                     LOG.info('Ignored target group member addition error '
                              '"%s" while ensuring export', exc)
                 else:
                     raise
-
 
     def check_for_setup_error(self):
         """Verify that the volume for our zvols exists.
@@ -156,11 +154,14 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_target_name(self):
         """Return iSCSI target name to access volume."""
-        return self.configuration.nexenta_target_prefix
+        return '%s%s' % (
+            self.configuration.nexenta_target_prefix, self.nms_host)
 
     def _get_target_group_name(self):
         """Return Nexenta iSCSI target group name for volume."""
-        return self.configuration.nexenta_target_group_prefix
+        return '%s%s' % (
+            self.configuration.nexenta_target_group_prefix,
+            self.nms_host)
 
     @staticmethod
     def _get_clone_snapshot_name(volume):
