@@ -144,12 +144,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """Return name for snapshot that will be used to clone the volume."""
         return 'cinder-clone-snapshot-%(id)s' % volume
 
-    @staticmethod
-    def _is_clone_snapshot_name(snapshot):
-        """Check if snapshot is created for cloning."""
-        name = snapshot.split('@')[-1]
-        return name.startswith('cinder-clone-snapshot-')
-
     def create_volume(self, volume):
         """Create a zvol on appliance.
 
