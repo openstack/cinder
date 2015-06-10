@@ -10,7 +10,7 @@ discover
 fixtures>=0.3.14
 mock>=1.0
 mox3>=0.7.0
-MySQL-python
+PyMySQL>=0.6.2  # MIT License
 psycopg2
 oslotest>=1.5.1  # Apache-2.0
 sphinx>=1.1.2,!=1.2.0,!=1.3b1,<1.3
