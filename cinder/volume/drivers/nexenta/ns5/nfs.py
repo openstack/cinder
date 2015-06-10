@@ -26,7 +26,9 @@ import re
 
 from oslo_log import log as logging
 
-from cinder import context, db, exception
+from cinder import context
+from cinder import db
+from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
@@ -196,13 +198,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         pool, dataset = self._get_share_datasets(nfs_share)
         dataset_path = '%s/%s' % (pool, dataset)
-        url = 'storage/pools/%(pool)s/datasetGroups/%(ds)s/' \
-              'filesystems/%(fs)s/snapshots/%(snap)s/clone' % {
-                  'pool': pool,
-                  'ds': dataset,
-                  'fs': snapshot_vol['name'],
-                  'snap': snapshot['name']
-              }
+        url = ('storage/pools/%(pool)s/datasetGroups/%(ds)s/'
+               'filesystems/%(fs)s/snapshots/%(snap)s/clone') % {
+               'pool': pool,
+               'ds': dataset,
+               'fs': snapshot_vol['name'],
+               'snap': snapshot['name']
+               }
         data = {'name': volume['name']}
         nef(url, data)
 
@@ -210,12 +212,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             self._share_folder(nef, dataset_path, volume['name'])
         except nexenta.NexentaException:
             try:
-                url = 'storage/pools/%(pool)s/datasetGroups/' \
-                      '%(ds)s/filesystems/%(fs)s' % {
-                          'pool': pool,
-                          'ds': dataset,
-                          'fs': volume['name']
-                      }
+                url = ('storage/pools/%(pool)s/datasetGroups/'
+                       '%(ds)s/filesystems/%(fs)s') % {
+                       'pool': pool,
+                       'ds': dataset,
+                       'fs': volume['name']
+                       }
                 nef(url, method='DELETE')
             except nexenta.NexentaException:
                 LOG.warning(_LW("Cannot destroy cloned filesystem: "
@@ -266,17 +268,17 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             pool, dataset = self._get_share_datasets(nfs_share)
             url = ('storage/pools/%(pool)s/datasetGroups/'
                    '%(ds)s/filesystems/%(fs)s') % {
-                    'pool': pool,
-                    'ds': dataset,
-                    'fs': volume['name']
-                }
+                   'pool': pool,
+                   'ds': dataset,
+                   'fs': volume['name']
+                   }
             origin = nef(url).get('originalSnapshot')
             url = ('storage/pools/%(pool)s/datasetGroups/'
                    '%(ds)s/filesystems/%(fs)s?snapshots=true') % {
-                    'pool': pool,
-                    'ds': dataset,
-                    'fs': volume['name']
-                }
+                   'pool': pool,
+                   'ds': dataset,
+                   'fs': volume['name']
+                   }
             nef(url, method='DELETE')
             if origin and self._is_clone_snapshot_name(origin):
                 snap_url = ('storage/pools/%(pool)s/datasetGroups/%(ds)s/'
@@ -285,7 +287,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                             'ds': dataset,
                             'fs': origin.split('@')[-2].split('/')[-1],
                             'snap': origin.split('@')[-1]
-                    }
+                            }
                 nef(snap_url, method='DELETE')
 
     def create_snapshot(self, snapshot):
@@ -297,12 +299,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         nfs_share = volume['provider_location']
         nef = self.share2nef[nfs_share]
         pool, dataset = self._get_share_datasets(nfs_share)
-        url = 'storage/pools/%(pool)s/datasetGroups/%(ds)s/' \
-              'filesystems/%(fs)s/snapshots' % {
-                  'pool': pool,
-                  'ds': dataset,
-                  'fs': volume['name'],
-              }
+        url = ('storage/pools/%(pool)s/datasetGroups/%(ds)s/'
+               'filesystems/%(fs)s/snapshots') % {
+               'pool': pool,
+               'ds': dataset,
+               'fs': volume['name'],
+               }
         data = {'name': snapshot['name']}
         nef(url, data)
 
@@ -315,13 +317,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         nfs_share = volume['provider_location']
         nef = self.share2nef[nfs_share]
         pool, dataset = self._get_share_datasets(nfs_share)
-        url = 'storage/pools/%(pool)s/datasetGroups/%(ds)s/' \
-              'filesystems/%(fs)s/snapshots/%(snap)s' % {
-                  'pool': pool,
-                  'ds': dataset,
-                  'fs': volume['name'],
-                  'snap': snapshot['name']
-              }
+        url = ('storage/pools/%(pool)s/datasetGroups/%(ds)s/'
+               'filesystems/%(fs)s/snapshots/%(snap)s') % {
+               'pool': pool,
+               'ds': dataset,
+               'fs': volume['name'],
+               'snap': snapshot['name']
+               }
         try:
             nef(url, method='DELETE')
         except nexenta.NexentaException as exc:
