@@ -267,12 +267,18 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             nef = self.share2nef[nfs_share]
             pool, dataset = self._get_share_datasets(nfs_share)
             url = 'storage/pools/%(pool)s/datasetGroups/' \
-                  '%(ds)s/filesystems/%(fs)s?snapshots=true' % {
+                  '%(ds)s/filesystems/%(fs)s' % {
                       'pool': pool,
                       'ds': dataset,
                       'fs': volume['name']
                   }
             origin = nef(url).get('originalSnapshot')
+            url = 'storage/pools/%(pool)s/datasetGroups/' \
+                  '%(ds)s/filesystems/%(fs)s?snapshots=true' % {
+                      'pool': pool,
+                      'ds': dataset,
+                      'fs': volume['name']
+                  }
             nef(url, method='DELETE')
             if origin and self._is_clone_snapshot_name(origin):
                 snap_url = ('storage/pools/%(pool)s/datasetGroups/%(ds)s/'
