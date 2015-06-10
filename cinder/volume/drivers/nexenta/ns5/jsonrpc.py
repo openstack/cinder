@@ -26,7 +26,7 @@ import urllib2
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder.volume.drivers import nexenta
 
 LOG = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class NexentaJSONProxy(object):
             'Content-Type': 'application/json',
             'Authorization': 'Basic %s' % auth
         }
-        LOG.debug('Sending JSON to url: %s, data: %s, method: %s' % (
+        LOG.debug(_('Sending JSON to url: %s, data: %s, method: %s') % (
             path, data, method))
         url = self.url + path
         if data:
@@ -74,7 +74,7 @@ class NexentaJSONProxy(object):
             response_obj = urllib2.urlopen(request)
             response_data = response_obj.read()
         except urllib2.HTTPError as error:
-            raise NexentaJSONException(_(error.read()))
+            raise NexentaJSONException(error.read())
         if response_obj.code in (200, 201) and not response_data:
             return 'Success'
         if response_data and response_obj.code == 202:
@@ -87,7 +87,7 @@ class NexentaJSONProxy(object):
                     response_obj = urllib2.urlopen(request)
                     response_data = response_obj.read()
                 except urllib2.HTTPError as error:
-                    raise NexentaJSONException(_(error.read()))
+                    raise NexentaJSONException(error.read())
                 if response_obj.code in (200, 201) and not response_data:
                     return 'Success'
         LOG.debug('Got response: %s', response_data)
