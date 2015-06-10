@@ -156,8 +156,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
             LOG.error(msg)
             raise exception.SmbfsException(msg)
 
-        if ((not self.configuration.smbfs_used_ratio > 0) and
-                (self.configuration.smbfs_used_ratio <= 1)):
+        if not 0 < self.configuration.smbfs_used_ratio <= 1:
             msg = _("SMBFS config 'smbfs_used_ratio' invalid.  Must be > 0 "
                     "and <= 1.0: %s") % self.configuration.smbfs_used_ratio
             LOG.error(msg)
