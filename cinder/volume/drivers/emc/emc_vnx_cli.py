@@ -565,15 +565,11 @@ class CommandLineHelper(object):
 
         self._wait_for_a_condition(lun_is_extented)
 
-    def lun_rename(self, lun_id, new_name, poll=False):
-        """This function used to rename a lun to match
-        the expected name for the volume.
-        """
+    def rename_lun(self, lun_id, new_name, poll=False):
         command_lun_rename = ('lun', '-modify',
                               '-l', lun_id,
                               '-newName', new_name,
                               '-o')
-
         out, rc = self.command_execute(*command_lun_rename,
                                        poll=poll)
         if rc != 0:
@@ -2974,52 +2970,54 @@ class EMCVnxCliBase(object):
             return conn_info
         return do_terminate_connection()
 
-    def manage_existing_get_size(self, volume, ref):
+    def manage_existing_get_size(self, volume, existing_ref):
         """Returns size of volume to be managed by manage_existing."""
-
-        # Check that the reference is valid
-        if 'id' not in ref:
-            reason = _('Reference must contain lun_id element.')
+        if 'source-id' in existing_ref:
+            data = self._client.get_lun_by_id(
+                existing_ref['source-id'],
+                properties=self._client.LUN_WITH_POOL)
+        elif 'source-name' in existing_ref:
+            data = self._client.get_lun_by_name(
+                existing_ref['source-name'],
+                properties=self._client.LUN_WITH_POOL)
+        else:
+            reason = _('Reference must contain source-id or source-name key.')
             raise exception.ManageExistingInvalidReference(
-                existing_ref=ref,
-                reason=reason)
-
-        # Check for existence of the lun
-        data = self._client.get_lun_by_id(
-            ref['id'],
-            properties=self._client.LUN_WITH_POOL)
-        if data is None:
-            reason = _('Find no lun with the specified id %s.') % ref['id']
-            raise exception.ManageExistingInvalidReference(existing_ref=ref,
-                                                           reason=reason)
-
-        pool = self.get_target_storagepool(volume, None)
-        if pool and data['pool'] != pool:
-            reason = (_('The input lun %(lun_id)s is in pool %(poolname)s '
+                existing_ref=existing_ref, reason=reason)
+        target_pool = self.get_target_storagepool(volume)
+        if target_pool and data['pool'] != target_pool:
+            reason = (_('The imported lun %(lun_id)s is in pool %(lun_pool)s '
                         'which is not managed by the host %(host)s.')
-                      % {'lun_id': ref['id'],
-                         'poolname': data['pool'],
+                      % {'lun_id': data['lun_id'],
+                         'lun_pool': data['pool'],
                          'host': volume['host']})
-            raise exception.ManageExistingInvalidReference(existing_ref=ref,
-                                                           reason=reason)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
         return data['total_capacity_gb']
 
-    def manage_existing(self, volume, ref):
+    def manage_existing(self, volume, manage_existing_ref):
         """Imports the existing backend storage object as a volume.
 
-        Renames the backend storage object so that it matches the,
-        volume['name'] which is how drivers traditionally map between a
-        cinder volume and the associated backend storage object.
-
-        existing_ref:{
-            'id':lun_id
+        manage_existing_ref:{
+            'source-id':<lun id in VNX>
+        }
+        or
+        manage_existing_ref:{
+            'source-name':<lun name in VNX>
         }
         """
-
-        self._client.lun_rename(ref['id'], volume['name'])
+        if 'source-id' in manage_existing_ref:
+            lun_id = manage_existing_ref['source-id']
+        elif 'source-name' in manage_existing_ref:
+            lun_id = self._client.get_lun_by_name(
+                manage_existing_ref['source-name'], poll=False)['lun_id']
+        else:
+            reason = _('Reference must contain source-id or source-name key.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=manage_existing_ref, reason=reason)
+        self._client.rename_lun(lun_id, volume['name'])
         model_update = {'provider_location':
-                        self._build_provider_location_for_lun(ref['id'])}
-
+                        self._build_provider_location_for_lun(lun_id)}
         return model_update
 
     def get_login_ports(self, connector):

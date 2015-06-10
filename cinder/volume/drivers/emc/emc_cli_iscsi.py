@@ -55,6 +55,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         6.0.0 - Over subscription support
                 Create consistency group from cgsnapshot support
                 Multiple pools support enhancement
+                Manage/unmanage volume revise
     """
 
     def __init__(self, *args, **kwargs):
@@ -189,11 +190,14 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        existing_ref:{
-            'id':lun_id
+        manage_existing_ref:{
+            'source-id':<lun id in VNX>
+        }
+        or
+        manage_existing_ref:{
+            'source-name':<lun name in VNX>
         }
         """
-        LOG.debug("Reference lun id %s.", existing_ref['id'])
         self.cli.manage_existing(volume, existing_ref)
 
     def manage_existing_get_size(self, volume, existing_ref):
