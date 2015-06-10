@@ -36,6 +36,7 @@ except ImportError:
     hpexceptions = None
 
 from oslo_log import log as logging
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
@@ -85,10 +86,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                  used during live-migration.  bug #1423958
         2.0.15 - Added support for updated detach_volume attachment.
         2.0.16 - Added encrypted property to initialize_connection #1439917
+        2.0.17 - Python 3 fixes
 
     """
 
-    VERSION = "2.0.16"
+    VERSION = "2.0.17"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -392,7 +394,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         if host_found is not None:
             return host_found
         else:
-            if isinstance(iscsi_iqn, str) or isinstance(iscsi_iqn, unicode):
+            if isinstance(iscsi_iqn, six.string_types):
                 iqn = [iscsi_iqn]
             else:
                 iqn = iscsi_iqn

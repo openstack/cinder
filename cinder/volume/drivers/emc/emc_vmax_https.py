@@ -274,7 +274,7 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
     localAuthHeader = None
     tryLimit = 5
 
-    if isinstance(data, unicode):
+    if isinstance(data, six.text_type):
         data = data.encode('utf-8')
     data = '<?xml version="1.0" encoding="utf-8" ?>\n' + data
 
@@ -309,7 +309,7 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
             h.putheader('PegasusAuthorization', 'Local "%s"' % locallogin)
 
         for hdr in headers:
-            if isinstance(hdr, unicode):
+            if isinstance(hdr, six.text_type):
                 hdr = hdr.encode('utf-8')
             s = map(lambda x: string.strip(x), string.split(hdr, ":", 1))
             h.putheader(urllib.quote(s[0]), urllib.quote(s[1]))

@@ -267,7 +267,7 @@ class StorwizeHelpers(object):
             raise exception.VolumeDriverException(message=msg)
 
         # Build a host name for the Storwize host - first clean up the name
-        if isinstance(host_name, unicode):
+        if isinstance(host_name, six.text_type):
             host_name = unicodedata.normalize('NFKD', host_name).encode(
                 'ascii', 'replace').decode('ascii')
 
