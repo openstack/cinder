@@ -26,7 +26,6 @@ import urllib2
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
-from cinder.i18n import _
 from cinder.volume.drivers import nexenta
 
 LOG = logging.getLogger(__name__)
@@ -62,12 +61,12 @@ class NexentaJSONProxy(object):
             'Content-Type': 'application/json',
             'Authorization': 'Basic %s' % auth
         }
-        LOG.debug('Sending JSON to url: %(path)s, data: %(data)s,'
-                  ' method: %(method)s') % {
-                'path': path,
-                'data': data,
-                'method': method
-            }
+        LOG.debug(('Sending JSON to url: %(path)s, data: %(data)s,'
+                   ' method: %(method)s') % {
+            'path': path,
+            'data': data,
+            'method': method
+        })
         url = self.url + path
         if data:
             data = jsonutils.dumps(data)

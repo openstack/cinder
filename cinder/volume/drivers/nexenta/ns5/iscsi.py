@@ -23,8 +23,10 @@
 from oslo_log import log as logging
 from oslo_utils import units
 
-from cinder import context, db, exception
-from cinder.i18n import _, _LE, _LW
+from cinder import context
+from cinder import db
+from cinder import exception
+from cinder.i18n import _, _LI, _LE, _LW
 from cinder.volume import driver
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
@@ -92,11 +94,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         url = 'storage/pools/%s/datasetGroups' % pool
         data = {
             'name': dataset,
-            'defaultVolumeBlockSize': self.configuration.nexenta_blocksize
+            'defaultVolumeBlockSize': (
+                self.configuration.nexenta_ns5_blocksize * units.Ki)
         }
         try:
             self.nef(url, data)
-        except:
+        except nexenta.NexentaException:
             pass
         url = 'services/iscsit'
         data = {'enabled': True}
@@ -154,13 +157,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         url = 'storage/pools/%s/datasetGroups/%s/volumes' % (
             pool, dataset)
         data = {
-                'name': volume['name'],
-                'volumeSize': volume['size'] * units.Gi,
-                'volumeBlockSize': 512,
-                'volumeBlockSize': (
-                    self.configuration.nexenta_ns5_blocksize * units.Ki),
-                'sparseVolume': self.configuration.nexenta_sparse
-            }
+            'name': volume['name'],
+            'volumeSize': volume['size'] * units.Gi,
+            'volumeBlockSize': (
+                self.configuration.nexenta_ns5_blocksize * units.Ki),
+            'sparseVolume': self.configuration.nexenta_sparse
+        }
         self.nef(url, data)
         return self.create_export(None, volume)
 
@@ -171,9 +173,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """
         volume_name = self._get_zvol_name(volume['name'])
         pool, group, name = volume_name.split('/')
-        url = ('storage/pools/%s/datasetGroups/%s'
-               '/volumes/%s?snapshots=true') % (
-               pool, group, name)
+        url = ('storage/pools/%(pool)s/datasetGroups/%(group)s'
+               '/volumes/%(name)s?snapshots=true') % {
+            'pool': pool,
+            'group': group,
+            'name': name
+        }
         try:
             self.nef(url, method='DELETE')
         except nexenta.NexentaException as exc:
@@ -188,15 +193,15 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: volume reference
         :param new_size: volume new size in GB
         """
-        LOG.info(_('Extending volume: %(id)s New size: %(size)s GB'),
+        LOG.info(_LI('Extending volume: %(id)s New size: %(size)s GB'),
                  {'id': volume['id'], 'size': new_size})
         pool, group, name = self._get_zvol_name(volume['name']).split('/')
         url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
                'volumes/%(name)s') % {
-                    'pool': pool,
-                    'group': group,
-                    'name': name
-                }
+            'pool': pool,
+            'group': group,
+            'name': name
+        }
         self.nef(url, {'volumeSize': new_size * units.Gi}, method='PUT')
 
     def create_snapshot(self, snapshot):
@@ -205,8 +210,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param snapshot: snapshot reference
         """
         snapshot_vol = self._get_snapshot_volume(snapshot)
-        LOG.info(_('Creating snapshot %s of volume %s' % (
-            snapshot['name'], snapshot_vol['name'])))
+        LOG.info(_LI('Creating snapshot %(snap)s of volume %(vol)s') % {
+            'snap': snapshot['name'],
+            'vol': snapshot_vol['name']
+        })
         zvol_name = self._get_zvol_name(snapshot_vol['name'])
         pool, group, volume = zvol_name.split('/')
         url = 'storage/pools/%(pool)s/datasetGroups/%(group)s/' \
@@ -222,17 +229,17 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param snapshot: snapshot reference
         """
-        LOG.info(_('Deleting snapshot: %s' % snapshot['name']))
+        LOG.info(_LI('Deleting snapshot: %s') % snapshot['name'])
         snapshot_vol = self._get_snapshot_volume(snapshot)
         zvol_name = self._get_zvol_name(snapshot_vol['name'])
         pool, group, volume = zvol_name.split('/')
         url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
                'volumes/%(volume)s/snapshots/%(snapshot)s') % {
-                  'pool': pool,
-                  'group': group,
-                  'volume': volume,
-                  'snapshot': snapshot['name']
-              }
+            'pool': pool,
+            'group': group,
+            'volume': volume,
+            'snapshot': snapshot['name']
+        }
         try:
             self.nef(url, method='DELETE')
         except nexenta.NexentaException as exc:
@@ -247,17 +254,17 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: reference of volume to be created
         :param snapshot: reference of source snapshot
         """
-        LOG.info(_('Creating volume from snapshot: %s' % snapshot['name']))
+        LOG.info(_LI('Creating volume from snapshot: %s') % snapshot['name'])
         snapshot_vol = self._get_snapshot_volume(snapshot)
         zvol_name = self._get_zvol_name(snapshot_vol['name'])
         pool, group, snapshot_vol = zvol_name.split('/')
         url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
                'volumes/%(volume)s/snapshots/%(snapshot)s/clone') % {
-                  'pool': pool,
-                  'group': group,
-                  'volume': snapshot_vol,
-                  'snapshot': snapshot['name']
-              }
+            'pool': pool,
+            'group': group,
+            'volume': snapshot_vol,
+            'snapshot': snapshot['name']
+        }
         self.nef(url, {'name': volume['name']})
 
     def create_cloned_volume(self, volume, src_vref):
