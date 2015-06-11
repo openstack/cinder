@@ -34,7 +34,7 @@ class DellStorageCenterISCSIDriver(san.SanISCSIDriver,
         volume_driver=cinder.volume.drivers.dell.DellStorageCenterISCSIDriver
     '''
 
-    VERSION = '1.0.1'
+    VERSION = '1.0.2'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterISCSIDriver, self).__init__(*args, **kwargs)

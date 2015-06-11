@@ -35,7 +35,7 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         volume_driver=cinder.volume.drivers.dell.DellStorageCenterFCDriver
     '''
 
-    VERSION = '1.0.1'
+    VERSION = '1.0.2'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterFCDriver, self).__init__(*args, **kwargs)
@@ -95,11 +95,10 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
 
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to initialize connection '))
+                    LOG.error(_LE('Failed to initialize connection.'))
 
         # We get here because our mapping is none so blow up.
-        raise exception.VolumeBackendAPIException(
-            _('unable to map volume'))
+        raise exception.VolumeBackendAPIException(_('Unable to map volume.'))
 
     @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, force=False, **kwargs):
