@@ -81,10 +81,10 @@ hp3par_opts = [
                     "https://<3par ip>:8080/api/v1"),
     cfg.StrOpt('hp3par_username',
                default='',
-               help="3PAR Super user username"),
+               help="3PAR username with the 'edit' role"),
     cfg.StrOpt('hp3par_password',
                default='',
-               help="3PAR Super user password",
+               help="3PAR password for the user specified in hp3par_username",
                secret=True),
     cfg.ListOpt('hp3par_cpg',
                 default=["OpenStack"],
@@ -176,10 +176,11 @@ class HP3PARCommon(object):
         2.0.41 - Only log versions at startup.  bug #1447697
         2.0.42 - Fix type for snapshot config settings. bug #1461640
         2.0.43 - Report the capability of supporting multiattach
+        2.0.44 - Update help strings to reduce the 3PAR user role requirements
 
     """
 
-    VERSION = "2.0.43"
+    VERSION = "2.0.44"
 
     stats = {}
 
