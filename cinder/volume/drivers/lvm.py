@@ -240,7 +240,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
             thick_provisioning_support=not thin_enabled,
             total_volumes=total_volumes,
             filter_function=self.get_filter_function(),
-            goodness_function=self.get_goodness_function()
+            goodness_function=self.get_goodness_function(),
+            multiattach=True
         ))
         data["pools"].append(single_pool)
 
