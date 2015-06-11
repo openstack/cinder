@@ -27,7 +27,6 @@ import zlib
 
 import mock
 from oslo_config import cfg
-from oslo_log import log as logging
 from swiftclient import client as swift
 
 from cinder.backup.drivers import swift as swift_dr
@@ -40,8 +39,6 @@ from cinder import test
 from cinder.tests.unit.backup import fake_swift_client
 from cinder.tests.unit.backup import fake_swift_client2
 
-
-LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
 
@@ -219,7 +216,6 @@ class BackupSwiftTestCase(test.TestCase):
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
@@ -251,7 +247,6 @@ class BackupSwiftTestCase(test.TestCase):
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
@@ -297,7 +292,6 @@ class BackupSwiftTestCase(test.TestCase):
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
@@ -351,7 +345,6 @@ class BackupSwiftTestCase(test.TestCase):
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
@@ -478,7 +471,6 @@ class BackupSwiftTestCase(test.TestCase):
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.

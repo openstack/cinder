@@ -21,7 +21,6 @@ import uuid
 
 import mock
 from oslo_concurrency import processutils
-from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import six
 from six.moves import range
@@ -35,8 +34,6 @@ from cinder.i18n import _
 from cinder import objects
 from cinder import test
 from cinder.volume.drivers import rbd as rbddriver
-
-LOG = logging.getLogger(__name__)
 
 # This is used to collect raised exceptions so that tests may check what was
 # raised.
