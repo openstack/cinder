@@ -25,7 +25,7 @@ import re
 import mock
 from oslo_log import log as logging
 import requests
-import six.moves.urllib.parse as urlparse
+from six.moves import urllib
 
 from cinder import exception
 from cinder import test
@@ -877,7 +877,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         driver = common.NetAppDriver(configuration=configuration)
         driver._check_mode_get_or_register_storage_system = mock.Mock()
         driver.do_setup(context='context')
-        url = urlparse.urlparse(driver._client._endpoint)
+        url = urllib.parse.urlparse(driver._client._endpoint)
         port = url.port
         scheme = url.scheme
         self.assertEqual(8080, port)
@@ -889,7 +889,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         driver = common.NetAppDriver(configuration=configuration)
         driver._check_mode_get_or_register_storage_system = mock.Mock()
         driver.do_setup(context='context')
-        url = urlparse.urlparse(driver._client._endpoint)
+        url = urllib.parse.urlparse(driver._client._endpoint)
         port = url.port
         scheme = url.scheme
         self.assertEqual(8080, port)
@@ -901,7 +901,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         driver = common.NetAppDriver(configuration=configuration)
         driver._check_mode_get_or_register_storage_system = mock.Mock()
         driver.do_setup(context='context')
-        url = urlparse.urlparse(driver._client._endpoint)
+        url = urllib.parse.urlparse(driver._client._endpoint)
         port = url.port
         scheme = url.scheme
         self.assertEqual(8443, port)
@@ -913,7 +913,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         driver = common.NetAppDriver(configuration=configuration)
         driver._check_mode_get_or_register_storage_system = mock.Mock()
         driver.do_setup(context='context')
-        url = urlparse.urlparse(driver._client._endpoint)
+        url = urllib.parse.urlparse(driver._client._endpoint)
         port = url.port
         scheme = url.scheme
         self.assertEqual(81, port)
@@ -926,7 +926,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         driver = common.NetAppDriver(configuration=configuration)
         driver._check_mode_get_or_register_storage_system = mock.Mock()
         driver.do_setup(context='context')
-        url = urlparse.urlparse(driver._client._endpoint)
+        url = urllib.parse.urlparse(driver._client._endpoint)
         port = url.port
         scheme = url.scheme
         self.assertEqual(446, port)

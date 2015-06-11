@@ -15,11 +15,11 @@
 
 import base64
 import string
-import urllib2
 
 from lxml import etree
 from oslo_config import cfg
 from oslo_log import log as logging
+from six.moves import urllib
 
 from cinder import context
 from cinder import exception
@@ -238,17 +238,17 @@ class XIOISEDriver(object):
         response['content'] = ''
         response['location'] = ''
         # send the request
-        req = urllib2.Request(url, body, header)
+        req = urllib.request.Request(url, body, header)
         # Override method to allow GET, PUT, POST, DELETE
         req.get_method = lambda: method
         try:
-            resp = urllib2.urlopen(req)
-        except urllib2.HTTPError as err:
+            resp = urllib.request.urlopen(req)
+        except urllib.error.HTTPError as err:
             # HTTP error. Return HTTP status and content and let caller
             # handle retries.
             response['status'] = err.code
             response['content'] = err.read()
-        except urllib2.URLError as err:
+        except urllib.error.URLError as err:
             # Connection failure.  Return a status of 0 to indicate error.
             response['status'] = 0
         else:

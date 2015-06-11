@@ -20,12 +20,12 @@ import socket
 import ssl
 import string
 import struct
-import urllib
 
 from eventlet import patcher
 import OpenSSL
 from oslo_log import log as logging
 import six
+from six.moves import urllib
 
 from cinder.i18n import _, _LI
 
@@ -312,7 +312,7 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
             if isinstance(hdr, six.text_type):
                 hdr = hdr.encode('utf-8')
             s = map(lambda x: string.strip(x), string.split(hdr, ":", 1))
-            h.putheader(urllib.quote(s[0]), urllib.quote(s[1]))
+            h.putheader(urllib.parse.quote(s[0]), urllib.parse.quote(s[1]))
 
         try:
             h.endheaders()

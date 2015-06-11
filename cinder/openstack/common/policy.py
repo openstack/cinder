@@ -98,7 +98,7 @@ import re
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 import six
-import six.moves.urllib.parse as urlparse
+from six.moves import urllib
 import six.moves.urllib.request as urlrequest
 
 from cinder.openstack.common import fileutils
@@ -924,7 +924,7 @@ class HttpCheck(Check):
 
         data = {'target': jsonutils.dumps(temp_target),
                 'credentials': jsonutils.dumps(creds)}
-        post_data = urlparse.urlencode(data)
+        post_data = urllib.parse.urlencode(data)
         f = urlrequest.urlopen(url, post_data)
         return f.read() == "True"
 

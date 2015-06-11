@@ -26,7 +26,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 import requests
-import six.moves.urllib.parse as urlparse
+from six.moves import urllib
 
 from cinder import exception
 from cinder import utils
@@ -550,7 +550,7 @@ class TintriDriver(nfs.NfsDriver):
         mount_point = location['metadata'].get('mount_point')
         if not share_location or not mount_point:
             return url
-        url_parse = urlparse.urlparse(url)
+        url_parse = urllib.parse.urlparse(url)
         abs_path = os.path.join(url_parse.netloc, url_parse.path)
         rel_path = os.path.relpath(abs_path, mount_point)
         direct_url = "%s/%s" % (share_location, rel_path)

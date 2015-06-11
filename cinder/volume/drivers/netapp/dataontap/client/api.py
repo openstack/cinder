@@ -21,11 +21,11 @@ Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
 
 import copy
-import urllib2
 
 from lxml import etree
 from oslo_log import log as logging
 import six
+from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
@@ -206,7 +206,7 @@ class NaServer(object):
                 response = self._opener.open(request, timeout=self._timeout)
             else:
                 response = self._opener.open(request)
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             raise NaApiError(e.code, e.msg)
         except Exception as e:
             raise NaApiError('Unexpected error', e)
@@ -245,7 +245,7 @@ class NaServer(object):
             self._enable_tunnel_request(netapp_elem)
         netapp_elem.add_child_elem(na_element)
         request_d = netapp_elem.to_string()
-        request = urllib2.Request(
+        request = urllib.request.Request(
             self._get_url(), data=request_d,
             headers={'Content-Type': 'text/xml', 'charset': 'utf-8'})
         return request
@@ -292,14 +292,14 @@ class NaServer(object):
             auth_handler = self._create_basic_auth_handler()
         else:
             auth_handler = self._create_certificate_auth_handler()
-        opener = urllib2.build_opener(auth_handler)
+        opener = urllib.request.build_opener(auth_handler)
         self._opener = opener
 
     def _create_basic_auth_handler(self):
-        password_man = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        password_man = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         password_man.add_password(None, self._get_url(), self._username,
                                   self._password)
-        auth_handler = urllib2.HTTPBasicAuthHandler(password_man)
+        auth_handler = urllib.request.HTTPBasicAuthHandler(password_man)
         return auth_handler
 
     def _create_certificate_auth_handler(self):

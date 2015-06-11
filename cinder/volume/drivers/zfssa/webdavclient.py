@@ -17,9 +17,9 @@ ZFS Storage Appliance WebDAV Client
 
 import httplib
 import time
-import urllib2
 
 from oslo_log import log
+from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LE
@@ -72,7 +72,7 @@ class ZFSSAWebDAVClient(object):
         retry = 0
         src_url = self.https_path + "/" + src_file
         dst_url = self.https_path + "/" + dst_file
-        request = urllib2.Request(src_url)
+        request = urllib.request.Request(src_url)
 
         if dst_file != "":
             request.add_header('Destination', dst_url)
@@ -86,8 +86,8 @@ class ZFSSAWebDAVClient(object):
 
         while retry < maxretries:
             try:
-                response = urllib2.urlopen(request, timeout=None)
-            except urllib2.HTTPError as err:
+                response = urllib.request.urlopen(request, timeout=None)
+            except urllib.error.HTTPError as err:
                 LOG.error(_LE('WebDAV returned with %(code)s error during '
                               '%(method)s call.'),
                           {'code': err.code, 'method': method})
@@ -116,7 +116,7 @@ class ZFSSAWebDAVClient(object):
                                                   src=src_file, dst=dst_file,
                                                   method=method)
 
-            except urllib2.URLError as err:
+            except urllib.error.URLError as err:
                 reason = ''
                 if getattr(err, 'reason'):
                     reason = err.reason

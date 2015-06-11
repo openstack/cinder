@@ -17,8 +17,8 @@
 import base64
 import cookielib
 import json
+import socket
 import time
-import urllib2
 import uuid
 from xml.etree import ElementTree as ET
 
@@ -26,6 +26,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 import six
+from six.moves import urllib
 
 from cinder import context
 from cinder import exception
@@ -65,15 +66,16 @@ class RestCommon(object):
         Convert response into Python Object and return it.
         """
 
-        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookie))
-        urllib2.install_opener(opener)
+        handler = urllib.request.HTTPCookieProcessor(self.cookie)
+        opener = urllib.request.build_opener(handler)
+        urllib.request.install_opener(opener)
 
         try:
-            urllib2.socket.setdefaulttimeout(720)
-            req = urllib2.Request(url, data, self.headers)
+            socket.setdefaulttimeout(720)
+            req = urllib.request.Request(url, data, self.headers)
             if method:
                 req.get_method = lambda: method
-            res = urllib2.urlopen(req).read().decode("utf-8")
+            res = urllib.request.urlopen(req).read().decode("utf-8")
 
             if "xx/sessions" not in url:
                 LOG.info(_LI('\n\n\n\nRequest URL: %(url)s\n\n'

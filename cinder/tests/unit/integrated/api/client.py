@@ -16,7 +16,7 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import netutils
 import requests
-import six.moves.urllib.parse as urlparse
+from six.moves import urllib
 
 from cinder.i18n import _, _LI
 
@@ -83,7 +83,7 @@ class TestOpenStackClient(object):
         _headers = {'Content-Type': 'application/json'}
         _headers.update(headers or {})
 
-        parsed_url = urlparse.urlparse(url)
+        parsed_url = urllib.parse.urlparse(url)
         port = parsed_url.port
         hostname = parsed_url.hostname
         scheme = parsed_url.scheme

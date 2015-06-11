@@ -23,7 +23,7 @@ import json
 
 from oslo_log import log as logging
 import requests
-import six.moves.urllib.parse as urlparse
+from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LE
@@ -56,8 +56,8 @@ class WebserviceClient(object):
     def _create_endpoint(self, scheme, host, port, service_path):
         """Creates end point url for the service."""
         netloc = '%s:%s' % (host, port)
-        self._endpoint = urlparse.urlunparse((scheme, netloc, service_path,
-                                              None, None, None))
+        self._endpoint = urllib.parse.urlunparse((scheme, netloc, service_path,
+                                                 None, None, None))
 
     def _init_connection(self):
         """Do client specific set up for session and connection pooling."""
@@ -116,7 +116,7 @@ class RestClient(WebserviceClient):
         path = path.format(**kwargs)
         if not self._endpoint.endswith('/'):
             self._endpoint = '%s/' % self._endpoint
-        return urlparse.urljoin(self._endpoint, path.lstrip('/'))
+        return urllib.parse.urljoin(self._endpoint, path.lstrip('/'))
 
     def _invoke(self, method, path, data=None, use_system=True,
                 timeout=None, verify=False, **kwargs):

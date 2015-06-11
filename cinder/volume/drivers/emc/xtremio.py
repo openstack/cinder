@@ -29,13 +29,12 @@ import json
 import math
 import random
 import string
-import urllib
-import urllib2
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 import six
+from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -78,19 +77,18 @@ class XtremIOClient(object):
         if request_typ in ('GET', 'DELETE'):
             data.update(url_data)
             self.update_url(data, self.cluster_id)
-            url = '%(url)s?%(query)s' % {'query': urllib.urlencode(data,
-                                                                   doseq=True),
-                                         'url': url}
-            request = urllib2.Request(url)
+            query = urllib.parse.urlencode(data, doseq=True)
+            url = '%(url)s?%(query)s' % {'query': query, 'url': url}
+            request = urllib.request.Request(url)
         else:
             if url_data:
                 url = ('%(url)s?%(query)s' %
-                       {'query': urllib.urlencode(url_data, doseq=True),
+                       {'query': urllib.parse.urlencode(url_data, doseq=True),
                         'url': url})
 
             self.update_data(data, self.cluster_id)
             LOG.debug('data: %s', data)
-            request = urllib2.Request(url, json.dumps(data))
+            request = urllib.request.Request(url, json.dumps(data))
             LOG.debug('%(type)s %(url)s', {'type': request_typ, 'url': url})
 
         def get_request_type():
@@ -101,8 +99,8 @@ class XtremIOClient(object):
 
     def _send_request(self, object_type, key, request):
         try:
-            response = urllib2.urlopen(request)
-        except (urllib2.HTTPError, ) as exc:
+            response = urllib.request.urlopen(request)
+        except (urllib.error.HTTPError, ) as exc:
             if exc.code == 400 and hasattr(exc, 'read'):
                 error = json.load(exc)
                 err_msg = error['message']
