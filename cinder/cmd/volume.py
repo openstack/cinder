@@ -43,6 +43,7 @@ i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
+from cinder.db import api as session
 from cinder import service
 from cinder import utils
 from cinder import version
@@ -70,6 +71,10 @@ def main():
             server = service.Service.create(host=host,
                                             service_name=backend,
                                             binary='cinder-volume')
+            # Dispose of the whole DB connection pool here before
+            # starting another process.  Otherwise we run into cases where
+            # child processes share DB connections which results in errors.
+            session.dispose_engine()
             launcher.launch_service(server)
     else:
         server = service.Service.create(binary='cinder-volume')
