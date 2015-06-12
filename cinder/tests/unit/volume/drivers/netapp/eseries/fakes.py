@@ -1,4 +1,6 @@
-# Copyright (c) - 2015, Alex Meade.  All Rights Reserved.
+# Copyright (c) - 2015, Alex Meade
+# Copyright (c) - 2015, Yogesh Kshirsagar
+#  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -80,6 +82,47 @@ VOLUME = {
 INITIATOR_NAME = 'iqn.1998-01.com.vmware:localhost-28a58148'
 INITIATOR_NAME_2 = 'iqn.1998-01.com.vmware:localhost-28a58149'
 INITIATOR_NAME_3 = 'iqn.1998-01.com.vmware:localhost-28a58150'
+WWPN = '20130080E5322230'
+WWPN_2 = '20230080E5322230'
+
+FC_TARGET_WWPNS = [
+    '500a098280feeba5',
+    '500a098290feeba5',
+    '500a098190feeba5',
+    '500a098180feeba5'
+]
+
+FC_I_T_MAP = {
+    '20230080E5322230': [
+        '500a098280feeba5',
+        '500a098290feeba5'
+    ],
+    '20130080E5322230': [
+        '500a098190feeba5',
+        '500a098180feeba5'
+    ]
+}
+
+FC_FABRIC_MAP = {
+    'fabricB': {
+        'target_port_wwn_list': [
+            '500a098190feeba5',
+            '500a098180feeba5'
+        ],
+        'initiator_port_wwn_list': [
+            '20130080E5322230'
+        ]
+    },
+    'fabricA': {
+        'target_port_wwn_list': [
+            '500a098290feeba5',
+            '500a098280feeba5'
+        ],
+        'initiator_port_wwn_list': [
+            '20230080E5322230'
+        ]
+    }
+}
 
 HOST = {
     'isSAControlled': False,
@@ -249,6 +292,102 @@ HARDWARE_INVENTORY = {
             'interfaceRef': '2202040000000000000000000000000000000000',
             'iqn': 'iqn.1992-01.com.lsi:2365.60080e500023c73400000000515af323'
         }
+    ],
+    'fibrePorts': [
+        {
+            "channel": 1,
+            "loopID": 126,
+            "speed": 800,
+            "hardAddress": 6,
+            "nodeName": "20020080E5322230",
+            "portName": "20130080E5322230",
+            "portId": "011700",
+            "topology": "fabric",
+            "part": "PM8032          ",
+            "revision": 8,
+            "chanMiswire": False,
+            "esmMiswire": False,
+            "linkStatus": "up",
+            "isDegraded": False,
+            "speedControl": "auto",
+            "maxSpeed": 800,
+            "speedNegError": False,
+            "reserved1": "000000000000000000000000",
+            "reserved2": "",
+            "ddsChannelState": 0,
+            "ddsStateReason": 0,
+            "ddsStateWho": 0,
+            "isLocal": True,
+            "channelPorts": [],
+            "currentInterfaceSpeed": "speed8gig",
+            "maximumInterfaceSpeed": "speed8gig",
+            "interfaceRef": "2202020000000000000000000000000000000000",
+            "physicalLocation": {
+                "trayRef": "0000000000000000000000000000000000000000",
+                "slot": 0,
+                "locationParent": {
+                    "refType": "generic",
+                    "controllerRef": None,
+                    "symbolRef": "0000000000000000000000000000000000000000",
+                    "typedReference": None
+                },
+                "locationPosition": 0
+            },
+            "isTrunkCapable": False,
+            "trunkMiswire": False,
+            "protectionInformationCapable": True,
+            "controllerId": "070000000000000000000002",
+            "interfaceId": "2202020000000000000000000000000000000000",
+            "addressId": "20130080E5322230",
+            "niceAddressId": "20:13:00:80:E5:32:22:30"
+        },
+        {
+            "channel": 2,
+            "loopID": 126,
+            "speed": 800,
+            "hardAddress": 7,
+            "nodeName": "20020080E5322230",
+            "portName": "20230080E5322230",
+            "portId": "011700",
+            "topology": "fabric",
+            "part": "PM8032          ",
+            "revision": 8,
+            "chanMiswire": False,
+            "esmMiswire": False,
+            "linkStatus": "up",
+            "isDegraded": False,
+            "speedControl": "auto",
+            "maxSpeed": 800,
+            "speedNegError": False,
+            "reserved1": "000000000000000000000000",
+            "reserved2": "",
+            "ddsChannelState": 0,
+            "ddsStateReason": 0,
+            "ddsStateWho": 0,
+            "isLocal": True,
+            "channelPorts": [],
+            "currentInterfaceSpeed": "speed8gig",
+            "maximumInterfaceSpeed": "speed8gig",
+            "interfaceRef": "2202030000000000000000000000000000000000",
+            "physicalLocation": {
+                "trayRef": "0000000000000000000000000000000000000000",
+                "slot": 0,
+                "locationParent": {
+                    "refType": "generic",
+                    "controllerRef": None,
+                    "symbolRef": "0000000000000000000000000000000000000000",
+                    "typedReference": None
+                },
+                "locationPosition": 0
+            },
+            "isTrunkCapable": False,
+            "trunkMiswire": False,
+            "protectionInformationCapable": True,
+            "controllerId": "070000000000000000000002",
+            "interfaceId": "2202030000000000000000000000000000000000",
+            "addressId": "20230080E5322230",
+            "niceAddressId": "20:23:00:80:E5:32:22:30"
+        },
     ]
 }
 
@@ -375,7 +514,7 @@ class FakeEseriesClient(object):
     def set_host_group_for_host(self, *args, **kwargs):
         pass
 
-    def create_host_with_port(self, *args, **kwargs):
+    def create_host_with_ports(self, *args, **kwargs):
         return HOST
 
     def list_hosts(self):
@@ -388,6 +527,15 @@ class FakeEseriesClient(object):
         return VOLUME_MAPPING
 
     def get_volume_mappings(self):
+        return [VOLUME_MAPPING]
+
+    def get_volume_mappings_for_volume(self, volume):
+        return [VOLUME_MAPPING]
+
+    def get_volume_mappings_for_host(self, host_ref):
+        return [VOLUME_MAPPING]
+
+    def get_volume_mappings_for_host_group(self, hg_ref):
         return [VOLUME_MAPPING]
 
     def delete_volume_mapping(self):
@@ -444,3 +592,6 @@ class FakeEseriesClient(object):
 
     def delete_snapshot_volume(self, *args, **kwargs):
         pass
+
+    def list_target_wwpns(self, *args, **kwargs):
+        return [WWPN_2]

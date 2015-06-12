@@ -1,7 +1,9 @@
-# Copyright (c) 2014 NetApp, Inc.  All rights reserved.
-# Copyright (c) 2014 Navneet Singh.  All rights reserved.
-# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
-# Copyright (c) 2015 Rushil Chugh.  All Rights Reserved.
+# Copyright (c) 2014 NetApp, Inc
+# Copyright (c) 2014 Navneet Singh
+# Copyright (c) 2015 Alex Meade
+# Copyright (c) 2015 Rushil Chugh
+# Copyright (c) 2015 Yogesh Kshirsagar
+#  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -20,9 +22,11 @@ Client classes for web services.
 
 import copy
 import json
+import uuid
 
 from oslo_log import log as logging
 import requests
+import six
 from six.moves import urllib
 
 from cinder import exception
@@ -192,6 +196,25 @@ class RestClient(WebserviceClient):
         path = "/storage-systems/{system-id}/volume-mappings"
         return self._invoke('GET', path)
 
+    def get_volume_mappings_for_volume(self, volume):
+        """Gets all host mappings for given volume from array."""
+        mappings = self.get_volume_mappings() or []
+        host_maps = filter(lambda x: x.get('volumeRef') == volume['volumeRef'],
+                           mappings)
+        return host_maps
+
+    def get_volume_mappings_for_host(self, host_ref):
+        """Gets all volume mappings for given host from array."""
+        mappings = self.get_volume_mappings() or []
+        host_maps = filter(lambda x: x.get('mapRef') == host_ref, mappings)
+        return host_maps
+
+    def get_volume_mappings_for_host_group(self, hg_ref):
+        """Gets all volume mappings for given host group from array."""
+        mappings = self.get_volume_mappings() or []
+        hg_maps = filter(lambda x: x.get('mapRef') == hg_ref, mappings)
+        return hg_maps
+
     def create_volume_mapping(self, object_id, target_id, lun):
         """Creates volume mapping on array."""
         path = "/storage-systems/{system-id}/volume-mappings"
@@ -221,6 +244,13 @@ class RestClient(WebserviceClient):
         """Lists objects in the hardware inventory."""
         path = "/storage-systems/{system-id}/hardware-inventory"
         return self._invoke('GET', path)
+
+    def list_target_wwpns(self):
+        """Lists the world-wide port names of the target."""
+        inventory = self.list_hardware_inventory()
+        fc_ports = inventory.get("fibrePorts", [])
+        wwpns = [port['portName'] for port in fc_ports]
+        return wwpns
 
     def create_host_group(self, label):
         """Creates a host group on the array."""
@@ -264,11 +294,18 @@ class RestClient(WebserviceClient):
         data.setdefault('ports', ports if ports else None)
         return self._invoke('POST', path, data)
 
-    def create_host_with_port(self, label, host_type, port_id,
-                              port_label, port_type='iscsi', group_id=None):
+    def create_host_with_ports(self, label, host_type, port_ids,
+                               port_type='iscsi', group_id=None):
         """Creates host on array with given port information."""
-        port = {'type': port_type, 'port': port_id, 'label': port_label}
-        return self.create_host(label, host_type, [port], group_id)
+        if port_type == 'fc':
+            port_ids = [six.text_type(wwpn).replace(':', '')
+                        for wwpn in port_ids]
+        ports = []
+        for port_id in port_ids:
+            port_label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
+            port = {'type': port_type, 'port': port_id, 'label': port_label}
+            ports.append(port)
+        return self.create_host(label, host_type, ports, group_id)
 
     def update_host(self, host_ref, data):
         """Updates host type for a given host."""

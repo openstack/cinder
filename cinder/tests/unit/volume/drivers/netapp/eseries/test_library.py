@@ -1,6 +1,7 @@
-# Copyright (c) 2014 Andrew Kerr.  All rights reserved.
-# Copyright (c) 2015 Alex Meade.  All rights reserved.
-# Copyright (c) 2015 Rushil Chugh.  All rights reserved.
+# Copyright (c) 2014 Andrew Kerr
+# Copyright (c) 2015 Alex Meade
+# Copyright (c) 2015 Rushil Chugh
+# Copyright (c) 2015 Yogesh Kshirsagar
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,20 +17,22 @@
 #    under the License.
 
 import copy
+import ddt
 
 import mock
-import six
 
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit.volume.drivers.netapp.eseries import fakes as \
-    eseries_fakes
+    eseries_fake
 from cinder.volume.drivers.netapp.eseries import client as es_client
+from cinder.volume.drivers.netapp.eseries import exception as eseries_exc
 from cinder.volume.drivers.netapp.eseries import host_mapper
 from cinder.volume.drivers.netapp.eseries import library
 from cinder.volume.drivers.netapp.eseries import utils
 from cinder.volume.drivers.netapp import utils as na_utils
+from cinder.zonemanager import utils as fczm_utils
 
 
 def get_fake_volume():
@@ -45,22 +48,23 @@ def get_fake_volume():
     }
 
 
+@ddt.ddt
 class NetAppEseriesLibraryTestCase(test.TestCase):
     def setUp(self):
         super(NetAppEseriesLibraryTestCase, self).setUp()
 
         kwargs = {'configuration':
-                  eseries_fakes.create_configuration_eseries()}
+                  eseries_fake.create_configuration_eseries()}
 
         self.library = library.NetAppESeriesLibrary('FAKE', **kwargs)
-        self.library._client = eseries_fakes.FakeEseriesClient()
+        self.library._client = eseries_fake.FakeEseriesClient()
         self.library.check_for_setup_error()
 
     def test_do_setup(self):
         self.mock_object(self.library,
                          '_check_mode_get_or_register_storage_system')
         self.mock_object(es_client, 'RestClient',
-                         eseries_fakes.FakeEseriesClient)
+                         eseries_fake.FakeEseriesClient)
         mock_check_flags = self.mock_object(na_utils, 'check_flags')
         self.library.do_setup(mock.Mock())
 
@@ -207,7 +211,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                          ssc_stats)
 
     def test_terminate_connection_iscsi_no_hosts(self):
-        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
 
         self.mock_object(self.library._client, 'list_hosts',
                          mock.Mock(return_value=[]))
@@ -218,18 +222,17 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                           connector)
 
     def test_terminate_connection_iscsi_volume_not_mapped(self):
-        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
-        err = self.assertRaises(exception.NetAppDriverException,
-                                self.library.terminate_connection_iscsi,
-                                get_fake_volume(),
-                                connector)
-        self.assertIn("not currently mapped to host", six.text_type(err))
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
+        self.assertRaises(eseries_exc.VolumeNotMapped,
+                          self.library.terminate_connection_iscsi,
+                          get_fake_volume(),
+                          connector)
 
     def test_terminate_connection_iscsi_volume_mapped(self):
-        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
-        fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
+        fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         fake_eseries_volume['listOfMappings'] = [
-            eseries_fakes.VOLUME_MAPPING
+            eseries_fake.VOLUME_MAPPING
         ]
         self.mock_object(self.library._client, 'list_volumes',
                          mock.Mock(return_value=[fake_eseries_volume]))
@@ -241,54 +244,58 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
     def test_terminate_connection_iscsi_not_mapped_initiator_does_not_exist(
             self):
-        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[eseries_fakes.HOST_2]))
+                         mock.Mock(return_value=[eseries_fake.HOST_2]))
         self.assertRaises(exception.NotFound,
                           self.library.terminate_connection_iscsi,
                           get_fake_volume(),
                           connector)
 
     def test_initialize_connection_iscsi_volume_not_mapped(self):
-        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
-        self.mock_object(self.library._client, 'get_volume_mappings',
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
+        self.mock_object(self.library._client,
+                         'get_volume_mappings_for_volume',
                          mock.Mock(return_value=[]))
         self.mock_object(host_mapper, 'map_volume_to_single_host',
                          mock.Mock(
-                             return_value=eseries_fakes.VOLUME_MAPPING))
+                             return_value=eseries_fake.VOLUME_MAPPING))
 
         self.library.initialize_connection_iscsi(get_fake_volume(), connector)
 
-        self.assertTrue(self.library._client.get_volume_mappings.called)
+        self.assertTrue(
+            self.library._client.get_volume_mappings_for_volume.called)
         self.assertTrue(host_mapper.map_volume_to_single_host.called)
 
     def test_initialize_connection_iscsi_volume_not_mapped_host_does_not_exist(
             self):
-        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
-        self.mock_object(self.library._client, 'get_volume_mappings',
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
+        self.mock_object(self.library._client,
+                         'get_volume_mappings_for_volume',
                          mock.Mock(return_value=[]))
         self.mock_object(self.library._client, 'list_hosts',
                          mock.Mock(return_value=[]))
-        self.mock_object(self.library._client, 'create_host_with_port',
-                         mock.Mock(return_value=eseries_fakes.HOST))
+        self.mock_object(self.library._client, 'create_host_with_ports',
+                         mock.Mock(return_value=eseries_fake.HOST))
         self.mock_object(host_mapper, 'map_volume_to_single_host',
                          mock.Mock(
-                             return_value=eseries_fakes.VOLUME_MAPPING))
+                             return_value=eseries_fake.VOLUME_MAPPING))
 
         self.library.initialize_connection_iscsi(get_fake_volume(), connector)
 
-        self.assertTrue(self.library._client.get_volume_mappings.called)
+        self.assertTrue(
+            self.library._client.get_volume_mappings_for_volume.called)
         self.assertTrue(self.library._client.list_hosts.called)
-        self.assertTrue(self.library._client.create_host_with_port.called)
+        self.assertTrue(self.library._client.create_host_with_ports.called)
         self.assertTrue(host_mapper.map_volume_to_single_host.called)
 
     def test_initialize_connection_iscsi_volume_already_mapped_to_target_host(
             self):
         """Should be a no-op"""
-        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
         self.mock_object(host_mapper, 'map_volume_to_single_host',
                          mock.Mock(
-                             return_value=eseries_fakes.VOLUME_MAPPING))
+                             return_value=eseries_fake.VOLUME_MAPPING))
 
         self.library.initialize_connection_iscsi(get_fake_volume(), connector)
 
@@ -296,10 +303,10 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
     def test_initialize_connection_iscsi_volume_mapped_to_another_host(self):
         """Should raise error saying multiattach not enabled"""
-        connector = {'initiator': eseries_fakes.INITIATOR_NAME}
+        connector = {'initiator': eseries_fake.INITIATOR_NAME}
         fake_mapping_to_other_host = copy.deepcopy(
-            eseries_fakes.VOLUME_MAPPING)
-        fake_mapping_to_other_host['mapRef'] = eseries_fakes.HOST_2[
+            eseries_fake.VOLUME_MAPPING)
+        fake_mapping_to_other_host['mapRef'] = eseries_fake.HOST_2[
             'hostRef']
         self.mock_object(host_mapper, 'map_volume_to_single_host',
                          mock.Mock(
@@ -311,6 +318,297 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
         self.assertTrue(host_mapper.map_volume_to_single_host.called)
 
+    @ddt.data(eseries_fake.WWPN,
+              fczm_utils.get_formatted_wwn(eseries_fake.WWPN))
+    def test_get_host_with_matching_port_wwpn(self, port_id):
+        port_ids = [port_id]
+        host = copy.deepcopy(eseries_fake.HOST)
+        host.update(
+            {
+                'hostSidePorts': [{'label': 'NewStore', 'type': 'fc',
+                                   'address': eseries_fake.WWPN}]
+            }
+        )
+        host_2 = copy.deepcopy(eseries_fake.HOST_2)
+        host_2.update(
+            {
+                'hostSidePorts': [{'label': 'NewStore', 'type': 'fc',
+                                   'address': eseries_fake.WWPN_2}]
+            }
+        )
+        host_list = [host, host_2]
+        self.mock_object(self.library._client,
+                         'list_hosts',
+                         mock.Mock(return_value=host_list))
+
+        actual_host = self.library._get_host_with_matching_port(
+            port_ids)
+
+        self.assertEqual(host, actual_host)
+
+    def test_get_host_with_matching_port_iqn(self):
+        port_ids = [eseries_fake.INITIATOR_NAME]
+        host = copy.deepcopy(eseries_fake.HOST)
+        host.update(
+            {
+                'hostSidePorts': [{'label': 'NewStore', 'type': 'iscsi',
+                                   'address': eseries_fake.INITIATOR_NAME}]
+            }
+        )
+        host_2 = copy.deepcopy(eseries_fake.HOST_2)
+        host_2.update(
+            {
+                'hostSidePorts': [{'label': 'NewStore', 'type': 'iscsi',
+                                   'address': eseries_fake.INITIATOR_NAME_2}]
+            }
+        )
+        host_list = [host, host_2]
+        self.mock_object(self.library._client,
+                         'list_hosts',
+                         mock.Mock(return_value=host_list))
+
+        actual_host = self.library._get_host_with_matching_port(
+            port_ids)
+
+        self.assertEqual(host, actual_host)
+
+    def test_terminate_connection_fc_no_hosts(self):
+        connector = {'wwpns': [eseries_fake.WWPN]}
+
+        self.mock_object(self.library._client, 'list_hosts',
+                         mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.NotFound,
+                          self.library.terminate_connection_fc,
+                          get_fake_volume(),
+                          connector)
+
+    def test_terminate_connection_fc_volume_not_mapped(self):
+        connector = {'wwpns': [eseries_fake.WWPN]}
+        fake_host = copy.deepcopy(eseries_fake.HOST)
+        fake_host['hostSidePorts'] = [{
+            'label': 'NewStore',
+            'type': 'fc',
+            'address': eseries_fake.WWPN
+        }]
+
+        self.mock_object(self.library._client, 'list_hosts',
+                         mock.Mock(return_value=[fake_host]))
+
+        self.assertRaises(eseries_exc.VolumeNotMapped,
+                          self.library.terminate_connection_fc,
+                          get_fake_volume(),
+                          connector)
+
+    def test_terminate_connection_fc_volume_mapped(self):
+        connector = {'wwpns': [eseries_fake.WWPN]}
+        fake_host = copy.deepcopy(eseries_fake.HOST)
+        fake_host['hostSidePorts'] = [{
+            'label': 'NewStore',
+            'type': 'fc',
+            'address': eseries_fake.WWPN
+        }]
+        fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
+        fake_eseries_volume['listOfMappings'] = [
+            copy.deepcopy(eseries_fake.VOLUME_MAPPING)
+        ]
+        self.mock_object(self.library._client, 'list_hosts',
+                         mock.Mock(return_value=[fake_host]))
+        self.mock_object(self.library._client, 'list_volumes',
+                         mock.Mock(return_value=[fake_eseries_volume]))
+        self.mock_object(host_mapper, 'unmap_volume_from_host')
+
+        self.library.terminate_connection_fc(get_fake_volume(), connector)
+
+        self.assertTrue(host_mapper.unmap_volume_from_host.called)
+
+    def test_terminate_connection_fc_volume_mapped_no_cleanup_zone(self):
+        connector = {'wwpns': [eseries_fake.WWPN]}
+        fake_host = copy.deepcopy(eseries_fake.HOST)
+        fake_host['hostSidePorts'] = [{
+            'label': 'NewStore',
+            'type': 'fc',
+            'address': eseries_fake.WWPN
+        }]
+        expected_target_info = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {},
+        }
+        fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
+        fake_eseries_volume['listOfMappings'] = [
+            copy.deepcopy(eseries_fake.VOLUME_MAPPING)
+        ]
+        self.mock_object(self.library._client, 'list_hosts',
+                         mock.Mock(return_value=[fake_host]))
+        self.mock_object(self.library._client, 'list_volumes',
+                         mock.Mock(return_value=[fake_eseries_volume]))
+        self.mock_object(host_mapper, 'unmap_volume_from_host')
+        self.mock_object(self.library._client, 'get_volume_mappings_for_host',
+                         mock.Mock(return_value=[copy.deepcopy
+                                                 (eseries_fake.
+                                                  VOLUME_MAPPING)]))
+
+        target_info = self.library.terminate_connection_fc(get_fake_volume(),
+                                                           connector)
+        self.assertDictEqual(expected_target_info, target_info)
+
+        self.assertTrue(host_mapper.unmap_volume_from_host.called)
+
+    def test_terminate_connection_fc_volume_mapped_cleanup_zone(self):
+        connector = {'wwpns': [eseries_fake.WWPN]}
+        fake_host = copy.deepcopy(eseries_fake.HOST)
+        fake_host['hostSidePorts'] = [{
+            'label': 'NewStore',
+            'type': 'fc',
+            'address': eseries_fake.WWPN
+        }]
+        expected_target_info = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'target_wwn': [eseries_fake.WWPN_2],
+                'initiator_target_map': {
+                    eseries_fake.WWPN: [eseries_fake.WWPN_2]
+                },
+            },
+        }
+        fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
+        fake_eseries_volume['listOfMappings'] = [
+            copy.deepcopy(eseries_fake.VOLUME_MAPPING)
+        ]
+        self.mock_object(self.library._client, 'list_hosts',
+                         mock.Mock(return_value=[fake_host]))
+        self.mock_object(self.library._client, 'list_volumes',
+                         mock.Mock(return_value=[fake_eseries_volume]))
+        self.mock_object(host_mapper, 'unmap_volume_from_host')
+        self.mock_object(self.library._client, 'get_volume_mappings_for_host',
+                         mock.Mock(return_value=[]))
+
+        target_info = self.library.terminate_connection_fc(get_fake_volume(),
+                                                           connector)
+        self.assertDictEqual(expected_target_info, target_info)
+
+        self.assertTrue(host_mapper.unmap_volume_from_host.called)
+
+    def test_terminate_connection_fc_not_mapped_host_with_wwpn_does_not_exist(
+            self):
+        connector = {'wwpns': [eseries_fake.WWPN]}
+        self.mock_object(self.library._client, 'list_hosts',
+                         mock.Mock(return_value=[eseries_fake.HOST_2]))
+        self.assertRaises(exception.NotFound,
+                          self.library.terminate_connection_fc,
+                          get_fake_volume(),
+                          connector)
+
+    def test_initialize_connection_fc_volume_not_mapped(self):
+        connector = {'wwpns': [eseries_fake.WWPN]}
+        self.mock_object(self.library._client,
+                         'get_volume_mappings_for_volume',
+                         mock.Mock(return_value=[]))
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             return_value=eseries_fake.VOLUME_MAPPING))
+        expected_target_info = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'target_discovered': True,
+                'target_lun': 0,
+                'target_wwn': [eseries_fake.WWPN_2],
+                'access_mode': 'rw',
+                'initiator_target_map': {
+                    eseries_fake.WWPN: [eseries_fake.WWPN_2]
+                },
+            },
+        }
+
+        target_info = self.library.initialize_connection_fc(get_fake_volume(),
+                                                            connector)
+
+        self.assertTrue(
+            self.library._client.get_volume_mappings_for_volume.called)
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+        self.assertDictEqual(expected_target_info, target_info)
+
+    def test_initialize_connection_fc_volume_not_mapped_host_does_not_exist(
+            self):
+        connector = {'wwpns': [eseries_fake.WWPN]}
+        self.library.driver_protocol = 'FC'
+        self.mock_object(self.library._client,
+                         'get_volume_mappings_for_volume',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.library._client, 'list_hosts',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.library._client, 'create_host_with_ports',
+                         mock.Mock(return_value=eseries_fake.HOST))
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             return_value=eseries_fake.VOLUME_MAPPING))
+
+        self.library.initialize_connection_fc(get_fake_volume(), connector)
+
+        self.library._client.create_host_with_ports.assert_called_once_with(
+            mock.ANY, mock.ANY,
+            [fczm_utils.get_formatted_wwn(eseries_fake.WWPN)],
+            port_type='fc', group_id=None
+        )
+
+    def test_initialize_connection_fc_volume_already_mapped_to_target_host(
+            self):
+        """Should be a no-op"""
+        connector = {'wwpns': [eseries_fake.WWPN]}
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             return_value=eseries_fake.VOLUME_MAPPING))
+
+        self.library.initialize_connection_fc(get_fake_volume(), connector)
+
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+
+    def test_initialize_connection_fc_volume_mapped_to_another_host(self):
+        """Should raise error saying multiattach not enabled"""
+        connector = {'wwpns': [eseries_fake.WWPN]}
+        fake_mapping_to_other_host = copy.deepcopy(
+            eseries_fake.VOLUME_MAPPING)
+        fake_mapping_to_other_host['mapRef'] = eseries_fake.HOST_2[
+            'hostRef']
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             side_effect=exception.NetAppDriverException))
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.initialize_connection_fc,
+                          get_fake_volume(), connector)
+
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+
+    def test_initialize_connection_fc_no_target_wwpns(self):
+        """Should be a no-op"""
+        connector = {'wwpns': [eseries_fake.WWPN]}
+        self.mock_object(host_mapper, 'map_volume_to_single_host',
+                         mock.Mock(
+                             return_value=eseries_fake.VOLUME_MAPPING))
+        self.mock_object(self.library._client, 'list_target_wwpns',
+                         mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library.initialize_connection_fc,
+                          get_fake_volume(), connector)
+        self.assertTrue(host_mapper.map_volume_to_single_host.called)
+
+    def test_build_initiator_target_map_fc_with_lookup_service(
+            self):
+        connector = {'wwpns': [eseries_fake.WWPN, eseries_fake.WWPN_2]}
+        self.library.lookup_service = mock.Mock()
+        self.library.lookup_service.get_device_mapping_from_network = (
+            mock.Mock(return_value=eseries_fake.FC_FABRIC_MAP))
+
+        (target_wwpns, initiator_target_map, num_paths) = (
+            self.library._build_initiator_target_map_fc(connector))
+
+        self.assertSetEqual(set(eseries_fake.FC_TARGET_WWPNS),
+                            set(target_wwpns))
+        self.assertDictEqual(eseries_fake.FC_I_T_MAP, initiator_target_map)
+        self.assertEqual(4, num_paths)
+
 
 class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     """Test driver behavior when the netapp_enable_multiattach
@@ -319,20 +617,20 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppEseriesLibraryMultiAttachTestCase, self).setUp()
-        config = eseries_fakes.create_configuration_eseries()
+        config = eseries_fake.create_configuration_eseries()
         config.netapp_enable_multiattach = True
 
         kwargs = {'configuration': config}
 
         self.library = library.NetAppESeriesLibrary("FAKE", **kwargs)
-        self.library._client = eseries_fakes.FakeEseriesClient()
+        self.library._client = eseries_fake.FakeEseriesClient()
         self.library.check_for_setup_error()
 
     def test_do_setup_host_group_already_exists(self):
         mock_check_flags = self.mock_object(na_utils, 'check_flags')
         self.mock_object(self.library,
                          '_check_mode_get_or_register_storage_system')
-        fake_rest_client = eseries_fakes.FakeEseriesClient()
+        fake_rest_client = eseries_fake.FakeEseriesClient()
         self.mock_object(self.library, '_create_rest_client',
                          mock.Mock(return_value=fake_rest_client))
         mock_create = self.mock_object(fake_rest_client, 'create_host_group')
@@ -344,7 +642,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
     def test_do_setup_host_group_does_not_exist(self):
         mock_check_flags = self.mock_object(na_utils, 'check_flags')
-        fake_rest_client = eseries_fakes.FakeEseriesClient()
+        fake_rest_client = eseries_fake.FakeEseriesClient()
         self.mock_object(self.library, '_create_rest_client',
                          mock.Mock(return_value=fake_rest_client))
         mock_get_host_group = self.mock_object(
@@ -360,17 +658,17 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
     def test_create_volume(self):
         self.library._client.create_volume = mock.Mock(
-            return_value=eseries_fakes.VOLUME)
+            return_value=eseries_fake.VOLUME)
 
         self.library.create_volume(get_fake_volume())
         self.assertTrue(self.library._client.create_volume.call_count)
 
     def test_create_volume_too_many_volumes(self):
         self.library._client.list_volumes = mock.Mock(
-            return_value=[eseries_fakes.VOLUME for __ in
+            return_value=[eseries_fake.VOLUME for __ in
                           range(utils.MAX_LUNS_PER_HOST_GROUP + 1)])
         self.library._client.create_volume = mock.Mock(
-            return_value=eseries_fakes.VOLUME)
+            return_value=eseries_fake.VOLUME)
 
         self.assertRaises(exception.NetAppDriverException,
                           self.library.create_volume,
@@ -378,7 +676,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         self.assertFalse(self.library._client.create_volume.call_count)
 
     def test_create_volume_from_snapshot(self):
-        fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
+        fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         self.mock_object(self.library, "_schedule_and_create_volume",
                          mock.Mock(return_value=fake_eseries_volume))
         self.mock_object(self.library, "_create_snapshot_volume",
@@ -395,7 +693,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             1, self.library._client.delete_snapshot_volume.call_count)
 
     def test_create_volume_from_snapshot_create_fails(self):
-        fake_dest_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
+        fake_dest_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         self.mock_object(self.library, "_schedule_and_create_volume",
                          mock.Mock(return_value=fake_dest_eseries_volume))
         self.mock_object(self.library, "_create_snapshot_volume",
@@ -419,7 +717,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             fake_dest_eseries_volume['volumeRef'])
 
     def test_create_volume_from_snapshot_copy_job_fails(self):
-        fake_dest_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
+        fake_dest_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         self.mock_object(self.library, "_schedule_and_create_volume",
                          mock.Mock(return_value=fake_dest_eseries_volume))
         self.mock_object(self.library, "_create_snapshot_volume",
@@ -428,7 +726,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         self.mock_object(self.library._client, "delete_volume")
 
         fake_failed_volume_copy_job = copy.deepcopy(
-            eseries_fakes.VOLUME_COPY_JOB)
+            eseries_fake.VOLUME_COPY_JOB)
         fake_failed_volume_copy_job['status'] = 'failed'
         self.mock_object(self.library._client,
                          "create_volume_copy_job",
@@ -452,13 +750,13 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             fake_dest_eseries_volume['volumeRef'])
 
     def test_create_volume_from_snapshot_fail_to_delete_snapshot_volume(self):
-        fake_dest_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
+        fake_dest_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         fake_dest_eseries_volume['volumeRef'] = 'fake_volume_ref'
         self.mock_object(self.library, "_schedule_and_create_volume",
                          mock.Mock(return_value=fake_dest_eseries_volume))
         self.mock_object(self.library, "_create_snapshot_volume",
                          mock.Mock(return_value=copy.deepcopy(
-                             eseries_fakes.VOLUME)))
+                             eseries_fake.VOLUME)))
         self.mock_object(self.library._client, "delete_snapshot_volume",
                          mock.Mock(side_effect=exception.NetAppDriverException)
                          )
@@ -477,48 +775,52 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
     def test_map_volume_to_host_volume_not_mapped(self):
         """Map the volume directly to destination host."""
-        self.mock_object(self.library._client, 'get_volume_mappings',
+        self.mock_object(self.library._client,
+                         'get_volume_mappings_for_volume',
                          mock.Mock(return_value=[]))
         self.mock_object(host_mapper, 'map_volume_to_single_host',
                          mock.Mock(
-                             return_value=eseries_fakes.VOLUME_MAPPING))
+                             return_value=eseries_fake.VOLUME_MAPPING))
 
         self.library.map_volume_to_host(get_fake_volume(),
-                                        eseries_fakes.VOLUME,
-                                        eseries_fakes.INITIATOR_NAME_2)
+                                        eseries_fake.VOLUME,
+                                        eseries_fake.INITIATOR_NAME_2)
 
-        self.assertTrue(self.library._client.get_volume_mappings.called)
+        self.assertTrue(
+            self.library._client.get_volume_mappings_for_volume.called)
         self.assertTrue(host_mapper.map_volume_to_single_host.called)
 
     def test_map_volume_to_host_volume_not_mapped_host_does_not_exist(self):
         """Should create the host map directly to the host."""
         self.mock_object(self.library._client, 'list_hosts',
                          mock.Mock(return_value=[]))
-        self.mock_object(self.library._client, 'create_host_with_port',
+        self.mock_object(self.library._client, 'create_host_with_ports',
                          mock.Mock(
-                             return_value=eseries_fakes.HOST_2))
-        self.mock_object(self.library._client, 'get_volume_mappings',
+                             return_value=eseries_fake.HOST_2))
+        self.mock_object(self.library._client,
+                         'get_volume_mappings_for_volume',
                          mock.Mock(return_value=[]))
         self.mock_object(host_mapper, 'map_volume_to_single_host',
                          mock.Mock(
-                             return_value=eseries_fakes.VOLUME_MAPPING))
+                             return_value=eseries_fake.VOLUME_MAPPING))
 
         self.library.map_volume_to_host(get_fake_volume(),
-                                        eseries_fakes.VOLUME,
-                                        eseries_fakes.INITIATOR_NAME_2)
+                                        eseries_fake.VOLUME,
+                                        eseries_fake.INITIATOR_NAME_2)
 
-        self.assertTrue(self.library._client.create_host_with_port.called)
-        self.assertTrue(self.library._client.get_volume_mappings.called)
+        self.assertTrue(self.library._client.create_host_with_ports.called)
+        self.assertTrue(
+            self.library._client.get_volume_mappings_for_volume.called)
         self.assertTrue(host_mapper.map_volume_to_single_host.called)
 
     def test_map_volume_to_host_volume_already_mapped(self):
         """Should be a no-op."""
         self.mock_object(host_mapper, 'map_volume_to_multiple_hosts',
                          mock.Mock(
-                             return_value=eseries_fakes.VOLUME_MAPPING))
+                             return_value=eseries_fake.VOLUME_MAPPING))
 
         self.library.map_volume_to_host(get_fake_volume(),
-                                        eseries_fakes.VOLUME,
-                                        eseries_fakes.INITIATOR_NAME)
+                                        eseries_fake.VOLUME,
+                                        eseries_fake.INITIATOR_NAME)
 
         self.assertTrue(host_mapper.map_volume_to_multiple_hosts.called)

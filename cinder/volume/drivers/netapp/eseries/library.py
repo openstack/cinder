@@ -1,7 +1,8 @@
-# Copyright (c) 2014 NetApp, Inc.  All Rights Reserved.
-# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
-# Copyright (c) 2015 Rushil Chugh.  All Rights Reserved.
-# Copyright (c) 2015 Navneet Singh.  All Rights Reserved.
+# Copyright (c) 2015 Alex Meade
+# Copyright (c) 2015 Rushil Chugh
+# Copyright (c) 2015 Navneet Singh
+# Copyright (c) 2015 Yogesh Kshirsagar
+#  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -38,6 +39,7 @@ from cinder.volume.drivers.netapp.eseries import utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
+from cinder.zonemanager import utils as fczm_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -101,6 +103,7 @@ class NetAppESeriesLibrary(object):
         self.configuration.append_config_values(na_opts.netapp_transport_opts)
         self.configuration.append_config_values(na_opts.netapp_eseries_opts)
         self.configuration.append_config_values(na_opts.netapp_san_opts)
+        self.lookup_service = fczm_utils.create_lookup_service()
         self._backend_name = self.configuration.safe_get(
             "volume_backend_name") or "NetApp_ESeries"
         self.driver_name = driver_name
@@ -187,7 +190,7 @@ class NetAppESeriesLibrary(object):
                           {'host': host, 'e': e})
                 raise exception.NoValidHost(
                     _("Controller IP '%(host)s' could not be resolved: %(e)s.")
-                    % {'host': host, 'e': six.text_type(e)})
+                    % {'host': host, 'e': e})
 
         ips = self.configuration.netapp_controller_ips
         ips = [i.strip() for i in ips.split(",")]
@@ -516,11 +519,11 @@ class NetAppESeriesLibrary(object):
         """Removes an export for a volume."""
         pass
 
-    def map_volume_to_host(self, volume, eseries_volume, initiator_name):
+    def map_volume_to_host(self, volume, eseries_volume, initiators):
         """Ensures the specified initiator has access to the volume."""
-        existing_maps = host_mapper.get_host_mapping_for_vol_frm_array(
-            self._client, eseries_volume)
-        host = self._get_or_create_host(initiator_name, self.host_type)
+        existing_maps = self._client.get_volume_mappings_for_volume(
+            eseries_volume)
+        host = self._get_or_create_host(initiators, self.host_type)
         # There can only be one or zero mappings on a volume in E-Series
         current_map = existing_maps[0] if existing_maps else None
 
@@ -537,11 +540,168 @@ class NetAppESeriesLibrary(object):
                 self.configuration.netapp_enable_multiattach)
         return mapping
 
+    def initialize_connection_fc(self, volume, connector):
+        """Initializes the connection and returns connection info.
+
+        Assigns the specified volume to a compute node/host so that it can be
+        used from that host.
+
+        The driver returns a driver_volume_type of 'fibre_channel'.
+        The target_wwn can be a single entry or a list of wwns that
+        correspond to the list of remote wwn(s) that will export the volume.
+        Example return values:
+            {
+                'driver_volume_type': 'fibre_channel'
+                'data': {
+                    'target_discovered': True,
+                    'target_lun': 1,
+                    'target_wwn': '500a098280feeba5',
+                    'access_mode': 'rw',
+                    'initiator_target_map': {
+                        '21000024ff406cc3': ['500a098280feeba5'],
+                        '21000024ff406cc2': ['500a098280feeba5']
+                    }
+                }
+            }
+
+            or
+
+             {
+                'driver_volume_type': 'fibre_channel'
+                'data': {
+                    'target_discovered': True,
+                    'target_lun': 1,
+                    'target_wwn': ['500a098280feeba5', '500a098290feeba5',
+                                   '500a098190feeba5', '500a098180feeba5'],
+                    'access_mode': 'rw',
+                    'initiator_target_map': {
+                        '21000024ff406cc3': ['500a098280feeba5',
+                                             '500a098290feeba5'],
+                        '21000024ff406cc2': ['500a098190feeba5',
+                                             '500a098180feeba5']
+                    }
+                }
+            }
+        """
+
+        initiators = [fczm_utils.get_formatted_wwn(wwpn)
+                      for wwpn in connector['wwpns']]
+
+        eseries_vol = self._get_volume(volume['name_id'])
+        mapping = self.map_volume_to_host(volume, eseries_vol,
+                                          initiators)
+        lun_id = mapping['lun']
+
+        initiator_info = self._build_initiator_target_map_fc(connector)
+        target_wwpns, initiator_target_map, num_paths = initiator_info
+
+        if target_wwpns:
+            msg = ("Successfully fetched target details for LUN %(id)s "
+                   "and initiator(s) %(initiators)s.")
+            msg_fmt = {'id': volume['id'], 'initiators': initiators}
+            LOG.debug(msg, msg_fmt)
+        else:
+            msg = _('Failed to get LUN target details for the LUN %s.')
+            raise exception.VolumeBackendAPIException(data=msg % volume['id'])
+
+        target_info = {'driver_volume_type': 'fibre_channel',
+                       'data': {'target_discovered': True,
+                                'target_lun': int(lun_id),
+                                'target_wwn': target_wwpns,
+                                'access_mode': 'rw',
+                                'initiator_target_map': initiator_target_map}}
+
+        return target_info
+
+    def terminate_connection_fc(self, volume, connector, **kwargs):
+        """Disallow connection from connector.
+
+        Return empty data if other volumes are in the same zone.
+        The FibreChannel ZoneManager doesn't remove zones
+        if there isn't an initiator_target_map in the
+        return of terminate_connection.
+
+        :returns: data - the target_wwns and initiator_target_map if the
+                         zone is to be removed, otherwise the same map with
+                         an empty dict for the 'data' key
+        """
+
+        eseries_vol = self._get_volume(volume['name_id'])
+        initiators = [fczm_utils.get_formatted_wwn(wwpn)
+                      for wwpn in connector['wwpns']]
+        host = self._get_host_with_matching_port(initiators)
+        mappings = eseries_vol.get('listOfMappings', [])
+
+        # There can only be one or zero mappings on a volume in E-Series
+        mapping = mappings[0] if mappings else None
+
+        if not mapping:
+            raise eseries_exc.VolumeNotMapped(volume_id=volume['id'],
+                                              host=host['label'])
+        host_mapper.unmap_volume_from_host(self._client, volume, host, mapping)
+
+        info = {'driver_volume_type': 'fibre_channel',
+                'data': {}}
+
+        if len(self._client.get_volume_mappings_for_host(
+                host['hostRef'])) == 0:
+            # No more exports for this host, so tear down zone.
+            LOG.info(_LI("Need to remove FC Zone, building initiator "
+                         "target map."))
+
+            initiator_info = self._build_initiator_target_map_fc(connector)
+            target_wwpns, initiator_target_map, num_paths = initiator_info
+
+            info['data'] = {'target_wwn': target_wwpns,
+                            'initiator_target_map': initiator_target_map}
+
+        return info
+
+    def _build_initiator_target_map_fc(self, connector):
+        """Build the target_wwns and the initiator target map."""
+
+        # get WWPNs from controller and strip colons
+        all_target_wwpns = self._client.list_target_wwpns()
+        all_target_wwpns = [six.text_type(wwpn).replace(':', '')
+                            for wwpn in all_target_wwpns]
+
+        target_wwpns = []
+        init_targ_map = {}
+        num_paths = 0
+
+        if self.lookup_service:
+            # Use FC SAN lookup to determine which ports are visible.
+            dev_map = self.lookup_service.get_device_mapping_from_network(
+                connector['wwpns'],
+                all_target_wwpns)
+
+            for fabric_name in dev_map:
+                fabric = dev_map[fabric_name]
+                target_wwpns += fabric['target_port_wwn_list']
+                for initiator in fabric['initiator_port_wwn_list']:
+                    if initiator not in init_targ_map:
+                        init_targ_map[initiator] = []
+                    init_targ_map[initiator] += fabric['target_port_wwn_list']
+                    init_targ_map[initiator] = list(set(
+                        init_targ_map[initiator]))
+                    for target in init_targ_map[initiator]:
+                        num_paths += 1
+            target_wwpns = list(set(target_wwpns))
+        else:
+            initiator_wwns = connector['wwpns']
+            target_wwpns = all_target_wwpns
+
+            for initiator in initiator_wwns:
+                init_targ_map[initiator] = target_wwpns
+
+        return target_wwpns, init_targ_map, num_paths
+
     def initialize_connection_iscsi(self, volume, connector):
         """Allow connection to connector and return connection info."""
         initiator_name = connector['initiator']
         eseries_vol = self._get_volume(volume['name_id'])
-        mapping = self.map_volume_to_host(volume, eseries_vol, initiator_name)
+        mapping = self.map_volume_to_host(volume, eseries_vol,
+                                          [initiator_name])
 
         lun_id = mapping['lun']
         msg_fmt = {'id': volume['id'], 'initiator_name': initiator_name}
@@ -599,10 +759,10 @@ class NetAppESeriesLibrary(object):
         raise exception.NetAppDriverException(
             msg % self._client.get_system_id())
 
-    def _get_or_create_host(self, port_id, host_type):
+    def _get_or_create_host(self, port_ids, host_type):
         """Fetch or create a host by given port."""
         try:
-            host = self._get_host_with_port(port_id)
+            host = self._get_host_with_matching_port(port_ids)
             ht_def = self._get_host_type_definition(host_type)
             if host.get('hostTypeIndex') != ht_def.get('index'):
                 try:
@@ -615,30 +775,36 @@ class NetAppESeriesLibrary(object):
             return host
         except exception.NotFound as e:
             LOG.warning(_LW("Message - %s."), e.msg)
-            return self._create_host(port_id, host_type)
+            return self._create_host(port_ids, host_type)
 
-    def _get_host_with_port(self, port_id):
+    def _get_host_with_matching_port(self, port_ids):
         """Gets or creates a host with given port id."""
+        # Remove any extra colons
+        port_ids = [six.text_type(wwpn).replace(':', '')
+                    for wwpn in port_ids]
         hosts = self._client.list_hosts()
-        for host in hosts:
-            if host.get('hostSidePorts'):
-                ports = host.get('hostSidePorts')
-                for port in ports:
-                    if (port.get('type') == 'iscsi'
-                            and port.get('address') == port_id):
-                        return host
-        msg = _("Host with port %(port)s not found.")
-        raise exception.NotFound(msg % {'port': port_id})
+        for port_id in port_ids:
+            for host in hosts:
+                if host.get('hostSidePorts'):
+                    ports = host.get('hostSidePorts')
+                    for port in ports:
+                        address = port.get('address').upper().replace(':', '')
+                        if address == port_id.upper():
+                            return host
+        msg = _("Host with ports %(ports)s not found.")
+        raise exception.NotFound(msg % {'ports': port_ids})
 
-    def _create_host(self, port_id, host_type, host_group=None):
+    def _create_host(self, port_ids, host_type, host_group=None):
         """Creates host on system with given initiator as port_id."""
-        LOG.info(_LI("Creating host with port %s."), port_id)
-        label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
-        port_label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
+        LOG.info(_LI("Creating host with ports %s."), port_ids)
+        host_label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
         host_type = self._get_host_type_definition(host_type)
-        return self._client.create_host_with_port(label, host_type,
-                                                  port_id, port_label,
-                                                  group_id=host_group)
+        port_type = self.driver_protocol.lower()
+        return self._client.create_host_with_ports(host_label,
+                                                   host_type,
+                                                   port_ids,
+                                                   group_id=host_group,
+                                                   port_type=port_type)
 
     def _get_host_type_definition(self, host_type):
         """Gets supported host type if available on storage system."""
@@ -652,7 +818,7 @@ class NetAppESeriesLibrary(object):
         """Disallow connection from connector."""
         eseries_vol = self._get_volume(volume['name_id'])
         initiator = connector['initiator']
-        host = self._get_host_with_port(initiator)
+        host = self._get_host_with_matching_port([initiator])
         mappings = eseries_vol.get('listOfMappings', [])
 
         # There can only be one or zero mappings on a volume in E-Series
