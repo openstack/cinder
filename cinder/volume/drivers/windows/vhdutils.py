@@ -359,7 +359,7 @@ class VHDUtils(object):
         try:
             for member in info_members:
                 info = self._get_vhd_info_member(handle, member)
-                vhd_info = dict(vhd_info.items() + info.items())
+                vhd_info.update(info)
         finally:
             self._close(handle)
 
