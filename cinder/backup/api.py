@@ -61,7 +61,7 @@ class API(base.Base):
     def get(self, context, backup_id):
         check_policy(context, 'get')
         rv = self.db.backup_get(context, backup_id)
-        return dict(rv.iteritems())
+        return dict(rv)
 
     def delete(self, context, backup_id):
         """Make the RPC call to delete a volume backup."""

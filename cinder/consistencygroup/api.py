@@ -580,7 +580,7 @@ class API(base.Base):
 
     def get(self, context, group_id):
         rv = self.db.consistencygroup_get(context, group_id)
-        group = dict(rv.iteritems())
+        group = dict(rv)
         check_policy(context, 'get', group)
         return group
 
@@ -676,7 +676,7 @@ class API(base.Base):
     def get_cgsnapshot(self, context, cgsnapshot_id):
         check_policy(context, 'get_cgsnapshot')
         rv = self.db.cgsnapshot_get(context, cgsnapshot_id)
-        return dict(rv.iteritems())
+        return dict(rv)
 
     def get_all_cgsnapshots(self, context, search_opts=None):
         check_policy(context, 'get_all_cgsnapshots')

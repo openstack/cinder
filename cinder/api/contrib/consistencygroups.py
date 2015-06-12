@@ -248,7 +248,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         retval = self._view_builder.summary(
             req,
-            dict(new_consistencygroup.iteritems()))
+            dict(new_consistencygroup))
         return retval
 
     @wsgi.response(202)
@@ -300,7 +300,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         retval = self._view_builder.summary(
             req,
-            dict(new_consistencygroup.iteritems()))
+            dict(new_consistencygroup))
         return retval
 
     @wsgi.serializers(xml=ConsistencyGroupTemplate)

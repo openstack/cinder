@@ -175,7 +175,7 @@ class VolumeTransferController(wsgi.Controller):
             raise exc.HTTPNotFound(explanation=error.msg)
 
         transfer = self._view_builder.create(req,
-                                             dict(new_transfer.iteritems()))
+                                             dict(new_transfer))
         return transfer
 
     @wsgi.response(202)
@@ -211,7 +211,7 @@ class VolumeTransferController(wsgi.Controller):
 
         transfer = \
             self._view_builder.summary(req,
-                                       dict(accepted_transfer.iteritems()))
+                                       dict(accepted_transfer))
         return transfer
 
     def delete(self, req, id):

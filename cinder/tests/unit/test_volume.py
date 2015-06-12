@@ -2883,7 +2883,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         snapshot_obj = objects.Snapshot.get_by_id(self.context, snapshot_id)
 
         snap = db.snapshot_get(context.get_admin_context(), snapshot_id)
-        result_dict = dict(snap.iteritems())
+        result_dict = dict(snap)
         result_meta = {
             result_dict['snapshot_metadata'][0].key:
             result_dict['snapshot_metadata'][0].value}
