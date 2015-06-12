@@ -52,5 +52,7 @@ def convert_uuid_to_es_fmt(uuid_str):
 
 def convert_es_fmt_to_uuid(es_label):
     """Converts e-series name format to uuid."""
+    if es_label.startswith('tmp-'):
+        es_label = es_label[4:]
     es_label_b32 = es_label.ljust(32, '=')
     return uuid.UUID(binascii.hexlify(base64.b32decode(es_label_b32)))

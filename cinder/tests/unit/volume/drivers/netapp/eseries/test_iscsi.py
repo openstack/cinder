@@ -25,6 +25,7 @@ import six
 
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit.volume.drivers.netapp.eseries import fakes as \
     eseries_fakes
 from cinder.volume.drivers.netapp.eseries import client as es_client
@@ -72,7 +73,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         drives = [{'currentVolumeGroupRef': 'test_vg1',
                    'driveMediaType': 'ssd'}]
 
-        self.driver._objects["disk_pool_refs"] = ['test_vg1']
+        self.driver._get_storage_pools = mock.Mock(return_value=['test_vg1'])
         self.driver._client.list_storage_pools = mock.Mock(return_value=[])
         self.driver._client.list_drives = mock.Mock(return_value=drives)
 
@@ -376,6 +377,104 @@ class NetAppEseriesISCSIDriverMultiAttachTestCase(test.TestCase):
                           self.driver.create_volume,
                           get_fake_volume())
         self.assertFalse(self.driver._client.create_volume.call_count)
+
+    def test_create_volume_from_snapshot(self):
+        fake_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
+        self.mock_object(self.driver, "_schedule_and_create_volume",
+                         mock.Mock(return_value=fake_eseries_volume))
+        self.mock_object(self.driver, "_create_snapshot_volume",
+                         mock.Mock(return_value=fake_eseries_volume))
+        self.mock_object(self.driver._client, "delete_snapshot_volume")
+
+        self.driver.create_volume_from_snapshot(
+            get_fake_volume(), fake_snapshot.fake_snapshot_obj(None))
+
+        self.assertEqual(
+            1, self.driver._schedule_and_create_volume.call_count)
+        self.assertEqual(1, self.driver._create_snapshot_volume.call_count)
+        self.assertEqual(
+            1, self.driver._client.delete_snapshot_volume.call_count)
+
+    def test_create_volume_from_snapshot_create_fails(self):
+        fake_dest_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
+        self.mock_object(self.driver, "_schedule_and_create_volume",
+                         mock.Mock(return_value=fake_dest_eseries_volume))
+        self.mock_object(self.driver, "_create_snapshot_volume",
+                         mock.Mock(side_effect=exception.NetAppDriverException)
+                         )
+        self.mock_object(self.driver._client, "delete_snapshot_volume")
+        self.mock_object(self.driver._client, "delete_volume")
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.driver.create_volume_from_snapshot,
+                          get_fake_volume(),
+                          fake_snapshot.fake_snapshot_obj(None))
+
+        self.assertEqual(
+            1, self.driver._schedule_and_create_volume.call_count)
+        self.assertEqual(1, self.driver._create_snapshot_volume.call_count)
+        self.assertEqual(
+            0, self.driver._client.delete_snapshot_volume.call_count)
+        # Ensure the volume we were going to copy to is cleaned up
+        self.driver._client.delete_volume.assert_called_once_with(
+            fake_dest_eseries_volume['volumeRef'])
+
+    def test_create_volume_from_snapshot_copy_job_fails(self):
+        fake_dest_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
+        self.mock_object(self.driver, "_schedule_and_create_volume",
+                         mock.Mock(return_value=fake_dest_eseries_volume))
+        self.mock_object(self.driver, "_create_snapshot_volume",
+                         mock.Mock(return_value=fake_dest_eseries_volume))
+        self.mock_object(self.driver._client, "delete_snapshot_volume")
+        self.mock_object(self.driver._client, "delete_volume")
+
+        fake_failed_volume_copy_job = copy.deepcopy(
+            eseries_fakes.VOLUME_COPY_JOB)
+        fake_failed_volume_copy_job['status'] = 'failed'
+        self.mock_object(self.driver._client,
+                         "create_volume_copy_job",
+                         mock.Mock(return_value=fake_failed_volume_copy_job))
+        self.mock_object(self.driver._client,
+                         "list_vol_copy_job",
+                         mock.Mock(return_value=fake_failed_volume_copy_job))
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.driver.create_volume_from_snapshot,
+                          get_fake_volume(),
+                          fake_snapshot.fake_snapshot_obj(None))
+
+        self.assertEqual(
+            1, self.driver._schedule_and_create_volume.call_count)
+        self.assertEqual(1, self.driver._create_snapshot_volume.call_count)
+        self.assertEqual(
+            1, self.driver._client.delete_snapshot_volume.call_count)
+        # Ensure the volume we were going to copy to is cleaned up
+        self.driver._client.delete_volume.assert_called_once_with(
+            fake_dest_eseries_volume['volumeRef'])
+
+    def test_create_volume_from_snapshot_fail_to_delete_snapshot_volume(self):
+        fake_dest_eseries_volume = copy.deepcopy(eseries_fakes.VOLUME)
+        fake_dest_eseries_volume['volumeRef'] = 'fake_volume_ref'
+        self.mock_object(self.driver, "_schedule_and_create_volume",
+                         mock.Mock(return_value=fake_dest_eseries_volume))
+        self.mock_object(self.driver, "_create_snapshot_volume",
+                         mock.Mock(return_value=copy.deepcopy(
+                             eseries_fakes.VOLUME)))
+        self.mock_object(self.driver._client, "delete_snapshot_volume",
+                         mock.Mock(side_effect=exception.NetAppDriverException)
+                         )
+        self.mock_object(self.driver._client, "delete_volume")
+
+        self.driver.create_volume_from_snapshot(
+            get_fake_volume(), fake_snapshot.fake_snapshot_obj(None))
+
+        self.assertEqual(
+            1, self.driver._schedule_and_create_volume.call_count)
+        self.assertEqual(1, self.driver._create_snapshot_volume.call_count)
+        self.assertEqual(
+            1, self.driver._client.delete_snapshot_volume.call_count)
+        # Ensure the volume we created is not cleaned up
+        self.assertEqual(0, self.driver._client.delete_volume.call_count)
 
     def test_initialize_connection_volume_not_mapped(self):
         """Map the volume directly to destination host.

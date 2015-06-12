@@ -35,6 +35,7 @@ FOREIGN_HOST_GROUP = {
 STORAGE_POOL = {
     'label': 'DDP',
     'volumeGroupRef': 'fakevolgroupref',
+    'raidLevel': 'raidDiskPool',
 }
 
 VOLUME = {
@@ -252,6 +253,24 @@ HARDWARE_INVENTORY = {
 }
 
 
+VOLUME_COPY_JOB = {
+    "status": "complete",
+    "cloneCopy": True,
+    "pgRef": "3300000060080E500023C73400000ACA52D29454",
+    "volcopyHandle": 49160,
+    "idleTargetWriteProt": True,
+    "copyPriority": "priority2",
+    "volcopyRef": "1800000060080E500023C73400000ACF52D29466",
+    "worldWideName": "60080E500023C73400000ACF52D29466",
+    "copyCompleteTime": "0",
+    "sourceVolume": "3500000060080E500023C73400000ACE52D29462",
+    "currentManager": "070000000000000000000002",
+    "copyStartTime": "1389551671",
+    "reserved1": "00000000",
+    "targetVolume": "0200000060080E500023C73400000A8C52D10675",
+}
+
+
 def create_configuration_eseries():
     config = conf.Configuration(None)
     config.append_config_values(na_opts.netapp_connection_opts)
@@ -336,6 +355,9 @@ class FakeEseriesClient(object):
     def list_volumes(self):
         return [VOLUME]
 
+    def delete_volume(self, vol):
+        pass
+
     def create_host_group(self, name):
         return MULTIATTACH_HOST_GROUP
 
@@ -410,3 +432,15 @@ class FakeEseriesClient(object):
 
     def list_hardware_inventory(self):
         return HARDWARE_INVENTORY
+
+    def create_volume_copy_job(self, *args, **kwargs):
+        return VOLUME_COPY_JOB
+
+    def list_vol_copy_job(self, *args, **kwargs):
+        return VOLUME_COPY_JOB
+
+    def delete_vol_copy_job(self, *args, **kwargs):
+        pass
+
+    def delete_snapshot_volume(self, *args, **kwargs):
+        pass

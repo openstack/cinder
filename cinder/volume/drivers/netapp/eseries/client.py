@@ -357,6 +357,11 @@ class RestClient(WebserviceClient):
         path = "/storage-systems/{system-id}/storage-pools"
         return self._invoke('GET', path)
 
+    def get_storage_pool(self, volume_group_ref):
+        """Get storage pool information from the array."""
+        path = "/storage-systems/{system-id}/storage-pools/{object-id}"
+        return self._invoke('GET', path, **{'object-id': volume_group_ref})
+
     def list_drives(self):
         """Lists drives in the array."""
         path = "/storage-systems/{system-id}/drives"

@@ -108,9 +108,6 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         self.configuration.append_config_values(na_opts.netapp_san_opts)
         self._backend_name = self.configuration.safe_get(
             "volume_backend_name") or "NetApp_ESeries"
-        self._objects = {'disk_pool_refs': [], 'pools': [],
-                         'volumes': {'label_ref': {}, 'ref_vol': {}},
-                         'snapshots': {'label_ref': {}, 'ref_snap': {}}}
         self._ssc_stats = {}
 
     def do_setup(self, context):
@@ -149,7 +146,6 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         self._check_host_type()
         self._check_multipath()
         self._check_storage_system()
-        self._populate_system_objects()
         self._start_periodic_tasks()
 
     def _check_host_type(self):
@@ -253,71 +249,6 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         LOG.info(_LI("System %(id)s has %(status)s status."), msg_dict)
         return True
 
-    def _populate_system_objects(self):
-        """Get all system objects into cache."""
-        self._cache_allowed_disk_pool_refs()
-        for vol in self._client.list_volumes():
-            self._cache_volume(vol)
-        for sn in self._client.list_snapshot_groups():
-            self._cache_snap_grp(sn)
-        for image in self._client.list_snapshot_images():
-            self._cache_snap_img(image)
-
-    def _cache_allowed_disk_pool_refs(self):
-        """Caches disk pools refs as per pools configured by user."""
-        d_pools = self.configuration.netapp_storage_pools
-        LOG.info(_LI('Configured storage pools %s.'), d_pools)
-        pools = [x.strip().lower() if x else None for x in d_pools.split(',')]
-        for pool in self._client.list_storage_pools():
-            if (pool.get('raidLevel') == 'raidDiskPool'
-                    and pool['label'].lower() in pools):
-                self._objects['disk_pool_refs'].append(pool['volumeGroupRef'])
-                self._objects['pools'].append(pool)
-
-    def _cache_volume(self, obj):
-        """Caches volumes for further reference."""
-        if (obj.get('volumeUse') == 'standardVolume' and obj.get('label')
-                and obj.get('volumeRef')
-                and obj.get('volumeGroupRef') in
-                self._objects['disk_pool_refs']):
-            self._objects['volumes']['label_ref'][obj['label']]\
-                = obj['volumeRef']
-            self._objects['volumes']['ref_vol'][obj['volumeRef']] = obj
-
-    def _cache_snap_grp(self, obj):
-        """Caches snapshot groups."""
-        if (obj.get('label') and obj.get('pitGroupRef') and
-                obj.get('baseVolume') in self._objects['volumes']['ref_vol']):
-            self._objects['snapshots']['label_ref'][obj['label']] =\
-                obj['pitGroupRef']
-            self._objects['snapshots']['ref_snap'][obj['pitGroupRef']] = obj
-
-    def _cache_snap_img(self, image):
-        """Caches snapshot image under corresponding snapshot group."""
-        group_id = image.get('pitGroupRef')
-        sn_gp = self._objects['snapshots']['ref_snap']
-        if group_id in sn_gp:
-            sn_gp[group_id]['images'] = sn_gp[group_id].get('images') or []
-            sn_gp[group_id]['images'].append(image)
-
-    def _del_volume_frm_cache(self, label):
-        """Deletes volume from cache."""
-        vol_id = self._objects['volumes']['label_ref'].get(label)
-        if vol_id:
-            self._objects['volumes']['ref_vol'].pop(vol_id, True)
-            self._objects['volumes']['label_ref'].pop(label)
-        else:
-            LOG.debug("Volume %s not cached.", label)
-
-    def _del_snapshot_frm_cache(self, obj_name):
-        """Deletes snapshot group from cache."""
-        snap_id = self._objects['snapshots']['label_ref'].get(obj_name)
-        if snap_id:
-            self._objects['snapshots']['ref_snap'].pop(snap_id, True)
-            self._objects['snapshots']['label_ref'].pop(obj_name)
-        else:
-            LOG.debug("Snapshot %s not cached.", obj_name)
-
     def _get_volume(self, uid):
         label = utils.convert_uuid_to_es_fmt(uid)
         return self._get_volume_with_label_wwn(label)
@@ -335,36 +266,38 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
             if wwn and vol.get(self.WORLDWIDENAME).upper() != wwn:
                 continue
             eseries_volume = vol
-            self._cache_volume(vol)
             break
 
         if not eseries_volume:
             raise KeyError()
         return eseries_volume
 
-    def _get_cached_volume(self, label):
-        vol_id = self._objects['volumes']['label_ref'][label]
-        return self._objects['volumes']['ref_vol'][vol_id]
+    def _get_snapshot_group_for_snapshot(self, snapshot_id):
+        label = utils.convert_uuid_to_es_fmt(snapshot_id)
+        for group in self._client.list_snapshot_groups():
+            if group['label'] == label:
+                return group
+        msg = _("Specified snapshot group with label %s could not be found.")
+        raise exception.NotFound(msg % label)
 
-    def _get_cached_snapshot_grp(self, uid):
-        label = utils.convert_uuid_to_es_fmt(uid)
-        snap_id = self._objects['snapshots']['label_ref'][label]
-        return self._objects['snapshots']['ref_snap'][snap_id]
-
-    def _get_cached_snap_grp_image(self, uid):
-        group = self._get_cached_snapshot_grp(uid)
-        images = group.get('images')
+    def _get_latest_image_in_snapshot_group(self, snapshot_id):
+        group = self._get_snapshot_group_for_snapshot(snapshot_id)
+        images = self._client.list_snapshot_images()
         if images:
-            sorted_imgs = sorted(images, key=lambda x: x['pitTimestamp'])
+            filtered_images = filter(lambda img: (img['pitGroupRef'] ==
+                                                  group['pitGroupRef']),
+                                     images)
+            sorted_imgs = sorted(filtered_images, key=lambda x: x[
+                'pitTimestamp'])
             return sorted_imgs[0]
-        msg = _("No pit image found in snapshot group %s.") % group['label']
-        raise exception.NotFound(msg)
+
+        msg = _("No snapshot image found in snapshot group %s.")
+        raise exception.NotFound(msg % group['label'])
 
     def _is_volume_containing_snaps(self, label):
         """Checks if volume contains snapshot groups."""
-        vol_id = self._objects['volumes']['label_ref'].get(label)
-        snp_grps = self._objects['snapshots']['ref_snap'].values()
-        for snap in snp_grps:
+        vol_id = utils.convert_es_fmt_to_uuid(label)
+        for snap in self._client.list_snapshot_groups():
             if snap['baseVolume'] == vol_id:
                 return True
         return False
@@ -376,10 +309,10 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         :return: Name of the pool where given volume is hosted.
         """
         eseries_volume = self._get_volume(volume['name_id'])
-        for pool in self._objects['pools']:
-            if pool['volumeGroupRef'] == eseries_volume['volumeGroupRef']:
-                return pool['label']
-        return None
+        storage_pool = self._client.get_storage_pool(
+            eseries_volume['volumeGroupRef'])
+        if storage_pool:
+            return storage_pool.get('label')
 
     def create_volume(self, volume):
         """Creates a volume."""
@@ -398,9 +331,9 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
 
         # get size of the requested volume creation
         size_gb = int(volume['size'])
-        vol = self._create_volume(eseries_pool_label, eseries_volume_label,
-                                  size_gb)
-        self._cache_volume(vol)
+        self._create_volume(eseries_pool_label,
+                            eseries_volume_label,
+                            size_gb)
 
     def _create_volume(self, eseries_pool_label, eseries_volume_label,
                        size_gb):
@@ -419,7 +352,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
 
         target_pool = None
 
-        pools = self._client.list_storage_pools()
+        pools = self._get_storage_pools()
         for pool in pools:
             if pool["label"] == eseries_pool_label:
                 target_pool = pool
@@ -442,7 +375,7 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
 
     def _schedule_and_create_volume(self, label, size_gb):
         """Creates volume with given label and size."""
-        avl_pools = self._get_sorted_avl_storage_pools(size_gb)
+        avl_pools = self._get_sorted_available_storage_pools(size_gb)
         for pool in avl_pools:
             try:
                 vol = self._client.create_volume(pool['volumeGroupRef'],
@@ -463,7 +396,6 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
             src_vol = None
             src_vol = self._create_snapshot_volume(snapshot['id'])
             self._copy_volume_high_prior_readonly(src_vol, dst_vol)
-            self._cache_volume(dst_vol)
             LOG.info(_LI("Created volume with label %s."), label)
         except exception.NetAppDriverException:
             with excutils.save_and_reraise_exception():
@@ -479,12 +411,12 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
 
     def _create_snapshot_volume(self, snapshot_id):
         """Creates snapshot volume for given group with snapshot_id."""
-        group = self._get_cached_snapshot_grp(snapshot_id)
+        group = self._get_snapshot_group_for_snapshot(snapshot_id)
         LOG.debug("Creating snap vol for group %s", group['label'])
-        image = self._get_cached_snap_grp_image(snapshot_id)
+        image = self._get_latest_image_in_snapshot_group(snapshot_id)
         label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
         capacity = int(image['pitCapacity']) / units.Gi
-        storage_pools = self._get_sorted_avl_storage_pools(capacity)
+        storage_pools = self._get_sorted_available_storage_pools(capacity)
         s_id = storage_pools[0]['volumeGroupRef']
         return self._client.create_snapshot_volume(image['pitRef'], label,
                                                    group['baseVolume'], s_id)
@@ -540,17 +472,10 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         """Deletes a volume."""
         try:
             vol = self._get_volume(volume['name_id'])
-            self._delete_volume(vol['label'])
-        except KeyError:
-            LOG.info(_LI("Volume %s already deleted."), volume['id'])
+            self._client.delete_volume(vol['volumeRef'])
+        except exception.NetAppDriverException:
+            LOG.warning(_LI("Volume %s already deleted."), volume['id'])
             return
-
-    def _delete_volume(self, label):
-        """Deletes an array volume."""
-        vol_id = self._objects['volumes']['label_ref'].get(label)
-        if vol_id:
-            self._client.delete_volume(vol_id)
-            self._del_volume_frm_cache(label)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -559,14 +484,12 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         os_vol = self.db.volume_get(self.context, snapshot['volume_id'])
         vol = self._get_volume(os_vol['name_id'])
         vol_size_gb = int(vol['totalSizeInBytes']) / units.Gi
-        pools = self._get_sorted_avl_storage_pools(vol_size_gb)
+        pools = self._get_sorted_available_storage_pools(vol_size_gb)
         try:
             snap_grp = self._client.create_snapshot_group(
                 snapshot_name, vol['volumeRef'], pools[0]['volumeGroupRef'])
-            self._cache_snap_grp(snap_grp)
             snap_image = self._client.create_snapshot_image(
                 snap_grp['pitGroupRef'])
-            self._cache_snap_img(snap_image)
             LOG.info(_LI("Created snap grp with label %s."), snapshot_name)
         except exception.NetAppDriverException:
             with excutils.save_and_reraise_exception():
@@ -576,13 +499,11 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
         try:
-            snap_grp = self._get_cached_snapshot_grp(snapshot['id'])
-        except KeyError:
+            snap_grp = self._get_snapshot_group_for_snapshot(snapshot['id'])
+        except exception.NotFound:
             LOG.warning(_LW("Snapshot %s already deleted."), snapshot['id'])
             return
         self._client.delete_snapshot_group(snap_grp['pitGroupRef'])
-        snapshot_name = snap_grp['label']
-        self._del_snapshot_frm_cache(snapshot_name)
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a volume."""
@@ -757,24 +678,23 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         data["storage_protocol"] = "iSCSI"
         data["pools"] = []
 
-        pools = self._client.list_storage_pools()
-        for pool in pools:
+        for storage_pool in self._get_storage_pools():
             cinder_pool = {}
-            cinder_pool["pool_name"] = pool.get("label", 0)
+            cinder_pool["pool_name"] = storage_pool.get("label")
             cinder_pool["QoS_support"] = False
             cinder_pool["reserved_percentage"] = 0
-            if pool["volumeGroupRef"] in self._objects["disk_pool_refs"]:
-                tot_bytes = int(pool.get("totalRaidedSpace", 0))
-                used_bytes = int(pool.get("usedSpace", 0))
-                cinder_pool["free_capacity_gb"] = ((tot_bytes - used_bytes) /
-                                                   units.Gi)
-                cinder_pool["total_capacity_gb"] = tot_bytes / units.Gi
+            tot_bytes = int(storage_pool.get("totalRaidedSpace", 0))
+            used_bytes = int(storage_pool.get("usedSpace", 0))
+            cinder_pool["free_capacity_gb"] = ((tot_bytes - used_bytes) /
+                                               units.Gi)
+            cinder_pool["total_capacity_gb"] = tot_bytes / units.Gi
 
-                pool_ssc_stats = self._ssc_stats.get(pool["volumeGroupRef"])
+            pool_ssc_stats = self._ssc_stats.get(
+                storage_pool["volumeGroupRef"])
 
-                if pool_ssc_stats:
-                    cinder_pool.update(pool_ssc_stats)
-                data["pools"].append(cinder_pool)
+            if pool_ssc_stats:
+                cinder_pool.update(pool_ssc_stats)
+            data["pools"].append(cinder_pool)
 
         self._stats = data
         self._garbage_collect_tmp_vols()
@@ -789,9 +709,9 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
         LOG.info(_LI("Updating storage service catalog information for "
                      "backend '%s'"), self._backend_name)
         self._ssc_stats = \
-            self._update_ssc_disk_encryption(self._objects["disk_pool_refs"])
+            self._update_ssc_disk_encryption(self._get_storage_pools())
         self._ssc_stats = \
-            self._update_ssc_disk_types(self._objects["disk_pool_refs"])
+            self._update_ssc_disk_types(self._get_storage_pools())
 
     def _update_ssc_disk_types(self, volume_groups):
         """Updates the given ssc dictionary with new disk type information.
@@ -835,18 +755,32 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
 
         return ssc_stats
 
-    def _get_sorted_avl_storage_pools(self, size_gb):
+    def _get_storage_pools(self):
+        conf_enabled_pools = []
+        for value in self.configuration.netapp_storage_pools.split(','):
+            if value:
+                conf_enabled_pools.append(value.strip().lower())
+
+        filtered_pools = []
+        storage_pools = self._client.list_storage_pools()
+        for storage_pool in storage_pools:
+            # Check if pool can be used
+            if (storage_pool.get('raidLevel') == 'raidDiskPool'
+                    and storage_pool['label'].lower() in conf_enabled_pools):
+                filtered_pools.append(storage_pool)
+
+        return filtered_pools
+
+    def _get_sorted_available_storage_pools(self, size_gb):
         """Returns storage pools sorted on available capacity."""
         size = size_gb * units.Gi
-        pools = self._client.list_storage_pools()
-        sorted_pools = sorted(pools, key=lambda x:
+        sorted_pools = sorted(self._get_storage_pools(), key=lambda x:
                               (int(x.get('totalRaidedSpace', 0))
                                - int(x.get('usedSpace', 0))), reverse=True)
-        avl_pools = [x for x in sorted_pools
-                     if (x['volumeGroupRef'] in
-                         self._objects['disk_pool_refs']) and
-                     (int(x.get('totalRaidedSpace', 0)) -
-                      int(x.get('usedSpace', 0) >= size))]
+        avl_pools = filter(lambda x: ((int(x.get('totalRaidedSpace', 0)) -
+                                       int(x.get('usedSpace', 0)) >= size)),
+                           sorted_pools)
+
         if not avl_pools:
             LOG.warning(_LW("No storage pool found with available capacity "
                             "%s."), size_gb)
@@ -865,8 +799,6 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
             stage_1 = self._client.update_volume(src_vol['id'], stage_label)
             stage_2 = self._client.update_volume(new_vol['id'], src_label)
             new_vol = stage_2
-            self._cache_volume(new_vol)
-            self._cache_volume(stage_1)
             LOG.info(_LI('Extended volume with label %s.'), src_label)
         except exception.NetAppDriverException:
             if stage_1 == 0:
@@ -884,14 +816,16 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
                 LOG.warning(_LW('Returning as clean tmp '
                                 'vol job already running.'))
                 return
-            for label in self._objects['volumes']['label_ref'].keys():
+
+            for vol in self._client.list_volumes():
+                label = vol['label']
                 if (label.startswith('tmp-') and
                         not self._is_volume_containing_snaps(label)):
                     try:
-                        self._delete_volume(label)
-                    except exception.NetAppDriverException:
-                        LOG.debug("Error deleting vol with label %s.",
-                                  label)
+                        self._client.delete_volume(vol['volumeRef'])
+                    except exception.NetAppDriverException as e:
+                        LOG.debug("Error deleting vol with label %s: %s",
+                                  (label, e))
         finally:
             na_utils.set_safe_attr(self, 'clean_job_running', False)
 
@@ -906,8 +840,6 @@ class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
             managed_vol = vol
         else:
             managed_vol = self._client.update_volume(vol['id'], label)
-            self._del_volume_frm_cache(vol['label'])
-        self._cache_volume(managed_vol)
         LOG.info(_LI("Manage operation completed for volume with new label"
                      " %(label)s and wwn %(wwn)s."),
                  {'label': label, 'wwn': managed_vol[self.WORLDWIDENAME]})
