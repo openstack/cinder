@@ -180,7 +180,7 @@ class LoggingVolumeDriver(driver.VolumeDriver):
             if entry['action'] != action:
                 continue
             match = True
-            for k, v in kwargs.iteritems():
+            for k, v in kwargs.items():
                 if entry.get(k) != v:
                     match = False
                     break

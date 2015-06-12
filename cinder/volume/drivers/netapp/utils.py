@@ -174,7 +174,7 @@ def validate_qos_spec(qos_spec):
         return
     normalized_qos_keys = [key.lower() for key in QOS_KEYS]
     keylist = []
-    for key, value in six.iteritems(qos_spec):
+    for key, value in qos_spec.items():
         lower_case_key = key.lower()
         if lower_case_key not in normalized_qos_keys:
             msg = _('Unrecognized QOS keyword: "%s"') % key

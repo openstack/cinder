@@ -87,7 +87,7 @@ class IBMNASDriverTestCase(test.TestCase):
 
     def _reset_flags(self):
         self._driver.configuration.local_conf.reset()
-        for k, v in self._def_flags.iteritems():
+        for k, v in self._def_flags.items():
             self._set_flag(k, v)
 
     def test_check_for_setup_error(self):

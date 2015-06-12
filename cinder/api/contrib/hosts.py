@@ -157,7 +157,7 @@ class HostController(wsgi.Controller):
     def update(self, req, id, body):
         authorize(req.environ['cinder.context'])
         update_values = {}
-        for raw_key, raw_val in body.iteritems():
+        for raw_key, raw_val in body.items():
             key = raw_key.lower().strip()
             val = raw_val.lower().strip()
             if key == "status":
@@ -171,7 +171,7 @@ class HostController(wsgi.Controller):
                 raise webob.exc.HTTPBadRequest(explanation=explanation)
         update_setters = {'status': self._set_enabled_status}
         result = {}
-        for key, value in update_values.iteritems():
+        for key, value in update_values.items():
             result.update(update_setters[key](req, id, value))
         return result
 

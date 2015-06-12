@@ -68,7 +68,7 @@ class VolumeTypeTestCase(test.TestCase):
 
         self.assertEqual(self.vol_type1_description, new['description'])
 
-        for k, v in self.vol_type1_specs.iteritems():
+        for k, v in self.vol_type1_specs.items():
             self.assertEqual(v, new['extra_specs'][k],
                              'one of fields does not match')
 

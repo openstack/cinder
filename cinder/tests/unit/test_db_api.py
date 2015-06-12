@@ -77,7 +77,7 @@ class ModelsObjectComparatorMixin(object):
         self.assertEqual(
             len(obj1), len(obj2),
             "Keys mismatch: %s" % str(set(obj1.keys()) ^ set(obj2.keys())))
-        for key, value in obj1.iteritems():
+        for key, value in obj1.items():
             self.assertEqual(value, obj2[key])
 
     def _assertEqualListsOfObjects(self, objs1, objs2, ignored_keys=None):
@@ -123,7 +123,7 @@ class DBAPIServiceTestCase(BaseTest):
     def test_service_create(self):
         service = self._create_service({})
         self.assertFalse(service['id'] is None)
-        for key, value in self._get_base_values().iteritems():
+        for key, value in self._get_base_values().items():
             self.assertEqual(value, service[key])
 
     def test_service_destroy(self):
@@ -147,7 +147,7 @@ class DBAPIServiceTestCase(BaseTest):
         }
         db.service_update(self.ctxt, service['id'], new_values)
         updated_service = db.service_get(self.ctxt, service['id'])
-        for key, value in new_values.iteritems():
+        for key, value in new_values.items():
             self.assertEqual(value, updated_service[key])
 
     def test_service_update_not_found_exception(self):
@@ -1441,7 +1441,7 @@ class DBAPIQuotaTestCase(BaseTest):
         quota_usage = db.quota_usage_get(self.ctxt, 'p1', 'gigabytes')
         expected = {'resource': 'gigabytes', 'project_id': 'p1',
                     'in_use': 0, 'reserved': 2, 'total': 2}
-        for key, value in expected.iteritems():
+        for key, value in expected.items():
             self.assertEqual(value, quota_usage[key], key)
 
     def test_quota_usage_get_all_by_project(self):

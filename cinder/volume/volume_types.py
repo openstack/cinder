@@ -102,7 +102,7 @@ def get_all_types(context, inactive=0, search_opts=None):
         LOG.debug("Searching by: %s" % search_opts)
 
         def _check_extra_specs_match(vol_type, searchdict):
-            for k, v in searchdict.iteritems():
+            for k, v in searchdict.items():
                 if (k not in vol_type['extra_specs'].keys()
                         or vol_type['extra_specs'][k] != v):
                     return False
@@ -112,9 +112,9 @@ def get_all_types(context, inactive=0, search_opts=None):
         filter_mapping = {'extra_specs': _check_extra_specs_match}
 
         result = {}
-        for type_name, type_args in vol_types.iteritems():
+        for type_name, type_args in vol_types.items():
             # go over all filters in the list
-            for opt, values in search_opts.iteritems():
+            for opt, values in search_opts.items():
                 try:
                     filter_func = filter_mapping[opt]
                 except KeyError:
@@ -258,11 +258,11 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
             dict1 = {}
         if dict2 is None:
             dict2 = {}
-        for k, v in dict1.iteritems():
+        for k, v in dict1.items():
             res[k] = (v, dict2.get(k))
             if k not in dict2 or res[k][0] != res[k][1]:
                 equal = False
-        for k, v in dict2.iteritems():
+        for k, v in dict2.items():
             res[k] = (dict1.get(k), v)
             if k not in dict1 or res[k][0] != res[k][1]:
                 equal = False

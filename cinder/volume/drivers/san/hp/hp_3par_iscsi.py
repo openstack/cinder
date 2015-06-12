@@ -655,7 +655,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
         # identify key (nsp) of least used nsp
         current_smallest_count = sys.maxint
-        for (nsp, count) in nsp_counts.iteritems():
+        for (nsp, count) in nsp_counts.items():
             if count < current_smallest_count:
                 current_least_used_nsp = nsp
                 current_smallest_count = count

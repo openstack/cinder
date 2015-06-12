@@ -457,7 +457,7 @@ class FakeDirectCmodeHTTPConnection(object):
         if not headers:
             headers = {}
         req_str = '%s %s HTTP/1.1\r\n' % (method, path)
-        for key, value in headers.iteritems():
+        for key, value in headers.items():
             req_str += "%s: %s\r\n" % (key, value)
         if data:
             req_str += '\r\n%s' % data
@@ -1139,7 +1139,7 @@ class FakeDirect7modeHTTPConnection(object):
         if not headers:
             headers = {}
         req_str = '%s %s HTTP/1.1\r\n' % (method, path)
-        for key, value in headers.iteritems():
+        for key, value in headers.items():
             req_str += "%s: %s\r\n" % (key, value)
         if data:
             req_str += '\r\n%s' % data

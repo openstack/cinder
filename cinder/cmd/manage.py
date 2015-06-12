@@ -338,7 +338,7 @@ class ConfigCommands(object):
         if param:
             print('%s = %s' % (param, CONF.get(param)))
         else:
-            for key, value in CONF.iteritems():
+            for key, value in CONF.items():
                 print('%s = %s' % (key, value))
 
 

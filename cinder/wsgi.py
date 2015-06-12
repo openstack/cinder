@@ -445,7 +445,7 @@ class Debug(Middleware):
         resp = req.get_response(self.application)
 
         print(('*' * 40) + ' RESPONSE HEADERS')  # noqa
-        for (key, value) in resp.headers.iteritems():
+        for (key, value) in resp.headers.items():
             print(key, '=', value)  # noqa
         print()  # noqa
 

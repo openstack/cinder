@@ -118,7 +118,7 @@ def check_exclusive_options(**kwargs):
 
     pretty_keys = kwargs.pop("pretty_keys", True)
     exclusive_options = {}
-    for (k, v) in kwargs.iteritems():
+    for (k, v) in kwargs.items():
         if v is not None:
             exclusive_options[k] = True
 
@@ -714,7 +714,7 @@ def add_visible_admin_metadata(volume):
         for item in orig_meta:
             if item['key'] in visible_admin_meta.keys():
                 item['value'] = visible_admin_meta.pop(item['key'])
-        for key, value in visible_admin_meta.iteritems():
+        for key, value in visible_admin_meta.items():
             orig_meta.append({'key': key, 'value': value})
         volume['volume_metadata'] = orig_meta
     # avoid circular ref when vol is a Volume instance

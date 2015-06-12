@@ -244,7 +244,7 @@ class VolumeController(wsgi.Controller):
             filters['display_name'] = filters['name']
             del filters['name']
 
-        for k, v in filters.iteritems():
+        for k, v in filters.items():
             try:
                 filters[k] = ast.literal_eval(v)
             except (ValueError, SyntaxError):

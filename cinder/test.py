@@ -253,7 +253,7 @@ class TestCase(testtools.TestCase):
 
     def flags(self, **kw):
         """Override CONF variables for a test."""
-        for k, v in kw.iteritems():
+        for k, v in kw.items():
             self.override_config(k, v)
 
     def log_level(self, level):

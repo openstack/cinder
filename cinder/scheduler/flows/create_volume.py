@@ -65,7 +65,7 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
                 'availability_zone': volume_ref.get('availability_zone'),
                 'volume_type_id': volume_type_id,
             },
-            'volume_type': list(dict(vol_type).iteritems()),
+            'volume_type': list(dict(vol_type).items()),
         }
 
     def execute(self, context, request_spec, volume_id, snapshot_id,

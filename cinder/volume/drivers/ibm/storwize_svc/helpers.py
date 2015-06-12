@@ -455,7 +455,7 @@ class StorwizeHelpers(object):
 
     def _get_opts_from_specs(self, opts, specs):
         qos = {}
-        for k, value in specs.iteritems():
+        for k, value in specs.items():
             # Get the scope, if using scope format
             key_split = k.split(':')
             if len(key_split) == 1:
@@ -1033,7 +1033,7 @@ class StorwizeHelpers(object):
 
     def add_vdisk_qos(self, vdisk, qos):
         """Add the QoS configuration to the volume."""
-        for key, value in qos.iteritems():
+        for key, value in qos.items():
             if key in self.svc_qos_keys.keys():
                 param = self.svc_qos_keys[key]['param']
                 self.ssh.chvdisk(vdisk, ['-' + param, str(value)])
@@ -1046,7 +1046,7 @@ class StorwizeHelpers(object):
         available in the QoS configuration, the value is taken from it;
         if not, the value will be set to default.
         """
-        for key, value in self.svc_qos_keys.iteritems():
+        for key, value in self.svc_qos_keys.items():
             param = value['param']
             if key in qos.keys():
                 # If the value is set in QoS, take the value from
@@ -1059,7 +1059,7 @@ class StorwizeHelpers(object):
 
     def disable_vdisk_qos(self, vdisk, qos):
         """Disable the QoS."""
-        for key, value in qos.iteritems():
+        for key, value in qos.items():
             if key in self.svc_qos_keys.keys():
                 param = self.svc_qos_keys[key]['param']
                 # Take the default value.

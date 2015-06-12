@@ -1253,7 +1253,7 @@ port_speed!N/A
         filter_key = kwargs['filtervalue'].split('=')[0]
         filter_value = kwargs['filtervalue'].split('=')[1]
         to_delete = []
-        for k, v in self._fcmappings_list.iteritems():
+        for k, v in self._fcmappings_list.items():
             if str(v[filter_key]) == filter_value:
                 source = self._volumes_list[v['source']]
                 target = self._volumes_list[v['target']]
@@ -1541,7 +1541,7 @@ port_speed!N/A
 
         params = ['name', 'warning', 'udid',
                   'autoexpand', 'easytier', 'primary']
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             if key == 'easytier':
                 vol['easy_tier'] = value
                 continue
@@ -1765,7 +1765,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
     def _reset_flags(self):
         self.driver.configuration.local_conf.reset()
-        for k, v in self._def_flags.iteritems():
+        for k, v in self._def_flags.items():
             self._set_flag(k, v)
 
     def _assert_vol_exists(self, name, exists):
@@ -2206,7 +2206,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         for idx in range(len(opts_list)):
             attrs = self._create_test_vol(opts_list[idx])
-            for k, v in chck_list[idx].iteritems():
+            for k, v in chck_list[idx].items():
                 try:
                     if k[0] == '-':
                         k = k[1:]
@@ -2340,14 +2340,14 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             ret = self.driver.initialize_connection(volume1, self._connector)
             self.assertEqual(ret['driver_volume_type'],
                              expected[protocol]['driver_volume_type'])
-            for k, v in expected[protocol]['data'].iteritems():
+            for k, v in expected[protocol]['data'].items():
                 self.assertEqual(ret['data'][k], v)
 
             # Initialize again, should notice it and do nothing
             ret = self.driver.initialize_connection(volume1, self._connector)
             self.assertEqual(ret['driver_volume_type'],
                              expected[protocol]['driver_volume_type'])
-            for k, v in expected[protocol]['data'].iteritems():
+            for k, v in expected[protocol]['data'].items():
                 self.assertEqual(ret['data'][k], v)
 
             # Try to delete the 1st volume (should fail because it is mapped)
@@ -2382,7 +2382,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                     self.assertEqual(
                         ret['driver_volume_type'],
                         expected_fc_npiv['driver_volume_type'])
-                    for k, v in expected_fc_npiv['data'].iteritems():
+                    for k, v in expected_fc_npiv['data'].items():
                         self.assertEqual(ret['data'][k], v)
                     self._set_flag('storwize_svc_npiv_compatibility_mode',
                                    False)

@@ -35,7 +35,7 @@ class VolumeTypeExtraSpecsTestCase(test.TestCase):
         self.addCleanup(db.volume_type_destroy, context.get_admin_context(),
                         self.vol_type1['id'])
         self.volume_type1_id = ref.id
-        for k, v in self.vol_type1_specs.iteritems():
+        for k, v in self.vol_type1_specs.items():
             self.vol_type1_specs[k] = str(v)
 
         self.vol_type2_noextra = dict(name="TEST: Volume type without extra")

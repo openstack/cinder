@@ -281,7 +281,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         if not metadata:
             metadata = {}
 
-        for (k, v) in metadata.iteritems():
+        for (k, v) in metadata.items():
             if len(k) == 0:
                 msg = _("Metadata property key blank")
                 LOG.warning(msg)

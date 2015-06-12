@@ -40,7 +40,7 @@ class UsedLimitsController(wsgi.Controller):
         }
 
         used_limits = {}
-        for display_name, single_quota in quota_map.iteritems():
+        for display_name, single_quota in quota_map.items():
             if single_quota in quotas:
                 used_limits[display_name] = quotas[single_quota]['in_use']
 

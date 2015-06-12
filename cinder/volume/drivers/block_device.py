@@ -127,7 +127,7 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
         used_devices = self._get_used_devices()
         total_size = 0
         free_size = 0
-        for device, size in dict_of_devices_sizes.iteritems():
+        for device, size in dict_of_devices_sizes.items():
             if device not in used_devices:
                 free_size += size
             total_size += size

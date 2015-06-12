@@ -697,7 +697,7 @@ class API(base.Base):
             results = []
             not_found = object()
             for cgsnapshot in cgsnapshots:
-                for opt, value in search_opts.iteritems():
+                for opt, value in search_opts.items():
                     if cgsnapshot.get(opt, not_found) != value:
                         break
                 else:

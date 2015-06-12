@@ -275,7 +275,7 @@ class VolumeController(wsgi.Controller):
         search_opts.pop('limit', None)
         search_opts.pop('offset', None)
 
-        for k, v in search_opts.iteritems():
+        for k, v in search_opts.items():
             try:
                 search_opts[k] = ast.literal_eval(v)
             except (ValueError, SyntaxError):
