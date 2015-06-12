@@ -31,11 +31,10 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
         self.target = tgt.TgtAdm(root_helper=utils.get_root_helper(),
                                  configuration=self.configuration)
         self.testvol_path = \
-            '/dev/stack-volumes-lvmdriver-1/'\
-            'volume-83c2e877-feed-46be-8435-77884fe55b45'
+            '/dev/stack-volumes-lvmdriver-1/%s' % self.VOLUME_NAME
 
         self.fake_iscsi_scan =\
-            ('Target 1: iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa
+            ('Target 1: %(test_vol)s\n'
              '    System information:\n'
              '        Driver: iscsi\n'
              '        State: ready\n'
@@ -67,12 +66,13 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
              '            SWP: No\n'
              '            Thin-provisioning: No\n'
              '            Backing store type: rdwr\n'
-             '            Backing store path: /dev/stack-volumes-lvmdriver-1/volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa
+             '            Backing store path: %(bspath)s\n'
              '            Backing store flags:\n'
              '    Account information:\n'
              '        mDVpzk8cZesdahJC9h73\n'
              '    ACL information:\n'
-             '        ALL"\n')
+             '        ALL"\n' % {'test_vol': self.test_vol,
+                                 'bspath': self.testvol_path})
 
     def test_iscsi_protocol(self):
         self.assertEqual(self.target.iscsi_protocol, 'iscsi')
@@ -80,30 +80,22 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
     def test_get_target(self):
         with mock.patch('cinder.utils.execute',
                         return_value=(self.fake_iscsi_scan, None)):
-            self.assertEqual('1',
-                             self.target._get_target(
-                                 'iqn.2010-10.org.openstack:'
-                                 'volume-83c2e877-feed-46be-'
-                                 '8435-77884fe55b45'))
+            iqn = self.test_vol
+            self.assertEqual('1', self.target._get_target(iqn))
 
     def test_verify_backing_lun(self):
+        iqn = self.test_vol
+
         with mock.patch('cinder.utils.execute',
                         return_value=(self.fake_iscsi_scan, None)):
-
-            self.assertTrue(self.target._verify_backing_lun(
-                'iqn.2010-10.org.openstack:'
-                'volume-83c2e877-feed-46be-'
-                '8435-77884fe55b45', '1'))
+            self.assertTrue(self.target._verify_backing_lun(iqn, '1'))
 
         # Test the failure case
         bad_scan = self.fake_iscsi_scan.replace('LUN: 1', 'LUN: 3')
 
         with mock.patch('cinder.utils.execute',
                         return_value=(bad_scan, None)):
-            self.assertFalse(self.target._verify_backing_lun(
-                'iqn.2010-10.org.openstack:'
-                'volume-83c2e877-feed-46be-'
-                '8435-77884fe55b45', '1'))
+            self.assertFalse(self.target._verify_backing_lun(iqn, '1'))
 
     @mock.patch.object(time, 'sleep')
     @mock.patch('cinder.utils.execute')
@@ -116,8 +108,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
         expected_command = ('tgtadm', '--lld', 'iscsi', '--op', 'new',
                             '--mode', 'logicalunit', '--tid', '1',
                             '--lun', '1', '-b',
-                            '/dev/stack-volumes-lvmdriver-1/'
-                            'volume-83c2e877-feed-46be-8435-77884fe55b45')
+                            self.testvol_path)
 
         mock_execute.assert_called_once_with(*expected_command,
                                              run_as_root=True)
@@ -147,18 +138,19 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
     def test_get_target_chap_auth(self):
         persist_file =\
-            '<target iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45>\n'\
-            '    backing-store /dev/stack-volumes-lvmdriver-1/volume-83c2e877-feed-46be-8435-77884fe55b45\n'\
+            '<target iqn.2010-10.org.openstack:volume-%(id)s>\n'\
+            '    backing-store %(bspath)s\n'\
             '    driver iscsi\n'\
-            '    incominguser otzLy2UYbYfnP4zXLG5z 234Zweo38VGBBvrpK9nt\n'\
+            '    incominguser otzL 234Z\n'\
             '    write-cache on\n'\
-            '</target>'
+            '</target>' % {'id': self.VOLUME_ID,
+                           'bspath': self.testvol_path}
         with open(os.path.join(self.fake_volumes_dir,
                                self.test_vol.split(':')[1]),
                   'wb') as tmp_file:
             tmp_file.write(persist_file)
         ctxt = context.get_admin_context()
-        expected = ('otzLy2UYbYfnP4zXLG5z', '234Zweo38VGBBvrpK9nt')
+        expected = ('otzL', '234Z')
         self.assertEqual(expected,
                          self.target._get_target_chap_auth(ctxt,
                                                            self.test_vol))
@@ -240,25 +232,22 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
         mock_exec.side_effect = _fake_execute
 
-        test_vol_id = '83c2e877-feed-46be-8435-77884fe55b45'
-        test_vol_name = 'volume-83c2e877-feed-46be-8435-77884fe55b45'
-
         with mock.patch.object(self.target, '_get_target', return_value=False):
             self.assertEqual(
                 None,
                 self.target.remove_iscsi_target(
                     1,
                     0,
-                    test_vol_id,
-                    test_vol_name))
+                    self.VOLUME_ID,
+                    self.VOLUME_NAME))
 
             mock_exec.side_effect = _fake_execute_wrong_message
             self.assertRaises(exception.ISCSITargetRemoveFailed,
                               self.target.remove_iscsi_target,
                               1,
                               0,
-                              test_vol_id,
-                              test_vol_name)
+                              self.VOLUME_ID,
+                              self.VOLUME_NAME)
 
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('os.path.exists', return_value=True)
@@ -285,25 +274,22 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
         mock_exec.side_effect = _fake_execute
 
-        test_vol_id = '83c2e877-feed-46be-8435-77884fe55b45'
-        test_vol_name = 'volume-83c2e877-feed-46be-8435-77884fe55b45'
-
         with mock.patch.object(self.target, '_get_target', return_value=False):
             self.assertEqual(
                 None,
                 self.target.remove_iscsi_target(
                     1,
                     0,
-                    test_vol_id,
-                    test_vol_name))
+                    self.VOLUME_ID,
+                    self.VOLUME_NAME))
 
             mock_exec.side_effect = _fake_execute_wrong_message
             self.assertRaises(exception.ISCSITargetRemoveFailed,
                               self.target.remove_iscsi_target,
                               1,
                               0,
-                              test_vol_id,
-                              test_vol_name)
+                              self.VOLUME_ID,
+                              self.VOLUME_NAME)
 
     @mock.patch.object(tgt.TgtAdm, '_get_iscsi_properties')
     def test_initialize_connection(self, mock_get_iscsi):
@@ -359,8 +345,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
         expected_result = {'location': '10.9.8.7:3260,1 ' +
                            self.iscsi_target_prefix +
                            self.testvol['name'] + ' 1',
-                           'auth': 'CHAP '
-                           'QZJbisG9AL954FNF4D P68eE7u9eFqDGexd28DQ'}
+                           'auth': 'CHAP QZJb P68e'}
 
         with mock.patch('cinder.utils.execute', return_value=('', '')),\
                 mock.patch.object(self.target, '_get_target',
@@ -370,9 +355,9 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                 mock.patch.object(self.target, '_get_target_chap_auth',
                                   side_effect=lambda x, y: None) as m_chap,\
                 mock.patch.object(vutils, 'generate_username',
-                                  side_effect=lambda: 'QZJbisG9AL954FNF4D'),\
+                                  side_effect=lambda: 'QZJb'),\
                 mock.patch.object(vutils, 'generate_password',
-                                  side_effect=lambda: 'P68eE7u9eFqDGexd28DQ'):
+                                  side_effect=lambda: 'P68e'):
 
             ctxt = context.get_admin_context()
             self.assertEqual(expected_result,
@@ -380,12 +365,9 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                                                        self.testvol,
                                                        self.fake_volumes_dir))
 
-            m_chap.side_effect = lambda x, y: ('otzLy2UYbYfnP4zXLG5z',
-                                               '234Zweo38VGBBvrpK9nt')
+            m_chap.side_effect = lambda x, y: ('otzL', '234Z')
 
-            expected_result['auth'] = ('CHAP '
-                                       'otzLy2UYbYfnP4zXLG5z '
-                                       '234Zweo38VGBBvrpK9nt')
+            expected_result['auth'] = ('CHAP otzL 234Z')
 
             self.assertEqual(expected_result,
                              self.target.create_export(ctxt,

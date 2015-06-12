@@ -31,38 +31,45 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
         self.cxt_subdir = cxt.CxtAdm.cxt_subdir
         self.target = cxt.CxtAdm(root_helper=utils.get_root_helper(),
                                  configuration=self.configuration)
-        self.fake_iscsi_scan =\
+        self.VG = 'stack-volumes-lvmdriver-1'
+        self.fake_iscsi_scan = \
             ('\n'
-             'TARGET: iqn.2010-10.org.openstack:%s, id=1, login_ip=0\n'  # noqa
+             'TARGET: iqn.2010-10.org.openstack:%(vol)s, id=1, login_ip=0\n'
              '        PortalGroup=1@10.9.8.7:3260,timeout=0\n'
-             '        TargetDevice=/dev/stack-volumes-lvmdriver-1/%s,BLK,PROD=CHISCSI Target,SN=0N0743000000000,ID=0D074300000000000000000,WWN=:W00743000000000\n'  # noqa
-             % (self.volume_name, self.volume_name))
+             '        TargetDevice=/dev/%(vg)s/%(vol)s'
+             ',BLK,PROD=CHISCSI '
+             'Target,SN=0N0743000000000,ID=0D074300000000000000000,'
+             'WWN=:W00743000000000\n'
+             % {'vol': self.VOLUME_NAME, 'vg': self.VG})
 
     def test_get_target(self):
         with mock.patch.object(self.target, '_get_volumes_dir',
                                return_value=self.fake_volumes_dir),\
             mock.patch('cinder.utils.execute',
                        return_value=(self.fake_iscsi_scan, None)) as m_exec:
-            self.assertEqual('1',
-                             self.target._get_target(
-                                                     'iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45'  # noqa
-                                                    ))
+            self.assertEqual(
+                '1',
+                self.target._get_target(
+                    'iqn.2010-10.org.openstack:volume-%s' % self.VOLUME_ID
+                )
+            )
             self.assertTrue(m_exec.called)
 
     def test_get_target_chap_auth(self):
         tmp_file = StringIO.StringIO()
         tmp_file.write(
             'target:\n'
-            '        TargetName=iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa
-            '        TargetDevice=/dev/stack-volumes-lvmdriver-1/volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa
+            '        TargetName=iqn.2010-10.org.openstack:volume-%(id)s\n'
+            '        TargetDevice=/dev/%(vg)s/volume-%(id)s\n'
             '        PortalGroup=1@10.9.8.7:3260\n'
             '        AuthMethod=CHAP\n'
             '        Auth_CHAP_Policy=Oneway\n'
-            '        Auth_CHAP_Initiator="otzLy2UYbYfnP4zXLG5z":"234Zweo38VGBBvrpK9nt"\n'  # noqa
+            '        Auth_CHAP_Initiator="otzL":"234Z"\n' %
+            {'id': self.VOLUME_ID, 'vg': self.VG}
         )
         tmp_file.seek(0)
 
-        expected = ('otzLy2UYbYfnP4zXLG5z', '234Zweo38VGBBvrpK9nt')
+        expected = ('otzL', '234Z')
         with mock.patch('__builtin__.open') as mock_open:
             ctx = context.get_admin_context()
             mock_open.return_value = contextlib.closing(tmp_file)
