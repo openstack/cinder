@@ -413,6 +413,9 @@ class ZFSSAApi(object):
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
+        val = json.loads(ret.data)
+        return val
+
     def get_lun(self, pool, project, lun):
         """return iscsi lun properties."""
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
@@ -443,8 +446,6 @@ class ZFSSAApi(object):
         }
         if 'origin' in val['lun']:
             ret.update({'origin': val['lun']['origin']})
-        if isinstance(ret['number'], list):
-            ret['number'] = ret['number'][0]
 
         return ret
 
