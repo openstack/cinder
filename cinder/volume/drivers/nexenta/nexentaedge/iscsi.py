@@ -1,4 +1,4 @@
-# Copyright 2014 Nexenta Systems, Inc.
+# Copyright 2015 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -22,9 +22,8 @@
 
 import json
 
-from cinder.i18n import _LE
+from cinder.i18n import _, _LE
 from cinder.volume import driver
-from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc as jsonrpc
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -58,7 +57,7 @@ NEXENTA_EDGE_OPTIONS = [
                help='NexentaEdge iSCSI service name'),
     cfg.StrOpt('nexenta_client_address',
                default='',
-               help='NexentaEdge iSCSI Gateway client ' +
+               help='NexentaEdge iSCSI Gateway client '
                'address for non-VIP service')
 ]
 
@@ -70,6 +69,7 @@ LOG = logging.getLogger(__name__)
 
 class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """Executes volume driver commands on NexentaEdge cluster.
+
     Version history:
         1.0.0 - Initial driver version.
     """
@@ -91,10 +91,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.iscsi_service = self.configuration.nexenta_iscsi_service
         self.bucket_path = self.configuration.nexenta_lun_container
         self.cluster, self.tenant, self.bucket = self.bucket_path.split('/')
-        self.bucket_url = 'clusters/' + self.cluster + '/tenants/' + \
-            self.tenant + '/buckets/' + self.bucket
-        self.iscsi_target_portal_port = \
-            self.configuration.nexenta_iscsi_target_portal_port
+        self.bucket_url = ('clusters/' + self.cluster + '/tenants/' +
+                           self.tenant + '/buckets/' + self.bucket)
+        self.iscsi_target_port = (self.configuration.
+                                  nexenta_iscsi_target_portal_port)
         self.target_vip = None
 
     @property
@@ -133,10 +133,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.target_vip = self.configuration.safe_get(
                     'nexenta_client_address')
                 if not self.target_vip:
-                    LOG.error(_LE('No VIP configured for service %s')
-                              % self.iscsi_service)
-                    raise Exception('No service VIP configured and ' +
-                                    'no nexenta_client_address')
+                    LOG.error(_LE('No VIP configured for service %s'),
+                              self.iscsi_service)
+                    raise Exception(_('No service VIP configured and '
+                                    'no nexenta_client_address'))
         except Exception as exc:
             LOG.error(_LE('Error verifying iSCSI service %(serv)s on '
                           'host %(hst)s: %(err)s'),
@@ -172,7 +172,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def _get_provider_location(self, volume):
         return '%(host)s:%(port)s,1 %(name)s %(number)s' % {
             'host': self._get_target_address(volume['name']),
-            'port': self.configuration.nexenta_iscsi_target_portal_port,
+            'port': self.iscsi_target_port,
             'name': self.target_name,
             'number': self._get_lun_number(volume['name'])
         }
@@ -185,8 +185,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 'blockSize': self.LUN_BLOCKSIZE,
                 'chunkSize': self.LUN_CHUNKSIZE
             })
-        except nexenta.NexentaException as e:
-            LOG.error(_LE('Error creating volume: %s') % e)
+        except Exception as e:
+            LOG.error(_LE('Error creating volume: %s'), e)
             raise
 
     def delete_volume(self, volume):
@@ -194,8 +194,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.restapi.delete('service/' + self.iscsi_service +
                                 '/iscsi', {'objectPath': self.bucket_path +
                                            '/' + volume['name']})
-        except nexenta.NexentaException as e:
-            LOG.error(_LE('Error deleting volume: %s') % e)
+        except Exception as e:
+            LOG.error(_LE('Error deleting volume: %s'), e)
             raise
 
     def extend_volume(self, volume, new_size):
@@ -203,7 +203,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.restapi.put('service/' + self.iscsi_service + '/iscsi/resize',
                              {'objectPath': self.bucket_path + '/' +
                               volume['name'], 'newSizeMB': new_size * 1024})
-        except nexenta.NexentaException as e:
+        except Exception as e:
             LOG.error(_LE('Error extending volume: %s') % e)
             raise
 
@@ -217,8 +217,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     'clonePath': self.bucket_path + '/' + volume['name'],
                     'snapName': snapshot['name']
                 })
-        except nexenta.NexentaException as e:
-            LOG.error(_LE('Error cloning volume: %s') % e)
+        except Exception as e:
+            LOG.error(_LE('Error cloning volume: %s'), e)
             raise
 
     def create_snapshot(self, snapshot):
@@ -230,8 +230,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     snapshot['volume_name'],
                     'snapName': snapshot['name']
                 })
-        except nexenta.NexentaException as e:
-            LOG.error(_LE('Error creating snapshot: %s') % e)
+        except Exception as e:
+            LOG.error(_LE('Error creating snapshot: %s'), e)
             raise
 
     def delete_snapshot(self, snapshot):
@@ -243,13 +243,13 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     snapshot['volume_name'],
                     'snapName': snapshot['name']
                 })
-        except nexenta.NexentaException as e:
-            LOG.error(_LE('Error deleting snapshot: %s') % e)
+        except Exception as e:
+            LOG.error(_LE('Error deleting snapshot: %s'), e)
             raise
 
     def create_cloned_volume(self, volume, src_vref):
-        vol_url = self.bucket_url + '/objects/' + \
-            src_vref['name'] + '/clone'
+        vol_url = (self.bucket_url + '/objects/' +
+                   src_vref['name'] + '/clone')
         clone_body = {
             'tenant_name': self.tenant,
             'bucket_name': self.bucket,
@@ -263,8 +263,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 'blockSize': self.LUN_BLOCKSIZE,
                 'chunkSize': self.LUN_CHUNKSIZE,
             })
-        except nexenta.NexentaException as e:
-            LOG.error(_LE('Error creating cloned volume: %s') % e)
+        except Exception as e:
+            LOG.error(_LE('Error creating cloned volume: %s'), e)
             raise
 
     def create_export(self, context, volume):
@@ -279,8 +279,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def initialize_connection(self, volume, connector):
         lunNumber = self._get_lun_number(volume['name'])
 
-        target_portal = self._get_target_address(volume['name']) + ':' + \
-            str(self.configuration.nexenta_iscsi_target_portal_port)
+        target_portal = (self._get_target_address(volume['name']) + ':' +
+                         str(self.iscsi_target_port))
         return {
             'driver_volume_type': 'iscsi',
             'data': {
@@ -300,12 +300,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def local_path(self, volume):
         return self.bucket_path + '/' + volume['name']
 
-    def backup_volume(self, context, backup, backup_service):
-        raise NotImplementedError()
-
-    def restore_backup(self, context, backup, volume, backup_service):
-        raise NotImplementedError()
-
     def get_volume_stats(self, refresh=False):
         location_info = '%(driver)s:%(host)s:%(bucket)s' % {
             'driver': self.__class__.__name__,
@@ -322,6 +316,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'QoS_support': False,
             'volume_backend_name': self.backend_name,
             'location_info': location_info,
-            'iscsi_target_portal_port': self.iscsi_target_portal_port,
+            'iscsi_target_portal_port': self.iscsi_target_port,
             'restapi_url': self.restapi.url
         }
