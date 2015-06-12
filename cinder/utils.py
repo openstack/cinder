@@ -459,8 +459,12 @@ def make_dev_path(dev, partition=None, base='/dev'):
 
 def sanitize_hostname(hostname):
     """Return a hostname which conforms to RFC-952 and RFC-1123 specs."""
-    if isinstance(hostname, six.text_type):
+    if six.PY3:
         hostname = hostname.encode('latin-1', 'ignore')
+        hostname = hostname.decode('latin-1')
+    else:
+        if isinstance(hostname, six.text_type):
+            hostname = hostname.encode('latin-1', 'ignore')
 
     hostname = re.sub('[ _]', '-', hostname)
     hostname = re.sub('[^\w.-]+', '', hostname)
@@ -473,7 +477,7 @@ def sanitize_hostname(hostname):
 def hash_file(file_like_object):
     """Generate a hash for the contents of a file."""
     checksum = hashlib.sha1()
-    any(map(checksum.update, iter(lambda: file_like_object.read(32768), '')))
+    any(map(checksum.update, iter(lambda: file_like_object.read(32768), b'')))
     return checksum.hexdigest()
 
 
@@ -793,7 +797,7 @@ def convert_version_to_int(version):
         if isinstance(version, six.string_types):
             version = convert_version_to_tuple(version)
         if isinstance(version, tuple):
-            return reduce(lambda x, y: (x * 1000) + y, version)
+            return six.moves.reduce(lambda x, y: (x * 1000) + y, version)
     except Exception:
         msg = _("Version %s is invalid.") % version
         raise exception.CinderException(msg)
@@ -805,9 +809,9 @@ def convert_version_to_str(version_int):
     while version_int != 0:
         version_number = version_int - (version_int // factor * factor)
         version_numbers.insert(0, six.text_type(version_number))
-        version_int = version_int / factor
+        version_int = version_int // factor
 
-    return reduce(lambda x, y: "%s.%s" % (x, y), version_numbers)
+    return '.'.join(map(str, version_numbers))
 
 
 def convert_version_to_tuple(version_str):

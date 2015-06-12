@@ -21,6 +21,10 @@ from oslo_config import cfg
 
 CONF = cfg.CONF
 
+CONF.import_opt('backup_enable_progress_timer',
+                'cinder.backup.drivers.nfs')
+CONF.import_opt('backup_swift_enable_progress_timer',
+                'cinder.backup.drivers.swift')
 CONF.import_opt('policy_file', 'cinder.policy')
 CONF.import_opt('volume_driver', 'cinder.volume.manager')
 CONF.import_opt('xiv_ds8k_proxy',
