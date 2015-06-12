@@ -87,7 +87,7 @@ class BlkioCgroup(Throttle):
                             'device \'%(device)s\'.'), {'device': dev})
 
     def _set_limits(self, rw, devs):
-        total = sum(devs.itervalues())
+        total = sum(devs.values())
         for dev in devs:
             self._limit_bps(rw, dev, self.bps_limit * devs[dev] / total)
 

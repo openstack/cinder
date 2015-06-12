@@ -394,7 +394,7 @@ class StorwizeSVCDriver(san.SanDriver):
             # Get preferred node and other nodes in I/O group
             preferred_node_entry = None
             io_group_nodes = []
-            for node in self._state['storage_nodes'].itervalues():
+            for node in self._state['storage_nodes'].values():
                 if vol_opts['protocol'] not in node['enabled_protocols']:
                     continue
                 if node['id'] == preferred_node:
@@ -454,7 +454,7 @@ class StorwizeSVCDriver(san.SanDriver):
                         LOG.error(msg)
                         raise exception.VolumeBackendAPIException(data=msg)
                     else:
-                        for node in self._state['storage_nodes'].itervalues():
+                        for node in self._state['storage_nodes'].values():
                             conn_wwpns.extend(node['WWPN'])
 
                 if not vol_opts['multipath']:
