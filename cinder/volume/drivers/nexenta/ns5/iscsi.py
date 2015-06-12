@@ -209,17 +209,18 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param snapshot: snapshot reference
         """
+        snapshot_vol = self._get_snapshot_volume(snapshot)
         LOG.info(_LI('Creating snapshot %(snap)s of volume %(vol)s') % {
             'snap': snapshot['name'],
-            'vol': snapshot.volume_name
+            'vol': snapshot_vol['name']
         })
-        zvol_name = self._get_zvol_name(snapshot.volume_name)
+        zvol_name = self._get_zvol_name(snapshot_vol['name'])
         pool, group, volume = zvol_name.split('/')
         url = 'storage/pools/%(pool)s/datasetGroups/%(group)s/' \
               'volumes/%(volume)s/snapshots' % {
                   'pool': pool,
                   'group': group,
-                  'volume': snapshot.volume_name
+                  'volume': snapshot_vol['name']
               }
         self.nef(url, {'name': snapshot['name']})
 
@@ -229,7 +230,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param snapshot: snapshot reference
         """
         LOG.info(_LI('Deleting snapshot: %s') % snapshot['name'])
-        zvol_name = self._get_zvol_name(snapshot.volume_name)
+        snapshot_vol = self._get_snapshot_volume(snapshot)
+        zvol_name = self._get_zvol_name(snapshot_vol['name'])
         pool, group, volume = zvol_name.split('/')
         url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
                'volumes/%(volume)s/snapshots/%(snapshot)s') % {
@@ -253,7 +255,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param snapshot: reference of source snapshot
         """
         LOG.info(_LI('Creating volume from snapshot: %s') % snapshot['name'])
-        zvol_name = self._get_zvol_name(snapshot.volume_name)
+        snapshot_vol = self._get_snapshot_volume(snapshot)
+        zvol_name = self._get_zvol_name(snapshot_vol['name'])
         pool, group, snapshot_vol = zvol_name.split('/')
         url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
                'volumes/%(volume)s/snapshots/%(snapshot)s/clone') % {
