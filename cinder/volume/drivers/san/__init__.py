@@ -22,4 +22,4 @@
 """
 
 # Adding imports for backwards compatibility in loading volume_driver.
-from san import SanISCSIDriver      # noqa
+from cinder.volume.drivers.san.san import SanISCSIDriver      # noqa
