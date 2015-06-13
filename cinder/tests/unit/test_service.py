@@ -28,6 +28,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import manager
+from cinder import rpc
 from cinder import service
 from cinder import test
 from cinder import wsgi
@@ -113,25 +114,23 @@ class ServiceTestCase(test.TestCase):
 
     def setUp(self):
         super(ServiceTestCase, self).setUp()
+        self.host = 'foo'
+        self.binary = 'cinder-fake'
+        self.topic = 'fake'
 
     def test_create(self):
-        host = 'foo'
-        binary = 'cinder-fake'
-        topic = 'fake'
-
         # NOTE(vish): Create was moved out of mock replay to make sure that
         #             the looping calls are created in StartService.
-        app = service.Service.create(host=host, binary=binary, topic=topic)
+        app = service.Service.create(host=self.host,
+                                     binary=self.binary,
+                                     topic=self.topic)
 
         self.assertTrue(app)
 
     def test_report_state_newly_disconnected(self):
-        host = 'foo'
-        binary = 'bar'
-        topic = 'test'
-        service_ref = {'host': host,
-                       'binary': binary,
-                       'topic': topic,
+        service_ref = {'host': self.host,
+                       'binary': self.binary,
+                       'topic': self.topic,
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
@@ -141,9 +140,9 @@ class ServiceTestCase(test.TestCase):
             mock_db.service_get.side_effect = db_exc.DBConnectionError()
 
             serv = service.Service(
-                host,
-                binary,
-                topic,
+                self.host,
+                self.binary,
+                self.topic,
                 'cinder.tests.unit.test_service.FakeManager'
             )
             serv.start()
@@ -152,12 +151,9 @@ class ServiceTestCase(test.TestCase):
             self.assertFalse(mock_db.service_update.called)
 
     def test_report_state_newly_connected(self):
-        host = 'foo'
-        binary = 'bar'
-        topic = 'test'
-        service_ref = {'host': host,
-                       'binary': binary,
-                       'topic': topic,
+        service_ref = {'host': self.host,
+                       'binary': self.binary,
+                       'topic': self.topic,
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
@@ -167,9 +163,9 @@ class ServiceTestCase(test.TestCase):
             mock_db.service_get.return_value = service_ref
 
             serv = service.Service(
-                host,
-                binary,
-                topic,
+                self.host,
+                self.binary,
+                self.topic,
                 'cinder.tests.unit.test_service.FakeManager'
             )
             serv.start()
@@ -180,12 +176,9 @@ class ServiceTestCase(test.TestCase):
             self.assertTrue(mock_db.service_update.called)
 
     def test_report_state_manager_not_working(self):
-        host = 'foo'
-        binary = 'bar'
-        topic = 'test'
-        service_ref = {'host': host,
-                       'binary': binary,
-                       'topic': topic,
+        service_ref = {'host': self.host,
+                       'binary': self.binary,
+                       'topic': self.topic,
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
@@ -193,9 +186,9 @@ class ServiceTestCase(test.TestCase):
             mock_db.service_get.return_value = service_ref
 
             serv = service.Service(
-                host,
-                binary,
-                topic,
+                self.host,
+                self.binary,
+                self.topic,
                 'cinder.tests.unit.test_service.FakeManager'
             )
             serv.manager.is_working = mock.Mock(return_value=False)
@@ -212,6 +205,21 @@ class ServiceTestCase(test.TestCase):
             binary="test_service",
             manager="cinder.tests.unit.test_service.FakeManager")
         self.assertEqual(25, CONF.service_down_time)
+
+    @mock.patch.object(rpc, 'get_server')
+    @mock.patch.object(service, 'db')
+    def test_service_stop_waits_for_rpcserver(self, mock_db, mock_rpc):
+        serv = service.Service(
+            self.host,
+            self.binary,
+            self.topic,
+            'cinder.tests.unit.test_service.FakeManager'
+        )
+        serv.start()
+        serv.stop()
+        serv.rpcserver.start.assert_called_once_with()
+        serv.rpcserver.stop.assert_called_once_with()
+        serv.rpcserver.wait.assert_called_once_with()
 
 
 class TestWSGIService(test.TestCase):
