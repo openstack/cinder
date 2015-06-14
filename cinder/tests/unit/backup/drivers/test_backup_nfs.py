@@ -16,7 +16,6 @@
 Tests for Backup NFS driver.
 
 """
-import __builtin__
 import bz2
 import exceptions
 import filecmp
@@ -30,6 +29,7 @@ import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_config import cfg
 from oslo_log import log as logging
+from six.moves import builtins
 
 from cinder.backup.drivers import nfs
 from cinder import context
@@ -214,20 +214,20 @@ class BackupNFSTestCase(test.TestCase):
         self.assertEqual([], result)
 
     def test_get_object_writer(self):
-        self.mock_object(__builtin__, 'open', mock.mock_open())
+        self.mock_object(builtins, 'open', mock.mock_open())
         self.mock_object(os, 'chmod')
 
         self.driver.get_object_writer(FAKE_CONTAINER, FAKE_OBJECT_NAME)
 
         os.chmod.assert_called_once_with(FAKE_OBJECT_PATH, 0o660)
-        __builtin__.open.assert_called_once_with(FAKE_OBJECT_PATH, 'w')
+        builtins.open.assert_called_once_with(FAKE_OBJECT_PATH, 'w')
 
     def test_get_object_reader(self):
-        self.mock_object(__builtin__, 'open', mock.mock_open())
+        self.mock_object(builtins, 'open', mock.mock_open())
 
         self.driver.get_object_reader(FAKE_CONTAINER, FAKE_OBJECT_NAME)
 
-        __builtin__.open.assert_called_once_with(FAKE_OBJECT_PATH, 'r')
+        builtins.open.assert_called_once_with(FAKE_OBJECT_PATH, 'r')
 
     def test_delete_object(self):
         self.mock_object(os, 'remove')

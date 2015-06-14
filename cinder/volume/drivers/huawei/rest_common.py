@@ -15,7 +15,6 @@
 """Common class for Huawei 18000 storage drivers."""
 
 import base64
-import cookielib
 import json
 import socket
 import time
@@ -26,6 +25,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 import six
+from six.moves import http_cookiejar
 from six.moves import urllib
 
 from cinder import context
@@ -54,7 +54,7 @@ class RestCommon(object):
 
     def __init__(self, configuration):
         self.configuration = configuration
-        self.cookie = cookielib.CookieJar()
+        self.cookie = http_cookiejar.CookieJar()
         self.url = None
         self.productversion = None
         self.headers = {"Connection": "keep-alive",

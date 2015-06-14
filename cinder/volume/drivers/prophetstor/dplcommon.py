@@ -22,7 +22,6 @@ Implementation of the class of ProphetStor DPL storage adapter of Federator.
 
 import base64
 import errno
-import httplib
 import json
 import random
 import time
@@ -30,6 +29,7 @@ import time
 from oslo_log import log as logging
 from oslo_utils import units
 import six
+from six.moves import http_client
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
@@ -98,9 +98,9 @@ class DPLCommand(object):
                 retcode = errno.EINVAL
         for i in range(CONNECTION_RETRY):
             try:
-                connection = httplib.HTTPSConnection(self.ip,
-                                                     self.port,
-                                                     timeout=60)
+                connection = http_client.HTTPSConnection(self.ip,
+                                                         self.port,
+                                                         timeout=60)
                 if connection:
                     retcode = 0
                     break
@@ -117,12 +117,12 @@ class DPLCommand(object):
         while (connection and retry):
             try:
                 connection.request(method, url, payload, header)
-            except httplib.CannotSendRequest as e:
+            except http_client.CannotSendRequest as e:
                 connection.close()
                 time.sleep(1)
-                connection = httplib.HTTPSConnection(self.ip,
-                                                     self.port,
-                                                     timeout=60)
+                connection = http_client.HTTPSConnection(self.ip,
+                                                         self.port,
+                                                         timeout=60)
                 retry -= 1
                 if connection:
                     if retry == 0:
@@ -141,7 +141,7 @@ class DPLCommand(object):
             if retcode == 0:
                 try:
                     response = connection.getresponse()
-                    if response.status == httplib.SERVICE_UNAVAILABLE:
+                    if response.status == http_client.SERVICE_UNAVAILABLE:
                         LOG.error(_LE('The Flexvisor service is unavailable.'))
                         time.sleep(1)
                         retry -= 1
@@ -150,7 +150,7 @@ class DPLCommand(object):
                     else:
                         retcode = 0
                         break
-                except httplib.ResponseNotReady as e:
+                except http_client.ResponseNotReady as e:
                     time.sleep(1)
                     retry -= 1
                     retcode = errno.EFAULT
@@ -162,23 +162,23 @@ class DPLCommand(object):
                     break
 
         if (retcode == 0 and response.status in expected_status
-                and response.status == httplib.NOT_FOUND):
+                and response.status == http_client.NOT_FOUND):
             retcode = errno.ENODATA
         elif retcode == 0 and response.status not in expected_status:
             LOG.error(_LE('%(method)s %(url)s unexpected response status: '
                           '%(response)s (expects: %(expects)s).'),
                       {'method': method,
                        'url': url,
-                       'response': httplib.responses[response.status],
+                       'response': http_client.responses[response.status],
                        'expects': expected_status})
-            if response.status == httplib.UNAUTHORIZED:
+            if response.status == http_client.UNAUTHORIZED:
                 raise exception.NotAuthorized
                 retcode = errno.EACCES
             else:
                 retcode = errno.EIO
-        elif retcode == 0 and response.status is httplib.NOT_FOUND:
+        elif retcode == 0 and response.status is http_client.NOT_FOUND:
             retcode = errno.ENODATA
-        elif retcode == 0 and response.status is httplib.ACCEPTED:
+        elif retcode == 0 and response.status is http_client.ACCEPTED:
             retcode = errno.EAGAIN
             try:
                 data = response.read()
@@ -192,8 +192,8 @@ class DPLCommand(object):
                           e)
                 retcode = errno.ENOEXEC
         elif (retcode == 0 and
-                response.status in [httplib.OK, httplib.CREATED] and
-                httplib.NO_CONTENT not in expected_status):
+                response.status in [http_client.OK, http_client.CREATED] and
+                http_client.NO_CONTENT not in expected_status):
             try:
                 data = response.read()
                 data = json.loads(data)
@@ -229,7 +229,8 @@ class DPLVolume(object):
     def get_server_info(self):
         method = 'GET'
         url = ('/%s/%s/' % (DPL_VER_V1, DPL_OBJ_SYSTEM))
-        return self._execute(method, url, None, [httplib.OK, httplib.ACCEPTED])
+        return self._execute(method, url, None,
+                             [http_client.OK, http_client.ACCEPTED])
 
     def create_vdev(self, volumeID, volumeName, volumeDesc, poolID, volumeSize,
                     fthinprovision=True, maximum_snapshot=MAXSNAPSHOTS,
@@ -253,7 +254,8 @@ class DPLVolume(object):
         params['metadata'] = metadata
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.CREATED])
 
     def extend_vdev(self, volumeID, volumeName, volumeDesc, volumeSize,
                     maximum_snapshot=MAXSNAPSHOTS, snapshot_quota=None):
@@ -274,7 +276,8 @@ class DPLVolume(object):
         params['metadata'] = metadata
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.CREATED])
 
     def delete_vdev(self, volumeID, force=True):
         method = 'DELETE'
@@ -286,8 +289,8 @@ class DPLVolume(object):
         params['metadata'] = metadata
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.ACCEPTED, httplib.NOT_FOUND,
-                              httplib.NO_CONTENT])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.NOT_FOUND, http_client.NO_CONTENT])
 
     def create_vdev_from_snapshot(self, vdevID, vdevDisplayName, vdevDesc,
                                   snapshotID, poolID, fthinprovision=True,
@@ -314,7 +317,8 @@ class DPLVolume(object):
         params['copy'] = self._gen_snapshot_url(vdevID, snapshotID)
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.CREATED])
 
     def spawn_vdev_from_snapshot(self, new_vol_id, src_vol_id,
                                  vol_display_name, description, snap_id):
@@ -333,17 +337,19 @@ class DPLVolume(object):
         params['copy'] = self._gen_snapshot_url(src_vol_id, snap_id)
 
         return self._execute(method, url, params,
-                             [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.CREATED])
 
     def get_pools(self):
         method = 'GET'
         url = '/%s/%s/' % (DPL_VER_V1, DPL_OBJ_POOL)
-        return self._execute(method, url, None, [httplib.OK])
+        return self._execute(method, url, None, [http_client.OK])
 
     def get_pool(self, poolid):
         method = 'GET'
         url = '/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_POOL, poolid)
-        return self._execute(method, url, None, [httplib.OK, httplib.ACCEPTED])
+        return self._execute(method, url, None,
+                             [http_client.OK, http_client.ACCEPTED])
 
     def clone_vdev(self, SourceVolumeID, NewVolumeID, poolID, volumeName,
                    volumeDesc, volumeSize, fthinprovision=True,
@@ -369,7 +375,8 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.CREATED, httplib.ACCEPTED])
+                             [http_client.OK, http_client.CREATED,
+                              http_client.ACCEPTED])
 
     def create_vdev_snapshot(self, vdevid, snapshotid, snapshotname='',
                              snapshotdes='', isgroup=False):
@@ -392,7 +399,8 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.CREATED, httplib.ACCEPTED])
+                             [http_client.OK, http_client.CREATED,
+                              http_client.ACCEPTED])
 
     def get_vdev(self, vdevid):
         method = 'GET'
@@ -400,7 +408,8 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, None,
-                             [httplib.OK, httplib.ACCEPTED, httplib.NOT_FOUND])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.NOT_FOUND])
 
     def get_vdev_status(self, vdevid, eventid):
         method = 'GET'
@@ -409,7 +418,7 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, None,
-                             [httplib.OK, httplib.NOT_FOUND])
+                             [http_client.OK, http_client.NOT_FOUND])
 
     def get_pool_status(self, poolid, eventid):
         method = 'GET'
@@ -418,7 +427,7 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, None,
-                             [httplib.OK, httplib.NOT_FOUND])
+                             [http_client.OK, http_client.NOT_FOUND])
 
     def assign_vdev(self, vdevid, iqn, lunname, portal, lunid=0):
         method = 'PUT'
@@ -445,7 +454,8 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.CREATED])
 
     def assign_vdev_fc(self, vdevid, targetwwpn, initiatorwwpn, lunname,
                        lunid=-1):
@@ -468,7 +478,8 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.CREATED])
 
     def unassign_vdev(self, vdevid, initiatorIqn, targetIqn=''):
         method = 'PUT'
@@ -490,8 +501,8 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.ACCEPTED,
-                              httplib.NO_CONTENT, httplib.NOT_FOUND])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.NO_CONTENT, http_client.NOT_FOUND])
 
     def unassign_vdev_fc(self, vdevid, targetwwpn, initiatorwwpns):
         method = 'PUT'
@@ -512,8 +523,8 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.ACCEPTED,
-                              httplib.NO_CONTENT, httplib.NOT_FOUND])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.NO_CONTENT, http_client.NOT_FOUND])
 
     def delete_vdev_snapshot(self, objID, snapshotID, isGroup=False):
         method = 'DELETE'
@@ -529,8 +540,8 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, None,
-                             [httplib.OK, httplib.ACCEPTED, httplib.NO_CONTENT,
-                              httplib.NOT_FOUND])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.NO_CONTENT, http_client.NOT_FOUND])
 
     def rollback_vdev(self, vdevid, snapshotid):
         method = 'PUT'
@@ -541,7 +552,7 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, params,
-                             [httplib.OK, httplib.ACCEPTED])
+                             [http_client.OK, http_client.ACCEPTED])
 
     def list_vdev_snapshots(self, vdevid, isGroup=False):
         method = 'GET'
@@ -554,7 +565,7 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, None,
-                             [httplib.OK])
+                             [http_client.OK])
 
     def query_vdev_snapshot(self, vdevid, snapshotID, isGroup=False):
         method = 'GET'
@@ -567,7 +578,7 @@ class DPLVolume(object):
 
         return self._execute(method,
                              url, None,
-                             [httplib.OK])
+                             [http_client.OK])
 
     def create_target(self, targetID, protocol, displayName, targetAddress,
                       description=''):
@@ -584,19 +595,20 @@ class DPLVolume(object):
             metadata['display_name'] = displayName
         metadata['display_description'] = description
         metadata['address'] = targetAddress
-        return self._execute(method, url, params, [httplib.OK])
+        return self._execute(method, url, params, [http_client.OK])
 
     def get_target(self, targetID):
         method = 'GET'
         url = '/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_EXPORT, targetID)
-        return self._execute(method, url, None, [httplib.OK])
+        return self._execute(method, url, None, [http_client.OK])
 
     def delete_target(self, targetID):
         method = 'DELETE'
         url = '/%s/%s/%s/' % (DPL_VER_V1, DPL_OBJ_EXPORT, targetID)
         return self._execute(method,
                              url, None,
-                             [httplib.OK, httplib.ACCEPTED, httplib.NOT_FOUND])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.NOT_FOUND])
 
     def get_target_list(self, type='target'):
         # type = target/initiator
@@ -605,7 +617,7 @@ class DPLVolume(object):
             url = '/%s/%s/' % (DPL_VER_V1, DPL_OBJ_EXPORT)
         else:
             url = '/%s/%s/?type=%s' % (DPL_VER_V1, DPL_OBJ_EXPORT, type)
-        return self._execute(method, url, None, [httplib.OK])
+        return self._execute(method, url, None, [http_client.OK])
 
     def get_sns_table(self, wwpn):
         method = 'PUT'
@@ -614,7 +626,7 @@ class DPLVolume(object):
         params['metadata'] = {}
         params['metadata']['protocol'] = 'fc'
         params['metadata']['address'] = str(wwpn)
-        return self._execute(method, url, params, [httplib.OK])
+        return self._execute(method, url, params, [http_client.OK])
 
     def create_vg(self, groupID, groupName, groupDesc='', listVolume=None,
                   maxSnapshots=MAXSNAPSHOTS, rotationSnapshot=True):
@@ -634,7 +646,8 @@ class DPLVolume(object):
         metadata['properties'] = properties
         params['metadata'] = metadata
         return self._execute(method, url, params,
-                             [httplib.OK, httplib.ACCEPTED, httplib.CREATED])
+                             [http_client.OK, http_client.ACCEPTED,
+                              http_client.CREATED])
 
     def get_vg_list(self, vgtype=None):
         method = 'GET'
@@ -642,12 +655,12 @@ class DPLVolume(object):
             url = '/%s/?volume_group_type=%s' % (DPL_OBJ_VOLUMEGROUP, vgtype)
         else:
             url = '/%s/' % (DPL_OBJ_VOLUMEGROUP)
-        return self._execute(method, url, None, [httplib.OK])
+        return self._execute(method, url, None, [http_client.OK])
 
     def get_vg(self, groupID):
         method = 'GET'
         url = '/%s/%s/' % (DPL_OBJ_VOLUMEGROUP, groupID)
-        return self._execute(method, url, None, [httplib.OK])
+        return self._execute(method, url, None, [http_client.OK])
 
     def delete_vg(self, groupID, force=True):
         method = 'DELETE'
@@ -657,7 +670,7 @@ class DPLVolume(object):
         metadata['force'] = force
         params['metadata'] = metadata
         return self._execute(method, url, params,
-                             [httplib.NO_CONTENT, httplib.NOT_FOUND])
+                             [http_client.NO_CONTENT, http_client.NOT_FOUND])
 
     def join_vg(self, volumeID, groupID):
         method = 'PUT'
@@ -669,7 +682,7 @@ class DPLVolume(object):
         metadata['volume'].append(volumeID)
         params['metadata'] = metadata
         return self._execute(method, url, params,
-                             [httplib.OK, httplib.ACCEPTED])
+                             [http_client.OK, http_client.ACCEPTED])
 
     def leave_vg(self, volumeID, groupID):
         method = 'PUT'
@@ -681,7 +694,7 @@ class DPLVolume(object):
         metadata['volume'].append(volumeID)
         params['metadata'] = metadata
         return self._execute(method, url, params,
-                             [httplib.OK, httplib.ACCEPTED])
+                             [http_client.OK, http_client.ACCEPTED])
 
 
 class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,

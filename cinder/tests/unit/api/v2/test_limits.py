@@ -17,12 +17,12 @@
 Tests dealing with HTTP rate-limiting.
 """
 
-import httplib
 from xml.dom import minidom
 
 from lxml import etree
 from oslo_serialization import jsonutils
 import six
+from six.moves import http_client
 import webob
 
 from cinder.api.v2 import limits
@@ -634,7 +634,7 @@ class WsgiLimiterTest(BaseLimitTestSuite):
 
 class FakeHttplibSocket(object):
 
-    """Fake `httplib.HTTPResponse` replacement."""
+    """Fake `http_client.HTTPResponse` replacement."""
 
     def __init__(self, response_string):
         """Initialize new `FakeHttplibSocket`."""
@@ -647,7 +647,7 @@ class FakeHttplibSocket(object):
 
 class FakeHttplibConnection(object):
 
-    """Fake `httplib.HTTPConnection`."""
+    """Fake `http_client.HTTPConnection`."""
 
     def __init__(self, app, host):
         """Initialize `FakeHttplibConnection`."""
@@ -659,7 +659,7 @@ class FakeHttplibConnection(object):
 
         Requests made via this connection actually get translated and
         routed into our WSGI app, we then wait for the response and turn
-        it back into an `httplib.HTTPResponse`.
+        it back into an `http_client.HTTPResponse`.
         """
         if not headers:
             headers = {}
@@ -673,7 +673,7 @@ class FakeHttplibConnection(object):
         resp = str(req.get_response(self.app))
         resp = "HTTP/1.0 %s" % resp
         sock = FakeHttplibSocket(resp)
-        self.http_response = httplib.HTTPResponse(sock)
+        self.http_response = http_client.HTTPResponse(sock)
         self.http_response.begin()
 
     def getresponse(self):
@@ -687,7 +687,7 @@ def wire_HTTPConnection_to_WSGI(host, app):
 
     After calling this method, when any code calls
 
-    httplib.HTTPConnection(host)
+    http_client.HTTPConnection(host)
 
     the connection object will be a fake.  Its requests will be sent directly
     to the given WSGI app rather than through a socket.
@@ -714,8 +714,9 @@ def wire_HTTPConnection_to_WSGI(host, app):
             else:
                 return self.wrapped(connection_host, *args, **kwargs)
 
-    oldHTTPConnection = httplib.HTTPConnection
-    httplib.HTTPConnection = HTTPConnectionDecorator(httplib.HTTPConnection)
+    oldHTTPConnection = http_client.HTTPConnection
+    new_http_connection = HTTPConnectionDecorator(http_client.HTTPConnection)
+    http_client.HTTPConnection = new_http_connection
     return oldHTTPConnection
 
 
@@ -727,7 +728,7 @@ class WsgiLimiterProxyTest(BaseLimitTestSuite):
         """setUp() for WsgiLimiterProxyTest.
 
         Do some nifty HTTP/WSGI magic which allows for WSGI to be called
-        directly by something like the `httplib` library.
+        directly by something like the `http_client` library.
         """
         super(WsgiLimiterProxyTest, self).setUp()
         self.app = limits.WsgiLimiter(TEST_LIMITS)
@@ -738,7 +739,7 @@ class WsgiLimiterProxyTest(BaseLimitTestSuite):
 
     def _restore(self, oldHTTPConnection):
         # restore original HTTPConnection object
-        httplib.HTTPConnection = oldHTTPConnection
+        http_client.HTTPConnection = oldHTTPConnection
 
     def test_200(self):
         """Successful request test."""

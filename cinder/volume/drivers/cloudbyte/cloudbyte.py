@@ -13,13 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import httplib
 import json
 import uuid
 
 from oslo_log import log as logging
 from oslo_utils import units
 import six
+from six.moves import http_client
 from six.moves import urllib
 
 from cinder import exception
@@ -97,7 +97,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         res_details = {}
         try:
             # Prepare the connection
-            connection = httplib.HTTPSConnection(host)
+            connection = http_client.HTTPSConnection(host)
             # Make the connection
             connection.request('GET', url)
             # Extract the response as the connection was successful
@@ -153,7 +153,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
             error_details = res_obj['error']
             http_status = res_obj['http_status']
 
-        except httplib.HTTPException as ex:
+        except http_client.HTTPException as ex:
             msg = (_("Error executing CloudByte API [%(cmd)s], "
                      "Error: %(err)s.") %
                    {'cmd': cmd, 'err': ex})
