@@ -12,14 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey
 from sqlalchemy import Integer, MetaData, String, Table
-
-from cinder.i18n import _LE, _LI
-
-
-LOG = logging.getLogger(__name__)
 
 
 def define_tables(meta):
@@ -236,12 +230,7 @@ def upgrade(migrate_engine):
     tables = define_tables(meta)
 
     for table in tables:
-        try:
-            table.create()
-        except Exception:
-            LOG.info(repr(table))
-            LOG.exception(_LE('Exception while creating table.'))
-            raise
+        table.create()
 
     if migrate_engine.name == "mysql":
         tables = ["sm_flavors",
@@ -275,5 +264,4 @@ def downgrade(migrate_engine):
     tables = define_tables(meta)
     tables.reverse()
     for table in tables:
-        LOG.info(_LI("dropping table %(table)s"), {'table': table})
         table.drop()

@@ -12,11 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Column
 from sqlalchemy import MetaData, String, Table
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):

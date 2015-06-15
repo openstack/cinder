@@ -15,10 +15,7 @@
 import datetime
 
 from oslo_config import cfg
-from oslo_log import log as logging
 from sqlalchemy import MetaData, Table
-
-from cinder.i18n import _LE, _LI
 
 # Get default values via config.  The defaults will either
 # come from the default values set in the quota option
@@ -28,7 +25,6 @@ CONF = cfg.CONF
 CONF.import_opt('quota_volumes', 'cinder.quota')
 CONF.import_opt('quota_snapshots', 'cinder.quota')
 CONF.import_opt('quota_gigabytes', 'cinder.quota')
-LOG = logging.getLogger(__name__)
 
 CLASS_NAME = 'default'
 CREATED_AT = datetime.datetime.now()  # noqa
@@ -47,34 +43,27 @@ def upgrade(migrate_engine):
     # Do not add entries if there are already 'default' entries.  We don't
     # want to write over something the user added.
     if rows:
-        LOG.info(_LI("Found existing 'default' entries in the quota_classes "
-                     "table.  Skipping insertion of default values."))
         return
 
-    try:
-        # Set default volumes
-        qci = quota_classes.insert()
-        qci.execute({'created_at': CREATED_AT,
-                     'class_name': CLASS_NAME,
-                     'resource': 'volumes',
-                     'hard_limit': CONF.quota_volumes,
-                     'deleted': False, })
-        # Set default snapshots
-        qci.execute({'created_at': CREATED_AT,
-                     'class_name': CLASS_NAME,
-                     'resource': 'snapshots',
-                     'hard_limit': CONF.quota_snapshots,
-                     'deleted': False, })
-        # Set default gigabytes
-        qci.execute({'created_at': CREATED_AT,
-                     'class_name': CLASS_NAME,
-                     'resource': 'gigabytes',
-                     'hard_limit': CONF.quota_gigabytes,
-                     'deleted': False, })
-        LOG.info(_LI("Added default quota class data into the DB."))
-    except Exception:
-        LOG.error(_LE("Default quota class data not inserted into the DB."))
-        raise
+    # Set default volumes
+    qci = quota_classes.insert()
+    qci.execute({'created_at': CREATED_AT,
+                 'class_name': CLASS_NAME,
+                 'resource': 'volumes',
+                 'hard_limit': CONF.quota_volumes,
+                 'deleted': False, })
+    # Set default snapshots
+    qci.execute({'created_at': CREATED_AT,
+                 'class_name': CLASS_NAME,
+                 'resource': 'snapshots',
+                 'hard_limit': CONF.quota_snapshots,
+                 'deleted': False, })
+    # Set default gigabytes
+    qci.execute({'created_at': CREATED_AT,
+                 'class_name': CLASS_NAME,
+                 'resource': 'gigabytes',
+                 'hard_limit': CONF.quota_gigabytes,
+                 'deleted': False, })
 
 
 def downgrade(migrate_engine):

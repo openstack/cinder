@@ -14,12 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Column, MetaData, String, Table
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -29,12 +24,8 @@ def upgrade(migrate_engine):
     backups = Table('backups', meta, autoload=True)
     parent_id = Column('parent_id', String(length=36))
 
-    try:
-        backups.create_column(parent_id)
-        backups.update().values(parent_id=None).execute()
-    except Exception:
-        LOG.error(_LE("Adding parent_id column to backups table failed."))
-        raise
+    backups.create_column(parent_id)
+    backups.update().values(parent_id=None).execute()
 
 
 def downgrade(migrate_engine):
@@ -44,8 +35,4 @@ def downgrade(migrate_engine):
     backups = Table('backups', meta, autoload=True)
     parent_id = backups.columns.parent_id
 
-    try:
-        backups.drop_column(parent_id)
-    except Exception:
-        LOG.error(_LE("Dropping parent_id column from backups table failed."))
-        raise
+    backups.drop_column(parent_id)

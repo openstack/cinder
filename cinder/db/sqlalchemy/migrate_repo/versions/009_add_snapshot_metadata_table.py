@@ -10,13 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import Integer, MetaData, String, Table, ForeignKey
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -40,11 +35,7 @@ def upgrade(migrate_engine):
         mysql_engine='InnoDB'
     )
 
-    try:
-        snapshot_metadata.create()
-    except Exception:
-        LOG.error(_LE("Table |%s| not created!"), repr(snapshot_metadata))
-        raise
+    snapshot_metadata.create()
 
 
 def downgrade(migrate_engine):
@@ -53,8 +44,4 @@ def downgrade(migrate_engine):
     snapshot_metadata = Table('snapshot_metadata',
                               meta,
                               autoload=True)
-    try:
-        snapshot_metadata.drop()
-    except Exception:
-        LOG.error(_LE("snapshot_metadata table not dropped"))
-        raise
+    snapshot_metadata.drop()

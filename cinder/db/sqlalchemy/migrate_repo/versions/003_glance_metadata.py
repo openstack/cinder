@@ -12,13 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Column, DateTime, Text, Boolean
 from sqlalchemy import MetaData, Integer, String, Table, ForeignKey
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -56,8 +51,6 @@ def upgrade(migrate_engine):
     try:
         volume_glance_metadata.create()
     except Exception:
-        LOG.exception(_LE("Exception while creating table "
-                          "'volume_glance_metadata'"))
         meta.drop_all(tables=[volume_glance_metadata])
         raise
 
@@ -68,8 +61,4 @@ def downgrade(migrate_engine):
 
     volume_glance_metadata = Table('volume_glance_metadata',
                                    meta, autoload=True)
-    try:
-        volume_glance_metadata.drop()
-    except Exception:
-        LOG.error(_LE("volume_glance_metadata table not dropped"))
-        raise
+    volume_glance_metadata.drop()

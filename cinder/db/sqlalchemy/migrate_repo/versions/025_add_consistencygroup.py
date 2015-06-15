@@ -14,13 +14,8 @@
 #    under the License.
 
 from migrate import ForeignKeyConstraint
-from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import ForeignKey, MetaData, String, Table
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -47,11 +42,7 @@ def upgrade(migrate_engine):
         mysql_charset='utf8',
     )
 
-    try:
-        consistencygroups.create()
-    except Exception:
-        LOG.error(_LE("Table |%s| not created!"), repr(consistencygroups))
-        raise
+    consistencygroups.create()
 
     # New table
     cgsnapshots = Table(
@@ -73,36 +64,22 @@ def upgrade(migrate_engine):
         mysql_charset='utf8',
     )
 
-    try:
-        cgsnapshots.create()
-    except Exception:
-        LOG.error(_LE("Table |%s| not created!"), repr(cgsnapshots))
-        raise
+    cgsnapshots.create()
 
     # Add column to volumes table
     volumes = Table('volumes', meta, autoload=True)
     consistencygroup_id = Column('consistencygroup_id', String(36),
                                  ForeignKey('consistencygroups.id'))
-    try:
-        volumes.create_column(consistencygroup_id)
-        volumes.update().values(consistencygroup_id=None).execute()
-    except Exception:
-        LOG.error(_LE("Adding consistencygroup_id column to volumes table"
-                      " failed."))
-        raise
+    volumes.create_column(consistencygroup_id)
+    volumes.update().values(consistencygroup_id=None).execute()
 
     # Add column to snapshots table
     snapshots = Table('snapshots', meta, autoload=True)
     cgsnapshot_id = Column('cgsnapshot_id', String(36),
                            ForeignKey('cgsnapshots.id'))
 
-    try:
-        snapshots.create_column(cgsnapshot_id)
-        snapshots.update().values(cgsnapshot_id=None).execute()
-    except Exception:
-        LOG.error(_LE("Adding cgsnapshot_id column to snapshots table"
-                      " failed."))
-        raise
+    snapshots.create_column(cgsnapshot_id)
+    snapshots.update().values(cgsnapshot_id=None).execute()
 
 
 def downgrade(migrate_engine):
@@ -120,12 +97,8 @@ def downgrade(migrate_engine):
                   'refcolumns': [ref_table.c['id']],
                   'name': 'snapshots_ibfk_1'}
 
-        try:
-            fkey = ForeignKeyConstraint(**params)
-            fkey.drop()
-        except Exception:
-            LOG.error(_LE("Dropping foreign key 'cgsnapshot_id' in "
-                          "the 'snapshots' table failed."))
+        fkey = ForeignKeyConstraint(**params)
+        fkey.drop()
 
     snapshots = Table('snapshots', meta, autoload=True)
     cgsnapshot_id = snapshots.columns.cgsnapshot_id
@@ -142,12 +115,8 @@ def downgrade(migrate_engine):
                   'refcolumns': [ref_table.c['id']],
                   'name': 'volumes_ibfk_1'}
 
-        try:
-            fkey = ForeignKeyConstraint(**params)
-            fkey.drop()
-        except Exception:
-            LOG.error(_LE("Dropping foreign key 'consistencygroup_id' in "
-                          "the 'volumes' table failed."))
+        fkey = ForeignKeyConstraint(**params)
+        fkey.drop()
 
     volumes = Table('volumes', meta, autoload=True)
     consistencygroup_id = volumes.columns.consistencygroup_id
@@ -155,16 +124,8 @@ def downgrade(migrate_engine):
 
     # Drop table
     cgsnapshots = Table('cgsnapshots', meta, autoload=True)
-    try:
-        cgsnapshots.drop()
-    except Exception:
-        LOG.error(_LE("cgsnapshots table not dropped"))
-        raise
+    cgsnapshots.drop()
 
     # Drop table
     consistencygroups = Table('consistencygroups', meta, autoload=True)
-    try:
-        consistencygroups.drop()
-    except Exception:
-        LOG.error(_LE("consistencygroups table not dropped"))
-        raise
+    consistencygroups.drop()
