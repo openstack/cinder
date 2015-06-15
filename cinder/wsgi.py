@@ -31,7 +31,6 @@ import eventlet.wsgi
 import greenlet
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_log import loggers
 from oslo_utils import excutils
 from oslo_utils import netutils
 from paste import deploy
@@ -129,7 +128,6 @@ class Server(object):
         self.pool_size = pool_size or self.default_pool_size
         self._pool = eventlet.GreenPool(self.pool_size)
         self._logger = logging.getLogger("eventlet.wsgi.server")
-        self._wsgi_logger = loggers.WritableLogger(self._logger)
 
         if backlog < 1:
             raise exception.InvalidInput(
@@ -242,7 +240,7 @@ class Server(object):
             'site': self.app,
             'protocol': self._protocol,
             'custom_pool': self._pool,
-            'log': self._wsgi_logger,
+            'log': self._logger,
             'socket_timeout': self.client_socket_timeout,
             'keepalive': CONF.wsgi_keep_alive
         }
