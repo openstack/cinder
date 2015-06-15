@@ -16,10 +16,10 @@ ZFS Storage Appliance REST API Client Programmatic Interface
 """
 
 import json
-import StringIO
 import time
 
 from oslo_log import log
+import six
 from six.moves import http_client
 from six.moves import urllib
 
@@ -226,7 +226,7 @@ class RestClientURL(object):
         :cmd_params args: The path part
         :cmd_params kwargs: The query part
         """
-        buf = StringIO.StringIO()
+        buf = six.StringIO()
         query = "?"
         for arg in args:
             buf.write("/")

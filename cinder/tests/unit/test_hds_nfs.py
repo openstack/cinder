@@ -15,11 +15,11 @@
 #
 
 import os
-import StringIO
 import tempfile
 
 import mock
 from oslo_log import log as logging
+import six
 
 from cinder import exception
 from cinder import test
@@ -191,18 +191,18 @@ class HDSNFSDriverTest(test.TestCase):
     def test_read_config(self, m_access, m_open):
         # Test exception when file is not found
         m_access.return_value = False
-        m_open.return_value = StringIO.StringIO(HNASCONF)
+        m_open.return_value = six.StringIO(HNASCONF)
         self.assertRaises(exception.NotFound, nfs._read_config, '')
 
         # Test exception when config file has parsing errors
         # due to missing <svc> tag
         m_access.return_value = True
-        m_open.return_value = StringIO.StringIO(HNAS_WRONG_CONF1)
+        m_open.return_value = six.StringIO(HNAS_WRONG_CONF1)
         self.assertRaises(exception.ConfigNotFound, nfs._read_config, '')
 
         # Test exception when config file has parsing errors
         # due to missing <hdp> tag
-        m_open.return_value = StringIO.StringIO(HNAS_WRONG_CONF2)
+        m_open.return_value = six.StringIO(HNAS_WRONG_CONF2)
         self.configuration.hds_hnas_iscsi_config_file = ''
         self.assertRaises(exception.ParameterNotFound, nfs._read_config, '')
 

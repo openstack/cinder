@@ -12,11 +12,9 @@
 
 import contextlib
 
-import StringIO
-
-
 import mock
 from oslo_concurrency import processutils as putils
+import six
 
 from cinder import context
 from cinder import exception
@@ -34,7 +32,7 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
                                  configuration=self.configuration)
 
     def test_get_target(self):
-        tmp_file = StringIO.StringIO()
+        tmp_file = six.StringIO()
         tmp_file.write(
             'tid:1 name:iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa
             '        sid:844427031282176 initiator:iqn.1994-05.com.redhat:5a6894679665\n'  # noqa
@@ -56,7 +54,7 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
     @mock.patch('os.path.exists', return_value=True)
     @mock.patch('cinder.utils.temporary_chown')
     def test_get_target_chap_auth(self, mock_chown, mock_exists):
-        tmp_file = StringIO.StringIO()
+        tmp_file = six.StringIO()
         tmp_file.write(
             'Target iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa
             '    IncomingUser otzLy2UYbYfnP4zXLG5z 234Zweo38VGBBvrpK9nt\n'
@@ -87,7 +85,7 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
     def test_create_iscsi_target(self, mock_chown, mock_exists,
                                  mock_execute, mock_get_targ):
         mock_execute.return_value = ('', '')
-        tmp_file = StringIO.StringIO()
+        tmp_file = six.StringIO()
         with mock.patch('__builtin__.open') as mock_open:
             mock_open.return_value = contextlib.closing(tmp_file)
             self.assertEqual(
@@ -175,7 +173,7 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
                           self.testvol['name'])
 
     def test_find_sid_cid_for_target(self):
-        tmp_file = StringIO.StringIO()
+        tmp_file = six.StringIO()
         tmp_file.write(
             'tid:1 name:iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa
             '        sid:844427031282176 initiator:iqn.1994-05.com.redhat:5a6894679665\n'  # noqa
