@@ -515,7 +515,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 LOG.info(_LI('Snapshot %s does not exist, it was '
                              'already deleted.'), '%s@%s' % (folder, snapshot))
                 return
-            raise
+            elif 'has dependent clones' in exc.args[0]:
+                LOG.info(_LI('Snapshot %s has dependent clones, it will '
+                             'be deleted later.'), '%s@%s' % (folder, snapshot))
+                return
 
     def _create_sparsed_file(self, nms, path, size):
         """Creates file with 0 disk usage.
