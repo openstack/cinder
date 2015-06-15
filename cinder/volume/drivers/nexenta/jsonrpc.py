@@ -20,6 +20,7 @@
 .. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
 """
 
+import socket
 import urllib2
 
 from oslo_serialization import jsonutils
@@ -29,6 +30,7 @@ from oslo_log import log as logging
 from cinder.volume.drivers import nexenta
 
 LOG = logging.getLogger(__name__)
+socket.setdefaulttimeout(100)
 
 
 class NexentaJSONException(nexenta.NexentaException):
