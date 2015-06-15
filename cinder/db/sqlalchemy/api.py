@@ -450,7 +450,7 @@ def service_update(context, service_id, values):
 def _metadata_refs(metadata_dict, meta_class):
     metadata_refs = []
     if metadata_dict:
-        for k, v in metadata_dict.iteritems():
+        for k, v in metadata_dict.items():
             metadata_ref = meta_class()
             metadata_ref['key'] = k
             metadata_ref['value'] = v
@@ -490,7 +490,7 @@ def iscsi_target_count_by_host(context, host):
 def iscsi_target_create_safe(context, values):
     iscsi_target_ref = models.IscsiTarget()
 
-    for (key, value) in values.iteritems():
+    for (key, value) in values.items():
         iscsi_target_ref[key] = value
     session = get_session()
 
@@ -1564,14 +1564,14 @@ def _process_volume_filters(query, filters):
     filter_dict = {}
 
     # Iterate over all filters, special case the filter if necessary
-    for key, value in filters.iteritems():
+    for key, value in filters.items():
         if key == 'metadata':
             # model.VolumeMetadata defines the backref to Volumes as
             # 'volume_metadata' or 'volume_admin_metadata', use those as
             # column attribute keys
             col_attr = getattr(models.Volume, 'volume_metadata')
             col_ad_attr = getattr(models.Volume, 'volume_admin_metadata')
-            for k, v in value.iteritems():
+            for k, v in value.items():
                 query = query.filter(or_(col_attr.any(key=k, value=v),
                                          col_ad_attr.any(key=k, value=v)))
         elif isinstance(value, (list, tuple, set, frozenset)):
@@ -1773,7 +1773,7 @@ def _volume_x_metadata_update(context, volume_id, metadata, delete,
         if delete:
             original_metadata = _volume_x_metadata_get(context, volume_id,
                                                        model, session=session)
-            for meta_key, meta_value in original_metadata.iteritems():
+            for meta_key, meta_value in original_metadata.items():
                 if meta_key not in metadata:
                     meta_ref = _volume_x_metadata_get_item(context, volume_id,
                                                            meta_key, model,
@@ -2130,7 +2130,7 @@ def snapshot_metadata_update(context, snapshot_id, metadata, delete):
         if delete:
             original_metadata = _snapshot_metadata_get(context, snapshot_id,
                                                        session)
-            for meta_key, meta_value in original_metadata.iteritems():
+            for meta_key, meta_value in original_metadata.items():
                 if meta_key not in metadata:
                     meta_ref = _snapshot_metadata_get_item(context,
                                                            snapshot_id,
@@ -2620,7 +2620,7 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id,
     session = get_session()
     with session.begin():
         spec_ref = None
-        for key, value in specs.iteritems():
+        for key, value in specs.items():
             try:
                 spec_ref = _volume_type_extra_specs_get_item(
                     context, volume_type_id, key, session)
@@ -2672,7 +2672,7 @@ def qos_specs_create(context, values):
             specs_root.save(session=session)
 
             # Insert all specification entries for QoS specs
-            for k, v in values['qos_specs'].iteritems():
+            for k, v in values['qos_specs'].items():
                 item = dict(key=k, value=v, specs_id=specs_id)
                 item['id'] = str(uuid.uuid4())
                 spec_entry = models.QualityOfServiceSpecs()

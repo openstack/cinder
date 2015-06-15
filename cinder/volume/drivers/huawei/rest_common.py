@@ -1620,7 +1620,7 @@ class RestCommon(object):
             kvs = specs
 
         LOG.info(_LI('The QoS sepcs is: %s.'), kvs)
-        for key, value in kvs.iteritems():
+        for key, value in kvs.items():
             if key in huawei_valid_keys:
                 qos[key.upper()] = value
 
@@ -1696,7 +1696,7 @@ class RestCommon(object):
     def _check_qos_high_priority(self, qos):
         """Check QoS priority."""
 
-        for key, value in qos.iteritems():
+        for key, value in qos.items():
             if (key.find('MIN') == 0) or (key.find('LATENCY') == 0):
                 return True
 

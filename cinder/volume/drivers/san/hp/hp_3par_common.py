@@ -869,7 +869,7 @@ class HP3PARCommon(object):
         else:
             kvs = specs
 
-        for key, value in kvs.iteritems():
+        for key, value in kvs.items():
             if 'qos:' in key:
                 fields = key.split(':')
                 key = fields[1]
@@ -880,7 +880,7 @@ class HP3PARCommon(object):
     def _get_keys_by_volume_type(self, volume_type):
         hp3par_keys = {}
         specs = volume_type.get('extra_specs')
-        for key, value in specs.iteritems():
+        for key, value in specs.items():
             if ':' in key:
                 fields = key.split(':')
                 key = fields[1]

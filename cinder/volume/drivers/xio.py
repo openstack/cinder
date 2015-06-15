@@ -1073,7 +1073,7 @@ class XIOISEDriver(object):
             volume_type = volume_types.get_volume_type(ctxt, type_id)
             extra_specs = volume_type.get('extra_specs')
             # Parse out RAID, pool and affinity values
-            for key, value in extra_specs.iteritems():
+            for key, value in extra_specs.items():
                 subkey = ''
                 if ':' in key:
                     fields = key.split(':')
@@ -1110,7 +1110,7 @@ class XIOISEDriver(object):
             else:
                 kvs = volume_type.get('extra_specs')
             # Parse out min, max and burst values
-            for key, value in kvs.iteritems():
+            for key, value in kvs.items():
                 if ':' in key:
                     fields = key.split(':')
                     key = fields[1]

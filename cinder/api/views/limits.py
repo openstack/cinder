@@ -55,7 +55,7 @@ class ViewBuilder(object):
             "injected_file_content_bytes": ["maxPersonalitySize"],
         }
         limits = {}
-        for name, value in absolute_limits.iteritems():
+        for name, value in absolute_limits.items():
             if name in limit_names and value is not None:
                 for name in limit_names[name]:
                     limits[name] = value

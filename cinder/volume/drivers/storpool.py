@@ -241,7 +241,7 @@ class StorPoolDriver(driver.TransferVD, driver.ExtendVD, driver.CloneableVD,
         used = 0
         free = 0
         agSize = 512 * units.Mi
-        for (id, desc) in dl.iteritems():
+        for (id, desc) in dl.items():
             if desc.generationLeft != -1:
                 continue
             total += desc.agCount * agSize
@@ -405,7 +405,7 @@ class StorPoolDriver(driver.TransferVD, driver.ExtendVD, driver.CloneableVD,
         templ = self.configuration.storpool_template
         repl = self.configuration.storpool_replication
         if diff['extra_specs']:
-            for (k, v) in diff['extra_specs'].iteritems():
+            for (k, v) in diff['extra_specs'].items():
                 if k == 'volume_backend_name':
                     if v[0] != v[1]:
                         # Retype of a volume backend not supported yet,

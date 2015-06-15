@@ -172,7 +172,7 @@ class RemoteFSDriver(driver.VolumeDriver):
                           self.configuration.nas_secure_file_permissions,
                           'nas_secure_file_operations':
                           self.configuration.nas_secure_file_operations}
-        for opt_name, opt_value in secure_options.iteritems():
+        for opt_name, opt_value in secure_options.items():
             if opt_value not in valid_secure_opts:
                 err_parms = {'name': opt_name, 'value': opt_value}
                 msg = _("NAS config '%(name)s=%(value)s' invalid. Must be "
@@ -978,7 +978,7 @@ class RemoteFSSnapDriver(RemoteFSDriver):
             new_base_file = base_file_img_info.backing_file
 
             base_id = None
-            for key, value in snap_info.iteritems():
+            for key, value in snap_info.items():
                 if value == base_file and key != 'active':
                     base_id = key
                     break

@@ -242,7 +242,7 @@ def get_all_specs(context, inactive=False, search_opts=None):
         LOG.debug("Searching by: %s", search_opts)
 
         def _check_specs_match(qos_specs, searchdict):
-            for k, v in searchdict.iteritems():
+            for k, v in searchdict.items():
                 if ((k not in qos_specs['specs'].keys() or
                      qos_specs['specs'][k] != v)):
                     return False
@@ -252,9 +252,9 @@ def get_all_specs(context, inactive=False, search_opts=None):
         filter_mapping = {'qos_specs': _check_specs_match}
 
         result = {}
-        for name, args in qos_specs.iteritems():
+        for name, args in qos_specs.items():
             # go over all filters in the list
-            for opt, values in search_opts.iteritems():
+            for opt, values in search_opts.items():
                 try:
                     filter_func = filter_mapping[opt]
                 except KeyError:

@@ -496,7 +496,7 @@ class TestCinderManageCmd(test.TestCase):
     def test_config_commands_list(self):
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
             expected_out = ''
-            for key, value in CONF.iteritems():
+            for key, value in CONF.items():
                 expected_out += '%s = %s' % (key, value) + '\n'
 
             config_cmds = cinder_manage.ConfigCommands()

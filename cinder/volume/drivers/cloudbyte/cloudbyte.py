@@ -86,7 +86,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         error_msg = ""
 
         # error_data is a single key value dict
-        for key, value in error_data.iteritems():
+        for key, value in error_data.items():
             error_msg = value.get('errortext')
 
         return error_msg
@@ -188,7 +188,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
             # Nothing to override
             return default_dict
 
-        for key, value in default_dict.iteritems():
+        for key, value in default_dict.items():
             # Fill the user dict with default options based on condition
             if filtered_user_dict.get(key) is None and value is not None:
                 filtered_user_dict[key] = value

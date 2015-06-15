@@ -313,7 +313,7 @@ class ExceptionTest(test.TestCase):
         self.assertEqual(resp.status_int, exception_type.code, resp.body)
 
         if hasattr(exception_type, 'headers'):
-            for (key, value) in exception_type.headers.iteritems():
+            for (key, value) in exception_type.headers.items():
                 self.assertIn(key, resp.headers)
                 self.assertEqual(resp.headers[key], value)
 

@@ -91,7 +91,7 @@ class FakeToken(object):
     def __init__(self, **kwargs):
         FakeToken.id_count += 1
         self.id = FakeToken.id_count
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             setattr(self, k, v)
 
 

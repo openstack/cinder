@@ -92,7 +92,7 @@ class NetAppDriverFactoryTestCase(test.TestCase):
         registry = na_common.NETAPP_UNIFIED_DRIVER_REGISTRY
 
         for family in six.iterkeys(registry):
-            for protocol, full_class_name in six.iteritems(registry[family]):
+            for protocol, full_class_name in registry[family].items():
                 driver = na_common.NetAppDriver.create_driver(
                     family, protocol, **kwargs)
                 self.assertEqual(full_class_name, get_full_class_name(driver))

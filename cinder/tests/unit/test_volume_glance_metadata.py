@@ -68,7 +68,7 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         metadata = db.volume_glance_metadata_get(ctxt, 2)
         self.assertEqual(len(metadata), 3)
         for expected, meta in zip(expected_metadata_2, metadata):
-            for key, value in expected.iteritems():
+            for key, value in expected.items():
                 self.assertEqual(meta[key], value)
 
         self.assertRaises(exception.GlanceMetadataExists,

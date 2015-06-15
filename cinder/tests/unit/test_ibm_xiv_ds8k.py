@@ -185,7 +185,7 @@ class XIVDS8KFakeProxyDriver(object):
 
     def create_consistencygroup(self, ctxt, group):
 
-        volumes = [volume for k, volume in self.volumes.iteritems()
+        volumes = [volume for k, volume in self.volumes.items()
                    if volume['consistencygroup_id'] == group['id']]
 
         if volumes:
@@ -207,12 +207,12 @@ class XIVDS8KFakeProxyDriver(object):
                     volumes.append(volume)
 
         # Delete snapshots in consistency group
-        self.snapshots = {k: snap for k, snap in self.snapshots.iteritems()
+        self.snapshots = {k: snap for k, snap in self.snapshots.items()
                           if not(snap.get('consistencygroup_id', None)
                                  == group.get('id', None))}
 
         # Delete volume in consistency group
-        self.volumes = {k: vol for k, vol in self.volumes.iteritems()
+        self.volumes = {k: vol for k, vol in self.volumes.items()
                         if not(vol.get('consistencygroup_id', None)
                                == group.get('id', None))}
 
@@ -254,7 +254,7 @@ class XIVDS8KFakeProxyDriver(object):
                     snapshots.append(snapshot)
 
         # Delete snapshots in consistency group
-        self.snapshots = {k: snap for k, snap in self.snapshots.iteritems()
+        self.snapshots = {k: snap for k, snap in self.snapshots.items()
                           if not(snap.get('consistencygroup_id', None)
                                  == cgsnapshot.get('cgsnapshot_id', None))}
 

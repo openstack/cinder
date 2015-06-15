@@ -438,7 +438,7 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
     def _get_lh_extra_specs(self, extra_specs, valid_keys):
         """Get LeftHand extra_specs (valid_keys only)."""
         extra_specs_of_interest = {}
-        for key, value in extra_specs.iteritems():
+        for key, value in extra_specs.items():
             if key in valid_keys:
                 extra_specs_of_interest[key] = value
         return extra_specs_of_interest
@@ -446,7 +446,7 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
     def _map_extra_specs(self, extra_specs):
         """Map the extra spec key/values to LeftHand key/values."""
         client_options = {}
-        for key, value in extra_specs.iteritems():
+        for key, value in extra_specs.items():
             # map extra spec key to lh client option key
             client_key = extra_specs_key_map[key]
             # map extra spect value to lh client option value
@@ -540,7 +540,7 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
 
             # only set the ones that have changed
             changed_extra_specs = {}
-            for key, value in lh_extra_specs.iteritems():
+            for key, value in lh_extra_specs.items():
                 (old, new) = diff['extra_specs'][key]
                 if old != new:
                     changed_extra_specs[key] = value

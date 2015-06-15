@@ -493,7 +493,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         else:
             kvs = specs
 
-        for key, value in kvs.iteritems():
+        for key, value in kvs.items():
             if ':' in key:
                 fields = key.split(':')
                 key = fields[1]

@@ -200,7 +200,7 @@ class StorwizeSVCDriver(san.SanDriver):
         # For each node, check what connection modes it supports.  Delete any
         # nodes that do not support any types (may be partially configured).
         to_delete = []
-        for k, node in self._state['storage_nodes'].iteritems():
+        for k, node in self._state['storage_nodes'].items():
             if ((len(node['ipv4']) or len(node['ipv6']))
                     and len(node['iscsi_name'])):
                 node['enabled_protocols'].append('iSCSI')

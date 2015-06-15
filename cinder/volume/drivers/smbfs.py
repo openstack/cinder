@@ -541,7 +541,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         else:
             options_dict['username'] = 'guest'
         named_options = ','.join("%s=%s" % (key, val) for (key, val)
-                                 in options_dict.iteritems())
+                                 in options_dict.items())
         options_list = ','.join(options_list)
         flags = '-o ' + ','.join([named_options, options_list])
 

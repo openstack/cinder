@@ -588,7 +588,7 @@ class FlashSystemDriver(san.SanDriver):
         # Get preferred node and other nodes in I/O group
         preferred_node_entry = None
         io_group_nodes = []
-        for k, node in self._storage_nodes.iteritems():
+        for k, node in self._storage_nodes.items():
             if vdisk_params['protocol'] != node['protocol']:
                 continue
             if node['id'] == preferred_node:
@@ -644,7 +644,7 @@ class FlashSystemDriver(san.SanDriver):
             ctxt = context.get_admin_context()
             volume_type = volume_types.get_volume_type(ctxt, type_id)
             specs = volume_type.get('extra_specs')
-            for k, value in specs.iteritems():
+            for k, value in specs.items():
                 # Get the scope, if using scope format
                 key_split = k.split(':')
                 if len(key_split) == 1:
@@ -1084,7 +1084,7 @@ class FlashSystemDriver(san.SanDriver):
         # For each node, check what connection modes it supports.  Delete any
         # nodes that do not support any types (may be partially configured).
         to_delete = []
-        for k, node in self._storage_nodes.iteritems():
+        for k, node in self._storage_nodes.items():
             if not node['WWPN']:
                 to_delete.append(k)
 

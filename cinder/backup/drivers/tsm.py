@@ -176,7 +176,7 @@ def _check_dsmc_output(output, check_attrs, exact_match=True):
         if sep is not None and key is not None and len(val.strip()) > 0:
             parsed_attrs[key] = val.strip()
 
-    for ckey, cval in check_attrs.iteritems():
+    for ckey, cval in check_attrs.items():
         if ckey not in parsed_attrs:
             return False
         elif exact_match and parsed_attrs[ckey] != cval:

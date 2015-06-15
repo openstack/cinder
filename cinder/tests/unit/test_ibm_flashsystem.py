@@ -688,7 +688,7 @@ class FlashSystemDriverTestCase(test.TestCase):
 
     def _reset_flags(self):
         self.driver.configuration.local_conf.reset()
-        for k, v in self._def_flags.iteritems():
+        for k, v in self._def_flags.items():
             self._set_flag(k, v)
 
     def _generate_vol_info(self,

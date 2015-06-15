@@ -71,7 +71,7 @@ def fake_volume_type_get_all(context, inactive=False, filters=None):
     if filters is None or filters['is_public'] is None:
         return VOLUME_TYPES
     res = {}
-    for k, v in VOLUME_TYPES.iteritems():
+    for k, v in VOLUME_TYPES.items():
         if filters['is_public'] and _has_type_access(k, context.project_id):
             res.update({k: v})
             continue

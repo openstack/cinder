@@ -522,7 +522,7 @@ class API(base.Base):
             results = []
             not_found = object()
             for snapshot in snapshots:
-                for opt, value in search_opts.iteritems():
+                for opt, value in search_opts.items():
                     if snapshot.get(opt, not_found) != value:
                         break
                 else:
@@ -954,7 +954,7 @@ class API(base.Base):
         if not metadata:
             metadata = {}
 
-        for k, v in metadata.iteritems():
+        for k, v in metadata.items():
             if len(k) == 0:
                 msg = _("Metadata property key blank.")
                 LOG.warning(msg)

@@ -47,7 +47,7 @@ class UsedLimitsTestCase(test.TestCase):
         }
 
         limits = {}
-        for display_name, q in quota_map.iteritems():
+        for display_name, q in quota_map.items():
             limits[q] = {'limit': 2,
                          'in_use': 1}
 
@@ -61,6 +61,6 @@ class UsedLimitsTestCase(test.TestCase):
 
         self.controller.index(fake_req, res)
         abs_limits = res.obj['limits']['absolute']
-        for used_limit, value in abs_limits.iteritems():
+        for used_limit, value in abs_limits.items():
             self.assertEqual(value,
                              limits[quota_map[used_limit]]['in_use'])

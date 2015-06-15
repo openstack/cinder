@@ -897,7 +897,7 @@ class ScaleIODriver(driver.VolumeDriver):
         if type_id:
             volume_type = volume_types.get_volume_type(ctxt, type_id)
             specs = volume_type.get('extra_specs')
-            for key, value in specs.iteritems():
+            for key, value in specs.items():
                 specs[key] = value
 
         return specs

@@ -90,7 +90,7 @@ class FakeHostManager(host_manager.HostManager):
 class FakeHostState(host_manager.HostState):
     def __init__(self, host, attribute_dict):
         super(FakeHostState, self).__init__(host)
-        for (key, val) in attribute_dict.iteritems():
+        for (key, val) in attribute_dict.items():
             setattr(self, key, val)
 
 
@@ -118,7 +118,7 @@ class FakeNovaClient(object):
         def list(self, detailed=True, search_opts=None):
             matching = list(self._servers)
             if search_opts:
-                for opt, val in search_opts.iteritems():
+                for opt, val in search_opts.items():
                     matching = [m for m in matching
                                 if getattr(m, opt, None) == val]
             return matching
