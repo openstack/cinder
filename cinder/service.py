@@ -263,6 +263,7 @@ class Service(service.Service):
         # errors, go ahead and ignore them.. as we're shutting down anyway
         try:
             self.rpcserver.stop()
+            self.rpcserver.wait()
         except Exception:
             pass
         for x in self.timers:
