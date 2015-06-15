@@ -495,12 +495,12 @@ class HostManager(object):
                 host_state = self.host_state_cls(host,
                                                  capabilities=capabilities,
                                                  service=
-                                                 dict(service.iteritems()))
+                                                 dict(service))
                 self.host_state_map[host] = host_state
             # update capabilities and attributes in host_state
             host_state.update_from_volume_capability(capabilities,
                                                      service=
-                                                     dict(service.iteritems()))
+                                                     dict(service))
             active_hosts.add(host)
 
         self._no_capabilities_hosts = no_capabilities_hosts

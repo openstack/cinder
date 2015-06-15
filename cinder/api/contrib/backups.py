@@ -272,7 +272,7 @@ class BackupsController(wsgi.Controller):
         except exception.ServiceNotFound as error:
             raise exc.HTTPInternalServerError(explanation=error.msg)
 
-        retval = self._view_builder.summary(req, dict(new_backup.iteritems()))
+        retval = self._view_builder.summary(req, dict(new_backup))
         return retval
 
     @wsgi.response(202)
@@ -316,7 +316,7 @@ class BackupsController(wsgi.Controller):
                 explanation=error.msg, headers={'Retry-After': 0})
 
         retval = self._view_builder.restore_summary(
-            req, dict(new_restore.iteritems()))
+            req, dict(new_restore))
         return retval
 
     @wsgi.response(200)
@@ -334,7 +334,7 @@ class BackupsController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=error.msg)
 
         retval = self._view_builder.export_summary(
-            req, dict(backup_info.iteritems()))
+            req, dict(backup_info))
         LOG.debug('export record output: %s.', retval)
         return retval
 
@@ -370,7 +370,7 @@ class BackupsController(wsgi.Controller):
         except exception.ServiceNotFound as error:
             raise exc.HTTPInternalServerError(explanation=error.msg)
 
-        retval = self._view_builder.summary(req, dict(new_backup.iteritems()))
+        retval = self._view_builder.summary(req, dict(new_backup))
         LOG.debug('import record output: %s.', retval)
         return retval
 

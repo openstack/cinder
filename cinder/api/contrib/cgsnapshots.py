@@ -196,7 +196,7 @@ class CgsnapshotsController(wsgi.Controller):
 
         retval = self._view_builder.summary(
             req,
-            dict(new_cgsnapshot.iteritems()))
+            dict(new_cgsnapshot))
 
         return retval
 

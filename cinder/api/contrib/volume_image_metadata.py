@@ -62,8 +62,7 @@ class VolumeImageMetadataController(wsgi.Controller):
             except Exception:
                 return
         if image_meta:
-            resp_volume['volume_image_metadata'] = dict(
-                image_meta.iteritems())
+            resp_volume['volume_image_metadata'] = dict(image_meta)
 
     @wsgi.extends
     def show(self, req, resp_obj, id):

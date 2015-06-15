@@ -69,7 +69,7 @@ def _create_facade_lazily():
         if _FACADE is None:
             _FACADE = db_session.EngineFacade(
                 CONF.database.connection,
-                **dict(CONF.database.iteritems())
+                **dict(CONF.database)
             )
 
             if CONF.profiler.profiler_enabled:

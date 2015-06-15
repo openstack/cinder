@@ -408,7 +408,7 @@ class API(base.Base):
         else:
             ctxt = context
         rv = self.db.volume_get(ctxt, volume_id)
-        volume = dict(rv.iteritems())
+        volume = dict(rv)
         try:
             check_policy(context, 'get', volume)
         except exception.PolicyNotAuthorized:
@@ -501,7 +501,7 @@ class API(base.Base):
         check_policy(context, 'get_volume')
         vref = self.db.volume_get(context, volume_id)
         LOG.info(_LI("Volume retrieved successfully."), resource=vref)
-        return dict(vref.iteritems())
+        return dict(vref)
 
     def get_all_snapshots(self, context, search_opts=None):
         check_policy(context, 'get_all_snapshots')
@@ -941,7 +941,7 @@ class API(base.Base):
         rv = self.db.volume_metadata_get(context, volume['id'])
         LOG.info(_LI("Get volume metadata completed successfully."),
                  resource=volume)
-        return dict(rv.iteritems())
+        return dict(rv)
 
     @wrap_check_policy
     def delete_volume_metadata(self, context, volume, key):
@@ -1011,7 +1011,7 @@ class API(base.Base):
         rv = self.db.volume_admin_metadata_get(context, volume['id'])
         LOG.info(_LI("Get volume admin metadata completed successfully."),
                  resource=volume)
-        return dict(rv.iteritems())
+        return dict(rv)
 
     @wrap_check_policy
     def delete_volume_admin_metadata(self, context, volume, key):
