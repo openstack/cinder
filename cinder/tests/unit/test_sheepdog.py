@@ -278,7 +278,7 @@ class SheepdogTestCase(test.TestCase):
         with mock.patch.object(self.driver, '_try_execute') as try_execute:
             self.assertTrue(
                 self.driver._is_cloneable(location, image_meta))
-            expected_cmd = ('collie', 'vdi', 'list',
+            expected_cmd = ('dog', 'vdi', 'list',
                             '--address', 'ip',
                             '--port', 'port',
                             uuid)

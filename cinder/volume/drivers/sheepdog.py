@@ -51,10 +51,7 @@ class SheepdogDriver(driver.VolumeDriver):
     def check_for_setup_error(self):
         """Return error if prerequisites aren't met."""
         try:
-            # NOTE(francois-charlier) Since 0.24 'collie cluster info -r'
-            # gives short output, but for compatibility reason we won't
-            # use it and just check if 'running' is in the output.
-            (out, _err) = self._execute('collie', 'cluster', 'info')
+            (out, _err) = self._execute('dog', 'cluster', 'info')
             if 'status: running' not in out:
                 exception_message = (_("Sheepdog is not working: %s") % out)
                 raise exception.VolumeBackendAPIException(
@@ -89,7 +86,7 @@ class SheepdogDriver(driver.VolumeDriver):
             # "sheepdog:192.168.10.2:7000:Alice"
             (label, ip, port, name) = image_location.split(":", 3)
 
-            self._try_execute('collie', 'vdi', 'list', '--address', ip,
+            self._try_execute('dog', 'vdi', 'list', '--address', ip,
                               '--port', port, name)
             cloneable = True
         except processutils.ProcessExecutionError as e:
@@ -161,11 +158,11 @@ class SheepdogDriver(driver.VolumeDriver):
         if not size:
             size = int(volume['size']) * units.Gi
 
-        self._try_execute('collie', 'vdi', 'resize',
+        self._try_execute('dog', 'vdi', 'resize',
                           volume['name'], size)
 
     def _delete(self, volume):
-        self._try_execute('collie', 'vdi', 'delete',
+        self._try_execute('dog', 'vdi', 'delete',
                           volume['name'])
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
@@ -208,7 +205,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def delete_snapshot(self, snapshot):
         """Delete a sheepdog snapshot."""
-        self._try_execute('collie', 'vdi', 'delete', snapshot['volume_name'],
+        self._try_execute('dog', 'vdi', 'delete', snapshot['volume_name'],
                           '-s', snapshot['name'])
 
     def local_path(self, volume):
@@ -253,7 +250,7 @@ class SheepdogDriver(driver.VolumeDriver):
         stats['QoS_support'] = False
 
         try:
-            stdout, _err = self._execute('collie', 'node', 'info', '-r')
+            stdout, _err = self._execute('dog', 'node', 'info', '-r')
             m = self.stats_pattern.match(stdout)
             total = float(m.group(1))
             used = float(m.group(2))
