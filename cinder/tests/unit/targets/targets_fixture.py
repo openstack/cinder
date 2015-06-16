@@ -91,9 +91,10 @@ class TargetDriverFixture(test.TestCase):
              'target_portal': '10.10.7.1:3260',
              'volume_id': self.fake_volume_id}
 
-        self.volume_name = 'volume-83c2e877-feed-46be-8435-77884fe55b45'
+        self.VOLUME_ID = '83c2e877-feed-46be-8435-77884fe55b45'
+        self.VOLUME_NAME = 'volume-' + self.VOLUME_ID
         self.test_vol = (self.iscsi_target_prefix +
-                         self.volume_name)
+                         self.VOLUME_NAME)
 
     def _cleanup(self):
         if os.path.exists(self.fake_volumes_dir):

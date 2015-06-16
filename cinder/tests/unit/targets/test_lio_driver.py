@@ -79,7 +79,7 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
                 1,
                 0,
                 self.fake_volumes_dir))
-        mpersist_cfg.assert_called_once_with(self.volume_name)
+        mpersist_cfg.assert_called_once_with(self.VOLUME_NAME)
         mexecute.assert_called_once_with(
             'cinder-rtstool',
             'create',
@@ -96,15 +96,13 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
     @mock.patch.object(lio.LioAdm, '_get_target', return_value=1)
     def test_create_iscsi_target_port_ip(self, mget_target, mexecute,
                                          mpersist_cfg, mlock_exec):
-        test_vol = 'iqn.2010-10.org.openstack:'\
-                   'volume-83c2e877-feed-46be-8435-77884fe55b45'
         ip = '10.0.0.15'
         port = 3261
 
         self.assertEqual(
             1,
             self.target.create_iscsi_target(
-                name=test_vol,
+                name=self.test_vol,
                 tid=1,
                 lun=0,
                 path=self.fake_volumes_dir,
@@ -114,7 +112,7 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
             'cinder-rtstool',
             'create',
             self.fake_volumes_dir,
-            test_vol,
+            self.test_vol,
             '',
             '',
             self.target.iscsi_protocol == 'iser',
@@ -123,7 +121,7 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
 
         mlock_exec.assert_any_call(*expected_args, run_as_root=True)
         mexecute.assert_any_call(*expected_args, run_as_root=True)
-        mpersist_cfg.assert_called_once_with(self.volume_name)
+        mpersist_cfg.assert_called_once_with(self.VOLUME_NAME)
 
     @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
@@ -131,8 +129,7 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
     @mock.patch.object(lio.LioAdm, '_get_target', return_value=1)
     def test_create_iscsi_target_port_ips(self, mget_target, mexecute,
                                           mpersist_cfg, mlock_exec):
-        test_vol = 'iqn.2010-10.org.openstack:'\
-                   'volume-83c2e877-feed-46be-8435-77884fe55b45'
+        test_vol = 'iqn.2010-10.org.openstack:' + self.VOLUME_NAME
         ips = ['10.0.0.15', '127.0.0.1']
         port = 3261
 
@@ -158,7 +155,7 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
 
         mlock_exec.assert_any_call(*expected_args, run_as_root=True)
         mexecute.assert_any_call(*expected_args, run_as_root=True)
-        mpersist_cfg.assert_called_once_with(self.volume_name)
+        mpersist_cfg.assert_called_once_with(self.VOLUME_NAME)
 
     @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
