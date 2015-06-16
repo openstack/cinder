@@ -277,18 +277,14 @@ class API(base.Base):
             'multiattach': multiattach,
         }
         try:
-            if cgsnapshot:
-                flow_engine = create_volume.get_flow_no_rpc(self.db,
-                                                            self.image_service,
-                                                            availability_zones,
-                                                            create_what)
-            else:
-                flow_engine = create_volume.get_flow(self.scheduler_rpcapi,
-                                                     self.volume_rpcapi,
-                                                     self.db,
-                                                     self.image_service,
-                                                     availability_zones,
-                                                     create_what)
+            sched_rpcapi = self.scheduler_rpcapi if not cgsnapshot else None
+            volume_rpcapi = self.volume_rpcapi if not cgsnapshot else None
+            flow_engine = create_volume.get_flow(self.db,
+                                                 self.image_service,
+                                                 availability_zones,
+                                                 create_what,
+                                                 sched_rpcapi,
+                                                 volume_rpcapi)
         except Exception:
             msg = _('Failed to create api volume flow.')
             LOG.exception(msg)
