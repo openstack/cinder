@@ -3570,19 +3570,29 @@ class VolumeTestCase(BaseVolumeTestCase):
                           'name',
                           'description')
 
-    def test_begin_detaching_fails_available(self):
+    @mock.patch.object(db, 'volume_get')
+    def test_begin_detaching_fails_available(self, volume_get):
         volume_api = cinder.volume.api.API()
         volume = tests_utils.create_volume(self.context, **self.volume_params)
+        volume_get.return_value = volume
+        # Volume status is 'available'.
         self.assertRaises(exception.InvalidVolume, volume_api.begin_detaching,
                           self.context, volume)
+        volume_get.assert_called_once_with(self.context, volume['id'])
+
+        volume_get.reset_mock()
         volume['status'] = "in-use"
         volume['attach_status'] = "detached"
         # Should raise an error since not attached
         self.assertRaises(exception.InvalidVolume, volume_api.begin_detaching,
                           self.context, volume)
+        volume_get.assert_called_once_with(self.context, volume['id'])
+
+        volume_get.reset_mock()
         volume['attach_status'] = "attached"
         # Ensure when attached no exception raised
         volume_api.begin_detaching(self.context, volume)
+        volume_get.assert_called_once_with(self.context, volume['id'])
 
     def test_begin_roll_detaching_volume(self):
         """Test begin_detaching and roll_detaching functions."""
