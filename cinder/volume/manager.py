@@ -1205,9 +1205,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         rpcapi = volume_rpcapi.VolumeAPI()
 
         # Create new volume on remote host
-        new_vol_values = {}
-        for k, v in volume.iteritems():
-            new_vol_values[k] = v
+        new_vol_values = dict(volume)
         del new_vol_values['id']
         del new_vol_values['_name_id']
         # We don't copy volume_type because the db sets that according to
