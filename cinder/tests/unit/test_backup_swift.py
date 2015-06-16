@@ -90,7 +90,7 @@ class BackupSwiftTestCase(test.TestCase):
         self.addCleanup(self.volume_file.close)
         # Remove tempdir.
         self.addCleanup(shutil.rmtree, self.temp_dir)
-        for _i in xrange(0, 128):
+        for _i in range(0, 128):
             self.volume_file.write(os.urandom(1024))
 
     def test_backup_swift_url(self):

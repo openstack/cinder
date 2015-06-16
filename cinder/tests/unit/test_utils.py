@@ -25,6 +25,7 @@ from oslo_config import cfg
 from oslo_utils import timeutils
 import paramiko
 import six
+from six.moves import range
 
 import cinder
 from cinder import exception
@@ -1479,7 +1480,7 @@ class TestRetryDecorator(test.TestCase):
 
             expected_sleep_arg = []
 
-            for i in xrange(retries):
+            for i in range(retries):
                 if i > 0:
                     interval *= backoff_rate
                     expected_sleep_arg.append(float(interval))

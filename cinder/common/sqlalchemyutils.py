@@ -19,6 +19,7 @@
 """Implementation of paginate query."""
 
 from oslo_log import log as logging
+from six.moves import range
 import sqlalchemy
 
 from cinder import exception
@@ -100,9 +101,9 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
 
         # Build up an array of sort criteria as in the docstring
         criteria_list = []
-        for i in xrange(0, len(sort_keys)):
+        for i in range(0, len(sort_keys)):
             crit_attrs = []
-            for j in xrange(0, i):
+            for j in range(0, i):
                 model_attr = getattr(model, sort_keys[j])
                 crit_attrs.append((model_attr == marker_values[j]))
 

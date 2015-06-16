@@ -21,6 +21,7 @@ import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
 import six
+from six.moves import range
 from six.moves import urllib
 import webob
 
@@ -1118,7 +1119,7 @@ class VolumeApiTest(test.TestCase):
                                 filters=None,
                                 viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
-                    for i in xrange(CONF.osapi_max_limit)]
+                    for i in range(CONF.osapi_max_limit)]
             if limit is None or limit >= len(vols):
                 return vols
             return vols[:limit]
@@ -1136,7 +1137,7 @@ class VolumeApiTest(test.TestCase):
                                  filters=None,
                                  viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
-                    for i in xrange(100)]
+                    for i in range(100)]
             if limit is None or limit >= len(vols):
                 return vols
             return vols[:limit]
@@ -1154,7 +1155,7 @@ class VolumeApiTest(test.TestCase):
                                  filters=None,
                                  viewable_admin_meta=False):
             vols = [stubs.stub_volume(i)
-                    for i in xrange(CONF.osapi_max_limit + 100)]
+                    for i in range(CONF.osapi_max_limit + 100)]
             if limit is None or limit >= len(vols):
                 return vols
             return vols[:limit]

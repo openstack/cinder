@@ -32,6 +32,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 import six
+from six.moves import range
 
 from cinder.brick.local_dev import lvm
 from cinder import exception
@@ -84,7 +85,7 @@ class retry(object):
             sleep_time = self._sleep_factor
             exc_info = None
 
-            for attempt in xrange(self._count):
+            for attempt in range(self._count):
                 if attempt != 0:
                     LOG.warning(_LW('Retrying failed call to %(func)s, '
                                     'attempt %(attempt)i.'),

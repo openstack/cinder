@@ -24,6 +24,7 @@ from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import six
+from six.moves import range
 
 from cinder.backup import driver
 from cinder.backup.drivers import ceph
@@ -171,7 +172,7 @@ class BackupCephTestCase(test.TestCase):
         # Create a file with some data in it.
         self.volume_file = tempfile.NamedTemporaryFile()
         self.addCleanup(self.volume_file.close)
-        for _i in xrange(0, self.num_chunks):
+        for _i in range(0, self.num_chunks):
             data = os.urandom(self.chunk_size)
             self.checksum.update(data)
             self.volume_file.write(data)
@@ -285,7 +286,7 @@ class BackupCephTestCase(test.TestCase):
 
             checksum = hashlib.sha256()
             test_file.seek(0)
-            for _c in xrange(0, self.num_chunks):
+            for _c in range(0, self.num_chunks):
                 checksum.update(test_file.read(self.chunk_size))
 
             # Ensure the files are equal
@@ -350,7 +351,7 @@ class BackupCephTestCase(test.TestCase):
 
             checksum = hashlib.sha256()
             test_file.seek(0)
-            for _c in xrange(0, self.num_chunks):
+            for _c in range(0, self.num_chunks):
                 checksum.update(test_file.read(self.chunk_size))
 
             # Ensure the files are equal
@@ -627,7 +628,7 @@ class BackupCephTestCase(test.TestCase):
 
                     checksum = hashlib.sha256()
                     test_file.seek(0)
-                    for _c in xrange(0, self.num_chunks):
+                    for _c in range(0, self.num_chunks):
                         checksum.update(test_file.read(self.chunk_size))
 
                     # Ensure the files are equal

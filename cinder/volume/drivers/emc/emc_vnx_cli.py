@@ -31,6 +31,7 @@ from oslo_serialization import jsonutils as json
 from oslo_utils import excutils
 from oslo_utils import timeutils
 import six
+from six.moves import range
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow import task
@@ -1694,7 +1695,7 @@ class EMCVnxCliBase(object):
             LOG.info(_LI("initiator_auto_registration: False. "
                          "Initiator auto registration is not enabled. "
                          "Please register initiator manually."))
-        self.hlu_set = set(xrange(1, self.max_luns_per_sg + 1))
+        self.hlu_set = set(range(1, self.max_luns_per_sg + 1))
         self._client = CommandLineHelper(self.configuration)
         conf_pools = self.configuration.safe_get("storage_vnx_pool_names")
         self.storage_pools = self._get_managed_storage_pools(conf_pools)
