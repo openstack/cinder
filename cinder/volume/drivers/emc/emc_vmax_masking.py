@@ -1016,10 +1016,10 @@ class EMCVMAXMasking(object):
             DeviceMaskingGroup=deviceMaskingGroup,
             TargetMaskingGroup=targetMaskingGroup)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Create Masking View: %(groupName)s. "
                     "Return code: %(rc)lu. Error: %(error)s.")
@@ -1459,10 +1459,10 @@ class EMCVMAXMasking(object):
             Type=self.utils.get_num(INITIATORGROUPTYPE, '16'),
             Members=[hardwareIdinstanceNames[0]])
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Create Group: %(groupName)s. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -1483,11 +1483,11 @@ class EMCVMAXMasking(object):
                     MaskingGroup=foundInitiatorGroupInstanceName,
                     Members=[hardwareIdinstanceNames[j]])
 
-                if rc != 0L:
+                if rc != 0:
                     rc, errordesc = (
                         self.utils.wait_for_job_complete(conn, job,
                                                          extraSpecs))
-                    if rc != 0L:
+                    if rc != 0:
                         exceptionMessage = (_(
                             "Error adding initiator to group : %(groupName)s. "
                             "Return code: %(rc)lu.  Error: %(error)s.")
@@ -1544,10 +1544,10 @@ class EMCVMAXMasking(object):
                                     controllerConfigService,
                                     ProtocolController=maskingViewInstanceName)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Modifying masking view : %(groupName)s. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -2300,10 +2300,10 @@ class EMCVMAXMasking(object):
             MaskingGroup=storageGroupInstanceName,
             Force=True)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Deleting Group: %(storageGroupName)s. "
                     "Return code: %(rc)lu.  Error: %(error)s")

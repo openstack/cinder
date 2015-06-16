@@ -143,7 +143,7 @@ class Fake_CIMProperty(object):
 
     def fake_getSupportedReplicationTypes(self):
         cimproperty = Fake_CIMProperty()
-        cimproperty.value = [2L, 10L]
+        cimproperty.value = [2, 10]
         return cimproperty
 
 
@@ -468,7 +468,7 @@ class FakeEcomConnection(object):
                      DeviceMaskingGroup=None, TargetMaskingGroup=None,
                      ProtocolController=None, StorageID=None, IDType=None):
 
-        rc = 0L
+        rc = 0
         myjob = SE_ConcreteJob()
         myjob.classname = 'SE_ConcreteJob'
         myjob['InstanceID'] = '9999'
@@ -477,7 +477,7 @@ class FakeEcomConnection(object):
 
         if Size == -1073741824 and \
                 MethodName == 'CreateOrModifyCompositeElement':
-            rc = 0L
+            rc = 0
             myjob = SE_ConcreteJob()
             myjob.classname = 'SE_ConcreteJob'
             myjob['InstanceID'] = '99999'
@@ -486,16 +486,16 @@ class FakeEcomConnection(object):
 
         if ElementName == 'failed_vol' and \
                 MethodName == 'CreateOrModifyElementFromStoragePool':
-            rc = 10L
+            rc = 10
             myjob['status'] = 'failure'
 
         elif TheElements and \
                 TheElements[0]['DeviceID'] == '99999' and \
                 MethodName == 'EMCReturnToStoragePool':
-            rc = 10L
+            rc = 10
             myjob['status'] = 'failure'
         elif HardwareId:
-            rc = 0L
+            rc = 0
             targetendpoints = {}
             endpoints = []
             endpoint = {}
@@ -510,13 +510,13 @@ class FakeEcomConnection(object):
             return rc, targetendpoints
         elif ReplicationType and \
                 MethodName == 'GetDefaultReplicationSettingData':
-            rc = 0L
+            rc = 0
             rsd = SE_ReplicationSettingData()
             rsd['DefaultInstance'] = SE_ReplicationSettingData()
             return rc, rsd
         if MethodName == 'CreateStorageHardwareID':
             ret = {}
-            rc = 0L
+            rc = 0
             ret['HardwareID'] = self.data.iscsi_initiator
             return rc, ret
 
@@ -2674,7 +2674,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         volumeDict = {'classname': u'Symm_StorageVolume',
                       'keybindings': EMCVMAXCommonData.keybindings}
         common.provision.create_volume_from_pool = (
-            mock.Mock(return_value=(volumeDict, 0L)))
+            mock.Mock(return_value=(volumeDict, 0)))
         common.provision.get_volume_dict_from_job = (
             mock.Mock(return_value=volumeDict))
         self.driver.create_snapshot(self.data.test_volume)
@@ -2771,7 +2771,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         e = exception.VolumeBackendAPIException('CreateElementReplica Ex')
         common = self.driver.common
-        common._delete_from_pool = mock.Mock(return_value=0L)
+        common._delete_from_pool = mock.Mock(return_value=0)
         conn = self.fake_ecom_connection()
         storageConfigService = (
             common.utils.find_storage_configuration_service(
@@ -2929,14 +2929,14 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         common = self.driver.common
         volumeDict = {'classname': u'Symm_StorageVolume',
                       'keybindings': EMCVMAXCommonData.keybindings}
-        volume = {'size': 0L}
+        volume = {'size': 0}
         common.provision.create_volume_from_pool = (
             mock.Mock(return_value=(volumeDict, volume['size'])))
         common.provision.get_volume_dict_from_job = (
             mock.Mock(return_value=volumeDict))
 
         common._create_composite_volume = (
-            mock.Mock(return_value=(0L,
+            mock.Mock(return_value=(0,
                                     volumeDict,
                                     EMCVMAXCommonData.storage_system)))
 
@@ -3416,7 +3416,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         volumeDict = {'classname': u'Symm_StorageVolume',
                       'keybindings': EMCVMAXCommonData.keybindings}
         common.provision.create_volume_from_pool = (
-            mock.Mock(return_value=(volumeDict, 0L)))
+            mock.Mock(return_value=(volumeDict, 0)))
         common.provision.get_volume_dict_from_job = (
             mock.Mock(return_value=volumeDict))
         common.fast.is_volume_in_default_SG = (
@@ -3504,7 +3504,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
             mock_policy, mock_meta, mock_size, mock_pool):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.common._modify_and_get_composite_volume_instance = (
-            mock.Mock(return_value=(1L, None)))
+            mock.Mock(return_value=(1, None)))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cloned_volume,
                           self.data.test_volume,
@@ -4624,7 +4624,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         volumeDict = {'classname': u'Symm_StorageVolume',
                       'keybindings': EMCVMAXCommonData.keybindings}
         common.provision.create_volume_from_pool = (
-            mock.Mock(return_value=(volumeDict, 0L)))
+            mock.Mock(return_value=(volumeDict, 0)))
         common.provision.get_volume_dict_from_job = (
             mock.Mock(return_value=volumeDict))
         common.fast.is_volume_in_default_SG = (
@@ -4731,7 +4731,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
             mock_meta, mock_size, mock_pool):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.common._modify_and_get_composite_volume_instance = (
-            mock.Mock(return_value=(1L, None)))
+            mock.Mock(return_value=(1, None)))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cloned_volume,
                           self.data.test_volume,
@@ -5287,7 +5287,7 @@ class EMCV3DriverTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage, _mock_cg, _mock_members,
             mock_rg):
         provisionv3 = self.driver.common.provisionv3
-        provisionv3.create_group_replica = mock.Mock(return_value=(0L, None))
+        provisionv3.create_group_replica = mock.Mock(return_value=(0, None))
         self.driver.create_cgsnapshot(
             self.data.test_ctxt, self.data.test_CG_snapshot)
         repServ = self.conn.EnumerateInstanceNames("EMC_ReplicationService")[0]
@@ -5415,13 +5415,13 @@ class EMCV3DriverTestCase(test.TestCase):
         volumeDict = {'classname': u'Symm_StorageVolume',
                       'keybindings': EMCVMAXCommonData.keybindings}
         common._create_v3_volume = (
-            mock.Mock(return_value=(0L, volumeDict, self.data.storage_system)))
+            mock.Mock(return_value=(0, volumeDict, self.data.storage_system)))
         conn = self.fake_ecom_connection()
         storageConfigService = {}
         storageConfigService['SystemName'] = EMCVMAXCommonData.storage_system
         storageConfigService['CreationClassName'] = \
             self.data.stconf_service_creationclass
-        common._delete_from_pool_v3 = mock.Mock(return_value=0L)
+        common._delete_from_pool_v3 = mock.Mock(return_value=0)
         mock_create_replica.side_effect = e
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cloned_volume,

@@ -67,10 +67,10 @@ class EMCVMAXProvision(object):
             'EMCReturnToStoragePool', storageConfigservice,
             TheElements=theElements)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Delete Volume: %(volumeName)s. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -117,10 +117,10 @@ class EMCVMAXProvision(object):
                   {'volumename': volumeName,
                    'rc': rc})
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Create Volume: %(volumeName)s. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -161,10 +161,10 @@ class EMCVMAXProvision(object):
             Type=self.utils.get_num(STORAGEGROUPTYPE, '16'),
             Members=[volumeInstanceName])
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Create Group: %(groupName)s. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -202,10 +202,10 @@ class EMCVMAXProvision(object):
             Type=self.utils.get_num(STORAGEGROUPTYPE, '16'),
             DeleteWhenBecomesUnassociated=False)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Create Group: %(groupName)s. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -283,10 +283,10 @@ class EMCVMAXProvision(object):
                                         controllerConfigService,
                                         MaskingGroup=storageGroupInstanceName,
                                         Members=[volumeInstanceName])
-        if rc != 0L:
+        if rc != 0:
             rc, errorDesc = self.utils.wait_for_job_complete(conn, jobDict,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error removing volume %(vol)s. %(error)s.")
                     % {'vol': volumeName, 'error': errorDesc})
@@ -321,10 +321,10 @@ class EMCVMAXProvision(object):
             MaskingGroup=storageGroupInstanceName,
             Members=[volumeInstanceName])
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error mapping volume %(vol)s. %(error)s.")
                     % {'vol': volumeName, 'error': errordesc})
@@ -361,10 +361,10 @@ class EMCVMAXProvision(object):
             InPool=poolInstanceName,
             TheElement=volumeInstanceName)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error unbinding volume %(vol)s from pool. %(error)s.")
                     % {'vol': volumeName, 'error': errordesc})
@@ -403,10 +403,10 @@ class EMCVMAXProvision(object):
             TheElement=theVolumeInstanceName,
             InElements=[inVolumeInstanceName])
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error adding volume to composite volume. "
                     "Error is: %(error)s.")
@@ -470,10 +470,10 @@ class EMCVMAXProvision(object):
             CompositeType=self.utils.get_num(compositeType, '16'),
             EMCNumberOfMembers=self.utils.get_num(numMembers, '32'))
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Create Volume: %(volumename)s. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -522,10 +522,10 @@ class EMCVMAXProvision(object):
                 [compositeHeadInstanceName, compositeMemberInstanceName]),
             CompositeType=self.utils.get_num(compositeType, '16'))
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Creating new composite Volume Return code: "
                     "%(rc)lu. Error: %(error)s.")
@@ -564,10 +564,10 @@ class EMCVMAXProvision(object):
             TheElements=[volumeInstanceName],
             TargetPool=targetPoolInstanceName)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Migrating volume from one pool to another. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -655,10 +655,10 @@ class EMCVMAXProvision(object):
         rc, job = conn.InvokeMethod(
             'RequestStateChange', volumeInstanceName,
             RequestedState=self.utils.get_num(32769, '16'))
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Terminating migrate session. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -708,10 +708,10 @@ class EMCVMAXProvision(object):
                 repServiceCapabilityInstanceName,
                 ReplicationType=self.utils.get_num(10, '16'))
 
-            if rc != 0L:
+            if rc != 0:
                 rc, errordesc = self.utils.wait_for_job_complete(conn, rsd,
                                                                  extraSpecs)
-                if rc != 0L:
+                if rc != 0:
                     exceptionMessage = (_(
                         "Error creating cloned volume using "
                         "Volume: %(cloneName)s, Source Volume: "
@@ -759,10 +759,10 @@ class EMCVMAXProvision(object):
                     SourceElement=sourceInstance.path,
                     TargetElement=targetInstance.path)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Create Cloned Volume: "
                     "Volume: %(cloneName)s  Source Volume:"
@@ -815,10 +815,10 @@ class EMCVMAXProvision(object):
                   {'syncName': syncInstanceName,
                    'rc': rc})
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error break clone relationship: "
                     "Sync Name: %(syncName)s "
@@ -853,7 +853,7 @@ class EMCVMAXProvision(object):
             'EMCGetTargetEndpoints', storageHardwareService,
             HardwareId=hardwareId)
 
-        if rc != 0L:
+        if rc != 0:
             exceptionMessage = (_("Error finding Target WWNs."))
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
@@ -884,10 +884,10 @@ class EMCVMAXProvision(object):
             replicationService,
             GroupName=consistencyGroupName)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Failed to create consistency group: "
                     "%(consistencyGroupName)s  "
@@ -929,10 +929,10 @@ class EMCVMAXProvision(object):
             ReplicationGroup=cgInstanceName,
             RemoveElements=True)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Failed to delete consistency group: "
                     "%(consistencyGroupName)s "
@@ -975,10 +975,10 @@ class EMCVMAXProvision(object):
             Members=[volumeInstanceName],
             ReplicationGroup=cgInstanceName)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Failed to add volume %(volumeName)s: "
                     "to consistency group %(cgName)s "
@@ -1022,10 +1022,10 @@ class EMCVMAXProvision(object):
             ReplicationGroup=cgInstanceName,
             RemoveElements=True)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Failed to remove volume %(volumeName)s: "
                     "to consistency group %(cgName)s "
@@ -1079,10 +1079,10 @@ class EMCVMAXProvision(object):
             TargetGroup=tgtGroupInstanceName,
             SyncType=self.utils.get_num(8, '16'))
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMsg = (_("Error CreateGroupReplica: "
                                   "source: %(source)s target: %(target)s. "
                                   "Return code: %(rc)lu. Error: %(error)s.")

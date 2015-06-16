@@ -177,10 +177,11 @@ class HP3PARCommon(object):
         2.0.42 - Fix type for snapshot config settings. bug #1461640
         2.0.43 - Report the capability of supporting multiattach
         2.0.44 - Update help strings to reduce the 3PAR user role requirements
+        2.0.45 - Python 3 fixes
 
     """
 
-    VERSION = "2.0.44"
+    VERSION = "2.0.45"
 
     stats = {}
 
@@ -579,7 +580,7 @@ class HP3PARCommon(object):
 
         # because 3PAR volume sizes are in
         # Mebibytes, Gigibytes, not Megabytes.
-        MB = 1000L
+        MB = 1000
         MiB = 1.048576
 
         if int(vol_size) == 0:
