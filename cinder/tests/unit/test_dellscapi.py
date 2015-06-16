@@ -2516,55 +2516,6 @@ class DellSCSanAPITestCase(test.TestCase):
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
-                       return_value=ISCSI_FLT_DOMAINS)
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'get',
-                       return_value=RESPONSE_200)
-    def test_find_domain(self,
-                         mock_get,
-                         mock_get_json,
-                         mock_close_connection,
-                         mock_open_connection,
-                         mock_init):
-        res = self.scapi._find_domain(u'64702.5764839588723736074.69',
-                                      u'192.168.0.21')
-        self.assertTrue(mock_get.called)
-        self.assertTrue(mock_get_json.called)
-        self.assertIsNotNone(res, 'Expected ScIscsiFaultDomain')
-
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'get',
-                       return_value=RESPONSE_204)
-    def test_find_domain_error(self,
-                               mock_get,
-                               mock_close_connection,
-                               mock_open_connection,
-                               mock_init):
-        # Test case where get of ScControllerPort FaultDomainList fails
-        res = self.scapi._find_domain(u'64702.5764839588723736074.69',
-                                      u'192.168.0.21')
-        self.assertIsNone(res, 'Expected None')
-
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_get_json',
-                       return_value=ISCSI_FLT_DOMAINS)
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'get',
-                       return_value=RESPONSE_200)
-    def test_find_domain_not_found(self,
-                                   mock_get,
-                                   mock_get_json,
-                                   mock_close_connection,
-                                   mock_open_connection,
-                                   mock_init):
-        # Test case where domainip does not equal any WellKnownIpAddress
-        # of the fault domains
-        res = self.scapi._find_domain(u'64702.5764839588723736074.69',
-                                      u'192.168.0.22')
-        self.assertIsNone(res, 'Expected None')
-
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_get_json',
                        return_value=FC_HBAS)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'get',
@@ -2938,7 +2889,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=MAPPINGS)
     def test_find_iscsi_properties_mappings(self,
                                             mock_find_mappings,
-                                            mock_find_domain,
+                                            mock_find_domains,
                                             mock_find_ctrl_port,
                                             mock_find_active_controller,
                                             mock_close_connection,
@@ -2946,7 +2897,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             mock_init):
         res = self.scapi.find_iscsi_properties(self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
         expected = {'access_mode': 'rw',
@@ -2975,7 +2926,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=MAPPINGS)
     def test_find_iscsi_properties_by_address(self,
                                               mock_find_mappings,
-                                              mock_find_domain,
+                                              mock_find_domains,
                                               mock_find_ctrl_port,
                                               mock_find_active_controller,
                                               mock_close_connection,
@@ -2985,7 +2936,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.find_iscsi_properties(
             self.VOLUME, '192.168.0.21', 3260)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
         expected = {'access_mode': 'rw',
@@ -3014,7 +2965,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=MAPPINGS)
     def test_find_iscsi_properties_by_address_not_found(self,
                                                         mock_find_mappings,
-                                                        mock_find_domain,
+                                                        mock_find_domains,
                                                         mock_find_ctrl_port,
                                                         mock_find_active_ctrl,
                                                         mock_close_connection,
@@ -3024,7 +2975,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.find_iscsi_properties(
             self.VOLUME, '192.168.1.21', 3260)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_ctrl.called)
         expected = {'access_mode': 'rw',
@@ -3067,7 +3018,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=MAPPINGS)
     def test_find_iscsi_properties_no_domain(self,
                                              mock_find_mappings,
-                                             mock_find_domain,
+                                             mock_find_domains,
                                              mock_find_ctrl_port,
                                              mock_find_active_controller,
                                              mock_close_connection,
@@ -3078,7 +3029,7 @@ class DellSCSanAPITestCase(test.TestCase):
                           self.scapi.find_iscsi_properties,
                           self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
 
@@ -3096,7 +3047,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=MAPPINGS)
     def test_find_iscsi_properties_no_ctrl_port(self,
                                                 mock_find_mappings,
-                                                mock_find_domain,
+                                                mock_find_domains,
                                                 mock_find_ctrl_port,
                                                 mock_find_active_controller,
                                                 mock_close_connection,
@@ -3107,7 +3058,7 @@ class DellSCSanAPITestCase(test.TestCase):
                           self.scapi.find_iscsi_properties,
                           self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
 
@@ -3125,7 +3076,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=MAPPINGS_READ_ONLY)
     def test_find_iscsi_properties_ro(self,
                                       mock_find_mappings,
-                                      mock_find_domain,
+                                      mock_find_domains,
                                       mock_find_ctrl_port,
                                       mock_find_active_controller,
                                       mock_close_connection,
@@ -3134,7 +3085,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where Read Only mappings are found
         res = self.scapi.find_iscsi_properties(self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
         expected = {'access_mode': 'ro',
@@ -3163,7 +3114,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=MAPPINGS_MULTI_PORTAL)
     def test_find_iscsi_properties_multi_portals(self,
                                                  mock_find_mappings,
-                                                 mock_find_domain,
+                                                 mock_find_domains,
                                                  mock_find_ctrl_port,
                                                  mock_find_active_controller,
                                                  mock_close_connection,
@@ -3172,7 +3123,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where there are multiple portals
         res = self.scapi.find_iscsi_properties(self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
         expected = {'access_mode': 'rw',

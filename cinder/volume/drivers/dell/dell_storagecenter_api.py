@@ -897,29 +897,6 @@ class StorageCenterApi(object):
             LOG.error(_LE('Error getting FaultDomainList'))
         return None
 
-    def _find_domain(self, cportid, domainip):
-        '''Find the Dell fault domain object on cportid with domainip address.
-
-        Returns the fault domain which a given controller port can
-        be seen by the server.
-
-        :param cportid: The Instance ID of the Dell controller port.
-        :param domainip: The IP address specified in the cinder.conf file
-                         for the iSCSI address.
-        :returns: The fault domain associated with this controller port and
-        specified domainip or None.
-        '''
-        domains = self._find_domains(cportid)
-        if domains:
-            # Wiffle through the domains looking for our
-            # configured ip.
-            for domain in domains:
-                # If this is us we return the port.
-                if domain.get('targetIpv4Address',
-                              domain.get('wellKnownIpAddress')) == domainip:
-                    return domain
-        return None
-
     def _find_fc_initiators(self, scserver):
         '''Returns a list of FC WWNs associated with the specified Dell server.
 
