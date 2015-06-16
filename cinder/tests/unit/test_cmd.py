@@ -16,7 +16,12 @@ import sys
 
 import mock
 from oslo_config import cfg
-import rtslib
+
+try:
+    import rtslib_fb
+except ImportError:
+    import rtslib as rtslib_fb
+
 
 from cinder.cmd import all as cinder_all
 from cinder.cmd import api as cinder_api
@@ -707,12 +712,13 @@ class TestCinderRtstoolCmd(test.TestCase):
     def tearDown(self):
         super(TestCinderRtstoolCmd, self).tearDown()
 
-    @mock.patch('rtslib.root.RTSRoot')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
     def test_create_rtslib_error(self, rtsroot):
-        rtsroot.side_effect = rtslib.utils.RTSLibError()
+        rtsroot.side_effect = rtslib_fb.utils.RTSLibError()
 
         with mock.patch('sys.stdout', new=six.StringIO()):
-            self.assertRaises(rtslib.utils.RTSLibError, cinder_rtstool.create,
+            self.assertRaises(rtslib_fb.utils.RTSLibError,
+                              cinder_rtstool.create,
                               mock.sentinel.backing_device,
                               mock.sentinel.name,
                               mock.sentinel.userid,
@@ -720,14 +726,14 @@ class TestCinderRtstoolCmd(test.TestCase):
                               mock.sentinel.iser_enabled)
 
     def _test_create_rtslib_error_network_portal(self, ip):
-        with mock.patch('rtslib.NetworkPortal') as network_portal, \
-                mock.patch('rtslib.LUN') as lun, \
-                mock.patch('rtslib.TPG') as tpg, \
-                mock.patch('rtslib.FabricModule') as fabric_module, \
-                mock.patch('rtslib.Target') as target, \
-                mock.patch('rtslib.BlockStorageObject') as \
+        with mock.patch.object(rtslib_fb, 'NetworkPortal') as network_portal, \
+                mock.patch.object(rtslib_fb, 'LUN') as lun, \
+                mock.patch.object(rtslib_fb, 'TPG') as tpg, \
+                mock.patch.object(rtslib_fb, 'FabricModule') as fabric_module, \
+                mock.patch.object(rtslib_fb, 'Target') as target, \
+                mock.patch.object(rtslib_fb, 'BlockStorageObject') as \
                 block_storage_object, \
-                mock.patch('rtslib.root.RTSRoot') as rts_root:
+                mock.patch.object(rtslib_fb.root, 'RTSRoot') as rts_root:
             root_new = mock.MagicMock(storage_objects=mock.MagicMock())
             rts_root.return_value = root_new
             block_storage_object.return_value = mock.sentinel.so_new
@@ -737,8 +743,8 @@ class TestCinderRtstoolCmd(test.TestCase):
             lun.return_value = mock.sentinel.lun_new
 
             if ip == '0.0.0.0':
-                network_portal.side_effect = rtslib.utils.RTSLibError()
-                self.assertRaises(rtslib.utils.RTSLibError,
+                network_portal.side_effect = rtslib_fb.utils.RTSLibError()
+                self.assertRaises(rtslib_fb.utils.RTSLibError,
                                   cinder_rtstool.create,
                                   mock.sentinel.backing_device,
                                   mock.sentinel.name,
@@ -780,14 +786,14 @@ class TestCinderRtstoolCmd(test.TestCase):
             self._test_create_rtslib_error_network_portal('::0')
 
     def _test_create(self, ip):
-        with mock.patch('rtslib.NetworkPortal') as network_portal, \
-                mock.patch('rtslib.LUN') as lun, \
-                mock.patch('rtslib.TPG') as tpg, \
-                mock.patch('rtslib.FabricModule') as fabric_module, \
-                mock.patch('rtslib.Target') as target, \
-                mock.patch('rtslib.BlockStorageObject') as \
+        with mock.patch.object(rtslib_fb, 'NetworkPortal') as network_portal, \
+                mock.patch.object(rtslib_fb, 'LUN') as lun, \
+                mock.patch.object(rtslib_fb, 'TPG') as tpg, \
+                mock.patch.object(rtslib_fb, 'FabricModule') as fabric_module, \
+                mock.patch.object(rtslib_fb, 'Target') as target, \
+                mock.patch.object(rtslib_fb, 'BlockStorageObject') as \
                 block_storage_object, \
-                mock.patch('rtslib.root.RTSRoot') as rts_root:
+                mock.patch.object(rtslib_fb.root, 'RTSRoot') as rts_root:
             root_new = mock.MagicMock(storage_objects=mock.MagicMock())
             rts_root.return_value = root_new
             block_storage_object.return_value = mock.sentinel.so_new
@@ -798,7 +804,7 @@ class TestCinderRtstoolCmd(test.TestCase):
 
             def network_portal_exception(*args, **kwargs):
                 if set([tpg_new, '::0', 3260]).issubset(list(args)):
-                    raise rtslib.utils.RTSLibError()
+                    raise rtslib_fb.utils.RTSLibError()
                 else:
                     pass
 
@@ -833,7 +839,7 @@ class TestCinderRtstoolCmd(test.TestCase):
     def test_create_ipv6(self):
         self._test_create('::0')
 
-    @mock.patch.object(cinder_rtstool, 'rtslib', autospec=True)
+    @mock.patch.object(cinder_rtstool, 'rtslib_fb', autospec=True)
     def test_create_ips_and_port(self, mock_rtslib):
         port = 3261
         ips = ['ip1', 'ip2', 'ip3']
@@ -865,19 +871,19 @@ class TestCinderRtstoolCmd(test.TestCase):
             any_order=True
         )
 
-    @mock.patch('rtslib.root.RTSRoot')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
     def test_add_initiator_rtslib_error(self, rtsroot):
-        rtsroot.side_effect = rtslib.utils.RTSLibError()
+        rtsroot.side_effect = rtslib_fb.utils.RTSLibError()
 
         with mock.patch('sys.stdout', new=six.StringIO()):
-            self.assertRaises(rtslib.utils.RTSLibError,
+            self.assertRaises(rtslib_fb.utils.RTSLibError,
                               cinder_rtstool.add_initiator,
                               mock.sentinel.target_iqn,
                               mock.sentinel.initiator_iqn,
                               mock.sentinel.userid,
                               mock.sentinel.password)
 
-    @mock.patch('rtslib.root.RTSRoot')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
     def test_add_initiator_rtstool_error(self, rtsroot):
         rtsroot.targets.return_value = {}
 
@@ -888,9 +894,9 @@ class TestCinderRtstoolCmd(test.TestCase):
                           mock.sentinel.userid,
                           mock.sentinel.password)
 
-    @mock.patch('rtslib.MappedLUN')
-    @mock.patch('rtslib.NodeACL')
-    @mock.patch('rtslib.root.RTSRoot')
+    @mock.patch.object(rtslib_fb, 'MappedLUN')
+    @mock.patch.object(rtslib_fb, 'NodeACL')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
     def test_add_initiator_acl_exists(self, rtsroot, node_acl, mapped_lun):
         target_iqn = mock.MagicMock()
         target_iqn.tpgs.return_value = \
@@ -908,9 +914,9 @@ class TestCinderRtstoolCmd(test.TestCase):
         self.assertFalse(node_acl.called)
         self.assertFalse(mapped_lun.called)
 
-    @mock.patch('rtslib.MappedLUN')
-    @mock.patch('rtslib.NodeACL')
-    @mock.patch('rtslib.root.RTSRoot')
+    @mock.patch.object(rtslib_fb, 'MappedLUN')
+    @mock.patch.object(rtslib_fb, 'NodeACL')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
     def test_add_initiator(self, rtsroot, node_acl, mapped_lun):
         target_iqn = mock.MagicMock()
         target_iqn.tpgs.return_value = \
@@ -933,7 +939,7 @@ class TestCinderRtstoolCmd(test.TestCase):
                                          mode='create')
         mapped_lun.assert_called_once_with(acl_new, 0, tpg_lun=0)
 
-    @mock.patch('rtslib.root.RTSRoot')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
     def test_get_targets(self, rtsroot):
         target = mock.MagicMock()
         target.dump.return_value = {'wwn': 'fake-wwn'}
@@ -944,7 +950,7 @@ class TestCinderRtstoolCmd(test.TestCase):
 
             self.assertEqual(str(target.wwn), fake_out.getvalue().strip())
 
-    @mock.patch('rtslib.root.RTSRoot')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
     def test_delete(self, rtsroot):
         target = mock.MagicMock(wwn=mock.sentinel.iqn)
         storage_object = mock.MagicMock()
@@ -958,7 +964,7 @@ class TestCinderRtstoolCmd(test.TestCase):
         target.delete.assert_called_once_with()
         storage_object.delete.assert_called_once_with()
 
-    @mock.patch.object(cinder_rtstool, 'rtslib', autospec=True)
+    @mock.patch.object(cinder_rtstool, 'rtslib_fb', autospec=True)
     def test_save(self, mock_rtslib):
         filename = mock.sentinel.filename
         cinder_rtstool.save_to_file(filename)
@@ -1111,14 +1117,14 @@ class TestCinderRtstoolCmd(test.TestCase):
             delete.assert_called_once_with(mock.sentinel.iqn)
             self.assertEqual(0, rc)
 
-    def test_main_verify(self):
-        with mock.patch('cinder.cmd.rtstool.verify_rtslib') as verify_rtslib:
-            sys.argv = ['cinder-rtstool', 'verify']
+    @mock.patch.object(cinder_rtstool, 'verify_rtslib')
+    def test_main_verify(self, mock_verify_rtslib):
+        sys.argv = ['cinder-rtstool', 'verify']
 
-            rc = cinder_rtstool.main()
+        rc = cinder_rtstool.main()
 
-            verify_rtslib.assert_called_once_with()
-            self.assertEqual(0, rc)
+        mock_verify_rtslib.assert_called_once_with()
+        self.assertEqual(0, rc)
 
 
 class TestCinderVolumeUsageAuditCmd(test.TestCase):
