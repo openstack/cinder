@@ -203,7 +203,7 @@ class StorwizeSVCManagementSimulator(object):
     @staticmethod
     def _find_unused_id(d):
         ids = []
-        for v in d.itervalues():
+        for v in d.values():
             ids.append(int(v['id']))
         ids.sort()
         for index, n in enumerate(ids):
@@ -534,9 +534,9 @@ port_speed!N/A
         target_wwpn = kwargs['wwpn'] if 'wwpn' in kwargs else None
         host_infos = []
 
-        for hv in self._hosts_list.itervalues():
+        for hv in self._hosts_list.values():
             if (not host_name) or (hv['host_name'] == host_name):
-                for mv in self._mappings_list.itervalues():
+                for mv in self._mappings_list.values():
                     if mv['host'] == hv['host_name']:
                         if not target_wwpn or target_wwpn in hv['wwpns']:
                             host_infos.append(hv)
@@ -653,10 +653,10 @@ port_speed!N/A
             return self._errors['CMMVC5753E']
 
         if not force:
-            for mapping in self._mappings_list.itervalues():
+            for mapping in self._mappings_list.values():
                 if mapping['vol'] == vol_name:
                     return self._errors['CMMVC5840E']
-            for fcmap in self._fcmappings_list.itervalues():
+            for fcmap in self._fcmappings_list.values():
                 if ((fcmap['source'] == vol_name) or
                         (fcmap['target'] == vol_name)):
                     return self._errors['CMMVC5840E']
@@ -688,7 +688,7 @@ port_speed!N/A
             'fc_name': '',
             'fc_map_count': '0',
         }
-        for fcmap in self._fcmappings_list.itervalues():
+        for fcmap in self._fcmappings_list.values():
             if ((fcmap['source'] == vol_name) or
                     (fcmap['target'] == vol_name)):
                 ret_vals['fc_id'] = fcmap['id']
@@ -705,7 +705,7 @@ port_speed!N/A
                      'RC_name', 'vdisk_UID', 'fc_map_count', 'copy_count',
                      'fast_write_state', 'se_copy_count', 'RC_change'])
 
-        for vol in self._volumes_list.itervalues():
+        for vol in self._volumes_list.values():
             if (('filtervalue' not in kwargs) or
                (kwargs['filtervalue'] == 'name=' + vol['name']) or
                (kwargs['filtervalue'] == 'vdisk_UID=' + vol['uid'])):
@@ -773,7 +773,7 @@ port_speed!N/A
             rows.append(['mirror_write_priority', 'latency'])
             rows.append(['RC_change', 'no'])
 
-            for copy in vol['copies'].itervalues():
+            for copy in vol['copies'].values():
                 rows.append(['copy_id', copy['id']])
                 rows.append(['status', copy['status']])
                 rows.append(['primary', copy['primary']])
@@ -820,7 +820,7 @@ port_speed!N/A
 
         host_info[added_key].append(added_val)
 
-        for v in self._hosts_list.itervalues():
+        for v in self._hosts_list.values():
             if v['id'] == host_info['id']:
                 continue
             for port in v[added_key]:
@@ -893,7 +893,7 @@ port_speed!N/A
         if host_name not in self._hosts_list:
             return self._errors['CMMVC5753E']
 
-        for v in self._mappings_list.itervalues():
+        for v in self._mappings_list.values():
             if (v['host'] == host_name):
                 return self._errors['CMMVC5871E']
 
@@ -907,7 +907,7 @@ port_speed!N/A
             rows.append(['id', 'name', 'port_count', 'iogrp_count', 'status'])
 
             found = False
-            for host in self._hosts_list.itervalues():
+            for host in self._hosts_list.values():
                 filterstr = 'name=' + host['host_name']
                 if (('filtervalue' not in kwargs) or
                         (kwargs['filtervalue'] == filterstr)):
@@ -959,7 +959,7 @@ port_speed!N/A
         rows.append(['type', 'id', 'name', 'iscsi_auth_method',
                      'iscsi_chap_secret'])
 
-        for host in self._hosts_list.itervalues():
+        for host in self._hosts_list.values():
             method = 'none'
             secret = ''
             if 'chapsecret' in host:
@@ -995,12 +995,12 @@ port_speed!N/A
         if mapping_info['vol'] in self._mappings_list:
             return self._errors['CMMVC6071E']
 
-        for v in self._mappings_list.itervalues():
+        for v in self._mappings_list.values():
             if ((v['host'] == mapping_info['host']) and
                     (v['lun'] == mapping_info['lun'])):
                 return self._errors['CMMVC5879E']
 
-        for v in self._mappings_list.itervalues():
+        for v in self._mappings_list.values():
             if (v['lun'] == mapping_info['lun']) and ('force' not in kwargs):
                 return self._errors['CMMVC6071E']
 
@@ -1019,7 +1019,7 @@ port_speed!N/A
         vol = kwargs['obj'].strip('\'\"')
 
         mapping_ids = []
-        for v in self._mappings_list.itervalues():
+        for v in self._mappings_list.values():
             if v['vol'] == vol:
                 mapping_ids.append(v['id'])
         if not mapping_ids:
@@ -1046,7 +1046,7 @@ port_speed!N/A
         rows.append(['id', 'name', 'SCSI_id', 'vdisk_id', 'vdisk_name',
                      'vdisk_UID'])
 
-        for mapping in self._mappings_list.itervalues():
+        for mapping in self._mappings_list.values():
             if (host_name == '') or (mapping['host'] == host_name):
                 volume = self._volumes_list[mapping['vol']]
                 rows.append([mapping['id'], mapping['host'],
@@ -1067,7 +1067,7 @@ port_speed!N/A
         rows.append(['id name', 'SCSI_id', 'host_id', 'host_name', 'vdisk_UID',
                      'IO_group_id', 'IO_group_name'])
 
-        for mapping in self._mappings_list.itervalues():
+        for mapping in self._mappings_list.values():
             if (mapping['vol'] == vdisk_name):
                 mappings_found += 1
                 volume = self._volumes_list[mapping['vol']]
@@ -1220,7 +1220,7 @@ port_speed!N/A
         vdisk = kwargs['obj']
         rows = []
         rows.append(['id', 'name'])
-        for v in self._fcmappings_list.itervalues():
+        for v in self._fcmappings_list.values():
             if v['source'] == vdisk or v['target'] == vdisk:
                 rows.append([v['id'], v['name']])
         return self._print_info_cmd(rows=rows, **kwargs)
@@ -1369,7 +1369,7 @@ port_speed!N/A
         if 'obj' not in kwargs:
             rows.append(['id', 'name', 'status' 'start_time'])
 
-            for fcconsistgrp in self._fcconsistgrp_list.itervalues():
+            for fcconsistgrp in self._fcconsistgrp_list.values():
                 rows.append([fcconsistgrp['id'],
                              fcconsistgrp['name'],
                              fcconsistgrp['status'],
@@ -1482,7 +1482,7 @@ port_speed!N/A
                      'primary', 'mdisk_grp_id', 'mdisk_grp_name', 'capacity',
                      'type', 'se_copy', 'easy_tier', 'easy_tier_status',
                      'compressed_copy'])
-        for copy in vol['copies'].itervalues():
+        for copy in vol['copies'].values():
             rows.append([vol['id'], vol['name'], copy['id'],
                         copy['status'], copy['sync'], copy['primary'],
                         copy['mdisk_grp_id'], copy['mdisk_grp_name'],
@@ -1612,7 +1612,7 @@ port_speed!N/A
         rows.append(['vdisk_id', 'vdisk_name', 'copy_id', 'progress',
                      'estimated_completion_time'])
         copy_found = False
-        for copy in vol['copies'].itervalues():
+        for copy in vol['copies'].values():
             if not copy_id or copy_id == copy['id']:
                 copy_found = True
                 row = [vol['id'], name, copy['id']]

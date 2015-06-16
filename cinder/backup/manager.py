@@ -189,7 +189,7 @@ class BackupManager(manager.SchedulerDependentManager):
         """
         ctxt = context.get_admin_context()
 
-        for mgr in self.volume_managers.itervalues():
+        for mgr in self.volume_managers.values():
             self._init_volume_driver(ctxt, mgr.driver)
 
         LOG.info(_LI("Cleaning up incomplete backup operations."))

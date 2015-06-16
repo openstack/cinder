@@ -3623,7 +3623,7 @@ def purge_deleted_rows(context, age_in_days):
     metadata.bind = engine
     tables = []
 
-    for model_class in models.__dict__.itervalues():
+    for model_class in models.__dict__.values():
         if hasattr(model_class, "__tablename__") \
                 and hasattr(model_class, "deleted"):
             tables.append(model_class.__tablename__)

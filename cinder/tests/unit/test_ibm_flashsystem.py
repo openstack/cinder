@@ -63,7 +63,7 @@ class FlashSystemManagementSimulator(object):
     @staticmethod
     def _find_unused_id(d):
         ids = []
-        for v in d.itervalues():
+        for v in d.values():
             ids.append(int(v['id']))
         ids.sort()
         for index, n in enumerate(ids):
@@ -148,7 +148,7 @@ class FlashSystemManagementSimulator(object):
         if 'obj' not in kwargs:
             rows = []
             rows.append(['id', 'name', 'port_count', 'iogrp_count', 'status'])
-            for host in self._hosts_list.itervalues():
+            for host in self._hosts_list.values():
                 rows.append([host['id'], host['host_name'], '1', '1',
                             'degraded'])
             if len(rows) > 1:
@@ -197,7 +197,7 @@ class FlashSystemManagementSimulator(object):
         rows.append(['id', 'name', 'SCSI_id', 'vdisk_id', 'vdisk_name',
                      'vdisk_UID'])
 
-        for mapping in self._mappings_list.itervalues():
+        for mapping in self._mappings_list.values():
             if (host_name == '') or (mapping['host'] == host_name):
                 volume = self._volumes_list[mapping['vol']]
                 rows.append([mapping['id'], mapping['host'],
@@ -417,7 +417,7 @@ class FlashSystemManagementSimulator(object):
                      'vdisk_UID', 'IO_group_id', 'IO_group_name'])
 
         mappings_found = 0
-        for mapping in self._mappings_list.itervalues():
+        for mapping in self._mappings_list.values():
             if (mapping['vol'] == vdisk_name):
                 mappings_found += 1
                 volume = self._volumes_list[mapping['vol']]
@@ -502,7 +502,7 @@ class FlashSystemManagementSimulator(object):
 
         host_info[added_key].append(added_val)
 
-        for v in self._hosts_list.itervalues():
+        for v in self._hosts_list.values():
             if v['id'] == host_info['id']:
                 continue
             for port in v[added_key]:
@@ -563,7 +563,7 @@ class FlashSystemManagementSimulator(object):
         if host_name not in self._hosts_list:
             return self._errors['CMMVC50000']
 
-        for v in self._mappings_list.itervalues():
+        for v in self._mappings_list.values():
             if (v['host'] == host_name):
                 return self._errors['CMMVC50000']
 
@@ -593,12 +593,12 @@ class FlashSystemManagementSimulator(object):
         if mapping_info['vol'] in self._mappings_list:
             return self._errors['CMMVC50000']
 
-        for v in self._mappings_list.itervalues():
+        for v in self._mappings_list.values():
             if ((v['host'] == mapping_info['host']) and
                     (v['lun'] == mapping_info['lun'])):
                 return self._errors['CMMVC50000']
 
-        for v in self._mappings_list.itervalues():
+        for v in self._mappings_list.values():
             if (v['lun'] == mapping_info['lun']) and ('force' not in kwargs):
                 return self._errors['CMMVC50000']
 
@@ -615,7 +615,7 @@ class FlashSystemManagementSimulator(object):
         vdisk = kwargs['obj'].strip('\'\"')
 
         mapping_ids = []
-        for v in self._mappings_list.itervalues():
+        for v in self._mappings_list.values():
             if v['vol'] == vdisk:
                 mapping_ids.append(v['id'])
         if not mapping_ids:
