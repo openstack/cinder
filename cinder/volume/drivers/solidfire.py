@@ -22,6 +22,7 @@ import time
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
@@ -33,6 +34,7 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
+from cinder.volume.targets import iscsi as iscsi_driver
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -67,7 +69,7 @@ sf_opts = [
     cfg.IntOpt('sf_api_port',
                default=443,
                help='SolidFire API port. Useful if the device api is behind '
-                    'a proxy on a different port.'), ]
+                    'a proxy on a different port.')]
 
 
 CONF = cfg.CONF
@@ -156,6 +158,11 @@ class SolidFireDriver(san.SanISCSIDriver):
         if self.configuration.sf_allow_template_caching:
             account = self.configuration.sf_template_account_name
             self.template_account_id = self._create_template_account(account)
+        self.target_driver = (
+            importutils.import_object(
+                'cinder.volume.drivers.solidfire.SolidFireISCSI',
+                solidfire_driver=self,
+                configuration=self.configuration))
 
     def _create_template_account(self, account_name):
         id = self._issue_api_request(
@@ -291,17 +298,6 @@ class SolidFireDriver(san.SanISCSIDriver):
             raise exception.SolidFireAPIException(msg)
 
         return data['result']
-
-    def _do_export(self, volume):
-        """Gets the associated account, retrieves CHAP info and updates."""
-        sfaccount = self._get_sfaccount(volume['project_id'])
-
-        model_update = {}
-        model_update['provider_auth'] = ('CHAP %s %s'
-                                         % (sfaccount['username'],
-                                            sfaccount['targetSecret']))
-
-        return model_update
 
     def _generate_random_string(self, length):
         """Generates random_string to use for CHAP password."""
@@ -869,17 +865,6 @@ class SolidFireDriver(san.SanISCSIDriver):
                           "the SolidFire Cluster while attempting "
                           "delete_volume operation!"), volume['id'])
 
-    def ensure_export(self, context, volume):
-        """Verify the iscsi export info."""
-        try:
-            return self._do_export(volume)
-        except exception.SolidFireAPIException:
-            return None
-
-    def create_export(self, context, volume):
-        """Setup the iscsi export info."""
-        return self._do_export(volume)
-
     def delete_snapshot(self, snapshot):
         """Delete the specified snapshot from the SolidFire cluster."""
         sf_snap_name = 'UUID-%s' % snapshot['id']
@@ -1084,8 +1069,7 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         volume['project_id'] = new_project
         volume['user_id'] = new_user
-        model_update = self._do_export(volume)
-        return model_update
+        return self.target_driver.ensure_export(context, volume, None)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
@@ -1228,3 +1212,64 @@ class SolidFireDriver(san.SanISCSIDriver):
                                        params, version='5.0')
         if 'result' not in data:
             raise exception.SolidFireAPIDataException(data=data)
+
+    # #### Interface methods for transport layer #### #
+
+    # TODO(jdg): SolidFire can mix and do iSCSI and FC on the
+    # same cluster, we'll modify these later to check based on
+    # the volume info if we need an FC target driver or an
+    # iSCSI target driver
+    def ensure_export(self, context, volume):
+        return self.target_driver.ensure_export(context, volume, None)
+
+    def create_export(self, context, volume):
+        return self.target_driver.create_export(
+            context,
+            volume,
+            None)
+
+    def remove_export(self, context, volume):
+        return self.target_driver.remove_export(context, volume)
+
+    def initialize_connection(self, volume, connector):
+        return self.target_driver.initialize_connection(volume, connector)
+
+    def validate_connector(self, connector):
+        return self.target_driver.validate_connector(connector)
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        return self.target_driver.terminate_connection(volume, connector,
+                                                       **kwargs)
+
+
+class SolidFireISCSI(iscsi_driver.SanISCSITarget):
+    def __init__(self, *args, **kwargs):
+        super(SolidFireISCSI, self).__init__(*args, **kwargs)
+        self.sf_driver = kwargs.get('solidfire_driver')
+
+    def _do_iscsi_export(self, volume):
+        sfaccount = self.sf_driver._get_sfaccount(volume['project_id'])
+        model_update = {}
+        model_update['provider_auth'] = ('CHAP %s %s'
+                                         % (sfaccount['username'],
+                                            sfaccount['targetSecret']))
+
+        return model_update
+
+    def create_export(self, context, volume, volume_path):
+        return self._do_iscsi_export(volume)
+
+    def ensure_export(self, context, volume, volume_path):
+        try:
+            return self._do_iscsi_export(volume)
+        except exception.SolidFireAPIException:
+            return None
+
+    # Following are abc's that we make sure are caught and
+    # paid attention to.  In our case we don't use them
+    # so just stub them out here.
+    def remove_export(self, context, volume):
+        pass
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        pass
