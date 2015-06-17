@@ -14,7 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Mock unit tests for the NetApp nfs storage driver
+Unit tests for the NetApp NFS storage driver
 """
 
 import os
@@ -49,6 +49,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
                                    return_value=mock.Mock()):
                 self.driver = nfs_base.NetAppNfsDriver(**kwargs)
                 self.driver.ssc_enabled = False
+                self.driver.db = mock.Mock()
 
     @mock.patch.object(nfs.NfsDriver, 'do_setup')
     @mock.patch.object(na_utils, 'check_flags')
@@ -290,3 +291,63 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.assertRaises(NotImplementedError,
                           self.driver._get_vol_for_share,
                           fake.NFS_SHARE)
+
+    def test_get_export_ip_path_volume_id_provided(self):
+        mock_get_host_ip = self.mock_object(self.driver, '_get_host_ip')
+        mock_get_host_ip.return_value = fake.IPV4_ADDRESS
+
+        mock_get_export_path = self.mock_object(
+            self.driver, '_get_export_path')
+        mock_get_export_path.return_value = fake.EXPORT_PATH
+
+        expected = (fake.IPV4_ADDRESS, fake.EXPORT_PATH)
+
+        result = self.driver._get_export_ip_path(fake.VOLUME_ID)
+
+        self.assertEqual(expected, result)
+
+    def test_get_export_ip_path_share_provided(self):
+        expected = (fake.SHARE_IP, fake.EXPORT_PATH)
+
+        result = self.driver._get_export_ip_path(share=fake.NFS_SHARE)
+
+        self.assertEqual(expected, result)
+
+    def test_get_export_ip_path_volume_id_and_share_provided(self):
+        mock_get_host_ip = self.mock_object(self.driver, '_get_host_ip')
+        mock_get_host_ip.return_value = fake.IPV4_ADDRESS
+
+        mock_get_export_path = self.mock_object(
+            self.driver, '_get_export_path')
+        mock_get_export_path.return_value = fake.EXPORT_PATH
+
+        expected = (fake.IPV4_ADDRESS, fake.EXPORT_PATH)
+
+        result = self.driver._get_export_ip_path(
+            fake.VOLUME_ID, fake.NFS_SHARE)
+
+        self.assertEqual(expected, result)
+
+    def test_get_export_ip_path_no_args(self):
+        self.assertRaises(exception.InvalidInput,
+                          self.driver._get_export_ip_path)
+
+    def test_get_host_ip(self):
+        mock_get_provider_location = self.mock_object(
+            self.driver, '_get_provider_location')
+        mock_get_provider_location.return_value = fake.NFS_SHARE
+        expected = fake.SHARE_IP
+
+        result = self.driver._get_host_ip(fake.VOLUME_ID)
+
+        self.assertEqual(expected, result)
+
+    def test_get_export_path(self):
+        mock_get_provider_location = self.mock_object(
+            self.driver, '_get_provider_location')
+        mock_get_provider_location.return_value = fake.NFS_SHARE
+        expected = fake.EXPORT_PATH
+
+        result = self.driver._get_export_path(fake.VOLUME_ID)
+
+        self.assertEqual(expected, result)

@@ -23,8 +23,9 @@ SIZE = 1024
 HOST_NAME = 'fake.host.name'
 BACKEND_NAME = 'fake_backend_name'
 POOL_NAME = 'aggr1'
+SHARE_IP = '192.168.99.24'
 EXPORT_PATH = '/fake/export/path'
-NFS_SHARE = '192.168.99.24:%s' % EXPORT_PATH
+NFS_SHARE = '%s:%s' % (SHARE_IP, EXPORT_PATH)
 HOST_STRING = '%s@%s#%s' % (HOST_NAME, BACKEND_NAME, POOL_NAME)
 NFS_HOST_STRING = '%s@%s#%s' % (HOST_NAME, BACKEND_NAME, NFS_SHARE)
 FLEXVOL = 'openstack-flexvol'
@@ -206,3 +207,5 @@ SNAPSHOT = {
 }
 
 VOLUME_REF = {'name': 'fake_vref_name', 'size': 42}
+
+FILE_LIST = ['file1', 'file2', 'file3']
